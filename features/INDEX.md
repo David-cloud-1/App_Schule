@@ -14,7 +14,18 @@
 
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
+| PROJ-1 | User Authentication | Approved | [PROJ-1-user-authentication.md](PROJ-1-user-authentication.md) | 2026-04-16 |
+| PROJ-2 | Subject & Question Structure | Planned | [PROJ-2-subject-question-structure.md](PROJ-2-subject-question-structure.md) | 2026-04-16 |
+| PROJ-3 | Daily Learning Session / Quiz | Planned | [PROJ-3-daily-learning-session.md](PROJ-3-daily-learning-session.md) | 2026-04-16 |
+| PROJ-4 | XP & Level System | Planned | [PROJ-4-xp-level-system.md](PROJ-4-xp-level-system.md) | 2026-04-16 |
+| PROJ-5 | Streak System | Planned | [PROJ-5-streak-system.md](PROJ-5-streak-system.md) | 2026-04-16 |
+| PROJ-6 | Learning Progress Dashboard | Planned | [PROJ-6-learning-progress-dashboard.md](PROJ-6-learning-progress-dashboard.md) | 2026-04-16 |
+| PROJ-7 | Achievements & Badges | Planned | [PROJ-7-achievements-badges.md](PROJ-7-achievements-badges.md) | 2026-04-16 |
+| PROJ-8 | Leaderboard | Planned | [PROJ-8-leaderboard.md](PROJ-8-leaderboard.md) | 2026-04-16 |
+| PROJ-9 | Admin Content Management Panel | Planned | [PROJ-9-admin-content-management.md](PROJ-9-admin-content-management.md) | 2026-04-16 |
+| PROJ-10 | AI Question Generation | Planned | [PROJ-10-ai-question-generation.md](PROJ-10-ai-question-generation.md) | 2026-04-16 |
+| PROJ-11 | Exam Simulation Mode | Planned | [PROJ-11-exam-simulation-mode.md](PROJ-11-exam-simulation-mode.md) | 2026-04-16 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-1
+## Next Available ID: PROJ-12
