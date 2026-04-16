@@ -1,6 +1,6 @@
 # PROJ-1: User Authentication
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-16
 
@@ -276,4 +276,25 @@ Offene Medium/Low Bugs (können nach Deployment gefixt werden):
 - LOW: Auth-Formulare ohne `noValidate`
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-16
+**Production URL:** https://spedilern.vercel.app
+**Vercel Project:** david-cloud-1s-projects/spedilern
+**GitHub:** https://github.com/David-cloud-1/App_Schule (auto-deploy on push to main)
+
+### Umgebungsvariablen in Vercel gesetzt
+- `NEXT_PUBLIC_SUPABASE_URL` ✅
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` ✅
+
+### Security
+- Security Headers aktiv: X-Frame-Options, HSTS, nosniff, Referrer-Policy
+- HTTPS erzwungen (Vercel Standard)
+
+### Noch manuelle Schritte für volle Auth-Funktionalität
+1. **Supabase Auth → Site URL** auf `https://spedilern.vercel.app` setzen
+2. **Supabase Auth → Redirect URLs** `https://spedilern.vercel.app/auth/callback` hinzufügen
+3. **Google OAuth:** Vercel-Domain als Authorized Origin + Redirect URI in Google Cloud Console eintragen
+4. **Apple OAuth:** Vercel-Domain als Return URL in Apple Developer Portal eintragen
+
+### Deprecation-Hinweis
+Next.js 16 benennt `middleware.ts` in `proxy.ts` um. Kein Breaking Change — bleibt vorerst funktionsfähig.
