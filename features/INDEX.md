@@ -15,7 +15,7 @@
 | ID | Feature | Status | Spec | Created |
 |----|---------|--------|------|---------|
 | PROJ-1 | User Authentication | Deployed | [PROJ-1-user-authentication.md](PROJ-1-user-authentication.md) | 2026-04-16 |
-| PROJ-2 | Subject & Question Structure | Approved | [PROJ-2-subject-question-structure.md](PROJ-2-subject-question-structure.md) | 2026-04-16 |
+| PROJ-2 | Subject & Question Structure | Deployed | [PROJ-2-subject-question-structure.md](PROJ-2-subject-question-structure.md) | 2026-04-16 |
 | PROJ-3 | Daily Learning Session / Quiz | Planned | [PROJ-3-daily-learning-session.md](PROJ-3-daily-learning-session.md) | 2026-04-16 |
 | PROJ-4 | XP & Level System | Planned | [PROJ-4-xp-level-system.md](PROJ-4-xp-level-system.md) | 2026-04-16 |
 | PROJ-5 | Streak System | Planned | [PROJ-5-streak-system.md](PROJ-5-streak-system.md) | 2026-04-16 |

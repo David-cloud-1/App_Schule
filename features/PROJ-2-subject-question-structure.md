@@ -1,8 +1,8 @@
 # PROJ-2: Subject & Question Structure
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
-**Last Updated:** 2026-04-16
+**Last Updated:** 2026-04-17
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) – Fragen sind nur für eingeloggte Nutzer sichtbar
@@ -285,4 +285,15 @@ Conditions before PROJ-3 depends on this code:
 
 
 ## Deployment
-_To be added by /deploy_
+
+**Status:** Deployed — 2026-04-17
+**Production URL:** https://app-schule.vercel.app
+**Git Tag:** v1.2.0-PROJ-2
+**Commit:** a0af310
+
+### Deployed Changes
+- 5 Supabase tables live (subjects, exam_parts, questions, question_subjects, answer_options)
+- 50 seed questions: BGP/KSK/STG/LOP/PUG (10 each)
+- `/subjects` page live behind auth
+- `GET /api/subjects` + `GET /api/questions` live
+- BUG-M-01 fixed before deploy (subject filter now DB-level)
