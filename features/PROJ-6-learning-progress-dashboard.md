@@ -1,8 +1,13 @@
 # PROJ-6: Learning Progress Dashboard
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
+
+## Deployment
+**Deployed:** 2026-04-17
+**Production URL:** https://app-schule.vercel.app
+**Git Tag:** v1.6.0-PROJ-6
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) – eingeloggter Nutzer benötigt
