@@ -171,9 +171,13 @@ None — Dialog, Lucide icons, Supabase, and Tailwind are already installed.
 - `src/app/api/badges/route.ts` — GET /api/badges: all definitions merged with user's unlocked badges + dates
 - `src/app/api/badges/migrate/route.ts` — POST /api/badges/migrate: retroactive migration for all users (protected by `BADGE_MIGRATE_SECRET` env var)
 - `src/app/api/quiz/sessions/route.ts` — extended: calls `checkAndAwardBadges()` after profile update, returns `new_badges` in response
+- `src/app/api/badges/route.test.ts` — 6 unit tests: auth, all-locked, specific unlock, graceful fallback, sort order, field shape
+- `src/app/api/badges/migrate/route.test.ts` — 7 unit tests: secret enforcement, open endpoint, 500 on DB error, results shape
 
 ### Database
 - Applied migration `create_badges_and_user_badges`: tables `badges` (seeded with 15 rows) and `user_badges` with RLS policies and UNIQUE constraint on `(user_id, badge_id)`
+- Verified in Supabase: badges=15 rows, user_badges=0 rows, RLS enabled on both tables
+- RLS policies: `badges` SELECT open to all authenticated; `user_badges` SELECT/INSERT scoped to own `user_id`
 
 ## QA Test Results
 _To be added by /qa_
