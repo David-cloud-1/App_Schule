@@ -2,9 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { LevelUpDialog } from '@/components/level-up-dialog'
+import { XpLevelBadge } from '@/components/xp-level-badge'
+import { getLevelFromXp } from '@/lib/xp-utils'
 import { cn } from '@/lib/utils'
 
 export interface QuizQuestion {
@@ -33,6 +36,15 @@ interface SessionAnswer {
   is_correct: boolean
 }
 
+interface SessionResult {
+  xp_earned: number
+  new_total_xp: number
+  new_streak: number
+  leveled_up: boolean
+  old_level: number
+  new_level: number
+}
+
 interface QuizClientProps {
   questions: QuizQuestion[]
   subject: Subject
@@ -43,18 +55,22 @@ interface QuizClientProps {
 type Phase = 'active' | 'feedback' | 'summary'
 
 const QUIZ_SIZE = 10
-const XP_PER_CORRECT = 5
 
-async function saveSession(subjectId: string | null, answers: SessionAnswer[]) {
+async function saveSession(
+  subjectId: string | null,
+  answers: SessionAnswer[],
+): Promise<SessionResult | null> {
   try {
-    await fetch('/api/quiz/sessions', {
+    const res = await fetch('/api/quiz/sessions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subject_id: subjectId, answers }),
     })
+    if (!res.ok) return null
+    return (await res.json()) as SessionResult
   } catch (err) {
     console.error('[QuizClient] Failed to save session:', err)
-    // Non-fatal — user still sees summary
+    return null
   }
 }
 
@@ -65,11 +81,13 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
   const [hasAnswered, setHasAnswered] = useState(false)
   const [results, setResults] = useState<boolean[]>([])
   const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([])
+  const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
+  const [showLevelUp, setShowLevelUp] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const totalQuestions = questions.length
   const currentQuestion = questions[currentIndex]
   const correctCount = results.filter(Boolean).length
-  const earnedXp = correctCount * XP_PER_CORRECT
 
   function handleSelectAnswer(optionId: string) {
     if (hasAnswered) return
@@ -89,11 +107,17 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
     setPhase('feedback')
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (currentIndex + 1 >= totalQuestions) {
-      // All answers are already in sessionAnswers at this point (set in handleSelectAnswer)
-      saveSession(subjectId, [...sessionAnswers])
+      if (isSubmitting) return
+      setIsSubmitting(true)
+      const allAnswers = [...sessionAnswers]
+      const result = await saveSession(subjectId, allAnswers)
+      setSessionResult(result)
       setPhase('summary')
+      if (result?.leveled_up) {
+        setShowLevelUp(true)
+      }
     } else {
       setCurrentIndex((prev) => prev + 1)
       setSelectedOptionId(null)
@@ -109,63 +133,98 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
   // ── Summary screen ────────────────────────────────────────────────────────
   if (phase === 'summary') {
     const percentage = Math.round((correctCount / totalQuestions) * 100)
+    const xpEarned = sessionResult?.xp_earned ?? 0
+    const newTotalXp = sessionResult?.new_total_xp ?? 0
+    const newStreak = sessionResult?.new_streak ?? 0
+    const newLevel = sessionResult?.new_level ?? getLevelFromXp(newTotalXp)
+
     return (
-      <div className="min-h-screen bg-[#111827] flex flex-col">
-        <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4">
-          <div className="max-w-md mx-auto flex items-center">
-            <Link href="/subjects" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-              <ArrowLeft size={20} />
-            </Link>
-            <span className="ml-3 font-semibold text-[#F9FAFB]">Ergebnis</span>
-          </div>
-        </header>
+      <>
+        {/* Level-up celebration dialog */}
+        {sessionResult?.leveled_up && (
+          <LevelUpDialog
+            open={showLevelUp}
+            onClose={() => setShowLevelUp(false)}
+            newLevel={sessionResult.new_level}
+            totalXp={sessionResult.new_total_xp}
+          />
+        )}
 
-        <main className="max-w-md mx-auto px-4 py-8 flex-1 flex flex-col items-center justify-center">
-          <div className="text-center mb-8">
-            <Trophy size={64} className="text-[#FFD700] mx-auto mb-4" />
-            <p className="text-[#9CA3AF] text-sm mb-2">Du hast</p>
-            <p className="text-6xl font-bold text-[#F9FAFB]">
-              {correctCount}
-              <span className="text-3xl text-[#9CA3AF]">/{totalQuestions}</span>
-            </p>
-            <p className="text-[#9CA3AF] mt-2">Fragen richtig beantwortet</p>
-          </div>
-
-          <div className="w-full mb-6">
-            <Progress
-              value={percentage}
-              className="h-3 bg-[#374151] rounded-full [&>div]:bg-[#58CC02]"
-            />
-            <p className="text-center text-sm text-[#9CA3AF] mt-2">{percentage}% richtig</p>
-          </div>
-
-          <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 w-full mb-8 flex items-center justify-between">
-            <div>
-              <p className="text-[#9CA3AF] text-sm">Verdiente XP</p>
-              <p className="text-xl font-bold text-[#58CC02]">+{earnedXp} XP</p>
+        <div className="min-h-screen bg-[#111827] flex flex-col">
+          <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4">
+            <div className="max-w-md mx-auto flex items-center">
+              <Link href="/subjects" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
+                <ArrowLeft size={20} />
+              </Link>
+              <span className="ml-3 font-semibold text-[#F9FAFB]">Ergebnis</span>
             </div>
-            <Zap size={32} className="text-[#58CC02]" />
-          </div>
+          </header>
 
-          <div className="flex flex-col gap-3 w-full">
-            <Button
-              onClick={() => window.location.reload()}
-              className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95"
-            >
-              <RotateCcw className="mr-2" size={18} />
-              Nochmal üben
-            </Button>
-            <Link href="/subjects">
+          <main className="max-w-md mx-auto px-4 py-8 flex-1 flex flex-col items-center justify-center">
+            <div className="text-center mb-8">
+              <Trophy size={64} className="text-[#FFD700] mx-auto mb-4" />
+              <p className="text-[#9CA3AF] text-sm mb-2">Du hast</p>
+              <p className="text-6xl font-bold text-[#F9FAFB]">
+                {correctCount}
+                <span className="text-3xl text-[#9CA3AF]">/{totalQuestions}</span>
+              </p>
+              <p className="text-[#9CA3AF] mt-2">Fragen richtig beantwortet</p>
+            </div>
+
+            <div className="w-full mb-4">
+              <Progress
+                value={percentage}
+                className="h-3 bg-[#374151] rounded-full [&>div]:bg-[#58CC02]"
+              />
+              <p className="text-center text-sm text-[#9CA3AF] mt-2">{percentage}% richtig</p>
+            </div>
+
+            {/* XP earned */}
+            <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 w-full mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-[#9CA3AF] text-sm">Verdiente XP</p>
+                <p className="text-xl font-bold text-[#58CC02]">+{xpEarned} XP</p>
+                {newTotalXp > 0 && (
+                  <p className="text-xs text-[#6B7280] mt-0.5">{newTotalXp} XP gesamt</p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <Zap size={28} className="text-[#58CC02]" />
+                {newTotalXp > 0 && <XpLevelBadge totalXp={newTotalXp} level={newLevel} />}
+              </div>
+            </div>
+
+            {/* Streak */}
+            {newStreak > 0 && (
+              <div className="bg-[#1F2937] border border-[#FF9600]/30 rounded-2xl p-4 w-full mb-6 flex items-center justify-between">
+                <div>
+                  <p className="text-[#9CA3AF] text-sm">Tagesserie</p>
+                  <p className="text-xl font-bold text-[#FF9600]">{newStreak} {newStreak === 1 ? 'Tag' : 'Tage'} 🔥</p>
+                </div>
+                <Flame size={28} className="text-[#FF9600]" />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3 w-full">
               <Button
-                variant="outline"
-                className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold text-base py-6 transition-all duration-200"
+                onClick={() => window.location.reload()}
+                className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95"
               >
-                Zur Fachübersicht
+                <RotateCcw className="mr-2" size={18} />
+                Nochmal üben
               </Button>
-            </Link>
-          </div>
-        </main>
-      </div>
+              <Link href="/subjects">
+                <Button
+                  variant="outline"
+                  className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold text-base py-6 transition-all duration-200"
+                >
+                  Zur Fachübersicht
+                </Button>
+              </Link>
+            </div>
+          </main>
+        </div>
+      </>
     )
   }
 
@@ -314,6 +373,7 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
 
             <Button
               onClick={handleNext}
+              disabled={isSubmitting}
               className={cn(
                 'w-full rounded-2xl font-bold text-base py-6 transition-all duration-200 active:scale-95',
                 isCorrectSelected

@@ -70,21 +70,33 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          current_streak: number
           display_name: string | null
           id: string
+          last_session_date: string | null
+          longest_streak: number
           role: string
+          total_xp: number
         }
         Insert: {
           created_at?: string
+          current_streak?: number
           display_name?: string | null
           id: string
+          last_session_date?: string | null
+          longest_streak?: number
           role?: string
+          total_xp?: number
         }
         Update: {
           created_at?: string
+          current_streak?: number
           display_name?: string | null
           id?: string
+          last_session_date?: string | null
+          longest_streak?: number
           role?: string
+          total_xp?: number
         }
         Relationships: []
       }
