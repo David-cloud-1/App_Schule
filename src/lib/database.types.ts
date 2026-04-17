@@ -145,6 +145,96 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_answers: {
+        Row: {
+          answered_at: string
+          id: string
+          is_correct: boolean
+          question_id: string
+          selected_option_id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          answered_at?: string
+          id?: string
+          is_correct: boolean
+          question_id: string
+          selected_option_id: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          answered_at?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          selected_option_id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_answers_selected_option_id_fkey"
+            columns: ["selected_option_id"]
+            isOneToOne: false
+            referencedRelation: "answer_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_sessions: {
+        Row: {
+          completed_at: string
+          id: string
+          score: number
+          subject_id: string | null
+          total: number
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          score: number
+          subject_id?: string | null
+          total: number
+          user_id: string
+          xp_earned?: number
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          score?: number
+          subject_id?: string | null
+          total?: number
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           code: string

@@ -4,7 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { SubjectCard } from '@/components/subject-card'
 import { LogoutButton } from '@/components/logout-button'
-import { BarChart3, Calculator, Truck, Package, Zap, Scale } from 'lucide-react'
+import { BarChart3, Calculator, Truck, Package, Zap, Scale, Shuffle } from 'lucide-react'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 
 // Icon + short description per subject code — static, tied to IHK structure
@@ -99,6 +99,22 @@ export default async function SubjectsPage() {
             Wähle ein Fach und starte deine Lerneinheit.
           </p>
         </div>
+
+        {/* Mixed mode CTA */}
+        <Link href="/quiz" className="block mb-4">
+          <div className="bg-[#1F2937] border border-[#58CC02]/40 hover:border-[#58CC02] rounded-2xl p-5 flex items-center gap-4 transition-all duration-200 group">
+            <div className="w-12 h-12 rounded-2xl bg-[#58CC02]/20 flex items-center justify-center flex-shrink-0">
+              <Shuffle size={22} className="text-[#58CC02]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[#F9FAFB] text-base">Gemischt lernen</p>
+              <p className="text-sm text-[#9CA3AF] mt-0.5">Fragen aus allen Fächern gemischt</p>
+            </div>
+            <div className="rounded-2xl bg-[#58CC02] px-4 py-2 text-white text-sm font-semibold group-hover:bg-[#4CAD02] transition-colors">
+              Start
+            </div>
+          </div>
+        </Link>
 
         <div className="grid grid-cols-1 gap-4">
           {subjects.map((subject) => {
