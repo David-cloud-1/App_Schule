@@ -20,6 +20,7 @@ import {
   Calculator,
   Package,
   Scale,
+  User,
 } from 'lucide-react'
 
 // Static subject metadata (icon per IHK code)
@@ -172,6 +173,14 @@ export default async function HomePage() {
             </div>
             {/* Streak pill */}
             <StreakBadge streak={currentStreak} variant="pill" />
+            {/* Profile link */}
+            <Link
+              href="/profile"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#9CA3AF] hover:text-[#F9FAFB]"
+              aria-label="Profil"
+            >
+              <User className="w-4 h-4" />
+            </Link>
             {isAdmin && (
               <Link
                 href="/admin"

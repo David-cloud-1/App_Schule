@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
 import { getLevelFromXp } from '@/lib/xp-utils'
+import { checkAndAwardBadges } from '@/lib/badges'
 
 const AnswerSchema = z.object({
   question_id:        z.string().uuid(),
@@ -149,6 +150,15 @@ export async function POST(request: NextRequest) {
     // Non-fatal — session is saved; XP will be out of sync but we still return response
   }
 
+  // ── Badge check (PROJ-7) ──────────────────────────────────────────────────
+  const newBadges = await checkAndAwardBadges(supabase, user.id, {
+    streak: newStreak,
+    level: newLevel,
+    sessionScore: score,
+    sessionTotal: total,
+    isRetroactive: false,
+  })
+
   return NextResponse.json({
     session_id:   session.id,
     score,
@@ -159,5 +169,6 @@ export async function POST(request: NextRequest) {
     leveled_up:   leveledUp,
     old_level:    oldLevel,
     new_level:    newLevel,
+    new_badges:   newBadges,
   })
 }

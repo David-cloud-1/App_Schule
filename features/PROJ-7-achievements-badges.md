@@ -1,6 +1,6 @@
 # PROJ-7: Achievements & Badges
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -156,6 +156,24 @@ User completes quiz
 
 ### New Dependencies
 None — Dialog, Lucide icons, Supabase, and Tailwind are already installed.
+
+## Implementation Notes
+
+### Frontend
+- `src/lib/badges.ts` — 15 badge definitions as `BADGE_DEFINITIONS` constant + `checkAndAwardBadges()` function
+- `src/components/badge-unlock-modal.tsx` — animated unlock modal (gold glow ring, emoji icon, "Weiter" button)
+- `src/components/badge-gallery.tsx` — 3-column grid; unlocked badges colored with date, locked ones greyed out with condition text
+- `src/app/profile/page.tsx` — new `/profile` page: profile card (avatar, name, XP/level, streak, progress bar) + badge gallery
+- `src/app/quiz/quiz-client.tsx` — extended: `SessionResult.new_badges` field, badge queue state, modals shown one-at-a-time after level-up dialog
+- `src/app/page.tsx` — added profile icon link in header
+
+### Backend
+- `src/app/api/badges/route.ts` — GET /api/badges: all definitions merged with user's unlocked badges + dates
+- `src/app/api/badges/migrate/route.ts` — POST /api/badges/migrate: retroactive migration for all users (protected by `BADGE_MIGRATE_SECRET` env var)
+- `src/app/api/quiz/sessions/route.ts` — extended: calls `checkAndAwardBadges()` after profile update, returns `new_badges` in response
+
+### Database
+- Applied migration `create_badges_and_user_badges`: tables `badges` (seeded with 15 rows) and `user_badges` with RLS policies and UNIQUE constraint on `(user_id, badge_id)`
 
 ## QA Test Results
 _To be added by /qa_
