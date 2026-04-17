@@ -1,6 +1,6 @@
 # PROJ-5: Streak System
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -115,4 +115,13 @@ The acceptance criterion says "Streak wird auf **0** zurückgesetzt" but the tec
 - **E2E tests:** `tests/PROJ-4-5-xp-streak-system.spec.ts` — 19/19 Chromium pass
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-17
+**Production URL:** https://spedilern.vercel.app
+**Vercel Project:** david-cloud-1s-projects/spedilern
+
+### Routes live in production
+- `GET /api/profile/stats` — Returns `current_streak`, `longest_streak`
+- `POST /api/quiz/sessions` — Streak logic runs server-side (Europe/Berlin timezone), returns `new_streak`
+- Header `StreakBadge` — Flame icon + count visible after login
+- Quiz summary — Streak banner shown after completing session

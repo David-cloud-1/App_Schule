@@ -1,6 +1,6 @@
 # PROJ-4: XP & Level System
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -122,4 +122,13 @@ Level is computed client-side from `total_xp` (no DB column needed).
 - **E2E tests:** `tests/PROJ-4-5-xp-streak-system.spec.ts` — 19/19 Chromium pass; 3 Mobile Safari skipped (WebKit not installed on this machine, pre-existing env issue)
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-17
+**Production URL:** https://spedilern.vercel.app
+**Vercel Project:** david-cloud-1s-projects/spedilern
+
+### Routes live in production
+- `GET /api/profile/stats` — Returns `total_xp`, `current_streak`, `longest_streak`, `level`
+- `POST /api/quiz/sessions` — Now returns `xp_earned`, `new_total_xp`, `leveled_up`, `old_level`, `new_level`
+- `/` — Home page shows XP progress bar + level badge (real data)
+- `/quiz` — Quiz summary shows `+N XP` earned and streak banner
