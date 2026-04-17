@@ -61,6 +61,10 @@ npm run test:e2e     # Playwright E2E tests
 npm run test:all     # Both test suites
 ```
 
+## Design System
+
+@docs/DESIGN.md
+
 ## Product Context
 
 @docs/PRD.md
