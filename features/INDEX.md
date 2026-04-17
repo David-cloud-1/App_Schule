@@ -19,7 +19,7 @@
 | PROJ-3 | Daily Learning Session / Quiz | Deployed | [PROJ-3-daily-learning-session.md](PROJ-3-daily-learning-session.md) | 2026-04-16 |
 | PROJ-4 | XP & Level System | Deployed | [PROJ-4-xp-level-system.md](PROJ-4-xp-level-system.md) | 2026-04-16 |
 | PROJ-5 | Streak System | Deployed | [PROJ-5-streak-system.md](PROJ-5-streak-system.md) | 2026-04-16 |
-| PROJ-6 | Learning Progress Dashboard | Planned | [PROJ-6-learning-progress-dashboard.md](PROJ-6-learning-progress-dashboard.md) | 2026-04-16 |
+| PROJ-6 | Learning Progress Dashboard | Approved | [PROJ-6-learning-progress-dashboard.md](PROJ-6-learning-progress-dashboard.md) | 2026-04-16 |
 | PROJ-7 | Achievements & Badges | Planned | [PROJ-7-achievements-badges.md](PROJ-7-achievements-badges.md) | 2026-04-16 |
 | PROJ-8 | Leaderboard | Planned | [PROJ-8-leaderboard.md](PROJ-8-leaderboard.md) | 2026-04-16 |
 | PROJ-9 | Admin Content Management Panel | Planned | [PROJ-9-admin-content-management.md](PROJ-9-admin-content-management.md) | 2026-04-16 |
