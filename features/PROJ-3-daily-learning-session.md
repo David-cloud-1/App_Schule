@@ -1,6 +1,6 @@
 # PROJ-3: Daily Learning Session / Quiz
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -156,4 +156,20 @@ BUG-3-1 (Streak-Status in Summary) is intentionally deferred to PROJ-5 (Streak S
 Current state is safe to deploy as a feature flag or behind PROJ-5 dependency. No Critical or High bugs.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-17
+**Production URL:** https://spedilern.vercel.app
+**Vercel Project:** david-cloud-1s-projects/spedilern
+
+### Routes live in production
+- `/quiz` — Quiz page (auth required, redirects to /login unauthenticated)
+- `/quiz?subject=<uuid>` — Subject-specific quiz
+- `POST /api/quiz/sessions` — Save completed quiz session
+- `GET /api/quiz/today` — Fetch today's answered question IDs
+
+### Database
+- Migration `create_quiz_sessions_and_answers` applied to production Supabase project
+- Tables: `quiz_sessions`, `quiz_answers` with RLS
+
+### Known deferred issues
+- BUG-3-1 (Medium): Streak-Status missing from summary — blocked on PROJ-5
