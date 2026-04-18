@@ -1,6 +1,6 @@
 # PROJ-7: Achievements & Badges
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -283,4 +283,14 @@ Total unit tests run: **36 passing**
 - Pre-existing Vitest config issue (picks up Playwright `.spec.ts` files from `tests/`) — not introduced by PROJ-7; all 115 actual unit tests pass
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-18
+**Tag:** `v1.7.0-PROJ-7`
+**Vercel URL:** https://spedilern-atxorituv-david-cloud-1s-projects.vercel.app
+
+**Post-deploy action required:** Run the one-time badge migration to retroactively award badges to existing users:
+```bash
+curl -X POST https://<your-production-domain>/api/badges/migrate \
+  -H "x-migrate-secret: <BADGE_MIGRATE_SECRET>"
+```
+If `BADGE_MIGRATE_SECRET` is not set, call without the header.
