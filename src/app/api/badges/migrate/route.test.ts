@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { POST } from './route'
 
 vi.mock('@/lib/supabase-server', () => ({
-  createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
 
 const USER_A = 'aaaaaaaa-0000-0000-0000-000000000001'
 const USER_B = 'aaaaaaaa-0000-0000-0000-000000000002'
@@ -83,7 +83,7 @@ describe('POST /api/badges/migrate', () => {
 
   it('returns 403 when BADGE_MIGRATE_SECRET is set and header is missing', async () => {
     process.env.BADGE_MIGRATE_SECRET = 'super-secret'
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest())
     expect(res.status).toBe(403)
     const body = await res.json()
@@ -92,14 +92,14 @@ describe('POST /api/badges/migrate', () => {
 
   it('returns 403 when BADGE_MIGRATE_SECRET is set and header is wrong', async () => {
     process.env.BADGE_MIGRATE_SECRET = 'super-secret'
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest({ 'x-migrate-secret': 'wrong-secret' }))
     expect(res.status).toBe(403)
   })
 
   it('runs migration successfully when correct secret header provided', async () => {
     process.env.BADGE_MIGRATE_SECRET = 'super-secret'
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest({ 'x-migrate-secret': 'super-secret' }))
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -109,7 +109,7 @@ describe('POST /api/badges/migrate', () => {
 
   it('runs migration when no BADGE_MIGRATE_SECRET is configured (open endpoint)', async () => {
     delete process.env.BADGE_MIGRATE_SECRET
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest())
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -117,7 +117,7 @@ describe('POST /api/badges/migrate', () => {
   })
 
   it('returns 500 when profiles query fails', async () => {
-    vi.mocked(createClient).mockResolvedValue(
+    vi.mocked(createServiceClient).mockReturnValue(
       makeSupabaseMock({ profilesError: true }) as never,
     )
     const res = await POST(makeRequest())
@@ -127,7 +127,7 @@ describe('POST /api/badges/migrate', () => {
   })
 
   it('returns results array with userId and awarded count per user', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest())
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -140,7 +140,7 @@ describe('POST /api/badges/migrate', () => {
   })
 
   it('reports total awarded badges in message', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeSupabaseMock() as never)
     const res = await POST(makeRequest())
     const body = await res.json()
     const totalAwarded = body.results.reduce(

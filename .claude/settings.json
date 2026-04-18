@@ -16,7 +16,18 @@
       "Bash(kill:*)",
       "Bash(npx shadcn@latest add:*)",
       "Bash(ls:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx playwright *)",
+      "Bash(npm test *)",
+      "Bash(npx next *)",
+      "Bash(npx eslint *)",
+      "Read(//usr/local/bin/**)",
+      "Bash(/c/KI/Node/npm.cmd run *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(/c/KI/Node/npx.cmd playwright *)",
+      "Bash(git -C \"c:/KI/App_Schule\" ls-files src/components/)",
+      "Bash(git -C \"c:/KI/App_Schule\" ls-files src/app/api/)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

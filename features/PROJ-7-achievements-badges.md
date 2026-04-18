@@ -1,6 +1,6 @@
 # PROJ-7: Achievements & Badges
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-17
 
@@ -204,22 +204,17 @@ None — Dialog, Lucide icons, Supabase, and Tailwind are already installed.
 
 #### Bug #1 — HIGH: Migration endpoint bypassed by RLS, cannot process all users
 
-**Severity:** High
+**Severity:** High — **FIXED 2026-04-18**
 **File:** [src/app/api/badges/migrate/route.ts](src/app/api/badges/migrate/route.ts)
 
 **Description:**
-`POST /api/badges/migrate` uses `createClient()` (anon key + user session cookies) to fetch all profiles. The `profiles` table has RLS policy `profiles_select_own` with condition `auth.uid() = id`. This means:
-- Called without authentication: `auth.uid() = NULL` → 0 profiles fetched → 0 badges awarded
-- Called with a user session: only that user's own profile is fetched → migration runs for 1 user only
+`POST /api/badges/migrate` was using `createClient()` (anon key + user session cookies) to fetch all profiles. RLS policy `profiles_select_own` caused 0 profiles to be fetched when called without authentication.
 
-The intent is to award badges retroactively for **all** users. This requires a service-role-key Supabase client to bypass RLS.
-
-**Steps to Reproduce:**
-1. Set `BADGE_MIGRATE_SECRET` or remove it
-2. `POST /api/badges/migrate` from any unauthenticated caller
-3. Response: `"Migration complete. 0 badges awarded across 0 users."`
-
-**Fix:** Use a service role client (separate `createServiceClient()` using `SUPABASE_SERVICE_ROLE_KEY`) in the migrate route.
+**Fix Applied:**
+- Added `createServiceClient()` to `src/lib/supabase-server.ts` using `SUPABASE_SERVICE_ROLE_KEY` (bypasses RLS, server-side only)
+- Updated `migrate/route.ts` to use `createServiceClient()` instead of `createClient()`
+- Updated `migrate/route.test.ts` mock to use `createServiceClient`
+- Documented `SUPABASE_SERVICE_ROLE_KEY` in `.env.local.example`
 
 ---
 
@@ -278,9 +273,14 @@ Total unit tests run: **36 passing**
 
 ### Production-Ready Decision
 
-**NOT READY** — 1 High bug must be fixed before deployment.
+**READY** — Bug #1 (HIGH) confirmed fixed on 2026-04-18. No remaining Critical or High bugs.
 
-The retroactive migration (AC #7) is non-functional due to the RLS/anon-key issue. All other acceptance criteria pass. After fixing Bug #1, run `/qa` again to verify.
+- AC #7 (retroactive migration): Verified `createServiceClient()` in use — bypasses RLS correctly ✅
+- 115 unit/integration tests pass ✅
+- Remaining bugs are LOW severity and do not block deployment:
+  - Bug #2: Dead PostgREST column-comparison query in retroactive perfectionist check (dead code, no functional impact)
+  - Bug #3: Missing `.limit()` on `quiz_answers` and `allSessions` queries (performance risk only for power users)
+- Pre-existing Vitest config issue (picks up Playwright `.spec.ts` files from `tests/`) — not introduced by PROJ-7; all 115 actual unit tests pass
 
 ## Deployment
 _To be added by /deploy_
