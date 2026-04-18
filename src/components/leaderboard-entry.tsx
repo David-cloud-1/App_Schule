@@ -1,11 +1,13 @@
 'use client'
 
 import { Zap } from 'lucide-react'
+import { getLevelColor } from '@/lib/xp-utils'
 
 export interface LeaderboardEntryData {
   id: string
   display_name: string | null
   total_xp: number
+  level: number
   rank: number
   is_current_user?: boolean
   is_opted_out?: boolean
@@ -89,6 +91,11 @@ export function LeaderboardEntry({ entry }: LeaderboardEntryProps) {
             <span className="ml-2 text-xs font-normal text-[#9CA3AF]">Du</span>
           )}
         </p>
+      </div>
+
+      {/* Level Badge */}
+      <div className={`flex-shrink-0 rounded-full border px-2 py-0.5 text-xs font-bold ${getLevelColor(entry.level)}`}>
+        Lv.{entry.level}
       </div>
 
       {/* XP */}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LeaderboardEntry, type LeaderboardEntryData } from '@/components/leaderboard-entry'
@@ -113,9 +114,9 @@ export function LeaderboardClient({ userId }: LeaderboardClientProps) {
 
           <p className="text-center text-[#6B7280] text-xs pt-2">
             Opt-out-Einstellungen in{' '}
-            <a href="/profile" className="text-[#9CA3AF] underline underline-offset-2">
+            <Link href="/profile" className="text-[#9CA3AF] underline underline-offset-2">
               deinem Profil
-            </a>
+            </Link>
           </p>
         </>
       )}

@@ -1,6 +1,6 @@
 # PROJ-8: Leaderboard
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-18
 
@@ -113,9 +113,9 @@ Implemented without separate architecture phase:
 
 ## QA Test Results
 
-**Date:** 2026-04-18  
+**Date:** 2026-04-18 (updated after bug fixes)
 **QA Engineer:** /qa skill  
-**Status:** In Review — NOT production-ready (1 High bug)
+**Status:** Approved — production-ready
 
 ### Automated Tests
 
@@ -123,15 +123,15 @@ Implemented without separate architecture phase:
 |-------|--------|
 | Vitest unit tests — `GET /api/leaderboard` (15 tests) | ✅ All pass |
 | Vitest unit tests — `PATCH /api/profile/opt-out` (6 tests) | ✅ All pass |
-| Playwright E2E — PROJ-8 (non-auth tests, Chromium + Firefox) | ✅ 15 pass |
-| Playwright E2E — PROJ-8 (Mobile Safari) | ❌ 3 fail — WebKit not installed (pre-existing infra issue) |
+| Playwright E2E — PROJ-8 (non-auth tests, Chromium) | ✅ 9 pass, 6 skipped (require live auth) |
+| Playwright E2E — PROJ-8 (Mobile Safari) | ⚠️ WebKit not installed (pre-existing infra issue) |
 
 ### Acceptance Criteria Results
 
 | # | Criterion | Result |
 |---|-----------|--------|
 | AC-1 | Leaderboard zeigt Top 10 nach XP, sortiert absteigend | ✅ Pass |
-| AC-2 | Jeder Eintrag zeigt: Rang, Avatar/Initialen, Display Name, XP, **Level-Badge** | ❌ FAIL — Level-Badge fehlt in LeaderboardEntry + API |
+| AC-2 | Jeder Eintrag zeigt: Rang, Avatar/Initialen, Display Name, XP, Level-Badge | ✅ Pass (fixed) |
 | AC-3 | Top 3: Gold/Silber/Bronze-Icons | ✅ Pass |
 | AC-4 | Weniger als 10 Nutzer: alle anzeigen | ✅ Pass (unit test) |
 | AC-5 | Gleiche XP: alphabetisch als Tiebreaker | ✅ Pass (unit test) |
@@ -149,37 +149,28 @@ Implemented without separate architecture phase:
 | AC-17 | Opt-out sofort wirksam | ✅ Pass (no cache on PATCH) |
 | AC-18 | Leaderboard nur für eingeloggte Nutzer | ✅ Pass (E2E + unit test) |
 
-**Result: 17/18 pass, 1 fail**
+**Result: 18/18 pass**
 
 ### Bugs Found
 
-#### HIGH — Level-Badge fehlt in Leaderboard-Einträgen
-- **Severity:** High
-- **AC:** "Jeder Eintrag zeigt: Rang, Avatar/Initialen, Display Name, XP, Level-Badge"
-- **Description:** Die `LeaderboardEntry`-Komponente rendert kein Level-Badge. Die API liefert auch kein `level`-Feld zurück (weder für `all` noch für `week`/`month`). Das Profil enthält `total_xp`, aus dem das Level berechnet werden könnte.
-- **Steps to reproduce:** Leaderboard öffnen → Kein Level-Badge in einem Eintrag sichtbar.
-- **Fix needed:** API muss `level`-Feld (berechnet aus `total_xp`) zurückgeben; `LeaderboardEntry` muss ein Level-Badge rendern.
+#### ~~HIGH — Level-Badge fehlt in Leaderboard-Einträgen~~ ✅ FIXED
+- **Fixed in:** API (`/api/leaderboard`) now computes `level` via `getLevelFromXp(total_xp)` for all periods; `LeaderboardEntryData` interface extended with `level: number`; `LeaderboardEntry` renders a `Lv.X` pill using `getLevelColor()` colour tiers.
 
-#### MEDIUM — `period`-Parameter nicht validiert
+#### MEDIUM — `period`-Parameter nicht validiert (open)
 - **Severity:** Medium
 - **Description:** `?period=xyz` wird per `as Period` gecastet ohne Laufzeit-Validierung. `getStartDate('xyz')` gibt `null` zurück, dann wird `.gte('completed_at', null)` an Supabase gesendet — unklar ob kein Filter oder DB-Fehler.
 - **Steps to reproduce:** `GET /api/leaderboard?period=invalid` aufrufen.
 - **Fix needed:** Zod-Validierung auf `period` (erlaubte Werte: `week`, `month`, `all`); ungültige Werte → 400.
 
-#### MEDIUM — Opt-out Toggle kein Error-Handling / kein Rollback
-- **Severity:** Medium
-- **Description:** In `LeaderboardOptOutToggle.handleToggle` wird der API-Response-Status nicht geprüft. Bei HTTP 5xx-Fehler wird `setOptOut(!checked)` trotzdem aufgerufen → UI-Zustand ändert sich, obwohl die DB nicht aktualisiert wurde.
-- **File:** `src/components/leaderboard-opt-out-toggle.tsx:16–28`
-- **Fix needed:** `if (!res.ok) throw new Error(...)` nach dem `fetch`-Aufruf; Fehler anzeigen und UI-State nicht ändern.
+#### ~~MEDIUM — Opt-out Toggle kein Error-Handling / kein Rollback~~ ✅ FIXED
+- **Fixed in:** `if (!res.ok)` check added after fetch; `toast.error(...)` displayed on failure; UI state not updated on error; `catch` block added for network errors.
 
-#### LOW — `<a>` statt `<Link>` für Profil-Link in LeaderboardClient
-- **Severity:** Low
-- **Description:** `<a href="/profile">` in `leaderboard-client.tsx:116` erzwingt einen Full-Page-Reload statt Client-seitiger Navigation.
-- **Fix needed:** Ersetzen durch `<Link href="/profile">` (Next.js).
+#### ~~LOW — `<a>` statt `<Link>` für Profil-Link in LeaderboardClient~~ ✅ FIXED
+- **Fixed in:** Replaced `<a href="/profile">` with Next.js `<Link href="/profile">` in `leaderboard-client.tsx`.
 
 #### LOW — WebKit-Browser nicht installiert (Infrastruktur)
 - **Severity:** Low
-- **Description:** 3 Mobile Safari-Tests schlagen fehl, weil die WebKit-Binary fehlt. Pre-existing issue, nicht PROJ-8-spezifisch.
+- **Description:** Mobile Safari tests cannot run because WebKit binary is missing. Pre-existing issue, not PROJ-8-specific.
 - **Fix needed:** `npx playwright install webkit` einmalig auf dem Entwickler-Rechner ausführen.
 
 ### Security Audit
@@ -207,7 +198,7 @@ Implemented without separate architecture phase:
 
 ### Production-Ready Decision
 
-**NOT READY** — 1 High bug (Level-Badge fehlt) muss vor dem Deployment behoben werden.
+**READY** — No Critical or High bugs. 1 Medium (period validation) and 1 Low (WebKit infra) remain; acceptable for production.
 
 ## Deployment
 _To be added by /deploy_

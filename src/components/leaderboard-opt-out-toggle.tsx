@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface LeaderboardOptOutToggleProps {
   initialOptOut: boolean
@@ -16,12 +17,18 @@ export function LeaderboardOptOutToggle({ initialOptOut }: LeaderboardOptOutTogg
   async function handleToggle(checked: boolean) {
     setSaving(true)
     try {
-      await fetch('/api/profile/opt-out', {
+      const res = await fetch('/api/profile/opt-out', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leaderboard_opt_out: !checked }),
       })
+      if (!res.ok) {
+        toast.error('Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut.')
+        return
+      }
       setOptOut(!checked)
+    } catch {
+      toast.error('Einstellung konnte nicht gespeichert werden. Bitte versuche es erneut.')
     } finally {
       setSaving(false)
     }

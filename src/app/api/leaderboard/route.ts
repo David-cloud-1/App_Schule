@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-server'
+import { getLevelFromXp } from '@/lib/xp-utils'
 
 type Period = 'week' | 'month' | 'all'
 
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
         id: currentUserRow.id,
         display_name: currentUserRow.leaderboard_opt_out ? null : currentUserRow.display_name,
         total_xp: currentUserRow.total_xp,
+        level: getLevelFromXp(currentUserRow.total_xp ?? 0),
         rank: myRankInAll >= 0 ? myRankInAll + 1 : allRows.filter((r) => r.total_xp > (currentUserRow.total_xp ?? 0)).length + 1,
         is_current_user: true,
         is_opted_out: currentUserRow.leaderboard_opt_out,
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
 
     const top10 = rankedPublic.slice(0, 10).map((r) => ({
       ...r,
+      level: getLevelFromXp(r.total_xp ?? 0),
       is_current_user: r.id === user.id,
     }))
     const currentUserInTop10 = top10.some((r) => r.is_current_user)
@@ -95,10 +98,10 @@ export async function GET(request: NextRequest) {
     xpMap.set(row.user_id, (xpMap.get(row.user_id) ?? 0) + (row.xp_earned ?? 0))
   }
 
-  // Fetch all profiles to get display names + opt-out
+  // Fetch all profiles to get display names, opt-out, and total_xp (for level)
   const { data: profileRows, error: profileError } = await service
     .from('profiles')
-    .select('id, display_name, leaderboard_opt_out')
+    .select('id, display_name, total_xp, leaderboard_opt_out')
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
 
@@ -134,6 +137,7 @@ export async function GET(request: NextRequest) {
     id: e.id,
     display_name: e.display_name,
     total_xp: e.xp,
+    level: getLevelFromXp(profileMap.get(e.id)?.total_xp ?? 0),
     rank: e.rank,
     is_current_user: e.id === user.id,
   }))
@@ -144,6 +148,7 @@ export async function GET(request: NextRequest) {
     id: user.id,
     display_name: currentUserProfile?.leaderboard_opt_out ? null : currentUserProfile?.display_name ?? null,
     total_xp: currentUserXp,
+    level: getLevelFromXp(currentUserProfile?.total_xp ?? 0),
     rank: currentUserRank >= 0 ? currentUserRank + 1 : allEntries.filter((e) => !e.leaderboard_opt_out && e.xp > currentUserXp).length + 1,
     is_current_user: true,
     is_opted_out: currentUserProfile?.leaderboard_opt_out ?? false,
