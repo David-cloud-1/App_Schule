@@ -21,7 +21,7 @@
 | PROJ-5 | Streak System | Deployed | [PROJ-5-streak-system.md](PROJ-5-streak-system.md) | 2026-04-16 |
 | PROJ-6 | Learning Progress Dashboard | Deployed | [PROJ-6-learning-progress-dashboard.md](PROJ-6-learning-progress-dashboard.md) | 2026-04-16 |
 | PROJ-7 | Achievements & Badges | Deployed | [PROJ-7-achievements-badges.md](PROJ-7-achievements-badges.md) | 2026-04-16 |
-| PROJ-8 | Leaderboard | In Progress | [PROJ-8-leaderboard.md](PROJ-8-leaderboard.md) | 2026-04-16 |
+| PROJ-8 | Leaderboard | In Review | [PROJ-8-leaderboard.md](PROJ-8-leaderboard.md) | 2026-04-16 |
 | PROJ-9 | Admin Content Management Panel | Planned | [PROJ-9-admin-content-management.md](PROJ-9-admin-content-management.md) | 2026-04-16 |
 | PROJ-10 | AI Question Generation | Planned | [PROJ-10-ai-question-generation.md](PROJ-10-ai-question-generation.md) | 2026-04-16 |
 | PROJ-11 | Exam Simulation Mode | Planned | [PROJ-11-exam-simulation-mode.md](PROJ-11-exam-simulation-mode.md) | 2026-04-16 |

@@ -1,8 +1,14 @@
 # PROJ-8: Leaderboard
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-18
+
+## Implementation Notes
+- **DB:** `leaderboard_opt_out boolean NOT NULL DEFAULT false` on `profiles` (migration `add_leaderboard_opt_out`)
+- **API:** `GET /api/leaderboard?period=week|month|all` implemented with week/month aggregation from `quiz_sessions.xp_earned`, all-time from `profiles.total_xp`; opted-out users excluded from public list; current user always returned with rank
+- **API:** `PATCH /api/profile/opt-out` implemented; sets `leaderboard_opt_out` for authenticated user
+- **Tests:** 19 integration tests across both routes (leaderboard + opt-out), all passing
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) – eingeloggte Nutzer, Profilinfos
@@ -106,7 +112,102 @@ Implemented without separate architecture phase:
 - **Profile:** `LeaderboardOptOutToggle` client component added to `/profile` settings section
 
 ## QA Test Results
-_To be added by /qa_
+
+**Date:** 2026-04-18  
+**QA Engineer:** /qa skill  
+**Status:** In Review — NOT production-ready (1 High bug)
+
+### Automated Tests
+
+| Suite | Result |
+|-------|--------|
+| Vitest unit tests — `GET /api/leaderboard` (15 tests) | ✅ All pass |
+| Vitest unit tests — `PATCH /api/profile/opt-out` (6 tests) | ✅ All pass |
+| Playwright E2E — PROJ-8 (non-auth tests, Chromium + Firefox) | ✅ 15 pass |
+| Playwright E2E — PROJ-8 (Mobile Safari) | ❌ 3 fail — WebKit not installed (pre-existing infra issue) |
+
+### Acceptance Criteria Results
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| AC-1 | Leaderboard zeigt Top 10 nach XP, sortiert absteigend | ✅ Pass |
+| AC-2 | Jeder Eintrag zeigt: Rang, Avatar/Initialen, Display Name, XP, **Level-Badge** | ❌ FAIL — Level-Badge fehlt in LeaderboardEntry + API |
+| AC-3 | Top 3: Gold/Silber/Bronze-Icons | ✅ Pass |
+| AC-4 | Weniger als 10 Nutzer: alle anzeigen | ✅ Pass (unit test) |
+| AC-5 | Gleiche XP: alphabetisch als Tiebreaker | ✅ Pass (unit test) |
+| AC-6 | Eigene Position immer angezeigt (außerhalb Top 10 am unteren Rand) | ✅ Pass |
+| AC-7 | Eigene Position visuell hervorgehoben mit "Du"-Label | ✅ Pass |
+| AC-8 | Wenn in Top 10: kein separater Eintrag unten | ✅ Pass (unit test) |
+| AC-9 | Drei Filter-Tabs: Diese Woche / Dieser Monat / Gesamt | ✅ Pass (code review) |
+| AC-10 | Standard-Tab: "Diese Woche" | ✅ Pass (code review) |
+| AC-11 | Tab-Wechsel ohne Seiten-Reload | ✅ Pass (code review) |
+| AC-12 | "Diese Woche" = XP ab Montag 00:00 (Europe/Berlin) | ✅ Pass (code review) |
+| AC-13 | "Dieser Monat" = XP ab 1. des Monats | ✅ Pass (code review) |
+| AC-14 | Opt-out Toggle in Profil-Einstellungen | ✅ Pass |
+| AC-15 | Opt-out Nutzer erscheinen nicht im öffentlichen Leaderboard | ✅ Pass (unit test) |
+| AC-16 | Opt-out Nutzer sehen eigene anonyme Position | ✅ Pass (unit test) |
+| AC-17 | Opt-out sofort wirksam | ✅ Pass (no cache on PATCH) |
+| AC-18 | Leaderboard nur für eingeloggte Nutzer | ✅ Pass (E2E + unit test) |
+
+**Result: 17/18 pass, 1 fail**
+
+### Bugs Found
+
+#### HIGH — Level-Badge fehlt in Leaderboard-Einträgen
+- **Severity:** High
+- **AC:** "Jeder Eintrag zeigt: Rang, Avatar/Initialen, Display Name, XP, Level-Badge"
+- **Description:** Die `LeaderboardEntry`-Komponente rendert kein Level-Badge. Die API liefert auch kein `level`-Feld zurück (weder für `all` noch für `week`/`month`). Das Profil enthält `total_xp`, aus dem das Level berechnet werden könnte.
+- **Steps to reproduce:** Leaderboard öffnen → Kein Level-Badge in einem Eintrag sichtbar.
+- **Fix needed:** API muss `level`-Feld (berechnet aus `total_xp`) zurückgeben; `LeaderboardEntry` muss ein Level-Badge rendern.
+
+#### MEDIUM — `period`-Parameter nicht validiert
+- **Severity:** Medium
+- **Description:** `?period=xyz` wird per `as Period` gecastet ohne Laufzeit-Validierung. `getStartDate('xyz')` gibt `null` zurück, dann wird `.gte('completed_at', null)` an Supabase gesendet — unklar ob kein Filter oder DB-Fehler.
+- **Steps to reproduce:** `GET /api/leaderboard?period=invalid` aufrufen.
+- **Fix needed:** Zod-Validierung auf `period` (erlaubte Werte: `week`, `month`, `all`); ungültige Werte → 400.
+
+#### MEDIUM — Opt-out Toggle kein Error-Handling / kein Rollback
+- **Severity:** Medium
+- **Description:** In `LeaderboardOptOutToggle.handleToggle` wird der API-Response-Status nicht geprüft. Bei HTTP 5xx-Fehler wird `setOptOut(!checked)` trotzdem aufgerufen → UI-Zustand ändert sich, obwohl die DB nicht aktualisiert wurde.
+- **File:** `src/components/leaderboard-opt-out-toggle.tsx:16–28`
+- **Fix needed:** `if (!res.ok) throw new Error(...)` nach dem `fetch`-Aufruf; Fehler anzeigen und UI-State nicht ändern.
+
+#### LOW — `<a>` statt `<Link>` für Profil-Link in LeaderboardClient
+- **Severity:** Low
+- **Description:** `<a href="/profile">` in `leaderboard-client.tsx:116` erzwingt einen Full-Page-Reload statt Client-seitiger Navigation.
+- **Fix needed:** Ersetzen durch `<Link href="/profile">` (Next.js).
+
+#### LOW — WebKit-Browser nicht installiert (Infrastruktur)
+- **Severity:** Low
+- **Description:** 3 Mobile Safari-Tests schlagen fehl, weil die WebKit-Binary fehlt. Pre-existing issue, nicht PROJ-8-spezifisch.
+- **Fix needed:** `npx playwright install webkit` einmalig auf dem Entwickler-Rechner ausführen.
+
+### Security Audit
+
+| Check | Result |
+|-------|--------|
+| Auth bypass (GET /api/leaderboard ohne Session) | ✅ 401 zurückgegeben |
+| Auth bypass (PATCH /api/profile/opt-out ohne Session) | ✅ 401 zurückgegeben |
+| Horizontale Privilege Escalation (User A ändert Opt-out von User B) | ✅ Sicher — `.eq('id', user.id)` erzwingt eigene User-ID |
+| PII-Exposition (E-Mail-Adressen in API-Antwort) | ✅ Nur Display Name, keine E-Mail |
+| Opt-out-Nutzer in öffentlicher Liste | ✅ Korrekt gefiltert |
+| SQL Injection via `period`-Parameter | ✅ Sicher — kein direktes SQL, Supabase SDK |
+| Service-Client nur server-seitig genutzt | ✅ Service-Key nie im Browser |
+
+### Edge Cases
+
+| Szenario | Result |
+|----------|--------|
+| Weniger als 10 Nutzer | ✅ Alle angezeigt (unit test) |
+| Nur 1 Nutzer (sich selbst) | ✅ Rank 1 (unit test) |
+| Zwei Nutzer mit gleicher XP | ✅ Alphabetisch (unit test) |
+| Opt-out aktiviert: eigene anonyme Position | ✅ `display_name: null` + "Du (anonym)" angezeigt |
+| Noch kein Display Name | ✅ Fallback: erste 2 Zeichen der User-ID |
+| 0 XP in dieser Woche | ✅ Nutzer mit 0 XP wird in Liste aufgenommen (unit test) |
+
+### Production-Ready Decision
+
+**NOT READY** — 1 High bug (Level-Badge fehlt) muss vor dem Deployment behoben werden.
 
 ## Deployment
 _To be added by /deploy_
