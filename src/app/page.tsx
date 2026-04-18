@@ -21,6 +21,7 @@ import {
   Package,
   Scale,
   User,
+  Trophy,
 } from 'lucide-react'
 
 // Static subject metadata (icon per IHK code)
@@ -173,6 +174,14 @@ export default async function HomePage() {
             </div>
             {/* Streak pill */}
             <StreakBadge streak={currentStreak} variant="pill" />
+            {/* Leaderboard link */}
+            <Link
+              href="/leaderboard"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
+              aria-label="Rangliste"
+            >
+              <Trophy className="w-4 h-4" />
+            </Link>
             {/* Profile link */}
             <Link
               href="/profile"

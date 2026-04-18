@@ -6,6 +6,7 @@ import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
 import { XpProgressBar } from '@/components/xp-progress-bar'
 import { BadgeGallery, type UnlockedBadge } from '@/components/badge-gallery'
+import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -18,13 +19,14 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, total_xp, current_streak')
+    .select('display_name, total_xp, current_streak, leaderboard_opt_out')
     .eq('id', user.id)
     .single()
 
   const displayName = (profile?.display_name as string | null) ?? user.email?.split('@')[0] ?? 'Azubi'
   const totalXp = (profile?.total_xp as number | null) ?? 0
   const currentStreak = (profile?.current_streak as number | null) ?? 0
+  const leaderboardOptOut = (profile?.leaderboard_opt_out as boolean | null) ?? false
 
   // Fetch unlocked badges
   const { data: userBadgeRows } = await supabase
@@ -81,6 +83,12 @@ export default async function ProfilePage() {
         {/* Badge gallery */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
           <BadgeGallery unlockedBadges={unlockedBadges} />
+        </div>
+
+        {/* Privacy settings */}
+        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-[#F9FAFB] mb-4">Einstellungen</h2>
+          <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
         </div>
       </main>
     </div>
