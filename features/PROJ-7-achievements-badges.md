@@ -180,7 +180,107 @@ None — Dialog, Lucide icons, Supabase, and Tailwind are already installed.
 - RLS policies: `badges` SELECT open to all authenticated; `user_badges` SELECT/INSERT scoped to own `user_id`
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA Date:** 2026-04-18
+**Tester:** /qa skill
+
+### Acceptance Criteria
+
+| # | Criterion | Result | Notes |
+|---|-----------|--------|-------|
+| 1 | Mindestens 15 Badges definiert | ✅ PASS | 15 badges in DB + TypeScript constant, all IDs match spec |
+| 2 | Badge-Freischaltung löst dramatisches Modal aus | ✅ PASS | `BadgeUnlockModal`: gold glow ring, animated emoji, name, description, "Weiter"-Button |
+| 3 | Mehrere Badges nacheinander als separate Modals (Queue) | ✅ PASS | `badgeQueue` state array in `quiz-client.tsx`; each "Weiter" calls `q.slice(1)` |
+| 4 | Badge-Galerie in Profil-Seite eingebettet (farbig/ausgegraut) | ✅ PASS | `/profile` embeds `BadgeGallery`; unlocked: gold border + colored icon; locked: grayscale + opacity-30 |
+| 5 | Freischaltungsdatum unter jedem freigeschalteten Badge | ✅ PASS | `formatDate(unlockedAt)` rendered in gold below each unlocked badge |
+| 6 | Badge-Vergabe automatisch nach jeder Session-Speicherung | ✅ PASS | `sessions/route.ts` calls `checkAndAwardBadges()` after profile update |
+| 7 | Einmalige Migrations-Funktion (`/api/badges/migrate`) | ❌ FAIL | **HIGH BUG** — see Bug #1 below |
+
+**Result: 6/7 criteria pass**
+
+---
+
+### Bugs Found
+
+#### Bug #1 — HIGH: Migration endpoint bypassed by RLS, cannot process all users
+
+**Severity:** High
+**File:** [src/app/api/badges/migrate/route.ts](src/app/api/badges/migrate/route.ts)
+
+**Description:**
+`POST /api/badges/migrate` uses `createClient()` (anon key + user session cookies) to fetch all profiles. The `profiles` table has RLS policy `profiles_select_own` with condition `auth.uid() = id`. This means:
+- Called without authentication: `auth.uid() = NULL` → 0 profiles fetched → 0 badges awarded
+- Called with a user session: only that user's own profile is fetched → migration runs for 1 user only
+
+The intent is to award badges retroactively for **all** users. This requires a service-role-key Supabase client to bypass RLS.
+
+**Steps to Reproduce:**
+1. Set `BADGE_MIGRATE_SECRET` or remove it
+2. `POST /api/badges/migrate` from any unauthenticated caller
+3. Response: `"Migration complete. 0 badges awarded across 0 users."`
+
+**Fix:** Use a service role client (separate `createServiceClient()` using `SUPABASE_SERVICE_ROLE_KEY`) in the migrate route.
+
+---
+
+#### Bug #2 — LOW: Dead DB query in retroactive perfectionist check
+
+**Severity:** Low
+**File:** [src/lib/badges.ts](src/lib/badges.ts#L211)
+
+**Description:**
+In retroactive mode, lines 211–213 execute a `quiz_sessions` query with `.filter('score', 'eq', 'total')`. PostgREST cannot compare two columns this way — it compares `score` to the literal string `'total'`. The result is immediately assigned to a voided variable (`void perfectSessions`). This is dead code that wastes one unnecessary round-trip.
+
+**Fix:** Remove the dead query entirely (lines 210–222 already compute `hasPerfectSession` correctly via the `allSessions` JS loop on line 219).
+
+---
+
+#### Bug #3 — LOW: Missing `.limit()` on list queries in `checkAndAwardBadges`
+
+**Severity:** Low
+**File:** [src/lib/badges.ts](src/lib/badges.ts#L189)
+
+**Description:**
+The `quiz_answers` select query (line 189) and the `quiz_sessions` retroactive `allSessions` query (line 215) have no `.limit()`. Violates backend rules; could fetch thousands of rows for power users, causing slow badge checks over time.
+
+**Fix:** Add `.limit(10000)` or refactor to use aggregate SQL queries.
+
+---
+
+### Security Audit
+
+| Area | Finding |
+|------|---------|
+| Authentication | `/api/badges` and `/profile` protected by middleware redirect + route-level `getUser()` check ✅ |
+| Authorization | `user_badges` RLS: INSERT and SELECT scoped to own `user_id` ✅ |
+| Duplicate prevention | UNIQUE constraint `(user_id, badge_id)` in DB prevents re-awarding ✅ |
+| Input validation | Badge IDs only come from hardcoded `BADGE_MAP` lookup — no user-controlled badge ID ✅ |
+| Secret endpoint | `/api/badges/migrate` protected by `BADGE_MIGRATE_SECRET` header when env var is set ✅ |
+| XSS / Injection | No user input rendered unescaped; no SQL injection surface ✅ |
+| Data leakage | `GET /api/badges` returns 401 (route) or middleware redirect — no badge data exposed unauthenticated ✅ |
+
+No critical security vulnerabilities found.
+
+---
+
+### Automated Test Coverage
+
+| Suite | Tests | Result |
+|-------|-------|--------|
+| `src/lib/badges.test.ts` (new) | 23 unit tests | ✅ All pass |
+| `src/app/api/badges/route.test.ts` | 6 integration tests | ✅ All pass |
+| `src/app/api/badges/migrate/route.test.ts` | 7 integration tests | ✅ All pass |
+| `tests/PROJ-7-achievements-badges.spec.ts` (new) | 5 E2E tests (5 skipped, require live auth) | ✅ All runnable tests pass |
+
+Total unit tests run: **36 passing**
+
+---
+
+### Production-Ready Decision
+
+**NOT READY** — 1 High bug must be fixed before deployment.
+
+The retroactive migration (AC #7) is non-functional due to the RLS/anon-key issue. All other acceptance criteria pass. After fixing Bug #1, run `/qa` again to verify.
 
 ## Deployment
 _To be added by /deploy_
