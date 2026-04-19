@@ -79,9 +79,9 @@ export default async function HomePage() {
 
     supabase
       .from('quiz_sessions')
-      .select('created_at')
+      .select('completed_at')
       .eq('user_id', user.id)
-      .gte('created_at', sixDaysAgo.toISOString()),
+      .gte('completed_at', sixDaysAgo.toISOString()),
   ])
 
   // ── Extract profile data ──────────────────────────────────────────────────
@@ -140,7 +140,7 @@ export default async function HomePage() {
   // ── 7-day activity dots ──────────────────────────────────────────────────
   const recentSessions = sessionsResult.data ?? []
   const sessionDates = new Set(
-    recentSessions.map((s) => toBerlinDateStr(new Date(s.created_at))),
+    recentSessions.map((s) => toBerlinDateStr(new Date(s.completed_at))),
   )
 
   const weekActivity = Array.from({ length: 7 }, (_, i) => {
