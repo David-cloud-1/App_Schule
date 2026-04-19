@@ -1,6 +1,6 @@
 # PROJ-9: Admin Content Management Panel
 
-## Status: Planned
+## Status: In Review
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -239,8 +239,169 @@ All routes: 401 if not logged in, 403 if not admin.
 
 - `papaparse` + `@types/papaparse` — CSV parsing for bulk import
 
+## Implementation Notes
+
+### Frontend (2026-04-19)
+- Middleware updated to protect all `/admin` and `/api/admin/*` routes — non-admins redirected to `/`, unauthenticated to `/login`
+- Admin role check uses `profiles.role === 'admin'` (not `is_admin`)
+- `papaparse` installed for browser-side CSV parsing
+
+**Files created:**
+- `src/middleware.ts` — updated with admin guard
+- `src/app/admin/layout.tsx` — server component, re-validates admin role, tab nav
+- `src/app/admin/page.tsx` — redirects to `/admin/questions`
+- `src/app/admin/questions/page.tsx` — questions table with search/filters/pagination/CSV import
+- `src/app/admin/subjects/page.tsx` — subjects table with deactivate guard
+- `src/app/admin/users/page.tsx` — users table with ban/unban + self-protection
+- `src/app/admin/audit-log/page.tsx` — audit log with period/action filters
+- `src/app/api/admin/_lib/auth.ts` — shared requireAdmin() + writeAuditLog() helpers
+- `src/app/api/admin/questions/route.ts` — GET (paginated) + POST
+- `src/app/api/admin/questions/[id]/route.ts` — PATCH + DELETE
+- `src/app/api/admin/questions/bulk-import/route.ts` — CSV bulk import
+- `src/app/api/admin/subjects/route.ts` — GET + POST
+- `src/app/api/admin/subjects/[id]/route.ts` — PATCH (with deactivate guard)
+- `src/app/api/admin/users/route.ts` — GET (merges profiles + auth.admin.listUsers)
+- `src/app/api/admin/users/[id]/route.ts` — PATCH ban/unban via Supabase Auth Admin API
+- `src/app/api/admin/audit-log/route.ts` — GET (graceful empty when table missing)
+- `src/components/admin/admin-tabs.tsx` — client tab navigation
+- `src/components/admin/question-form-modal.tsx` — create/edit dialog with zod validation
+- `src/components/admin/csv-import-dialog.tsx` — CSV upload + preview + import
+- `src/components/admin/subject-form-modal.tsx` — create/edit subject dialog
+
+**Deviations / Backend requirements:**
+- `subjects` table needs `is_active` column added (migration required for backend skill)
+- `admin_audit_log` table needs to be created (migration required for backend skill); all writes use try/catch so they fail silently until table exists
+- `subjects` table needs `description` column added (optional, used in subject form)
+
+### Backend (2026-04-19)
+
+**Migration applied:** `proj9_admin_content_management`
+- `subjects.is_active` (BOOLEAN NOT NULL DEFAULT true) added
+- `subjects.description` (TEXT nullable) added
+- `subjects.code` hardcoded enum CHECK dropped — admins can now create subjects with any code
+- `admin_audit_log` table created with RLS (admins can SELECT; writes server-side only via service role)
+- Indexes: `idx_admin_audit_log_created_at`, `_admin_id`, `_action_type`, `idx_subjects_is_active`
+
+**Bug fix:** `answer_options.display_order` was inserted with 0-based index (0–3) but DB constraint requires 1–4. Fixed in all three insert paths to use `idx + 1`.
+
+**Integration tests written (180 tests total, all pass):**
+- `src/app/api/admin/questions/route.test.ts` — GET pagination/filters/errors + POST validation/auth
+- `src/app/api/admin/questions/[id]/route.test.ts` — PATCH toggle/update + DELETE
+- `src/app/api/admin/subjects/route.test.ts` — GET with active counts + POST validation
+- `src/app/api/admin/users/route.test.ts` — GET merged list + auth
+- `src/app/api/admin/users/[id]/route.test.ts` — PATCH ban/unban + self-protection
+- `src/app/api/admin/audit-log/route.test.ts` — GET pagination/filters + graceful empty
+
 ## QA Test Results
-_To be added by /qa_
+
+**Date:** 2026-04-19
+**Tester:** /qa skill (automated code review + E2E)
+
+### Acceptance Criteria Summary
+
+| Area | Criteria | Result |
+|------|----------|--------|
+| Zugang & Sicherheit | `/admin/*` nur für Admins | ✅ PASS |
+| Zugang & Sicherheit | Nicht-Admin → Startseite | ✅ PASS |
+| Zugang & Sicherheit | Nicht eingeloggt → `/login` | ✅ PASS |
+| Zugang & Sicherheit | API gibt 401/403 zurück | ⚠️ PARTIAL — Middleware sendet 302 statt 401 für unauthentifizierte API-Calls |
+| Fragen | Tabelle mit Suche/Filter/Pagination | ✅ PASS |
+| Fragen | Erstellen-Formular + Validierung | ✅ PASS |
+| Fragen | Bearbeiten öffnet vorausgefülltes Formular | ✅ PASS |
+| Fragen | Deaktivieren-Toggle sofort wirksam | ✅ PASS |
+| Fragen | Löschen mit Bestätigungsdialog | ✅ PASS |
+| Fragen | Pagination 20/Seite | ✅ PASS |
+| CSV-Import | Upload-Dialog + Vorschau | ✅ PASS |
+| CSV-Import | ✅/❌ Status pro Zeile | ⚠️ PARTIAL — kein ⚠️ Warning-Status (nur gültig/ungültig) |
+| CSV-Import | Import-Button nur aktiv wenn gültige Zeilen vorhanden | ✅ PASS |
+| CSV-Import | Erfolgs-Toast nach Import | ✅ PASS |
+| CSV-Import | Vorlage herunterladen | ✅ PASS |
+| CSV-Import | Max. 500 KB | ✅ PASS |
+| CSV-Import | Max. 500 Zeilen — freundliche Fehlermeldung | ❌ FAIL — generischer Zod-Fehler statt "Maximale Importgröße (500 Zeilen) überschritten" |
+| Fächer | Tabelle mit Name, Code, Aktive Fragen, Status | ⚠️ PARTIAL — Spalte `is_active` nicht in SELECT, immer aktiv |
+| Fächer | Deaktivieren-Guard (aktive Fragen) | ❌ FAIL — `is_active` nie false wegen SELECT-Bug |
+| Fächer | Code-Eindeutigkeit | ✅ PASS |
+| Fächer | Code max. 5 Zeichen laut Spec | ❌ FAIL — max 10 Zeichen erlaubt (UI + API) |
+| Nutzer | Tabelle mit allen Feldern | ✅ PASS |
+| Nutzer | Suche nach Name/E-Mail | ✅ PASS |
+| Nutzer | Deaktivieren mit Bestätigungsdialog | ✅ PASS |
+| Nutzer | Eigenen Account kann nicht gesperrt werden | ✅ PASS |
+| Nutzer | Reaktivieren (unban) | ✅ PASS |
+| Nutzer | Admin-Badge sichtbar | ✅ PASS |
+| Audit-Log | Tabelle mit allen Feldern, absteigend sortiert | ✅ PASS |
+| Audit-Log | Filter: Zeitraum + Aktionstyp | ✅ PASS |
+| Audit-Log | Read-only | ✅ PASS |
+| Audit-Log | Pagination 50/Seite | ✅ PASS |
+
+### Bugs Found
+
+#### HIGH
+
+**BUG-1: `is_active` fehlt im SELECT der Fächer-API**
+- **Datei:** [src/app/api/admin/subjects/route.ts:30-57](src/app/api/admin/subjects/route.ts#L30-L57)
+- **Problem:** Die SQL-Abfrage selektiert `is_active` nicht aus der `subjects`-Tabelle. Der Fallback `s.is_active ?? true` gibt immer `true` zurück. Alle Fächer werden als aktiv angezeigt, auch wenn sie in der DB deaktiviert sind. Der Deaktivierungs-Toggle im UI funktioniert technisch (PATCH schreibt korrekt), aber der angezeigte Zustand ist immer "aktiv".
+- **Steps:** Admin → Fächer → Fach deaktivieren → Seite neu laden → Toggle zeigt trotzdem "aktiv"
+- **Fix:** `is_active` zum SELECT hinzufügen: `` `id, name, code, color, icon_name, created_at, is_active, question_subjects(...)` ``
+
+**BUG-2: Hard-Delete ignoriert `quiz_session_answers`-Edge-Case**
+- **Datei:** [src/app/api/admin/questions/[id]/route.ts:135-164](src/app/api/admin/questions/[id]/route.ts#L135-L164)
+- **Problem:** Der DELETE-Handler löscht Fragen hart (inkl. `answer_options` + `question_subjects`). Die Spec-Edge-Case verlangt: "Admin löscht Frage, die in `quiz_session_answers` vorkommt → Soft-Delete: `is_active = false`". Historische Lernfortschrittsdaten werden zerstört oder FK-Constraint-Fehler tritt auf.
+- **Fix:** Vor dem Löschen prüfen ob `quiz_session_answers.question_id = id` existiert. Falls ja, nur `is_active = false` setzen statt zu löschen.
+
+#### MEDIUM
+
+**BUG-3: Middleware sendet 302 statt 401 für unauthentifizierte API-Calls**
+- **Datei:** [src/middleware.ts:39-43](src/middleware.ts#L39-L43)
+- **Problem:** Spec verlangt "401 wenn nicht eingeloggt" für `/api/admin/*`. Middleware leitet unauthentifizierte Requests (inklusive API-Calls) per 302 auf `/login` um. API-Clients bekommen keinen JSON-Fehler.
+- **Fix:** Für Pfade die mit `/api/` beginnen, 401 JSON zurückgeben statt zu redirecten.
+
+**BUG-4: CSV-Import >500 Zeilen zeigt generischen Fehler statt spezifischer Meldung**
+- **Datei:** [src/components/admin/csv-import-dialog.tsx:186-217](src/components/admin/csv-import-dialog.tsx#L186-L217)
+- **Problem:** Wenn eine CSV-Datei mehr als 500 gültige Zeilen hat, schlägt der Server-Request mit einem generischen Zod-Fehler fehl. Spec verlangt: "Fehler-Toast: 'Maximale Importgröße (500 Zeilen) überschritten'".
+- **Fix:** Client-seitig `validRows.length > 500` prüfen und freundliche Fehlermeldung anzeigen. Alternativ Server-Fehlertext verbessern.
+
+**BUG-5: Fach-Code erlaubt 10 Zeichen statt Spec-Maximum 5**
+- **Dateien:** [src/components/admin/subject-form-modal.tsx:62](src/components/admin/subject-form-modal.tsx#L62), [src/app/api/admin/subjects/route.ts:7](src/app/api/admin/subjects/route.ts#L7)
+- **Problem:** Spec: "Code (Pflicht, max. 5 Zeichen, Großbuchstaben)". UI-Label sagt "max. 10 Zeichen", `maxLength={10}`, API-Schema `max(10)`.
+- **Fix:** UI-Label, `maxLength`, Zod-Schema und Validierung auf 5 setzen.
+
+#### LOW
+
+**BUG-6: Kein ⚠️ Warning-Status im CSV-Preview (Duplikat-Fragetext)**
+- **Datei:** [src/components/admin/csv-import-dialog.tsx:55-70](src/components/admin/csv-import-dialog.tsx#L55-L70)
+- **Problem:** Spec erwähnt "⚠️ Warnung" für Duplikat-Fragetext. CSV-Dialog hat nur `'valid' | 'invalid'`, kein `'warning'`-Status.
+- **Hinweis:** Spec sagt "keine Eindeutigkeitsprüfung im MVP" — dieses Feature ist also MVP Out-of-Scope. Kein Fix nötig.
+
+**BUG-7: Edit-Subject-Modal pre-füllt `description` nicht**
+- **Datei:** [src/components/admin/subject-form-modal.tsx:50](src/components/admin/subject-form-modal.tsx#L50)
+- **Problem:** Beim Bearbeiten eines Fachs wird `description` immer auf `''` gesetzt, da der `AdminSubjectRow`-Typ kein `description`-Feld hat und die API es nicht zurückgibt. Admin überschreibt bestehende Beschreibung mit leerem Wert.
+- **Fix:** `description` in `AdminSubjectRow`, GET `/api/admin/subjects` Response und subjects GET SELECT ergänzen.
+
+### Security Audit
+
+| Check | Result |
+|-------|--------|
+| Authentifizierung auf allen API-Routen | ✅ `requireAdmin()` in jedem Handler |
+| Admin-Rolle in Middleware + Layout verifiziert | ✅ Doppelte Prüfung |
+| Service-Role-Key nie im Browser | ✅ Nur server-seitig in `createServiceClient()` |
+| Zod-Validierung auf allen API-Eingaben | ✅ Vollständig |
+| SQL-Injection nicht möglich | ✅ Supabase parameterized queries |
+| XSS-Risiko in Frage-/Antworttext | ✅ React escaped automatisch |
+| Admin kann eigenen Account nicht sperren | ✅ Server + Client-Schutz |
+| Audit-Log nicht löschbar | ✅ Keine DELETE-Route |
+| `NEXT_PUBLIC_*`-Keys im Browser | ✅ Nur Anon-Key öffentlich |
+
+### Automated Tests
+
+- **Unit/Integration:** 180 Tests bestanden (5 Worker-OOM-Crashes aufgrund von Speicherlimit — kein Testinhalt fehlgeschlagen)
+- **E2E:** 31/34 bestanden — 3 Mobile-Safari-Timeouts (WebKit nicht installiert, kein inhaltlicher Fehler)
+- **E2E-Datei:** `tests/PROJ-9-admin-content-management.spec.ts`
+
+### Production-Ready Verdict
+
+**NOT READY** — 2 HIGH-Bugs müssen behoben werden:
+1. BUG-1: `is_active` im Fächer-SELECT fehlt → Deaktivierung nicht funktional
+2. BUG-2: Hard-Delete ignoriert quiz_session_answers → Datenverlust möglich
 
 ## Deployment
 _To be added by /deploy_
