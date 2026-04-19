@@ -19,6 +19,7 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
   )
   const isDone = draft.status === 'accepted' || draft.status === 'rejected'
   const needsReview = draft.status === 'review_required'
+  const missingMeta = !draft.subject_code || !draft.difficulty
 
   return (
     <div
@@ -132,8 +133,14 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
             <Button
               size="sm"
               onClick={() => onAccept(draft.id)}
-              disabled={needsReview}
-              title={needsReview ? 'Bitte zuerst bearbeiten und korrekte Antwort bestätigen' : undefined}
+              disabled={needsReview || missingMeta}
+              title={
+                needsReview
+                  ? 'Bitte zuerst bearbeiten und korrekte Antwort bestätigen'
+                  : missingMeta
+                  ? 'Fach und Schwierigkeitsgrad müssen gesetzt sein'
+                  : undefined
+              }
               className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4 mr-1" />
