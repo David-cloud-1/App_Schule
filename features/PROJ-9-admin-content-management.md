@@ -48,8 +48,12 @@ Das Admin-Panel ermöglicht einem Ausbilder/Lehrer die vollständige Verwaltung 
 - **US-13:** Als Admin möchte ich einen einzelnen Nutzer deaktivieren (Account sperren), damit inaktive oder problematische Konten verwaltet werden können.
 - **US-14:** Als Admin möchte ich einen deaktivierten Nutzer wieder aktivieren, damit Fehler rückgängig gemacht werden können.
 
+**Bulk-Import**
+- **US-15:** Als Admin möchte ich eine CSV-Datei mit mehreren Fragen auf einmal hochladen, damit ich große Mengen an Lerninhalt schnell importieren kann.
+- **US-16:** Als Admin möchte ich vor dem Import eine Vorschau der erkannten Fragen sehen (mit Fehlern/Warnungen pro Zeile), damit ich fehlerhafte Einträge vor dem Import korrigieren kann.
+
 **Audit-Log**
-- **US-15:** Als Admin möchte ich alle Admin-Aktionen chronologisch sehen (wer, was, wann, welches Objekt), damit Änderungen nachvollziehbar sind.
+- **US-17:** Als Admin möchte ich alle Admin-Aktionen chronologisch sehen (wer, was, wann, welches Objekt), damit Änderungen nachvollziehbar sind.
 
 ---
 
@@ -71,6 +75,16 @@ Das Admin-Panel ermöglicht einem Ausbilder/Lehrer die vollständige Verwaltung 
 - [ ] Deaktivieren-Toggle ist sofort wirksam (kein Reload)
 - [ ] Löschen zeigt Bestätigungsdialog: "Diese Frage wird dauerhaft gelöscht. Fortfahren?"
 - [ ] Pagination: 20 Fragen pro Seite
+
+### Bulk-Import (CSV)
+- [ ] Upload-Button in der Fragen-Übersicht öffnet einen Import-Dialog
+- [ ] Akzeptiertes Format: CSV mit Spalten `fragetext, antwort_a, antwort_b, antwort_c, antwort_d, korrekte_antwort (A/B/C/D), erklaerung (optional), fach_code, schwierigkeit (leicht/mittel/schwer)`
+- [ ] Vorschau-Tabelle zeigt alle erkannten Zeilen mit Status: ✅ gültig / ⚠️ Warnung / ❌ Fehler
+- [ ] Fehler-Typen: fehlendes Pflichtfeld, ungültiger Fach-Code, ungültige Schwierigkeit, kein gültiger Wert für korrekte Antwort
+- [ ] Import-Button ist nur aktiv wenn mind. 1 gültige Zeile vorhanden ist; fehlerhafte Zeilen werden übersprungen (mit Hinweis)
+- [ ] Nach dem Import: Erfolgs-Toast "X Fragen importiert, Y Zeilen übersprungen" + Audit-Log-Eintrag
+- [ ] Max. Dateigröße: 500 KB; Max. Zeilen pro Import: 500
+- [ ] Beispiel-CSV kann heruntergeladen werden ("Vorlage herunterladen")
 
 ### Fächer-Verwaltung
 - [ ] Tabelle zeigt alle Fächer: Name, Code, Beschreibung, Anzahl aktiver Fragen, Status
@@ -95,7 +109,7 @@ Das Admin-Panel ermöglicht einem Ausbilder/Lehrer die vollständige Verwaltung 
 - [ ] Filter nach Zeitraum (letzte 7 Tage / 30 Tage / alle) und Aktion-Typ
 - [ ] Audit-Log ist read-only (keine Einträge löschbar)
 - [ ] Pagination: 50 Einträge pro Seite
-- [ ] Folgende Aktionen werden protokolliert: Frage erstellt/bearbeitet/deaktiviert/aktiviert/gelöscht, Fach erstellt/bearbeitet/deaktiviert, Nutzer deaktiviert/aktiviert
+- [ ] Folgende Aktionen werden protokolliert: Frage erstellt/bearbeitet/deaktiviert/aktiviert/gelöscht, Bulk-Import (X Fragen), Fach erstellt/bearbeitet/deaktiviert, Nutzer deaktiviert/aktiviert
 
 ### Performance
 - [ ] Fragen-Tabelle lädt in < 500ms (mit Pagination, max 20 pro Request)
@@ -116,11 +130,14 @@ Das Admin-Panel ermöglicht einem Ausbilder/Lehrer die vollständige Verwaltung 
 | Fach-Code "BGP" wird nochmals angelegt | Eindeutigkeitsfehler: "Ein Fach mit Code BGP existiert bereits" |
 | Nutzer-Tabelle mit 0 Nutzern | Leere Tabelle mit Hinweis "Noch keine registrierten Nutzer" |
 | Sehr langer Fragetext (> 1000 Zeichen) | DB-Limit greift; Formular zeigt Zeichenzähler und Max-Grenze |
+| CSV-Datei mit > 500 Zeilen | Fehler-Toast: "Maximale Importgröße (500 Zeilen) überschritten" |
+| CSV-Datei mit unbekanntem Fach-Code | Zeile als ❌ markiert, übersprungen; Hinweis "Fach-Code 'XYZ' nicht gefunden" |
+| CSV enthält Duplikat-Fragetext (identisch zu bestehender Frage) | Warnung ⚠️ pro Zeile, Import trotzdem möglich (keine Eindeutigkeitsprüfung im MVP) |
+| CSV-Datei > 500 KB | Upload abgelehnt, Fehler-Toast |
 
 ---
 
 ## Out of Scope (MVP)
-- Bulk-Import von Fragen (CSV/JSON) — wird in PROJ-10 (AI Question Generation) adressiert
 - Mehrere Admin-Accounts mit unterschiedlichen Rollen (nur 1 Admin-Rolle im MVP)
 - Push-Benachrichtigungen an Admins bei Nutzer-Meldungen
 - Lernmaterial-Upload (PDFs, Bilder) als Grundlage für Fragen — gehört zu PROJ-10
