@@ -155,7 +155,89 @@ Das Admin-Panel ermöglicht einem Ausbilder/Lehrer die vollständige Verwaltung 
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Component Structure
+
+```
+/admin (Layout — Admin Guard + Tab Shell)
+├── AdminGuard (middleware: redirect non-admins instantly)
+├── TabNavigation [Fragen | Fächer | Nutzer | Audit-Log]
+│
+├── AdminQuestionsTab
+│   ├── SearchBar + FilterRow (Fach, Status, Schwierigkeit)
+│   ├── QuestionsTable (paginated, 20/page)
+│   │   └── QuestionRow
+│   │       ├── StatusToggle (Switch)
+│   │       ├── EditButton → QuestionFormModal
+│   │       └── DeleteButton → ConfirmDialog
+│   ├── CreateQuestionButton → QuestionFormModal
+│   └── CsvImportButton → CsvImportDialog
+│       ├── FileDropZone
+│       ├── ImportPreviewTable (✅ / ⚠️ / ❌ per row)
+│       └── ImportConfirmButton + DownloadTemplateLink
+│
+├── AdminSubjectsTab
+│   ├── SubjectsTable
+│   │   └── SubjectRow
+│   │       ├── EditButton → SubjectFormModal
+│   │       └── DeactivateToggle (disabled if has active questions)
+│   └── CreateSubjectButton → SubjectFormModal
+│
+├── AdminUsersTab
+│   ├── SearchBar (name / e-mail)
+│   ├── UsersTable
+│   │   └── UserRow
+│   │       ├── AdminBadge (if admin)
+│   │       └── BanToggle → ConfirmDialog (disabled for own account)
+│   └── (Pagination)
+│
+└── AdminAuditLogTab
+    ├── FilterRow (Zeitraum, Aktionstyp)
+    └── AuditLogTable (paginated, 50/page, read-only)
+```
+
+### Data Model
+
+**Existing tables (no changes needed):**
+- `profiles` — already has `is_admin` flag (PROJ-1)
+- `questions` — existing question records with `is_active` toggle (PROJ-2)
+- `question_subjects` — links questions to subjects
+- `subjects` — subject records
+
+**New table: `admin_audit_log`**
+Each entry records: which admin acted, action type, object type, object ID + label, timestamp (auto).
+
+### API Routes (`/api/admin/*`)
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/admin/questions` | Paginated list with search/filter |
+| `POST /api/admin/questions` | Create one question |
+| `PATCH /api/admin/questions/[id]` | Edit or toggle active status |
+| `DELETE /api/admin/questions/[id]` | Hard delete after confirmation |
+| `POST /api/admin/questions/bulk-import` | Parse + insert CSV rows |
+| `GET /api/admin/subjects` | List all subjects with question counts |
+| `POST /api/admin/subjects` | Create new subject |
+| `PATCH /api/admin/subjects/[id]` | Rename or toggle active status |
+| `GET /api/admin/users` | List all users (via service role) |
+| `PATCH /api/admin/users/[id]` | Ban or unban user (Supabase Auth Admin API) |
+| `GET /api/admin/audit-log` | Paginated audit entries with filters |
+
+All routes: 401 if not logged in, 403 if not admin.
+
+### Tech Decisions
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Route protection | Next.js Middleware | No content flash for non-admins |
+| Admin API client | Supabase Service Role (server-only) | Required for Auth Admin API; never in browser |
+| CSV parsing | `papaparse` (browser-side) | Instant preview before upload |
+| Question form | Single `QuestionFormModal` for create + edit | One validation source of truth |
+| Audit log writes | Server-side in each API handler | Cannot be skipped by clients |
+
+### Dependencies
+
+- `papaparse` + `@types/papaparse` — CSV parsing for bulk import
 
 ## QA Test Results
 _To be added by /qa_
