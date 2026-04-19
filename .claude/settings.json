@@ -27,7 +27,21 @@
       "Bash(/c/KI/Node/npx.cmd playwright *)",
       "Bash(git -C \"c:/KI/App_Schule\" ls-files src/components/)",
       "Bash(git -C \"c:/KI/App_Schule\" ls-files src/app/api/)",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(npx vercel *)",
+      "Bash(git -C c:/KI/App_Schule ls-files src/components/)",
+      "Bash(git -C c:/KI/App_Schule ls-files src/app/api/)",
+      "mcp__supabase__execute_sql",
+      "PowerShell(cd c:\\\\KI\\\\App_Schule ; npm test -- --reporter=verbose 2>&1 | Select-String -Pattern \"\\(PASS|FAIL|FAILED|Error| ✓ | × | x \\)\" | Select-Object -First 100)",
+      "PowerShell(cd c:\\\\KI\\\\App_Schule ; npm test -- --reporter=verbose 2>&1 | Select-String -Pattern \"\\( × | ✓ |FAIL|Tests \\)\" | Select-Object -First 100)",
+      "Bash(git add *)",
+      "Bash(npx vitest *)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --reporter=verbose 2>&1 | Select-Object -Last 40)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --pool=forks --poolOptions.forks.singleFork 2>&1 | Select-Object -Last 15)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --pool=forks 2>&1 | Select-Object -Last 15)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --pool=forks 2>&1 | Select-String \"FAIL|PASS|failed|passed\" | Select-Object -First 30)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; \\(Get-Content package.json | ConvertFrom-Json\\).scripts)",
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; vitest run --reporter=verbose 2>&1 | Select-Object -Last 20)"
     ]
   }
 }

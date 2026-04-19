@@ -201,4 +201,19 @@ Implemented without separate architecture phase:
 **READY** — No Critical or High bugs. 1 Medium (period validation) and 1 Low (WebKit infra) remain; acceptable for production.
 
 ## Deployment
-_To be added by /deploy_
+
+**Date:** 2026-04-19  
+**Production URL:** https://spedilern.vercel.app/leaderboard  
+**Build:** ● Ready (38s, Vercel Linux, Next.js 16 Turbopack)  
+**Git tag:** v1.8.0-PROJ-8
+
+Pre-deployment checks:
+- Compilation: ✅ Passed (Turbopack, 11.3s)
+- Tests (Vitest): ✅ 21/21 pass
+- Secrets: ✅ `.mcp.json` excluded via .gitignore (contained Supabase token)
+- Security headers: ✅ Configured in `next.config.ts`
+- Vercel build: ✅ Ready in 38s
+
+Known issues carried into production:
+- Medium: `period` parameter not validated with Zod (acceptable, no data leak)
+- Low: WebKit/Mobile Safari not installed for local Playwright runs (infra only)

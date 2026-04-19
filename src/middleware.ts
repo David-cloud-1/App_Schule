@@ -35,8 +35,11 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback']
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to login (API routes get 401 JSON)
   if (!user && !isPublicPath) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -47,6 +50,31 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // Protect /admin routes — must be authenticated + have admin role
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
+    if (!user) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (!profile || profile.role !== 'admin') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
