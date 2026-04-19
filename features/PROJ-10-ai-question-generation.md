@@ -1,6 +1,6 @@
 # PROJ-10: AI Question Generation from Documents
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -158,6 +158,19 @@ All routes reuse the existing admin auth pattern from `src/app/api/admin/_lib/au
 | `pdf-parse` | Extract text content from PDF files |
 | `mammoth` | Extract text content from DOCX files |
 | `@anthropic-ai/sdk` | Claude API client for question generation |
+
+## Frontend Implementation Notes (2026-04-19)
+- New route: `src/app/admin/ai-generator/page.tsx` — full page with upload, jobs, drafts
+- New components in `src/components/admin/`:
+  - `ai-generator-upload-zone.tsx` — drag & drop, multi-file, 50 MB validation, per-file error display
+  - `ai-generator-job-card.tsx` — status badge, spinner, retry button for error state
+  - `ai-generator-draft-card.tsx` — question + 4 options, correct highlighted, accept/reject/edit per card
+  - `ai-generator-draft-edit-modal.tsx` — full edit form reusing shadcn RadioGroup/Select/Textarea
+- "KI-Generator" tab added to `src/components/admin/admin-tabs.tsx` between Nutzer and Audit-Log
+- Supabase Realtime subscription on `generation_jobs` table for live status updates
+- Bulk accept/reject with optional subject_code + difficulty override
+- `review_required` drafts: accept button disabled with tooltip; edit modal highlights the manual-review requirement
+- All API calls point to routes to be created by `/backend`
 
 ## QA Test Results
 _To be added by /qa_

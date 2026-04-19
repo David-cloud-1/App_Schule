@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FileText, FolderKanban, Users, ScrollText } from 'lucide-react'
+import { Bot, FileText, FolderKanban, ScrollText, Users } from 'lucide-react'
 
 const TABS = [
   { href: '/admin/questions', label: 'Fragen', icon: FileText },
   { href: '/admin/subjects', label: 'Fächer', icon: FolderKanban },
   { href: '/admin/users', label: 'Nutzer', icon: Users },
+  { href: '/admin/ai-generator', label: 'KI-Generator', icon: Bot },
   { href: '/admin/audit-log', label: 'Audit-Log', icon: ScrollText },
 ]
 

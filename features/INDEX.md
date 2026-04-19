@@ -23,7 +23,7 @@
 | PROJ-7 | Achievements & Badges | Deployed | [PROJ-7-achievements-badges.md](PROJ-7-achievements-badges.md) | 2026-04-16 |
 | PROJ-8 | Leaderboard | Deployed | [PROJ-8-leaderboard.md](PROJ-8-leaderboard.md) | 2026-04-16 |
 | PROJ-9 | Admin Content Management Panel | Deployed | [PROJ-9-admin-content-management.md](PROJ-9-admin-content-management.md) | 2026-04-16 |
-| PROJ-10 | AI Question Generation | Architected | [PROJ-10-ai-question-generation.md](PROJ-10-ai-question-generation.md) | 2026-04-16 |
+| PROJ-10 | AI Question Generation | In Progress | [PROJ-10-ai-question-generation.md](PROJ-10-ai-question-generation.md) | 2026-04-16 |
 | PROJ-11 | Exam Simulation Mode | Planned | [PROJ-11-exam-simulation-mode.md](PROJ-11-exam-simulation-mode.md) | 2026-04-16 |
 
 <!-- Add features above this line -->
