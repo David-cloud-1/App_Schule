@@ -1,6 +1,6 @@
 # PROJ-11: Exam Simulation Mode
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -356,4 +356,9 @@ No new packages needed. Existing shadcn/ui components cover all UI needs:
 After fixing BUG-1, the feature is functionally complete. BUG-2, BUG-3, and BUG-4 are Medium severity and should be fixed but are not blocking. BUG-5 and BUG-6 are Low severity.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-19
+**Production URL:** https://spedilern-1rt53pgha-david-cloud-1s-projects.vercel.app
+**Vercel Deployment ID:** dpl_13YppKcCSysWg9zDq5WqXnemUKPQ
+
+All 6 QA bugs fixed before deployment. Feature shipped with full exam simulation flow including timer, self-assessment, exam history, and admin exam set management.
