@@ -22,6 +22,7 @@ import {
   Scale,
   User,
   Trophy,
+  ClipboardList,
 } from 'lucide-react'
 
 // Static subject metadata (icon per IHK code)
@@ -264,10 +265,21 @@ export default async function HomePage() {
           </Button>
         </Link>
 
+        <Link href="/exam">
+          <Button variant="outline" className="w-full rounded-2xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-bold text-base py-6 transition-all duration-200 active:scale-95">
+            <ClipboardList className="mr-2" size={20} />
+            Prüfungssimulation
+          </Button>
+        </Link>
+
         <p className="text-center text-[#6B7280] text-xs">
           Oder wähle ein{' '}
           <Link href="/subjects" className="text-[#9CA3AF] underline underline-offset-2">
             bestimmtes Fach
+          </Link>
+          {' · '}
+          <Link href="/exam-history" className="text-[#9CA3AF] underline underline-offset-2">
+            Prüfungsverlauf
           </Link>
         </p>
       </main>

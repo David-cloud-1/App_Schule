@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
           .eq('is_active', true)
           .limit(config.questionCount)
 
-        questions = data ?? []
+        questions = (data ?? []).sort(() => Math.random() - 0.5)
       }
     }
 

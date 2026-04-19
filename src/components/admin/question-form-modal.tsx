@@ -43,6 +43,8 @@ export type AdminQuestion = {
   question_text: string
   difficulty: 'leicht' | 'mittel' | 'schwer'
   explanation: string | null
+  type?: 'multiple_choice' | 'open'
+  sample_answer?: string | null
   is_active: boolean
   answer_options: AdminAnswerOption[]
   question_subjects: { subjects: { id: string; code: string; name: string } | null }[]
@@ -58,6 +60,8 @@ interface Props {
 
 type FormState = {
   question_text: string
+  type: 'multiple_choice' | 'open'
+  sample_answer: string
   answer_a: string
   answer_b: string
   answer_c: string
@@ -70,6 +74,8 @@ type FormState = {
 
 const EMPTY: FormState = {
   question_text: '',
+  type: 'multiple_choice',
+  sample_answer: '',
   answer_a: '',
   answer_b: '',
   answer_c: '',
@@ -109,6 +115,8 @@ export function QuestionFormModal({
         | 'D'
       setForm({
         question_text: question.question_text,
+        type: question.type ?? 'multiple_choice',
+        sample_answer: question.sample_answer ?? '',
         answer_a: a,
         answer_b: b,
         answer_c: c,
@@ -132,10 +140,12 @@ export function QuestionFormModal({
     const e: Record<string, string> = {}
     if (!form.question_text.trim()) e.question_text = 'Fragetext ist Pflicht.'
     if (form.question_text.length > 1000) e.question_text = 'Max. 1000 Zeichen.'
-    if (!form.answer_a.trim()) e.answer_a = 'Antwort A ist Pflicht.'
-    if (!form.answer_b.trim()) e.answer_b = 'Antwort B ist Pflicht.'
-    if (!form.answer_c.trim()) e.answer_c = 'Antwort C ist Pflicht.'
-    if (!form.answer_d.trim()) e.answer_d = 'Antwort D ist Pflicht.'
+    if (form.type === 'multiple_choice') {
+      if (!form.answer_a.trim()) e.answer_a = 'Antwort A ist Pflicht.'
+      if (!form.answer_b.trim()) e.answer_b = 'Antwort B ist Pflicht.'
+      if (!form.answer_c.trim()) e.answer_c = 'Antwort C ist Pflicht.'
+      if (!form.answer_d.trim()) e.answer_d = 'Antwort D ist Pflicht.'
+    }
     if (form.subject_ids.length === 0) e.subject_ids = 'Mindestens ein Fach auswählen.'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -146,19 +156,22 @@ export function QuestionFormModal({
     if (!validate()) return
     setSubmitting(true)
 
-    const answers = [
-      { text: form.answer_a.trim(), is_correct: form.correct_letter === 'A' },
-      { text: form.answer_b.trim(), is_correct: form.correct_letter === 'B' },
-      { text: form.answer_c.trim(), is_correct: form.correct_letter === 'C' },
-      { text: form.answer_d.trim(), is_correct: form.correct_letter === 'D' },
-    ]
-
-    const payload = {
+    const payload: Record<string, unknown> = {
       question_text: form.question_text.trim(),
       difficulty: form.difficulty,
       explanation: form.explanation.trim() ? form.explanation.trim() : null,
-      answers,
+      type: form.type,
+      sample_answer: form.sample_answer.trim() ? form.sample_answer.trim() : null,
       subject_ids: form.subject_ids,
+    }
+
+    if (form.type === 'multiple_choice') {
+      payload.answers = [
+        { text: form.answer_a.trim(), is_correct: form.correct_letter === 'A' },
+        { text: form.answer_b.trim(), is_correct: form.correct_letter === 'B' },
+        { text: form.answer_c.trim(), is_correct: form.correct_letter === 'C' },
+        { text: form.answer_d.trim(), is_correct: form.correct_letter === 'D' },
+      ]
     }
 
     try {
@@ -204,11 +217,32 @@ export function QuestionFormModal({
           <DialogDescription className="text-[#9CA3AF]">
             {isEdit
               ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
-              : 'Lege eine neue Multiple-Choice-Frage mit vier Antworten an.'}
+              : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Question type selector */}
+          <div className="space-y-2">
+            <Label>Fragetyp</Label>
+            <div className="flex gap-3">
+              {(['multiple_choice', 'open'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, type: t }))}
+                  className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                    form.type === t
+                      ? 'bg-[#58CC02]/20 border-[#58CC02] text-[#58CC02]'
+                      : 'border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]'
+                  }`}
+                >
+                  {t === 'multiple_choice' ? 'Multiple Choice' : 'Freitext (Offen)'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-baseline justify-between">
               <Label htmlFor="question_text">Fragetext</Label>
@@ -233,51 +267,68 @@ export function QuestionFormModal({
             )}
           </div>
 
-          <div className="space-y-3">
-            <Label>Antworten (eine muss richtig sein)</Label>
-            <RadioGroup
-              value={form.correct_letter}
-              onValueChange={(v) =>
-                setForm({ ...form, correct_letter: v as 'A' | 'B' | 'C' | 'D' })
-              }
-              className="space-y-2"
-            >
-              {(['A', 'B', 'C', 'D'] as const).map((letter) => {
-                const key = (`answer_${letter.toLowerCase()}` as
-                  | 'answer_a'
-                  | 'answer_b'
-                  | 'answer_c'
-                  | 'answer_d')
-                const errorKey = key
-                return (
-                  <div key={letter} className="space-y-1">
-                    <div className="flex items-center gap-3">
-                      <RadioGroupItem
-                        value={letter}
-                        id={`ans-${letter}`}
-                        className="border-[#4B5563]"
-                      />
-                      <Label
-                        htmlFor={`ans-${letter}`}
-                        className="w-6 text-center text-sm font-semibold text-[#58CC02]"
-                      >
-                        {letter}
-                      </Label>
-                      <Input
-                        value={form[key]}
-                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                        placeholder={`Antwort ${letter}`}
-                        className="flex-1 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
-                      />
+          {form.type === 'multiple_choice' && (
+            <div className="space-y-3">
+              <Label>Antworten (eine muss richtig sein)</Label>
+              <RadioGroup
+                value={form.correct_letter}
+                onValueChange={(v) =>
+                  setForm({ ...form, correct_letter: v as 'A' | 'B' | 'C' | 'D' })
+                }
+                className="space-y-2"
+              >
+                {(['A', 'B', 'C', 'D'] as const).map((letter) => {
+                  const key = (`answer_${letter.toLowerCase()}` as
+                    | 'answer_a'
+                    | 'answer_b'
+                    | 'answer_c'
+                    | 'answer_d')
+                  const errorKey = key
+                  return (
+                    <div key={letter} className="space-y-1">
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem
+                          value={letter}
+                          id={`ans-${letter}`}
+                          className="border-[#4B5563]"
+                        />
+                        <Label
+                          htmlFor={`ans-${letter}`}
+                          className="w-6 text-center text-sm font-semibold text-[#58CC02]"
+                        >
+                          {letter}
+                        </Label>
+                        <Input
+                          value={form[key]}
+                          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                          placeholder={`Antwort ${letter}`}
+                          className="flex-1 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                        />
+                      </div>
+                      {errors[errorKey] && (
+                        <p className="text-xs text-[#FF4B4B] pl-12">{errors[errorKey]}</p>
+                      )}
                     </div>
-                    {errors[errorKey] && (
-                      <p className="text-xs text-[#FF4B4B] pl-12">{errors[errorKey]}</p>
-                    )}
-                  </div>
-                )
-              })}
-            </RadioGroup>
-          </div>
+                  )
+                })}
+              </RadioGroup>
+            </div>
+          )}
+
+          {form.type === 'open' && (
+            <div className="space-y-2">
+              <Label htmlFor="sample_answer">Musterlösung (für Selbstbewertung)</Label>
+              <Textarea
+                id="sample_answer"
+                rows={4}
+                value={form.sample_answer}
+                onChange={(e) => setForm({ ...form, sample_answer: e.target.value })}
+                placeholder="Erwartete Antwort — wird dem Azubi nach der Prüfung gezeigt"
+                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                maxLength={2000}
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="explanation">Erklärung (optional)</Label>

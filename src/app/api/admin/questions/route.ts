@@ -19,9 +19,14 @@ const CreateQuestionSchema = z.object({
   question_text: z.string().min(1).max(1000),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']),
   explanation: z.string().max(2000).optional().nullable(),
-  answers: z.array(AnswerSchema).length(4),
+  type: z.enum(['multiple_choice', 'open']).default('multiple_choice'),
+  sample_answer: z.string().max(2000).optional().nullable(),
+  answers: z.array(AnswerSchema).length(4).optional(),
   subject_ids: z.array(z.string().uuid()).min(1),
-})
+}).refine(
+  (val) => val.type === 'open' || (val.answers && val.answers.length === 4),
+  { message: 'Multiple-Choice-Fragen benötigen genau 4 Antworten.', path: ['answers'] }
+)
 
 const PAGE_SIZE = 20
 
@@ -141,15 +146,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { question_text, difficulty, explanation, answers, subject_ids } = parsed.data
+  const { question_text, difficulty, explanation, type, sample_answer, answers, subject_ids } = parsed.data
 
-  // Exactly one correct answer required
-  const correctCount = answers.filter((a) => a.is_correct).length
-  if (correctCount !== 1) {
-    return NextResponse.json(
-      { error: 'Es muss genau eine richtige Antwort geben.' },
-      { status: 400 }
-    )
+  // Exactly one correct answer required for MC
+  if (type === 'multiple_choice' && answers) {
+    const correctCount = answers.filter((a) => a.is_correct).length
+    if (correctCount !== 1) {
+      return NextResponse.json(
+        { error: 'Es muss genau eine richtige Antwort geben.' },
+        { status: 400 }
+      )
+    }
   }
 
   // 1. Insert question
@@ -159,6 +166,8 @@ export async function POST(request: NextRequest) {
       question_text,
       difficulty,
       explanation: explanation ?? null,
+      type,
+      sample_answer: sample_answer ?? null,
       is_active: true,
     })
     .select('id')
@@ -169,19 +178,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create question' }, { status: 500 })
   }
 
-  // 2. Insert answer options
-  const answerRows = answers.map((a, idx) => ({
-    question_id: question.id,
-    option_text: a.text,
-    is_correct: a.is_correct,
-    display_order: idx + 1,
-  }))
-  const { error: aErr } = await supabase.from('answer_options').insert(answerRows)
-  if (aErr) {
-    console.error('[POST /api/admin/questions] answer insert', aErr)
-    // Roll back: delete the question
-    await supabase.from('questions').delete().eq('id', question.id)
-    return NextResponse.json({ error: 'Failed to create answer options' }, { status: 500 })
+  // 2. Insert answer options (MC only)
+  if (type === 'multiple_choice' && answers) {
+    const answerRows = answers.map((a, idx) => ({
+      question_id: question.id,
+      option_text: a.text,
+      is_correct: a.is_correct,
+      display_order: idx + 1,
+    }))
+    const { error: aErr } = await supabase.from('answer_options').insert(answerRows)
+    if (aErr) {
+      console.error('[POST /api/admin/questions] answer insert', aErr)
+      await supabase.from('questions').delete().eq('id', question.id)
+      return NextResponse.json({ error: 'Failed to create answer options' }, { status: 500 })
+    }
   }
 
   // 3. Link subjects

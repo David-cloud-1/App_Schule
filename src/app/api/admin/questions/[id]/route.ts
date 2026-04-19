@@ -12,6 +12,8 @@ const UpdateSchema = z
     question_text: z.string().min(1).max(1000).optional(),
     difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
     explanation: z.string().max(2000).nullable().optional(),
+    type: z.enum(['multiple_choice', 'open']).optional(),
+    sample_answer: z.string().max(2000).nullable().optional(),
     answers: z.array(AnswerSchema).length(4).optional(),
     subject_ids: z.array(z.string().uuid()).min(1).optional(),
     is_active: z.boolean().optional(),
@@ -64,6 +66,8 @@ export async function PATCH(
   if (payload.question_text !== undefined) questionUpdate.question_text = payload.question_text
   if (payload.difficulty !== undefined) questionUpdate.difficulty = payload.difficulty
   if (payload.explanation !== undefined) questionUpdate.explanation = payload.explanation
+  if (payload.type !== undefined) questionUpdate.type = payload.type
+  if (payload.sample_answer !== undefined) questionUpdate.sample_answer = payload.sample_answer
   if (payload.is_active !== undefined) questionUpdate.is_active = payload.is_active
 
   if (Object.keys(questionUpdate).length > 0) {
