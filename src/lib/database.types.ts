@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          object_id: string | null
+          object_label: string | null
+          object_type: string
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          object_id?: string | null
+          object_label?: string | null
+          object_type: string
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          object_id?: string | null
+          object_label?: string | null
+          object_type?: string
+        }
+        Relationships: []
+      }
       answer_options: {
         Row: {
           display_order: number
@@ -46,6 +79,30 @@ export type Database = {
           },
         ]
       }
+      badges: {
+        Row: {
+          description: string
+          icon: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          description: string
+          icon: string
+          id: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       exam_parts: {
         Row: {
           code: string
@@ -67,6 +124,105 @@ export type Database = {
         }
         Relationships: []
       }
+      exam_question_sets: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          name: string
+          part: number
+          question_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          name: string
+          part: number
+          question_ids: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          part?: number
+          question_ids?: string[]
+        }
+        Relationships: []
+      }
+      exam_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          parts_selected: number[]
+          results_json: Json
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          parts_selected: number[]
+          results_json?: Json
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          parts_selected?: number[]
+          results_json?: Json
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      generation_jobs: {
+        Row: {
+          admin_id: string
+          created_at: string
+          error_message: string | null
+          file_path: string | null
+          file_size_bytes: number
+          filename: string
+          id: string
+          questions_generated: number | null
+          status: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          error_message?: string | null
+          file_path?: string | null
+          file_size_bytes: number
+          filename: string
+          id?: string
+          questions_generated?: number | null
+          status?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          error_message?: string | null
+          file_path?: string | null
+          file_size_bytes?: number
+          filename?: string
+          id?: string
+          questions_generated?: number | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -74,6 +230,7 @@ export type Database = {
           display_name: string | null
           id: string
           last_session_date: string | null
+          leaderboard_opt_out: boolean
           longest_streak: number
           role: string
           total_xp: number
@@ -84,6 +241,7 @@ export type Database = {
           display_name?: string | null
           id: string
           last_session_date?: string | null
+          leaderboard_opt_out?: boolean
           longest_streak?: number
           role?: string
           total_xp?: number
@@ -94,6 +252,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           last_session_date?: string | null
+          leaderboard_opt_out?: boolean
           longest_streak?: number
           role?: string
           total_xp?: number
@@ -138,6 +297,8 @@ export type Database = {
           id: string
           is_active: boolean
           question_text: string
+          sample_answer: string | null
+          type: string
         }
         Insert: {
           created_at?: string | null
@@ -146,6 +307,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           question_text: string
+          sample_answer?: string | null
+          type?: string
         }
         Update: {
           created_at?: string | null
@@ -154,8 +317,60 @@ export type Database = {
           id?: string
           is_active?: boolean
           question_text?: string
+          sample_answer?: string | null
+          type?: string
         }
         Relationships: []
+      }
+      questions_draft: {
+        Row: {
+          correct_index: number
+          created_at: string
+          difficulty: string | null
+          expires_at: string
+          explanation: string | null
+          id: string
+          job_id: string
+          options: Json
+          question_text: string
+          status: string
+          subject_code: string | null
+        }
+        Insert: {
+          correct_index: number
+          created_at?: string
+          difficulty?: string | null
+          expires_at?: string
+          explanation?: string | null
+          id?: string
+          job_id: string
+          options: Json
+          question_text: string
+          status?: string
+          subject_code?: string | null
+        }
+        Update: {
+          correct_index?: number
+          created_at?: string
+          difficulty?: string | null
+          expires_at?: string
+          explanation?: string | null
+          id?: string
+          job_id?: string
+          options?: Json
+          question_text?: string
+          status?: string
+          subject_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_draft_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_answers: {
         Row: {
@@ -252,27 +467,72 @@ export type Database = {
           code: string
           color: string
           created_at: string | null
+          description: string | null
           icon_name: string
           id: string
+          is_active: boolean
           name: string
         }
         Insert: {
           code: string
           color: string
           created_at?: string | null
+          description?: string | null
           icon_name: string
           id?: string
+          is_active?: boolean
           name: string
         }
         Update: {
           code?: string
           color?: string
           created_at?: string | null
+          description?: string | null
           icon_name?: string
           id?: string
+          is_active?: boolean
           name?: string
         }
         Relationships: []
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          id: string
+          is_retroactive: boolean
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          id?: string
+          is_retroactive?: boolean
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          id?: string
+          is_retroactive?: boolean
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

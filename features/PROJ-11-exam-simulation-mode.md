@@ -1,6 +1,6 @@
 # PROJ-11: Exam Simulation Mode
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -27,9 +27,9 @@
 ### Exam-Modus starten
 - [ ] Exam-Modus ist über das Navigationsmenü erreichbar (eigener Tab/Link)
 - [ ] Nutzer wählt einen oder alle 3 Prüfungsteile vor dem Start:
-  - Teil 1: Leistungserstellung (STG/LOP) – ~20 Fragen (~70% offen, ~30% MC), **180 Min.**
+  - Teil 1: Leistungserstellung (STG/LOP) – 20 Fragen, **90 Min.**
   - Teil 2: KSK – 15 Fragen (MC), **90 Min.**
-  - Teil 3: WiSo (BGP) – 15 Fragen (MC), **60 Min.**
+  - Teil 3: WiSo (BGP) – 15 Fragen (MC), **45 Min.**
 - [ ] Fragen werden zufällig aus dem Pool des jeweiligen Fachs ausgewählt — oder aus einem vom Admin definierten Prüfungsset, falls vorhanden
 - [ ] Startbildschirm zeigt: Regelhinweis (kein sofortiges Feedback, zeitgebunden), Hinweis auf KI-Bewertung offener Fragen nach Abgabe
 - [ ] Nutzer sieht beim Start, ob ein Admin-Prüfungsset oder der allgemeine Fach-Pool verwendet wird
@@ -184,6 +184,41 @@ No new packages needed. Existing shadcn/ui components cover all UI needs:
 - `Progress` — question progress bar
 - `Badge` — pass/fail status, exam set indicator
 - `Slider` — self-assessment score for open questions
+
+## Implementation Notes (Frontend)
+
+### Pages built:
+- `/exam` — Landing page with part selector (Teil 1/2/3), rules info, admin-set indicator, start button
+- `/exam/[sessionId]` — Active exam: server-anchored countdown timer, MC + open question views, dot navigation, AlertDialog abort/submit confirmation
+- `/exam/[sessionId]/results` — Results page: pass/fail per part, MC correct/incorrect breakdown, open question self-scoring with Slider (0–100%)
+- `/exam-history` — List of past exam sessions with score + status badges
+
+### API routes built:
+- `POST /api/exam/sessions` — Creates session, selects questions (admin set or random pool), stores `results_json` with questions
+- `GET /api/exam/sessions/[id]` — Returns session + server-calculated remaining seconds
+- `PATCH /api/exam/sessions/[id]` — Scores MC answers, marks open answers, sets status to completed/aborted
+- `PATCH /api/exam/sessions/[id]/self-score` — Saves student's self-assessed score for open question, recalculates part score
+- `GET /api/exam/history` — Lists user's past sessions
+- `GET/POST /api/admin/exam-sets` — Admin exam set management
+- `PATCH/DELETE /api/admin/exam-sets/[id]` — Toggle active/delete exam set
+
+### Admin:
+- New "Prüfungssets" tab added to AdminTabs
+- `/admin/exam-sets` — List, create, activate/deactivate, delete exam sets
+
+### Navigation:
+- "Prüfungssimulation" button added to home page
+- "Prüfungsverlauf" link in footer of home page
+
+### Deviations from tech design:
+- Self-assessment score (Slider) used instead of AI evaluation — per tech design decision "No AI API calls"
+- Slider component installed via `npx shadcn@latest add slider`
+
+### Backend (completed):
+- Migration `proj11_exam_simulation_mode` applied: `exam_sessions` + `exam_question_sets` tables with RLS; `type` + `sample_answer` columns added to `questions`
+- `database.types.ts` regenerated with new tables/columns
+- Part durations corrected: Teil 1 → 90 Min., Teil 3 → 45 Min. (API + frontend updated)
+- Integration tests: 16 tests across `sessions`, `history`, `admin/exam-sets` routes — all passing
 
 ## QA Test Results
 _To be added by /qa_
