@@ -8,6 +8,12 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
+/test_project
+
+# mcp config (contains secrets)
+.mcp.json
 
 # next.js
 /.next/
