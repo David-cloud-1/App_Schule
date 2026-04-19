@@ -1,6 +1,6 @@
 # PROJ-9: Admin Content Management Panel
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -397,4 +397,19 @@ Alle 5 HIGH/MEDIUM Bugs aus dem ersten QA-Lauf sind verifiziert behoben. Siehe "
 **READY** — Alle HIGH/MEDIUM Bugs behoben. Nur 1 LOW Bug verbleibt (BUG-7: description nicht pre-filled beim Fach-Bearbeiten). Kein Sicherheitsproblem, kein Datenverlust-Risiko.
 
 ## Deployment
-_To be added by /deploy_
+
+**Date:** 2026-04-19  
+**Production URL:** https://spedilern.vercel.app/admin  
+**Git commit:** 34439d3  
+**Git tag:** v1.9.0-PROJ-9
+
+Pre-deployment checks:
+- Build (Turbopack): ✅ Compiled successfully in 10.9s
+- TypeScript: ✅ No errors
+- Tests (Vitest): ✅ 183 tests passing
+- Security headers: ✅ Configured in `next.config.ts`
+- Secrets: ✅ None committed
+- Middleware admin guard: ✅ /admin + /api/admin protected
+
+Known issues carried into production:
+- Low: Subject description not pre-filled when editing (BUG-7, cosmetic only)
