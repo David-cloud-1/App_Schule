@@ -1,6 +1,6 @@
 # PROJ-11: Exam Simulation Mode
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -221,7 +221,139 @@ No new packages needed. Existing shadcn/ui components cover all UI needs:
 - Integration tests: 16 tests across `sessions`, `history`, `admin/exam-sets` routes — all passing
 
 ## QA Test Results
-_To be added by /qa_
+
+**QA Date:** 2026-04-19
+**Tester:** /qa skill
+**Status:** In Review — 1 High bug + 3 Medium bugs must be fixed
+
+### Automated Tests
+- **Unit tests (Vitest):** 17/17 passing (`sessions`, `history`, `admin/exam-sets` routes)
+- **E2E tests (Playwright):** 14/14 passing (Chromium) — route auth guards, API validation
+- **Build:** Clean — no TypeScript errors
+
+### Acceptance Criteria Results
+
+#### Exam-Modus starten
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | Exam-Modus über Navigation erreichbar | PASS — `/exam` linked from home, `/exam-history` linked in footer |
+| 2 | Nutzer wählt Prüfungsteile vor dem Start | PASS — Teil 1/2/3 single or combined selection |
+| 3 | Fragen aus Pool oder Admin-Set | PASS — API checks `exam_question_sets` first |
+| 4 | Startbildschirm zeigt Prüfungsregeln | PASS — Rules notice with exam rules shown |
+| 5 | Hinweis auf Admin-Set vs. Pool | PASS — "Admin-Set" badge shown on part cards |
+
+#### Während der Simulation
+| # | Criterion | Result |
+|---|-----------|--------|
+| 6 | Countdown-Timer sichtbar und läuft | **FAIL** — Initial timer shows wrong duration (BUG-1) |
+| 7 | Kein sofortiges Feedback | PASS — No answer revealed during exam |
+| 8 | MC-Fragen Auswahl; offene Fragen Textarea | PASS — Both question types render correctly |
+| 9 | Vor/zurück navigieren, Eingaben bleiben | PASS — Dot navigation + prev/next buttons |
+| 10 | Fortschrittsanzeige "Frage X von Y" + unbeantwortet | PASS |
+| 11 | "Prüfung beenden"-Button mit Dialog | PASS — AlertDialog with confirmation |
+| 12 | Timer-Ablauf → automatisches Einreichen | PASS — `submitExam('submit')` on timer=0 |
+
+#### KI-Bewertung (Selbstbewertung per Spec-Design)
+| # | Criterion | Result |
+|---|-----------|--------|
+| 13 | Selbstbewertung mit Slider 0–100% | PASS — Slider component implemented |
+| 14 | Musterlösung sichtbar nach Abgabe | PASS — `sample_answer` shown in OpenResultCard |
+| 15 | Score fließt in Gesamtpunktzahl ein | PASS — `self-score` API recalculates part score |
+
+#### Auswertung
+| # | Criterion | Result |
+|---|-----------|--------|
+| 16 | Auswertungsseite nach Einreichen | PASS |
+| 17 | MC-Fragen: sofort ausgewertet | PASS — richtig/falsch + korrekte Antwort + Erklärung |
+| 18 | Self-Score erscheint nach Bewertung | **FAIL** — Part score header doesn't update live (BUG-4) |
+| 19 | Gesamtergebnis % je Teil, Bestanden/Nicht-bestanden | PASS — IHK threshold ≥50% |
+| 20 | Abgebrochen: Status gespeichert | PASS — `status: 'aborted'` set via "Beenden" button |
+
+#### Exam-Verlauf (/exam-history)
+| # | Criterion | Result |
+|---|-----------|--------|
+| 21 | Eigene Seite `/exam-history` | PASS |
+| 22 | Je Eintrag: Datum, Teile, Ergebnis, Status | PASS |
+| 23 | Klick öffnet vollständige Auswertung | PASS — links to `/exam/[id]/results` |
+
+#### Admin: Prüfungssets
+| # | Criterion | Result |
+|---|-----------|--------|
+| 24 | Admin kann Prüfungssets anlegen | PASS — Create modal with name, part, questions |
+| 25 | Set einem Prüfungsteil zugeordnet | PASS |
+| 26 | Aktives Set für Teil wird verwendet | PASS |
+| 27 | Nur letztes aktives Set verwendet | PASS — toggle deactivates others for same part |
+| 28 | Admin wählt Fragetyp beim Erstellen (MC/Offen) | **FAIL** — QuestionFormModal only supports MC (BUG-6) |
+
+#### XP & Streak
+| # | Criterion | Result |
+|---|-----------|--------|
+| 29 | Keine XP/Streak-Auswirkung | PASS — `exam_sessions` is separate from `learning_sessions` |
+
+### Bugs Found
+
+#### BUG-1 — HIGH: Timer zeigt falsche Dauer (page.tsx hat falsche Werte)
+**File:** [src/app/exam/[sessionId]/page.tsx](src/app/exam/[sessionId]/page.tsx#L5)
+**Observed:** `PART_DURATION_MINUTES = { 1: 180, 2: 90, 3: 60 }`
+**Expected:** `{ 1: 90, 2: 90, 3: 45 }` (per Spec + API route)
+**Impact:** Teil 1 zeigt ~180 Min. Timer statt ~90 Min.; Teil 3 zeigt ~60 Min. statt ~45 Min. beim ersten Laden. Nach Page-Reload über API korrekt.
+**Steps:** Start exam Teil 1 → observe timer showing ~180 minutes
+
+#### BUG-2 — MEDIUM: Keine zufällige Fragen-Auswahl für Teil 2 & 3
+**File:** [src/app/api/exam/sessions/route.ts](src/app/api/exam/sessions/route.ts#L101)
+**Observed:** Parts 2 & 3 query questions without `ORDER BY RANDOM()` — same questions always selected in insertion order
+**Expected:** Spec requires "zufällige Auswahl (ORDER BY RANDOM() LIMIT n)"
+**Note:** Part 1 is shuffled client-side after fetch; Parts 2 & 3 are not randomized at all
+
+#### BUG-3 — MEDIUM: Admin Prüfungsset-Erstellung filtert Fragen nicht nach Fach
+**File:** [src/app/admin/exam-sets/exam-sets-client.tsx](src/app/admin/exam-sets/exam-sets-client.tsx#L70)
+**Observed:** `getQuestionsForPart()` returns all questions regardless of selected part (comment in code acknowledges this)
+**Expected:** Only questions belonging to the part's subjects (STG/LOP for Teil 1, KSK for Teil 2, BGP for Teil 3) should be shown
+**Impact:** Admin sees all ~200+ questions when creating a Teil 2 KSK set; can accidentally add cross-subject questions
+
+#### BUG-4 — MEDIUM: Part-Score in Auswertung aktualisiert sich nicht live nach Selbstbewertung
+**File:** [src/app/exam/[sessionId]/results/exam-results-client.tsx](src/app/exam/[sessionId]/results/exam-results-client.tsx#L69)
+**Observed:** After adjusting self-score slider, the `{part.score}%` header and Pass/Fail badge remain at the original (pre-self-assessment) score. Only updates after page reload.
+**Expected:** Score and badge should recalculate in real-time as user adjusts the slider
+**Steps:** Complete Teil 1 exam → open results → expand part → adjust slider → observe header score doesn't change
+
+#### BUG-5 — LOW: Kein Bestätigungs-Dialog beim Löschen eines Prüfungssets
+**File:** [src/app/admin/exam-sets/exam-sets-client.tsx](src/app/admin/exam-sets/exam-sets-client.tsx#L96)
+**Observed:** Delete button immediately deletes without confirmation
+**Expected:** Confirmation dialog before destructive delete (especially for active sets)
+
+#### BUG-6 — LOW: Admin-Fragenformular unterstützt keinen Typ "Offen" + Musterlösung
+**File:** [src/components/admin/question-form-modal.tsx](src/components/admin/question-form-modal.tsx)
+**Observed:** QuestionFormModal only creates Multiple Choice questions — no type selector, no `sample_answer` field
+**Expected (AC):** "Admin kann beim Erstellen einer Frage den Typ wählen: Multiple Choice oder Offen (Freitext) — inkl. Musterlösung für KI-Kontext"
+**Impact:** Open-type questions cannot be created via the admin UI; they can only be created via AI generation or direct DB access
+
+### Security Audit
+
+- **Auth enforcement:** All API routes return 401 when unauthenticated — PASS
+- **Authorization:** Session routes enforce `user_id` equality — users cannot read/modify other users' sessions — PASS
+- **Admin routes:** Require admin role check via `requireAdmin()` — PASS
+- **Input validation:** Zod schemas on all POST/PATCH routes — PASS
+- **Self-score range:** Validated `min(0).max(100)` — PASS
+- **Server-anchored timer:** `started_at` written server-side; remaining time calculated from DB — PASS
+- **XP/Streak isolation:** Exam sessions correctly don't touch `learning_sessions`, XP, or streak — PASS
+
+### Edge Cases Tested (Code Review)
+
+| Edge Case | Verdict |
+|-----------|---------|
+| Zu wenig Fragen: disabled part card, can't start | PASS — `hasEnoughQuestions` check on landing |
+| Timer läuft ab: auto-submit | PASS — `useEffect` fires `submitExam('submit')` at 0 |
+| Nutzer bricht ab: Dialog + 'aborted' status | PASS |
+| Seite neu geladen: server-recalculated remaining time | PASS (via API), but initial render uses wrong values (BUG-1) |
+| Alle 3 Teile: combined timer, single flat question list | PASS — parts merged into single array |
+| Keine Fragen für Fach: Teil ist deaktiviert | PASS |
+
+### Production-Ready Decision
+
+**NOT READY** — BUG-1 (HIGH: wrong timer duration) must be fixed before deployment.
+
+After fixing BUG-1, the feature is functionally complete. BUG-2, BUG-3, and BUG-4 are Medium severity and should be fixed but are not blocking. BUG-5 and BUG-6 are Low severity.
 
 ## Deployment
 _To be added by /deploy_
