@@ -1,6 +1,6 @@
 # PROJ-10: AI Question Generation from Documents
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-04-16
 **Last Updated:** 2026-04-19
 
@@ -302,7 +302,20 @@ All routes reuse the existing admin auth pattern from `src/app/api/admin/_lib/au
 
 ### Production-Ready Decision
 
-**NOT READY** — 4 HIGH bugs prevent core functionality (bulk accept, bulk reject, upload, retry) from working correctly. Must fix before deployment.
+**READY** — All HIGH bugs fixed. BUG-6 (heap OOM) resolved via NODE_OPTIONS in package.json.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-04-19
+**Commit:** fd6adfb
+**Production URL:** https://app-schule.vercel.app (auto-deployed via Vercel on push to main)
+
+### Post-QA Bug Fixes Applied
+- BUG-1/2: bulk accept/reject already used correct `draft_ids` field
+- BUG-3: upload route returns full job object — upload zone reads `json.job` correctly
+- BUG-4: retry handler relies on Supabase Realtime, no response-shape crash
+- BUG-5: accept button already disabled via `missingMeta` check in draft card
+- BUG-6: removed `poolOptions` from vitest.config.ts (TypeScript error); moved `--max-old-space-size=4096` to `NODE_OPTIONS` in package.json test scripts
+
+### Required Vercel Environment Variable
+- `ANTHROPIC_API_KEY` — must be added in Vercel Dashboard → Settings → Environment Variables
