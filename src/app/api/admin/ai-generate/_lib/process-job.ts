@@ -20,7 +20,7 @@ interface ClaudeResponse {
 const EXAM_CONTEXT = `
 Du erstellst Prüfungsfragen für angehende Speditionskaufleute (IHK Bayern).
 Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse).
-Erstelle ausschließlich Multiple-Choice-Fragen mit genau 4 Antwortoptionen, wobei exakt eine korrekt ist.
+Erstelle ausschließlich Multiple-Choice-Fragen mit genau 5 Antwortoptionen, wobei exakt eine korrekt ist.
 Setze "review_required": true wenn die Frage eine eindeutige korrekte Antwort nicht zweifelsfrei belegt.
 `
 
@@ -66,7 +66,7 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in diesem Format (kein Markdown, 
   "questions": [
     {
       "question_text": "...",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "options": ["Option A", "Option B", "Option C", "Option D", "Option E"],
       "correct_index": 0,
       "explanation": "Erklärung warum die Antwort korrekt ist",
       "review_required": false
@@ -93,10 +93,10 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in diesem Format (kein Markdown, 
     (q) =>
       q.question_text &&
       Array.isArray(q.options) &&
-      q.options.length === 4 &&
+      q.options.length === 5 &&
       typeof q.correct_index === 'number' &&
       q.correct_index >= 0 &&
-      q.correct_index <= 3
+      q.correct_index <= 4
   )
 }
 

@@ -66,7 +66,8 @@ type FormState = {
   answer_b: string
   answer_c: string
   answer_d: string
-  correct_letter: 'A' | 'B' | 'C' | 'D'
+  answer_e: string
+  correct_letter: 'A' | 'B' | 'C' | 'D' | 'E'
   explanation: string
   difficulty: 'leicht' | 'mittel' | 'schwer'
   subject_ids: string[]
@@ -80,6 +81,7 @@ const EMPTY: FormState = {
   answer_b: '',
   answer_c: '',
   answer_d: '',
+  answer_e: '',
   correct_letter: 'A',
   explanation: '',
   difficulty: 'mittel',
@@ -106,13 +108,14 @@ export function QuestionFormModal({
       const ordered = [...question.answer_options].sort(
         (a, b) => a.display_order - b.display_order
       )
-      const [a, b, c, d] = [0, 1, 2, 3].map((i) => ordered[i]?.option_text ?? '')
+      const [a, b, c, d, e] = [0, 1, 2, 3, 4].map((i) => ordered[i]?.option_text ?? '')
       const correctIdx = ordered.findIndex((o) => o.is_correct)
-      const correct_letter = (['A', 'B', 'C', 'D'][correctIdx >= 0 ? correctIdx : 0]) as
+      const correct_letter = (['A', 'B', 'C', 'D', 'E'][correctIdx >= 0 ? correctIdx : 0]) as
         | 'A'
         | 'B'
         | 'C'
         | 'D'
+        | 'E'
       setForm({
         question_text: question.question_text,
         type: question.type ?? 'multiple_choice',
@@ -121,6 +124,7 @@ export function QuestionFormModal({
         answer_b: b,
         answer_c: c,
         answer_d: d,
+        answer_e: e,
         correct_letter,
         explanation: question.explanation ?? '',
         difficulty: question.difficulty,
@@ -145,6 +149,7 @@ export function QuestionFormModal({
       if (!form.answer_b.trim()) e.answer_b = 'Antwort B ist Pflicht.'
       if (!form.answer_c.trim()) e.answer_c = 'Antwort C ist Pflicht.'
       if (!form.answer_d.trim()) e.answer_d = 'Antwort D ist Pflicht.'
+      if (!form.answer_e.trim()) e.answer_e = 'Antwort E ist Pflicht.'
     }
     if (form.subject_ids.length === 0) e.subject_ids = 'Mindestens ein Fach auswählen.'
     setErrors(e)
@@ -171,6 +176,7 @@ export function QuestionFormModal({
         { text: form.answer_b.trim(), is_correct: form.correct_letter === 'B' },
         { text: form.answer_c.trim(), is_correct: form.correct_letter === 'C' },
         { text: form.answer_d.trim(), is_correct: form.correct_letter === 'D' },
+        { text: form.answer_e.trim(), is_correct: form.correct_letter === 'E' },
       ]
     }
 
@@ -273,16 +279,17 @@ export function QuestionFormModal({
               <RadioGroup
                 value={form.correct_letter}
                 onValueChange={(v) =>
-                  setForm({ ...form, correct_letter: v as 'A' | 'B' | 'C' | 'D' })
+                  setForm({ ...form, correct_letter: v as 'A' | 'B' | 'C' | 'D' | 'E' })
                 }
                 className="space-y-2"
               >
-                {(['A', 'B', 'C', 'D'] as const).map((letter) => {
+                {(['A', 'B', 'C', 'D', 'E'] as const).map((letter) => {
                   const key = (`answer_${letter.toLowerCase()}` as
                     | 'answer_a'
                     | 'answer_b'
                     | 'answer_c'
-                    | 'answer_d')
+                    | 'answer_d'
+                    | 'answer_e')
                   const errorKey = key
                   return (
                     <div key={letter} className="space-y-1">

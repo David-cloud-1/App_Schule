@@ -38,18 +38,19 @@ type FormState = {
   opt_b: string
   opt_c: string
   opt_d: string
+  opt_e: string
   correct_index: string
   explanation: string
   subject_code: string
   difficulty: string
 }
 
-const OPT_KEYS = ['opt_a', 'opt_b', 'opt_c', 'opt_d'] as const
+const OPT_KEYS = ['opt_a', 'opt_b', 'opt_c', 'opt_d', 'opt_e'] as const
 
 export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
   const [form, setForm] = useState<FormState>({
     question_text: '',
-    opt_a: '', opt_b: '', opt_c: '', opt_d: '',
+    opt_a: '', opt_b: '', opt_c: '', opt_d: '', opt_e: '',
     correct_index: '0',
     explanation: '',
     subject_code: '_none',
@@ -65,6 +66,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
       opt_b: draft.options[1] ?? '',
       opt_c: draft.options[2] ?? '',
       opt_d: draft.options[3] ?? '',
+      opt_e: draft.options[4] ?? '',
       correct_index: String(draft.correct_index),
       explanation: draft.explanation ?? '',
       subject_code: draft.subject_code ?? '_none',
@@ -78,7 +80,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
     setSaving(true)
     await onSave(draft, {
       question_text: form.question_text.trim(),
-      options: [form.opt_a, form.opt_b, form.opt_c, form.opt_d],
+      options: [form.opt_a, form.opt_b, form.opt_c, form.opt_d, form.opt_e],
       correct_index: Number(form.correct_index),
       explanation: form.explanation.trim() || null,
       subject_code: form.subject_code === '_none' ? null : form.subject_code,
