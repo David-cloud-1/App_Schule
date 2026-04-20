@@ -8,7 +8,8 @@ const RowSchema = z.object({
   antwort_b: z.string().min(1).max(500),
   antwort_c: z.string().min(1).max(500),
   antwort_d: z.string().min(1).max(500),
-  korrekte_antwort: z.enum(['A', 'B', 'C', 'D']),
+  antwort_e: z.string().min(1).max(500),
+  korrekte_antwort: z.enum(['A', 'B', 'C', 'D', 'E']),
   erklaerung: z.string().max(2000).optional().nullable(),
   fach_code: z.string().min(1).max(20),
   schwierigkeit: z.enum(['leicht', 'mittel', 'schwer']),
@@ -76,12 +77,13 @@ export async function POST(request: NextRequest) {
       continue
     }
 
-    const letters = ['A', 'B', 'C', 'D'] as const
+    const letters = ['A', 'B', 'C', 'D', 'E'] as const
     const texts: Record<(typeof letters)[number], string> = {
       A: row.antwort_a,
       B: row.antwort_b,
       C: row.antwort_c,
       D: row.antwort_d,
+      E: row.antwort_e,
     }
     const answerRows = letters.map((letter, idx) => ({
       question_id: question.id,

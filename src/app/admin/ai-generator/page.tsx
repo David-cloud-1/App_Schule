@@ -65,7 +65,7 @@ FÄCHER:
 - LOP = Logistische Leistungsprozesse
 
 REGELN:
-- Genau 4 Antwortoptionen (A, B, C, D), davon exakt eine korrekt
+- Genau 5 Antwortoptionen (A, B, C, D, E), davon exakt eine korrekt
 - Fragen auf Prüfungsniveau (nicht zu einfach, nicht zu komplex)
 - Schwierigkeit: "leicht" (Grundwissen), "mittel" (Anwendung), "schwer" (Analyse/Transfer)
 - Erklärung warum die Antwort korrekt ist (1-2 Sätze)
@@ -80,6 +80,7 @@ Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown)
       "antwort_b": "Antwort B",
       "antwort_c": "Antwort C",
       "antwort_d": "Antwort D",
+      "antwort_e": "Antwort E",
       "korrekte_antwort": "A",
       "erklaerung": "Erklärung warum A korrekt ist.",
       "fach_code": "BGP",
