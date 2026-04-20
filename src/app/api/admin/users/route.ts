@@ -15,11 +15,9 @@ export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
 
-  const { supabase } = auth
   const service = createServiceClient()
 
-  // Fetch all profiles (admin RLS policy allows this)
-  const { data: profiles, error: pErr } = await supabase
+  const { data: profiles, error: pErr } = await service
     .from('profiles')
     .select('id, display_name, role, total_xp, current_streak, last_session_date')
     .order('total_xp', { ascending: false })
