@@ -41,7 +41,35 @@
       "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --pool=forks 2>&1 | Select-Object -Last 15)",
       "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; npm test -- --pool=forks 2>&1 | Select-String \"FAIL|PASS|failed|passed\" | Select-Object -First 30)",
       "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; \\(Get-Content package.json | ConvertFrom-Json\\).scripts)",
-      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; vitest run --reporter=verbose 2>&1 | Select-Object -Last 20)"
+      "PowerShell(cd \"c:\\\\KI\\\\App_Schule\"; $env:NODE_OPTIONS=\"--max-old-space-size=4096\"; vitest run --reporter=verbose 2>&1 | Select-Object -Last 20)",
+      "Bash(git -C \"c:/KI/App_Schule\" add features/PROJ-11-exam-simulation-mode.md features/INDEX.md)",
+      "Bash(git -C \"c:/KI/App_Schule\" commit -m \"docs\\(PROJ-11\\): Add technical design for Exam Simulation Mode\")",
+      "Bash(mkdir -p c:/KI/App_Schule/src/app/api/exam/sessions/\\\\[id\\\\]/self-score)",
+      "Bash(mkdir -p c:/KI/App_Schule/src/app/api/admin/exam-sets/\\\\[id\\\\])",
+      "mcp__supabase__generate_typescript_types",
+      "Bash(cmd /c \"set NODE_OPTIONS=--max-old-space-size=4096 && npx vitest run --reporter=verbose src/app/api/exam src/app/api/admin/exam-sets\")",
+      "Bash(cmd /c \"set NODE_OPTIONS=--max-old-space-size=4096&& npx vitest run src/app/api/exam src/app/api/admin/exam-sets 2>&1\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/admin/exam-sets)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/api/admin/users)",
+      "mcp__supabase__get_logs",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\" http://localhost:3000/api/admin/users)",
+      "mcp__supabase__get_project_url",
+      "Bash(taskkill /PID 7828 /F)",
+      "Bash(taskkill //PID 7828 //F)",
+      "mcp__supabase__get_publishable_keys",
+      "Read(//c/KI//**)",
+      "Bash(rsync -av --exclude='node_modules' --exclude='.next' --exclude='.git' /c/KI/App_Schule/ /c/KI/Selbstlerneinheiten/Heft_3_ADSp/)",
+      "Bash(rm '/c/KI/Selbstlerneinheiten/Heft_3_ADSp/features/PROJ-*.md')",
+      "Bash(rm -rf /c/KI/Selbstlerneinheiten/Heft_3_ADSp/.vercel)",
+      "Bash(rm -f /c/KI/Selbstlerneinheiten/Heft_3_ADSp/.env.local)",
+      "Bash(rm -rf /c/KI/Selbstlerneinheiten/Heft_3_ADSp/playwright-report /c/KI/Selbstlerneinheiten/Heft_3_ADSp/test-results /c/KI/Selbstlerneinheiten/Heft_3_ADSp/test_project)",
+      "Bash(git branch *)"
+    ],
+    "additionalDirectories": [
+      "c:\\KI\\App_Schule\\src\\app\\exam\\[sessionId]",
+      "c:\\KI\\Selbstlerneinheiten\\Heft_3_ADSp\\features",
+      "c:\\KI\\Selbstlerneinheiten\\Heft_3_ADSp\\docs",
+      "c:\\KI\\Selbstlerneinheiten\\Heft_3_ADSp"
     ]
   }
 }

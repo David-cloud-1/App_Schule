@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, Loader2, Search, ShieldCheck } from 'lucide-react'
+import { Ban, CheckCircle2, Loader2, Search, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +50,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [ownId, setOwnId] = useState<string | null>(null)
   const [target, setTarget] = useState<AdminUserRow | null>(null)
+  const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const load = useCallback(async () => {
@@ -104,6 +105,32 @@ export default function AdminUsersPage() {
       }
       toast.success(target.banned ? 'Nutzer entsperrt' : 'Nutzer gesperrt')
       setTarget(null)
+      load()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleRoleConfirm() {
+    if (!roleTarget) return
+    setSubmitting(true)
+    const newRole = roleTarget.role === 'admin' ? 'user' : 'admin'
+    try {
+      const res = await fetch(`/api/admin/users/${roleTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data?.error ?? 'Aktion fehlgeschlagen')
+        return
+      }
+      toast.success(newRole === 'admin' ? 'Admin-Rolle vergeben' : 'Admin-Rolle entzogen')
+      setRoleTarget(null)
       load()
     } catch (err) {
       console.error(err)
@@ -205,42 +232,80 @@ export default function AdminUsersPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={isSelf}
-                                onClick={() => setTarget(u)}
-                                className={
-                                  u.banned
-                                    ? 'text-[#58CC02] hover:text-[#58CC02]'
-                                    : 'text-[#FF4B4B] hover:text-[#FF4B4B]'
-                                }
-                              >
-                                {u.banned ? (
-                                  <>
-                                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                                    Entsperren
-                                  </>
-                                ) : (
-                                  <>
-                                    <Ban className="w-4 h-4 mr-1" />
-                                    Sperren
-                                  </>
-                                )}
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {isSelf && (
-                            <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                              Du kannst dich nicht selbst sperren.
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
+                      <div className="flex items-center justify-end gap-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isSelf}
+                                  onClick={() => setRoleTarget(u)}
+                                  className={
+                                    u.role === 'admin'
+                                      ? 'text-[#9CA3AF] hover:text-[#FF4B4B]'
+                                      : 'text-[#1CB0F6] hover:text-[#1CB0F6]'
+                                  }
+                                >
+                                  {u.role === 'admin' ? (
+                                    <>
+                                      <ShieldOff className="w-4 h-4 mr-1" />
+                                      Entziehen
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ShieldCheck className="w-4 h-4 mr-1" />
+                                      Admin
+                                    </>
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isSelf && (
+                              <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
+                                Du kannst deine eigene Rolle nicht ändern.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isSelf}
+                                  onClick={() => setTarget(u)}
+                                  className={
+                                    u.banned
+                                      ? 'text-[#58CC02] hover:text-[#58CC02]'
+                                      : 'text-[#FF4B4B] hover:text-[#FF4B4B]'
+                                  }
+                                >
+                                  {u.banned ? (
+                                    <>
+                                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                                      Entsperren
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Ban className="w-4 h-4 mr-1" />
+                                      Sperren
+                                    </>
+                                  )}
+                                </Button>
+                              </span>
+                            </TooltipTrigger>
+                            {isSelf && (
+                              <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
+                                Du kannst dich nicht selbst sperren.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -249,6 +314,44 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog
+        open={roleTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setRoleTarget(null)
+        }}
+      >
+        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {roleTarget?.role === 'admin' ? 'Admin-Rolle entziehen?' : 'Admin-Rolle vergeben?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#9CA3AF]">
+              {roleTarget?.role === 'admin'
+                ? `${roleTarget?.display_name ?? roleTarget?.email} verliert den Admin-Zugang und kann das Admin-Panel nicht mehr nutzen.`
+                : `${roleTarget?.display_name ?? roleTarget?.email} erhält vollen Admin-Zugang und kann Inhalte verwalten.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleRoleConfirm()
+              }}
+              disabled={submitting}
+              className={
+                roleTarget?.role === 'admin'
+                  ? 'bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white'
+                  : 'bg-[#1CB0F6] hover:bg-[#17a0e0] text-white'
+              }
+            >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {roleTarget?.role === 'admin' ? 'Entziehen' : 'Admin machen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={target !== null}
