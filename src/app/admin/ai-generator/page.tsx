@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import {
   Bot,
   CheckCheck,
+  CheckCircle2,
   RefreshCw,
   XCircle,
   Copy,
@@ -97,11 +98,63 @@ Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown)
 [Hier deinen Text einfügen]
 --- ENDE ---`
 
+type ParseState =
+  | { status: 'empty' }
+  | { status: 'invalid'; reason: string }
+  | { status: 'no_rows'; reason: string }
+  | { status: 'ready'; count: number; parsed: unknown }
+
+// Extrahiert JSON aus beliebigem Text — auch wenn Claude.ai Text davor/danach schreibt
+function extractJson(text: string): unknown {
+  const trimmed = text.trim()
+
+  // 1. Direkt parsen (reines JSON)
+  try { return JSON.parse(trimmed) } catch { /* weiter */ }
+
+  // 2. Aus Markdown-Codeblock extrahieren: ```json ... ``` oder ``` ... ```
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (codeBlockMatch) {
+    try { return JSON.parse(codeBlockMatch[1].trim()) } catch { /* weiter */ }
+  }
+
+  // 3. Erstes { ... } aus dem Text extrahieren (bei vorangestelltem Begleittext)
+  const start = trimmed.indexOf('{')
+  const end = trimmed.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(trimmed.slice(start, end + 1)) } catch { /* weiter */ }
+  }
+
+  throw new Error('Kein JSON gefunden')
+}
+
+function analyzeInput(value: string): ParseState {
+  if (!value.trim()) return { status: 'empty' }
+  try {
+    const parsed = extractJson(value) as { rows?: unknown[] }
+    if (!parsed || typeof parsed !== 'object') {
+      return { status: 'invalid', reason: 'Das ist kein JSON-Objekt. Bitte die vollständige Antwort von Claude.ai einfügen.' }
+    }
+    if (!('rows' in parsed)) {
+      return { status: 'no_rows', reason: 'Das JSON hat kein "rows"-Feld. Hast du den Prompt verändert? Bitte unverändert verwenden.' }
+    }
+    if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
+      return { status: 'no_rows', reason: 'Das "rows"-Feld ist leer oder kein Array. Claude.ai hat keine Fragen generiert.' }
+    }
+    return { status: 'ready', count: parsed.rows.length, parsed }
+  } catch {
+    return {
+      status: 'invalid',
+      reason: 'Kein gültiges JSON gefunden. Tipp: Die komplette Antwort von Claude.ai einfügen — auch mit dem Begleittext davor ist kein Problem.',
+    }
+  }
+}
+
 // ── Manual Import Section ─────────────────────────────────────────────────────
 function ManualImportSection() {
   const [copied, setCopied] = useState(false)
   const [jsonInput, setJsonInput] = useState('')
   const [importing, setImporting] = useState(false)
+  const [parseState, setParseState] = useState<ParseState>({ status: 'empty' })
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(CLAUDE_PROMPT)
@@ -109,36 +162,42 @@ function ManualImportSection() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  async function handleImport() {
-    if (!jsonInput.trim()) {
-      toast.error('Bitte JSON aus Claude.ai einfügen')
-      return
-    }
+  function handleJsonChange(value: string) {
+    setJsonInput(value)
+    setParseState(analyzeInput(value))
+  }
 
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(jsonInput)
-    } catch {
-      toast.error('Ungültiges JSON – bitte direkt aus Claude.ai kopieren')
-      return
-    }
+  async function handleImport() {
+    if (parseState.status !== 'ready') return
 
     setImporting(true)
     try {
       const res = await fetch('/api/admin/questions/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
+        body: JSON.stringify(parseState.parsed),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data.error ?? 'Import fehlgeschlagen')
+        if (data?.error === 'Invalid payload') {
+          // Zod-Fehlerdetails übersetzen
+          const fieldErrors: string[] = []
+          const details = data?.details?.fieldErrors ?? {}
+          if (details['rows']) fieldErrors.push('rows: ' + details['rows'].join(', '))
+          const hint = fieldErrors.length > 0
+            ? `Formatfehler: ${fieldErrors.join(' · ')}`
+            : 'Das JSON-Format stimmt nicht. Hast du den Prompt unverändert verwendet?'
+          toast.error(hint)
+        } else {
+          toast.error(data?.error ?? 'Import fehlgeschlagen')
+        }
         return
       }
-      toast.success(`${data.imported} Fragen importiert${data.skipped > 0 ? ` (${data.skipped} übersprungen)` : ''}`)
+      toast.success(`Fertig! ${data.imported ?? 0} Fragen importiert${data.skipped > 0 ? ` (${data.skipped} übersprungen)` : ''}.`)
       setJsonInput('')
+      setParseState({ status: 'empty' })
     } catch {
-      toast.error('Netzwerkfehler')
+      toast.error('Netzwerkfehler — bitte Internetverbindung prüfen.')
     } finally {
       setImporting(false)
     }
@@ -190,14 +249,32 @@ function ManualImportSection() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">2</span>
-          <p className="text-sm font-semibold text-[#F9FAFB]">JSON-Antwort von Claude hier einfügen</p>
+          <p className="text-sm font-semibold text-[#F9FAFB]">
+            Vollständige Antwort von Claude.ai hier einfügen
+          </p>
         </div>
         <Textarea
           value={jsonInput}
-          onChange={(e) => setJsonInput(e.target.value)}
-          placeholder={'{\n  "rows": [\n    { "question_text": "...", ... }\n  ]\n}'}
-          className="font-mono text-xs bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl min-h-[120px] placeholder:text-[#4B5563]"
+          onChange={(e) => handleJsonChange(e.target.value)}
+          placeholder={'Die komplette Antwort von Claude.ai einfügen — Begleittext und ```json ... ``` werden automatisch ignoriert.\n\nBeispiel:\n{\n  "rows": [\n    { "question_text": "Was ist...", "antwort_a": "...", ... }\n  ]\n}'}
+          className="font-mono text-xs bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl min-h-[140px] placeholder:text-[#4B5563]"
         />
+
+        {/* Zustandsanzeige */}
+        {parseState.status === 'ready' && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#58CC02]/10 border border-[#58CC02]/30">
+            <CheckCircle2 className="w-4 h-4 text-[#58CC02] shrink-0" />
+            <p className="text-xs text-[#58CC02] font-medium">
+              {parseState.count} {parseState.count === 1 ? 'Frage' : 'Fragen'} erkannt — bereit zum Import
+            </p>
+          </div>
+        )}
+        {(parseState.status === 'invalid' || parseState.status === 'no_rows') && (
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-[#FF4B4B]/10 border border-[#FF4B4B]/30">
+            <XCircle className="w-4 h-4 text-[#FF4B4B] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#FF4B4B]">{parseState.reason}</p>
+          </div>
+        )}
       </div>
 
       {/* Step 3 */}
@@ -205,7 +282,7 @@ function ManualImportSection() {
         <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">3</span>
         <Button
           onClick={handleImport}
-          disabled={importing || !jsonInput.trim()}
+          disabled={importing || parseState.status !== 'ready'}
           className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
         >
           {importing ? (
@@ -213,7 +290,9 @@ function ManualImportSection() {
           ) : (
             <Upload className="w-4 h-4 mr-2" />
           )}
-          Fragen importieren
+          {parseState.status === 'ready'
+            ? `${parseState.count} Fragen importieren`
+            : 'Fragen importieren'}
         </Button>
         <p className="text-xs text-[#9CA3AF]">
           Fragen werden sofort aktiv im Quiz sichtbar.
