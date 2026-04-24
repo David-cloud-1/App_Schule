@@ -45,11 +45,12 @@ export type DraftQuestion = {
   explanation: string | null
   subject_code: string | null
   difficulty: 'leicht' | 'mittel' | 'schwer' | null
+  class_level: 10 | 11 | 12 | null
   status: 'pending' | 'review_required' | 'accepted' | 'rejected'
   expires_at: string
 }
 
-const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP'] as const
+const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP', 'PUG'] as const
 const DIFFICULTIES = ['leicht', 'mittel', 'schwer'] as const
 type DraftStatusFilter = 'all' | 'pending' | 'review_required' | 'accepted' | 'rejected'
 
@@ -63,6 +64,7 @@ FÄCHER:
 - KSK = Kaufmännische Steuerung und Kontrolle
 - STG = Speditionelle und transportrelevante Geschäftsprozesse
 - LOP = Logistische Leistungsprozesse
+- PUG = Politik und Gesellschaft
 
 REGELN:
 - Genau 5 Antwortoptionen (A, B, C, D, E), davon exakt eine korrekt
@@ -70,6 +72,7 @@ REGELN:
 - Schwierigkeit: "leicht" (Grundwissen), "mittel" (Anwendung), "schwer" (Analyse/Transfer)
 - Erklärung warum die Antwort korrekt ist (1-2 Sätze)
 - Maximal 75 Fragen
+- klassenstufe: 10, 11 oder 12 — falls nicht eindeutig aus dem Kontext, weglassen (null)
 
 Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown):
 {
@@ -84,7 +87,8 @@ Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown)
       "korrekte_antwort": "A",
       "erklaerung": "Erklärung warum A korrekt ist.",
       "fach_code": "BGP",
-      "schwierigkeit": "mittel"
+      "schwierigkeit": "mittel",
+      "klassenstufe": 11
     }
   ]
 }

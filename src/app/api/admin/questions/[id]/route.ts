@@ -14,9 +14,11 @@ const UpdateSchema = z
     explanation: z.string().max(2000).nullable().optional(),
     type: z.enum(['multiple_choice', 'open']).optional(),
     sample_answer: z.string().max(2000).nullable().optional(),
-    answers: z.array(AnswerSchema).length(4).optional(),
+    answers: z.array(AnswerSchema).length(5).optional(),
     subject_ids: z.array(z.string().uuid()).min(1).optional(),
     is_active: z.boolean().optional(),
+    class_level: z.union([z.literal(10), z.literal(11), z.literal(12), z.null()]).optional(),
+    topic_id: z.string().uuid().nullable().optional(),
   })
   .refine((val) => Object.keys(val).length > 0, {
     message: 'No fields provided',
@@ -69,6 +71,8 @@ export async function PATCH(
   if (payload.type !== undefined) questionUpdate.type = payload.type
   if (payload.sample_answer !== undefined) questionUpdate.sample_answer = payload.sample_answer
   if (payload.is_active !== undefined) questionUpdate.is_active = payload.is_active
+  if (payload.class_level !== undefined) questionUpdate.class_level = payload.class_level
+  if (payload.topic_id !== undefined) questionUpdate.topic_id = payload.topic_id
 
   if (Object.keys(questionUpdate).length > 0) {
     const { error } = await supabase.from('questions').update(questionUpdate).eq('id', id)

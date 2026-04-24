@@ -3,10 +3,12 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
 
 const QuerySchema = z.object({
-  subject:    z.string().optional(),
-  difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
-  limit:      z.coerce.number().int().min(1).max(50).default(10),
-  offset:     z.coerce.number().int().min(0).default(0),
+  subject:     z.string().optional(),
+  difficulty:  z.enum(['leicht', 'mittel', 'schwer']).optional(),
+  class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
+  topic_id:    z.string().uuid().optional(),
+  limit:       z.coerce.number().int().min(1).max(50).default(10),
+  offset:      z.coerce.number().int().min(0).default(0),
 })
 
 export async function GET(request: NextRequest) {
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { subject, difficulty, limit, offset } = parsed.data
+  const { subject, difficulty, class_level, topic_id, limit, offset } = parsed.data
 
   // Resolve subject filter to question IDs at DB level (fixes BUG-M-01:
   // previously .range() was applied before in-memory subject filter, causing
@@ -66,6 +68,8 @@ export async function GET(request: NextRequest) {
       question_text,
       explanation,
       difficulty,
+      class_level,
+      topic_id,
       answer_options ( id, option_text, is_correct, display_order ),
       question_subjects ( subjects ( id, code ) )
     `)
@@ -77,6 +81,12 @@ export async function GET(request: NextRequest) {
   }
   if (difficulty) {
     query = query.eq('difficulty', difficulty)
+  }
+  if (class_level) {
+    query = query.or(`class_level.eq.${class_level},class_level.is.null`)
+  }
+  if (topic_id) {
+    query = query.eq('topic_id', topic_id)
   }
 
   const { data, error } = await query.range(offset, offset + limit - 1)

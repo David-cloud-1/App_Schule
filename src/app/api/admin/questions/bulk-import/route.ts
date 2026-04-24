@@ -13,6 +13,8 @@ const RowSchema = z.object({
   erklaerung: z.string().max(2000).optional().nullable(),
   fach_code: z.string().min(1).max(20),
   schwierigkeit: z.enum(['leicht', 'mittel', 'schwer']),
+  klassenstufe: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional().nullable(),
+  thema: z.string().max(100).optional().nullable(),
 })
 
 const BodySchema = z.object({
@@ -50,6 +52,13 @@ export async function POST(request: NextRequest) {
     subjectMap.set((s.code as string).toUpperCase(), s.id as string)
   }
 
+  // Preload topic lookup: (subject_id + name) → topic id
+  const { data: allTopics } = await supabase.from('topics').select('id, name, subject_id')
+  const topicMap = new Map<string, string>()
+  for (const t of allTopics ?? []) {
+    topicMap.set(`${t.subject_id}::${(t.name as string).toLowerCase()}`, t.id as string)
+  }
+
   let imported = 0
   let skipped = 0
 
@@ -60,6 +69,25 @@ export async function POST(request: NextRequest) {
       continue
     }
 
+    // Resolve or create topic if provided
+    let topicId: string | null = null
+    if (row.thema && row.thema.trim().length > 0) {
+      const topicKey = `${subjectId}::${row.thema.trim().toLowerCase()}`
+      if (topicMap.has(topicKey)) {
+        topicId = topicMap.get(topicKey)!
+      } else {
+        const { data: newTopic } = await supabase
+          .from('topics')
+          .insert({ subject_id: subjectId, name: row.thema.trim() })
+          .select('id')
+          .single()
+        if (newTopic) {
+          topicId = newTopic.id as string
+          topicMap.set(topicKey, topicId)
+        }
+      }
+    }
+
     const { data: question, error: qErr } = await supabase
       .from('questions')
       .insert({
@@ -67,6 +95,8 @@ export async function POST(request: NextRequest) {
         difficulty: row.schwierigkeit,
         explanation: row.erklaerung ?? null,
         is_active: true,
+        class_level: row.klassenstufe ?? null,
+        topic_id: topicId,
       })
       .select('id')
       .single()

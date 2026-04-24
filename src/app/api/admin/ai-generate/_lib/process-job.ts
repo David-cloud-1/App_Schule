@@ -19,7 +19,7 @@ interface ClaudeResponse {
 
 const EXAM_CONTEXT = `
 Du erstellst Prüfungsfragen für angehende Speditionskaufleute (IHK Bayern).
-Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse).
+Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse), PUG (Politik und Gesellschaft).
 Erstelle ausschließlich Multiple-Choice-Fragen mit genau 5 Antwortoptionen, wobei exakt eine korrekt ist.
 Setze "review_required": true wenn die Frage eine eindeutige korrekte Antwort nicht zweifelsfrei belegt.
 `
@@ -44,10 +44,14 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
   throw new Error(`Unsupported file type: ${mimeType}`)
 }
 
-export async function generateQuestionsWithClaude(text: string): Promise<GeneratedQuestion[]> {
+export async function generateQuestionsWithClaude(text: string, classLevel: number | null = null): Promise<GeneratedQuestion[]> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
   const truncated = text.slice(0, 80_000) // stay within token limits
+
+  const classLevelHint = classLevel
+    ? `Die Fragen sollen dem Niveau von Klasse ${classLevel} entsprechen.`
+    : 'Die Fragen sind für alle Klassenstufen geeignet.'
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -56,6 +60,7 @@ export async function generateQuestionsWithClaude(text: string): Promise<Generat
       {
         role: 'user',
         content: `${EXAM_CONTEXT}
+${classLevelHint}
 
 Dokumentinhalt:
 ${truncated}
@@ -107,6 +112,14 @@ export async function processJob(
   mimeType: string
 ): Promise<void> {
   try {
+    // Fetch class_level from the job record
+    const { data: job } = await supabase
+      .from('generation_jobs')
+      .select('class_level')
+      .eq('id', jobId)
+      .single()
+    const classLevel = (job?.class_level as number | null) ?? null
+
     const text = await extractText(buffer, mimeType)
 
     if (!text || text.trim().length < 50) {
@@ -117,7 +130,7 @@ export async function processJob(
       return
     }
 
-    const questions = await generateQuestionsWithClaude(text)
+    const questions = await generateQuestionsWithClaude(text, classLevel)
 
     if (questions.length === 0) {
       await supabase
@@ -134,6 +147,7 @@ export async function processJob(
       correct_index: q.correct_index,
       explanation: q.explanation ?? null,
       status: q.review_required ? 'review_required' : 'pending',
+      class_level: classLevel,
     }))
 
     await supabase.from('questions_draft').insert(draftRows)

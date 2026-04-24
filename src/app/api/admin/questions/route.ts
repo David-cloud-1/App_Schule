@@ -7,6 +7,9 @@ const ListQuerySchema = z.object({
   subject: z.string().optional(),
   status: z.enum(['active', 'inactive', 'all']).default('all'),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
+  class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
+  topic_id: z.string().uuid().optional(),
+  missing_class_level: z.enum(['true']).optional(),
   page: z.coerce.number().int().min(1).default(1),
 })
 
@@ -21,11 +24,13 @@ const CreateQuestionSchema = z.object({
   explanation: z.string().max(2000).optional().nullable(),
   type: z.enum(['multiple_choice', 'open']).default('multiple_choice'),
   sample_answer: z.string().max(2000).optional().nullable(),
-  answers: z.array(AnswerSchema).length(4).optional(),
+  answers: z.array(AnswerSchema).length(5).optional(),
   subject_ids: z.array(z.string().uuid()).min(1),
+  class_level: z.union([z.literal(10), z.literal(11), z.literal(12), z.null()]),
+  topic_id: z.string().uuid().nullable().optional(),
 }).refine(
-  (val) => val.type === 'open' || (val.answers && val.answers.length === 4),
-  { message: 'Multiple-Choice-Fragen benötigen genau 4 Antworten.', path: ['answers'] }
+  (val) => val.type === 'open' || (val.answers && val.answers.length === 5),
+  { message: 'Multiple-Choice-Fragen benötigen genau 5 Antworten.', path: ['answers'] }
 )
 
 const PAGE_SIZE = 20
@@ -45,7 +50,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { q, subject, status, difficulty, page } = parsed.data
+  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, page } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -82,10 +87,13 @@ export async function GET(request: NextRequest) {
         question_text,
         explanation,
         difficulty,
+        class_level,
+        topic_id,
         is_active,
         created_at,
         answer_options ( id, option_text, is_correct, display_order ),
-        question_subjects ( subjects ( id, code, name ) )
+        question_subjects ( subjects ( id, code, name ) ),
+        topics ( id, name )
       `,
       { count: 'exact' }
     )
@@ -96,6 +104,15 @@ export async function GET(request: NextRequest) {
   }
   if (difficulty) {
     query = query.eq('difficulty', difficulty)
+  }
+  if (class_level) {
+    query = query.eq('class_level', class_level)
+  }
+  if (topic_id) {
+    query = query.eq('topic_id', topic_id)
+  }
+  if (missing_class_level === 'true') {
+    query = query.is('class_level', null)
   }
   if (status === 'active') {
     query = query.eq('is_active', true)
@@ -146,7 +163,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { question_text, difficulty, explanation, type, sample_answer, answers, subject_ids } = parsed.data
+  const { question_text, difficulty, explanation, type, sample_answer, answers, subject_ids, class_level, topic_id } = parsed.data
 
   // Exactly one correct answer required for MC
   if (type === 'multiple_choice' && answers) {
@@ -169,6 +186,8 @@ export async function POST(request: NextRequest) {
       type,
       sample_answer: sample_answer ?? null,
       is_active: true,
+      class_level: class_level ?? null,
+      topic_id: topic_id ?? null,
     })
     .select('id')
     .single()

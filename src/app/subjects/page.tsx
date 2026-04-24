@@ -1,9 +1,11 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { SubjectCard } from '@/components/subject-card'
 import { LogoutButton } from '@/components/logout-button'
+import { ClassLevelFilter } from '@/components/class-level-filter'
 import { BarChart3, Calculator, Truck, Package, Zap, Scale, Shuffle } from 'lucide-react'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 
@@ -31,7 +33,11 @@ const SUBJECT_META: Record<string, { icon: LucideIcon; description: string }> = 
   },
 }
 
-export default async function SubjectsPage() {
+export default async function SubjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ class_level?: string }>
+}) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -40,6 +46,10 @@ export default async function SubjectsPage() {
   if (!user) {
     redirect('/login')
   }
+
+  const { class_level } = await searchParams
+  const classLevelParam = ['10', '11', '12'].includes(class_level ?? '') ? class_level! : ''
+  const quizClassParam = classLevelParam ? `&class_level=${classLevelParam}` : ''
 
   const [profileResult, subjectsResult] = await Promise.all([
     supabase.from('profiles').select('display_name').eq('id', user.id).single(),
@@ -91,7 +101,7 @@ export default async function SubjectsPage() {
 
       {/* Content */}
       <main className="max-w-md mx-auto px-4 py-6">
-        <div className="mb-6">
+        <div className="mb-4">
           <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">
             Hallo, {displayName}!
           </h1>
@@ -100,8 +110,15 @@ export default async function SubjectsPage() {
           </p>
         </div>
 
+        {/* Class level filter */}
+        <div className="mb-5">
+          <Suspense>
+            <ClassLevelFilter current={classLevelParam} />
+          </Suspense>
+        </div>
+
         {/* Mixed mode CTA */}
-        <Link href="/quiz" className="block mb-4">
+        <Link href={`/quiz${quizClassParam ? `?${quizClassParam.slice(1)}` : ''}`} className="block mb-4">
           <div className="bg-[#1F2937] border border-[#58CC02]/40 hover:border-[#58CC02] rounded-2xl p-5 flex items-center gap-4 transition-all duration-200 group">
             <div className="w-12 h-12 rounded-2xl bg-[#58CC02]/20 flex items-center justify-center flex-shrink-0">
               <Shuffle size={22} className="text-[#58CC02]" />
@@ -132,6 +149,7 @@ export default async function SubjectsPage() {
                 color={subject.color}
                 icon={meta.icon}
                 activeQuestionCount={subject.active_question_count}
+                classLevelParam={classLevelParam}
               />
             )
           })}

@@ -4,6 +4,14 @@ import { useCallback, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { FileText, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 export type GenerationJob = {
   id: string
@@ -31,6 +39,7 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
   const [pending, setPending] = useState<PendingFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [classLevel, setClassLevel] = useState<string>('all')
   const inputRef = useRef<HTMLInputElement>(null)
 
   function addFiles(files: FileList | File[]) {
@@ -65,6 +74,9 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
       try {
         const form = new FormData()
         form.append('file', file)
+        if (classLevel !== 'all') {
+          form.append('class_level', classLevel)
+        }
         const res = await fetch('/api/admin/ai-generate/upload', { method: 'POST', body: form })
         const json = await res.json()
         if (!res.ok) { toast.error(`"${file.name}": ${json.error ?? 'Upload fehlgeschlagen'}`); continue }
@@ -79,6 +91,27 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Class level selector */}
+      <div className="space-y-1.5">
+        <Label className="text-[#F9FAFB]">
+          Klassenstufe <span className="text-[#FF4B4B]">*</span>
+        </Label>
+        <Select value={classLevel} onValueChange={setClassLevel}>
+          <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectItem value="all">Alle Klassenstufen</SelectItem>
+            <SelectItem value="10">Klasse 10</SelectItem>
+            <SelectItem value="11">Klasse 11</SelectItem>
+            <SelectItem value="12">Klasse 12</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-[#9CA3AF]">
+          Wird auf alle generierten Entwürfe angewendet — im Entwurfs-Editor nachträglich änderbar.
+        </p>
+      </div>
+
       <div
         className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer select-none ${
           dragOver

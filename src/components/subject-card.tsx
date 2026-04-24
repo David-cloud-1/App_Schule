@@ -12,6 +12,7 @@ interface SubjectCardProps {
   color: string
   icon: LucideIcon
   activeQuestionCount: number
+  classLevelParam?: string
 }
 
 export function SubjectCard({
@@ -22,8 +23,12 @@ export function SubjectCard({
   color,
   icon: Icon,
   activeQuestionCount,
+  classLevelParam = '',
 }: SubjectCardProps) {
   const hasQuestions = activeQuestionCount > 0
+  const quizHref = classLevelParam
+    ? `/quiz?subject=${id}&class_level=${classLevelParam}`
+    : `/quiz?subject=${id}`
 
   return (
     <Card className="bg-[#1F2937] border-[#4B5563] rounded-2xl shadow-lg transition-all duration-200 hover:border-[#6B7280]">
@@ -53,7 +58,7 @@ export function SubjectCard({
 
         {/* CTA */}
         {hasQuestions ? (
-          <Link href={`/quiz?subject=${id}`}>
+          <Link href={quizHref}>
             <Button
               className="w-full rounded-2xl font-semibold text-white transition-all duration-200 active:scale-95"
               style={{ backgroundColor: color }}

@@ -25,7 +25,8 @@
 | PROJ-9 | Admin Content Management Panel | Deployed | [PROJ-9-admin-content-management.md](PROJ-9-admin-content-management.md) | 2026-04-16 |
 | PROJ-10 | AI Question Generation | Deployed | [PROJ-10-ai-question-generation.md](PROJ-10-ai-question-generation.md) | 2026-04-16 |
 | PROJ-11 | Exam Simulation Mode | Deployed | [PROJ-11-exam-simulation-mode.md](PROJ-11-exam-simulation-mode.md) | 2026-04-16 |
+| PROJ-12 | Class Levels & Topics | Deployed | [PROJ-12-class-levels-topics.md](PROJ-12-class-levels-topics.md) | 2026-04-24 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-12
+## Next Available ID: PROJ-13

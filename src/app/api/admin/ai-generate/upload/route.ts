@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Keine Datei übermittelt.' }, { status: 400 })
   }
 
+  const classLevelRaw = formData.get('class_level')
+  const classLevel: number | null =
+    classLevelRaw && ['10', '11', '12'].includes(String(classLevelRaw))
+      ? Number(classLevelRaw)
+      : null
+
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
       { error: 'Ungültiger Dateityp. Nur PDF und DOCX sind erlaubt.' },
@@ -52,6 +58,7 @@ export async function POST(request: NextRequest) {
       filename: file.name,
       file_size_bytes: file.size,
       status: 'processing',
+      class_level: classLevel,
     })
     .select('*')
     .single()

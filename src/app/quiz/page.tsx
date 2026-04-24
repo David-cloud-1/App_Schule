@@ -19,7 +19,7 @@ function shuffle<T>(arr: T[]): T[] {
 export default async function QuizPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string }>
+  searchParams: Promise<{ subject?: string; class_level?: string }>
 }) {
   const supabase = await createClient()
   const {
@@ -30,7 +30,8 @@ export default async function QuizPage({
     redirect('/login')
   }
 
-  const { subject: subjectId } = await searchParams
+  const { subject: subjectId, class_level } = await searchParams
+  const classLevel = ['10', '11', '12'].includes(class_level ?? '') ? Number(class_level) : null
 
   // ── Resolve subject + eligible question IDs ─────────────────────────────
   let subject: { id: string; code: string; name: string; color: string } | null = null
@@ -86,6 +87,9 @@ export default async function QuizPage({
 
   if (subjectQuestionIds) {
     query = query.in('id', subjectQuestionIds)
+  }
+  if (classLevel) {
+    query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
   }
   if (answeredTodayIds.length > 0) {
     query = query.not('id', 'in', `(${answeredTodayIds.join(',')})`)

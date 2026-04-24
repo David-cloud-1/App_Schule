@@ -190,6 +190,7 @@ export type Database = {
       generation_jobs: {
         Row: {
           admin_id: string
+          class_level: number | null
           created_at: string
           error_message: string | null
           file_path: string | null
@@ -201,6 +202,7 @@ export type Database = {
         }
         Insert: {
           admin_id: string
+          class_level?: number | null
           created_at?: string
           error_message?: string | null
           file_path?: string | null
@@ -212,6 +214,7 @@ export type Database = {
         }
         Update: {
           admin_id?: string
+          class_level?: number | null
           created_at?: string
           error_message?: string | null
           file_path?: string | null
@@ -291,6 +294,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          class_level: number | null
           created_at: string | null
           difficulty: string
           explanation: string | null
@@ -298,9 +302,11 @@ export type Database = {
           is_active: boolean
           question_text: string
           sample_answer: string | null
+          topic_id: string | null
           type: string
         }
         Insert: {
+          class_level?: number | null
           created_at?: string | null
           difficulty: string
           explanation?: string | null
@@ -308,9 +314,11 @@ export type Database = {
           is_active?: boolean
           question_text: string
           sample_answer?: string | null
+          topic_id?: string | null
           type?: string
         }
         Update: {
+          class_level?: number | null
           created_at?: string | null
           difficulty?: string
           explanation?: string | null
@@ -318,12 +326,22 @@ export type Database = {
           is_active?: boolean
           question_text?: string
           sample_answer?: string | null
+          topic_id?: string | null
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "questions_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions_draft: {
         Row: {
+          class_level: number | null
           correct_index: number
           created_at: string
           difficulty: string | null
@@ -337,6 +355,7 @@ export type Database = {
           subject_code: string | null
         }
         Insert: {
+          class_level?: number | null
           correct_index: number
           created_at?: string
           difficulty?: string | null
@@ -350,6 +369,7 @@ export type Database = {
           subject_code?: string | null
         }
         Update: {
+          class_level?: number | null
           correct_index?: number
           created_at?: string
           difficulty?: string | null
@@ -494,6 +514,35 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      topics: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topics_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_badges: {
         Row: {

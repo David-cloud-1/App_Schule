@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select'
 import type { DraftQuestion } from '@/app/admin/ai-generator/page'
 
-const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP'] as const
+const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP', 'PUG'] as const
 
 interface Props {
   draft: DraftQuestion | null
@@ -43,6 +43,7 @@ type FormState = {
   explanation: string
   subject_code: string
   difficulty: string
+  class_level: string
 }
 
 const OPT_KEYS = ['opt_a', 'opt_b', 'opt_c', 'opt_d', 'opt_e'] as const
@@ -55,6 +56,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
     explanation: '',
     subject_code: '_none',
     difficulty: 'mittel',
+    class_level: '_all',
   })
   const [saving, setSaving] = useState(false)
 
@@ -71,6 +73,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
       explanation: draft.explanation ?? '',
       subject_code: draft.subject_code ?? '_none',
       difficulty: draft.difficulty ?? 'mittel',
+      class_level: draft.class_level ? String(draft.class_level) : '_all',
     })
   }, [draft])
 
@@ -85,6 +88,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
       explanation: form.explanation.trim() || null,
       subject_code: form.subject_code === '_none' ? null : form.subject_code,
       difficulty: form.difficulty as DraftQuestion['difficulty'],
+      class_level: form.class_level === '_all' ? null : (Number(form.class_level) as 10 | 11 | 12),
     })
     setSaving(false)
   }
@@ -165,8 +169,8 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
             />
           </div>
 
-          {/* Subject + Difficulty */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Subject + Difficulty + Class level */}
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Fach</Label>
               <Select
@@ -198,6 +202,24 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                   <SelectItem value="leicht">Leicht</SelectItem>
                   <SelectItem value="mittel">Mittel</SelectItem>
                   <SelectItem value="schwer">Schwer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Klassenstufe</Label>
+              <Select
+                value={form.class_level}
+                onValueChange={(v) => setForm({ ...form, class_level: v })}
+              >
+                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectItem value="_all">Alle</SelectItem>
+                  <SelectItem value="10">Kl. 10</SelectItem>
+                  <SelectItem value="11">Kl. 11</SelectItem>
+                  <SelectItem value="12">Kl. 12</SelectItem>
                 </SelectContent>
               </Select>
             </div>

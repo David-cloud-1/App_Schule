@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import {
@@ -38,6 +38,12 @@ export type AdminAnswerOption = {
   display_order: number
 }
 
+export type AdminTopic = {
+  id: string
+  name: string
+  subject_id: string
+}
+
 export type AdminQuestion = {
   id: string
   question_text: string
@@ -46,6 +52,8 @@ export type AdminQuestion = {
   type?: 'multiple_choice' | 'open'
   sample_answer?: string | null
   is_active: boolean
+  class_level?: number | null
+  topic_id?: string | null
   answer_options: AdminAnswerOption[]
   question_subjects: { subjects: { id: string; code: string; name: string } | null }[]
 }
@@ -71,6 +79,8 @@ type FormState = {
   explanation: string
   difficulty: 'leicht' | 'mittel' | 'schwer'
   subject_ids: string[]
+  class_level: '10' | '11' | '12' | '_all'
+  topic_id: string
 }
 
 const EMPTY: FormState = {
@@ -86,6 +96,8 @@ const EMPTY: FormState = {
   explanation: '',
   difficulty: 'mittel',
   subject_ids: [],
+  class_level: '_all',
+  topic_id: '_none',
 }
 
 export function QuestionFormModal({
@@ -98,8 +110,27 @@ export function QuestionFormModal({
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [topics, setTopics] = useState<AdminTopic[]>([])
+  const [loadingTopics, setLoadingTopics] = useState(false)
 
   const isEdit = Boolean(question)
+
+  const loadTopicsForSubjects = useCallback(async (subjectIds: string[]) => {
+    if (subjectIds.length === 0) { setTopics([]); return }
+    setLoadingTopics(true)
+    try {
+      const params = new URLSearchParams()
+      // Load topics for the first selected subject (primary subject)
+      params.set('subject_id', subjectIds[0])
+      const res = await fetch(`/api/admin/topics?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setTopics(data.topics ?? [])
+      }
+    } finally {
+      setLoadingTopics(false)
+    }
+  }, [])
 
   // Seed form state when opening / switching question
   useEffect(() => {
@@ -116,6 +147,9 @@ export function QuestionFormModal({
         | 'C'
         | 'D'
         | 'E'
+      const subjectIds = question.question_subjects
+        .map((qs) => qs.subjects?.id)
+        .filter((id): id is string => Boolean(id))
       setForm({
         question_text: question.question_text,
         type: question.type ?? 'multiple_choice',
@@ -128,15 +162,17 @@ export function QuestionFormModal({
         correct_letter,
         explanation: question.explanation ?? '',
         difficulty: question.difficulty,
-        subject_ids: question.question_subjects
-          .map((qs) => qs.subjects?.id)
-          .filter((id): id is string => Boolean(id)),
+        subject_ids: subjectIds,
+        class_level: question.class_level ? String(question.class_level) as '10' | '11' | '12' : '_all',
+        topic_id: question.topic_id ?? '_none',
       })
+      loadTopicsForSubjects(subjectIds)
     } else {
       setForm(EMPTY)
+      setTopics([])
     }
     setErrors({})
-  }, [open, question])
+  }, [open, question, loadTopicsForSubjects])
 
   const remaining = useMemo(() => 1000 - form.question_text.length, [form.question_text])
 
@@ -168,6 +204,8 @@ export function QuestionFormModal({
       type: form.type,
       sample_answer: form.sample_answer.trim() ? form.sample_answer.trim() : null,
       subject_ids: form.subject_ids,
+      class_level: form.class_level === '_all' ? null : Number(form.class_level),
+      topic_id: form.topic_id === '_none' ? null : form.topic_id,
     }
 
     if (form.type === 'multiple_choice') {
@@ -205,12 +243,13 @@ export function QuestionFormModal({
   }
 
   function toggleSubject(id: string, checked: boolean) {
-    setForm((f) => ({
-      ...f,
-      subject_ids: checked
+    setForm((f) => {
+      const next = checked
         ? Array.from(new Set([...f.subject_ids, id]))
-        : f.subject_ids.filter((sid) => sid !== id),
-    }))
+        : f.subject_ids.filter((sid) => sid !== id)
+      loadTopicsForSubjects(next)
+      return { ...f, subject_ids: next, topic_id: '_none' }
+    })
   }
 
   return (
@@ -370,6 +409,30 @@ export function QuestionFormModal({
             </div>
 
             <div className="space-y-2">
+              <Label>
+                Klassenstufe <span className="text-[#FF4B4B]">*</span>
+              </Label>
+              <Select
+                value={form.class_level}
+                onValueChange={(v) =>
+                  setForm({ ...form, class_level: v as FormState['class_level'] })
+                }
+              >
+                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectItem value="_all">Alle Klassen</SelectItem>
+                  <SelectItem value="10">Klasse 10</SelectItem>
+                  <SelectItem value="11">Klasse 11</SelectItem>
+                  <SelectItem value="12">Klasse 12</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label>Fächer</Label>
               <div className="flex flex-wrap gap-2 p-3 bg-[#111827] border border-[#4B5563] rounded-xl">
                 {subjects.length === 0 ? (
@@ -399,6 +462,32 @@ export function QuestionFormModal({
               </div>
               {errors.subject_ids && (
                 <p className="text-xs text-[#FF4B4B]">{errors.subject_ids}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Thema (optional)</Label>
+              <Select
+                value={form.topic_id}
+                onValueChange={(v) => setForm({ ...form, topic_id: v })}
+                disabled={form.subject_ids.length === 0}
+              >
+                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                  {loadingTopics ? (
+                    <span className="text-[#9CA3AF] text-sm">Laden…</span>
+                  ) : (
+                    <SelectValue placeholder="Kein Thema" />
+                  )}
+                </SelectTrigger>
+                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectItem value="_none">Kein Thema</SelectItem>
+                  {topics.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.subject_ids.length === 0 && (
+                <p className="text-xs text-[#9CA3AF]">Erst ein Fach auswählen.</p>
               )}
             </div>
           </div>

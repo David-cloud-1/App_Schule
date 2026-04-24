@@ -4,7 +4,7 @@ import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
 
 const BulkAcceptSchema = z.object({
   draft_ids: z.array(z.string().uuid()).min(1).max(200),
-  subject_code: z.enum(['BGP', 'KSK', 'STG', 'LOP']).optional(),
+  subject_code: z.enum(['BGP', 'KSK', 'STG', 'LOP', 'PUG']).optional(),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
 })
 
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         difficulty: draft.difficulty,
         explanation: draft.explanation ?? null,
         is_active: true,
+        class_level: (draft.class_level as number | null) ?? null,
       })
       .select('id')
       .single()

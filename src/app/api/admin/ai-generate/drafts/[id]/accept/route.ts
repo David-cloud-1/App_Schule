@@ -31,7 +31,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (!draft.subject_code) {
     return NextResponse.json(
-      { error: 'Bitte Fach (BGP/KSK/STG/LOP) vor dem Akzeptieren zuweisen.' },
+      { error: 'Bitte Fach (BGP/KSK/STG/LOP/PUG) vor dem Akzeptieren zuweisen.' },
       { status: 422 }
     )
   }
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       difficulty: draft.difficulty,
       explanation: draft.explanation ?? null,
       is_active: true,
+      class_level: (draft.class_level as number | null) ?? null,
     })
     .select('id')
     .single()
