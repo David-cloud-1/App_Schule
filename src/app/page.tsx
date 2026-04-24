@@ -229,7 +229,27 @@ export default async function HomePage() {
           <XpProgressBar totalXp={totalXp} />
         </div>
 
-        {/* ── Section 2: Subject Progress ── */}
+        {/* ── CTA Button ── */}
+        <Link href="/subjects">
+          <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 shadow-lg shadow-green-900/30">
+            <BookOpen className="mr-2" size={20} />
+            Jetzt lernen
+          </Button>
+        </Link>
+
+        {/* ── Section 2: Overall Stats (only if sessions exist) ── */}
+        {hasSessions && (
+          <OverallStatsRow
+            totalCorrect={totalCorrect}
+            totalWrong={totalWrong}
+            accuracyPercent={accuracy}
+          />
+        )}
+
+        {/* ── Section 3: 7-Day Activity ── */}
+        <WeekActivityDots weekActivity={weekActivity} />
+
+        {/* ── Section 4: Subject Progress ── */}
         <div>
           <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-3">
             Fach-Fortschritt
@@ -244,26 +264,6 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-
-        {/* ── Section 3: 7-Day Activity ── */}
-        <WeekActivityDots weekActivity={weekActivity} />
-
-        {/* ── Section 4: Overall Stats (only if sessions exist) ── */}
-        {hasSessions && (
-          <OverallStatsRow
-            totalCorrect={totalCorrect}
-            totalWrong={totalWrong}
-            accuracyPercent={accuracy}
-          />
-        )}
-
-        {/* ── CTA Buttons ── */}
-        <Link href="/subjects">
-          <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 shadow-lg shadow-green-900/30">
-            <BookOpen className="mr-2" size={20} />
-            Jetzt lernen
-          </Button>
-        </Link>
 
         <Link href="/exam">
           <Button variant="outline" className="w-full rounded-2xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-bold text-base py-6 transition-all duration-200 active:scale-95">
