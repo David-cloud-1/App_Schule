@@ -100,6 +100,9 @@ export default function AdminQuestionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [allTopics, setAllTopics] = useState<TopicWithSubject[]>([])
   const [bulkTopicId, setBulkTopicId] = useState<string>('')
+  const [bulkClassLevel, setBulkClassLevel] = useState<string>('')
+  const [bulkSubjectId, setBulkSubjectId] = useState<string>('')
+  const [bulkDifficulty, setBulkDifficulty] = useState<string>('')
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
 
   // Reset page when filters change
@@ -214,26 +217,52 @@ export default function AdminQuestionsPage() {
     }
   }
 
-  async function handleBulkAssignTopic() {
-    if (selectedIds.size === 0 || !bulkTopicId) return
+  async function handleBulkApply() {
+    if (selectedIds.size === 0) return
+
+    const payload: Record<string, unknown> = { ids: Array.from(selectedIds) }
+    let hasField = false
+
+    if (bulkTopicId) {
+      payload.topic_id = bulkTopicId === '_none' ? null : bulkTopicId
+      hasField = true
+    }
+    if (bulkClassLevel) {
+      payload.class_level = bulkClassLevel === '_all' ? null : Number(bulkClassLevel)
+      hasField = true
+    }
+    if (bulkSubjectId) {
+      payload.subject_id = bulkSubjectId
+      hasField = true
+    }
+    if (bulkDifficulty) {
+      payload.difficulty = bulkDifficulty
+      hasField = true
+    }
+
+    if (!hasField) {
+      toast.error('Bitte mindestens ein Feld auswählen.')
+      return
+    }
+
     setBulkSubmitting(true)
     try {
       const res = await fetch('/api/admin/questions/bulk', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: Array.from(selectedIds),
-          topic_id: bulkTopicId === '_none' ? null : bulkTopicId,
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
-        toast.error('Thema konnte nicht zugewiesen werden.')
+        toast.error('Zuweisung fehlgeschlagen.')
         return
       }
       const json = await res.json()
       toast.success(`${json.updated} Fragen aktualisiert`)
       setSelectedIds(new Set())
       setBulkTopicId('')
+      setBulkClassLevel('')
+      setBulkSubjectId('')
+      setBulkDifficulty('')
       fetchQuestions()
     } catch (err) {
       console.error(err)
@@ -383,43 +412,79 @@ export default function AdminQuestionsPage() {
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-[#374151] border border-[#4B5563] rounded-xl">
-          <span className="text-sm font-medium text-[#F9FAFB]">
-            {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} ausgewählt
-          </span>
-          <div className="flex-1" />
-          <Select value={bulkTopicId} onValueChange={setBulkTopicId}>
-            <SelectTrigger className="w-[220px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-              <SelectValue placeholder="Thema zuweisen…" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-              <SelectItem value="_none">Kein Thema (entfernen)</SelectItem>
-              {allTopics.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.subjects?.code ? `${t.subjects.code} – ` : ''}
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={handleBulkAssignTopic}
-            disabled={bulkSubmitting || !bulkTopicId}
-            size="sm"
-            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
-          >
-            {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            Zuweisen
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedIds(new Set())}
-            className="text-[#9CA3AF]"
-          >
-            <X className="w-4 h-4 mr-1" />
-            Aufheben
-          </Button>
+        <div className="flex flex-col gap-3 px-4 py-3 bg-[#374151] border border-[#4B5563] rounded-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-[#F9FAFB]">
+              {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} ausgewählt
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-[#9CA3AF]"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Aufheben
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <Select value={bulkSubjectId} onValueChange={setBulkSubjectId}>
+              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Fach…" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                {subjects.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.code} – {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={bulkClassLevel} onValueChange={setBulkClassLevel}>
+              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Jahrgangsstufe…" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectItem value="_all">Alle Klassen</SelectItem>
+                <SelectItem value="10">Klasse 10</SelectItem>
+                <SelectItem value="11">Klasse 11</SelectItem>
+                <SelectItem value="12">Klasse 12</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={bulkDifficulty} onValueChange={setBulkDifficulty}>
+              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Schwierigkeit…" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectItem value="leicht">Leicht</SelectItem>
+                <SelectItem value="mittel">Mittel</SelectItem>
+                <SelectItem value="schwer">Schwer</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={bulkTopicId} onValueChange={setBulkTopicId}>
+              <SelectTrigger className="w-[200px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Thema…" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectItem value="_none">Kein Thema (entfernen)</SelectItem>
+                {allTopics.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.subjects?.code ? `${t.subjects.code} – ` : ''}
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleBulkApply}
+              disabled={bulkSubmitting || (!bulkTopicId && !bulkClassLevel && !bulkSubjectId && !bulkDifficulty)}
+              size="sm"
+              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+            >
+              {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Anwenden
+            </Button>
+          </div>
         </div>
       )}
 
