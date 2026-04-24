@@ -10,6 +10,7 @@ const ListQuerySchema = z.object({
   class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
   topic_id: z.string().uuid().optional(),
   missing_class_level: z.enum(['true']).optional(),
+  missing_topic: z.enum(['true']).optional(),
   page: z.coerce.number().int().min(1).default(1),
 })
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, page } = parsed.data
+  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, missing_topic, page } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -113,6 +114,9 @@ export async function GET(request: NextRequest) {
   }
   if (missing_class_level === 'true') {
     query = query.is('class_level', null)
+  }
+  if (missing_topic === 'true') {
+    query = query.is('topic_id', null)
   }
   if (status === 'active') {
     query = query.eq('is_active', true)

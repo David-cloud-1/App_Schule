@@ -2,18 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import {
-  Edit,
-  FileUp,
-  Loader2,
-  Plus,
-  Search,
-  Trash2,
-} from 'lucide-react'
+import { Edit, FileUp, Loader2, Plus, Search, Trash2, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -56,8 +50,19 @@ import {
 } from '@/components/admin/question-form-modal'
 import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
 
+type TopicWithSubject = {
+  id: string
+  name: string
+  subject_id: string
+  subjects?: { id: string; code: string; name: string } | null
+}
+
+type QuestionWithTopic = AdminQuestion & {
+  topics?: { id: string; name: string } | null
+}
+
 type QuestionsResponse = {
-  questions: AdminQuestion[]
+  questions: QuestionWithTopic[]
   total: number
   page: number
   totalPages: number
@@ -80,34 +85,57 @@ export default function AdminQuestionsPage() {
   const [difficultyFilter, setDifficultyFilter] = useState<
     'all' | 'leicht' | 'mittel' | 'schwer'
   >('all')
+  const [topicFilter, setTopicFilter] = useState<'all' | 'none'>('all')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<QuestionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [subjects, setSubjects] = useState<AdminSubject[]>([])
   const [formOpen, setFormOpen] = useState(false)
-  const [editingQuestion, setEditingQuestion] = useState<AdminQuestion | null>(null)
+  const [editingQuestion, setEditingQuestion] = useState<QuestionWithTopic | null>(null)
   const [importOpen, setImportOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<AdminQuestion | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<QuestionWithTopic | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Bulk state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [allTopics, setAllTopics] = useState<TopicWithSubject[]>([])
+  const [bulkTopicId, setBulkTopicId] = useState<string>('')
+  const [bulkSubmitting, setBulkSubmitting] = useState(false)
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1)
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter])
+    setSelectedIds(new Set())
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter])
+
+  // Clear selection when page changes
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [page])
 
   const fetchSubjects = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/subjects')
       if (!res.ok) return
       const json = await res.json()
-      const list: AdminSubject[] = (json.subjects ?? []).map(
-        (s: { id: string; code: string; name: string }) => ({
+      setSubjects(
+        (json.subjects ?? []).map((s: { id: string; code: string; name: string }) => ({
           id: s.id,
           code: s.code,
           name: s.name,
-        })
+        }))
       )
-      setSubjects(list)
+    } catch (err) {
+      console.error(err)
+    }
+  }, [])
+
+  const fetchAllTopics = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/topics')
+      if (!res.ok) return
+      const json = await res.json()
+      setAllTopics(json.topics ?? [])
     } catch (err) {
       console.error(err)
     }
@@ -121,6 +149,7 @@ export default function AdminQuestionsPage() {
       if (subjectFilter !== 'all') params.set('subject', subjectFilter)
       params.set('status', statusFilter)
       if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter)
+      if (topicFilter === 'none') params.set('missing_topic', 'true')
       params.set('page', String(page))
 
       const res = await fetch(`/api/admin/questions?${params.toString()}`)
@@ -128,25 +157,25 @@ export default function AdminQuestionsPage() {
         toast.error('Fragen konnten nicht geladen werden.')
         return
       }
-      const json = (await res.json()) as QuestionsResponse
-      setData(json)
+      setData((await res.json()) as QuestionsResponse)
     } catch (err) {
       console.error(err)
       toast.error('Netzwerkfehler')
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, page])
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, page])
 
   useEffect(() => {
     fetchSubjects()
-  }, [fetchSubjects])
+    fetchAllTopics()
+  }, [fetchSubjects, fetchAllTopics])
 
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
 
-  async function toggleActive(q: AdminQuestion, next: boolean) {
+  async function toggleActive(q: QuestionWithTopic, next: boolean) {
     try {
       const res = await fetch(`/api/admin/questions/${q.id}`, {
         method: 'PATCH',
@@ -169,9 +198,7 @@ export default function AdminQuestionsPage() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      const res = await fetch(`/api/admin/questions/${deleteTarget.id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/admin/questions/${deleteTarget.id}`, { method: 'DELETE' })
       if (!res.ok) {
         toast.error('Löschen fehlgeschlagen')
         return
@@ -187,9 +214,62 @@ export default function AdminQuestionsPage() {
     }
   }
 
+  async function handleBulkAssignTopic() {
+    if (selectedIds.size === 0 || !bulkTopicId) return
+    setBulkSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/questions/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selectedIds),
+          topic_id: bulkTopicId === '_none' ? null : bulkTopicId,
+        }),
+      })
+      if (!res.ok) {
+        toast.error('Thema konnte nicht zugewiesen werden.')
+        return
+      }
+      const json = await res.json()
+      toast.success(`${json.updated} Fragen aktualisiert`)
+      setSelectedIds(new Set())
+      setBulkTopicId('')
+      fetchQuestions()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setBulkSubmitting(false)
+    }
+  }
+
   const rows = data?.questions ?? []
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 0
+
+  const allOnPageSelected = rows.length > 0 && rows.every((q) => selectedIds.has(q.id))
+  const someOnPageSelected = rows.some((q) => selectedIds.has(q.id))
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (allOnPageSelected) {
+        rows.forEach((q) => next.delete(q.id))
+      } else {
+        rows.forEach((q) => next.add(q.id))
+      }
+      return next
+    })
+  }
+
+  function toggleSelectOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const pageNumbers = useMemo(() => {
     if (totalPages <= 1) return []
@@ -203,7 +283,8 @@ export default function AdminQuestionsPage() {
   }, [totalPages, page])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Fragen</h1>
@@ -233,6 +314,7 @@ export default function AdminQuestionsPage() {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
@@ -243,9 +325,9 @@ export default function AdminQuestionsPage() {
             className="pl-9 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
           />
         </div>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-[160px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectValue placeholder="Fach" />
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
@@ -261,7 +343,7 @@ export default function AdminQuestionsPage() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
           >
-            <SelectTrigger className="w-[140px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[130px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
@@ -274,7 +356,7 @@ export default function AdminQuestionsPage() {
             value={difficultyFilter}
             onValueChange={(v) => setDifficultyFilter(v as typeof difficultyFilter)}
           >
-            <SelectTrigger className="w-[160px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectValue placeholder="Schwierigkeit" />
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
@@ -284,18 +366,83 @@ export default function AdminQuestionsPage() {
               <SelectItem value="schwer">Schwer</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={topicFilter}
+            onValueChange={(v) => setTopicFilter(v as typeof topicFilter)}
+          >
+            <SelectTrigger className="w-[140px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectValue placeholder="Thema" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="all">Alle Themen</SelectItem>
+              <SelectItem value="none">Ohne Thema</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-[#374151] border border-[#4B5563] rounded-xl">
+          <span className="text-sm font-medium text-[#F9FAFB]">
+            {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} ausgewählt
+          </span>
+          <div className="flex-1" />
+          <Select value={bulkTopicId} onValueChange={setBulkTopicId}>
+            <SelectTrigger className="w-[220px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectValue placeholder="Thema zuweisen…" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="_none">Kein Thema (entfernen)</SelectItem>
+              {allTopics.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.subjects?.code ? `${t.subjects.code} – ` : ''}
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            onClick={handleBulkAssignTopic}
+            disabled={bulkSubmitting || !bulkTopicId}
+            size="sm"
+            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+          >
+            {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            Zuweisen
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-[#9CA3AF]"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Aufheben
+          </Button>
+        </div>
+      )}
+
+      {/* Table */}
       <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
         <Table>
           <TableHeader>
             <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
+              <TableHead className="w-10 pl-4">
+                <Checkbox
+                  checked={allOnPageSelected}
+                  data-state={someOnPageSelected && !allOnPageSelected ? 'indeterminate' : undefined}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Alle auswählen"
+                  className="border-[#4B5563]"
+                />
+              </TableHead>
               <TableHead className="text-[#9CA3AF]">Fragetext</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden lg:table-cell">Thema</TableHead>
               <TableHead className="text-[#9CA3AF]">Fach</TableHead>
-              <TableHead className="text-[#9CA3AF]">Schwierigkeit</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden sm:table-cell">Schwierigkeit</TableHead>
               <TableHead className="text-[#9CA3AF]">Status</TableHead>
-              <TableHead className="text-[#9CA3AF]">Erstellt</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden md:table-cell">Erstellt</TableHead>
               <TableHead className="text-right text-[#9CA3AF]">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
@@ -303,19 +450,25 @@ export default function AdminQuestionsPage() {
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`sk-${i}`} className="border-[#4B5563]">
+                    <TableCell className="pl-4">
+                      <Skeleton className="h-4 w-4" />
+                    </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-64" />
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <Skeleton className="h-4 w-24" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-6 w-10" />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
                     <TableCell>
@@ -326,7 +479,7 @@ export default function AdminQuestionsPage() {
               : rows.length === 0
               ? (
                 <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={6} className="text-center text-[#9CA3AF] py-10">
+                  <TableCell colSpan={8} className="text-center text-[#9CA3AF] py-10">
                     Keine Fragen gefunden.
                   </TableCell>
                 </TableRow>
@@ -339,11 +492,31 @@ export default function AdminQuestionsPage() {
                   const codes = q.question_subjects
                     .map((qs) => qs.subjects?.code)
                     .filter(Boolean) as string[]
-                  const created = q.id
+                  const isSelected = selectedIds.has(q.id)
                   return (
-                    <TableRow key={q.id} className="border-[#4B5563] hover:bg-[#111827]/40">
-                      <TableCell className="text-[#F9FAFB] max-w-[360px]">
+                    <TableRow
+                      key={q.id}
+                      className={`border-[#4B5563] hover:bg-[#111827]/40 transition-colors ${
+                        isSelected ? 'bg-[#1F2937]/80 border-l-2 border-l-[#58CC02]' : ''
+                      }`}
+                    >
+                      <TableCell className="pl-4">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectOne(q.id)}
+                          aria-label="Frage auswählen"
+                          className="border-[#4B5563]"
+                        />
+                      </TableCell>
+                      <TableCell className="text-[#F9FAFB] max-w-[280px]">
                         {truncated}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {q.topics ? (
+                          <span className="text-sm text-[#9CA3AF]">{q.topics.name}</span>
+                        ) : (
+                          <span className="text-xs text-[#4B5563] italic">Kein Thema</span>
+                        )}
                       </TableCell>
                       <TableCell className="flex flex-wrap gap-1">
                         {codes.map((c) => (
@@ -356,7 +529,7 @@ export default function AdminQuestionsPage() {
                           </Badge>
                         ))}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <DifficultyBadge
                           difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'}
                         />
@@ -368,8 +541,8 @@ export default function AdminQuestionsPage() {
                           aria-label="Aktiv/Inaktiv"
                         />
                       </TableCell>
-                      <TableCell className="text-xs text-[#9CA3AF]">
-                        {formatCreatedAt(created, q)}
+                      <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
+                        {formatCreatedAt(q)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -400,6 +573,7 @@ export default function AdminQuestionsPage() {
         </Table>
       </div>
 
+      {/* Pagination */}
       {totalPages > 1 && (
         <Pagination>
           <PaginationContent>
@@ -490,8 +664,8 @@ export default function AdminQuestionsPage() {
   )
 }
 
-function formatCreatedAt(_id: string, q: AdminQuestion & { created_at?: string }): string {
-  const created = (q as AdminQuestion & { created_at?: string }).created_at
+function formatCreatedAt(q: QuestionWithTopic & { created_at?: string }): string {
+  const created = q.created_at
   if (!created) return '—'
   try {
     return new Date(created).toLocaleDateString('de-DE', {
