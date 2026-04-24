@@ -3,17 +3,17 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { LogoutButton } from '@/components/logout-button'
-import { XpLevelBadge } from '@/components/xp-level-badge'
-import { XpProgressBar } from '@/components/xp-progress-bar'
 import { StreakBadge } from '@/components/streak-badge'
 import { SubjectProgressCard } from '@/components/subject-progress-card'
 import { WeekActivityDots } from '@/components/week-activity-dots'
 import { OverallStatsRow } from '@/components/overall-stats-row'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { Button } from '@/components/ui/button'
+import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent, MAX_LEVEL } from '@/lib/xp-utils'
 import {
   Truck,
   Zap,
+  Flame,
   Shield,
   BookOpen,
   BarChart3,
@@ -23,6 +23,7 @@ import {
   User,
   Trophy,
   ClipboardList,
+  CheckCircle2,
 } from 'lucide-react'
 
 // Static subject metadata (icon per IHK code)
@@ -104,6 +105,11 @@ export default async function HomePage() {
   const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
 
   const hasSessions = totalAnswered > 0
+
+  // ── Level computations for hero ──────────────────────────────────────────
+  const level = getLevelFromXp(totalXp)
+  const levelPercent = getProgressPercent(totalXp)
+  const xpToNextLevel = getXpCostOfLevel(level) - getXpWithinLevel(totalXp)
 
   // ── Per-subject progress ─────────────────────────────────────────────────
   type RawSubject = {
@@ -210,23 +216,86 @@ export default async function HomePage() {
         {/* Onboarding card — only for new users */}
         {!hasSessions && <OnboardingCard displayName={displayName} />}
 
-        {/* ── Section 1: Gamification Header ── */}
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
+        {/* ── Section 1: Gamification Hero ── */}
+        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 relative overflow-hidden">
+          {/* Decorative glow */}
+          <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#58CC02]/10 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="flex items-center gap-4 mb-5">
+            {/* Level circle */}
+            <div className="w-16 h-16 rounded-full bg-[#58CC02]/15 border-2 border-[#58CC02]/50 flex flex-col items-center justify-center flex-shrink-0 shadow-lg shadow-green-900/20">
+              <span className="text-[9px] font-bold text-[#58CC02] uppercase tracking-widest leading-none">LVL</span>
+              <span className="text-3xl font-bold text-[#58CC02] leading-none">{level}</span>
+            </div>
+
+            {/* XP + greeting */}
+            <div className="flex-1 min-w-0">
               <p className="text-xs text-[#9CA3AF] mb-1">
                 {hasSessions ? `Weiter so, ${displayName}!` : `Hallo, ${displayName}!`}
               </p>
-              <div className="flex items-center gap-2">
-                <XpLevelBadge totalXp={totalXp} />
-                <span className="text-sm font-semibold text-[#F9FAFB]">
-                  {totalXp.toLocaleString('de-DE')} XP gesamt
+              <div className="flex items-center gap-1.5">
+                <Zap size={18} className="text-[#58CC02] flex-shrink-0" />
+                <span className="text-2xl font-bold text-[#F9FAFB] leading-none tabular-nums">
+                  {totalXp.toLocaleString('de-DE')}
                 </span>
+                <span className="text-sm text-[#9CA3AF] font-medium">XP</span>
               </div>
             </div>
-            <StreakBadge streak={currentStreak} variant="card" />
+
+            {/* Streak */}
+            <div className="flex flex-col items-center flex-shrink-0 bg-[#111827] rounded-2xl px-3 py-2 border border-[#4B5563]">
+              <Flame size={24} className={currentStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
+              <span className="text-xl font-bold text-[#F9FAFB] leading-none tabular-nums">{currentStreak}</span>
+              <span className="text-[10px] text-[#9CA3AF] mt-0.5">Streak</span>
+            </div>
           </div>
-          <XpProgressBar totalXp={totalXp} />
+
+          {/* XP Progress bar */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-xs text-[#9CA3AF]">Level {level}</span>
+              <span className="text-xs font-semibold text-[#58CC02]">
+                {level >= MAX_LEVEL ? '🏆 Max Level!' : `noch ${xpToNextLevel} XP → Lvl ${level + 1}`}
+              </span>
+            </div>
+            <div className="h-4 bg-[#374151] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#58CC02] rounded-full transition-all duration-700 relative"
+                style={{ width: `${levelPercent}%` }}
+              >
+                <div className="absolute inset-0 bg-white/10 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Today's status banner ── */}
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${
+          weekActivity[6].learned
+            ? 'bg-[#58CC02]/10 border-[#58CC02]/30'
+            : 'bg-[#1F2937] border-[#4B5563]'
+        }`}>
+          {weekActivity[6].learned ? (
+            <>
+              <div className="w-9 h-9 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#F9FAFB]">Heute gelernt! 🎉</p>
+                <p className="text-xs text-[#9CA3AF]">Dein Streak bleibt erhalten</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="w-9 h-9 rounded-full bg-[#374151] flex items-center justify-center flex-shrink-0">
+                <Flame size={18} className="text-[#FF9600]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#F9FAFB]">Heute noch nicht gelernt</p>
+                <p className="text-xs text-[#9CA3AF]">Streak endet um Mitternacht</p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* ── CTA Button ── */}
