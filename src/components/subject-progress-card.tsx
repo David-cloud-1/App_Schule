@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -33,8 +32,7 @@ export function SubjectProgressCard({
   const isComplete = hasQuestions && seenPercent === 100
 
   return (
-    <Link href={hasQuestions ? `/quiz?subject=${id}` : '#'} className={hasQuestions ? 'block' : 'block pointer-events-none'}>
-      <Card className="bg-[#1F2937] border-[#4B5563] rounded-2xl shadow-lg transition-all duration-200 hover:border-[#6B7280] active:scale-[0.99]">
+    <Card className="bg-[#1F2937] border-[#4B5563] rounded-2xl shadow-lg">
         <CardContent className="p-4">
           <div className="flex items-center gap-3 mb-3">
             {/* Subject icon */}
@@ -99,6 +97,5 @@ export function SubjectProgressCard({
           )}
         </CardContent>
       </Card>
-    </Link>
   )
 }

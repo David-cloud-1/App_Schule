@@ -257,8 +257,8 @@ export default async function HomePage() {
           />
         )}
 
-        {/* ── CTA Button ── */}
-        <Link href="/quiz">
+        {/* ── CTA Buttons ── */}
+        <Link href="/subjects">
           <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 shadow-lg shadow-green-900/30">
             <BookOpen className="mr-2" size={20} />
             Jetzt lernen
@@ -273,11 +273,6 @@ export default async function HomePage() {
         </Link>
 
         <p className="text-center text-[#6B7280] text-xs">
-          Oder wähle ein{' '}
-          <Link href="/subjects" className="text-[#9CA3AF] underline underline-offset-2">
-            bestimmtes Fach
-          </Link>
-          {' · '}
           <Link href="/exam-history" className="text-[#9CA3AF] underline underline-offset-2">
             Prüfungsverlauf
           </Link>
