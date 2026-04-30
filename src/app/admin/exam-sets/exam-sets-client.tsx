@@ -1,7 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Shield, ShieldOff, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
+import { useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  FileUp,
+  Loader2,
+  Plus,
+  Shield,
+  ShieldOff,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -35,6 +47,16 @@ type Subject = {
   name: string
 }
 
+type ExtractedQuestion = {
+  question_text: string
+  options: string[]
+  correct_index: number | null
+  needs_review: boolean
+  fach_code: string | null
+}
+
+type PreviewQuestion = ExtractedQuestion & { _key: string }
+
 interface Props {
   initialSets: ExamSet[]
   questions: Question[]
@@ -53,6 +75,10 @@ const PART_LABELS: Record<number, string> = {
   3: 'Teil 3 – WiSo (BGP)',
 }
 
+const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E']
+
+type ImportStep = 'configure' | 'extracting' | 'preview' | 'importing'
+
 export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
   const [sets, setSets] = useState(initialSets)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -67,6 +93,16 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+
+  // Import flow state
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importStep, setImportStep] = useState<ImportStep>('configure')
+  const [importName, setImportName] = useState('')
+  const [importPart, setImportPart] = useState<number | null>(null)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [previewQuestions, setPreviewQuestions] = useState<PreviewQuestion[]>([])
+  const [importError, setImportError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const subjectCodeMap = Object.fromEntries(subjects.map((s) => [s.code, s.id]))
 
@@ -143,22 +179,116 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
     }
   }
 
+  function resetImportDialog() {
+    setImportStep('configure')
+    setImportName('')
+    setImportPart(null)
+    setImportFile(null)
+    setPreviewQuestions([])
+    setImportError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleExtract() {
+    if (!importFile || !importPart || !importName.trim()) {
+      setImportError('Bitte Name, Teil und Datei angeben.')
+      return
+    }
+    setImportError(null)
+    setImportStep('extracting')
+
+    try {
+      const fd = new FormData()
+      fd.append('file', importFile)
+      const res = await fetch('/api/admin/exam-sets/extract', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) {
+        setImportStep('configure')
+        setImportError(data.error ?? 'Extraktion fehlgeschlagen.')
+        return
+      }
+      const questions: PreviewQuestion[] = (data.questions as ExtractedQuestion[]).map((q, i) => ({
+        ...q,
+        _key: String(i),
+      }))
+      setPreviewQuestions(questions)
+      setImportStep('preview')
+    } catch {
+      setImportStep('configure')
+      setImportError('Netzwerkfehler beim Extrahieren.')
+    }
+  }
+
+  async function handleImportConfirm() {
+    if (previewQuestions.length === 0) return
+    setImportStep('importing')
+    setImportError(null)
+
+    try {
+      const res = await fetch('/api/admin/exam-sets/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: importName.trim(),
+          part: importPart,
+          questions: previewQuestions.map(({ _key: _k, ...q }) => q),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setImportStep('preview')
+        setImportError(data.error ?? 'Import fehlgeschlagen.')
+        return
+      }
+      setSets((prev) => [data.set, ...prev])
+      setShowImportDialog(false)
+      resetImportDialog()
+    } catch {
+      setImportStep('preview')
+      setImportError('Netzwerkfehler beim Importieren.')
+    }
+  }
+
+  function removePreviewQuestion(key: string) {
+    setPreviewQuestions((prev) => prev.filter((q) => q._key !== key))
+  }
+
+  function setCorrectIndex(key: string, index: number) {
+    setPreviewQuestions((prev) =>
+      prev.map((q) =>
+        q._key === key ? { ...q, correct_index: index, needs_review: false } : q
+      )
+    )
+  }
+
+  const needsReviewCount = previewQuestions.filter((q) => q.needs_review).length
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-[#F9FAFB]">Prüfungssets</h2>
           <p className="text-sm text-[#9CA3AF] mt-1">
             Erstelle kuratierte Fragensets für die Prüfungssimulation. Je Teil kann ein Set aktiv sein.
           </p>
         </div>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
-        >
-          <Plus size={16} className="mr-2" />
-          Neues Set
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => { resetImportDialog(); setShowImportDialog(true) }}
+            variant="outline"
+            className="rounded-xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-semibold"
+          >
+            <FileUp size={16} className="mr-2" />
+            Aus Datei importieren
+          </Button>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
+          >
+            <Plus size={16} className="mr-2" />
+            Neues Set
+          </Button>
+        </div>
       </div>
 
       {sets.length === 0 ? (
@@ -347,6 +477,248 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
               {isCreating ? 'Wird erstellt…' : 'Set erstellen'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Dialog */}
+      <Dialog
+        open={showImportDialog}
+        onOpenChange={(open) => {
+          if (!open && importStep !== 'extracting' && importStep !== 'importing') {
+            setShowImportDialog(false)
+            resetImportDialog()
+          }
+        }}
+      >
+        <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileUp size={18} className="text-[#1CB0F6]" />
+              Aus Prüfungsaufgabe importieren
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step: configure */}
+          {importStep === 'configure' && (
+            <div className="space-y-4 py-2 overflow-y-auto flex-1">
+              <div className="space-y-2">
+                <Label className="text-[#9CA3AF]">Name des Sets</Label>
+                <Input
+                  value={importName}
+                  onChange={(e) => setImportName(e.target.value)}
+                  placeholder="z.B. IHK Prüfung Sommer 2025 – Teil 1"
+                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[#9CA3AF]">Prüfungsteil</Label>
+                <Select onValueChange={(v) => setImportPart(Number(v))}>
+                  <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
+                    <SelectValue placeholder="Teil auswählen…" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                    {[1, 2, 3].map((p) => (
+                      <SelectItem key={p} value={String(p)}>{PART_LABELS[p]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[#9CA3AF]">Prüfungsaufgabe (PDF oder Word)</Label>
+                <label
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors',
+                    importFile
+                      ? 'border-[#1CB0F6]/60 bg-[#1CB0F6]/5'
+                      : 'border-[#4B5563] hover:border-[#6B7280]',
+                  )}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="hidden"
+                    onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                  />
+                  <FileUp size={28} className={importFile ? 'text-[#1CB0F6]' : 'text-[#6B7280]'} />
+                  {importFile ? (
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-[#F9FAFB]">{importFile.name}</p>
+                      <p className="text-xs text-[#9CA3AF]">{(importFile.size / 1024).toFixed(0)} KB</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-sm text-[#9CA3AF]">PDF oder DOCX hier ablegen oder klicken</p>
+                      <p className="text-xs text-[#6B7280] mt-1">max. 50 MB</p>
+                    </div>
+                  )}
+                </label>
+              </div>
+
+              <div className="rounded-xl bg-[#111827] border border-[#374151] p-4 text-xs text-[#9CA3AF] space-y-1">
+                <p className="font-semibold text-[#F9FAFB] mb-2">So funktioniert der Import:</p>
+                <p>1. Lade eine Prüfungsaufgabe als PDF oder Word-Datei hoch.</p>
+                <p>2. Die KI extrahiert alle Multiple-Choice-Fragen <span className="text-[#F9FAFB]">exakt wie sie im Dokument stehen</span>.</p>
+                <p>3. Du siehst eine Vorschau und kannst Fragen prüfen oder entfernen.</p>
+                <p>4. Beim Bestätigen werden die Fragen gespeichert und das Set erstellt.</p>
+              </div>
+
+              {importError && (
+                <p className="text-[#FF4B4B] text-sm flex items-center gap-2">
+                  <AlertTriangle size={14} /> {importError}
+                </p>
+              )}
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowImportDialog(false); resetImportDialog() }}
+                  className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]"
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={handleExtract}
+                  disabled={!importFile || !importPart || !importName.trim()}
+                  className="rounded-xl bg-[#1CB0F6] hover:bg-[#19a0e0] text-white font-semibold"
+                >
+                  Fragen extrahieren
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* Step: extracting / importing */}
+          {(importStep === 'extracting' || importStep === 'importing') && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 flex-1">
+              <Loader2 size={36} className="animate-spin text-[#1CB0F6]" />
+              <p className="text-[#9CA3AF] text-sm">
+                {importStep === 'extracting'
+                  ? 'Fragen werden aus dem Dokument extrahiert…'
+                  : 'Set wird erstellt und Fragen werden gespeichert…'}
+              </p>
+              <p className="text-xs text-[#6B7280]">Das kann einen Moment dauern.</p>
+            </div>
+          )}
+
+          {/* Step: preview */}
+          {importStep === 'preview' && (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <div>
+                  <p className="text-sm font-semibold text-[#F9FAFB]">
+                    {previewQuestions.length} Fragen extrahiert
+                  </p>
+                  {needsReviewCount > 0 && (
+                    <p className="text-xs text-[#FF9600] flex items-center gap-1 mt-0.5">
+                      <AlertTriangle size={12} />
+                      {needsReviewCount} {needsReviewCount === 1 ? 'Frage' : 'Fragen'} ohne erkannte Antwort — bitte markieren
+                    </p>
+                  )}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setImportStep('configure')}
+                  className="text-[#9CA3AF] hover:text-[#F9FAFB] text-xs"
+                >
+                  ← Zurück
+                </Button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 space-y-3 pr-1">
+                {previewQuestions.map((q, idx) => (
+                  <div
+                    key={q._key}
+                    className={cn(
+                      'rounded-xl border p-4',
+                      q.needs_review
+                        ? 'border-[#FF9600]/40 bg-[#FF9600]/5'
+                        : 'border-[#4B5563] bg-[#111827]',
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-start gap-2 flex-1">
+                        <span className="text-xs font-bold text-[#6B7280] mt-0.5 shrink-0">#{idx + 1}</span>
+                        <p className="text-sm text-[#F9FAFB] leading-snug">{q.question_text}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {q.fach_code && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#374151] text-[#9CA3AF]">
+                            {q.fach_code}
+                          </span>
+                        )}
+                        {q.needs_review && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#FF9600]/20 text-[#FF9600]">
+                            Antwort wählen
+                          </span>
+                        )}
+                        <button
+                          onClick={() => removePreviewQuestion(q._key)}
+                          className="text-[#6B7280] hover:text-[#FF4B4B] transition-colors"
+                          title="Frage entfernen"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {q.options.map((opt, j) => {
+                        const isCorrect = q.correct_index === j
+                        return (
+                          <button
+                            key={j}
+                            onClick={() => setCorrectIndex(q._key, j)}
+                            className={cn(
+                              'w-full text-left flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors',
+                              isCorrect
+                                ? 'bg-[#58CC02]/15 border border-[#58CC02]/50 text-[#F9FAFB]'
+                                : 'bg-[#1F2937] border border-[#374151] text-[#9CA3AF] hover:border-[#4B5563] hover:text-[#F9FAFB]',
+                            )}
+                          >
+                            <span className={cn(
+                              'font-bold shrink-0',
+                              isCorrect ? 'text-[#58CC02]' : 'text-[#6B7280]',
+                            )}>
+                              {OPTION_LETTERS[j]}
+                            </span>
+                            <span className="flex-1">{opt}</span>
+                            {isCorrect && <Check size={12} className="text-[#58CC02] shrink-0" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {importError && (
+                <p className="text-[#FF4B4B] text-sm flex items-center gap-2 mt-3 flex-shrink-0">
+                  <AlertTriangle size={14} /> {importError}
+                </p>
+              )}
+
+              <DialogFooter className="mt-4 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  onClick={() => { setShowImportDialog(false); resetImportDialog() }}
+                  className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]"
+                >
+                  Abbrechen
+                </Button>
+                <Button
+                  onClick={handleImportConfirm}
+                  disabled={previewQuestions.length === 0}
+                  className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
+                >
+                  {previewQuestions.length} Fragen importieren & Set erstellen
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
