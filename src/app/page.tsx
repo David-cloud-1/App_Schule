@@ -299,7 +299,7 @@ export default async function HomePage() {
         </div>
 
         {/* ── CTA Button ── */}
-        <Link href="/subjects">
+        <Link href="/subjects" className="block mt-2">
           <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 shadow-lg shadow-green-900/30">
             <BookOpen className="mr-2" size={20} />
             Jetzt lernen
@@ -334,7 +334,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <Link href="/exam">
+        <Link href="/exam" className="block mt-2">
           <Button variant="outline" className="w-full rounded-2xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-bold text-base py-6 transition-all duration-200 active:scale-95">
             <ClipboardList className="mr-2" size={20} />
             Prüfungssimulation
