@@ -43,20 +43,31 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
   const [topics, setTopics] = useState<Topic[]>([])
   const [loadingTopics, setLoadingTopics] = useState(false)
 
-  // Reset selections and fetch topics whenever the sheet opens for a new subject
+  // When sheet opens for a new subject: reset everything
   useEffect(() => {
     if (!subject) return
     setClassLevel(initialClassLevel)
     setTopicId('')
+  }, [subject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-fetch topics whenever subject or class level changes.
+  // Only topics with at least one question for the selected class level are returned,
+  // so invalid subject+class+topic combinations are impossible to select.
+  useEffect(() => {
+    if (!subject) return
+    setTopicId('')
     setTopics([])
     setLoadingTopics(true)
 
-    fetch(`/api/topics?subject_id=${subject.id}`)
+    const params = new URLSearchParams({ subject_id: subject.id })
+    if (classLevel) params.set('class_level', classLevel)
+
+    fetch(`/api/topics?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => setTopics(data.topics ?? []))
       .catch(() => setTopics([]))
       .finally(() => setLoadingTopics(false))
-  }, [subject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [subject?.id, classLevel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleStart() {
     if (!subject) return
