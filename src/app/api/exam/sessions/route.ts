@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
 
   const { parts } = parsed.data
   const allQuestions: Record<number, unknown[]> = {}
+  const partDurations: Record<number, number> = {}
 
   for (const part of parts) {
     const config = PART_CONFIG[part]
@@ -32,12 +33,14 @@ export async function POST(request: NextRequest) {
     // Check if there's an active admin exam set for this part
     const { data: activeSet } = await supabase
       .from('exam_question_sets')
-      .select('question_ids')
+      .select('question_ids, duration_minutes')
       .eq('part', part)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
       .single()
+
+    partDurations[part] = activeSet?.duration_minutes ?? config.durationMinutes
 
     let questions: unknown[] = []
 
@@ -113,6 +116,8 @@ export async function POST(request: NextRequest) {
     allQuestions[part] = questions.map((q) => ({ ...(q as object), part }))
   }
 
+  const totalDurationMinutes = parts.reduce((sum, p) => sum + (partDurations[p] ?? PART_CONFIG[p].durationMinutes), 0)
+
   const { data: session, error } = await supabase
     .from('exam_sessions')
     .insert({
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
       parts_selected: parts,
       started_at: new Date().toISOString(),
       status: 'in_progress',
-      results_json: { parts: allQuestions },
+      results_json: { durationMinutes: totalDurationMinutes, parts: allQuestions },
     })
     .select('id')
     .single()

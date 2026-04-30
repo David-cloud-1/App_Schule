@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-server'
 const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
   name: z.string().min(1).max(100).optional(),
+  duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
 async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {

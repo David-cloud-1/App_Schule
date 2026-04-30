@@ -44,7 +44,8 @@ export default async function ExamSessionPage({
   }
 
   const parts: number[] = session.parts_selected ?? []
-  const totalMinutes = parts.reduce((sum: number, p: number) => sum + (PART_DURATION_MINUTES[p] ?? 0), 0)
+  const storedDuration = (session.results_json as { durationMinutes?: number } | null)?.durationMinutes
+  const totalMinutes = storedDuration ?? parts.reduce((sum: number, p: number) => sum + (PART_DURATION_MINUTES[p] ?? 0), 0)
   const elapsedSeconds = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000)
   const remainingSeconds = Math.max(0, totalMinutes * 60 - elapsedSeconds)
 

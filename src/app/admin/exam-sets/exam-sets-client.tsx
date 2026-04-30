@@ -31,6 +31,7 @@ type ExamSet = {
   question_ids: string[]
   is_active: boolean
   created_at: string
+  duration_minutes: number | null
 }
 
 type Question = {
@@ -90,6 +91,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
   // Create modal state
   const [newName, setNewName] = useState('')
   const [newPart, setNewPart] = useState<number | null>(null)
+  const [newDuration, setNewDuration] = useState<string>('')
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -99,6 +101,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
   const [importStep, setImportStep] = useState<ImportStep>('configure')
   const [importName, setImportName] = useState('')
   const [importPart, setImportPart] = useState<number | null>(null)
+  const [importDuration, setImportDuration] = useState<string>('')
   const [importFile, setImportFile] = useState<File | null>(null)
   const [previewQuestions, setPreviewQuestions] = useState<PreviewQuestion[]>([])
   const [importError, setImportError] = useState<string | null>(null)
@@ -151,6 +154,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
     setIsCreating(true)
     setCreateError(null)
     try {
+      const durationVal = newDuration.trim() ? parseInt(newDuration.trim(), 10) : null
       const res = await fetch('/api/admin/exam-sets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -159,6 +163,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
           part: newPart,
           question_ids: Array.from(selectedQuestionIds),
           is_active: false,
+          ...(durationVal && durationVal > 0 ? { duration_minutes: durationVal } : {}),
         }),
       })
       if (!res.ok) {
@@ -171,6 +176,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
       setShowCreateModal(false)
       setNewName('')
       setNewPart(null)
+      setNewDuration('')
       setSelectedQuestionIds(new Set())
     } catch {
       setCreateError('Netzwerkfehler.')
@@ -183,6 +189,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
     setImportStep('configure')
     setImportName('')
     setImportPart(null)
+    setImportDuration('')
     setImportFile(null)
     setPreviewQuestions([])
     setImportError(null)
@@ -225,6 +232,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
     setImportError(null)
 
     try {
+      const importDurationVal = importDuration.trim() ? parseInt(importDuration.trim(), 10) : null
       const res = await fetch('/api/admin/exam-sets/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -232,6 +240,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
           name: importName.trim(),
           part: importPart,
           questions: previewQuestions.map(({ _key: _k, ...q }) => q),
+          ...(importDurationVal && importDurationVal > 0 ? { duration_minutes: importDurationVal } : {}),
         }),
       })
       const data = await res.json()
@@ -312,9 +321,12 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                         <Badge className="text-xs bg-[#58CC02]/20 text-[#58CC02] border-0">Aktiv</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="text-xs text-[#9CA3AF]">{PART_LABELS[set.part]}</span>
                       <span className="text-xs text-[#6B7280]">· {set.question_ids.length} Fragen</span>
+                      {set.duration_minutes != null && (
+                        <span className="text-xs text-[#1CB0F6]">· {set.duration_minutes} Min.</span>
+                      )}
                     </div>
                   </div>
                   {expandedSet === set.id ? <ChevronUp size={16} className="text-[#9CA3AF] ml-auto" /> : <ChevronDown size={16} className="text-[#9CA3AF] ml-auto" />}
@@ -421,6 +433,21 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-[#9CA3AF]">
+                Zeitlimit (Minuten) <span className="text-[#6B7280] font-normal">— optional</span>
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={600}
+                value={newDuration}
+                onChange={(e) => setNewDuration(e.target.value)}
+                placeholder="z.B. 90 — leer lassen für Standard"
+                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+              />
+            </div>
+
             {newPart && (
               <div className="space-y-2">
                 <Label className="text-[#9CA3AF]">
@@ -523,6 +550,21 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[#9CA3AF]">
+                  Zeitlimit (Minuten) <span className="text-[#6B7280] font-normal">— optional</span>
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={600}
+                  value={importDuration}
+                  onChange={(e) => setImportDuration(e.target.value)}
+                  placeholder="z.B. 90 — leer lassen für Standard"
+                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                />
               </div>
 
               <div className="space-y-2">

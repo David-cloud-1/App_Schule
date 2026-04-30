@@ -7,6 +7,7 @@ const CreateSetSchema = z.object({
   part: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   question_ids: z.array(z.string()).min(1),
   is_active: z.boolean().default(false),
+  duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
 async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {

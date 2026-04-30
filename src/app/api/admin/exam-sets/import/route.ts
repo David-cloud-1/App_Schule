@@ -14,6 +14,7 @@ const ImportSchema = z.object({
   name: z.string().min(1).max(100),
   part: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   questions: z.array(QuestionSchema).min(1),
+  duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
 const PART_DEFAULT_SUBJECT: Record<number, string> = { 1: 'STG', 2: 'KSK', 3: 'BGP' }
@@ -127,6 +128,7 @@ export async function POST(request: NextRequest) {
       question_ids: insertedIds,
       is_active: false,
       created_by: user.id,
+      ...(parsed.data.duration_minutes != null ? { duration_minutes: parsed.data.duration_minutes } : {}),
     })
     .select()
     .single()
