@@ -12,6 +12,8 @@ const ListQuerySchema = z.object({
   missing_class_level: z.enum(['true']).optional(),
   missing_topic: z.enum(['true']).optional(),
   page: z.coerce.number().int().min(1).default(1),
+  sort: z.enum(['created_at', 'difficulty', 'question_text']).default('created_at'),
+  sort_dir: z.enum(['asc', 'desc']).default('desc'),
 })
 
 const AnswerSchema = z.object({
@@ -51,7 +53,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, missing_topic, page } = parsed.data
+  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, missing_topic, page, sort, sort_dir } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -98,7 +100,7 @@ export async function GET(request: NextRequest) {
       `,
       { count: 'exact' }
     )
-    .order('created_at', { ascending: false })
+    .order(sort, { ascending: sort_dir === 'asc' })
 
   if (subjectFilteredIds) {
     query = query.in('id', subjectFilteredIds)

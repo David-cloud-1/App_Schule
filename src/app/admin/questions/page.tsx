@@ -2,7 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Edit, FileUp, Loader2, Plus, Search, Trash2, X } from 'lucide-react'
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  ChevronsUpDown,
+  Download,
+  Edit,
+  FileUp,
+  Loader2,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -50,6 +63,9 @@ import {
 } from '@/components/admin/question-form-modal'
 import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
 
+type SortColumn = 'created_at' | 'difficulty' | 'question_text'
+type SortDir = 'asc' | 'desc'
+
 type TopicWithSubject = {
   id: string
   name: string
@@ -59,6 +75,7 @@ type TopicWithSubject = {
 
 type QuestionWithTopic = AdminQuestion & {
   topics?: { id: string; name: string } | null
+  created_at?: string
 }
 
 type QuestionsResponse = {
@@ -77,15 +94,22 @@ function useDebounced<T>(value: T, delay: number): T {
   return debounced
 }
 
+function SortIcon({ col, current, dir }: { col: SortColumn; current: SortColumn; dir: SortDir }) {
+  if (col !== current) return <ChevronsUpDown className="w-3 h-3 opacity-40 inline ml-1" />
+  return dir === 'asc'
+    ? <ChevronUp className="w-3 h-3 inline ml-1 text-[#58CC02]" />
+    : <ChevronDown className="w-3 h-3 inline ml-1 text-[#58CC02]" />
+}
+
 export default function AdminQuestionsPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
-  const [difficultyFilter, setDifficultyFilter] = useState<
-    'all' | 'leicht' | 'mittel' | 'schwer'
-  >('all')
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'leicht' | 'mittel' | 'schwer'>('all')
   const [topicFilter, setTopicFilter] = useState<'all' | 'none'>('all')
+  const [sortCol, setSortCol] = useState<SortColumn>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<QuestionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -95,6 +119,10 @@ export default function AdminQuestionsPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<QuestionWithTopic | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  // Inline preview
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // Bulk state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -104,16 +132,20 @@ export default function AdminQuestionsPage() {
   const [bulkSubjectId, setBulkSubjectId] = useState<string>('')
   const [bulkDifficulty, setBulkDifficulty] = useState<string>('')
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
-  // Reset page when filters change
+  // Reset page when filters or sort changes
   useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter])
+    setExpandedId(null)
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, sortCol, sortDir])
 
   // Clear selection when page changes
   useEffect(() => {
     setSelectedIds(new Set())
+    setExpandedId(null)
   }, [page])
 
   const fetchSubjects = useCallback(async () => {
@@ -153,6 +185,8 @@ export default function AdminQuestionsPage() {
       params.set('status', statusFilter)
       if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter)
       if (topicFilter === 'none') params.set('missing_topic', 'true')
+      params.set('sort', sortCol)
+      params.set('sort_dir', sortDir)
       params.set('page', String(page))
 
       const res = await fetch(`/api/admin/questions?${params.toString()}`)
@@ -167,7 +201,7 @@ export default function AdminQuestionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, page])
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, sortCol, sortDir, page])
 
   useEffect(() => {
     fetchSubjects()
@@ -177,6 +211,15 @@ export default function AdminQuestionsPage() {
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
+
+  function handleSort(col: SortColumn) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortCol(col)
+      setSortDir('asc')
+    }
+  }
 
   async function toggleActive(q: QuestionWithTopic, next: boolean) {
     try {
@@ -272,6 +315,88 @@ export default function AdminQuestionsPage() {
     }
   }
 
+  async function handleBulkStatus(active: boolean) {
+    if (selectedIds.size === 0) return
+    setBulkSubmitting(true)
+    try {
+      const res = await fetch('/api/admin/questions/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds), is_active: active }),
+      })
+      if (!res.ok) {
+        toast.error('Status-Änderung fehlgeschlagen.')
+        return
+      }
+      const json = await res.json()
+      toast.success(`${json.updated} Fragen ${active ? 'aktiviert' : 'deaktiviert'}`)
+      setSelectedIds(new Set())
+      fetchQuestions()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setBulkSubmitting(false)
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return
+    setBulkDeleting(true)
+    try {
+      const res = await fetch('/api/admin/questions/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      })
+      if (!res.ok) {
+        toast.error('Löschen fehlgeschlagen.')
+        return
+      }
+      const json = await res.json()
+      toast.success(`${json.deleted} Fragen gelöscht`)
+      setSelectedIds(new Set())
+      setBulkDeleteOpen(false)
+      fetchQuestions()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim())
+      if (subjectFilter !== 'all') params.set('subject', subjectFilter)
+      params.set('status', statusFilter)
+      if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter)
+      if (topicFilter === 'none') params.set('missing_topic', 'true')
+
+      const res = await fetch(`/api/admin/questions/export?${params.toString()}`)
+      if (!res.ok) {
+        toast.error('Export fehlgeschlagen.')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `fragen-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('CSV exportiert')
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const rows = data?.questions ?? []
   const total = data?.total ?? 0
   const totalPages = data?.totalPages ?? 0
@@ -322,6 +447,19 @@ export default function AdminQuestionsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            disabled={exporting}
+            className="rounded-xl"
+          >
+            {exporting ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            CSV Export
+          </Button>
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
@@ -485,6 +623,37 @@ export default function AdminQuestionsPage() {
               Anwenden
             </Button>
           </div>
+          <div className="flex flex-wrap gap-2 border-t border-[#4B5563] pt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkSubmitting}
+              onClick={() => handleBulkStatus(true)}
+              className="rounded-xl border-[#4B5563] text-[#F9FAFB] hover:bg-[#1F2937]"
+            >
+              {bulkSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
+              Alle aktivieren
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkSubmitting}
+              onClick={() => handleBulkStatus(false)}
+              className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#1F2937]"
+            >
+              Alle deaktivieren
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={bulkSubmitting || bulkDeleting}
+              onClick={() => setBulkDeleteOpen(true)}
+              className="rounded-xl border-[#FF4B4B]/40 text-[#FF4B4B] hover:bg-[#FF4B4B]/10 ml-auto"
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              {selectedIds.size} löschen
+            </Button>
+          </div>
         </div>
       )}
 
@@ -502,12 +671,37 @@ export default function AdminQuestionsPage() {
                   className="border-[#4B5563]"
                 />
               </TableHead>
-              <TableHead className="text-[#9CA3AF]">Fragetext</TableHead>
+              <TableHead className="text-[#9CA3AF]">
+                <button
+                  onClick={() => handleSort('question_text')}
+                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
+                >
+                  Fragetext
+                  <SortIcon col="question_text" current={sortCol} dir={sortDir} />
+                </button>
+              </TableHead>
               <TableHead className="text-[#9CA3AF] hidden lg:table-cell">Thema</TableHead>
               <TableHead className="text-[#9CA3AF]">Fach</TableHead>
-              <TableHead className="text-[#9CA3AF] hidden sm:table-cell">Schwierigkeit</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden md:table-cell">Klasse</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden sm:table-cell">
+                <button
+                  onClick={() => handleSort('difficulty')}
+                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
+                >
+                  Schwierigkeit
+                  <SortIcon col="difficulty" current={sortCol} dir={sortDir} />
+                </button>
+              </TableHead>
               <TableHead className="text-[#9CA3AF]">Status</TableHead>
-              <TableHead className="text-[#9CA3AF] hidden md:table-cell">Erstellt</TableHead>
+              <TableHead className="text-[#9CA3AF] hidden md:table-cell">
+                <button
+                  onClick={() => handleSort('created_at')}
+                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
+                >
+                  Erstellt
+                  <SortIcon col="created_at" current={sortCol} dir={sortDir} />
+                </button>
+              </TableHead>
               <TableHead className="text-right text-[#9CA3AF]">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
@@ -515,36 +709,21 @@ export default function AdminQuestionsPage() {
             {loading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                    <TableCell className="pl-4">
-                      <Skeleton className="h-4 w-4" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-64" />
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <Skeleton className="h-4 w-16" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-6 w-10" />
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                    <TableCell>
-                      <Skeleton className="h-8 w-20 ml-auto" />
-                    </TableCell>
+                    <TableCell className="pl-4"><Skeleton className="h-4 w-4" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-10" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               : rows.length === 0
               ? (
                 <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={8} className="text-center text-[#9CA3AF] py-10">
+                  <TableCell colSpan={9} className="text-center text-[#9CA3AF] py-10">
                     Keine Fragen gefunden.
                   </TableCell>
                 </TableRow>
@@ -558,80 +737,145 @@ export default function AdminQuestionsPage() {
                     .map((qs) => qs.subjects?.code)
                     .filter(Boolean) as string[]
                   const isSelected = selectedIds.has(q.id)
+                  const isExpanded = expandedId === q.id
+                  const hasNoTopic = !q.topics
+
                   return (
-                    <TableRow
-                      key={q.id}
-                      className={`border-[#4B5563] hover:bg-[#111827]/40 transition-colors ${
-                        isSelected ? 'bg-[#1F2937]/80 border-l-2 border-l-[#58CC02]' : ''
-                      }`}
-                    >
-                      <TableCell className="pl-4">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleSelectOne(q.id)}
-                          aria-label="Frage auswählen"
-                          className="border-[#4B5563]"
-                        />
-                      </TableCell>
-                      <TableCell className="text-[#F9FAFB] max-w-[280px]">
-                        {truncated}
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        {q.topics ? (
-                          <span className="text-sm text-[#9CA3AF]">{q.topics.name}</span>
-                        ) : (
-                          <span className="text-xs text-[#4B5563] italic">Kein Thema</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="flex flex-wrap gap-1">
-                        {codes.map((c) => (
-                          <Badge
-                            key={c}
-                            variant="outline"
-                            className="border-[#4B5563] text-[#9CA3AF]"
-                          >
-                            {c}
-                          </Badge>
-                        ))}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <DifficultyBadge
-                          difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Switch
-                          checked={q.is_active}
-                          onCheckedChange={(v) => toggleActive(q, v)}
-                          aria-label="Aktiv/Inaktiv"
-                        />
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
-                        {formatCreatedAt(q)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingQuestion(q)
-                              setFormOpen(true)
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleteTarget(q)}
-                            className="text-[#FF4B4B] hover:text-[#FF4B4B]"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <>
+                      <TableRow
+                        key={q.id}
+                        className={`border-[#4B5563] hover:bg-[#111827]/40 transition-colors ${
+                          isSelected ? 'bg-[#1F2937]/80 border-l-2 border-l-[#58CC02]' : ''
+                        } ${isExpanded ? 'bg-[#111827]/30' : ''}`}
+                      >
+                        <TableCell className="pl-4">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleSelectOne(q.id)}
+                            aria-label="Frage auswählen"
+                            className="border-[#4B5563]"
+                          />
+                        </TableCell>
+                        <TableCell
+                          className="text-[#F9FAFB] max-w-[280px] cursor-pointer select-none"
+                          onClick={() => setExpandedId(isExpanded ? null : q.id)}
+                          title="Klicken für Vorschau"
+                        >
+                          <span className="hover:text-[#58CC02] transition-colors">
+                            {truncated}
+                          </span>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {hasNoTopic ? (
+                            <span className="flex items-center gap-1 text-xs text-[#FF9600] italic">
+                              <AlertCircle className="w-3 h-3 shrink-0" />
+                              Kein Thema
+                            </span>
+                          ) : (
+                            <span className="text-sm text-[#9CA3AF]">{q.topics!.name}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="flex flex-wrap gap-1">
+                          {codes.map((c) => (
+                            <Badge
+                              key={c}
+                              variant="outline"
+                              className="border-[#4B5563] text-[#9CA3AF]"
+                            >
+                              {c}
+                            </Badge>
+                          ))}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
+                          {q.class_level != null ? (
+                            <span>Kl. {q.class_level}</span>
+                          ) : (
+                            <span className="text-[#4B5563]">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <DifficultyBadge
+                            difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Switch
+                            checked={q.is_active}
+                            onCheckedChange={(v) => toggleActive(q, v)}
+                            aria-label="Aktiv/Inaktiv"
+                          />
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
+                          {formatCreatedAt(q)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingQuestion(q)
+                                setFormOpen(true)
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteTarget(q)}
+                              className="text-[#FF4B4B] hover:text-[#FF4B4B]"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${q.id}-preview`} className="border-[#4B5563] bg-[#111827]/60">
+                          <TableCell colSpan={9} className="p-4">
+                            {q.answer_options.length > 0 ? (
+                              <div className="space-y-2 max-w-2xl">
+                                {q.answer_options.map((a, idx) => (
+                                  <div
+                                    key={a.id ?? idx}
+                                    className={`flex items-start gap-3 p-2 rounded-lg ${
+                                      a.is_correct
+                                        ? 'bg-[#58CC02]/10 border border-[#58CC02]/30'
+                                        : 'bg-[#1F2937]'
+                                    }`}
+                                  >
+                                    <span className="text-xs font-bold text-[#9CA3AF] w-4 shrink-0 mt-0.5">
+                                      {String.fromCharCode(65 + idx)}
+                                    </span>
+                                    <span
+                                      className={`text-sm flex-1 ${
+                                        a.is_correct ? 'text-[#58CC02]' : 'text-[#F9FAFB]'
+                                      }`}
+                                    >
+                                      {a.option_text}
+                                    </span>
+                                    {a.is_correct && (
+                                      <Badge className="bg-[#58CC02]/20 text-[#58CC02] text-xs border-0 shrink-0">
+                                        Richtig
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
+                                {q.explanation && (
+                                  <div className="mt-3 p-3 bg-[#374151] rounded-lg">
+                                    <p className="text-xs text-[#9CA3AF] font-medium mb-1">Erklärung</p>
+                                    <p className="text-sm text-[#F9FAFB]">{q.explanation}</p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-[#9CA3AF] italic">Keine Antwortoptionen.</p>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   )
                 })}
           </TableBody>
@@ -695,6 +939,7 @@ export default function AdminQuestionsPage() {
         onSuccess={fetchQuestions}
       />
 
+      {/* Single delete dialog */}
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(v) => {
@@ -725,11 +970,40 @@ export default function AdminQuestionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk delete dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} löschen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#9CA3AF]">
+              Diese Aktion kann nicht rückgängig gemacht werden. Alle ausgewählten Fragen
+              werden unwiderruflich gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                handleBulkDelete()
+              }}
+              disabled={bulkDeleting}
+              className="bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white"
+            >
+              {bulkDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
-function formatCreatedAt(q: QuestionWithTopic & { created_at?: string }): string {
+function formatCreatedAt(q: QuestionWithTopic): string {
   const created = q.created_at
   if (!created) return '—'
   try {
