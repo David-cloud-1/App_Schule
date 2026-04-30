@@ -13,6 +13,7 @@ interface SubjectCardProps {
   icon: LucideIcon
   activeQuestionCount: number
   classLevelParam?: string
+  onLearnClick?: () => void
 }
 
 export function SubjectCard({
@@ -24,6 +25,7 @@ export function SubjectCard({
   icon: Icon,
   activeQuestionCount,
   classLevelParam = '',
+  onLearnClick,
 }: SubjectCardProps) {
   const hasQuestions = activeQuestionCount > 0
   const quizHref = classLevelParam
@@ -58,14 +60,24 @@ export function SubjectCard({
 
         {/* CTA */}
         {hasQuestions ? (
-          <Link href={quizHref}>
+          onLearnClick ? (
             <Button
+              onClick={onLearnClick}
               className="w-full rounded-2xl font-semibold text-white transition-all duration-200 active:scale-95"
               style={{ backgroundColor: color }}
             >
               Jetzt lernen
             </Button>
-          </Link>
+          ) : (
+            <Link href={quizHref}>
+              <Button
+                className="w-full rounded-2xl font-semibold text-white transition-all duration-200 active:scale-95"
+                style={{ backgroundColor: color }}
+              >
+                Jetzt lernen
+              </Button>
+            </Link>
+          )
         ) : (
           <div className="w-full rounded-2xl border border-[#4B5563] px-4 py-2 text-center text-sm text-[#6B7280]">
             Noch keine Fragen verfügbar

@@ -1,43 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
-import { SubjectCard } from '@/components/subject-card'
+import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
-import { ClassLevelFilter } from '@/components/class-level-filter'
-import { BarChart3, Calculator, Truck, Package, Zap, Scale, Shuffle } from 'lucide-react'
+import { Truck, Zap } from 'lucide-react'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 
-// Icon + short description per subject code — static, tied to IHK structure
-const SUBJECT_META: Record<string, { icon: LucideIcon; description: string }> = {
-  BGP: {
-    icon: BarChart3,
-    description: 'Wirtschaft, Recht, Unternehmensprozesse und gesamtwirtschaftliche Zusammenhänge',
-  },
-  KSK: {
-    icon: Calculator,
-    description: 'Kosten-/Leistungsrechnung, Controlling, Preisangebote und Kalkulation',
-  },
-  STG: {
-    icon: Truck,
-    description: 'Transport, Umschlag, Lager, Zoll und internationale Logistik',
-  },
-  LOP: {
-    icon: Package,
-    description: 'Logistikdienstleistungen, Lagerung, Kommissionierung und Warenfluss',
-  },
-  PUG: {
-    icon: Scale,
-    description: 'Politische Systeme, Gesellschaft, Grundrechte und staatliche Ordnung',
-  },
-}
-
-export default async function SubjectsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ class_level?: string }>
-}) {
+export default async function SubjectsPage() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -46,10 +16,6 @@ export default async function SubjectsPage({
   if (!user) {
     redirect('/login')
   }
-
-  const { class_level } = await searchParams
-  const classLevelParam = ['10', '11', '12'].includes(class_level ?? '') ? class_level! : ''
-  const quizClassParam = classLevelParam ? `&class_level=${classLevelParam}` : ''
 
   const [profileResult, subjectsResult] = await Promise.all([
     supabase.from('profiles').select('display_name').eq('id', user.id).single(),
@@ -68,7 +34,6 @@ export default async function SubjectsPage({
   const displayName =
     profileResult.data?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
 
-  // Build SubjectWithCount from DB result
   const subjects: SubjectWithCount[] = (subjectsResult.data ?? []).map((s) => ({
     id: s.id,
     code: s.code,
@@ -110,50 +75,9 @@ export default async function SubjectsPage({
           </p>
         </div>
 
-        {/* Class level filter */}
-        <div className="mb-5">
-          <Suspense>
-            <ClassLevelFilter current={classLevelParam} />
-          </Suspense>
-        </div>
-
-        {/* Mixed mode CTA */}
-        <Link href={`/quiz${quizClassParam ? `?${quizClassParam.slice(1)}` : ''}`} className="block mb-4">
-          <div className="bg-[#1F2937] border border-[#58CC02]/40 hover:border-[#58CC02] rounded-2xl p-5 flex items-center gap-4 transition-all duration-200 group">
-            <div className="w-12 h-12 rounded-2xl bg-[#58CC02]/20 flex items-center justify-center flex-shrink-0">
-              <Shuffle size={22} className="text-[#58CC02]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-[#F9FAFB] text-base">Gemischt lernen</p>
-              <p className="text-sm text-[#9CA3AF] mt-0.5">Fragen aus allen Fächern gemischt</p>
-            </div>
-            <div className="rounded-2xl bg-[#58CC02] px-4 py-2 text-white text-sm font-semibold group-hover:bg-[#4CAD02] transition-colors">
-              Start
-            </div>
-          </div>
-        </Link>
-
-        <div className="grid grid-cols-1 gap-4">
-          {subjects.map((subject) => {
-            const meta = SUBJECT_META[subject.code] ?? {
-              icon: Package,
-              description: subject.name,
-            }
-            return (
-              <SubjectCard
-                key={subject.id}
-                id={subject.id}
-                code={subject.code}
-                name={subject.name}
-                description={meta.description}
-                color={subject.color}
-                icon={meta.icon}
-                activeQuestionCount={subject.active_question_count}
-                classLevelParam={classLevelParam}
-              />
-            )
-          })}
-        </div>
+        <Suspense>
+          <SubjectsGrid subjects={subjects} />
+        </Suspense>
       </main>
     </div>
   )

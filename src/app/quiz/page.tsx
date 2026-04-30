@@ -16,10 +16,12 @@ function shuffle<T>(arr: T[]): T[] {
   return a
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export default async function QuizPage({
   searchParams,
 }: {
-  searchParams: Promise<{ subject?: string; class_level?: string }>
+  searchParams: Promise<{ subject?: string; class_level?: string; topic?: string }>
 }) {
   const supabase = await createClient()
   const {
@@ -30,8 +32,9 @@ export default async function QuizPage({
     redirect('/login')
   }
 
-  const { subject: subjectId, class_level } = await searchParams
+  const { subject: subjectId, class_level, topic } = await searchParams
   const classLevel = ['10', '11', '12'].includes(class_level ?? '') ? Number(class_level) : null
+  const topicId = topic && UUID_RE.test(topic) ? topic : null
 
   // ── Resolve subject + eligible question IDs ─────────────────────────────
   let subject: { id: string; code: string; name: string; color: string } | null = null
@@ -90,6 +93,9 @@ export default async function QuizPage({
   }
   if (classLevel) {
     query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
+  }
+  if (topicId) {
+    query = query.eq('topic_id', topicId)
   }
   if (answeredTodayIds.length > 0) {
     query = query.not('id', 'in', `(${answeredTodayIds.join(',')})`)
