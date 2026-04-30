@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Pencil, Plus, Tag, Trash2, X, Check } from 'lucide-react'
+import { Loader2, Pencil, Plus, Search, Tag, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -12,6 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 type Subject = { id: string; code: string; name: string }
 type Topic = { id: string; name: string; subject_id: string }
@@ -20,6 +28,7 @@ export default function TopicsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   const [newName, setNewName] = useState('')
@@ -30,6 +39,7 @@ export default function TopicsPage() {
   const [editName, setEditName] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -109,9 +119,11 @@ export default function TopicsPage() {
     setSaving(false)
   }
 
-  async function handleDelete(id: string) {
-    setDeletingId(id)
-    const res = await fetch(`/api/admin/topics/${id}`, { method: 'DELETE' })
+  async function handleDeleteConfirmed() {
+    if (!deleteTarget) return
+    setDeletingId(deleteTarget.id)
+    setDeleteTarget(null)
+    const res = await fetch(`/api/admin/topics/${deleteTarget.id}`, { method: 'DELETE' })
     if (!res.ok) {
       const data = await res.json()
       toast.error(data.error ?? 'Fehler beim Löschen')
@@ -122,13 +134,13 @@ export default function TopicsPage() {
     setDeletingId(null)
   }
 
-  const subjectName = (id: string) =>
+  const subjectCode = (id: string) =>
     subjects.find((s) => s.id === id)?.code ?? '—'
 
-  const filteredTopics =
-    selectedSubjectId === 'all'
-      ? topics
-      : topics.filter((t) => t.subject_id === selectedSubjectId)
+  const filteredTopics = topics
+    .filter((t) => selectedSubjectId === 'all' || t.subject_id === selectedSubjectId)
+    .filter((t) => !searchQuery.trim() || t.name.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, 'de'))
 
   const groupedTopics: Record<string, Topic[]> = {}
   for (const t of filteredTopics) {
@@ -187,19 +199,38 @@ export default function TopicsPage() {
               </span>
             )}
           </h2>
-          <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-              <SelectItem value="all">Alle Fächer</SelectItem>
-              {subjects.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.code}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Thema suchen…"
+                className="pl-8 h-9 w-48 bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#F9FAFB]"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+              <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectItem value="all">Alle Fächer</SelectItem>
+                {subjects.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {loading ? (
@@ -208,7 +239,9 @@ export default function TopicsPage() {
           </div>
         ) : filteredTopics.length === 0 ? (
           <div className="text-center py-12 text-[#9CA3AF] text-sm">
-            Noch keine Themen vorhanden. Lege ein neues Thema an.
+            {searchQuery
+              ? `Kein Thema gefunden für „${searchQuery}".`
+              : 'Noch keine Themen vorhanden. Lege ein neues Thema an.'}
           </div>
         ) : (
           <div className="space-y-4">
@@ -216,10 +249,13 @@ export default function TopicsPage() {
               <div key={subjectId} className="bg-[#1F2937] border border-[#4B5563] rounded-2xl overflow-hidden">
                 <div className="px-4 py-2.5 bg-[#374151] border-b border-[#4B5563]">
                   <span className="text-sm font-semibold text-[#F9FAFB]">
-                    {subjectName(subjectId)}
+                    {subjectCode(subjectId)}
+                  </span>
+                  <span className="text-xs text-[#9CA3AF] ml-1.5">
+                    — {subjects.find((s) => s.id === subjectId)?.name}
                   </span>
                   <span className="text-xs text-[#9CA3AF] ml-2">
-                    {subTopics.length} Thema{subTopics.length !== 1 ? 'en' : ''}
+                    · {subTopics.length} {subTopics.length === 1 ? 'Thema' : 'Themen'}
                   </span>
                 </div>
                 <ul className="divide-y divide-[#374151]">
@@ -269,7 +305,7 @@ export default function TopicsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleDelete(topic.id)}
+                            onClick={() => setDeleteTarget(topic)}
                             disabled={deletingId === topic.id}
                             className="text-[#9CA3AF] hover:text-[#FF4B4B] h-7 w-7 p-0"
                           >
@@ -289,6 +325,37 @@ export default function TopicsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-[#FF4B4B]" />
+              Thema löschen?
+            </DialogTitle>
+            <DialogDescription className="text-[#9CA3AF]">
+              Das Thema <span className="font-semibold text-[#F9FAFB]">„{deleteTarget?.name}"</span> wird
+              unwiderruflich gelöscht. Fragen, die diesem Thema zugewiesen sind, verlieren ihre Zuordnung.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setDeleteTarget(null)}
+              className="text-[#9CA3AF] hover:text-[#F9FAFB]"
+            >
+              Abbrechen
+            </Button>
+            <Button
+              onClick={handleDeleteConfirmed}
+              className="bg-[#FF4B4B] hover:bg-[#e04444] text-white"
+            >
+              Löschen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
