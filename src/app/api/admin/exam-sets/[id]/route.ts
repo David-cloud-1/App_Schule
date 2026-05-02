@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { requireAdmin } from '../../_lib/auth'
 
 const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
@@ -8,24 +8,21 @@ const UpdateSchema = z.object({
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
-async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return null
-  return user
-}
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const user = await requireAdmin(supabase)
-  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+  const { supabase } = auth
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = UpdateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
 
@@ -62,9 +59,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const supabase = await createClient()
-  const user = await requireAdmin(supabase)
-  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+  const { supabase } = auth
 
   const { error } = await supabase.from('exam_question_sets').delete().eq('id', id)
   if (error) return NextResponse.json({ error: 'Failed to delete exam set' }, { status: 500 })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { requireAdmin } from '../_lib/auth'
 
 const CreateSetSchema = z.object({
   name: z.string().min(1).max(100),
@@ -10,18 +10,10 @@ const CreateSetSchema = z.object({
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
-async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return null
-  return user
-}
-
 export async function GET() {
-  const supabase = await createClient()
-  const user = await requireAdmin(supabase)
-  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+  const { supabase } = auth
 
   const { data, error } = await supabase
     .from('exam_question_sets')
@@ -33,11 +25,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
-  const user = await requireAdmin(supabase)
-  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+  const { supabase, user } = auth
 
-  const body = await request.json()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
   const parsed = CreateSetSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
