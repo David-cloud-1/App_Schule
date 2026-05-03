@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { LevelUpDialog } from '@/components/level-up-dialog'
@@ -400,10 +400,12 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
                   {isCorrectSelected ? 'Richtig!' : 'Leider falsch!'}
                 </span>
               </div>
-              {currentQuestion.explanation && (
+              {currentQuestion.explanation ? (
                 <p className="text-[#9CA3AF] text-sm leading-relaxed mt-1">
                   {currentQuestion.explanation}
                 </p>
+              ) : (
+                <p className="text-[#4B5563] text-xs mt-1 italic">Noch keine Erklärung hinterlegt.</p>
               )}
             </div>
 
@@ -417,7 +419,13 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
                   : 'bg-[#FF4B4B] hover:bg-[#e04040] text-white',
               )}
             >
-              {currentIndex + 1 >= totalQuestions ? 'Ergebnisse anzeigen' : 'Weiter'}
+              {isSubmitting ? (
+                <><Loader2 size={18} className="animate-spin mr-2" />Ergebnisse werden berechnet…</>
+              ) : currentIndex + 1 >= totalQuestions ? (
+                'Ergebnisse anzeigen'
+              ) : (
+                'Weiter'
+              )}
             </Button>
           </div>
         )}

@@ -58,14 +58,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-[#111827]">
       {/* Top hero section */}
-      <div className="bg-blue-600 flex flex-col items-center justify-center py-12 px-4 text-white">
-        <div className="bg-white/20 rounded-2xl p-4 mb-4">
-          <Truck className="w-10 h-10 text-white" />
+      <div className="bg-[#1F2937] flex flex-col items-center justify-center py-12 px-4">
+        <div className="bg-[#58CC02]/20 rounded-2xl p-4 mb-4">
+          <Truck className="w-10 h-10 text-[#58CC02]" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">SpediLern</h1>
-        <p className="mt-2 text-blue-100 text-sm text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-[#F9FAFB]">SpediLern</h1>
+        <p className="mt-2 text-[#9CA3AF] text-sm text-center">
           Täglich lernen. Besser werden. Prüfung bestehen.
         </p>
       </div>
@@ -73,51 +73,51 @@ export default function LoginPage() {
       {/* Form section */}
       <div className="flex-1 flex flex-col items-center px-4 py-8">
         <div className="w-full max-w-sm">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
+          <h2 className="text-xl font-bold text-[#F9FAFB] mb-6 text-center">
             Anmelden
           </h2>
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-xl bg-[#FF4B4B]/10 border border-[#FF4B4B]/40 px-4 py-3 text-sm text-[#FF4B4B]">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="email">E-Mail</Label>
+              <Label htmlFor="email" className="text-[#9CA3AF]">E-Mail</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="deine@email.de"
                 autoComplete="email"
                 {...register('email')}
-                className="rounded-xl h-12"
+                className="rounded-xl h-12 bg-[#374151] border-[#4B5563] text-[#F9FAFB] placeholder:text-[#6B7280] focus-visible:ring-[#58CC02]"
               />
               {errors.email && (
-                <p className="text-xs text-red-500">{errors.email.message}</p>
+                <p className="text-xs text-[#FF4B4B]">{errors.email.message}</p>
               )}
             </div>
 
             <div className="space-y-1">
-              <Label htmlFor="password">Passwort</Label>
+              <Label htmlFor="password" className="text-[#9CA3AF]">Passwort</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="••••••••"
                 autoComplete="current-password"
                 {...register('password')}
-                className="rounded-xl h-12"
+                className="rounded-xl h-12 bg-[#374151] border-[#4B5563] text-[#F9FAFB] placeholder:text-[#6B7280] focus-visible:ring-[#58CC02]"
               />
               {errors.password && (
-                <p className="text-xs text-red-500">{errors.password.message}</p>
+                <p className="text-xs text-[#FF4B4B]">{errors.password.message}</p>
               )}
             </div>
 
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
+              className="w-full h-12 rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold text-base"
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -128,9 +128,9 @@ export default function LoginPage() {
           </form>
 
           <div className="my-5 flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">oder</span>
-            <div className="flex-1 h-px bg-gray-200" />
+            <div className="flex-1 h-px bg-[#374151]" />
+            <span className="text-xs text-[#6B7280]">oder</span>
+            <div className="flex-1 h-px bg-[#374151]" />
           </div>
 
           <div className="space-y-3">
@@ -139,29 +139,17 @@ export default function LoginPage() {
               variant="outline"
               onClick={() => signInWithOAuth('google')}
               disabled={oauthLoading !== null}
-              className="w-full h-12 rounded-xl font-medium border-gray-200"
+              className="w-full h-12 rounded-xl font-medium bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] hover:bg-[#374151] hover:text-[#F9FAFB]"
             >
               {oauthLoading === 'google' ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    />
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                   </svg>
                   Mit Google anmelden
                 </>
@@ -172,14 +160,14 @@ export default function LoginPage() {
               <Button
                 type="button"
                 disabled
-                className="w-full h-12 rounded-xl font-medium bg-black/40 text-white/50 cursor-not-allowed"
+                className="w-full h-12 rounded-xl font-medium bg-[#1F2937] border border-[#4B5563] text-[#4B5563] cursor-not-allowed"
               >
-                <svg className="w-5 h-5 mr-2 opacity-50" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <svg className="w-5 h-5 mr-2 opacity-40" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                   <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
                 </svg>
                 Mit Apple anmelden
               </Button>
-              <span className="absolute -top-2 right-2 bg-gray-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+              <span className="absolute -top-2 right-2 bg-[#374151] text-[#9CA3AF] text-xs font-semibold px-2 py-0.5 rounded-full">
                 Demnächst
               </span>
             </div>
@@ -188,13 +176,13 @@ export default function LoginPage() {
           <div className="mt-6 text-center space-y-2">
             <Link
               href="/forgot-password"
-              className="text-sm text-blue-600 hover:underline block"
+              className="text-sm text-[#1CB0F6] hover:underline block"
             >
               Passwort vergessen?
             </Link>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-[#9CA3AF]">
               Noch kein Konto?{' '}
-              <Link href="/register" className="text-blue-600 font-medium hover:underline">
+              <Link href="/register" className="text-[#1CB0F6] font-medium hover:underline">
                 Registrieren
               </Link>
             </p>
