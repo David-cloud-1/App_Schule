@@ -7,6 +7,8 @@ const ExportQuerySchema = z.object({
   subject: z.string().optional(),
   status: z.enum(['active', 'inactive', 'all']).default('all'),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
+  class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
+  topic_id: z.string().uuid().optional(),
   missing_topic: z.enum(['true']).optional(),
 })
 
@@ -31,7 +33,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
   }
 
-  const { q, subject, status, difficulty, missing_topic } = parsed.data
+  const { q, subject, status, difficulty, class_level, topic_id, missing_topic } = parsed.data
 
   let subjectFilteredIds: string[] | null = null
   if (subject) {
@@ -80,6 +82,8 @@ export async function GET(request: NextRequest) {
 
   if (subjectFilteredIds) query = query.in('id', subjectFilteredIds)
   if (difficulty) query = query.eq('difficulty', difficulty)
+  if (class_level) query = query.eq('class_level', class_level)
+  if (topic_id) query = query.eq('topic_id', topic_id)
   if (missing_topic === 'true') query = query.is('topic_id', null)
   if (status === 'active') query = query.eq('is_active', true)
   else if (status === 'inactive') query = query.eq('is_active', false)

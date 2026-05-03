@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Trash2,
+  Users,
   X,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -107,7 +108,8 @@ export default function AdminQuestionsPage() {
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [difficultyFilter, setDifficultyFilter] = useState<'all' | 'leicht' | 'mittel' | 'schwer'>('all')
-  const [topicFilter, setTopicFilter] = useState<'all' | 'none'>('all')
+  const [topicFilter, setTopicFilter] = useState<string>('all') // 'all', 'none', or topic UUID
+  const [classLevelFilter, setClassLevelFilter] = useState<string>('all')
   const [sortCol, setSortCol] = useState<SortColumn>('created_at')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [page, setPage] = useState(1)
@@ -136,12 +138,17 @@ export default function AdminQuestionsPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [bulkStatusConfirm, setBulkStatusConfirm] = useState<boolean | null>(null)
 
+  // Stats per question (loaded lazily on expand)
+  type QuestionStats = { total: number; correct: number; correctRate: number | null }
+  const [statsMap, setStatsMap] = useState<Record<string, QuestionStats>>({})
+  const [loadingStatsId, setLoadingStatsId] = useState<string | null>(null)
+
   // Reset page when filters or sort changes
   useEffect(() => {
     setPage(1)
     setSelectedIds(new Set())
     setExpandedId(null)
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, sortCol, sortDir])
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, classLevelFilter, sortCol, sortDir])
 
   // Clear selection when page changes
   useEffect(() => {
@@ -193,7 +200,9 @@ export default function AdminQuestionsPage() {
       if (subjectFilter !== 'all') params.set('subject', subjectFilter)
       params.set('status', statusFilter)
       if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter)
+      if (classLevelFilter !== 'all') params.set('class_level', classLevelFilter)
       if (topicFilter === 'none') params.set('missing_topic', 'true')
+      else if (topicFilter !== 'all') params.set('topic_id', topicFilter)
       params.set('sort', sortCol)
       params.set('sort_dir', sortDir)
       params.set('page', String(page))
@@ -210,7 +219,7 @@ export default function AdminQuestionsPage() {
     } finally {
       setLoading(false)
     }
-  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, sortCol, sortDir, page])
+  }, [debouncedSearch, subjectFilter, statusFilter, difficultyFilter, topicFilter, classLevelFilter, sortCol, sortDir, page])
 
   useEffect(() => {
     fetchSubjects()
@@ -391,7 +400,9 @@ export default function AdminQuestionsPage() {
       if (subjectFilter !== 'all') params.set('subject', subjectFilter)
       params.set('status', statusFilter)
       if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter)
+      if (classLevelFilter !== 'all') params.set('class_level', classLevelFilter)
       if (topicFilter === 'none') params.set('missing_topic', 'true')
+      else if (topicFilter !== 'all') params.set('topic_id', topicFilter)
 
       const res = await fetch(`/api/admin/questions/export?${params.toString()}`)
       if (!res.ok) {
@@ -411,6 +422,20 @@ export default function AdminQuestionsPage() {
       toast.error('Netzwerkfehler')
     } finally {
       setExporting(false)
+    }
+  }
+
+  async function fetchStats(questionId: string) {
+    if (statsMap[questionId]) return
+    setLoadingStatsId(questionId)
+    try {
+      const res = await fetch(`/api/admin/questions/${questionId}/stats`)
+      if (res.ok) {
+        const data = await res.json()
+        setStatsMap((prev) => ({ ...prev, [questionId]: data }))
+      }
+    } finally {
+      setLoadingStatsId(null)
     }
   }
 
@@ -550,16 +575,29 @@ export default function AdminQuestionsPage() {
               <SelectItem value="schwer">Schwer</SelectItem>
             </SelectContent>
           </Select>
-          <Select
-            value={topicFilter}
-            onValueChange={(v) => setTopicFilter(v as typeof topicFilter)}
-          >
+          <Select value={classLevelFilter} onValueChange={setClassLevelFilter}>
             <SelectTrigger className="w-[140px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectValue placeholder="Klasse" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="all">Alle Klassen</SelectItem>
+              <SelectItem value="10">Klasse 10</SelectItem>
+              <SelectItem value="11">Klasse 11</SelectItem>
+              <SelectItem value="12">Klasse 12</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={topicFilter} onValueChange={setTopicFilter}>
+            <SelectTrigger className="w-[180px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectValue placeholder="Thema" />
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectItem value="all">Alle Themen</SelectItem>
               <SelectItem value="none">Ohne Thema</SelectItem>
+              {allTopics.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.subjects?.code ? `${t.subjects.code} – ` : ''}{t.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -773,7 +811,11 @@ export default function AdminQuestionsPage() {
                         </TableCell>
                         <TableCell
                           className="text-[#F9FAFB] max-w-[280px] cursor-pointer select-none"
-                          onClick={() => setExpandedId(isExpanded ? null : q.id)}
+                          onClick={() => {
+                            const nextId = isExpanded ? null : q.id
+                            setExpandedId(nextId)
+                            if (nextId) fetchStats(nextId)
+                          }}
                           title="Klicken für Vorschau"
                         >
                           <span className="hover:text-[#58CC02] transition-colors">
@@ -849,7 +891,36 @@ export default function AdminQuestionsPage() {
                       {isExpanded && (
                         <TableRow className="border-[#4B5563] bg-[#111827]/60">
                           <TableCell colSpan={9} className="p-4">
-                            {q.answer_options.length > 0 ? (
+                            {/* Lernstatistiken */}
+                            <div className="mb-3 flex items-center gap-3 text-xs text-[#9CA3AF]">
+                              <Users className="w-3.5 h-3.5 shrink-0" />
+                              {loadingStatsId === q.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : statsMap[q.id] ? (
+                                <>
+                                  <span>{statsMap[q.id].total} {statsMap[q.id].total === 1 ? 'Antwort' : 'Antworten'}</span>
+                                  {statsMap[q.id].correctRate !== null && (
+                                    <>
+                                      <span className="text-[#4B5563]">·</span>
+                                      <span className={
+                                        statsMap[q.id].correctRate! >= 70
+                                          ? 'text-[#58CC02]'
+                                          : statsMap[q.id].correctRate! >= 40
+                                          ? 'text-[#FF9600]'
+                                          : 'text-[#FF4B4B]'
+                                      }>
+                                        {statsMap[q.id].correctRate}% richtig
+                                      </span>
+                                    </>
+                                  )}
+                                  {statsMap[q.id].total === 0 && (
+                                    <span className="italic">Noch nicht beantwortet</span>
+                                  )}
+                                </>
+                              ) : null}
+                            </div>
+
+                          {q.answer_options.length > 0 ? (
                               <div className="space-y-2 max-w-2xl">
                                 {q.answer_options.map((a, idx) => (
                                   <div

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import {
@@ -109,6 +109,7 @@ export function QuestionFormModal({
 }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
+  const saveAndNewRef = useRef(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [topics, setTopics] = useState<AdminTopic[]>([])
   const [loadingTopics, setLoadingTopics] = useState(false)
@@ -233,7 +234,14 @@ export function QuestionFormModal({
       }
       toast.success(isEdit ? 'Frage aktualisiert' : 'Frage erstellt')
       onSuccess()
-      onOpenChange(false)
+      if (saveAndNewRef.current) {
+        saveAndNewRef.current = false
+        setForm(EMPTY)
+        setTopics([])
+        setErrors({})
+      } else {
+        onOpenChange(false)
+      }
     } catch (err) {
       console.error(err)
       toast.error('Netzwerkfehler')
@@ -492,7 +500,7 @@ export function QuestionFormModal({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
+          <DialogFooter className="gap-2 pt-2 flex-wrap">
             <Button
               type="button"
               variant="ghost"
@@ -501,12 +509,25 @@ export function QuestionFormModal({
             >
               Abbrechen
             </Button>
+            {!isEdit && (
+              <Button
+                type="submit"
+                disabled={submitting}
+                variant="outline"
+                onClick={() => { saveAndNewRef.current = true }}
+                className="rounded-xl border-[#4B5563] text-[#F9FAFB] hover:bg-[#374151]"
+              >
+                {submitting && saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Speichern & Neue
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={submitting}
+              onClick={() => { saveAndNewRef.current = false }}
               className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
             >
-              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {submitting && !saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEdit ? 'Speichern' : 'Erstellen'}
             </Button>
           </DialogFooter>
