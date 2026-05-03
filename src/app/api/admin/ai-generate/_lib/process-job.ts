@@ -45,7 +45,9 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
 }
 
 export async function generateQuestionsWithClaude(text: string, classLevel: number | null = null): Promise<GeneratedQuestion[]> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY ist nicht konfiguriert.')
+  const client = new Anthropic({ apiKey })
 
   const truncated = text.slice(0, 80_000) // stay within token limits
 
@@ -85,9 +87,12 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in diesem Format (kein Markdown, 
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected Claude response type')
 
+  // Strip potential markdown code fences (```json ... ``` or ``` ... ```)
+  const rawText = content.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+
   let parsed: ClaudeResponse
   try {
-    parsed = JSON.parse(content.text) as ClaudeResponse
+    parsed = JSON.parse(rawText) as ClaudeResponse
   } catch {
     throw new Error('Claude returned invalid JSON')
   }

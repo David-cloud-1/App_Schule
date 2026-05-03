@@ -24,10 +24,34 @@ export async function DELETE(request: NextRequest) {
   }
 
   const { ids } = parsed.data
-  const { error } = await supabase.from('questions').delete().in('id', ids)
-  if (error) {
-    console.error('[DELETE /api/admin/questions/bulk]', error)
-    return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
+
+  // Separate questions with quiz history (soft-delete) from those without (hard-delete)
+  const { data: usedRows } = await supabase
+    .from('quiz_answers')
+    .select('question_id')
+    .in('question_id', ids)
+
+  const usedIds = new Set((usedRows ?? []).map((r) => r.question_id as string))
+  const softIds = ids.filter((id) => usedIds.has(id))
+  const hardIds = ids.filter((id) => !usedIds.has(id))
+
+  if (softIds.length > 0) {
+    const { error } = await supabase
+      .from('questions')
+      .update({ is_active: false })
+      .in('id', softIds)
+    if (error) {
+      console.error('[DELETE /api/admin/questions/bulk] soft-delete', error)
+      return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
+    }
+  }
+
+  if (hardIds.length > 0) {
+    const { error } = await supabase.from('questions').delete().in('id', hardIds)
+    if (error) {
+      console.error('[DELETE /api/admin/questions/bulk] hard-delete', error)
+      return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
+    }
   }
 
   await writeAuditLog(supabase, {
@@ -36,9 +60,10 @@ export async function DELETE(request: NextRequest) {
     object_type: 'question',
     object_id: ids[0],
     object_label: `${ids.length} Fragen`,
+    details: { hardDeleted: hardIds.length, softDeleted: softIds.length },
   })
 
-  return NextResponse.json({ ok: true, deleted: ids.length })
+  return NextResponse.json({ ok: true, deleted: hardIds.length, softDeleted: softIds.length })
 }
 
 const BulkUpdateSchema = z

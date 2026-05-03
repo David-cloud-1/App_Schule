@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import {
   AlertCircle,
@@ -134,6 +134,7 @@ export default function AdminQuestionsPage() {
   const [bulkSubmitting, setBulkSubmitting] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [bulkStatusConfirm, setBulkStatusConfirm] = useState<boolean | null>(null)
 
   // Reset page when filters or sort changes
   useEffect(() => {
@@ -151,7 +152,10 @@ export default function AdminQuestionsPage() {
   const fetchSubjects = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/subjects')
-      if (!res.ok) return
+      if (!res.ok) {
+        toast.error('Fächer konnten nicht geladen werden.')
+        return
+      }
       const json = await res.json()
       setSubjects(
         (json.subjects ?? []).map((s: { id: string; code: string; name: string }) => ({
@@ -162,17 +166,22 @@ export default function AdminQuestionsPage() {
       )
     } catch (err) {
       console.error(err)
+      toast.error('Fächer konnten nicht geladen werden.')
     }
   }, [])
 
   const fetchAllTopics = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/topics')
-      if (!res.ok) return
+      if (!res.ok) {
+        toast.error('Themen konnten nicht geladen werden.')
+        return
+      }
       const json = await res.json()
       setAllTopics(json.topics ?? [])
     } catch (err) {
       console.error(err)
+      toast.error('Themen konnten nicht geladen werden.')
     }
   }, [])
 
@@ -249,7 +258,12 @@ export default function AdminQuestionsPage() {
         toast.error('Löschen fehlgeschlagen')
         return
       }
-      toast.success('Frage gelöscht')
+      const json = await res.json()
+      if (json.softDeleted) {
+        toast.info('Frage deaktiviert (hat Lernhistorie und wurde nicht endgültig gelöscht)')
+      } else {
+        toast.success('Frage gelöscht')
+      }
       setDeleteTarget(null)
       fetchQuestions()
     } catch (err) {
@@ -354,7 +368,10 @@ export default function AdminQuestionsPage() {
         return
       }
       const json = await res.json()
-      toast.success(`${json.deleted} Fragen gelöscht`)
+      const parts: string[] = []
+      if (json.deleted > 0) parts.push(`${json.deleted} gelöscht`)
+      if (json.softDeleted > 0) parts.push(`${json.softDeleted} deaktiviert (Lernhistorie)`)
+      toast.success(parts.join(', '))
       setSelectedIds(new Set())
       setBulkDeleteOpen(false)
       fetchQuestions()
@@ -628,17 +645,16 @@ export default function AdminQuestionsPage() {
               size="sm"
               variant="outline"
               disabled={bulkSubmitting}
-              onClick={() => handleBulkStatus(true)}
+              onClick={() => setBulkStatusConfirm(true)}
               className="rounded-xl border-[#4B5563] text-[#F9FAFB] hover:bg-[#1F2937]"
             >
-              {bulkSubmitting ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : null}
               Alle aktivieren
             </Button>
             <Button
               size="sm"
               variant="outline"
               disabled={bulkSubmitting}
-              onClick={() => handleBulkStatus(false)}
+              onClick={() => setBulkStatusConfirm(false)}
               className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#1F2937]"
             >
               Alle deaktivieren
@@ -741,9 +757,8 @@ export default function AdminQuestionsPage() {
                   const hasNoTopic = !q.topics
 
                   return (
-                    <>
+                    <Fragment key={q.id}>
                       <TableRow
-                        key={q.id}
                         className={`border-[#4B5563] hover:bg-[#111827]/40 transition-colors ${
                           isSelected ? 'bg-[#1F2937]/80 border-l-2 border-l-[#58CC02]' : ''
                         } ${isExpanded ? 'bg-[#111827]/30' : ''}`}
@@ -832,7 +847,7 @@ export default function AdminQuestionsPage() {
                         </TableCell>
                       </TableRow>
                       {isExpanded && (
-                        <TableRow key={`${q.id}-preview`} className="border-[#4B5563] bg-[#111827]/60">
+                        <TableRow className="border-[#4B5563] bg-[#111827]/60">
                           <TableCell colSpan={9} className="p-4">
                             {q.answer_options.length > 0 ? (
                               <div className="space-y-2 max-w-2xl">
@@ -875,7 +890,7 @@ export default function AdminQuestionsPage() {
                           </TableCell>
                         </TableRow>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
           </TableBody>
@@ -966,6 +981,41 @@ export default function AdminQuestionsPage() {
             >
               {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk status confirmation dialog */}
+      <AlertDialog
+        open={bulkStatusConfirm !== null}
+        onOpenChange={(v) => { if (!v) setBulkStatusConfirm(null) }}
+      >
+        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'}{' '}
+              {bulkStatusConfirm ? 'aktivieren' : 'deaktivieren'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#9CA3AF]">
+              Der Status aller ausgewählten Fragen wird geändert.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkSubmitting}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                if (bulkStatusConfirm !== null) {
+                  handleBulkStatus(bulkStatusConfirm)
+                  setBulkStatusConfirm(null)
+                }
+              }}
+              disabled={bulkSubmitting}
+              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white"
+            >
+              {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {bulkStatusConfirm ? 'Aktivieren' : 'Deaktivieren'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

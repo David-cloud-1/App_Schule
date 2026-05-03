@@ -92,10 +92,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   // 4. Link subject
-  await supabase.from('question_subjects').insert({
+  const { error: lErr } = await supabase.from('question_subjects').insert({
     question_id: question.id,
     subject_id: subject.id,
   })
+  if (lErr) {
+    console.error('[accept draft] subject link', lErr)
+    await supabase.from('answer_options').delete().eq('question_id', question.id)
+    await supabase.from('questions').delete().eq('id', question.id)
+    return NextResponse.json({ error: 'Fach konnte nicht verknüpft werden.' }, { status: 500 })
+  }
 
   // 5. Mark draft as accepted
   await supabase.from('questions_draft').update({ status: 'accepted' }).eq('id', id)

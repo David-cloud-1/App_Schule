@@ -59,12 +59,6 @@ export async function PATCH(
       object_id: id,
     })
   } else {
-    if (id === user.id) {
-      return NextResponse.json(
-        { error: 'Du kannst deine eigene Admin-Rolle nicht entziehen.' },
-        { status: 400 }
-      )
-    }
     const { error } = await service
       .from('profiles')
       .update({ role: parsed.data.role })

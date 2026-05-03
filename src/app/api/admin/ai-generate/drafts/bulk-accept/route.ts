@@ -112,10 +112,16 @@ export async function POST(request: NextRequest) {
       continue
     }
 
-    await supabase.from('question_subjects').insert({
+    const { error: lErr } = await supabase.from('question_subjects').insert({
       question_id: question.id,
       subject_id: subjectId,
     })
+    if (lErr) {
+      await supabase.from('answer_options').delete().eq('question_id', question.id)
+      await supabase.from('questions').delete().eq('id', question.id)
+      failed.push(draft.id)
+      continue
+    }
 
     await supabase.from('questions_draft').update({ status: 'accepted' }).eq('id', draft.id)
     accepted.push(draft.id)
