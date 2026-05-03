@@ -31,8 +31,10 @@ export function WeekActivityDots({ weekActivity }: WeekActivityDotsProps) {
       </div>
       <div className="flex justify-between items-end">
         {weekActivity.map((day) => (
-          <div key={day.dateStr} className="flex flex-col items-center gap-2">
+          <div key={day.dateStr} className="flex flex-col items-center gap-1.5">
             <div
+              title={day.date.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}
+              aria-label={`${day.date.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' })}: ${day.learned ? 'gelernt' : 'nicht gelernt'}`}
               className={cn(
                 'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200',
                 day.learned
@@ -61,6 +63,12 @@ export function WeekActivityDots({ weekActivity }: WeekActivityDotsProps) {
               day.isToday ? 'text-[#F9FAFB]' : 'text-[#6B7280]',
             )}>
               {toDayLabel(day.date)}
+            </span>
+            <span className={cn(
+              'text-[10px] tabular-nums',
+              day.isToday ? 'text-[#9CA3AF]' : 'text-[#4B5563]',
+            )}>
+              {day.date.getDate()}
             </span>
           </div>
         ))}

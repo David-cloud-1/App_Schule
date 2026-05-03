@@ -49,19 +49,24 @@ export function BadgeGallery({ unlockedBadges }: BadgeGalleryProps) {
               )}
             >
               {/* Icon */}
-              <span
-                className={cn('text-3xl', !isUnlocked && 'grayscale opacity-30')}
-                role="img"
-                aria-label={badge.name}
-              >
-                {badge.icon}
-              </span>
+              <div className="relative">
+                <span
+                  className={cn('text-3xl', !isUnlocked && 'grayscale opacity-30')}
+                  role="img"
+                  aria-label={badge.name}
+                >
+                  {badge.icon}
+                </span>
+                {!isUnlocked && (
+                  <span className="absolute -bottom-1 -right-1 text-[11px]" aria-hidden="true">🔒</span>
+                )}
+              </div>
 
               {/* Name */}
               <p
                 className={cn(
                   'text-xs font-semibold leading-tight',
-                  isUnlocked ? 'text-[#F9FAFB]' : 'text-[#4B5563]',
+                  isUnlocked ? 'text-[#F9FAFB]' : 'text-[#6B7280]',
                 )}
               >
                 {badge.name}
@@ -69,9 +74,9 @@ export function BadgeGallery({ unlockedBadges }: BadgeGalleryProps) {
 
               {/* Unlock date or condition */}
               {isUnlocked ? (
-                <p className="text-[10px] text-[#FFD700]">{formatDate(unlockedAt)}</p>
+                <p className="text-[11px] text-[#FFD700]">{formatDate(unlockedAt)}</p>
               ) : (
-                <p className="text-[10px] text-[#4B5563] leading-tight">{badge.description}</p>
+                <p className="text-[11px] text-[#6B7280] leading-tight">{badge.description}</p>
               )}
             </div>
           )
