@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,7 @@ async function saveSession(
 }
 
 export function QuizClient({ questions, subject, subjectId, totalAvailable }: QuizClientProps) {
+  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>('active')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
@@ -222,19 +224,26 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
             </div>
 
             {/* Streak */}
-            {newStreak > 0 && (
-              <div className="bg-[#1F2937] border border-[#FF9600]/30 rounded-2xl p-4 w-full mb-6 flex items-center justify-between">
-                <div>
-                  <p className="text-[#9CA3AF] text-sm">Tagesserie</p>
+            <div className={cn(
+              'rounded-2xl p-4 w-full mb-6 flex items-center justify-between',
+              newStreak > 0
+                ? 'bg-[#1F2937] border border-[#FF9600]/30'
+                : 'bg-[#1F2937] border border-[#4B5563]',
+            )}>
+              <div>
+                <p className="text-[#9CA3AF] text-sm">Tagesserie</p>
+                {newStreak > 0 ? (
                   <p className="text-xl font-bold text-[#FF9600]">{newStreak} {newStreak === 1 ? 'Tag' : 'Tage'} 🔥</p>
-                </div>
-                <Flame size={28} className="text-[#FF9600]" />
+                ) : (
+                  <p className="text-sm font-semibold text-[#6B7280]">Morgen wieder einloggen!</p>
+                )}
               </div>
-            )}
+              <Flame size={28} className={newStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
+            </div>
 
             <div className="flex flex-col gap-3 w-full">
               <Button
-                onClick={() => window.location.reload()}
+                onClick={() => router.push(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/quiz')}
                 className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95"
               >
                 <RotateCcw className="mr-2" size={18} />

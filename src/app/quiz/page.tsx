@@ -132,11 +132,23 @@ export default async function QuizPage({
               : 'Du hast heute alle verfügbaren Fragen beantwortet.'}{' '}
             Komm morgen wieder!
           </p>
-          <Link href="/subjects">
-            <Button className="rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold px-8 py-5 transition-all duration-200 active:scale-95">
-              Anderes Fach wählen
-            </Button>
-          </Link>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Link href="/subjects">
+              <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold px-8 py-5 transition-all duration-200 active:scale-95">
+                Anderes Fach wählen
+              </Button>
+            </Link>
+            <Link href="/exam">
+              <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold px-8 py-5 transition-all duration-200">
+                Prüfungssimulation starten
+              </Button>
+            </Link>
+            <Link href="/leaderboard">
+              <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold px-8 py-5 transition-all duration-200">
+                Rangliste ansehen
+              </Button>
+            </Link>
+          </div>
         </main>
       </div>
     )

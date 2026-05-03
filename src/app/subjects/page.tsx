@@ -18,7 +18,7 @@ export default async function SubjectsPage() {
   }
 
   const [profileResult, subjectsResult] = await Promise.all([
-    supabase.from('profiles').select('display_name').eq('id', user.id).single(),
+    supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
     supabase
       .from('subjects')
       .select(`
@@ -33,6 +33,7 @@ export default async function SubjectsPage() {
 
   const displayName =
     profileResult.data?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
+  const totalXp = profileResult.data?.total_xp ?? 0
 
   const subjects: SubjectWithCount[] = (subjectsResult.data ?? []).map((s) => ({
     id: s.id,
@@ -57,7 +58,7 @@ export default async function SubjectsPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">
               <Zap size={13} className="text-[#58CC02]" />
-              <span className="text-xs font-bold text-[#F9FAFB]">0 XP</span>
+              <span className="text-xs font-bold text-[#F9FAFB]">{totalXp.toLocaleString('de-DE')} XP</span>
             </div>
             <LogoutButton />
           </div>
