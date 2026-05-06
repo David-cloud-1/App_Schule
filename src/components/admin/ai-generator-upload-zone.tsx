@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { FileText, Loader2, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -21,7 +21,12 @@ export type GenerationJob = {
   questions_generated: number | null
   error_message: string | null
   created_at: string
+  subject_code: string | null
+  topic_id: string | null
 }
+
+type Subject = { id: string; code: string; name: string }
+type Topic = { id: string; name: string }
 
 const MAX_SIZE_BYTES = 50 * 1024 * 1024
 const ACCEPTED_MIME = [
@@ -40,7 +45,37 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [classLevel, setClassLevel] = useState<string>('all')
+
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [subjectCode, setSubjectCode] = useState<string>('all')
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [topicId, setTopicId] = useState<string>('all')
+  const [loadingTopics, setLoadingTopics] = useState(false)
+
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Load subjects on mount
+  useEffect(() => {
+    fetch('/api/admin/subjects')
+      .then((r) => r.json())
+      .then((data) => setSubjects(data.subjects ?? []))
+      .catch(() => {})
+  }, [])
+
+  // Load topics when subject changes
+  useEffect(() => {
+    setTopicId('all')
+    setTopics([])
+    if (subjectCode === 'all') return
+    const subject = subjects.find((s) => s.code === subjectCode)
+    if (!subject) return
+    setLoadingTopics(true)
+    fetch(`/api/admin/topics?subject_id=${subject.id}`)
+      .then((r) => r.json())
+      .then((data) => setTopics(data.topics ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingTopics(false))
+  }, [subjectCode, subjects])
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files)
@@ -74,9 +109,9 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
       try {
         const form = new FormData()
         form.append('file', file)
-        if (classLevel !== 'all') {
-          form.append('class_level', classLevel)
-        }
+        if (classLevel !== 'all') form.append('class_level', classLevel)
+        if (subjectCode !== 'all') form.append('subject_code', subjectCode)
+        if (topicId !== 'all') form.append('topic_id', topicId)
         const res = await fetch('/api/admin/ai-generate/upload', { method: 'POST', body: form })
         const json = await res.json()
         if (!res.ok) { toast.error(`"${file.name}": ${json.error ?? 'Upload fehlgeschlagen'}`); continue }
@@ -89,29 +124,88 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
     setPending([])
   }
 
+  const selectedSubject = subjects.find((s) => s.code === subjectCode)
+
   return (
     <div className="space-y-4">
-      {/* Class level selector */}
-      <div className="space-y-1.5">
-        <Label className="text-[#F9FAFB]">
-          Klassenstufe <span className="text-[#FF4B4B]">*</span>
-        </Label>
-        <Select value={classLevel} onValueChange={setClassLevel}>
-          <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-            <SelectItem value="all">Alle Klassenstufen</SelectItem>
-            <SelectItem value="10">Klasse 10</SelectItem>
-            <SelectItem value="11">Klasse 11</SelectItem>
-            <SelectItem value="12">Klasse 12</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-[#9CA3AF]">
-          Wird auf alle generierten Entwürfe angewendet — im Entwurfs-Editor nachträglich änderbar.
-        </p>
+      {/* Metadata selectors */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Klassenstufe */}
+        <div className="space-y-1.5">
+          <Label className="text-[#F9FAFB] text-sm">Klassenstufe</Label>
+          <Select value={classLevel} onValueChange={setClassLevel}>
+            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="all">Alle Klassenstufen</SelectItem>
+              <SelectItem value="10">Klasse 10</SelectItem>
+              <SelectItem value="11">Klasse 11</SelectItem>
+              <SelectItem value="12">Klasse 12</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Fach */}
+        <div className="space-y-1.5">
+          <Label className="text-[#F9FAFB] text-sm">Fach</Label>
+          <Select value={subjectCode} onValueChange={setSubjectCode}>
+            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectValue placeholder="Fach wählen…" />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="all">Alle Fächer</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s.id} value={s.code}>{s.code} – {s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Thema */}
+        <div className="space-y-1.5">
+          <Label className="text-[#F9FAFB] text-sm">
+            Thema
+            {subjectCode !== 'all' && loadingTopics && (
+              <Loader2 className="inline w-3 h-3 ml-1 animate-spin text-[#9CA3AF]" />
+            )}
+          </Label>
+          <Select
+            value={topicId}
+            onValueChange={setTopicId}
+            disabled={subjectCode === 'all' || loadingTopics}
+          >
+            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] disabled:opacity-50">
+              <SelectValue placeholder={subjectCode === 'all' ? 'Erst Fach wählen' : 'Thema wählen…'} />
+            </SelectTrigger>
+            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectItem value="all">Kein Thema</SelectItem>
+              {topics.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
+      {/* Context hint */}
+      {(subjectCode !== 'all' || topicId !== 'all') && (
+        <p className="text-xs text-[#9CA3AF]">
+          Claude generiert Fragen gezielt für{' '}
+          {selectedSubject ? <span className="text-[#1CB0F6]">{selectedSubject.code}</span> : null}
+          {topicId !== 'all' && topics.length > 0 && (
+            <> · <span className="text-[#1CB0F6]">{topics.find((t) => t.id === topicId)?.name}</span></>
+          )}
+          {' '}— alle Entwürfe kommen direkt mit diesen Werten importiert.
+        </p>
+      )}
+      {subjectCode === 'all' && (
+        <p className="text-xs text-[#9CA3AF]">
+          Fach und Thema werden auf alle generierten Entwürfe angewendet — im Entwurfs-Editor nachträglich änderbar.
+        </p>
+      )}
+
+      {/* Drop zone */}
       <div
         className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer select-none ${
           dragOver

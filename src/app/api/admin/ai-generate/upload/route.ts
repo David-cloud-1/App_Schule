@@ -33,6 +33,15 @@ export async function POST(request: NextRequest) {
       ? Number(classLevelRaw)
       : null
 
+  const subjectCodeRaw = formData.get('subject_code')
+  const subjectCode: string | null =
+    subjectCodeRaw && ['BGP', 'KSK', 'STG', 'LOP', 'PUG'].includes(String(subjectCodeRaw))
+      ? String(subjectCodeRaw)
+      : null
+
+  const topicIdRaw = formData.get('topic_id')
+  const topicId: string | null = topicIdRaw ? String(topicIdRaw) : null
+
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json(
       { error: 'Ungültiger Dateityp. Nur PDF und DOCX sind erlaubt.' },
@@ -59,6 +68,8 @@ export async function POST(request: NextRequest) {
       file_size_bytes: file.size,
       status: 'processing',
       class_level: classLevel,
+      subject_code: subjectCode,
+      topic_id: topicId,
     })
     .select('*')
     .single()

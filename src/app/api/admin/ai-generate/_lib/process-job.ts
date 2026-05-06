@@ -17,6 +17,14 @@ interface ClaudeResponse {
   questions: GeneratedQuestion[]
 }
 
+const SUBJECT_NAMES: Record<string, string> = {
+  BGP: 'Betriebliche und gesamtwirtschaftliche Prozesse',
+  KSK: 'Kaufmännische Steuerung und Kontrolle',
+  STG: 'Speditionelle und transportrelevante Geschäftsprozesse',
+  LOP: 'Logistische Leistungsprozesse',
+  PUG: 'Politik und Gesellschaft',
+}
+
 const EXAM_CONTEXT = `
 Du erstellst Prüfungsfragen für angehende Speditionskaufleute (IHK Bayern).
 Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse), PUG (Politik und Gesellschaft).
@@ -44,16 +52,38 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
   throw new Error(`Unsupported file type: ${mimeType}`)
 }
 
-export async function generateQuestionsWithClaude(text: string, classLevel: number | null = null): Promise<GeneratedQuestion[]> {
+interface GenerationContext {
+  classLevel: number | null
+  subjectCode: string | null
+  topicName: string | null
+}
+
+export async function generateQuestionsWithClaude(
+  text: string,
+  ctx: GenerationContext = { classLevel: null, subjectCode: null, topicName: null }
+): Promise<GeneratedQuestion[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY ist nicht konfiguriert.')
   const client = new Anthropic({ apiKey })
 
-  const truncated = text.slice(0, 80_000) // stay within token limits
+  const truncated = text.slice(0, 80_000)
 
-  const classLevelHint = classLevel
-    ? `Die Fragen sollen dem Niveau von Klasse ${classLevel} entsprechen.`
-    : 'Die Fragen sind für alle Klassenstufen geeignet.'
+  const hints: string[] = []
+
+  if (ctx.classLevel) {
+    hints.push(`Die Fragen sollen dem Niveau von Klasse ${ctx.classLevel} entsprechen.`)
+  } else {
+    hints.push('Die Fragen sind für alle Klassenstufen geeignet.')
+  }
+
+  if (ctx.subjectCode) {
+    const subjectName = SUBJECT_NAMES[ctx.subjectCode] ?? ctx.subjectCode
+    hints.push(`Das Fach ist: ${ctx.subjectCode} (${subjectName}). Erstelle ausschließlich Fragen zu diesem Fach.`)
+  }
+
+  if (ctx.topicName) {
+    hints.push(`Das Thema ist: "${ctx.topicName}". Erstelle ausschließlich Fragen zu diesem Thema.`)
+  }
 
   const message = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -62,7 +92,7 @@ export async function generateQuestionsWithClaude(text: string, classLevel: numb
       {
         role: 'user',
         content: `${EXAM_CONTEXT}
-${classLevelHint}
+${hints.join('\n')}
 
 Dokumentinhalt:
 ${truncated}
@@ -87,7 +117,6 @@ Antworte AUSSCHLIESSLICH mit einem JSON-Objekt in diesem Format (kein Markdown, 
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected Claude response type')
 
-  // Strip potential markdown code fences (```json ... ``` or ``` ... ```)
   const rawText = content.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
 
   let parsed: ClaudeResponse
@@ -117,13 +146,16 @@ export async function processJob(
   mimeType: string
 ): Promise<void> {
   try {
-    // Fetch class_level from the job record
     const { data: job } = await supabase
       .from('generation_jobs')
-      .select('class_level')
+      .select('class_level, subject_code, topic_id, topics(name)')
       .eq('id', jobId)
       .single()
+
     const classLevel = (job?.class_level as number | null) ?? null
+    const subjectCode = (job?.subject_code as string | null) ?? null
+    const topicId = (job?.topic_id as string | null) ?? null
+    const topicName = (job?.topics as unknown as { name: string } | null)?.name ?? null
 
     const text = await extractText(buffer, mimeType)
 
@@ -135,7 +167,7 @@ export async function processJob(
       return
     }
 
-    const questions = await generateQuestionsWithClaude(text, classLevel)
+    const questions = await generateQuestionsWithClaude(text, { classLevel, subjectCode, topicName })
 
     if (questions.length === 0) {
       await supabase
@@ -153,6 +185,8 @@ export async function processJob(
       explanation: q.explanation ?? null,
       status: q.review_required ? 'review_required' : 'pending',
       class_level: classLevel,
+      subject_code: subjectCode,
+      topic_id: topicId,
     }))
 
     await supabase.from('questions_draft').insert(draftRows)

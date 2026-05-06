@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
         explanation: draft.explanation ?? null,
         is_active: true,
         class_level: (draft.class_level as number | null) ?? null,
+        topic_id: (draft.topic_id as string | null) ?? null,
       })
       .select('id')
       .single()

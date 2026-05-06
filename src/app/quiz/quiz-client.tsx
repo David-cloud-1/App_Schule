@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame, Loader2 } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { LevelUpDialog } from '@/components/level-up-dialog'
@@ -57,6 +57,75 @@ interface QuizClientProps {
 }
 
 type Phase = 'active' | 'feedback' | 'summary'
+
+function QuestionReview({
+  questions,
+  sessionAnswers,
+}: {
+  questions: QuizQuestion[]
+  sessionAnswers: SessionAnswer[]
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="w-full mb-6">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between bg-[#1F2937] border border-[#4B5563] rounded-2xl px-4 py-3 text-sm font-semibold text-[#F9FAFB] transition-colors hover:bg-[#374151]"
+      >
+        <span>Fragenübersicht</span>
+        {open ? <ChevronUp size={16} className="text-[#9CA3AF]" /> : <ChevronDown size={16} className="text-[#9CA3AF]" />}
+      </button>
+
+      {open && (
+        <div className="mt-2 flex flex-col gap-2">
+          {questions.map((q, i) => {
+            const answer = sessionAnswers.find((a) => a.question_id === q.id)
+            const isCorrect = answer?.is_correct ?? false
+            const selectedOption = answer
+              ? q.answer_options.find((o) => o.id === answer.selected_option_id)
+              : null
+            const correctOption = q.answer_options.find((o) => o.is_correct)
+
+            return (
+              <div
+                key={q.id}
+                className={cn(
+                  'bg-[#1F2937] border rounded-2xl px-4 py-3',
+                  isCorrect ? 'border-[#58CC02]/40' : 'border-[#FF4B4B]/40',
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {isCorrect ? (
+                    <CheckCircle2 size={18} className="text-[#58CC02] mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle size={18} className="text-[#FF4B4B] mt-0.5 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[#F9FAFB] leading-snug">
+                      <span className="text-[#9CA3AF] mr-1">{i + 1}.</span>
+                      {q.question_text}
+                    </p>
+                    {!isCorrect && selectedOption && correctOption && (
+                      <div className="mt-2 text-xs space-y-1">
+                        <p className="text-[#FF4B4B]">
+                          Deine Antwort: {selectedOption.option_text}
+                        </p>
+                        <p className="text-[#58CC02]">
+                          Richtig: {correctOption.option_text}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const QUIZ_SIZE = 10
 
@@ -240,6 +309,9 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
               </div>
               <Flame size={28} className={newStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
             </div>
+
+            {/* Question review */}
+            <QuestionReview questions={questions} sessionAnswers={sessionAnswers} />
 
             <div className="flex flex-col gap-3 w-full">
               <Button

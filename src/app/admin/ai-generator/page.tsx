@@ -47,6 +47,7 @@ export type DraftQuestion = {
   subject_code: string | null
   difficulty: 'leicht' | 'mittel' | 'schwer' | null
   class_level: 10 | 11 | 12 | null
+  topic_id: string | null
   status: 'pending' | 'review_required' | 'accepted' | 'rejected'
   expires_at: string
 }
