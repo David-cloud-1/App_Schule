@@ -36,9 +36,8 @@ export default async function QuizPage({
   const classLevel = ['10', '11', '12'].includes(class_level ?? '') ? Number(class_level) : null
   const topicId = topic && UUID_RE.test(topic) ? topic : null
 
-  // ── Resolve subject + eligible question IDs ─────────────────────────────
+  // ── Resolve subject ───────────────────────────────────────────────────────
   let subject: { id: string; code: string; name: string; color: string } | null = null
-  let subjectQuestionIds: string[] | null = null
 
   if (subjectId) {
     const { data: subjectData } = await supabase
@@ -48,16 +47,7 @@ export default async function QuizPage({
       .single()
 
     if (!subjectData) redirect('/subjects')
-
     subject = subjectData
-
-    const { data: links } = await supabase
-      .from('question_subjects')
-      .select('question_id')
-      .eq('subject_id', subjectId)
-
-    subjectQuestionIds = (links ?? []).map((l) => l.question_id)
-    if (subjectQuestionIds.length === 0) redirect('/subjects')
   }
 
   // ── Fetch today's already-answered question IDs ──────────────────────────
@@ -81,15 +71,19 @@ export default async function QuizPage({
     answer_options: { id: string; option_text: string; is_correct: boolean; display_order: number }[]
   }
 
+  // Use an inner join to filter by subject instead of a large .in() list,
+  // which exceeds URL length limits when a subject has hundreds of questions.
+  const selectCols = subjectId
+    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order), question_subjects!inner(subject_id)'
+    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order)'
+
   let query = supabase
     .from('questions')
-    .select(
-      'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order)',
-    )
+    .select(selectCols)
     .eq('is_active', true)
 
-  if (subjectQuestionIds) {
-    query = query.in('id', subjectQuestionIds)
+  if (subjectId) {
+    query = query.eq('question_subjects.subject_id', subjectId)
   }
   if (classLevel) {
     query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
@@ -157,7 +151,7 @@ export default async function QuizPage({
   const totalAvailable = rawQuestions.length
 
   // ── Shuffle + limit ──────────────────────────────────────────────────────
-  const questions: QuizQuestion[] = shuffle(rawQuestions as RawQuestion[])
+  const questions: QuizQuestion[] = shuffle(rawQuestions as unknown as RawQuestion[])
     .slice(0, QUIZ_SIZE)
     .map((q) => ({
       id: q.id,
