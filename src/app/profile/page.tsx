@@ -7,6 +7,7 @@ import { StreakBadge } from '@/components/streak-badge'
 import { XpProgressBar } from '@/components/xp-progress-bar'
 import { BadgeGallery, type UnlockedBadge } from '@/components/badge-gallery'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
+import { PseudonymSettings } from '@/components/pseudonym-settings'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -19,11 +20,13 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, total_xp, current_streak, leaderboard_opt_out')
+    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out')
     .eq('id', user.id)
     .single()
 
   const displayName = (profile?.display_name as string | null) ?? user.email?.split('@')[0] ?? 'Azubi'
+  const pseudonym = (profile?.pseudonym as string | null) ?? 'Unbekannter Frachter'
+  const showRealName = (profile?.show_real_name as boolean | null) ?? false
   const totalXp = (profile?.total_xp as number | null) ?? 0
   const currentStreak = (profile?.current_streak as number | null) ?? 0
   const leaderboardOptOut = (profile?.leaderboard_opt_out as boolean | null) ?? false
@@ -86,9 +89,12 @@ export default async function ProfilePage() {
         </div>
 
         {/* Privacy settings */}
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-[#F9FAFB] mb-4">Einstellungen</h2>
-          <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
+        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-5">
+          <h2 className="text-sm font-semibold text-[#F9FAFB]">Rangliste</h2>
+          <PseudonymSettings initialPseudonym={pseudonym} initialShowRealName={showRealName} />
+          <div className="border-t border-[#374151] pt-4">
+            <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
+          </div>
         </div>
       </main>
     </div>

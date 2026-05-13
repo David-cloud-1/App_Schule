@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // All-time: use total_xp from profiles
     const { data: rows, error } = await service
       .from('profiles')
-      .select('id, display_name, total_xp, leaderboard_opt_out')
+      .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
       .order('total_xp', { ascending: false })
       .order('display_name', { ascending: true })
 
@@ -62,7 +62,9 @@ export async function GET(request: NextRequest) {
       const myRankInAll = rankedPublic.findIndex((r) => r.id === user.id)
       currentUserEntry = {
         id: currentUserRow.id,
-        display_name: currentUserRow.leaderboard_opt_out ? null : currentUserRow.display_name,
+        display_name: currentUserRow.leaderboard_opt_out ? null
+          : currentUserRow.show_real_name ? currentUserRow.display_name
+          : (currentUserRow.pseudonym ?? currentUserRow.display_name),
         total_xp: currentUserRow.total_xp,
         level: getLevelFromXp(currentUserRow.total_xp ?? 0),
         rank: myRankInAll >= 0 ? myRankInAll + 1 : allRows.filter((r) => r.total_xp > (currentUserRow.total_xp ?? 0)).length + 1,
@@ -73,6 +75,7 @@ export async function GET(request: NextRequest) {
 
     const top10 = rankedPublic.slice(0, 10).map((r) => ({
       ...r,
+      display_name: r.show_real_name ? r.display_name : (r.pseudonym ?? r.display_name),
       level: getLevelFromXp(r.total_xp ?? 0),
       is_current_user: r.id === user.id,
     }))
@@ -101,7 +104,7 @@ export async function GET(request: NextRequest) {
   // Fetch all profiles to get display names, opt-out, and total_xp (for level)
   const { data: profileRows, error: profileError } = await service
     .from('profiles')
-    .select('id, display_name, total_xp, leaderboard_opt_out')
+    .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
 
@@ -112,9 +115,12 @@ export async function GET(request: NextRequest) {
   const userIds = new Set([...xpMap.keys(), user.id])
   const allEntries = Array.from(userIds).map((uid) => {
     const profile = profileMap.get(uid)
+    const shownName = profile?.show_real_name
+      ? profile.display_name
+      : (profile?.pseudonym ?? profile?.display_name ?? null)
     return {
       id: uid,
-      display_name: profile?.display_name ?? null,
+      display_name: shownName,
       xp: xpMap.get(uid) ?? 0,
       leaderboard_opt_out: profile?.leaderboard_opt_out ?? false,
     }
@@ -146,7 +152,9 @@ export async function GET(request: NextRequest) {
 
   const currentUserEntry = {
     id: user.id,
-    display_name: currentUserProfile?.leaderboard_opt_out ? null : currentUserProfile?.display_name ?? null,
+    display_name: currentUserProfile?.leaderboard_opt_out ? null
+      : currentUserProfile?.show_real_name ? currentUserProfile.display_name
+      : (currentUserProfile?.pseudonym ?? currentUserProfile?.display_name ?? null),
     total_xp: currentUserXp,
     level: getLevelFromXp(currentUserProfile?.total_xp ?? 0),
     rank: currentUserRank >= 0 ? currentUserRank + 1 : allEntries.filter((e) => !e.leaderboard_opt_out && e.xp > currentUserXp).length + 1,
