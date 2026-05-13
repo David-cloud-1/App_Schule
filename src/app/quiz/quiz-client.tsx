@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -148,7 +147,6 @@ async function saveSession(
 }
 
 export function QuizClient({ questions, subject, subjectId, totalAvailable }: QuizClientProps) {
-  const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [phase, setPhase] = useState<Phase>('active')
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
@@ -315,7 +313,7 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
 
             <div className="flex flex-col gap-3 w-full">
               <Button
-                onClick={() => router.push(typeof window !== 'undefined' ? window.location.pathname + window.location.search : '/quiz')}
+                onClick={() => { window.location.href = window.location.pathname + window.location.search }}
                 className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95"
               >
                 <RotateCcw className="mr-2" size={18} />

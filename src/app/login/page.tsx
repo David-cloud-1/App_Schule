@@ -39,7 +39,14 @@ export default function LoginPage() {
     })
 
     if (authError) {
-      setError('E-Mail oder Passwort ist falsch.')
+      console.error('Login error:', authError.message, authError.code)
+      if (authError.message.includes('Email not confirmed')) {
+        setError('Bitte bestätige zuerst deine E-Mail-Adresse (Link in deiner E-Mail).')
+      } else if (authError.message.includes('provider is not enabled') || authError.message.includes('Email provider')) {
+        setError('E-Mail-Login ist momentan deaktiviert. Bitte nutze Google-Login.')
+      } else {
+        setError('E-Mail oder Passwort ist falsch.')
+      }
       return
     }
 
