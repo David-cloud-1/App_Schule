@@ -42,7 +42,7 @@ export default function RegisterPage() {
   async function onSubmit(values: RegisterFormValues) {
     setError(null)
     const supabase = createClient()
-    const { error: authError } = await supabase.auth.signUp({
+    const { data, error: authError } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {
@@ -51,11 +51,19 @@ export default function RegisterPage() {
     })
 
     if (authError) {
-      if (authError.message.toLowerCase().includes('already registered')) {
+      if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already been registered')) {
         setError('Diese E-Mail ist bereits registriert.')
+      } else if (authError.message.toLowerCase().includes('rate limit') || authError.message.toLowerCase().includes('too many')) {
+        setError('Zu viele Registrierungen auf einmal. Bitte warte kurz und versuche es erneut.')
       } else {
-        setError('Registrierung fehlgeschlagen. Bitte versuche es erneut.')
+        setError(`Registrierung fehlgeschlagen: ${authError.message}`)
       }
+      return
+    }
+
+    // Session is returned immediately when email confirmation is disabled
+    if (data?.session) {
+      window.location.href = '/'
       return
     }
 
