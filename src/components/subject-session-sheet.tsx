@@ -181,17 +181,14 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
           Lernen starten
         </Button>
 
-        {weakCount !== 0 && (
+        {weakCount !== null && weakCount > 0 && (
           <Button
             onClick={handleStartWeak}
-            disabled={weakCount === null}
             variant="outline"
-            className="w-full rounded-2xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10 hover:border-[#FF9600] font-bold py-6 text-base transition-all duration-200 active:scale-95 disabled:opacity-40"
+            className="w-full rounded-2xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10 hover:border-[#FF9600] font-bold py-6 text-base transition-all duration-200 active:scale-95"
           >
             <Target size={18} className="mr-2 shrink-0" />
-            {weakCount === null
-              ? 'Lücken schließen …'
-              : `Lücken schließen (${weakCount})`}
+            {`Lücken schließen (${weakCount})`}
           </Button>
         )}
       </SheetContent>
