@@ -27,7 +27,8 @@
 | PROJ-11 | Exam Simulation Mode | Deployed | [PROJ-11-exam-simulation-mode.md](PROJ-11-exam-simulation-mode.md) | 2026-04-16 |
 | PROJ-12 | Class Levels & Topics | Deployed | [PROJ-12-class-levels-topics.md](PROJ-12-class-levels-topics.md) | 2026-04-24 |
 | PROJ-13 | Topic Selection in Quiz Flow | Deployed | — | 2026-04-30 |
+| PROJ-14 | Lücken schließen | Approved | [PROJ-14-luecken-schliessen.md](PROJ-14-luecken-schliessen.md) | 2026-06-18 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-14
+## Next Available ID: PROJ-15

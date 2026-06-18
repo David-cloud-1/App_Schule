@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Target } from 'lucide-react'
 
 interface Topic {
   id: string
@@ -42,12 +43,20 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
   const [topicId, setTopicId] = useState<string>('')   // '' = Gemischt
   const [topics, setTopics] = useState<Topic[]>([])
   const [loadingTopics, setLoadingTopics] = useState(false)
+  // null = loading, number = resolved
+  const [weakCount, setWeakCount] = useState<number | null>(null)
 
   // When sheet opens for a new subject: reset everything
   useEffect(() => {
     if (!subject) return
     setClassLevel(initialClassLevel)
     setTopicId('')
+    setWeakCount(null)
+
+    fetch(`/api/quiz/weak?subject_id=${subject.id}&count_only=true`)
+      .then((r) => r.json())
+      .then((data) => setWeakCount(data.count ?? 0))
+      .catch(() => setWeakCount(0))
   }, [subject?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-fetch topics whenever subject or class level changes.
@@ -75,6 +84,12 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
     if (classLevel) params.set('class_level', classLevel)
     if (topicId) params.set('topic', topicId)
     router.push(`/quiz?${params.toString()}`)
+    onClose()
+  }
+
+  function handleStartWeak() {
+    if (!subject) return
+    router.push(`/quiz?subject=${subject.id}&mode=weak`)
     onClose()
   }
 
@@ -165,6 +180,20 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
         >
           Lernen starten
         </Button>
+
+        {weakCount !== 0 && (
+          <Button
+            onClick={handleStartWeak}
+            disabled={weakCount === null}
+            variant="outline"
+            className="w-full rounded-2xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10 hover:border-[#FF9600] font-bold py-6 text-base transition-all duration-200 active:scale-95 disabled:opacity-40"
+          >
+            <Target size={18} className="mr-2 shrink-0" />
+            {weakCount === null
+              ? 'Lücken schließen …'
+              : `Lücken schließen (${weakCount})`}
+          </Button>
+        )}
       </SheetContent>
     </Sheet>
   )

@@ -46,6 +46,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-9: Admin Content Management Panel | Planned |
 | P2 | PROJ-10: AI Question Generation | Planned |
 | P2 | PROJ-11: Exam Simulation Mode | Planned |
+| P1 | PROJ-14: Lücken schließen | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

@@ -4,8 +4,11 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
-import { Truck, Zap } from 'lucide-react'
+import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
+
+const WEAK_MIN_ATTEMPTS = 3
+const WEAK_ERROR_THRESHOLD = 0.5
 
 export default async function SubjectsPage() {
   const supabase = await createClient()
@@ -17,7 +20,7 @@ export default async function SubjectsPage() {
     redirect('/login')
   }
 
-  const [profileResult, subjectsResult] = await Promise.all([
+  const [profileResult, subjectsResult, answersResult] = await Promise.all([
     supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
     supabase
       .from('subjects')
@@ -29,11 +32,27 @@ export default async function SubjectsPage() {
         )
       `)
       .order('code'),
+    supabase
+      .from('quiz_answers')
+      .select('question_id, is_correct')
+      .eq('user_id', user.id),
   ])
 
   const displayName =
     profileResult.data?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
   const totalXp = profileResult.data?.total_xp ?? 0
+
+  // ── Compute weak question count ─────────────────────────────────────────
+  const answerStats = new Map<string, { total: number; wrong: number }>()
+  for (const { question_id, is_correct } of answersResult.data ?? []) {
+    const s = answerStats.get(question_id) ?? { total: 0, wrong: 0 }
+    s.total++
+    if (!is_correct) s.wrong++
+    answerStats.set(question_id, s)
+  }
+  const weakCount = [...answerStats.values()].filter(
+    ({ total, wrong }) => total >= WEAK_MIN_ATTEMPTS && wrong / total > WEAK_ERROR_THRESHOLD,
+  ).length
 
   const subjects: SubjectWithCount[] = (subjectsResult.data ?? []).map((s) => ({
     id: s.id,
@@ -75,6 +94,23 @@ export default async function SubjectsPage() {
             Wähle ein Fach und starte deine Lerneinheit.
           </p>
         </div>
+
+        {weakCount > 0 && (
+          <Link href="/quiz?mode=weak" className="block mb-5">
+            <div className="flex items-center gap-4 bg-[#1F2937] border border-[#FF9600]/40 rounded-2xl px-4 py-4 hover:border-[#FF9600]/70 hover:bg-[#FF9600]/5 transition-colors">
+              <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#FF9600]/15 shrink-0">
+                <Target size={22} className="text-[#FF9600]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#F9FAFB]">Lücken schließen</p>
+                <p className="text-xs text-[#9CA3AF] mt-0.5">
+                  {weakCount} {weakCount === 1 ? 'Frage' : 'Fragen'} mit hoher Fehlerquote
+                </p>
+              </div>
+              <ChevronRight size={18} className="text-[#FF9600] shrink-0" />
+            </div>
+          </Link>
+        )}
 
         <Suspense>
           <SubjectsGrid subjects={subjects} />
