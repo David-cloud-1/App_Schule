@@ -185,7 +185,7 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
           <Button
             onClick={handleStartWeak}
             variant="outline"
-            className="w-full rounded-2xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10 hover:border-[#FF9600] font-bold py-6 text-base transition-all duration-200 active:scale-95"
+            className="mt-3 w-full rounded-2xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10 hover:border-[#FF9600] font-bold py-6 text-base transition-all duration-200 active:scale-95"
           >
             <Target size={18} className="mr-2 shrink-0" />
             {`Lücken schließen (${weakCount})`}
