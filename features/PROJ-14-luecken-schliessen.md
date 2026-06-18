@@ -1,6 +1,6 @@
 # PROJ-14: Lücken schließen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-06-18
 **Last Updated:** 2026-06-18 (Frontend + Backend implementiert)
 
@@ -137,4 +137,9 @@ Schwellenwerte: Fehlerquote > 50% UND ≥ 3 Versuche.
 - `admin/exam-sets/route.test.ts`: 1 Test (pre-existing)
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://spedilern.vercel.app
+- **Deployed:** 2026-06-18
+- **Commit:** cd8bbbb
+- **Build:** ✅ READY (50s, Washington D.C. – iad1)
+- **Post-Deploy Errors:** Keine
