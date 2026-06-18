@@ -7,7 +7,7 @@ import { LogoutButton } from '@/components/logout-button'
 import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 
-const WEAK_MIN_ATTEMPTS = 3
+const WEAK_MIN_ATTEMPTS = 1
 const WEAK_ERROR_THRESHOLD = 0.5
 
 export default async function SubjectsPage() {

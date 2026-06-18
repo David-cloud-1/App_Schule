@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** Minimum number of attempts before a question is considered "weak". */
-const MIN_ATTEMPTS = 3
+const MIN_ATTEMPTS = 1
 
 /** Error rate above which a question is considered weak (exclusive). */
 const ERROR_THRESHOLD = 0.5
