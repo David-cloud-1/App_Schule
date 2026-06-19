@@ -32,6 +32,32 @@ Erstelle ausschließlich Multiple-Choice-Fragen mit genau 5 Antwortoptionen, wob
 Setze "review_required": true wenn die Frage eine eindeutige korrekte Antwort nicht zweifelsfrei belegt.
 `
 
+function detectWordFormat(buffer: Buffer): 'docx' | 'doc' | null {
+  if (
+    buffer.length >= 4 &&
+    buffer[0] === 0x50 &&
+    buffer[1] === 0x4b &&
+    buffer[2] === 0x03 &&
+    buffer[3] === 0x04
+  ) {
+    return 'docx'
+  }
+  if (
+    buffer.length >= 8 &&
+    buffer[0] === 0xd0 &&
+    buffer[1] === 0xcf &&
+    buffer[2] === 0x11 &&
+    buffer[3] === 0xe0 &&
+    buffer[4] === 0xa1 &&
+    buffer[5] === 0xb1 &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0xe1
+  ) {
+    return 'doc'
+  }
+  return null
+}
+
 export async function extractText(buffer: Buffer, mimeType: string): Promise<string> {
   if (mimeType === 'application/pdf' || mimeType === 'application/x-pdf') {
     const pdfParseModule = await import('pdf-parse')
@@ -44,9 +70,22 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
     mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
     mimeType === 'application/msword'
   ) {
-    const mammoth = await import('mammoth')
-    const result = await mammoth.extractRawText({ buffer })
-    return result.value
+    const format = detectWordFormat(buffer) ??
+      (mimeType === 'application/msword' ? 'doc' : 'docx')
+
+    if (format === 'docx') {
+      const mammoth = await import('mammoth')
+      const result = await mammoth.extractRawText({ buffer })
+      return result.value
+    }
+
+    const WordExtractorModule = await import('word-extractor')
+    const WordExtractor =
+      (WordExtractorModule as unknown as { default: new () => { extract: (buf: Buffer) => Promise<{ getBody: () => string }> } }).default ??
+      (WordExtractorModule as unknown as new () => { extract: (buf: Buffer) => Promise<{ getBody: () => string }> })
+    const extractor = new WordExtractor()
+    const doc = await extractor.extract(buffer)
+    return doc.getBody()
   }
 
   throw new Error(`Unsupported file type: ${mimeType}`)
