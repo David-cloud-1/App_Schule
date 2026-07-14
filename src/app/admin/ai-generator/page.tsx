@@ -76,6 +76,13 @@ REGELN:
 - Maximal 75 Fragen
 - klassenstufe: 10, 11 oder 12 — falls nicht eindeutig aus dem Kontext, weglassen (null)
 
+REGELN FÜR ANTWORTOPTIONEN (WICHTIG, streng einhalten):
+- Alle 5 Optionen müssen etwa gleich lang und gleich detailliert formuliert sein. Die richtige Antwort darf NICHT die längste oder ausführlichste sein — das ist das häufigste verräterische Muster und muss vermieden werden.
+- Verteile die korrekte Antwort zufällig und ausgewogen über A–E. Nicht überwiegend A oder B, sondern über alle Fragen hinweg gleichmäßig streuen.
+- Die falschen Antworten (Distraktoren) müssen plausibel und fachlich verlockend sein: typische Verwechslungen, häufige Denkfehler, ähnliche Fachbegriffe oder benachbarte Konzepte aus demselben Themengebiet. Keine offensichtlich absurden, thematisch fremden oder erkennbar falschen Optionen.
+- Verwende in Distraktoren dieselbe Fachsprache und denselben Konkretheitsgrad wie in der richtigen Antwort. Keine Signalwörter wie "immer", "nie", "alle", "ausschließlich", die eine Antwort als falsch entlarven.
+- Vermeide "Alle Antworten sind richtig" / "Keine der genannten" als Lückenfüller.
+
 Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown):
 {
   "rows": [
