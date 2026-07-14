@@ -82,6 +82,12 @@ REGELN FÜR ANTWORTOPTIONEN (WICHTIG, streng einhalten):
 - Die falschen Antworten (Distraktoren) müssen plausibel und fachlich verlockend sein: typische Verwechslungen, häufige Denkfehler, ähnliche Fachbegriffe oder benachbarte Konzepte aus demselben Themengebiet. Keine offensichtlich absurden, thematisch fremden oder erkennbar falschen Optionen.
 - Verwende in Distraktoren dieselbe Fachsprache und denselben Konkretheitsgrad wie in der richtigen Antwort. Keine Signalwörter wie "immer", "nie", "alle", "ausschließlich", die eine Antwort als falsch entlarven.
 - Vermeide "Alle Antworten sind richtig" / "Keine der genannten" als Lückenfüller.
+- Damit die Länge kein Hinweis auf die richtige Antwort ist: In etwa der Hälfte der Fragen soll ein DISTRAKTOR (eine falsche Option) die längste sein, nicht die richtige. Variiere das über die Fragen hinweg.
+
+TON & SPRACHNIVEAU (WICHTIG):
+- Zielgruppe sind Berufsschüler (angehende Speditionskaufleute) in einer spielerischen Lern-App. Formuliere fachlich korrekt, aber verständlich und geerdet — NICHT übertrieben hochgestochen oder juristisch verschachtelt (z. B. "wichtige Tatsachen" statt "verkehrswesentliche Tatsachen").
+- Prüfungsrelevante Fachbegriffe dürfen und sollen vorkommen, aber erkläre sie in klarer Alltagssprache.
+- Gleichzeitig keine zu einfache oder kindliche Sprache — sachlich, präzise und prüfungstauglich bleiben.
 
 Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown):
 {
