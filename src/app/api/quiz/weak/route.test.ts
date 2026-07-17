@@ -11,7 +11,6 @@ import { createClient } from '@/lib/supabase-server'
 const USER_ID = 'user-uuid-0001'
 const Q1 = '550e8400-e29b-41d4-a716-446655440001'
 const Q2 = '550e8400-e29b-41d4-a716-446655440002'
-const Q3 = '550e8400-e29b-41d4-a716-446655440003'
 const SUBJECT_ID = '770e8400-e29b-41d4-a716-446655440001'
 
 function makeRequest(params: Record<string, string> = {}): NextRequest {
@@ -34,12 +33,6 @@ const STRONG_ANSWERS_Q2 = [
   { question_id: Q2, is_correct: true },
   { question_id: Q2, is_correct: true },
   { question_id: Q2, is_correct: false },
-]
-
-/** Answers for Q3: only 2 attempts — below MIN_ATTEMPTS threshold. */
-const FEW_ANSWERS_Q3 = [
-  { question_id: Q3, is_correct: false },
-  { question_id: Q3, is_correct: false },
 ]
 
 const SAMPLE_QUESTIONS = [
@@ -113,7 +106,8 @@ describe('GET /api/quiz/weak', () => {
   })
 
   it('returns empty result when no questions meet the weak threshold', async () => {
-    const answers = [...STRONG_ANSWERS_Q2, ...FEW_ANSWERS_Q3]
+    // Q2 has a 25% error rate (≤ 50% threshold), so nothing qualifies as weak.
+    const answers = [...STRONG_ANSWERS_Q2]
     vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: USER_ID }, answers) as never)
     const res = await GET(makeRequest())
     expect(res.status).toBe(200)

@@ -34,8 +34,8 @@ function computeWeakIds(
  * GET /api/quiz/weak
  *
  * Returns questions where the authenticated user has a >50% error rate
- * and at least 3 attempts. Used by client components to show weak question
- * counts and, if needed, the full question list.
+ * and at least MIN_ATTEMPTS attempt(s). Used by client components to show weak
+ * question counts and, if needed, the full question list.
  *
  * Query params:
  *   subject_id   – optional UUID, filters to one subject

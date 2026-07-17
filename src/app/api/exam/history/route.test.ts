@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase-server'
 const USER_ID = '550e8400-e29b-41d4-a716-446655440000'
 
 function makeSupabaseMock({
-  user = { id: USER_ID },
+  user = { id: USER_ID } as { id: string } | null,
   sessions = [] as unknown[],
   error = null as unknown,
 } = {}) {

@@ -131,8 +131,10 @@ const validCreateBody = {
     { text: 'Falsch A', is_correct: false },
     { text: 'Falsch B', is_correct: false },
     { text: 'Falsch C', is_correct: false },
+    { text: 'Falsch D', is_correct: false },
   ],
   subject_ids: ['550e8400-e29b-41d4-a716-446655440000'],
+  class_level: null,
 }
 
 describe('GET /api/admin/questions', () => {
