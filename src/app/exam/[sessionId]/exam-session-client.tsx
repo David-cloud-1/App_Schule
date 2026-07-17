@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Clock, AlertTriangle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, AlertTriangle, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,6 +25,7 @@ interface Props {
   questions: ExamQuestion[]
   initialRemainingSeconds: number
   partsSelected: number[]
+  initialAnswers: Record<string, string>
 }
 
 const PART_LABELS: Record<number, string> = {
@@ -33,13 +34,16 @@ const PART_LABELS: Record<number, string> = {
   3: 'Teil 3 – WiSo',
 }
 
-export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected }: Props) {
+export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected, initialAnswers }: Props) {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers)
   const [remainingSeconds, setRemainingSeconds] = useState(initialRemainingSeconds)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const hasSubmitted = useRef(false)
+  const answersRef = useRef(answers)
+  answersRef.current = answers
 
   const totalQuestions = questions.length
   const currentQuestion = questions[currentIndex]
@@ -62,6 +66,56 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
       setIsSubmitting(false)
     }
   }, [sessionId, answers, router])
+
+  // Autosave: persist a draft of the current answers so a reload/close
+  // during the exam doesn't lose progress. Debounced after each change.
+  const saveDraft = useCallback(async () => {
+    if (hasSubmitted.current) return
+    setSaveState('saving')
+    try {
+      await fetch(`/api/exam/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', answers: answersRef.current }),
+      })
+      setSaveState('saved')
+    } catch {
+      setSaveState('idle')
+    }
+  }, [sessionId])
+
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    setSaveState('saving')
+    const t = setTimeout(saveDraft, 1500)
+    return () => clearTimeout(t)
+  }, [answers, saveDraft])
+
+  // Best-effort save when the tab is hidden or the page is being unloaded
+  useEffect(() => {
+    function flush() {
+      if (hasSubmitted.current) return
+      fetch(`/api/exam/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save', answers: answersRef.current }),
+        keepalive: true,
+      }).catch(() => {})
+    }
+    function onVisibility() {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
+    }
+  }, [sessionId])
 
   // Countdown timer
   useEffect(() => {
@@ -159,11 +213,21 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
             </AlertDialog>
           </div>
 
-          {/* Part label */}
-          <div className="flex items-center gap-2 mb-2">
+          {/* Part label + autosave indicator */}
+          <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-xs text-[#9CA3AF]">
               {partsSelected.map((p) => PART_LABELS[p]).join(' → ')}
             </span>
+            {saveState !== 'idle' && (
+              <span className="text-xs text-[#6B7280] flex items-center gap-1">
+                {saveState === 'saving' ? 'Speichert…' : (
+                  <>
+                    <Check size={11} className="text-[#58CC02]" />
+                    Gespeichert
+                  </>
+                )}
+              </span>
+            )}
           </div>
 
           <Progress

@@ -49,8 +49,13 @@ export default async function ExamSessionPage({
   const elapsedSeconds = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000)
   const remainingSeconds = Math.max(0, totalMinutes * 60 - elapsedSeconds)
 
-  const resultsJson = session.results_json as { durationMinutes?: number; parts: Record<string, ExamQuestion[]> }
+  const resultsJson = session.results_json as {
+    durationMinutes?: number
+    parts: Record<string, ExamQuestion[]>
+    draft_answers?: Record<string, string>
+  }
   const questions: ExamQuestion[] = Object.values(resultsJson?.parts ?? {}).flat()
+  const initialAnswers = resultsJson?.draft_answers ?? {}
 
   return (
     <ExamSessionClient
@@ -58,6 +63,7 @@ export default async function ExamSessionPage({
       questions={questions}
       initialRemainingSeconds={remainingSeconds}
       partsSelected={parts}
+      initialAnswers={initialAnswers}
     />
   )
 }

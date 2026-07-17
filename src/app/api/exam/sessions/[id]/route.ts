@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-server'
 const PART_DURATION_MINUTES: Record<number, number> = { 1: 90, 2: 90, 3: 45 }
 
 const SubmitSchema = z.object({
-  action: z.enum(['submit', 'abort']),
+  action: z.enum(['submit', 'abort', 'save']),
   answers: z.record(z.string(), z.string()).optional(),
 })
 
@@ -68,44 +68,58 @@ export async function PATCH(
 
   const { action, answers = {} } = parsed.data
   const resultsJson = session.results_json as {
+    durationMinutes?: number
     parts: Record<string, Record<string, unknown>[]>
+    draft_answers?: Record<string, string>
   }
 
-  if (action === 'submit' || action === 'abort') {
-    // Score MC questions and embed answers into results_json
-    const updatedParts: Record<string, unknown> = {}
-
-    for (const [partStr, partQuestions] of Object.entries(resultsJson.parts)) {
-      type ScoredQuestion = { type: string; is_correct?: boolean; [key: string]: unknown }
-      const questions: ScoredQuestion[] = (partQuestions ?? []).map((q: Record<string, unknown>): ScoredQuestion => {
-        const studentAnswer = answers[q.id as string] ?? null
-        if (q.type === 'multiple_choice') {
-          const correctOption = (q.answer_options as { id: string; is_correct: boolean }[] ?? []).find((o) => o.is_correct)
-          const isCorrect = studentAnswer ? studentAnswer === correctOption?.id : false
-          return { ...q, type: q.type as string, student_answer: studentAnswer, is_correct: isCorrect, correct_option_id: correctOption?.id }
-        }
-        return { ...q, type: q.type as string, student_answer: studentAnswer, self_score: null }
-      })
-
-      const mcQuestions = questions.filter((q) => q.type === 'multiple_choice')
-      const mcScore = mcQuestions.length
-        ? Math.round((mcQuestions.filter((q) => q.is_correct).length / mcQuestions.length) * 100)
-        : 100
-
-      updatedParts[partStr] = { questions, score: mcScore, passed: mcScore >= 50 }
-    }
-
+  // Autosave: persist draft answers without ending the session or scoring
+  if (action === 'save') {
+    const mergedDrafts = { ...(resultsJson.draft_answers ?? {}), ...answers }
     const { error } = await supabase
       .from('exam_sessions')
-      .update({
-        status: action === 'abort' ? 'aborted' : 'completed',
-        ended_at: new Date().toISOString(),
-        results_json: { parts: updatedParts },
-      })
+      .update({ results_json: { ...resultsJson, draft_answers: mergedDrafts } })
       .eq('id', id)
 
-    if (error) return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
+    if (error) return NextResponse.json({ error: 'Failed to save answers' }, { status: 500 })
+    return NextResponse.json({ success: true })
   }
+
+  // Submit / abort: score MC questions and embed answers into results_json.
+  // Submitted answers win, but fall back to any autosaved draft for robustness.
+  const effectiveAnswers = { ...(resultsJson.draft_answers ?? {}), ...answers }
+  const updatedParts: Record<string, unknown> = {}
+
+  for (const [partStr, partQuestions] of Object.entries(resultsJson.parts)) {
+    type ScoredQuestion = { type: string; is_correct?: boolean; [key: string]: unknown }
+    const questions: ScoredQuestion[] = (partQuestions ?? []).map((q: Record<string, unknown>): ScoredQuestion => {
+      const studentAnswer = effectiveAnswers[q.id as string] ?? null
+      if (q.type === 'multiple_choice') {
+        const correctOption = (q.answer_options as { id: string; is_correct: boolean }[] ?? []).find((o) => o.is_correct)
+        const isCorrect = studentAnswer ? studentAnswer === correctOption?.id : false
+        return { ...q, type: q.type as string, student_answer: studentAnswer, is_correct: isCorrect, correct_option_id: correctOption?.id }
+      }
+      return { ...q, type: q.type as string, student_answer: studentAnswer, self_score: null }
+    })
+
+    const mcQuestions = questions.filter((q) => q.type === 'multiple_choice')
+    const mcScore = mcQuestions.length
+      ? Math.round((mcQuestions.filter((q) => q.is_correct).length / mcQuestions.length) * 100)
+      : 100
+
+    updatedParts[partStr] = { questions, score: mcScore, passed: mcScore >= 50 }
+  }
+
+  const { error } = await supabase
+    .from('exam_sessions')
+    .update({
+      status: action === 'abort' ? 'aborted' : 'completed',
+      ended_at: new Date().toISOString(),
+      results_json: { parts: updatedParts },
+    })
+    .eq('id', id)
+
+  if (error) return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }

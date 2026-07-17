@@ -1,48 +1,34 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList, Truck } from 'lucide-react'
+import { ArrowLeft, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { ExamLandingClient } from './exam-landing-client'
 
-const PART_SUBJECT_CODES: Record<number, string[]> = {
-  1: ['STG', 'LOP'],
-  2: ['KSK'],
-  3: ['BGP'],
-}
+const PARTS = [1, 2, 3]
 
 export default async function ExamPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Check question counts per part
-  const { data: subjects } = await supabase.from('subjects').select('id, code')
-  const subjectMap = Object.fromEntries((subjects ?? []).map((s: { id: string; code: string }) => [s.code, s.id]))
+  // A part is available to students only when the teacher has activated an
+  // exam set for it. The card reflects that set's real name and question count.
+  const partStats: Record<number, { questionCount: number; setName: string | null }> = {}
 
-  const partStats: Record<number, { questionCount: number; hasActiveSet: boolean }> = {}
-
-  for (const [partStr, codes] of Object.entries(PART_SUBJECT_CODES)) {
-    const part = Number(partStr)
-    const subjectIds = codes.map((c) => subjectMap[c]).filter(Boolean)
-
-    let questionCount = 0
-    if (subjectIds.length > 0) {
-      const { data: links } = await supabase
-        .from('question_subjects')
-        .select('question_id')
-        .in('subject_id', subjectIds)
-      questionCount = links?.length ?? 0
-    }
-
+  for (const part of PARTS) {
     const { data: activeSet } = await supabase
       .from('exam_question_sets')
-      .select('id')
+      .select('name, question_ids')
       .eq('part', part)
       .eq('is_active', true)
+      .order('created_at', { ascending: false })
       .limit(1)
       .single()
 
-    partStats[part] = { questionCount, hasActiveSet: !!activeSet }
+    partStats[part] = {
+      questionCount: activeSet?.question_ids?.length ?? 0,
+      setName: activeSet?.name ?? null,
+    }
   }
 
   return (

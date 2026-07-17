@@ -362,3 +362,28 @@ After fixing BUG-1, the feature is functionally complete. BUG-2, BUG-3, and BUG-
 **Vercel Deployment ID:** dpl_13YppKcCSysWg9zDq5WqXnemUKPQ
 
 All 6 QA bugs fixed before deployment. Feature shipped with full exam simulation flow including timer, self-assessment, exam history, and admin exam set management.
+
+## UX-Überarbeitung & Bugfix (2026-07-17)
+
+Nach Nutzer-Feedback ("gefällt mir noch nicht", Zeit soll vom Lehrer kommen, Struktur unklar) überarbeitet:
+
+### BUG-7 — CRITICAL (behoben): Bewertung speicherte 0 Fragen & wertete jeden Teil als 100 %
+**File:** `src/app/api/exam/sessions/[id]/route.ts`
+**Problem:** `POST` speichert `results_json.parts` als `Record<part, Frage[]>` (Array je Teil). Die `PATCH`-Bewertung las jedoch `partData.questions` — bei einem Array ist das `undefined`, daher wurden 0 Fragen gescored und jeder Teil bekam pauschal 100 % ("Bestanden"). Empirisch mit Node reproduziert. Wurde bisher nicht bemerkt, da noch keine Prüfung bis zur Auswertung durchgespielt wurde.
+**Fix:** Iteration liest die Teil-Arrays direkt; abgegebene Antworten werden mit ggf. autosave-Drafts gemerged.
+
+### Teacher-driven Schüleransicht (statt Self-Service-Pool)
+- Landing zeigt pro Teil nur noch das **aktive Admin-Set** mit echtem Namen + echter Fragenzahl ("X Fragen · von deinem Ausbilder freigegeben").
+- Ohne aktives Set ist der Teil **gesperrt** (Lock-Icon, "Noch keine Prüfung freigegeben"), nicht startbar.
+- **Dauer/Zeit-Anzeige entfernt** aus der Schüler-Landing (kein `formatDuration`, keine "Gesamtzeit"-Box, keine Clock-Zeile) — die Zeit gibt der Lehrer über das Set vor. Der Countdown *während* der Prüfung bleibt.
+- `partStats` liefert jetzt `{ questionCount (aus Set), setName }` statt Pool-Zählung.
+
+### Autosave während der Prüfung
+- Neue PATCH-Action `save`: speichert Draft-Antworten in `results_json.draft_answers` ohne Scoring/Statuswechsel.
+- Client speichert debounced (1,5 s nach Änderung) sowie bei `visibilitychange`/`pagehide` (via `keepalive`-fetch). Dezenter "Speichert…/Gespeichert"-Indikator im Header.
+- Bei Reload/Rückkehr werden gespeicherte Antworten wiederhergestellt (`initialAnswers` aus `draft_answers`). Beim Abgeben füllen Drafts fehlende Antworten auf.
+
+### Struktur-Entscheidung: nach Teil (nicht nach Fach)
+Bewusst beim IHK-Teil-Raster geblieben (Teil 1 bündelt STG+LOP), da die App eine echte IHK-Prüfung simuliert. Fach-gezieltes Üben deckt bereits das Quiz (PROJ-13) und "Lücken schließen" (PROJ-14) ab.
+
+Build sauber, Exam-Route-Tests grün (8/8).
