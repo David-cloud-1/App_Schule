@@ -1,8 +1,14 @@
 # PROJ-15: Mehrere aktive Prüfungssets pro Teil
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-07-17
 **Last Updated:** 2026-07-17
+
+## Deployment
+**Deployed:** 2026-07-17
+**Production URL:** https://spedilern.vercel.app
+**Vercel Deployment ID:** dpl_2qN1moUjfnfAbgqPz12rRgB6dBkE
+Gemeinsam deployt mit den PROJ-11-Verbesserungen (Scoring-Fix, teacher-driven UI, Autosave).
 
 ## Dependencies
 - Erweitert PROJ-11 (Exam Simulation Mode)

@@ -28,7 +28,7 @@
 | PROJ-12 | Class Levels & Topics | Deployed | [PROJ-12-class-levels-topics.md](PROJ-12-class-levels-topics.md) | 2026-04-24 |
 | PROJ-13 | Topic Selection in Quiz Flow | Deployed | — | 2026-04-30 |
 | PROJ-14 | Lücken schließen | Deployed | [PROJ-14-luecken-schliessen.md](PROJ-14-luecken-schliessen.md) | 2026-06-18 |
-| PROJ-15 | Mehrere aktive Prüfungssets pro Teil | In Progress | [PROJ-15-multiple-active-exam-sets.md](PROJ-15-multiple-active-exam-sets.md) | 2026-07-17 |
+| PROJ-15 | Mehrere aktive Prüfungssets pro Teil | Deployed | [PROJ-15-multiple-active-exam-sets.md](PROJ-15-multiple-active-exam-sets.md) | 2026-07-17 |
 
 <!-- Add features above this line -->
 
