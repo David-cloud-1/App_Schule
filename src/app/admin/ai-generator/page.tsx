@@ -77,12 +77,27 @@ REGELN:
 - klassenstufe: 10, 11 oder 12 — falls nicht eindeutig aus dem Kontext, weglassen (null)
 
 REGELN FÜR ANTWORTOPTIONEN (WICHTIG, streng einhalten):
-- Alle 5 Optionen müssen etwa gleich lang und gleich detailliert formuliert sein. Die richtige Antwort darf NICHT die längste oder ausführlichste sein — das ist das häufigste verräterische Muster und muss vermieden werden.
+
+GRUNDPRINZIP: Ein Prüfling darf die richtige Antwort NUR am Fachwissen erkennen können — nie an einer äußerlichen Eigenschaft. Prüfe jede Frage zum Schluss so: Wenn ich das Fach nicht könnte, würde mir eine Option ins Auge springen? Dann umformulieren. Die vier folgenden Muster sind die, die in der Praxis immer wieder auftreten:
+
+1. LÄNGE: Die richtige Antwort darf NICHT die längste sein. In etwa der Hälfte der Fragen soll ein DISTRAKTOR die längste Option sein. Alle 5 Optionen etwa gleich lang und gleich detailliert.
+
+2. SATZBAU: Alle 5 Optionen müssen grammatisch gleich gebaut sein — gleiches Anfangswort, gleiche Wortart, gleiche Satzform. Wenn vier Optionen mit "Die ..." beginnen, muss auch die richtige mit "Die ..." beginnen; beginnen sie mit "Sie muss ...", dann alle. Die richtige Antwort darf NIE die einzige sein, die aus dem Muster fällt.
+   FALSCH: richtig "Unentgeltliche Überlassung zum Gebrauch" — falsch "Die entgeltliche Überlassung von Sachen", "Die Herstellung eines Werkes", "Die Leistung von Diensten" (die richtige ist die einzige ohne "Die").
+   RICHTIG: "Die unentgeltliche Überlassung zum Gebrauch" — dann passen alle fünf ins selbe Muster.
+
+3. STICHPUNKT VS. SATZ: Keine Option im Telegrammstil, wenn die anderen ganze Sätze sind. Sind die Distraktoren ausformulierte Sätze, muss die richtige Antwort ebenfalls ein ausformulierter Satz sein — nicht "Versandfertig, markiert, Papiere dabei", sondern "Die Sendung ist versandfertig verpackt, markiert und dokumentiert".
+
+4. SIGNALWÖRTER ("ausschließlich", "nur", "immer", "nie", "alle", "allein", "lediglich", "stets"): Diese dürfen vorkommen, wo sie fachlich zutreffen — auch in der richtigen Antwort, wenn der Sachverhalt tatsächlich exklusiv ist (z. B. "Man versteuert nur inländische Einkünfte"). Aber: höchstens EINE der 5 Optionen einer Frage darf ein solches Wort enthalten, und NIE dürfen alle Distraktoren eines haben, während die richtige keins hat. Baue Distraktoren nicht nach dem Schema "Ausschließlich + Stichwort" — das ist bequem, aber sofort durchschaubar. Ein Distraktor muss durch seine AUSSAGE falsch sein, nicht durch ein vorangestelltes Absolutwort.
+   FALSCH: "Ausschließlich die Kirchensteuer" — RICHTIG: "Der Solidaritätszuschlag auf die Lohnsteuer"
+
+WEITERE REGELN:
 - Verteile die korrekte Antwort zufällig und ausgewogen über A–E. Nicht überwiegend A oder B, sondern über alle Fragen hinweg gleichmäßig streuen.
 - Die falschen Antworten (Distraktoren) müssen plausibel und fachlich verlockend sein: typische Verwechslungen, häufige Denkfehler, ähnliche Fachbegriffe oder benachbarte Konzepte aus demselben Themengebiet. Keine offensichtlich absurden, thematisch fremden oder erkennbar falschen Optionen.
-- Verwende in Distraktoren dieselbe Fachsprache und denselben Konkretheitsgrad wie in der richtigen Antwort. Keine Signalwörter wie "immer", "nie", "alle", "ausschließlich", die eine Antwort als falsch entlarven.
+- Verwende in Distraktoren dieselbe Fachsprache und denselben Konkretheitsgrad wie in der richtigen Antwort.
+- Jede Option muss die gestellte Frage grammatisch beantworten. Bei "Welche Aussage zu X ist richtig?" müssen alle Optionen Aussagen über X sein ("Sie dienen einer verursachungsgerechten Kostenrechnung"), nicht Satzfragmente wie "Für eine verursachungsgerechte Kostenrechnung".
 - Vermeide "Alle Antworten sind richtig" / "Keine der genannten" als Lückenfüller.
-- Damit die Länge kein Hinweis auf die richtige Antwort ist: In etwa der Hälfte der Fragen soll ein DISTRAKTOR (eine falsche Option) die längste sein, nicht die richtige. Variiere das über die Fragen hinweg.
+- Erfinde keine Fragen zu Grundlagenbegriffen, die in anderen Dokumenten schon abgefragt sein könnten (Wirtschaftlichkeit, Einzelkosten, Break-even, Aktiv-/Passivseite, Inventur). Halte dich an die Inhalte, die dieses Dokument tatsächlich hergibt.
 
 TON & SPRACHNIVEAU (WICHTIG):
 - Zielgruppe sind Berufsschüler (angehende Speditionskaufleute) in einer spielerischen Lern-App. Formuliere fachlich korrekt, aber verständlich und geerdet — NICHT übertrieben hochgestochen oder juristisch verschachtelt (z. B. "wichtige Tatsachen" statt "verkehrswesentliche Tatsachen").
