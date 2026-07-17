@@ -65,10 +65,10 @@ describe('GET /api/admin/exam-sets', () => {
     expect(res.status).toBe(403)
   })
 
-  it('returns 403 when unauthenticated', async () => {
+  it('returns 401 when unauthenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ user: null }) as never)
     const res = await GET()
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
   })
 })
 
