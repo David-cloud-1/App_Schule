@@ -2,18 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Calculator, Truck, CheckSquare, Square, AlertCircle, Lock } from 'lucide-react'
+import { BookOpen, Calculator, Truck, AlertCircle, Lock, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-
-interface PartStats {
-  questionCount: number
-  setName: string | null
-}
+import type { ExamSetOption } from './page'
 
 interface Props {
-  partStats: Record<number, PartStats>
+  setsByPart: Record<number, ExamSetOption[]>
 }
 
 const PARTS = [
@@ -43,24 +39,28 @@ const PARTS = [
   },
 ]
 
-export function ExamLandingClient({ partStats }: Props) {
+export function ExamLandingClient({ setsByPart }: Props) {
   const router = useRouter()
-  const [selectedParts, setSelectedParts] = useState<Set<number>>(new Set())
+  // One chosen exam set per part (part → setId). Parts can be combined.
+  const [selected, setSelected] = useState<Map<number, string>>(new Map())
   const [isStarting, setIsStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function togglePart(partId: number) {
-    setSelectedParts((prev) => {
-      const next = new Set(prev)
-      if (next.has(partId)) next.delete(partId)
-      else next.add(partId)
+  function chooseSet(partId: number, setId: string) {
+    setSelected((prev) => {
+      const next = new Map(prev)
+      if (next.get(partId) === setId) next.delete(partId) // tap again to deselect
+      else next.set(partId, setId)
       return next
     })
     setError(null)
   }
 
+  const anyAvailable = PARTS.some((p) => (setsByPart[p.id]?.length ?? 0) > 0)
+
   async function handleStart() {
-    if (selectedParts.size === 0) {
+    const setIds = Array.from(selected.values())
+    if (setIds.length === 0) {
       setError('Bitte wähle mindestens eine Prüfung aus.')
       return
     }
@@ -70,7 +70,7 @@ export function ExamLandingClient({ partStats }: Props) {
       const res = await fetch('/api/exam/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parts: Array.from(selectedParts).sort() }),
+        body: JSON.stringify({ setIds }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -86,69 +86,82 @@ export function ExamLandingClient({ partStats }: Props) {
     }
   }
 
-  const anyAvailable = PARTS.some((p) => !!partStats[p.id]?.setName)
-
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm font-semibold text-[#F9FAFB]">Prüfung auswählen</p>
 
       {PARTS.map((part) => {
-        const stats = partStats[part.id]
-        const isSelected = selectedParts.has(part.id)
-        const isAvailable = !!stats?.setName
+        const sets = setsByPart[part.id] ?? []
+        const isAvailable = sets.length > 0
+        const chosenSetId = selected.get(part.id)
         const Icon = part.icon
 
         return (
-          <button
+          <div
             key={part.id}
-            onClick={() => isAvailable && togglePart(part.id)}
-            disabled={!isAvailable}
             className={cn(
-              'w-full text-left rounded-2xl border-2 p-4 transition-all duration-200',
-              'disabled:opacity-60 disabled:cursor-not-allowed',
-              isSelected
+              'w-full rounded-2xl border-2 p-4 transition-all duration-200',
+              chosenSetId
                 ? 'border-[#1CB0F6] bg-[#1CB0F6]/10'
-                : 'border-[#4B5563] bg-[#1F2937] hover:border-[#6B7280]',
+                : 'border-[#4B5563] bg-[#1F2937]',
+              !isAvailable && 'opacity-60',
             )}
           >
-            <div className="flex items-start gap-3">
-              <div className={cn(
-                'mt-0.5 flex-shrink-0 w-5 h-5',
-                !isAvailable ? 'text-[#4B5563]' : isSelected ? 'text-[#1CB0F6]' : 'text-[#4B5563]',
-              )}>
-                {!isAvailable ? <Lock size={18} /> : isSelected ? <CheckSquare size={20} /> : <Square size={20} />}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <Badge variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
-                    {part.label}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
-                    {part.subjects}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon size={16} className="text-[#1CB0F6] flex-shrink-0" />
-                  <span className="font-semibold text-[#F9FAFB] text-sm">
-                    {part.title} {part.subtitle}
-                  </span>
-                </div>
-
-                {isAvailable ? (
-                  <div className="mt-2">
-                    <p className="text-sm text-[#F9FAFB] font-medium truncate">{stats.setName}</p>
-                    <p className="text-xs text-[#9CA3AF] mt-0.5">
-                      {stats.questionCount} {stats.questionCount === 1 ? 'Frage' : 'Fragen'} · von deinem Ausbilder freigegeben
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-[#9CA3AF] mt-2">Noch keine Prüfung freigegeben</p>
-                )}
-              </div>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <Badge variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
+                {part.label}
+              </Badge>
+              <Badge variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
+                {part.subjects}
+              </Badge>
+              {!isAvailable && <Lock size={12} className="text-[#4B5563]" />}
             </div>
-          </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <Icon size={16} className="text-[#1CB0F6] flex-shrink-0" />
+              <span className="font-semibold text-[#F9FAFB] text-sm">
+                {part.title} {part.subtitle}
+              </span>
+            </div>
+
+            {!isAvailable ? (
+              <p className="text-xs text-[#9CA3AF]">Noch keine Prüfung freigegeben</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {sets.length > 1 && (
+                  <p className="text-xs text-[#9CA3AF]">Wähle die Prüfung, die dein Ausbilder angesagt hat:</p>
+                )}
+                {sets.map((set) => {
+                  const isChosen = chosenSetId === set.id
+                  return (
+                    <button
+                      key={set.id}
+                      onClick={() => chooseSet(part.id, set.id)}
+                      className={cn(
+                        'w-full text-left flex items-center gap-3 rounded-xl border p-3 transition-all duration-200',
+                        isChosen
+                          ? 'border-[#1CB0F6] bg-[#1CB0F6]/10'
+                          : 'border-[#4B5563] bg-[#111827] hover:border-[#6B7280]',
+                      )}
+                    >
+                      <div className={cn(
+                        'flex items-center justify-center w-5 h-5 rounded-full border-2 flex-shrink-0',
+                        isChosen ? 'border-[#1CB0F6] bg-[#1CB0F6]' : 'border-[#4B5563]',
+                      )}>
+                        {isChosen && <Check size={12} className="text-white" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-[#F9FAFB] font-medium truncate">{set.name}</p>
+                        <p className="text-xs text-[#9CA3AF]">
+                          {set.questionCount} {set.questionCount === 1 ? 'Frage' : 'Fragen'}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         )
       })}
 
@@ -170,7 +183,7 @@ export function ExamLandingClient({ partStats }: Props) {
 
       <Button
         onClick={handleStart}
-        disabled={isStarting || selectedParts.size === 0 || !anyAvailable}
+        disabled={isStarting || selected.size === 0 || !anyAvailable}
         className="w-full rounded-2xl bg-[#1CB0F6] hover:bg-[#18a0e0] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 disabled:opacity-50"
       >
         {isStarting ? 'Wird gestartet…' : 'Prüfung starten'}

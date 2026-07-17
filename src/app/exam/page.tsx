@@ -6,29 +6,31 @@ import { ExamLandingClient } from './exam-landing-client'
 
 const PARTS = [1, 2, 3]
 
+export type ExamSetOption = { id: string; name: string; questionCount: number }
+
 export default async function ExamPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // A part is available to students only when the teacher has activated an
-  // exam set for it. The card reflects that set's real name and question count.
-  const partStats: Record<number, { questionCount: number; setName: string | null }> = {}
+  // A part is available to students only when the teacher has activated at
+  // least one exam set for it. Multiple sets can be active per part (e.g. a
+  // different exam per class); students pick the specific one they were told.
+  const { data: activeSets } = await supabase
+    .from('exam_question_sets')
+    .select('id, name, part, question_ids')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
 
-  for (const part of PARTS) {
-    const { data: activeSet } = await supabase
-      .from('exam_question_sets')
-      .select('name, question_ids')
-      .eq('part', part)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    partStats[part] = {
-      questionCount: activeSet?.question_ids?.length ?? 0,
-      setName: activeSet?.name ?? null,
-    }
+  const setsByPart: Record<number, ExamSetOption[]> = {}
+  for (const part of PARTS) setsByPart[part] = []
+  for (const set of activeSets ?? []) {
+    if (!setsByPart[set.part]) setsByPart[set.part] = []
+    setsByPart[set.part].push({
+      id: set.id,
+      name: set.name,
+      questionCount: set.question_ids?.length ?? 0,
+    })
   }
 
   return (
@@ -53,7 +55,7 @@ export default async function ExamPage() {
           </p>
         </div>
 
-        <ExamLandingClient partStats={partStats} />
+        <ExamLandingClient setsByPart={setsByPart} />
       </main>
     </div>
   )

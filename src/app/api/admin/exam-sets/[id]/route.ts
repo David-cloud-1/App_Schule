@@ -34,14 +34,8 @@ export async function PATCH(
 
   if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
 
-  // When activating, deactivate other sets for the same part
-  if (parsed.data.is_active) {
-    await supabase
-      .from('exam_question_sets')
-      .update({ is_active: false })
-      .eq('part', existing.part)
-      .neq('id', id)
-  }
+  // Multiple sets may be active per part simultaneously (e.g. different exams
+  // for different classes). Activating one no longer deactivates the others.
 
   const { data, error } = await supabase
     .from('exam_question_sets')

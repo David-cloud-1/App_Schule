@@ -9,7 +9,10 @@ const PART_CONFIG = {
 } as const
 
 const StartExamSchema = z.object({
-  parts: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).min(1),
+  setIds: z.array(z.string().uuid()).min(1).optional(),
+  parts: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).min(1).optional(),
+}).refine((d) => (d.setIds?.length ?? 0) > 0 || (d.parts?.length ?? 0) > 0, {
+  message: 'setIds oder parts erforderlich',
 })
 
 export async function POST(request: NextRequest) {
@@ -28,9 +31,63 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { parts } = parsed.data
   const allQuestions: Record<number, unknown[]> = {}
   const partDurations: Record<number, number> = {}
+  const setNames: Record<number, string> = {}
+
+  // Preferred path: student picked one or more specific active exam sets.
+  if (parsed.data.setIds?.length) {
+    const { data: sets } = await supabase
+      .from('exam_question_sets')
+      .select('id, name, part, question_ids, duration_minutes, is_active')
+      .in('id', parsed.data.setIds)
+
+    const activeSets = (sets ?? []).filter((s) => s.is_active)
+    if (!activeSets.length) {
+      return NextResponse.json({ error: 'Keine gültige Prüfung ausgewählt.' }, { status: 400 })
+    }
+
+    const seenParts = new Set<number>()
+    for (const set of activeSets) {
+      if (seenParts.has(set.part)) {
+        return NextResponse.json({ error: 'Pro Teil kann nur eine Prüfung gewählt werden.' }, { status: 400 })
+      }
+      seenParts.add(set.part)
+
+      partDurations[set.part] = set.duration_minutes ?? PART_CONFIG[set.part as 1 | 2 | 3].durationMinutes
+      setNames[set.part] = set.name
+
+      const { data } = await supabase
+        .from('questions')
+        .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+        .in('id', set.question_ids ?? [])
+        .eq('is_active', true)
+      allQuestions[set.part] = (data ?? []).map((q) => ({ ...(q as object), part: set.part }))
+    }
+
+    const selectedParts = Array.from(seenParts).sort()
+    const totalDurationMinutes = selectedParts.reduce((sum, p) => sum + (partDurations[p] ?? 0), 0)
+
+    const { data: session, error } = await supabase
+      .from('exam_sessions')
+      .insert({
+        user_id: user.id,
+        parts_selected: selectedParts,
+        started_at: new Date().toISOString(),
+        status: 'in_progress',
+        results_json: { durationMinutes: totalDurationMinutes, setNames, parts: allQuestions },
+      })
+      .select('id')
+      .single()
+
+    if (error || !session) {
+      return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
+    }
+    return NextResponse.json({ sessionId: session.id, parts: allQuestions })
+  }
+
+  // Fallback path: parts-based selection (active set per part or random pool).
+  const parts = parsed.data.parts!
 
   for (const part of parts) {
     const config = PART_CONFIG[part]

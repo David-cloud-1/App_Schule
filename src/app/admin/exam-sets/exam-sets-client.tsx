@@ -126,10 +126,8 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
         body: JSON.stringify({ is_active: !set.is_active }),
       })
       if (res.ok) {
-        setSets((prev) => prev.map((s) => {
-          if (s.part === set.part) return { ...s, is_active: s.id === set.id ? !set.is_active : false }
-          return s
-        }))
+        // Multiple sets can be active per part — only flip the toggled one.
+        setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, is_active: !set.is_active } : s)))
       }
     } finally {
       setTogglingId(null)
@@ -278,7 +276,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
         <div>
           <h2 className="text-xl font-bold text-[#F9FAFB]">Prüfungssets</h2>
           <p className="text-sm text-[#9CA3AF] mt-1">
-            Erstelle kuratierte Fragensets für die Prüfungssimulation. Je Teil kann ein Set aktiv sein.
+            Erstelle kuratierte Fragensets für die Prüfungssimulation. Pro Teil können mehrere Sets gleichzeitig aktiv sein — z.B. verschiedene Prüfungen für verschiedene Klassen.
           </p>
         </div>
         <div className="flex items-center gap-2">
