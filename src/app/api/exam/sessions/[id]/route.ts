@@ -67,15 +67,17 @@ export async function PATCH(
   }
 
   const { action, answers = {} } = parsed.data
-  const resultsJson = session.results_json as Record<string, unknown>
+  const resultsJson = session.results_json as {
+    parts: Record<string, Record<string, unknown>[]>
+  }
 
   if (action === 'submit' || action === 'abort') {
     // Score MC questions and embed answers into results_json
     const updatedParts: Record<string, unknown> = {}
 
-    for (const [partStr, partData] of Object.entries(resultsJson.parts as Record<string, { questions: Record<string, unknown>[] }>)) {
+    for (const [partStr, partQuestions] of Object.entries(resultsJson.parts)) {
       type ScoredQuestion = { type: string; is_correct?: boolean; [key: string]: unknown }
-      const questions: ScoredQuestion[] = (partData.questions ?? []).map((q: Record<string, unknown>): ScoredQuestion => {
+      const questions: ScoredQuestion[] = (partQuestions ?? []).map((q: Record<string, unknown>): ScoredQuestion => {
         const studentAnswer = answers[q.id as string] ?? null
         if (q.type === 'multiple_choice') {
           const correctOption = (q.answer_options as { id: string; is_correct: boolean }[] ?? []).find((o) => o.is_correct)
