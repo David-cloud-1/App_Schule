@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -60,17 +61,13 @@ export async function GET(request: NextRequest) {
   }
 
   // ── Aggregate all answers for this user ───────────────────────────────────
-  const { data: answers, error: answersError } = await supabase
-    .from('quiz_answers')
-    .select('question_id, is_correct')
-    .eq('user_id', user.id)
+  const { rows: answers, error: answersError } = await fetchAllUserAnswers(supabase, user.id)
 
   if (answersError) {
-    console.error('[GET /api/quiz/weak] answers fetch:', answersError)
     return NextResponse.json({ error: 'Failed to fetch answers' }, { status: 500 })
   }
 
-  const allWeakIds = computeWeakIds(answers ?? [])
+  const allWeakIds = computeWeakIds(answers)
 
   if (allWeakIds.length === 0) {
     return NextResponse.json({ questions: [], count: 0 })

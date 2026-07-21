@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
+import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { LogoutButton } from '@/components/logout-button'
 import { StreakBadge } from '@/components/streak-badge'
 import { SubjectProgressCard } from '@/components/subject-progress-card'
@@ -55,7 +56,7 @@ export default async function HomePage() {
   sixDaysAgo.setHours(0, 0, 0, 0)
 
   // ── Parallel data fetching ────────────────────────────────────────────────
-  const [profileResult, subjectsResult, answersResult, sessionsResult] = await Promise.all([
+  const [profileResult, subjectsResult, { rows: answers }, sessionsResult] = await Promise.all([
     supabase
       .from('profiles')
       .select('display_name, role, total_xp, current_streak')
@@ -73,10 +74,7 @@ export default async function HomePage() {
       `)
       .order('code'),
 
-    supabase
-      .from('quiz_answers')
-      .select('question_id, is_correct')
-      .eq('user_id', user.id),
+    fetchAllUserAnswers(supabase, user.id),
 
     supabase
       .from('quiz_sessions')
@@ -93,7 +91,6 @@ export default async function HomePage() {
   const isAdmin = profile?.role === 'admin'
 
   // ── Aggregate answer data ─────────────────────────────────────────────────
-  const answers = answersResult.data ?? []
   const seenQuestionIds = new Set(answers.map((a) => a.question_id))
   const correctQuestionIds = new Set(
     answers.filter((a) => a.is_correct).map((a) => a.question_id),

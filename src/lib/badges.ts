@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
 
 // ── Badge Definitions ─────────────────────────────────────────────────────────
 
@@ -186,15 +187,19 @@ export async function checkAndAwardBadges(
 
     // 3. Fetch correct answers per subject (BGP, KSK, STG, LOP)
     //    quiz_answers → quiz_sessions → subjects
-    const { data: correctRows } = await supabase
-      .from('quiz_answers')
-      .select('quiz_sessions!inner(subjects!inner(code))')
-      .eq('user_id', userId)
-      .eq('is_correct', true)
+    const { rows: correctRows } = await fetchAllRows<unknown>('badges correct answers', (from, to) =>
+      supabase
+        .from('quiz_answers')
+        .select('quiz_sessions!inner(subjects!inner(code))')
+        .eq('user_id', userId)
+        .eq('is_correct', true)
+        .order('id')
+        .range(from, to),
+    )
 
     // Aggregate correct count per subject code
     const correctPerSubject: Record<string, number> = {}
-    for (const row of correctRows ?? []) {
+    for (const row of correctRows) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const code: string = (row as any).quiz_sessions?.subjects?.code
       if (code) {

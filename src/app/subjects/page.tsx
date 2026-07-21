@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
+import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
 import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
@@ -20,7 +21,7 @@ export default async function SubjectsPage() {
     redirect('/login')
   }
 
-  const [profileResult, subjectsResult, answersResult] = await Promise.all([
+  const [profileResult, subjectsResult, { rows: answers }] = await Promise.all([
     supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
     supabase
       .from('subjects')
@@ -32,10 +33,7 @@ export default async function SubjectsPage() {
         )
       `)
       .order('code'),
-    supabase
-      .from('quiz_answers')
-      .select('question_id, is_correct')
-      .eq('user_id', user.id),
+    fetchAllUserAnswers(supabase, user.id),
   ])
 
   const displayName =
@@ -44,7 +42,7 @@ export default async function SubjectsPage() {
 
   // ── Compute weak question count ─────────────────────────────────────────
   const answerStats = new Map<string, { total: number; wrong: number }>()
-  for (const { question_id, is_correct } of answersResult.data ?? []) {
+  for (const { question_id, is_correct } of answers) {
     const s = answerStats.get(question_id) ?? { total: 0, wrong: 0 }
     s.total++
     if (!is_correct) s.wrong++

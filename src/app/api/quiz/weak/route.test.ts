@@ -53,9 +53,12 @@ function makeSupabaseMock(
   answersError: unknown = null,
   questionsError: unknown = null,
 ) {
+  // Answers are fetched page-by-page via .range(); a short page ends the loop.
   const answersBuilder = {
     select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ data: answers, error: answersError }),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    range: vi.fn().mockResolvedValue({ data: answers, error: answersError }),
   }
 
   const questionsBuilder = {

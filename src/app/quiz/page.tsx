@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, Truck, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-server'
+import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { QuizClient, type QuizQuestion } from './quiz-client'
 
 const QUIZ_SIZE = 10
@@ -71,13 +72,10 @@ export default async function QuizPage({
 
   if (isWeakMode) {
     // ── Weak mode: aggregate personal error rates ─────────────────────────
-    const { data: answers } = await supabase
-      .from('quiz_answers')
-      .select('question_id, is_correct')
-      .eq('user_id', user.id)
+    const { rows: answers } = await fetchAllUserAnswers(supabase, user.id)
 
     const stats = new Map<string, { total: number; wrong: number }>()
-    for (const { question_id, is_correct } of answers ?? []) {
+    for (const { question_id, is_correct } of answers) {
       const s = stats.get(question_id) ?? { total: 0, wrong: 0 }
       s.total++
       if (!is_correct) s.wrong++

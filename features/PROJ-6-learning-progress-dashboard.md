@@ -237,3 +237,34 @@ Recommendation: Deploy as-is, address M1 and M2 in the next sprint.
 
 ## Deployment
 _To be added by /deploy_
+
+## Bugfix 2026-07-21 — Statistik fror bei 1000 Antworten ein
+
+**Symptom:** Nutzer mit mehr als 1000 beantworteten Fragen sahen im Dashboard
+dauerhaft 820 richtig / 180 falsch (Summe exakt 1000). Der betroffene Nutzer
+hatte laut DB 2314 Antworten (1830 richtig).
+
+**Ursache:** Dieselbe Ursache wie PROJ-11/aaa2b0f — PostgREST liefert per
+Default maximal 1000 Zeilen. Alle Vollscans über `quiz_answers` liefen ohne
+Paginierung und schnitten daher bei 1000 Antworten ab.
+
+**Fix:** Neuer Helper `src/lib/fetch-all-rows.ts` (generische `.range()`-
+Paginierung mit stabiler Sortierung) plus `src/lib/quiz-answers.ts`
+(`fetchAllUserAnswers`). Umgestellte Stellen:
+
+- `src/app/page.tsx` — Gesamtstatistik + Fach-Fortschritt (gemeldeter Bug)
+- `src/app/subjects/page.tsx` — Zähler „Lücken schließen"
+- `src/app/quiz/page.tsx` — Fragenauswahl im Weak-Modus
+- `src/app/api/quiz/weak/route.ts` — Weak-API
+- `src/lib/badges.ts` — richtige Antworten pro Fach (Badge-Vergabe)
+
+Fehler einer Seite werden nicht verschluckt: `fetchAllRows` gibt die bis dahin
+geladenen Zeilen zusammen mit dem Fehler zurück, sodass die Weak-API weiterhin
+500 liefert, während die Seiten wie bisher mit Teildaten rendern.
+
+**Offener Verdachtsfall:** Die Fächer-Query lädt die Fragenanzahl über einen
+eingebetteten Join (`subjects → question_subjects → questions`). STG hat 1431
+aktive Fragen. Ob PostgREST den 1000er-Cap auch auf eingebettete Zeilen
+anwendet, konnte nicht verifiziert werden (RLS verhindert den Test mit dem
+anon-Key). Falls STG im Dashboard „1000 Fragen" statt 1431 anzeigt, muss diese
+Query ebenfalls paginiert werden.

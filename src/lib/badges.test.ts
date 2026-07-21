@@ -105,10 +105,15 @@ function makeSupabaseMock(opts: {
     }
 
     if (table === 'quiz_answers') {
+      // Correct answers are fetched page-by-page via .range().
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                range: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
+              }),
+            }),
           }),
         }),
       }
@@ -192,10 +197,15 @@ function makeSimpleMock(opts: {
     }
 
     if (table === 'quiz_answers') {
+      // Correct answers are fetched page-by-page via .range().
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                range: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
+              }),
+            }),
           }),
         }),
       }
