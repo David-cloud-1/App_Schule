@@ -289,3 +289,6 @@ Paginierung wären bei STG ~431 Fragen nie ziehbar gewesen. Der Pool wird jetzt
 die Auswahl DB-seitig mit `.limit(questionCount)` (~20 Fragen). Die gewählten
 Fragen liegen ohnehin innerhalb der ersten 1000 — der Cap ändert die Auswahl
 nicht, und ein Uncapping würde nur die `.in()`-URL überlang machen (414-Risiko).
+
+**Deployed:** 2026-07-22 → https://spedilern.vercel.app (Commits 4d40b14, 2a11600).
+Verifiziert: STG sollte im Dashboard 1431 statt 998 zeigen.
