@@ -4,6 +4,8 @@ import { ArrowLeft, CheckCircle2, Truck, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { fetchAllRows } from '@/lib/fetch-all-rows'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
 
 const QUIZ_SIZE = 10
@@ -160,26 +162,34 @@ export default async function QuizPage({
 
     const answeredTodayIds = [...new Set((todayRows ?? []).map((r) => r.question_id))]
 
-    let query = supabase
-      .from('questions')
-      .select(selectCols)
-      .eq('is_active', true)
+    // Paginate the pool past the 1000-row cap, otherwise large subjects (STG
+    // has 1431 active questions) would never draw beyond their first 1000.
+    const { rows, error } = await fetchAllRows<RawQuestion>('quiz questions', (from, to) => {
+      let query = supabase
+        .from('questions')
+        .select(selectCols)
+        .eq('is_active', true)
 
-    if (subjectId) {
-      query = query.eq('question_subjects.subject_id', subjectId)
-    }
-    if (classLevel) {
-      query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
-    }
-    if (topicId) {
-      query = query.eq('topic_id', topicId)
-    }
-    if (answeredTodayIds.length > 0) {
-      query = query.not('id', 'in', `(${answeredTodayIds.join(',')})`)
-    }
+      if (subjectId) {
+        query = query.eq('question_subjects.subject_id', subjectId)
+      }
+      if (classLevel) {
+        query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
+      }
+      if (topicId) {
+        query = query.eq('topic_id', topicId)
+      }
+      if (answeredTodayIds.length > 0) {
+        query = query.not('id', 'in', `(${answeredTodayIds.join(',')})`)
+      }
 
-    const { data, error } = await query
-    rawQuestions = data as unknown as RawQuestion[]
+      // The dynamic selectCols string defeats supabase-js type inference.
+      return query.order('id').range(from, to) as unknown as PromiseLike<{
+        data: RawQuestion[] | null
+        error: PostgrestError | null
+      }>
+    })
+    rawQuestions = rows
     fetchError = error
   }
 

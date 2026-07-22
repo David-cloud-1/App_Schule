@@ -262,9 +262,30 @@ Fehler einer Seite werden nicht verschluckt: `fetchAllRows` gibt die bis dahin
 geladenen Zeilen zusammen mit dem Fehler zurück, sodass die Weak-API weiterhin
 500 liefert, während die Seiten wie bisher mit Teildaten rendern.
 
-**Offener Verdachtsfall:** Die Fächer-Query lädt die Fragenanzahl über einen
-eingebetteten Join (`subjects → question_subjects → questions`). STG hat 1431
-aktive Fragen. Ob PostgREST den 1000er-Cap auch auf eingebettete Zeilen
-anwendet, konnte nicht verifiziert werden (RLS verhindert den Test mit dem
-anon-Key). Falls STG im Dashboard „1000 Fragen" statt 1431 anzeigt, muss diese
-Query ebenfalls paginiert werden.
+### Nachtrag — eingebetteter Join ebenfalls gekappt (bestätigt & behoben)
+
+Der Verdacht bestätigte sich: STG zeigte im Dashboard 998 statt 1431 aktive
+Fragen. PostgREST wendet den 1000er-Cap auch auf eingebettete Zeilen an, sodass
+die Fächer-Query (`subjects → question_subjects → questions`) große Fächer
+abschnitt.
+
+**Fix:** Neuer Helper `src/lib/subject-questions.ts`
+(`fetchActiveQuestionSubjects` + `groupQuestionIdsBySubject`) lädt die
+Join-Tabelle `question_subjects` direkt und paginiert (sortiert nach dem
+Composite-Key `(subject_id, question_id)`) statt sie einzubetten. Umgestellte
+Stellen:
+
+- `src/app/page.tsx` — Fach-Fortschritt (gesehen/richtig pro Fach)
+- `src/app/subjects/page.tsx` — `active_question_count`
+- `src/app/api/subjects/route.ts` — dieselbe Zählung als API
+
+**Zusätzlich:** Der normale Quiz-Fragenpool in `src/app/quiz/page.tsx` lud alle
+aktiven Fragen eines Fachs, mischte clientseitig und nahm `QUIZ_SIZE`. Ohne
+Paginierung wären bei STG ~431 Fragen nie ziehbar gewesen. Der Pool wird jetzt
+über `fetchAllRows` paginiert. (Der Weak-Modus nutzt `.in('id', weakIds)` mit
+≤50 IDs und war nicht betroffen.)
+
+**Bewusst nicht geändert:** Die Prüfungssimulation (`api/exam/sessions`) begrenzt
+die Auswahl DB-seitig mit `.limit(questionCount)` (~20 Fragen). Die gewählten
+Fragen liegen ohnehin innerhalb der ersten 1000 — der Cap ändert die Auswahl
+nicht, und ein Uncapping würde nur die `.in()`-URL überlang machen (414-Risiko).

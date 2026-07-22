@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
 import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
@@ -21,18 +22,10 @@ export default async function SubjectsPage() {
     redirect('/login')
   }
 
-  const [profileResult, subjectsResult, { rows: answers }] = await Promise.all([
+  const [profileResult, subjectsResult, questionSubjects, { rows: answers }] = await Promise.all([
     supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
-    supabase
-      .from('subjects')
-      .select(`
-        id, code, name, color, icon_name,
-        question_subjects (
-          question_id,
-          questions!inner ( id, is_active )
-        )
-      `)
-      .order('code'),
+    supabase.from('subjects').select('id, code, name, color, icon_name').order('code'),
+    fetchActiveQuestionSubjects(supabase),
     fetchAllUserAnswers(supabase, user.id),
   ])
 
@@ -52,15 +45,15 @@ export default async function SubjectsPage() {
     ({ total, wrong }) => total >= WEAK_MIN_ATTEMPTS && wrong / total > WEAK_ERROR_THRESHOLD,
   ).length
 
+  const activeIdsBySubject = groupQuestionIdsBySubject(questionSubjects)
+
   const subjects: SubjectWithCount[] = (subjectsResult.data ?? []).map((s) => ({
     id: s.id,
     code: s.code,
     name: s.name,
     color: s.color,
     icon_name: s.icon_name,
-    active_question_count: (
-      s.question_subjects as unknown as { questions: { is_active: boolean } }[]
-    ).filter((qs) => qs.questions?.is_active === true).length,
+    active_question_count: (activeIdsBySubject.get(s.id) ?? []).length,
   }))
 
   return (

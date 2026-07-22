@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { LogoutButton } from '@/components/logout-button'
 import { StreakBadge } from '@/components/streak-badge'
 import { SubjectProgressCard } from '@/components/subject-progress-card'
@@ -56,32 +57,26 @@ export default async function HomePage() {
   sixDaysAgo.setHours(0, 0, 0, 0)
 
   // ── Parallel data fetching ────────────────────────────────────────────────
-  const [profileResult, subjectsResult, { rows: answers }, sessionsResult] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('display_name, role, total_xp, current_streak')
-      .eq('id', user.id)
-      .single(),
+  const [profileResult, subjectsResult, questionSubjects, { rows: answers }, sessionsResult] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('display_name, role, total_xp, current_streak')
+        .eq('id', user.id)
+        .single(),
 
-    supabase
-      .from('subjects')
-      .select(`
-        id, code, name, color,
-        question_subjects(
-          question_id,
-          questions!inner(is_active)
-        )
-      `)
-      .order('code'),
+      supabase.from('subjects').select('id, code, name, color').order('code'),
 
-    fetchAllUserAnswers(supabase, user.id),
+      fetchActiveQuestionSubjects(supabase),
 
-    supabase
-      .from('quiz_sessions')
-      .select('completed_at')
-      .eq('user_id', user.id)
-      .gte('completed_at', sixDaysAgo.toISOString()),
-  ])
+      fetchAllUserAnswers(supabase, user.id),
+
+      supabase
+        .from('quiz_sessions')
+        .select('completed_at')
+        .eq('user_id', user.id)
+        .gte('completed_at', sixDaysAgo.toISOString()),
+    ])
 
   // ── Extract profile data ──────────────────────────────────────────────────
   const profile = profileResult.data
@@ -109,29 +104,20 @@ export default async function HomePage() {
   const xpToNextLevel = getXpCostOfLevel(level) - getXpWithinLevel(totalXp)
 
   // ── Per-subject progress ─────────────────────────────────────────────────
-  type RawSubject = {
-    id: string
-    code: string
-    name: string
-    color: string
-    question_subjects: { question_id: string; questions: { is_active: boolean } }[]
-  }
+  const activeIdsBySubject = groupQuestionIdsBySubject(questionSubjects)
 
   const subjects = (subjectsResult.data ?? []).map((s) => {
-    const raw = s as unknown as RawSubject
-    const activeIds = raw.question_subjects
-      .filter((qs) => qs.questions?.is_active === true)
-      .map((qs) => qs.question_id)
+    const activeIds = activeIdsBySubject.get(s.id) ?? []
 
     const total = activeIds.length
     const seenCount = activeIds.filter((id) => seenQuestionIds.has(id)).length
     const correctCount = activeIds.filter((id) => correctQuestionIds.has(id)).length
 
     return {
-      id: raw.id,
-      code: raw.code,
-      name: raw.name,
-      color: raw.color,
+      id: s.id,
+      code: s.code,
+      name: s.name,
+      color: s.color,
       totalQuestions: total,
       seenCount,
       correctCount,
