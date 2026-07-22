@@ -173,3 +173,12 @@ Current state is safe to deploy as a feature flag or behind PROJ-5 dependency. N
 
 ### Known deferred issues
 - BUG-3-1 (Medium): Streak-Status missing from summary — blocked on PROJ-5
+
+### Post-Deployment Updates
+
+**2026-07-22 — Aufklappbare Fragenübersicht im Ergebnis-Screen**
+- Jede Frage in der Fragenübersicht (Summary-Screen) ist jetzt anklickbar und klappt auf
+- Aufgeklappt sichtbar: alle Antwortmöglichkeiten in `display_order`, die eigene Auswahl mit Label „Deine Antwort", die richtige Option grün, übrige gedimmt, plus Erklärung falls vorhanden
+- Ersetzt die frühere Kurzform („Deine Antwort: … / Richtig: …"), die nur bei falsch beantworteten Fragen erschien
+- Datei: `src/app/quiz/quiz-client.tsx` (neue Komponente `QuestionReviewItem`)
+- Commit `0535205`, deployed nach https://spedilern.vercel.app
