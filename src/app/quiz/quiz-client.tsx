@@ -57,6 +57,98 @@ interface QuizClientProps {
 
 type Phase = 'active' | 'feedback' | 'summary'
 
+function QuestionReviewItem({
+  question,
+  index,
+  answer,
+}: {
+  question: QuizQuestion
+  index: number
+  answer: SessionAnswer | undefined
+}) {
+  const [expanded, setExpanded] = useState(false)
+
+  const isCorrect = answer?.is_correct ?? false
+  const options = [...question.answer_options].sort(
+    (a, b) => a.display_order - b.display_order,
+  )
+
+  return (
+    <div
+      className={cn(
+        'bg-[#1F2937] border rounded-2xl overflow-hidden',
+        isCorrect ? 'border-[#58CC02]/40' : 'border-[#FF4B4B]/40',
+      )}
+    >
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        className="w-full text-left px-4 py-3 flex items-start gap-3 transition-colors hover:bg-[#374151]"
+      >
+        {isCorrect ? (
+          <CheckCircle2 size={18} className="text-[#58CC02] mt-0.5 shrink-0" />
+        ) : (
+          <XCircle size={18} className="text-[#FF4B4B] mt-0.5 shrink-0" />
+        )}
+        <p className="flex-1 min-w-0 text-sm text-[#F9FAFB] leading-snug">
+          <span className="text-[#9CA3AF] mr-1">{index + 1}.</span>
+          {question.question_text}
+        </p>
+        {expanded ? (
+          <ChevronUp size={16} className="text-[#9CA3AF] mt-0.5 shrink-0" />
+        ) : (
+          <ChevronDown size={16} className="text-[#9CA3AF] mt-0.5 shrink-0" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 pt-1 flex flex-col gap-2">
+          {options.map((option) => {
+            const isSelected = option.id === answer?.selected_option_id
+
+            let optionClass = 'bg-[#111827] border-[#374151] text-[#6B7280]'
+            if (option.is_correct) {
+              optionClass = 'bg-[#58CC02]/10 border-[#58CC02] text-[#58CC02]'
+            } else if (isSelected) {
+              optionClass = 'bg-[#FF4B4B]/10 border-[#FF4B4B] text-[#FF4B4B]'
+            }
+
+            return (
+              <div
+                key={option.id}
+                className={cn(
+                  'rounded-xl border px-3 py-2.5 text-sm flex items-start gap-2',
+                  optionClass,
+                )}
+              >
+                {option.is_correct ? (
+                  <CheckCircle2 size={16} className="text-[#58CC02] mt-0.5 shrink-0" />
+                ) : isSelected ? (
+                  <XCircle size={16} className="text-[#FF4B4B] mt-0.5 shrink-0" />
+                ) : (
+                  <span className="w-4 shrink-0" />
+                )}
+                <span className="flex-1 min-w-0 leading-snug">{option.option_text}</span>
+                {isSelected && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF] mt-0.5 shrink-0">
+                    Deine Antwort
+                  </span>
+                )}
+              </div>
+            )
+          })}
+
+          {question.explanation && (
+            <p className="text-xs text-[#9CA3AF] leading-relaxed mt-1">
+              {question.explanation}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function QuestionReview({
   questions,
   sessionAnswers,
@@ -78,48 +170,14 @@ function QuestionReview({
 
       {open && (
         <div className="mt-2 flex flex-col gap-2">
-          {questions.map((q, i) => {
-            const answer = sessionAnswers.find((a) => a.question_id === q.id)
-            const isCorrect = answer?.is_correct ?? false
-            const selectedOption = answer
-              ? q.answer_options.find((o) => o.id === answer.selected_option_id)
-              : null
-            const correctOption = q.answer_options.find((o) => o.is_correct)
-
-            return (
-              <div
-                key={q.id}
-                className={cn(
-                  'bg-[#1F2937] border rounded-2xl px-4 py-3',
-                  isCorrect ? 'border-[#58CC02]/40' : 'border-[#FF4B4B]/40',
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  {isCorrect ? (
-                    <CheckCircle2 size={18} className="text-[#58CC02] mt-0.5 shrink-0" />
-                  ) : (
-                    <XCircle size={18} className="text-[#FF4B4B] mt-0.5 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-[#F9FAFB] leading-snug">
-                      <span className="text-[#9CA3AF] mr-1">{i + 1}.</span>
-                      {q.question_text}
-                    </p>
-                    {!isCorrect && selectedOption && correctOption && (
-                      <div className="mt-2 text-xs space-y-1">
-                        <p className="text-[#FF4B4B]">
-                          Deine Antwort: {selectedOption.option_text}
-                        </p>
-                        <p className="text-[#58CC02]">
-                          Richtig: {correctOption.option_text}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {questions.map((q, i) => (
+            <QuestionReviewItem
+              key={q.id}
+              question={q}
+              index={i}
+              answer={sessionAnswers.find((a) => a.question_id === q.id)}
+            />
+          ))}
         </div>
       )}
     </div>
