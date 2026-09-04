@@ -12,7 +12,11 @@
     "test:watch": "NODE_OPTIONS=--max-old-space-size=4096 vitest",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:all": "vitest run && playwright test"
+    "test:all": "vitest run && playwright test",
+    "quality:audit": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts",
+    "quality:list": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts --list",
+    "quality:sample": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts --sample",
+    "quality:apply": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/apply.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

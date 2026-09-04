@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { SupabaseClient } from '@supabase/supabase-js'
+import { QUESTION_QUALITY_RULES } from '@/lib/question-rules'
+import { analyzeQuestion } from '@/lib/question-quality'
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024 // 50 MB
 
@@ -30,6 +32,8 @@ Du erstellst Prüfungsfragen für angehende Speditionskaufleute (IHK Bayern).
 Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse), PUG (Politik und Gesellschaft).
 Erstelle ausschließlich Multiple-Choice-Fragen mit genau 5 Antwortoptionen, wobei exakt eine korrekt ist.
 Setze "review_required": true wenn die Frage eine eindeutige korrekte Antwort nicht zweifelsfrei belegt.
+
+${QUESTION_QUALITY_RULES}
 `
 
 function detectWordFormat(buffer: Buffer): 'docx' | 'doc' | null {
@@ -216,17 +220,30 @@ export async function processJob(
       return
     }
 
-    const draftRows = questions.map((q) => ({
-      job_id: jobId,
-      question_text: q.question_text,
-      options: q.options,
-      correct_index: q.correct_index,
-      explanation: q.explanation ?? null,
-      status: q.review_required ? 'review_required' : 'pending',
-      class_level: classLevel,
-      subject_code: subjectCode,
-      topic_id: topicId,
-    }))
+    // Torwächter: jeder Entwurf wird auf Rate-Tells geprüft, bevor er
+    // überhaupt zur Freigabe angeboten wird. Blocker setzen den Status auf
+    // 'review_required' — accept und bulk-accept lehnen diesen Status ab.
+    const draftRows = questions.map((q) => {
+      const quality = analyzeQuestion({
+        question_text: q.question_text,
+        options: q.options,
+        correct_index: q.correct_index,
+        explanation: q.explanation,
+      })
+
+      return {
+        job_id: jobId,
+        question_text: q.question_text,
+        options: q.options,
+        correct_index: q.correct_index,
+        explanation: q.explanation ?? null,
+        status: q.review_required || !quality.ok ? 'review_required' : 'pending',
+        quality_report: quality,
+        class_level: classLevel,
+        subject_code: subjectCode,
+        topic_id: topicId,
+      }
+    })
 
     await supabase.from('questions_draft').insert(draftRows)
 
