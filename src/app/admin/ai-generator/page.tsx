@@ -16,6 +16,7 @@ import {
   FileJson,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -37,6 +38,7 @@ import { AiGeneratorDraftCard } from '@/components/admin/ai-generator-draft-card
 import { AiGeneratorDraftEditModal } from '@/components/admin/ai-generator-draft-edit-modal'
 import { createClient } from '@/lib/supabase-browser'
 import { QUESTION_QUALITY_RULES } from '@/lib/question-rules'
+import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } from '@/lib/question-import'
 
 export type DraftQuestion = {
   id: string
@@ -106,7 +108,7 @@ type ParseState =
   | { status: 'empty' }
   | { status: 'invalid'; reason: string }
   | { status: 'no_rows'; reason: string }
-  | { status: 'ready'; count: number; parsed: unknown }
+  | { status: 'ready'; count: number; parsed: unknown; check: ImportCheck }
 
 // Extrahiert JSON aus beliebigem Text — auch wenn Claude.ai Text davor/danach schreibt
 function extractJson(text: string): unknown {
@@ -144,7 +146,12 @@ function analyzeInput(value: string): ParseState {
     if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
       return { status: 'no_rows', reason: 'Das "rows"-Feld ist leer oder kein Array. Claude.ai hat keine Fragen generiert.' }
     }
-    return { status: 'ready', count: parsed.rows.length, parsed }
+    return {
+      status: 'ready',
+      count: parsed.rows.length,
+      parsed,
+      check: checkImportRows(parsed.rows as ImportRow[]),
+    }
   } catch {
     return {
       status: 'invalid',
@@ -159,6 +166,8 @@ function ManualImportSection() {
   const [jsonInput, setJsonInput] = useState('')
   const [importing, setImporting] = useState(false)
   const [parseState, setParseState] = useState<ParseState>({ status: 'empty' })
+  const [showFlagged, setShowFlagged] = useState(false)
+  const [fixCopied, setFixCopied] = useState(false)
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(CLAUDE_PROMPT)
@@ -171,7 +180,14 @@ function ManualImportSection() {
     setParseState(analyzeInput(value))
   }
 
-  async function handleImport() {
+  async function copyFixPrompt() {
+    if (parseState.status !== 'ready' || parseState.check.flagged.length === 0) return
+    await navigator.clipboard.writeText(buildFixPrompt(parseState.check.flagged))
+    setFixCopied(true)
+    setTimeout(() => setFixCopied(false), 2000)
+  }
+
+  async function handleImport(force: boolean) {
     if (parseState.status !== 'ready') return
 
     setImporting(true)
@@ -179,7 +195,7 @@ function ManualImportSection() {
       const res = await fetch('/api/admin/questions/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parseState.parsed),
+        body: JSON.stringify({ ...(parseState.parsed as object), allow_flagged: force }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -197,9 +213,23 @@ function ManualImportSection() {
         }
         return
       }
-      toast.success(`Fertig! ${data.imported ?? 0} Fragen importiert${data.skipped > 0 ? ` (${data.skipped} übersprungen)` : ''}.`)
-      setJsonInput('')
-      setParseState({ status: 'empty' })
+      const skippedNote = data.skipped > 0 ? ` (${data.skipped} übersprungen)` : ''
+      // Beanstandete Zeilen bleiben im Feld stehen — so kann nichts doppelt
+      // importiert werden und der Korrekturauftrag bleibt verfügbar.
+      const remaining = force ? [] : parseState.check.flagged.map((f) => f.row)
+
+      if (remaining.length > 0) {
+        const rest = JSON.stringify({ rows: remaining }, null, 2)
+        setJsonInput(rest)
+        setParseState(analyzeInput(rest))
+        toast.success(
+          `${data.imported ?? 0} Fragen importiert${skippedNote}. Die ${remaining.length} beanstandeten stehen noch im Feld — Korrekturauftrag kopieren und überarbeiten lassen.`
+        )
+      } else {
+        setJsonInput('')
+        setParseState({ status: 'empty' })
+        toast.success(`Fertig! ${data.imported ?? 0} Fragen importiert${skippedNote}.`)
+      }
     } catch {
       toast.error('Netzwerkfehler — bitte Internetverbindung prüfen.')
     } finally {
@@ -266,11 +296,54 @@ function ManualImportSection() {
 
         {/* Zustandsanzeige */}
         {parseState.status === 'ready' && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#58CC02]/10 border border-[#58CC02]/30">
-            <CheckCircle2 className="w-4 h-4 text-[#58CC02] shrink-0" />
-            <p className="text-xs text-[#58CC02] font-medium">
-              {parseState.count} {parseState.count === 1 ? 'Frage' : 'Fragen'} erkannt — bereit zum Import
-            </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#58CC02]/10 border border-[#58CC02]/30">
+              <CheckCircle2 className="w-4 h-4 text-[#58CC02] shrink-0" />
+              <p className="text-xs text-[#58CC02] font-medium">
+                {parseState.check.clean} von {parseState.count}{' '}
+                {parseState.count === 1 ? 'Frage' : 'Fragen'} sauber — bereit zum Import
+              </p>
+            </div>
+
+            {parseState.check.flagged.length > 0 && (
+              <div className="rounded-xl bg-[#FF9600]/10 border border-[#FF9600]/30 overflow-hidden">
+                <button
+                  onClick={() => setShowFlagged((v) => !v)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#FF9600]/5 transition-colors"
+                >
+                  <AlertTriangle className="w-4 h-4 text-[#FF9600] shrink-0" />
+                  <p className="text-xs text-[#FF9600] font-medium flex-1">
+                    {parseState.check.flagged.length}{' '}
+                    {parseState.check.flagged.length === 1 ? 'Frage ist' : 'Fragen sind'} durch
+                    Raten lösbar — wird nicht importiert
+                  </p>
+                  {showFlagged ? (
+                    <ChevronUp className="w-4 h-4 text-[#FF9600] shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-[#FF9600] shrink-0" />
+                  )}
+                </button>
+
+                {showFlagged && (
+                  <div className="px-3 pb-3 space-y-3 max-h-64 overflow-auto">
+                    {parseState.check.flagged.map((f) => (
+                      <div key={f.index} className="space-y-1">
+                        <p className="text-xs text-[#F9FAFB] font-medium">
+                          {f.index + 1}. {f.row.question_text}
+                        </p>
+                        <ul className="space-y-0.5">
+                          {f.blockers.map((b) => (
+                            <li key={b.code} className="text-xs text-[#9CA3AF] leading-relaxed">
+                              · {b.message}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
         {(parseState.status === 'invalid' || parseState.status === 'no_rows') && (
@@ -282,25 +355,51 @@ function ManualImportSection() {
       </div>
 
       {/* Step 3 */}
-      <div className="flex items-center gap-2">
-        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">3</span>
-        <Button
-          onClick={handleImport}
-          disabled={importing || parseState.status !== 'ready'}
-          className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
-        >
-          {importing ? (
-            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Upload className="w-4 h-4 mr-2" />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">3</span>
+          <Button
+            onClick={() => handleImport(false)}
+            disabled={importing || parseState.status !== 'ready' || parseState.check.clean === 0}
+            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+          >
+            {importing ? (
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="w-4 h-4 mr-2" />
+            )}
+            {parseState.status === 'ready'
+              ? `${parseState.check.clean} Fragen importieren`
+              : 'Fragen importieren'}
+          </Button>
+
+          {parseState.status === 'ready' && parseState.check.flagged.length > 0 && (
+            <Button
+              variant="outline"
+              onClick={copyFixPrompt}
+              className="rounded-xl border-[#FF9600]/50 bg-transparent text-[#FF9600] hover:bg-[#FF9600]/10 hover:text-[#FF9600]"
+            >
+              {fixCopied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+              Korrekturauftrag für {parseState.check.flagged.length} kopieren
+            </Button>
           )}
-          {parseState.status === 'ready'
-            ? `${parseState.count} Fragen importieren`
-            : 'Fragen importieren'}
-        </Button>
-        <p className="text-xs text-[#9CA3AF]">
-          Fragen werden sofort aktiv im Quiz sichtbar.
-        </p>
+        </div>
+
+        {parseState.status === 'ready' && parseState.check.flagged.length > 0 ? (
+          <p className="text-xs text-[#9CA3AF] leading-relaxed">
+            Korrekturauftrag kopieren, in claude.ai einfügen und die verbesserten Fragen erneut
+            hier einsetzen — das kostet nichts.{' '}
+            <button
+              onClick={() => handleImport(true)}
+              disabled={importing}
+              className="text-[#9CA3AF] underline hover:text-[#F9FAFB] disabled:opacity-50"
+            >
+              Alle {parseState.count} trotzdem importieren
+            </button>
+          </p>
+        ) : (
+          <p className="text-xs text-[#9CA3AF]">Fragen werden sofort aktiv im Quiz sichtbar.</p>
+        )}
       </div>
     </div>
   )
@@ -332,11 +431,11 @@ function AutoGenerationSection({
             <p className="text-sm font-semibold text-[#F9FAFB]">
               Automatische Generierung{' '}
               <Badge className="ml-2 bg-[#FF9600]/20 text-[#FF9600] border-[#FF9600]/30 text-xs">
-                Benötigt API-Key
+                Kostenpflichtig
               </Badge>
             </p>
             <p className="text-xs text-[#9CA3AF] mt-0.5">
-              PDF/DOCX hochladen → KI generiert Fragen vollautomatisch (Anthropic API erforderlich)
+              PDF/DOCX hochladen → KI generiert Fragen vollautomatisch. Verbraucht API-Guthaben — der Weg über den kopierten Prompt oben ist kostenlos.
             </p>
           </div>
         </div>

@@ -19,6 +19,14 @@
 export const LENGTH_LEAD_BLOCKER = 8
 
 /** Zielkorridor für den Anteil Fragen, in denen die richtige die längste ist. */
+/**
+ * Ab wie vielen Optionen mit Signalwort das Muster "Distraktor-Fabrik"
+ * blockiert wird. An echten Daten kalibriert: Schwelle 2 beanstandet 13,5 %
+ * aller Fragen und macht den Import zäh, Schwelle 3 nur 6,4 % — und drei von
+ * fünf Optionen sind das eigentliche Fabrik-Muster. Zwei bleiben eine Warnung.
+ */
+export const ABSOLUTE_BLOCKER_COUNT = 3
+
 export const LONGEST_RATE_TARGET = { min: 0.12, max: 0.28, chance: 0.2 } as const
 
 export type Severity = 'blocker' | 'warning'
@@ -190,13 +198,20 @@ export function analyzeQuestion(q: QuestionInput): QualityReport {
 
   // ── 4. Signalwörter: höchstens eine der fünf Optionen darf eines tragen ────
   const withAbsolute = options.filter(hasAbsoluteWord)
-  if (withAbsolute.length > 1) {
+  if (withAbsolute.length >= ABSOLUTE_BLOCKER_COUNT) {
     add(
       'absolute_overuse',
       'blocker',
-      `${withAbsolute.length} von ${options.length} Optionen enthalten ein Signalwort (${ABSOLUTE_WORDS.join('/')}). Höchstens eine darf eines tragen — Distraktoren durch eine inhaltlich falsche Aussage ersetzen, nicht durch ein vorangestelltes Absolutwort.`
+      `${withAbsolute.length} von ${options.length} Optionen enthalten ein Signalwort (${ABSOLUTE_WORDS.join('/')}). Das ist die Distraktor-Fabrik — Distraktoren durch eine inhaltlich falsche Aussage ersetzen, statt ein Absolutwort voranzustellen.`
+    )
+  } else if (withAbsolute.length === 2) {
+    add(
+      'absolute_frequency',
+      'warning',
+      `Zwei Optionen tragen ein Signalwort. Einzeln vertretbar — häuft es sich über viele Fragen, wird daraus der Trick „Option mit Absolutwort ausschließen".`
     )
   }
+
   const distractorsWithAbsolute = distractors.filter(hasAbsoluteWord).length
   if (distractorsWithAbsolute === distractors.length && !hasAbsoluteWord(correct)) {
     add(

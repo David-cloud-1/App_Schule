@@ -30,8 +30,19 @@ Zentrale Designentscheidung: Blocker erst bei **deutlichem** Längenvorsprung (`
 ### 2. Gemeinsame Generator-Regeln — `src/lib/question-rules.ts`
 Eine Quelle für beide Pfade: den API-Upload (`process-job.ts`) und den Copy-&-Paste-Prompt im Admin-UI.
 
-### 3. Torwächter im Draft-Flow
-`process-job.ts` prüft jeden Entwurf beim Anlegen, legt den Bericht in `questions_draft.quality_report` ab und setzt bei Blockern `status = 'review_required'`. Beide Freigabewege (`accept`, `bulk-accept`) lehnen diesen Status bereits ab — kein Entwurf mit Rate-Tell gelangt in den Bestand.
+### 3. Torwächter am tatsächlich genutzten Weg: dem Bulk-Import
+
+Fragen entstehen üblicherweise so: Prompt im Admin-UI kopieren → externe KI (kostenlos) → JSON zurück einfügen → `bulk-import`. Dort prüfte bisher nur das Zod-Schema die Feldtypen, keine einzige Qualitätsregel.
+
+- **Im Browser**, beim Einfügen: `checkImportRows()` meldet sofort „71 von 75 sauber", listet die Beanstandungen im Klartext und bietet `buildFixPrompt()` als kopierbaren Korrekturauftrag an — die betroffenen Fragen samt Verstößen und Regeln, fertig für dieselbe KI. Nach einem Teilimport bleiben die beanstandeten Zeilen im Eingabefeld stehen, damit nichts doppelt importiert wird.
+- **Auf dem Server**, in `bulk-import`: beanstandete Zeilen werden übersprungen und zurückgemeldet. `allow_flagged: true` erlaubt dem Admin, bewusst zu überstimmen.
+- Die Prüfung läuft rein deterministisch, ohne KI — sie kostet nichts.
+
+### 3b. Torwächter im API-Upload-Pfad
+`process-job.ts` prüft jeden Entwurf beim Anlegen, legt den Bericht in `questions_draft.quality_report` ab und setzt bei Blockern `status = 'review_required'`. Beide Freigabewege (`accept`, `bulk-accept`) lehnen diesen Status bereits ab. Dieser Pfad verbraucht API-Guthaben und ist im UI entsprechend als kostenpflichtig gekennzeichnet.
+
+### 3c. Kalibrierung an echten Daten
+Die Signalwort-Regel blockiert erst ab **drei** von fünf Optionen (`ABSOLUTE_BLOCKER_COUNT`). Gemessen am Bestand: Schwelle 2 hätte 13,5 % aller Fragen beanstandet und den Import zäh gemacht, Schwelle 3 nur 6,4 % — und drei Signalwörter sind das eigentliche Fabrik-Muster. Zwei bleiben eine Warnung. Der Generator-Prompt fordert weiterhin höchstens eines: strenger Anspruch, tolerante Durchsetzung.
 
 ### 4. Bestands-Werkzeuge
 - `npm run quality:audit [-- --save]` — Kennzahlen, Trend gegen den letzten Snapshot
@@ -50,6 +61,10 @@ Eine Quelle für beide Pfade: den API-Upload (`process-job.ts`) und den Copy-&-P
 - [x] Zahlen-Optionen sind von der Längenregel ausgenommen
 - [x] Batch-Quoten melden auch Unterschreitung des Korridors (inverses Muster)
 - [x] Beide Generator-Pfade nutzen dieselben Regeln
+- [x] Eingefügte Fragen werden im Browser geprüft, bevor etwas gesendet wird
+- [x] Korrekturauftrag für beanstandete Fragen ist mit einem Klick kopierbar
+- [x] bulk-import überspringt beanstandete Zeilen und meldet sie zurück
+- [x] Schwellen an echten Daten kalibriert (Blocker-Quote ~6 %)
 - [x] Entwürfe mit Blockern lassen sich nicht per accept/bulk-accept freigeben
 - [x] `apply.ts` verweigert Batches, die einen Blocker oder eine Kennzahl-Regression erzeugen
 - [x] Rollback bei fehlgeschlagener Nachprüfung, kein Fortschrittseintrag

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { checkImportRows, type ImportRow } from '@/lib/question-import'
 
 const RowSchema = z.object({
   question_text: z.string().min(1).max(1000),
@@ -19,6 +20,8 @@ const RowSchema = z.object({
 
 const BodySchema = z.object({
   rows: z.array(RowSchema).min(1).max(500),
+  // Bewusstes Überstimmen der Qualitätsprüfung durch den Admin
+  allow_flagged: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -39,6 +42,28 @@ export async function POST(request: NextRequest) {
       { error: 'Invalid payload', details: parsed.error.flatten() },
       { status: 400 }
     )
+  }
+
+  // Qualitätsprüfung: läuft ohne KI und damit ohne Kosten. Beanstandete
+  // Zeilen werden nicht importiert, sondern zurückgemeldet — der Admin kann
+  // sie extern korrigieren lassen oder den Import bewusst erzwingen.
+  const check = checkImportRows(parsed.data.rows as ImportRow[])
+  const flaggedIndexes = new Set(check.flagged.map((f) => f.index))
+  const allowFlagged = parsed.data.allow_flagged === true
+  const rowsToImport = allowFlagged
+    ? parsed.data.rows
+    : parsed.data.rows.filter((_, i) => !flaggedIndexes.has(i))
+
+  if (rowsToImport.length === 0) {
+    return NextResponse.json({
+      imported: 0,
+      skipped: 0,
+      flagged: check.flagged.map((f) => ({
+        index: f.index,
+        question_text: f.row.question_text,
+        issues: f.blockers.map((b) => b.message),
+      })),
+    })
   }
 
   // Preload subject lookup table
@@ -62,7 +87,7 @@ export async function POST(request: NextRequest) {
   let imported = 0
   let skipped = 0
 
-  for (const row of parsed.data.rows) {
+  for (const row of rowsToImport) {
     const subjectId = subjectMap.get(row.fach_code.toUpperCase())
     if (!subjectId) {
       skipped++
@@ -148,8 +173,24 @@ export async function POST(request: NextRequest) {
     admin_id: user.id,
     action_type: 'question.bulk_import',
     object_type: 'question',
-    details: { imported, skipped, total: parsed.data.rows.length },
+    details: {
+      imported,
+      skipped,
+      total: parsed.data.rows.length,
+      flagged: check.flagged.length,
+      forced: allowFlagged && check.flagged.length > 0,
+    },
   })
 
-  return NextResponse.json({ imported, skipped })
+  return NextResponse.json({
+    imported,
+    skipped,
+    flagged: allowFlagged
+      ? []
+      : check.flagged.map((f) => ({
+          index: f.index,
+          question_text: f.row.question_text,
+          issues: f.blockers.map((b) => b.message),
+        })),
+  })
 }

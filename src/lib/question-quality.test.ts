@@ -226,3 +226,34 @@ describe('analyzeBatch – Quoten über viele Fragen', () => {
     expect(m.verdict).toBe('ok')
   })
 })
+
+describe('Signalwort-Schwelle', () => {
+  const withAbsolutes = (n: number) => {
+    const opts = [
+      'Die Herstellung eines Werkes gegen Vergütung',
+      'Die Leistung von Diensten gegen Entgelt',
+      'Die Übertragung von Eigentum gegen Geld',
+      'Die Vermietung von Räumen auf Zeit',
+      'Die Verwahrung von Sachen gegen Lohn',
+    ]
+    for (let i = 0; i < n; i++) opts[i] = opts[i].replace('Die ', 'Die nur ')
+    return analyzeQuestion({
+      question_text: 'Was kennzeichnet den Werkvertrag?',
+      options: opts,
+      correct_index: 4,
+      explanation: 'Der Werkvertrag schuldet einen Erfolg.',
+    })
+  }
+
+  it('zwei Signalwörter sind nur eine Warnung', () => {
+    const r = withAbsolutes(2)
+    expect(r.findings.map((f) => f.code)).toContain('absolute_frequency')
+    expect(r.blockers).toBe(0)
+  })
+
+  it('drei Signalwörter blockieren', () => {
+    const r = withAbsolutes(3)
+    expect(r.findings.map((f) => f.code)).toContain('absolute_overuse')
+    expect(r.ok).toBe(false)
+  })
+})
