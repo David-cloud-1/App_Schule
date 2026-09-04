@@ -1,6 +1,6 @@
 # PROJ-16: Fragen-Qualitätssicherung (Torwächter + Audit-Agenten)
 
-**Status:** In Progress
+**Status:** Deployed
 **Erstellt:** 2026-09-04
 **Priorität:** P1
 
@@ -68,7 +68,7 @@ Die Signalwort-Regel blockiert erst ab **drei** von fünf Optionen (`ABSOLUTE_BL
 - [x] Entwürfe mit Blockern lassen sich nicht per accept/bulk-accept freigeben
 - [x] `apply.ts` verweigert Batches, die einen Blocker oder eine Kennzahl-Regression erzeugen
 - [x] Rollback bei fehlgeschlagener Nachprüfung, kein Fortschrittseintrag
-- [ ] Deployed
+- [x] Deployed
 
 ## Datenbank
 
@@ -87,3 +87,15 @@ Migration `supabase/migrations/20260904_question_quality_guard.sql` (angewendet 
 | Optionen mit Signalwort | 8,6 % | ≤ 12 % | ok |
 
 Offen: 22 Fragen mit ≠ 5 Optionen, 2 Füller-Optionen, 31 Satzanfang-Tells, 5 Fragen mit Signalwort in jedem Distraktor.
+
+## Deployment
+
+- **Produktion:** https://spedilern.vercel.app
+- **Deployment:** https://spedilern-3zitcxvpy-david-cloud-1s-projects.vercel.app
+- **Datum:** 2026-09-04
+- **Commits:** fe37b9c (Engine, Agenten, Scripts), 3804855 (Bulk-Import-Prüfung, Kalibrierung)
+- **Migration:** bereits vor dem Deploy in Supabase angewendet
+
+Verifiziert nach dem Deploy: Startseite leitet korrekt auf /login (HTTP 307), Login-Seite lädt (HTTP 200), `POST /api/admin/questions/bulk-import` antwortet ohne Anmeldung mit 401 — der Endpunkt ist erreichbar und geschützt.
+
+Noch vom Nutzer im angemeldeten Admin-Panel zu prüfen: Einfügen eines JSON mit absichtlich fehlerhaften Fragen zeigt die Beanstandungen an, der Korrekturauftrag landet in der Zwischenablage, und der Import überspringt die beanstandeten Zeilen.

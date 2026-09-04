@@ -29,7 +29,7 @@
 | PROJ-13 | Topic Selection in Quiz Flow | Deployed | — | 2026-04-30 |
 | PROJ-14 | Lücken schließen | Deployed | [PROJ-14-luecken-schliessen.md](PROJ-14-luecken-schliessen.md) | 2026-06-18 |
 | PROJ-15 | Mehrere aktive Prüfungssets pro Teil | Deployed | [PROJ-15-multiple-active-exam-sets.md](PROJ-15-multiple-active-exam-sets.md) | 2026-07-17 |
-| PROJ-16 | Fragen-Qualitätssicherung (Torwächter + Agenten) | In Progress | [PROJ-16-question-quality-guard.md](PROJ-16-question-quality-guard.md) | 2026-09-04 |
+| PROJ-16 | Fragen-Qualitätssicherung (Torwächter + Agenten) | Deployed | [PROJ-16-question-quality-guard.md](PROJ-16-question-quality-guard.md) | 2026-09-04 |
 
 <!-- Add features above this line -->
 
