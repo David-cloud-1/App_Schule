@@ -16,7 +16,9 @@
     "quality:audit": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts",
     "quality:list": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts --list",
     "quality:sample": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/audit.ts --sample",
-    "quality:apply": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/apply.ts"
+    "quality:apply": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/quality/apply.ts",
+    "fun:audit": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/engagement/audit.ts",
+    "fun:user": "node --no-warnings=MODULE_TYPELESS_PACKAGE_JSON scripts/engagement/audit.ts --nutzer"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

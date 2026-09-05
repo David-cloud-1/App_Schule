@@ -30,7 +30,8 @@
 | PROJ-14 | Lücken schließen | Deployed | [PROJ-14-luecken-schliessen.md](PROJ-14-luecken-schliessen.md) | 2026-06-18 |
 | PROJ-15 | Mehrere aktive Prüfungssets pro Teil | Deployed | [PROJ-15-multiple-active-exam-sets.md](PROJ-15-multiple-active-exam-sets.md) | 2026-07-17 |
 | PROJ-16 | Fragen-Qualitätssicherung (Torwächter + Agenten) | Deployed | [PROJ-16-question-quality-guard.md](PROJ-16-question-quality-guard.md) | 2026-09-04 |
+| PROJ-17 | Spielspaß-Audit (Fun Auditor) | Deployed | [PROJ-17-spielspass-audit.md](PROJ-17-spielspass-audit.md) | 2026-09-04 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-17
+## Next Available ID: PROJ-18

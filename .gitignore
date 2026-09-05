@@ -43,3 +43,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Engagement-Snapshots: enthalten Nutzer-IDs verschwundener Azubis — bleiben lokal
+scripts/engagement/history/
