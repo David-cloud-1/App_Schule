@@ -1,8 +1,8 @@
 # PROJ-19: Blitzrunde & Frachtmünzen
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-05
-**Last Updated:** 2026-09-05
+**Last Updated:** 2026-09-13
 **Priorität:** P0
 
 ## Dependencies
@@ -242,7 +242,119 @@ normale Weg (erster Kauf am zweiten Lerntag).
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Komponenten-Struktur
+
+**Startseite** (`page.tsx`) — zwei neue Bausteine neben den bestehenden
+(XP-Anzeige, Streak, Fächer-Kacheln):
+```
+Startseite (bestehend)
++-- NEU: Münzstand-Anzeige, eigenes Symbol, klar von der XP-Anzeige getrennt
++-- NEU: Blitzrunde-Kachel
+    +-- Zustand "verfügbar": ein Tipp startet direkt die Runde
+    +-- Zustand "heute erledigt": zeigt, wann sie wieder verfügbar ist
+```
+
+**Neue eigene Route für die Blitzrunde** (getrennt vom normalen Quiz-Fluss):
+```
+Blitzrunde-Bildschirm (neu)
++-- Countdown 60 -> 0 (deutlich sichtbar, nicht die einzige Rückmeldung)
++-- Frage + Antwortoptionen (bestehende Quiz-Bausteine wiederverwendet)
++-- Sofort-Feedback bei falscher Antwort (rot + Symbol, Runde läuft weiter)
++-- Abschlussbildschirm bei Ablauf der Zeit
+    +-- Richtige Antworten, verdiente Münzen, verdiente XP, Streak-Stand
+    (nutzt dasselbe Muster wie der bestehende Ergebnis-Bildschirm)
+```
+
+**Bestehender Ergebnis-Bildschirm der normalen Runde** (`quiz-client.tsx`) —
+eine Ergänzung, sonst unverändert:
+```
+Ergebnis-Bildschirm normale Runde (bestehend)
++-- Trefferquote, XP-Karte, Streak-Karte  (unverändert)
++-- NEU: verdiente Münzen, als eigene Zeile neben der XP-Karte
+```
+
+### B) Datenmodell (in normaler Sprache)
+
+- **Münzstand:** ein neues Zahlenfeld am Nutzerprofil, nach demselben Muster
+  wie der vorhandene XP-Stand. Startwert 0, wird nie negativ, kann in diesem
+  Feature nur wachsen (Ausgeben ist Aufgabe von PROJ-20).
+- **Blitzrunden-Aufzeichnung:** eine neue Tabelle, eine Zeile pro *gewerteter*
+  Blitzrunde — mit Datum (Kalendertag Europe/Berlin), Anzahl richtiger
+  Antworten, Zeitpunkt der Wertung. Diese Zeile ist gleichzeitig die
+  "heute schon gespielt"-Sperre: gibt es für den heutigen Tag schon eine
+  Zeile, wird ein zweiter Versuch abgelehnt.
+- **Start-Marke:** wenn ein Nutzer die Blitzrunde beginnt, legt der Server
+  einen kurzlebigen Vermerk mit Startzeitpunkt an (nicht im Browser
+  gespeichert, fälschungssicher). Erst wenn beim Einreichen des Ergebnisses
+  ein solcher Vermerk vorliegt und die verstrichene Zeit plausibel ist, wird
+  gewertet. Ein Verbindungsabbruch ohne Einreichung hinterlässt keine
+  gewertete Runde — der Tagesbonus bleibt automatisch erhalten, wie in den
+  Edge Cases gefordert.
+- **Startguthaben:** kein neues Datenfeld — ein einmaliger Rechenlauf über die
+  bestehenden Profile schreibt das Ergebnis direkt in das neue Münzstand-Feld.
+  Die Formel braucht dafür nur den bereits vorhandenen XP-Stand.
+
+### C) Tech-Entscheidungen (Begründung)
+
+- **Eigene Route statt Modus-Parameter der bestehenden Quiz-Session:** Die
+  Regeln unterscheiden sich zu stark, um sie in einen Ablauf zu zwingen —
+  Zeitlimit statt Fragenanzahl, kein Rundenabbruch bei falscher Antwort,
+  andere Fach-Auswahl (immer gemischt), andere Münz- und XP-Sätze. Zwei klare,
+  einfache Abläufe sind weniger fehleranfällig als ein Ablauf mit vielen
+  Sonderfällen — und die bestehende normale Quiz-Session bleibt dadurch
+  unverändert (kein Regressionsrisiko an PROJ-3/4/5, wie in den Acceptance
+  Criteria gefordert).
+- **Server-Start-Marke statt der vom Gerät gemeldeten Zeit:** Ohne sie könnte
+  ein manipuliertes Gerät eine erfundene Trefferzahl oder Rundendauer melden.
+  Die Marke ist die einzige Grundlage dafür, "schon heute gewertet" und "war
+  die Meldung plausibel" zu prüfen — das war ein offener Punkt der Spec und
+  ist damit beantwortet.
+- **Münzstand als einfaches Feld, kein Buchungsjournal in dieser Version:**
+  Ein Journal (jede Gutschrift und jeder spätere Kauf als eigene, prüfbare
+  Zeile) wäre die robustere Lösung, sobald PROJ-20 Käufe einführt. Da PROJ-20
+  aber noch keine eigene Spezifikation hat (siehe Hinweis unten), würde ein
+  Journal jetzt auf Vermutungen über nicht getroffene Entscheidungen beruhen.
+  Das einfache Feld deckt alles ab, was PROJ-19 selbst braucht.
+- **Kalendertag einheitlich nach Europe/Berlin, wie von der Spec verlangt:**
+  folgt derselben Regel wie das bestehende Streak-System. Die App verwendet an
+  einer anderen Stelle (der "schon heute beantwortet"-Prüfung im normalen
+  Quiz) noch die UTC-Tagesgrenze — dieser bestehende Unterschied wird hier
+  nicht mit behoben, aber bewusst nicht in die Blitzrunde übernommen.
+- **Keine neue Fragen-Abfrage nötig:** Die bestehende Fragen-Schnittstelle
+  liefert bereits fachübergreifend gemischte Fragen, wenn kein Fach angegeben
+  wird. Die Blitzrunde nutzt genau diesen bereits vorhandenen Weg, statt einen
+  neuen zu bauen.
+
+### D) Abhängigkeiten (neue Pakete)
+
+Keine. Die Blitzrunde baut vollständig auf vorhandenen Bausteinen auf (Zod für
+Validierung, Supabase, bestehende Quiz- und Ergebnis-Komponenten). Das erfüllt
+die Kosten-Randbedingung der Spec direkt mit.
+
+### Offene Punkte aus der Spec — hier beantwortet
+
+- **Eigene Route vs. Modus-Parameter:** eigene Route (siehe oben).
+- **Rundendauer serverseitig belegen:** Start-Marke mit Zeitstempel, nicht die
+  vom Gerät gemeldete Zeit (siehe oben).
+- **Feld vs. Buchungsjournal:** Feld jetzt, Journal als Empfehlung für den
+  Zeitpunkt, an dem PROJ-20 Käufe einführt.
+- **Kennzahl für PROJ-17:** Die Blitzrunden-Aufzeichnung (ein Eintrag je
+  gewerteter Runde mit Datum) liefert alle Daten, die eine künftige Kennzahl
+  "Blitzrunden-Teilnahme je Lerntag" braucht. Die Kennzahl selbst wird erst in
+  `/backend` bzw. bei der nächsten Erweiterung von `engagement-metrics.ts`
+  ergänzt.
+
+### Wichtiger Hinweis vor der Umsetzung
+
+Die Spec selbst hält fest: **"PROJ-19 allein liefert eine Währung ohne
+Zweck."** PROJ-20 (Speditionshof & Shop), das die Münzen ausgibt, hat noch
+keine eigene Feature-Spec — nur die reservierte ID in `features/INDEX.md`.
+Dieses Architektur-Design deckt bewusst nur die *Verdienen*-Seite ab, die für
+sich testbar und sichtbar ist (Münzstand auf der Startseite, Startguthaben).
+Bevor `/backend` und `/frontend` das tatsächlich bauen, lohnt sich `/requirements`
+für PROJ-20 — sonst entsteht ein sichtbarer Münzstand, den niemand ausgeben
+kann.
 
 ## QA Test Results
 _To be added by /qa_
