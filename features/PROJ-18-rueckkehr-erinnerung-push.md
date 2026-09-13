@@ -1,8 +1,8 @@
 # PROJ-18: Rückkehr-Erinnerung per Web-Push
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-05
-**Last Updated:** 2026-09-05
+**Last Updated:** 2026-09-13
 
 ## Problem
 
@@ -166,7 +166,115 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Komponenten-Struktur
+
+**Neue installierbare App-Grundlage** (betrifft die ganze App, nicht nur diese Seite):
+```
+App-Wurzel (layout.tsx)
++-- Web-App-Manifest (Name, Icons 192/512, standalone, Themefarbe)
++-- Service Worker (nimmt Push entgegen, öffnet die App bei Klick)
+```
+
+**Opt-in-Karte** — erscheint auf dem bestehenden Ergebnis-Bildschirm (`quiz-client.tsx`),
+direkt unter der Streak-Karte, vor "Nochmal üben":
+```
+Ergebnis-Bildschirm (bestehend)
++-- Trefferquote, XP-Karte, Streak-Karte  (bestehend, unverändert)
++-- NEU: Erinnerungs-Karte "Täglich erinnert werden?"
+|   +-- Fall A (Chrome/Firefox/Android/Desktop): zwei Buttons
+|   |     "Ja, um 17 Uhr" / "Nein danke"
+|   +-- Fall B (iPhone, nicht zum Home-Bildschirm hinzugefügt):
+|   |     bebilderte Anleitung "Teilen -> Zum Home-Bildschirm" statt Buttons
+|   +-- Fall C (schon aktiviert / schon entschieden): Karte wird nicht angezeigt
++-- Fragen-Review, "Nochmal üben"  (bestehend, unverändert)
+```
+
+**Profil-Seite** (`profile/page.tsx`) — neuer Baustein neben den bestehenden
+Privatsphäre-Einstellungen:
+```
+Privatsphäre-Karte (bestehend: Pseudonym, Rangliste-Opt-out)
++-- NEU: Erinnerungs-Zeile "Tägliche Erinnerung" mit Ein/Aus-Schalter
+```
+
+**Neuer Hintergrund-Job** (kein UI, läuft täglich automatisch):
+```
+Vercel Cron (17:00 Europe/Berlin)
++-- Versand-Endpunkt: prüft pro aktiviertem Nutzer den Tagesstand,
+    verschickt höchstens eine Nachricht, entfernt tote Anmeldungen
+```
+
+### B) Datenmodell (in normaler Sprache)
+
+**Neue Tabelle "Erinnerungs-Anmeldungen"** — eine Zeile pro Gerät, auf dem ein
+Nutzer Erinnerungen erlaubt hat:
+- Gehört zu: einem Nutzer-Konto
+- Geräte-Schlüssel (technische Adresse, unter der der Browser dieses Gerät
+  erreichbar macht — vom Browser vergeben, nicht von uns lesbar)
+- Erstellt am
+- Zähler "Erinnerungen ohne Reaktion in Folge" (für das Abklingen)
+
+Ein Nutzer kann mehrere Zeilen haben (mehrere Geräte). Beim Abmelden auf einem
+Gerät wird nur dessen Zeile gelöscht.
+
+**Neues Feld auf dem bestehenden Nutzerprofil:**
+- "Erinnerungen aktiv?" (ja/nein) — für die schnelle Anzeige im Profil, ohne
+  erst die Anmeldungs-Tabelle durchsuchen zu müssen
+- "Opt-in-Karte zuletzt abgelehnt am" — steuert die 14-Tage-Wiedervorlage
+
+**Kein neues Feld für den Streak-Text nötig** — der Versand-Job liest den
+bereits vorhandenen `current_streak` und die letzte Session direkt aus den
+bestehenden Tabellen (Streak-System, PROJ-5).
+
+**Geheime Schlüssel** (kein Datenbank-Datenmodell, sondern Konfiguration):
+Ein Schlüsselpaar, mit dem Nachrichten als "von dieser App" ausgewiesen werden
+(Web-Push-Standard-Verfahren). Der geheime Teil liegt nur auf dem Server, nie
+im Browser-Code.
+
+### C) Tech-Entscheidungen (Begründung)
+
+- **Web-Push-Standard statt Firebase/OneSignal/Anbieter-Dienst:** Kostenlos,
+  kein Drittanbieter-Konto, funktioniert mit dem eigenen Schlüsselpaar direkt
+  über die Browser-Hersteller. Passt zum Budget-Rahmen aus dem PRD (Supabase
+  Free Tier + Vercel Hobby).
+- **Ein Cron-Lauf am Tag, feste Uhrzeit:** Der Vercel-Hobby-Tarif erlaubt Cron-
+  Jobs nur höchstens täglich, nicht stündlich. Eine feste Uhrzeit für alle
+  passt darum genau in den kostenlosen Rahmen; individuelle Uhrzeiten wären
+  ein späterer Ausbauschritt mit kostenpflichtigem Tarif.
+- **Opt-in erst nach der ersten Runde, nie beim ersten Öffnen:** Browser-
+  Erlaubnis-Dialoge, die sofort erscheinen, werden fast immer weggeklickt und
+  können danach nicht mehr sauber erneut gefragt werden. Nach einem Erfolgs-
+  erlebnis ist die Zustimmungsquote nachweislich höher.
+- **iOS bekommt eine Anleitung statt eines Dialogs:** Safari erlaubt Push nur
+  aus einer zum Home-Bildschirm hinzugefügten App heraus — ein direkter
+  Dialog würde dort schlicht wirkungslos bleiben oder einen stummen Fehler
+  erzeugen.
+- **Kein Offline-Caching im Service Worker (v1):** Der Service Worker wird
+  ausschließlich für Push installiert. Caching würde riskieren, dass Nutzer
+  veraltete Fragen sehen — das ist explizit nicht Ziel dieses Features.
+- **Abklingen über einen einfachen Zähler statt komplexer Regeln:** Fünf
+  Erinnerungen ohne Reaktion in Folge senken die Frequenz auf wöchentlich;
+  jede Reaktion setzt den Zähler zurück. Einfach nachvollziehbar und im
+  Versand-Job mit einer einzigen Zahl pro Anmeldung abbildbar.
+
+### D) Abhängigkeiten (neue Pakete)
+
+- **web-push** — verschickt Nachrichten nach dem Web-Push-Standard und erzeugt
+  das Schlüsselpaar; einzige neue Laufzeit-Abhängigkeit.
+- Kein UI-Paket nötig: Karte und Profil-Schalter entstehen aus vorhandenen
+  shadcn/ui-Bausteinen (Karte, Button/Switch), Icons aus der bereits
+  eingebundenen Lucide-Bibliothek.
+
+### Offene Punkte aus der Spec — hier beantwortet
+
+- **Cron-Frequenz:** ein Lauf pro Tag reicht für v1 und passt in den
+  Vercel-Hobby-Tarif; wird in `/backend` als Cron-Konfiguration angelegt.
+- **Ablage der Anmeldungen:** eigene Tabelle mit Zugriffsschutz, wie oben unter
+  "Datenmodell" beschrieben — Feinheiten (Indizes, genaue Zugriffsregeln)
+  gehören in `/backend`.
+- **Offline-Caching später:** bewusst nicht in v1, keine Vorbereitung dafür
+  nötig — ein Service Worker kann später erweitert werden, ohne die Push-
+  Funktion neu zu bauen.
 
 ## QA Test Results
 _To be added by /qa_
