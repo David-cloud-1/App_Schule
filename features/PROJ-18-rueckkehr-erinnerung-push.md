@@ -2,7 +2,7 @@
 
 ## Status: Architected
 **Created:** 2026-09-05
-**Last Updated:** 2026-09-13
+**Last Updated:** 2026-09-13 (Cron-Zustellzeit auf Stundengenauigkeit präzisiert, Kostenfreiheit verifiziert)
 
 ## Problem
 
@@ -84,8 +84,10 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
       Klick umschaltbar.
 
 ### Versand
-- [ ] Ein täglicher Cron-Lauf um 17:00 Uhr Europe/Berlin verschickt die
-      Erinnerungen (Sommer-/Winterzeit korrekt, d. h. Cron in UTC entsprechend).
+- [ ] Ein täglicher Cron-Lauf verschickt die Erinnerungen zwischen 17:00 und
+      17:59 Uhr Europe/Berlin (Sommer-/Winterzeit korrekt, d. h. Cron in UTC
+      entsprechend). Vercel garantiert im Hobby-Tarif nur Stundengenauigkeit,
+      keine exakte Minute — das ist für dieses Feature ausreichend und kein Bug.
 - [ ] Es geht **höchstens eine** Benachrichtigung pro Nutzer und Tag raus.
 - [ ] Nutzer, die am selben Tag bereits eine Quiz-Session abgeschlossen haben,
       erhalten keine Erinnerung.
