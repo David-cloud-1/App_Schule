@@ -48,6 +48,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-11: Exam Simulation Mode | Planned |
 | P1 | PROJ-14: Lücken schließen | Planned |
 | P0 | PROJ-18: Rückkehr-Erinnerung per Web-Push | Planned |
+| P0 | PROJ-19: Blitzrunde & Frachtmünzen | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

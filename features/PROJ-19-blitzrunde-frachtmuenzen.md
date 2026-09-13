@@ -1,0 +1,251 @@
+# PROJ-19: Blitzrunde & Frachtmünzen
+
+## Status: Planned
+**Created:** 2026-09-05
+**Last Updated:** 2026-09-05
+**Priorität:** P0
+
+## Dependencies
+- **Requires:** PROJ-1 (User Authentication) — Münzstand hängt am Konto
+- **Requires:** PROJ-3 (Daily Learning Session) — die Blitzrunde erweitert den bestehenden Quiz-Fluss
+- **Requires:** PROJ-4 (XP & Level System) — Münzen werden an derselben Stelle vergeben wie XP
+- **Requires:** PROJ-5 (Streak System) — die Blitzrunde hält den Streak
+- **Gehört zu:** PROJ-20 (Speditionshof & Shop) — dort werden die Münzen ausgegeben.
+  **Beide gehen gemeinsam live.** PROJ-19 allein liefert eine Währung ohne Zweck.
+- **Empfohlen vorher oder parallel:** PWA-Manifest (Idee 1 in `docs/engagement-ideas.md`)
+  und PROJ-18 (Web-Push). Ein Tagesbonus wirkt nur, wenn die Azubis die App abends
+  überhaupt wiederfinden.
+
+## Problem
+
+Aus dem Spielspaß-Audit (PROJ-17, Messung vom 05.09.2026): Die App hat **kein
+Spaß-, sondern ein Rückkehrproblem.**
+
+| Kennzahl | Wert |
+|----------|------|
+| Trefferquote in der Session | 69,5 % (im Flow-Korridor) |
+| Lerntage mit freiwilliger Zweitrunde | 51,1 % |
+| Seit über 28 Tagen verschwunden | 94,1 % |
+| Beste Streak = 1 Tag | 30 von 34 Nutzern |
+
+Wer spielt, hat Spaß. Es fehlt ausschließlich der **Anlass zurückzukommen**. Die
+App belohnt heute nur Beständigkeit über sieben Tage (`STREAK_BONUS_THRESHOLD = 7`) —
+ein Ziel, das genau ein einziger Nutzer je erreicht hat. Für das Verhalten, das die
+App wirklich braucht (einmal wiederkommen), zahlt sie nichts.
+
+## Lösung
+
+Eine **zweite Währung** und ein **Tagesbonus**, der verfällt.
+
+### Zwei getrennte Größen
+
+| | XP | Frachtmünzen |
+|---|---|---|
+| Bedeutung | Lernfortschritt | Spielwährung |
+| Wirkt auf | Level, Rangliste, Badges | Speditionshof (PROJ-20) |
+| Ausgebbar | **nie** | ja |
+
+Die Trennung ist wesentlich: Würde man XP ausgeben, sänke beim Kauf das Level und
+die Rangliste würde bedeutungslos.
+
+### Verdienen
+
+| Quelle | Münzen |
+|---|---|
+| Richtige Antwort in einer normalen Runde | 1 |
+| Abgeschlossene normale Runde (mind. 5 Fragen) | + 3 |
+| Richtige Antwort in der Blitzrunde | 3 |
+| Abgeschlossene Blitzrunde (Tagesbonus) | + 10 |
+
+Kalibriert an den echten Sessions (580 Schüler-Sessions: Median 7 richtige von
+10 Fragen):
+
+- Normale Runde ≈ **10 Münzen**
+- Blitzrunde ≈ **34–46 Münzen** (bei 8–12 richtigen Antworten) — also das
+  3- bis 4-Fache, aber nur einmal am Tag
+
+Damit ist das ruhige Lernen die Grundlage und der tägliche Besuch spürbar mehr wert,
+ohne dass sich das Überspringen des normalen Quiz lohnt.
+
+### Die Blitzrunde
+
+- **60 Sekunden**, so viele Fragen wie möglich
+- Fragen **gemischt über alle Fächer** (BGP, KSK, STG, LOP) — kein Auswahlschritt
+  vor dem Start, ein Tipp und los
+- Falsche Antwort: kurzes rotes Feedback, sofort weiter — **kein Abzug, kein
+  Zeitverlust, kein Rundenende**. Nur richtige Antworten bringen Münzen.
+- **Einmal pro Kalendertag** (Europe/Berlin). Danach ist sie bis zum nächsten Tag weg —
+  das ist der Rückkehr-Anlass.
+- Zählt für den **Streak** (sie ist ja der Anlass zurückzukommen)
+- Bringt **halbe XP**: 5 statt 10 je richtiger Antwort. 60 Sekunden Tempo dürfen
+  nicht der schnellste Weg zu Level und Rangliste sein.
+
+### Startguthaben für Bestandskonten
+
+Konten mit bisherigem Lernfortschritt starten nicht bei null:
+
+```
+Startguthaben = min(60 + floor(total_xp / 8), 250)     nur wenn total_xp > 0
+```
+
+Gerechnet gegen den echten Bestand (34 Konten mit XP): Minimum 61, **Median 90**,
+Maximum 250; **3 Konten** erreichen den Deckel. Der Vielnutzer mit 25.830 XP bekäme
+ohne Deckel 3.288 Münzen und könnte den halben Hof leerkaufen — mit Deckel sind es
+250, also etwa drei kleinere Käufe.
+
+Der Median von 90 Münzen liegt bewusst knapp **über** dem ersten Kaufpreis (Referenz
+75 Münzen, festgelegt in PROJ-20): Wer zurückkehrt, kann sofort etwas kaufen und
+sieht beim ersten Login ein Ergebnis. Das ist zugleich der einzige inhaltliche
+Aufhänger, die 32 verschwundenen Konten überhaupt noch einmal anzusprechen
+(„Deine Spedition wartet — du hast Guthaben").
+
+Die 11 Konten ohne jede Session bekommen kein Startguthaben; für sie gilt der
+normale Weg (erster Kauf am zweiten Lerntag).
+
+## User Stories
+
+- Als **Azubi** möchte ich für richtige Antworten eine Währung sammeln, damit sich
+  Lernen nach etwas anfühlt, das mir gehört.
+- Als **Azubi** möchte ich jeden Tag eine kurze, schnelle Sonderrunde spielen können,
+  die deutlich mehr einbringt, damit ich einen Grund habe, abends noch einmal
+  hineinzuschauen.
+- Als **Azubi** möchte ich sehen, dass die Blitzrunde heute noch offen ist (und wie
+  lange noch), damit ich sie nicht verpasse.
+- Als **Azubi, der lange weg war**, möchte ich beim Wiedereinstieg ein Guthaben aus
+  meiner früheren Lernarbeit vorfinden, damit sich die Rückkehr sofort lohnt.
+- Als **Azubi** möchte ich, dass mein Streak auch durch eine Blitzrunde erhalten
+  bleibt, damit ein kurzer Besuch an einem vollen Tag zählt.
+- Als **Azubi** möchte ich meinen Münzstand jederzeit auf der Startseite sehen,
+  damit ich weiß, wie weit ich vom nächsten Kauf entfernt bin.
+
+## Acceptance Criteria
+
+### Währung
+- [ ] `profiles` hat ein Feld für den Münzstand; Standardwert 0, nie negativ
+- [ ] Eine abgeschlossene normale Runde mit 7 richtigen von 10 Fragen schreibt
+      genau 10 Münzen gut (7 × 1 + 3 Abschlussbonus)
+- [ ] Eine normale Runde mit weniger als 5 Fragen bekommt keinen Abschlussbonus,
+      wohl aber die Münzen je richtiger Antwort
+- [ ] Der Münzstand ist auf der Startseite sichtbar, mit eigenem Symbol klar von
+      der XP-Anzeige unterschieden
+- [ ] Nach einer Runde zeigt der Abschlussbildschirm die verdienten Münzen getrennt
+      von den XP an
+- [ ] XP, Level, Streak und Badges verhalten sich bei normalen Runden unverändert
+      (keine Regression an PROJ-3/4/5)
+
+### Blitzrunde
+- [ ] Die Blitzrunde ist von der Startseite aus mit einem Tipp startbar, ohne
+      vorherige Fach- oder Themenauswahl
+- [ ] Die Fragen sind über alle Fächer gemischt und stammen aus dem bestehenden
+      Fragenbestand — kein neues Fragenformat, kein Import
+- [ ] Ein sichtbarer Countdown läuft von 60 Sekunden auf 0
+- [ ] Eine falsche Antwort zeigt kurzes rotes Feedback und springt zur nächsten
+      Frage; die Runde endet nicht, die Uhr springt nicht, es werden keine Münzen
+      abgezogen
+- [ ] Bei Ablauf der Zeit erscheint ein Abschlussbildschirm mit Anzahl richtiger
+      Antworten, verdienten Münzen, XP und Streak-Stand
+- [ ] Eine abgeschlossene Blitzrunde mit 10 richtigen Antworten schreibt 40 Münzen
+      und 50 XP gut (10 × 3 + 10 Tagesbonus; 10 × 5 XP)
+- [ ] Die Blitzrunde hält bzw. erhöht den Streak nach denselben Regeln wie eine
+      normale Runde
+- [ ] Nach einer gewerteten Blitzrunde zeigt die Startseite den Modus als für heute
+      erledigt und nennt, wann er wieder verfügbar ist
+- [ ] Am nächsten Kalendertag (Europe/Berlin, 00:00 Uhr) ist die Blitzrunde wieder
+      verfügbar
+
+### Verbrauch und Missbrauchsschutz
+- [ ] Als verbraucht gilt der Tagesbonus **erst, wenn die 60 Sekunden abgelaufen
+      sind und das Ergebnis gespeichert wurde** — ein Abbruch vorher lässt die Runde
+      erhalten
+- [ ] Ein zweiter Wertungsversuch am selben Tag wird serverseitig abgelehnt und
+      schreibt weder Münzen noch XP gut — auch bei wiederholtem oder parallelem
+      Aufruf
+- [ ] Der Server prüft die Plausibilität einer Blitzrunde (Obergrenze für die Anzahl
+      Antworten sowie eine serverseitig ermittelte Rundendauer) und lehnt
+      unplausible Meldungen ab; die geltende Obergrenze von 20 Antworten je Session
+      in [quiz/sessions/route.ts:15](../src/app/api/quiz/sessions/route.ts#L15) muss
+      dafür bewusst festgelegt werden
+- [ ] Der Münzstand kann ausschließlich serverseitig verändert werden; ein
+      manipulierter Client kann sich keine Münzen gutschreiben
+
+### Startguthaben
+- [ ] Jedes Konto mit `total_xp > 0` erhält einmalig
+      `min(60 + floor(total_xp / 8), 250)` Münzen
+- [ ] Konten ohne XP erhalten kein Startguthaben
+- [ ] Die Gutschrift erfolgt genau einmal je Konto und ist bei erneutem Lauf
+      wirkungslos (idempotent)
+- [ ] Nach der Gutschrift hat kein Konto mehr als 250 Münzen aus dieser Quelle
+- [ ] Beim ersten Login danach wird das Guthaben einmalig als Hinweis gezeigt
+
+### Randbedingung Kosten
+- [ ] Keine neuen kostenpflichtigen Dienste, kein externes API, keine gekauften
+      Assets, keine Bild-KI. Das Feature bleibt vollständig innerhalb von
+      Supabase Free Tier und Vercel Hobby.
+- [ ] Kein Cron-Job und kein Hintergrunddienst nötig — die Tagesgrenze wird beim
+      Aufruf berechnet, nicht durch einen Zeitplan zurückgesetzt
+
+## Edge Cases
+
+- **Die Verbindung bricht während der Blitzrunde ab.** Der Tagesbonus bleibt
+  erhalten (nicht verbraucht), bereits gegebene Antworten verfallen. Bewusste
+  Entscheidung: Die App läuft auf Schulgeräten mit schlechtem WLAN; ein verlorener
+  Tagesbonus wiegt schwerer als ein möglicher Neustart.
+- **Jemand startet die Blitzrunde mehrfach neu, um ein besseres Ergebnis zu
+  erzielen.** Zulässig, solange keine Runde durchgespielt wurde — es kostet ihn
+  jedes Mal echte Zeit. Sobald eine Runde gewertet ist, ist der Tag verbraucht.
+- **Die Blitzrunde beginnt um 23:59 Uhr und endet um 00:00 Uhr.** Maßgeblich ist der
+  Zeitpunkt der Wertung. Die Runde zählt für den neuen Tag; der Bonus des alten Tages
+  verfällt ungenutzt. Dieselbe Regel muss auch für Streak und Münzen gelten, damit
+  nicht zwei Tage gleichzeitig gutgeschrieben werden.
+- **Uneinheitliche Tagesgrenze im Bestand.** Streaks rechnen nach Europe/Berlin
+  ([quiz/sessions/route.ts:26](../src/app/api/quiz/sessions/route.ts#L26)),
+  [quiz/today/route.ts:22](../src/app/api/quiz/today/route.ts#L22) dagegen nach UTC.
+  Für die Blitzrunde gilt **ausschließlich Europe/Berlin**; die Abweichung in
+  `today` ist zu prüfen und zu vereinheitlichen.
+- **Zeitumstellung.** `getBerlinDateStr(-1)` zieht 24 h von der UTC-Zeit ab; am Tag
+  nach der Umstellung liefert das zwischen 00:00 und 01:00 Uhr den falschen Vortag
+  (notiert in `docs/engagement-ideas.md`). Wenn die Streak-Logik hier ohnehin
+  angefasst wird, mit korrigieren.
+- **Der Fragenbestand reicht nicht.** Schafft jemand mehr Fragen, als ungefragte
+  vorhanden sind, werden bereits beantwortete wiederholt statt die Runde
+  abzubrechen — bei 1.666 Fragen unwahrscheinlich, aber bei Fachfiltern denkbar.
+- **Ein Konto hat sehr wenig XP (Minimum im Bestand: 10 XP).** Der Sockel von 60
+  Münzen sorgt dafür, dass auch dieses Konto ein sichtbares Guthaben vorfindet.
+- **Doppelte Gutschrift durch schnelles Doppeltippen** am Ende einer Runde: Der
+  Server muss dieselbe Runde nur einmal werten.
+- **Ein Azubi spielt ausschließlich Blitzrunden.** Zulässig, aber durch die halben
+  XP nachteilig für Level und Rangliste — und der Münzertrag ist auf eine Runde
+  pro Tag gedeckelt.
+
+## Technical Requirements
+- **Performance:** Der Countdown muss flüssig laufen; der Fragenwechsel darf keine
+  spürbare Wartezeit haben (Fragen der Runde vorab laden, nicht je Frage nachladen).
+- **Sicherheit:** Authentifizierung erforderlich; Münzstand und Tagesverbrauch
+  ausschließlich serverseitig; RLS analog zu den bestehenden Profil-Feldern.
+- **Mobile-First:** Antwortflächen mindestens 44 px, bedienbar mit dem Daumen —
+  der Modus lebt vom Tempo.
+- **Barrierefreiheit:** Der Countdown darf nicht die einzige Rückmeldung sein;
+  Farbe allein trägt kein Feedback (rot/grün zusätzlich mit Symbol).
+- **Datenmenge:** Ein Zahlenfeld je Konto plus die ohnehin gespeicherten Sessions —
+  im Free Tier vernachlässigbar.
+
+## Offene Punkte für /architecture
+- Wird die Blitzrunde eine eigene Route oder ein Modus-Parameter der bestehenden
+  Quiz-Session? (Beeinflusst das 20-Antworten-Limit und alle Auswertungen.)
+- Wie wird die Rundendauer serverseitig belegt — Start-Token oder Zeitstempel?
+- Bleibt der Münzstand ein Feld auf `profiles` oder braucht es für PROJ-20 ohnehin
+  ein Buchungsjournal (Nachvollziehbarkeit bei Käufen)?
+- Muss `engagement-metrics.ts` um eine Kennzahl „Blitzrunden-Teilnahme je Lerntag"
+  erweitert werden, damit PROJ-17 die Wirkung messen kann?
+
+---
+<!-- Sections below are added by subsequent skills -->
+
+## Tech Design (Solution Architect)
+_To be added by /architecture_
+
+## QA Test Results
+_To be added by /qa_
+
+## Deployment
+_To be added by /deploy_
