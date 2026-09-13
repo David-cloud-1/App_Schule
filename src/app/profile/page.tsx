@@ -6,6 +6,7 @@ import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
 import { XpProgressBar } from '@/components/xp-progress-bar'
 import { BadgeGallery, type UnlockedBadge } from '@/components/badge-gallery'
+import { HofGallery } from '@/components/hof-gallery'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 import { PseudonymSettings } from '@/components/pseudonym-settings'
 
@@ -86,6 +87,11 @@ export default async function ProfilePage() {
         {/* Badge gallery */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
           <BadgeGallery unlockedBadges={unlockedBadges} />
+        </div>
+
+        {/* Hof gallery (PROJ-20) */}
+        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
+          <HofGallery />
         </div>
 
         {/* Privacy settings */}

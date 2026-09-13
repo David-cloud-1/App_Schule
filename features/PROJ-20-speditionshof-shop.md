@@ -1,6 +1,6 @@
 # PROJ-20: Speditionshof & Shop
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-13
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -248,6 +248,55 @@ der Badges — keine neuen Bibliotheken, keine Bild-Assets.
   (siehe „Datenmodell").
 - **Einbindung ins Admin-Panel:** neuer Tab „Hof-Items", gleiches
   Formular-Muster wie Fächer/Themen (siehe „Komponenten-Struktur").
+
+## Implementation Notes (Frontend)
+
+**Stand 2026-09-13 — Frontend gebaut, Backend steht noch aus.** Gleiche
+Vorgehensweise wie bei PROJ-19: clientseitig gegen den unten stehenden
+Endpunkt-Vertrag verdrahtet, sanfte Fehlerzustände statt Absturz. Geprüft per
+`npm run build` (fehlerfrei), vollständigem Testlauf (272/272 grün) und
+manuellem Abruf aller neuen Routen auf dem Dev-Server (307 zu `/login`,
+kein 500er).
+
+**Gebaut:**
+- `src/app/shop/page.tsx` + `shop-client.tsx` — Speditionshof-Seite: Kacheln
+  mit Icon/Name/Beschreibung/Preis, Kauf-Button (deaktiviert + Fehlbetrag bei
+  zu wenig Guthaben), Kauf-Bestätigung als Dialog (Muster von
+  `badge-unlock-modal.tsx` übernommen)
+- `src/components/hof-gallery.tsx` — „Mein Hof"-Galerie im Profil, filtert
+  die eigenen Käufe aus derselben Items-Antwort statt eines eigenen
+  Sammlung-Endpunkts
+- `src/app/profile/page.tsx` — Hof-Galerie-Sektion ergänzt
+- `src/components/admin/shop-item-form-modal.tsx` +
+  `src/app/admin/shop-items/page.tsx` — Anlegen/Bearbeiten/Deaktivieren im
+  Admin-Bereich, 1:1 nach dem Muster von `subject-form-modal.tsx` /
+  `admin/subjects/page.tsx`
+- `src/components/admin/admin-tabs.tsx` — neuer Tab „Hof-Items"
+- `src/app/page.tsx` — Store-Icon-Link zum Speditionshof im Header
+
+**Angenommener API-Vertrag für `/backend`:**
+- `GET /api/shop/items` (neu) → `{ items: { id, name, description, icon, price, owned: boolean }[], coin_balance: number }`
+  — liefert für eingeloggte Nutzer sowohl den Katalog als auch, welche Items
+  bereits gekauft wurden; die „Mein Hof"-Galerie filtert `owned === true`
+  aus derselben Antwort
+- `POST /api/shop/purchase` (neu), Body `{ item_id: string }` →
+  `{ item: {...}, new_coin_balance: number }`, oder 4xx mit `{ error }` bei
+  zu wenig Guthaben / bereits im Besitz / Item deaktiviert — das Frontend
+  zeigt die Fehlermeldung per Toast und lädt den Katalog neu
+- `GET /api/admin/shop-items` (neu) → Liste inkl. inaktiver Items, jeweils
+  mit `purchase_count`
+- `POST /api/admin/shop-items` (neu) → Item anlegen
+- `PATCH /api/admin/shop-items/[id]` (neu) → Item bearbeiten oder
+  `is_active` umschalten
+
+**Wichtig für `/backend`:** mindestens ein Item zum Referenzpreis 75 Münzen
+anlegen (siehe Edge Case in dieser Spec), sonst geht die
+Startguthaben-Rechnung aus PROJ-19 nicht auf.
+
+**Noch nicht möglich:** interaktives Durchklicken im Browser mit echtem
+Login — in dieser Umgebung fehlt ein Browser-Automatisierungs-Tool. Ein
+kurzer manueller Test durch den Nutzer nach dem Login wird vor `/qa`
+empfohlen.
 
 ## QA Test Results
 _To be added by /qa_

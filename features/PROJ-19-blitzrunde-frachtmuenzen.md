@@ -1,6 +1,6 @@
 # PROJ-19: Blitzrunde & Frachtmünzen
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-05
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -355,6 +355,52 @@ sich testbar und sichtbar ist (Münzstand auf der Startseite, Startguthaben).
 Bevor `/backend` und `/frontend` das tatsächlich bauen, lohnt sich `/requirements`
 für PROJ-20 — sonst entsteht ein sichtbarer Münzstand, den niemand ausgeben
 kann.
+
+## Implementation Notes (Frontend)
+
+**Stand 2026-09-13 — Frontend gebaut, Backend steht noch aus.** Da die
+Datenbank-Migration und die API-Routen für PROJ-19 noch nicht existieren,
+sind alle neuen UI-Bausteine bewusst clientseitig gegen die unten stehenden
+Endpunkte verdrahtet und degradieren beim Fehlschlagen sanft (Lade-/
+Fehlerzustand statt Absturz) — geprüft per `npm run build` (fehlerfrei),
+vollständiger Testlauf (272/272 grün, keine Regression) und manuellem
+Abruf aller neuen Routen auf dem Dev-Server (alle liefern sauber 307 zu
+`/login`, kein 500er).
+
+**Gebaut:**
+- `src/components/coin-balance.tsx` — Münzstand-Pille (Header) + Inline-Variante
+- `src/components/blitz-round-card.tsx` — Kachel auf der Startseite
+  (verfügbar / heute erledigt mit Countdown-Text)
+- `src/app/blitzrunde/page.tsx` + `blitz-client.tsx` — vollständiger
+  Rundenablauf: Start, 60-Sekunden-Countdown, Sofort-Feedback ohne
+  Rundenabbruch bei Falsch, Ergebnis-Bildschirm
+- `src/app/quiz/quiz-client.tsx` — Münzen-Zeile im bestehenden
+  Ergebnis-Bildschirm (nur sichtbar, wenn `coins_earned` in der Antwort
+  vorhanden ist — verhindert eine falsche „+0 Münzen"-Anzeige, solange
+  `/backend` das Feld noch nicht liefert)
+- `src/app/page.tsx` — Münzstand-Pille im Header, Blitzrunde-Kachel im
+  Hauptbereich, Link zum Speditionshof (für PROJ-20)
+
+**Angenommener API-Vertrag für `/backend`** (in dieser Form vom Frontend
+erwartet — abweichende Feldnamen brauchen sonst eine Anpassung hier):
+- `GET /api/profile/stats` (bestehend) — Antwort um `coin_balance: number`
+  ergänzen
+- `POST /api/quiz/sessions` (bestehend) — Antwort um `coins_earned: number`
+  ergänzen
+- `GET /api/quiz/blitz/status` (neu) → `{ available: boolean, next_available_at: string | null }`
+- `POST /api/quiz/blitz/start` (neu) → `{ token: string, questions: QuizQuestion[] }`
+  (gleiche Fragen-Form wie im bestehenden Quiz, gemischt über alle Fächer,
+  serverseitig vorab geladen)
+- `POST /api/quiz/blitz/finish` (neu), Body `{ token: string, answers: SessionAnswer[] }`
+  → `{ correct_count: number, coins_earned: number, xp_earned: number, new_coin_balance: number, new_total_xp: number, new_streak: number }`
+  (409 falls der Tagesbonus schon verbraucht ist — das Frontend zeigt dafür
+  den „Heute schon erledigt"-Zustand)
+
+**Noch nicht möglich:** interaktives Durchklicken im Browser mit echtem
+Login — dafür fehlt in dieser Umgebung ein Browser-Automatisierungs-Tool.
+Die serverseitige Prüfung (Build, Tests, Routen-Abruf ohne 500er) deckt das
+nicht ab; ein kurzer manueller Test durch den Nutzer nach dem Login wird vor
+`/qa` empfohlen.
 
 ## QA Test Results
 _To be added by /qa_

@@ -10,6 +10,8 @@ import { SubjectProgressCard } from '@/components/subject-progress-card'
 import { WeekActivityDots } from '@/components/week-activity-dots'
 import { OverallStatsRow } from '@/components/overall-stats-row'
 import { OnboardingCard } from '@/components/onboarding-card'
+import { CoinBalance } from '@/components/coin-balance'
+import { BlitzRoundCard } from '@/components/blitz-round-card'
 import { Button } from '@/components/ui/button'
 import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent, MAX_LEVEL } from '@/lib/xp-utils'
 import {
@@ -24,6 +26,7 @@ import {
   Scale,
   User,
   Trophy,
+  Store,
   ClipboardList,
   CheckCircle2,
 } from 'lucide-react'
@@ -164,6 +167,16 @@ export default async function HomePage() {
             </div>
             {/* Streak pill */}
             <StreakBadge streak={currentStreak} variant="pill" />
+            {/* Coin pill */}
+            <CoinBalance variant="pill" />
+            {/* Speditionshof link */}
+            <Link
+              href="/shop"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
+              aria-label="Speditionshof"
+            >
+              <Store className="w-4 h-4" />
+            </Link>
             {/* Leaderboard link */}
             <Link
               href="/leaderboard"
@@ -251,6 +264,9 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* ── Blitzrunde CTA (PROJ-19) ── */}
+        <BlitzRoundCard />
 
         {/* ── Today's status banner ── */}
         <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${

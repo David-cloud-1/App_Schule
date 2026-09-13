@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, XCircle, Zap, Trophy, RotateCcw, Flame, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Zap, Coins, Trophy, RotateCcw, Flame, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { LevelUpDialog } from '@/components/level-up-dialog'
@@ -46,6 +46,9 @@ interface SessionResult {
   old_level: number
   new_level: number
   new_badges: string[]
+  // Added by PROJ-19 (Frachtmünzen) — optional until /backend returns it, so
+  // this screen degrades gracefully in the meantime.
+  coins_earned?: number
 }
 
 interface QuizClientProps {
@@ -347,6 +350,17 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
                 {newTotalXp > 0 && <XpLevelBadge totalXp={newTotalXp} level={newLevel} />}
               </div>
             </div>
+
+            {/* Coins earned (PROJ-19) */}
+            {sessionResult?.coins_earned !== undefined && (
+              <div className="bg-[#1F2937] border border-[#FFD700]/40 rounded-2xl p-4 w-full mb-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[#9CA3AF] text-sm">Verdiente Münzen</p>
+                  <p className="text-xl font-bold text-[#FFD700]">+{sessionResult.coins_earned}</p>
+                </div>
+                <Coins size={28} className="text-[#FFD700]" />
+              </div>
+            )}
 
             {/* Streak */}
             <div className={cn(

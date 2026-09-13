@@ -32,8 +32,8 @@
 | PROJ-16 | Fragen-Qualitätssicherung (Torwächter + Agenten) | Deployed | [PROJ-16-question-quality-guard.md](PROJ-16-question-quality-guard.md) | 2026-09-04 |
 | PROJ-17 | Spielspaß-Audit (Fun Auditor) | Deployed | [PROJ-17-spielspass-audit.md](PROJ-17-spielspass-audit.md) | 2026-09-04 |
 | PROJ-18 | Rückkehr-Erinnerung per Web-Push | Architected | [PROJ-18-rueckkehr-erinnerung-push.md](PROJ-18-rueckkehr-erinnerung-push.md) | 2026-09-05 |
-| PROJ-19 | Blitzrunde & Frachtmünzen | Architected | [PROJ-19-blitzrunde-frachtmuenzen.md](PROJ-19-blitzrunde-frachtmuenzen.md) | 2026-09-05 |
-| PROJ-20 | Speditionshof & Shop | Architected | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
+| PROJ-19 | Blitzrunde & Frachtmünzen | In Progress | [PROJ-19-blitzrunde-frachtmuenzen.md](PROJ-19-blitzrunde-frachtmuenzen.md) | 2026-09-05 |
+| PROJ-20 | Speditionshof & Shop | In Progress | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
 
 <!-- Add features above this line -->
 
