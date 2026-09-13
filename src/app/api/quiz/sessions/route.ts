@@ -20,6 +20,12 @@ const XP_PER_CORRECT      = 10
 const XP_STREAK_BONUS     = 5   // added per correct answer when streak ≥ threshold
 const STREAK_BONUS_THRESHOLD = 7
 
+// Coin rules (PROJ-19) — a normal round pays out far less than the daily
+// Blitzrunde bonus, so the once-a-day round stays clearly more valuable.
+const COIN_PER_CORRECT       = 1
+const COIN_SESSION_BONUS     = 3
+const COIN_SESSION_MIN_TOTAL = 5
+
 /** Returns a date string in YYYY-MM-DD format using Europe/Berlin timezone.
  *  offsetDays = 0 → today, -1 → yesterday, etc. (each step = 24 h of UTC ms) */
 function getBerlinDateStr(offsetDays = 0): string {
@@ -75,7 +81,7 @@ export async function POST(request: NextRequest) {
   // ── Fetch current profile stats ────────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
-    .select('total_xp, current_streak, longest_streak, last_session_date')
+    .select('total_xp, current_streak, longest_streak, last_session_date, coin_balance')
     .eq('id', user.id)
     .single()
 
@@ -83,6 +89,7 @@ export async function POST(request: NextRequest) {
   const prevStreak       = (profile?.current_streak  as number | null) ?? 0
   const prevLongest      = (profile?.longest_streak  as number | null) ?? 0
   const lastSessionDate  = (profile?.last_session_date as string | null) ?? null
+  const prevCoinBalance  = (profile?.coin_balance   as number | null) ?? 0
 
   // ── Streak calculation (PROJ-5) ────────────────────────────────────────────
   const today      = getBerlinDateStr()
@@ -99,6 +106,10 @@ export async function POST(request: NextRequest) {
   const oldLevel   = getLevelFromXp(prevTotalXp)
   const newLevel   = getLevelFromXp(newTotalXp)
   const leveledUp  = newLevel > oldLevel
+
+  // ── Coin calculation (PROJ-19) ────────────────────────────────────────────
+  const coinsEarned    = score * COIN_PER_CORRECT + (total >= COIN_SESSION_MIN_TOTAL ? COIN_SESSION_BONUS : 0)
+  const newCoinBalance = prevCoinBalance + coinsEarned
 
   // ── Insert session row ────────────────────────────────────────────────────
   const { data: session, error: sessionError } = await supabase
@@ -142,6 +153,7 @@ export async function POST(request: NextRequest) {
       current_streak:    newStreak,
       longest_streak:    newLongest,
       last_session_date: today,
+      coin_balance:      newCoinBalance,
     })
     .eq('id', user.id)
 
@@ -170,5 +182,6 @@ export async function POST(request: NextRequest) {
     old_level:    oldLevel,
     new_level:    newLevel,
     new_badges:   newBadges,
+    coins_earned: coinsEarned,
   })
 }

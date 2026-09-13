@@ -298,6 +298,60 @@ Login — in dieser Umgebung fehlt ein Browser-Automatisierungs-Tool. Ein
 kurzer manueller Test durch den Nutzer nach dem Login wird vor `/qa`
 empfohlen.
 
+## Implementation Notes (Backend)
+
+**Stand 2026-09-13 — Backend gebaut und gegen die produktive Datenbank
+angewendet** (dieselbe Migration wie PROJ-19:
+`supabase/migrations/20260913_proj19_proj20_coins_shop.sql`, nach expliziter
+Nutzer-Freigabe).
+
+**Datenbank:**
+- `shop_items` (Katalog): RLS erlaubt jedem eingeloggten Nutzer nur aktive
+  Items zu sehen, Admins den gesamten Katalog inkl. inaktiver Items
+- `user_shop_items` (Besitz, `UNIQUE(user_id, item_id)`, `price_paid`
+  eingefroren zum Kaufzeitpunkt): `item_id` referenziert `shop_items` mit
+  `ON DELETE RESTRICT` — dadurch kann ein bereits gekauftes Item auf
+  Datenbankebene gar nicht gelöscht werden, nicht nur per Anwendungslogik
+  (es gibt entsprechend bewusst keinen DELETE-Endpunkt)
+- Startkatalog mit 4 Items seeded, darunter eines zu genau 75 Münzen —
+  geprüft: `items_at_75 = 1`
+- **Atomarer Kauf über `purchase_shop_item(p_item_id)`** (SECURITY DEFINER
+  SQL-Funktion, per `GRANT EXECUTE ... TO authenticated`, `REVOKE ... FROM
+  PUBLIC`): prüft Preis/Aktiv-Status/Besitz und zieht die Münzen nur ab, wenn
+  `coin_balance >= price` — als **eine** bedingte UPDATE-Anweisung, die exakt
+  die in der Architektur geforderte Atomarität liefert (kein Buchungsjournal
+  nötig, wie dort vermutet: die `user_shop_items`-Zeile selbst dokumentiert
+  jeden Kauf bereits vollständig).
+
+**API-Routen:**
+- `GET /api/shop/items` — Katalog + `owned`-Flag + `coin_balance` in einer
+  Antwort
+- `POST /api/shop/purchase` — ruft die SQL-Funktion per `supabase.rpc(...)`
+  auf, mappt deren Fehlermeldungen auf passende HTTP-Codes (404/409)
+- `GET /api/admin/shop-items`, `POST /api/admin/shop-items`,
+  `PATCH /api/admin/shop-items/[id]` — 1:1 nach dem Muster der bestehenden
+  Fächer-Verwaltung
+
+**Sicherheits-Advisory behoben:** `purchase_shop_item` war nach dem Anlegen
+zunächst auch für nicht eingeloggte Nutzer (`anon`) aufrufbar (Postgres
+gewährt `EXECUTE` standardmäßig an `PUBLIC`). Per Supabase-Security-Advisor
+gefunden und sofort mit einem expliziten `REVOKE ... FROM PUBLIC` behoben —
+die Funktion selbst hätte anonyme Aufrufe ohnehin mit `not_authenticated`
+abgelehnt, aber die explizite Einschränkung ist die sauberere Lösung.
+
+**Nebenbefund (kein Handlungsbedarf für dieses Feature):** Dasselbe
+Supabase-Projekt enthält weitere, fachfremde Tabellen (`wk_*`, `sq_*`) einer
+offenbar separaten „Werkzeugkiste"- bzw. „Speditionsquiz"-Anwendung, die
+dieselbe Datenbank mitnutzt. Nicht berührt, aber dem Nutzer mitgeteilt.
+
+**Tests:** 4 neue Integrationstest-Dateien (Shop-Liste, Kauf inkl.
+Fehler-Mapping, Admin-Liste/-Anlage, Admin-Bearbeiten), alle 324 Tests grün,
+`npm run build` fehlerfrei.
+
+**Weiterhin offen:** interaktiver Login-Test im Browser (kein
+Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
+`/qa`.
+
 ## QA Test Results
 _To be added by /qa_
 

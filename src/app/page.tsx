@@ -12,6 +12,7 @@ import { OverallStatsRow } from '@/components/overall-stats-row'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { CoinBalance } from '@/components/coin-balance'
 import { BlitzRoundCard } from '@/components/blitz-round-card'
+import { StarterCoinsBanner } from '@/components/starter-coins-banner'
 import { Button } from '@/components/ui/button'
 import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent, MAX_LEVEL } from '@/lib/xp-utils'
 import {
@@ -211,6 +212,9 @@ export default async function HomePage() {
       <main className="max-w-md mx-auto px-4 py-6 space-y-4 pb-8">
         {/* Onboarding card — only for new users */}
         {!hasSessions && <OnboardingCard displayName={displayName} />}
+
+        {/* Starter-coins hint (PROJ-19) — shown once per account */}
+        <StarterCoinsBanner />
 
         {/* ── Section 1: Gamification Hero ── */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 relative overflow-hidden">

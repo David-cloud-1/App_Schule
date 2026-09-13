@@ -45,6 +45,7 @@ interface MockOptions {
     current_streak?: number
     longest_streak?: number
     last_session_date?: string | null
+    coin_balance?: number
   } | null
   sessionData?: unknown
   sessionError?: unknown
@@ -54,7 +55,7 @@ interface MockOptions {
 
 function makeSupabaseMock(user: unknown, opts: MockOptions = {}) {
   const {
-    profile = { total_xp: 0, current_streak: 0, longest_streak: 0, last_session_date: null },
+    profile = { total_xp: 0, current_streak: 0, longest_streak: 0, last_session_date: null, coin_balance: 0 },
     sessionData = { id: 'sess-uuid-1' },
     sessionError = null,
     answersError = null,
@@ -126,6 +127,29 @@ describe('POST /api/quiz/sessions', () => {
     expect(body).toHaveProperty('leveled_up')
     expect(body).toHaveProperty('old_level')
     expect(body).toHaveProperty('new_level')
+    // 1 correct × 1 coin, no session bonus (only 2 of 10 answers)
+    expect(body.coins_earned).toBe(1)
+  })
+
+  it('awards session coin bonus for 5+ questions (PROJ-19)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: 'user-1' }) as never)
+    const fiveCorrect = Array.from({ length: 5 }, (_, i) => ({
+      question_id: `550e8400-e29b-41d4-a716-44665544000${i}`,
+      selected_option_id: A1,
+      is_correct: true,
+    }))
+    const res = await POST(makeRequest({ answers: fiveCorrect }))
+    const body = await res.json()
+    // 5 × 1 coin + 3 session bonus
+    expect(body.coins_earned).toBe(8)
+  })
+
+  it('does not award session coin bonus below 5 questions', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: 'user-1' }) as never)
+    const res = await POST(makeRequest({ answers: ALL_CORRECT }))
+    const body = await res.json()
+    // 2 × 1 coin, no bonus
+    expect(body.coins_earned).toBe(2)
   })
 
   it('awards 10 XP per correct answer', async () => {

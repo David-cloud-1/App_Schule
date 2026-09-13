@@ -14,6 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
+      absolut_fix_progress: {
+        Row: {
+          done_at: string
+          question_id: string
+        }
+        Insert: {
+          done_at?: string
+          question_id: string
+        }
+        Update: {
+          done_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "absolut_fix_progress_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_audit_log: {
         Row: {
           action_type: string
@@ -103,6 +126,60 @@ export type Database = {
         }
         Relationships: []
       }
+      blitz_rounds: {
+        Row: {
+          calendar_day: string
+          coins_earned: number
+          completed_at: string
+          correct_count: number
+          id: string
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          calendar_day: string
+          coins_earned: number
+          completed_at?: string
+          correct_count: number
+          id?: string
+          user_id: string
+          xp_earned: number
+        }
+        Update: {
+          calendar_day?: string
+          coins_earned?: number
+          completed_at?: string
+          correct_count?: number
+          id?: string
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: []
+      }
+      blitz_starts: {
+        Row: {
+          consumed: boolean
+          created_at: string
+          id: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          consumed?: boolean
+          created_at?: string
+          id?: string
+          token?: string
+          user_id: string
+        }
+        Update: {
+          consumed?: boolean
+          created_at?: string
+          id?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exam_parts: {
         Row: {
           code: string
@@ -128,6 +205,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          duration_minutes: number | null
           id: string
           is_active: boolean
           name: string
@@ -137,6 +215,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          duration_minutes?: number | null
           id?: string
           is_active?: boolean
           name: string
@@ -146,6 +225,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          duration_minutes?: number | null
           id?: string
           is_active?: boolean
           name?: string
@@ -199,6 +279,8 @@ export type Database = {
           id: string
           questions_generated: number | null
           status: string
+          subject_code: string | null
+          topic_id: string | null
         }
         Insert: {
           admin_id: string
@@ -211,6 +293,8 @@ export type Database = {
           id?: string
           questions_generated?: number | null
           status?: string
+          subject_code?: string | null
+          topic_id?: string | null
         }
         Update: {
           admin_id?: string
@@ -223,11 +307,68 @@ export type Database = {
           id?: string
           questions_generated?: number | null
           status?: string
+          subject_code?: string | null
+          topic_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      length_fix_progress: {
+        Row: {
+          done_at: string
+          question_id: string
+        }
+        Insert: {
+          done_at?: string
+          question_id: string
+        }
+        Update: {
+          done_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "length_fix_progress_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pattern_fix_progress: {
+        Row: {
+          done_at: string
+          question_id: string
+        }
+        Insert: {
+          done_at?: string
+          question_id: string
+        }
+        Update: {
+          done_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pattern_fix_progress_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
+          coin_balance: number
           created_at: string
           current_streak: number
           display_name: string | null
@@ -235,10 +376,15 @@ export type Database = {
           last_session_date: string | null
           leaderboard_opt_out: boolean
           longest_streak: number
+          pseudonym: string | null
           role: string
+          show_real_name: boolean
+          starter_coins: number | null
+          starter_coins_seen: boolean
           total_xp: number
         }
         Insert: {
+          coin_balance?: number
           created_at?: string
           current_streak?: number
           display_name?: string | null
@@ -246,10 +392,15 @@ export type Database = {
           last_session_date?: string | null
           leaderboard_opt_out?: boolean
           longest_streak?: number
+          pseudonym?: string | null
           role?: string
+          show_real_name?: boolean
+          starter_coins?: number | null
+          starter_coins_seen?: boolean
           total_xp?: number
         }
         Update: {
+          coin_balance?: number
           created_at?: string
           current_streak?: number
           display_name?: string | null
@@ -257,10 +408,43 @@ export type Database = {
           last_session_date?: string | null
           leaderboard_opt_out?: boolean
           longest_streak?: number
+          pseudonym?: string | null
           role?: string
+          show_real_name?: boolean
+          starter_coins?: number | null
+          starter_coins_seen?: boolean
           total_xp?: number
         }
         Relationships: []
+      }
+      quality_fix_progress: {
+        Row: {
+          done_at: string
+          note: string | null
+          question_id: string
+          run_key: string
+        }
+        Insert: {
+          done_at?: string
+          note?: string | null
+          question_id: string
+          run_key: string
+        }
+        Update: {
+          done_at?: string
+          note?: string | null
+          question_id?: string
+          run_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quality_fix_progress_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_subjects: {
         Row: {
@@ -350,9 +534,11 @@ export type Database = {
           id: string
           job_id: string
           options: Json
+          quality_report: Json | null
           question_text: string
           status: string
           subject_code: string | null
+          topic_id: string | null
         }
         Insert: {
           class_level?: number | null
@@ -364,9 +550,11 @@ export type Database = {
           id?: string
           job_id: string
           options: Json
+          quality_report?: Json | null
           question_text: string
           status?: string
           subject_code?: string | null
+          topic_id?: string | null
         }
         Update: {
           class_level?: number | null
@@ -378,9 +566,11 @@ export type Database = {
           id?: string
           job_id?: string
           options?: Json
+          quality_report?: Json | null
           question_text?: string
           status?: string
           subject_code?: string | null
+          topic_id?: string | null
         }
         Relationships: [
           {
@@ -388,6 +578,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_draft_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
             referencedColumns: ["id"]
           },
         ]
@@ -481,6 +678,128 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rewrite_progress: {
+        Row: {
+          done_at: string
+          question_id: string
+        }
+        Insert: {
+          done_at?: string
+          question_id: string
+        }
+        Update: {
+          done_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewrite_progress_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shop_items: {
+        Row: {
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      sq_player: {
+        Row: {
+          class_code: string
+          created_at: string
+          id: string
+          nickname: string
+          pin: string
+          state: Json
+          updated_at: string
+        }
+        Insert: {
+          class_code: string
+          created_at?: string
+          id?: string
+          nickname: string
+          pin: string
+          state?: Json
+          updated_at?: string
+        }
+        Update: {
+          class_code?: string
+          created_at?: string
+          id?: string
+          nickname?: string
+          pin?: string
+          state?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sq_weekly: {
+        Row: {
+          case_id: string
+          class_code: string
+          created_at: string
+          details: Json | null
+          id: string
+          max_score: number
+          nickname: string
+          score: number
+          week: string
+        }
+        Insert: {
+          case_id: string
+          class_code: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          max_score: number
+          nickname: string
+          score: number
+          week: string
+        }
+        Update: {
+          case_id?: string
+          class_code?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          max_score?: number
+          nickname?: string
+          score?: number
+          week?: string
+        }
+        Relationships: []
       }
       subjects: {
         Row: {
@@ -583,12 +902,236 @@ export type Database = {
           },
         ]
       }
+      user_shop_items: {
+        Row: {
+          id: string
+          item_id: string
+          price_paid: number
+          purchased_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          price_paid: number
+          purchased_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          price_paid?: number
+          purchased_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_shop_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wk_files: {
+        Row: {
+          created_at: string
+          filename: string
+          id: string
+          item_id: string
+          mime: string | null
+          size_bytes: number | null
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          filename: string
+          id?: string
+          item_id: string
+          mime?: string | null
+          size_bytes?: number | null
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          filename?: string
+          id?: string
+          item_id?: string
+          mime?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wk_files_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "wk_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wk_items: {
+        Row: {
+          created_at: string
+          id: string
+          script_name: string | null
+          script_purged: boolean
+          script_text: string | null
+          settings: Json
+          share_token: string | null
+          shared_at: string | null
+          title: string
+          tool: string
+          user_id: string
+          yaml: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          script_name?: string | null
+          script_purged?: boolean
+          script_text?: string | null
+          settings?: Json
+          share_token?: string | null
+          shared_at?: string | null
+          title: string
+          tool: string
+          user_id: string
+          yaml?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          script_name?: string | null
+          script_purged?: boolean
+          script_text?: string | null
+          settings?: Json
+          share_token?: string | null
+          shared_at?: string | null
+          title?: string
+          tool?: string
+          user_id?: string
+          yaml?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wk_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "wk_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wk_tips: {
+        Row: {
+          antwort: string
+          created_at: string
+          frage: string
+          id: string
+          sort: number
+          tool: string
+          updated_at: string
+        }
+        Insert: {
+          antwort: string
+          created_at?: string
+          frage: string
+          id?: string
+          sort?: number
+          tool: string
+          updated_at?: string
+        }
+        Update: {
+          antwort?: string
+          created_at?: string
+          frage?: string
+          id?: string
+          sort?: number
+          tool?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      wk_users: {
+        Row: {
+          created_at: string
+          id: string
+          is_admin: boolean
+          kuerzel: string
+          kuerzel_key: string | null
+          last_login: string | null
+          name: string | null
+          pw_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          kuerzel: string
+          kuerzel_key?: string | null
+          last_login?: string | null
+          name?: string | null
+          pw_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          kuerzel?: string
+          kuerzel_key?: string | null
+          last_login?: string | null
+          name?: string | null
+          pw_hash?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_unique_pseudonym: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      purchase_shop_item: { Args: { p_item_id: string }; Returns: number }
+      sq_leaderboard: {
+        Args: { p_class: string; p_week: string }
+        Returns: {
+          max_score: number
+          nickname: string
+          played_at: string
+          score: number
+        }[]
+      }
+      sq_load: {
+        Args: { p_class: string; p_nick: string; p_pin: string }
+        Returns: Json
+      }
+      sq_login: {
+        Args: { p_class: string; p_nick: string; p_pin: string }
+        Returns: Json
+      }
+      sq_norm: { Args: { maxlen: number; txt: string }; Returns: string }
+      sq_save: {
+        Args: { p_class: string; p_nick: string; p_pin: string; p_state: Json }
+        Returns: Json
+      }
+      sq_weekly_submit: {
+        Args: {
+          p_case: string
+          p_class: string
+          p_details: Json
+          p_max: number
+          p_nick: string
+          p_pin: string
+          p_score: number
+          p_week: string
+        }
+        Returns: Json
+      }
+      wk_purge_alte_skripte: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
@@ -607,12 +1150,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -636,11 +1179,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -661,11 +1204,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -686,11 +1229,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -703,11 +1246,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

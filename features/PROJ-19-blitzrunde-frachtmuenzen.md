@@ -402,6 +402,62 @@ Die serverseitige Prüfung (Build, Tests, Routen-Abruf ohne 500er) deckt das
 nicht ab; ein kurzer manueller Test durch den Nutzer nach dem Login wird vor
 `/qa` empfohlen.
 
+## Implementation Notes (Backend)
+
+**Stand 2026-09-13 — Backend gebaut und gegen die produktive Datenbank
+angewendet** (Supabase-Projekt „Spedilern App", `riqafwijurbxvywzlipx`, nach
+expliziter Nutzer-Freigabe). Migration
+`supabase/migrations/20260913_proj19_proj20_coins_shop.sql`.
+
+**Datenbank:**
+- `profiles`: neue Spalten `coin_balance` (nie negativ), `starter_coins`
+  (einmaliger Grant-Betrag, für den Hinweis-Banner), `starter_coins_seen`
+- Einmaliges Startguthaben rückwirkend vergeben — Stichprobe gegen die echten
+  Daten bestätigt exakt die in dieser Spec vorhergesagten Werte: 39 Konten
+  mit `total_xp > 0`, 0 Abweichungen von der Formel, Min 61 / Max 250 /
+  Ø 117 Münzen
+- `blitz_starts` (Server-Start-Marke, RLS: nur eigene Zeilen)
+- `blitz_rounds` (eine Zeile je gewerteter Runde, `UNIQUE(user_id,
+  calendar_day)` — das IST die Tagessperre, hält auch bei zwei
+  gleichzeitigen Wertungsversuchen, weil nur ein INSERT gewinnt)
+
+**API-Routen** (erfüllen exakt den in den Frontend-Notizen oben
+dokumentierten Vertrag):
+- `GET /api/profile/stats` — liefert jetzt `coin_balance` und
+  `starter_coins_hint` (einmalig, bis `POST /api/profile/coins/ack-starter`)
+- `POST /api/quiz/sessions` — liefert jetzt `coins_earned`
+  (1 Münze/richtig + 3 Bonus ab 5 Fragen)
+- `GET /api/quiz/blitz/status`, `POST /api/quiz/blitz/start`,
+  `POST /api/quiz/blitz/finish`
+
+**Wie die drei offenen Architektur-Fragen gelöst wurden:**
+- **Server-Start-Marke:** `blitz_starts`-Zeile beim Start, `finish` prüft
+  Token-Gültigkeit, Nicht-Verbrauch und Rundenalter (≤ 90 s, 60 s Runde +
+  Puffer) — jenseits davon 400 „Runde ist abgelaufen". Plausibilitätsgrenze
+  für die Antwortenzahl: max. 60 (statt der 20 aus der normalen Quiz-Session,
+  weil eine Blitzrunde realistisch mehr Fragen in 60 s schafft).
+- **Tagessperre gegen Rennbedingungen:** nicht per Anwendungslogik geprüft,
+  sondern über den Datenbank-Constraint `UNIQUE(user_id, calendar_day)` auf
+  `blitz_rounds` erzwungen — ein zweiter gleichzeitiger `finish`-Aufruf
+  bekommt einen 23505-Fehler und wird mit 409 abgelehnt, **ohne** Münzen/XP
+  gutzuschreiben.
+- **Kalendertag-Zeitpunkt:** wird bei `finish` neu berechnet (Europe/Berlin),
+  nicht beim `start` übernommen — erfüllt den Edge Case „Runde beginnt
+  23:59, endet 00:00" aus der Spec.
+
+**Bewusste Vereinfachung gegenüber dem normalen Quiz-Pfad:** Kein
+Badge-Check nach einer Blitzrunde — war keine Acceptance Criteria und im
+Frontend-Ergebnisbildschirm auch nicht vorgesehen; kann bei Bedarf später
+ergänzt werden.
+
+**Tests:** 8 neue/erweiterte Integrationstests-Dateien (Auth, Validierung,
+Happy Path, Tagessperre-Konflikt, Ablauf-Grenze), alle 324 Tests
+(inkl. Bestand) grün, `npm run build` fehlerfrei.
+
+**Weiterhin offen:** interaktiver Login-Test im Browser (kein
+Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
+`/qa`.
+
 ## QA Test Results
 _To be added by /qa_
 
