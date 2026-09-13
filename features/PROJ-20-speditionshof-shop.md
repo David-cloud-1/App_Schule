@@ -1,6 +1,6 @@
 # PROJ-20: Speditionshof & Shop
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-13
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -150,7 +150,104 @@ Badge-Galerie (PROJ-7), aber gekauft statt erspielt.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Komponenten-Struktur
+
+**Neue Shop-Seite** (eigene Route, von der Startseite aus erreichbar):
+```
+Speditionshof-Seite (neu)
++-- Münzstand-Anzeige (wiederverwendet aus PROJ-19)
++-- Item-Kacheln (Raster, mobile-first)
+    +-- Zustand "kaufbar": Icon, Name, Beschreibung, Preis, aktiver Kauf-Button
+    +-- Zustand "im Besitz": Icon, Name, Beschreibung, Markierung „Im Besitz"
+    +-- Zustand "nicht leistbar": wie kaufbar, aber Button deaktiviert +
+        Hinweis „Dir fehlen X Münzen"
++-- Kauf-Bestätigung (kurzes Overlay, gleiches Muster wie die bestehende
+    Badge-Freischaltung)
+```
+
+**Profil-Seite** (`profile/page.tsx`) — neue Sektion neben Badge-Galerie und
+Privatsphäre-Einstellungen:
+```
+Profil (bestehend: Kopf, XP, Badge-Galerie, Privatsphäre)
++-- NEU: „Mein Hof" — Galerie der gekauften Items, gleiches Kachel-Muster wie
+    die bestehende Badge-Galerie; leer → einladender Hinweis statt Leerfläche
+```
+
+**Admin-Bereich** — neuer Tab neben Fragen/Fächer/Themen/Nutzer, nach demselben
+Muster wie die bestehende Fächer- und Themen-Verwaltung:
+```
+Admin-Navigation (bestehend, + 1 neuer Tab „Hof-Items")
++-- Item-Liste (Tabelle: Icon, Name, Preis, Status aktiv/inaktiv, Anzahl Käufe)
++-- Anlegen/Bearbeiten-Formular (gleiches Modal-Muster wie
+    subject-form-modal.tsx): Name, Beschreibung, Emoji, Preis
++-- Deaktivieren-Aktion statt Löschen, sobald ein Item mind. 1 Kauf hat
+```
+
+### B) Datenmodell (in normaler Sprache)
+
+Folgt exakt dem bereits im Projekt etablierten Muster von „Badges" +
+„gehörte Badges" (PROJ-7) — hier nur gekauft statt erspielt:
+
+- **Katalog „Hof-Items"** (neue Tabelle, vom Admin gepflegt): Name,
+  Beschreibung, Emoji-Icon, Preis in Frachtmünzen, „aktiv?"-Kennzeichen
+  (dasselbe Muster wie das bestehende `is_active` auf Fragen), Sortierung.
+  Ein deaktiviertes Item verschwindet aus dem Shop, bleibt aber als Datensatz
+  bestehen — nichts wird gelöscht, solange ein Kauf existiert.
+- **„Gehörte Hof-Items"** (neue Tabelle, eine Zeile pro Kauf): welcher Nutzer,
+  welches Item, gekauft am, **bezahlter Preis zum Kaufzeitpunkt**. Der
+  gespeicherte Preis macht spätere Preisänderungen des Admins folgenlos für
+  bereits erfolgte Käufe — genau die in der Spec geforderte Eigenschaft.
+- **Kein neues Feld für den Münzstand nötig** — das existiert bereits als Teil
+  von PROJ-19 und wird hier nur gelesen und verringert.
+
+### C) Tech-Entscheidungen (Begründung)
+
+- **Zwei-Tabellen-Muster wie bei Badges, nicht neu erfunden:** Der Kauf-Fall
+  ist strukturell identisch zum Freischalt-Fall bei Badges (ein Katalog, eine
+  Besitz-Zuordnung pro Nutzer) — dieselbe, bereits bewährte Struktur
+  wiederzuverwenden ist weniger riskant als ein neues Muster einzuführen.
+- **Bezahlter Preis wird pro Kauf mitgespeichert, nicht nur der aktuelle
+  Katalogpreis referenziert:** Andernfalls würde eine spätere Preisänderung
+  rückwirkend so aussehen, als hätte ein Nutzer früher einen anderen Preis
+  gezahlt — die Spec verlangt ausdrücklich, dass bestehende Käufe unberührt
+  bleiben.
+- **Der Kauf-Schritt (Münzabzug + Gutschrift) läuft als eine einzige,
+  serverseitige Operation, die entweder ganz oder gar nicht durchgeht:**
+  Das beantwortet den offenen Punkt aus der Spec zum „nicht unterbrechbaren"
+  Kauf. Ein separates Buchungsjournal für den Münzstand selbst (wie in PROJ-19
+  zurückgestellt) ist dafür nicht nötig — die neue „Gehörte Hof-Items"-Tabelle
+  übernimmt effektiv schon die Nachvollziehbarkeits-Rolle für diese eine
+  Ausgabenart (jeder Kauf ist durch seine eigene Zeile ohnehin belegt).
+- **Doppelkauf und Doppeltipp werden über eine Eindeutigkeits-Regel
+  verhindert, nicht über Sperren im Client:** Die Kombination aus Nutzer und
+  Item darf in der Besitz-Tabelle nur einmal vorkommen — ein zweiter
+  gleichzeitiger Versuch scheitert an dieser Regel, statt sich auf Timing im
+  Browser zu verlassen (dieselbe Art von Schutz, die PROJ-19 für die
+  Blitzrunden-Tagessperre nutzt).
+- **Admin-Verwaltung als eigener Tab nach bestehendem Muster, kein neues
+  UI-Konzept:** Fächer- und Themen-Verwaltung existieren bereits mit
+  Anlegen/Bearbeiten/Modal — der neue „Hof-Items"-Tab wiederholt dieses
+  Muster, was den Lernaufwand für den Admin gering hält.
+- **Löschen bewusst nicht möglich, sobald ein Kauf existiert:** Sonst
+  entstünden Besitz-Einträge, die auf ein nicht mehr existierendes Item
+  zeigen — Deaktivieren erreicht dasselbe Ziel (aus dem Shop verschwinden)
+  ohne dieses Risiko.
+
+### D) Abhängigkeiten (neue Pakete)
+
+Keine. Shop-Kacheln, Admin-Formular und Kauf-Bestätigung entstehen aus
+vorhandenen shadcn/ui-Bausteinen und dem bereits genutzten Emoji-Icon-Muster
+der Badges — keine neuen Bibliotheken, keine Bild-Assets.
+
+### Offene Punkte aus der Spec — hier beantwortet
+
+- **Absicherung des „nicht unterbrechbaren" Kaufs:** eine einzige serverseitige
+  Operation, kein separates Journal nötig (siehe oben).
+- **Ablage von Katalog und Besitz:** zwei Tabellen nach dem Badges-Muster
+  (siehe „Datenmodell").
+- **Einbindung ins Admin-Panel:** neuer Tab „Hof-Items", gleiches
+  Formular-Muster wie Fächer/Themen (siehe „Komponenten-Struktur").
 
 ## QA Test Results
 _To be added by /qa_
