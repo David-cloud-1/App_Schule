@@ -326,6 +326,91 @@ Seite aktuell nur Lade- und Fehlerzustände zeigt (alle `fetch()`-Aufrufe
 laufen ins Leere, bis `/backend` die Routen anlegt) — erwartetes, gewolltes
 Verhalten in dieser Phase.
 
+## Implementation Notes (Backend)
+
+**Stand 2026-09-23 — Backend gebaut und gegen die produktive Datenbank
+angewendet** (Supabase-Projekt „Spedilern App", `riqafwijurbxvywzlipx`, nach
+ausdrücklicher Nutzer-Freigabe für Migration, RLS-Policies und die
+`proxy.ts`-Änderung am Login-Flow). Migration
+`supabase/migrations/20260923_proj21_graded_assessments.sql` — rein additiv,
+die 32 bestehenden Prüfungs-Sessions sind unverändert.
+
+**Datenbank:**
+- `graded_assessments` — RLS an, **nur** Admin-Policy (`FOR ALL`). Bewusst
+  keine Lese-Policy für Schüler: Zugriff ausschließlich über die Code-Routen
+  mit Service-Client, damit Entwürfe und abgelaufene Nachweise nicht
+  auffindbar sind. `exam_set_id` mit `ON DELETE RESTRICT` (ein Set mit
+  Nachweis lässt sich nicht still wegwerfen)
+- `exam_sessions` + `assessment_id`, `participant_name`,
+  `excluded_from_grading`; Unique-Index `(assessment_id, user_id)` ist die
+  eigentliche Ein-Versuch-Sperre (NULL bei normalen Prüfungen → greift dort
+  nicht)
+- `assessment_lookup_attempts` — Zähler für fehlgeschlagene Code-Eingaben,
+  RLS ohne Policy (nur Service-Client)
+- `src/lib/database.types.ts` um die neuen Tabellen/Spalten ergänzt (aus dem
+  generierten Schema übernommen)
+
+**Direkt an der echten DB verifiziert** (in einer zurückgerollten
+Transaktion, danach 0 Nachweise / 32 Sessions wie vorher): Schüler sieht 0
+Nachweise, Admin sieht ihn; zweite Session desselben Schülers für denselben
+Nachweis scheitert am Unique-Index; normale Prüfungs-Sessions (ohne
+`assessment_id`) weiterhin beliebig oft möglich. Security-Advisor: einziger
+neuer Hinweis ist „RLS ohne Policy" auf `assessment_lookup_attempts` —
+beabsichtigt, gleiches Muster wie die bestehenden `*_progress`-Tabellen.
+
+**API-Routen** (erfüllen den in den Frontend-Notizen dokumentierten Vertrag):
+- `GET/POST /api/admin/assessments`
+- `GET/PATCH/DELETE /api/admin/assessments/[id]` (Aktionen `open` mit
+  Fragen-Snapshot, `close`, `release_results`; Feldänderungen nur im Entwurf;
+  Löschen nur Entwurf oder ohne Teilnehmer; jede Admin-Aktion im Audit-Log)
+- `GET /api/admin/assessments/[id]/results`, `…/export` (CSV, Semikolon,
+  UTF-8 mit BOM), `PATCH …/participants/[sessionId]`
+- `POST /api/assessments/lookup` (Rate-Limit: 10 Fehlversuche / 10 Minuten
+  je Nutzer → 429), `POST /api/assessments/[id]/join`
+- Gemeinsame Logik (Notenschlüssel-Validierung, Benotung, Status aus
+  Admin-Status + Zeitfenster, Code-Erzeugung) in `src/lib/graded-assessments.ts`
+
+**Geändert:**
+- `PATCH /api/exam/sessions/[id]` — ersetzte `results_json` bei Abgabe
+  bisher komplett; trägt jetzt die Nachweis-Infos mit durch und benotet
+  sofort, falls die Ergebnisse schon freigegeben waren (Nachzügler)
+- `PATCH /api/exam/sessions/[id]/self-score` — 403 für Nachweis-Sessions
+
+**Zwei Sicherheitslücken aus der Frontend-Phase behoben:** Da die
+Prüfungs- und Ergebnisseiten Server Components sind, die ihre Daten als Props
+an Client Components geben, landete alles in `results_json` im Seitenquelltext
+— auch das, was die Oberfläche nicht anzeigt.
+- `src/app/exam/[sessionId]/page.tsx` — während eines Nachweises wird
+  `is_correct` jeder Antwortoption auf dem Server überschrieben, bevor die
+  Seite an den Browser geht (vorher per Quelltext/DevTools ablesbar)
+- `src/app/exam/[sessionId]/results/page.tsx` — vor der Freigabe wird die
+  komplette Auflösung auf dem Server entfernt, nicht nur ausgeblendet
+- Die Benotung liest die richtigen Antworten weiterhin aus dem gespeicherten
+  Snapshot in der DB, nie aus Client-Daten
+
+**Entwurfsentscheidungen beim Bauen:**
+- **Beitritt nur, wenn Status „offen" UND Zeitfenster läuft** — ein Nachweis,
+  den der Ausbilder zu schließen vergisst, nimmt nach `closesAt` trotzdem
+  niemanden mehr auf
+- **Freigabe erst nach „Beitritt schließen"** — verhindert, dass neue
+  Teilnehmer beitreten, während die anderen schon ihre Lösungen sehen
+- **„Bestanden" im Notenspiegel = Note 1–4**
+- **Admin sieht Noten sofort**, auch vor der Freigabe — die Freigabe steuert
+  nur, was die Azubis sehen
+- **Reihenfolge-Mischung ohne Frontend-Änderung:** Fragen und Antwortoptionen
+  werden beim Beitritt gemischt und so gespeichert (`display_order` neu
+  vergeben) — der unveränderte Runner zeigt sie dadurch gemischt und stabil
+  auch nach einem Wiedereinstieg
+
+**Tests:** 51 neue (32 für die Benotungs-/Code-Logik, 11 für
+`/api/admin/assessments`, 8 für `/api/assessments/lookup`), gesamt 375/375
+grün, `npm run build` fehlerfrei. **Nicht durch eigene Tests abgedeckt:**
+`join`, `results`, `export`, `participants` und die Änderungen an
+`exam/sessions/[id]` — die Kernlogik dahinter (Benotung, Teilnehmerzeilen,
+Status) ist über die Lib-Tests abgesichert, die Ein-Versuch-Sperre und RLS
+über den DB-Test oben. Ein Durchklicken im Browser war in dieser Umgebung
+nicht möglich (der Dev-Server hat den Rechner des Nutzers überlastet).
+
 ## QA Test Results
 _To be added by /qa_
 

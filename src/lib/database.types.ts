@@ -102,6 +102,24 @@ export type Database = {
           },
         ]
       }
+      assessment_lookup_attempts: {
+        Row: {
+          attempt_count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          attempt_count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          attempt_count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           description: string
@@ -236,9 +254,12 @@ export type Database = {
       }
       exam_sessions: {
         Row: {
+          assessment_id: string | null
           created_at: string
           ended_at: string | null
+          excluded_from_grading: boolean
           id: string
+          participant_name: string | null
           parts_selected: number[]
           results_json: Json
           started_at: string
@@ -246,9 +267,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assessment_id?: string | null
           created_at?: string
           ended_at?: string | null
+          excluded_from_grading?: boolean
           id?: string
+          participant_name?: string | null
           parts_selected: number[]
           results_json?: Json
           started_at?: string
@@ -256,16 +280,27 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assessment_id?: string | null
           created_at?: string
           ended_at?: string | null
+          excluded_from_grading?: boolean
           id?: string
+          participant_name?: string | null
           parts_selected?: number[]
           results_json?: Json
           started_at?: string
           status?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "exam_sessions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "graded_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generation_jobs: {
         Row: {
@@ -316,6 +351,71 @@ export type Database = {
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      graded_assessments: {
+        Row: {
+          access_code: string
+          closes_at: string
+          created_at: string
+          created_by: string | null
+          duration_minutes: number
+          exam_set_id: string
+          grading_scale: Json
+          id: string
+          max_attempts: number
+          opens_at: string
+          part: number
+          question_ids_snapshot: string[] | null
+          results_released_at: string | null
+          shuffle: boolean
+          status: string
+          title: string
+        }
+        Insert: {
+          access_code: string
+          closes_at: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes: number
+          exam_set_id: string
+          grading_scale: Json
+          id?: string
+          max_attempts?: number
+          opens_at: string
+          part: number
+          question_ids_snapshot?: string[] | null
+          results_released_at?: string | null
+          shuffle?: boolean
+          status?: string
+          title: string
+        }
+        Update: {
+          access_code?: string
+          closes_at?: string
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number
+          exam_set_id?: string
+          grading_scale?: Json
+          id?: string
+          max_attempts?: number
+          opens_at?: string
+          part?: number
+          question_ids_snapshot?: string[] | null
+          results_released_at?: string | null
+          shuffle?: boolean
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "graded_assessments_exam_set_id_fkey"
+            columns: ["exam_set_id"]
+            isOneToOne: false
+            referencedRelation: "exam_question_sets"
             referencedColumns: ["id"]
           },
         ]

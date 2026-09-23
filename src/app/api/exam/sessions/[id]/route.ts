@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { scoreAssessmentQuestions } from '@/lib/graded-assessments'
 
 const PART_DURATION_MINUTES: Record<number, number> = { 1: 90, 2: 90, 3: 45 }
 
@@ -110,12 +111,34 @@ export async function PATCH(
     updatedParts[partStr] = { questions, score: mcScore, passed: mcScore >= 50 }
   }
 
+  // Leistungsnachweis (PROJ-21): carry the assessment info through the
+  // submit and — unlike a normal exam, which just replaces results_json —
+  // compute the grade immediately if the admin already released results
+  // before this (straggler) submission arrived.
+  let assessmentInfo: Record<string, unknown> | undefined
+  if (session.assessment_id) {
+    const service = createServiceClient()
+    const { data: assessment } = await service
+      .from('graded_assessments')
+      .select('title, access_code, part, grading_scale, results_released_at')
+      .eq('id', session.assessment_id)
+      .single()
+
+    if (assessment) {
+      assessmentInfo = { title: assessment.title, accessCode: assessment.access_code, released: Boolean(assessment.results_released_at) }
+      if (assessment.results_released_at) {
+        const graded = updatedParts[String(assessment.part)] as { questions: { type: string; is_correct?: boolean }[] } | undefined
+        Object.assign(assessmentInfo, scoreAssessmentQuestions(graded?.questions ?? [], assessment.grading_scale))
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('exam_sessions')
     .update({
       status: action === 'abort' ? 'aborted' : 'completed',
       ended_at: new Date().toISOString(),
-      results_json: { parts: updatedParts },
+      results_json: assessmentInfo ? { parts: updatedParts, assessment: assessmentInfo } : { parts: updatedParts },
     })
     .eq('id', id)
 

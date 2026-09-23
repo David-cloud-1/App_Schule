@@ -59,7 +59,18 @@ export default async function ExamResultsPage({
   if (!session) notFound()
   if (session.status === 'in_progress') redirect(`/exam/${sessionId}`)
 
-  const results = session.results_json as ExamResultsJson
+  const rawResults = session.results_json as ExamResultsJson
+
+  // Leistungsnachweis (PROJ-21), noch nicht freigegeben: the stored parts
+  // already contain the full answer key (is_correct, correct_option_id) —
+  // needed server-side for grading, but it must not reach the browser
+  // before release. Redact it here, in the Server Component, so it never
+  // enters the RSC payload; the client component's own gating is then just
+  // a display concern, not the actual security boundary.
+  const results: ExamResultsJson =
+    rawResults?.assessment && !rawResults.assessment.released
+      ? { assessment: { title: rawResults.assessment.title, accessCode: rawResults.assessment.accessCode, released: false }, parts: {} }
+      : rawResults
 
   return (
     <div className="min-h-screen bg-[#111827] flex flex-col">

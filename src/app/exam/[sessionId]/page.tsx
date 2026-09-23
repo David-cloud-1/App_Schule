@@ -57,8 +57,23 @@ export default async function ExamSessionPage({
     // in die Session gestempelt, siehe Implementation Notes.
     assessment?: { title: string }
   }
-  const questions: ExamQuestion[] = Object.values(resultsJson?.parts ?? {}).flat()
+  let questions: ExamQuestion[] = Object.values(resultsJson?.parts ?? {}).flat()
   const initialAnswers = resultsJson?.draft_answers ?? {}
+
+  // Leistungsnachweis (PROJ-21): the stored snapshot carries `is_correct`
+  // per option so submit-time grading doesn't need a second DB round trip —
+  // but that must never reach the browser before the exam is over. Strip it
+  // here, in the Server Component, so it never enters the RSC payload sent
+  // to the client while the attempt is still in progress.
+  if (session.assessment_id) {
+    questions = questions.map((q) => ({
+      ...q,
+      // Redacted, not omitted, so the shape still matches ExamQuestion —
+      // grading re-reads the real value from the DB at submit time instead
+      // of trusting anything the client could have sent back.
+      answer_options: q.answer_options.map((opt) => ({ ...opt, is_correct: false })),
+    }))
+  }
 
   return (
     <ExamSessionClient
