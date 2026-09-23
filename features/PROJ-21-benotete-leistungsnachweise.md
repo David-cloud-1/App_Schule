@@ -1,6 +1,6 @@
 # PROJ-21: Benotete Leistungsnachweise
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-14
 **Last Updated:** 2026-09-23
 
@@ -412,7 +412,167 @@ Status) ist über die Lib-Tests abgesichert, die Ein-Versuch-Sperre und RLS
 nicht möglich (der Dev-Server hat den Rechner des Nutzers überlastet).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-23
+**Tester:** QA Engineer (AI)
+**Methode:** Code gegen jedes Akzeptanzkriterium geprüft, `npm test` (375/375 grün), `npm run build` (fehlerfrei), Sicherheitsprüfungen direkt an der Produktions-DB mit simulierter Schüler- bzw. Admin-Rolle in zurückgerollten Transaktionen.
+**Nicht getestet:** Darstellung im Browser, Responsive (375/768/1440 px), Cross-Browser, Playwright-E2E. Dev-Server und Browser-Tests haben den Rechner des Nutzers mehrfach durch vollen Speicher abstürzen lassen und waren deshalb ausdrücklich ausgeschlossen. Ein manueller Durchlauf am Handy durch den Nutzer steht noch aus.
+
+### Acceptance Criteria Status
+
+#### Anlegen (Admin)
+- [x] Aktion „Leistungsnachweis" an jedem Prüfungsset
+- [x] Titel, Zeitfenster, Dauer (aus Set vorbelegt), Notenschlüssel (IHK vorbelegt)
+- [x] Set mit offenen Fragen wird beim Anlegen mit Anzahl abgelehnt
+- [ ] BUG-4: „Weniger als 5 **aktive** Fragen" — gezählt werden alle Fragen-IDs, auch deaktivierte
+- [ ] BUG-8: Code eindeutig und aus dem richtigen Alphabet, aber in der Admin-Ansicht ohne Trennstrich (`7K2MQX` statt `7K2M-QX`)
+- [x] Beitrittslink zum Kopieren + QR-Code
+- [x] Startet als Entwurf, erst nach „Öffnen" beitretbar
+- [x] Fragen-Snapshot beim Öffnen
+- [x] Schließen jederzeit, Entwurf löschen
+
+#### Beitreten (Azubi)
+- [x] Code-Seite und Direktlink mit vorausgefülltem Code
+- [x] Groß-/Kleinschreibung, Leerzeichen, Bindestriche egal (Test)
+- [x] Klarname einmalig, min. 3 Zeichen, danach nicht änderbar
+- [x] Startbildschirm mit Titel, Fragenzahl, Dauer, „1 Versuch", „zählt für eine Note"
+- [x] Taucht nicht in der normalen Prüfungsauswahl auf
+- [x] Beitritt nur offen + im Fenster, sonst mit Grund
+
+#### Schreiben
+- [x] Fragen und Optionen je Teilnehmer gemischt, stabil nach Wiedereinstieg
+- [x] Autosave
+- [x] Wiedereinstieg mit weiterlaufender Uhr
+- [x] Timer ab individuellem Start, Fensterende beendet laufende Arbeiten nicht
+- [ ] BUG-2: Automatische Abgabe bei Zeitablauf passiert nur im Browser. Der Server nimmt Antworten auch nach Ablauf noch an
+- [x] Zweiter Versuch gesperrt (an der DB geprüft)
+- [ ] BUG-1: Die Oberfläche zeigt keine Auflösung, aber die Lösungen sind während der Prüfung abrufbar
+
+#### Benotung
+- [x] 1 Punkt je Frage, Prozent = Punkte / Gesamt
+- [x] Unbeantwortet = falsch (Test)
+- [x] Note nach IHK-Schlüssel (alle Grenzwerte getestet)
+- [x] Notenschlüssel überschreibbar, Validierung lückenlos/absteigend
+- [x] Selbstbewertung gesperrt (403)
+
+#### Ergebnisse (Azubi)
+- [ ] BUG-1: Oberfläche zeigt vor der Freigabe nur die Bestätigung, die Lösungen sind aber über andere Wege abrufbar
+- [ ] BUG-3: Nach Freigabe sichtbar, aber **nicht** für Arbeiten, die mit „Beenden" abgegeben wurden
+- [ ] BUG-3: Freigabe mit einem Klick erreicht die „Beenden"-Abgaben nicht
+- [x] Im Prüfungsverlauf mit Badge und Note gekennzeichnet
+
+#### Auswertung (Admin)
+- [x] Live-Übersicht (Beigetreten/Schreiben/Abgegeben)
+- [ ] BUG-9: Teilnehmerliste hat alle Spalten, ist aber nicht sortierbar
+- [x] Notenspiegel mit Ø-Note und Bestehensquote
+- [x] Fragenanalyse nach Fehlerquote sortiert, mit Antwortverteilung
+- [x] CSV-Export mit Semikolon + BOM (siehe aber BUG-6, BUG-10)
+- [x] Klarnamen nur in Admin-Routen
+
+#### Belohnungen
+- [x] Keine XP, keine Frachtmünzen
+- [ ] BUG-7: Der Tag zählt **nicht** für die Streak
+- [ ] BUG-11: Antworten fließen auch nach Freigabe nicht in „Lücken schließen" ein
+
+### Edge Cases Status
+- [x] Set nach dem Öffnen geändert → Snapshot bleibt
+- [ ] BUG-4: Frage nach dem Öffnen deaktiviert → spätere Beitritte bekommen weniger Fragen als frühere
+- [ ] BUG-5: Offene Frage nach dem Anlegen ins Set gelegt → wird beim Öffnen nicht erneut geprüft und landet im Nachweis
+- [x] Code-Kollision → neuer Code (Test)
+- [x] Doppelter Beitritt → dieselbe Session (DB-Test + idempotenter Endpunkt)
+- [x] Unbeteiligte → aus der Wertung nehmbar
+- [x] Nachzügler bekommt volle Zeit
+- [ ] BUG-12: Nachschreiber über zweiten Nachweis möglich; ein geschlossener Nachweis lässt sich aber nicht wieder öffnen (laut Spec sollen beide Wege gehen)
+- [x] Freigabe während jemand schreibt → wird bei dessen Abgabe sofort benotet und freigegeben
+- [x] Ohne Login → Code bleibt über Login/Registrierung erhalten (statisch geprüft)
+- [x] Löschen nur als Entwurf oder ohne Teilnehmer
+- [x] Zwei parallele Nachweise aus demselben Set
+- [x] Name mit Mindestlänge
+
+### Security Audit Results
+- [x] Alle neuen Routen verlangen Login; Admin-Routen `requireAdmin` + `proxy.ts`
+- [x] Schüler kann `graded_assessments` nicht lesen (DB: 0 Zeilen als Schüler, 1 als Admin)
+- [x] Beitritt nur mit passender ID **und** Code
+- [x] Code-Erraten gebremst (10 Fehlversuche / 10 Min → 429)
+- [x] Klarnamen nicht in Schüler-Antworten
+- [x] XSS: alle Namen/Titel laufen durch React-Escaping
+- [ ] BUG-1 (Critical): Lösungen während der Prüfung und vor der Freigabe abrufbar
+- [ ] BUG-2 (High): Zeitlimit nur im Browser
+- [ ] BUG-6 (Medium): CSV-Formel-Injection über den Klarnamen
+
+### Bugs Found
+
+#### BUG-1: Lösungen sind während der Prüfung und vor der Freigabe abrufbar
+- **Severity:** Critical (verletzt die Sicherheitsanforderung der Spec: `is_correct` darf vor der Freigabe nicht an den Client)
+- **Belegt:** An der Produktions-DB mit Schüler-Rolle geprüft. Ein Schüler kann alle 3.846 richtigen Antwortoptionen lesen.
+- **Wege, auf denen die Lösungen abrufbar sind:**
+  1. **Tabelle `answer_options`:** Die Policy `answer_options_authenticated_read` gibt jedem eingeloggten Nutzer `is_correct`. Der Anon-Key ist öffentlich im Browser-Bundle. Ein Schüler kann in den DevTools die angezeigten Options-IDs abfragen und bekommt die Lösung. Diese Lücke gibt es schon länger, für PROJ-21 wird sie aber entscheidend.
+  2. **Eigene `exam_sessions`-Zeile:** Sie ist per RLS lesbar, direkt per PostgREST, über `GET /api/exam/sessions/[id]` und über `GET /api/exam/history`. `results_json` enthält während der Prüfung `is_correct` je Option und nach der Abgabe (vor der Freigabe) die komplette Auswertung. Die Schwärzung in den Server Components deckt nur die Seiten ab, nicht diese Wege.
+  3. **Übungs-API `/api/questions`:** liefert Fragen mit Lösungen, seitenweise nach Thema (max. 50 je Abruf). Wer eine Prüfungsfrage kennt, findet sie dort über den Text. Das ist für das Üben so gewollt.
+- **Steps to Reproduce (Weg 1):** Leistungsnachweis starten → DevTools → `supabase.from('answer_options').select('id,is_correct').eq('question_id', <ID aus der Seite>)` → liefert die richtige Option.
+- **Fix-Umfang:**
+  - Weg 2 lässt sich innerhalb von PROJ-21 schließen: keine Lösungen in der Session-Zeile, benoten und Auflösung schreiben erst bei der Freigabe.
+  - Weg 1 braucht eine Spaltenrechte-Änderung an `answer_options` und den Umbau von ca. 15 bestehenden Routen (Quiz, Blitzrunde, Prüfung, Admin) auf den Service-Client. Das ist ein Regressionsrisiko für mehrere bereits ausgelieferte Features.
+  - Weg 3 ist eine Produktentscheidung.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Zeitlimit wird nur im Browser durchgesetzt
+- **Severity:** High
+- **Steps to Reproduce:** Prüfung starten → Tab schließen → nach Ablauf der Zeit `PATCH /api/exam/sessions/[id]` mit `{action:'save', answers:{…}}` und danach `submit` aufrufen → wird angenommen und benotet.
+- **Expected:** Nach `started_at + Dauer` (plus kleinem Puffer) nimmt der Server keine Antworten mehr an und benotet mit dem letzten Stand davor.
+- **Priority:** Fix before deployment
+
+#### BUG-3: „Beenden"-Abgaben werden nie freigegeben
+- **Severity:** High
+- **Steps to Reproduce:** Im Runner „Beenden → Prüfung abgeben" (setzt `status = 'aborted'`) → Admin schließt und gibt frei → die Freigabe verarbeitet nur `status = 'completed'` → der Azubi sieht dauerhaft „wartet auf Freigabe", im Verlauf „Note ausstehend". In der Admin-Liste hat er dagegen eine Note.
+- **Priority:** Fix before deployment
+
+#### BUG-4: Deaktivierte Fragen machen den Nachweis ungleich
+- **Severity:** Medium
+- **Steps to Reproduce:** Nachweis öffnen → eine der Fragen deaktivieren → neuer Beitritt bekommt diese Frage nicht (`join` filtert `is_active`), frühere Teilnehmer haben sie noch. Laut Spec gilt der Snapshot für alle gleich. Außerdem zählt die ≥5-Prüfung beim Anlegen auch deaktivierte Fragen mit.
+- **Priority:** Fix before deployment
+
+#### BUG-5: Offene Fragen können nachträglich in den Nachweis gelangen
+- **Severity:** Medium
+- **Steps to Reproduce:** Nachweis anlegen (Set rein MC) → offene Frage ins Set aufnehmen → „Öffnen" → der Snapshot enthält die offene Frage. Der Azubi sieht ein Textfeld, die Frage zählt aber nicht.
+- **Priority:** Fix before deployment
+
+#### BUG-6: CSV-Formel-Injection über den Klarnamen
+- **Severity:** Medium
+- **Steps to Reproduce:** Als Name `=HYPERLINK("http://…";"klick")` eingeben → CSV-Export in Excel öffnen → die Zelle wird als Formel ausgeführt.
+- **Expected:** Werte, die mit `= + - @` beginnen, werden entschärft (z. B. mit vorangestelltem `'`).
+- **Priority:** Fix before deployment
+
+#### BUG-7: Leistungsnachweis zählt nicht für die Streak
+- **Severity:** Medium. Die Abgabe berührt `profiles` nicht. Bei normalen Prüfungen ist das genauso, das AK verlangt es für Nachweise aber ausdrücklich.
+- **Priority:** Fix in next sprint
+
+#### BUG-8: Code in der Admin-Ansicht ohne Trennstrich
+- **Severity:** Low. `formatAccessCode` ist vorhanden, wird in den Admin-Routen aber nicht verwendet.
+- **Priority:** Nice to have
+
+#### BUG-9: Teilnehmerliste nicht sortierbar
+- **Severity:** Low
+- **Priority:** Fix in next sprint
+
+#### BUG-10: Abgabezeit im CSV in UTC
+- **Severity:** Low. `toLocaleString` läuft auf dem Server (Vercel = UTC), deshalb liegt die Zeit 1–2 h daneben.
+- **Priority:** Nice to have
+
+#### BUG-11: Nachweis-Antworten fließen nie in „Lücken schließen" ein
+- **Severity:** Low. PROJ-14 liest nur `quiz_answers`.
+- **Priority:** Fix in next sprint
+
+#### BUG-12: Geschlossener Nachweis lässt sich nicht wieder öffnen
+- **Severity:** Low. Einen zweiten Nachweis anzulegen funktioniert als Ausweichweg.
+- **Priority:** Nice to have
+
+### Summary
+- **Acceptance Criteria:** 30/40 bestanden (statisch geprüft)
+- **Bugs Found:** 12 gesamt (1 Critical, 2 High, 4 Medium, 5 Low)
+- **Security:** Issues found (BUG-1, BUG-2, BUG-6)
+- **Production Ready:** NO
+- **Recommendation:** Vor dem Deploy mindestens BUG-1 bis BUG-6 beheben. Für BUG-1 Weg 1 ist eine Entscheidung nötig, weil der Fix bestehende Features berührt.
 
 ## Deployment
 _To be added by /deploy_
