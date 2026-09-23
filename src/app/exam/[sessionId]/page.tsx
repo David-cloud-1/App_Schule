@@ -53,6 +53,9 @@ export default async function ExamSessionPage({
     durationMinutes?: number
     parts: Record<string, ExamQuestion[]>
     draft_answers?: Record<string, string>
+    // Nur gesetzt für Leistungsnachweise (PROJ-21) — vom Beitritts-Endpunkt
+    // in die Session gestempelt, siehe Implementation Notes.
+    assessment?: { title: string }
   }
   const questions: ExamQuestion[] = Object.values(resultsJson?.parts ?? {}).flat()
   const initialAnswers = resultsJson?.draft_answers ?? {}
@@ -64,6 +67,7 @@ export default async function ExamSessionPage({
       initialRemainingSeconds={remainingSeconds}
       partsSelected={parts}
       initialAnswers={initialAnswers}
+      assessmentTitle={resultsJson?.assessment?.title ?? null}
     />
   )
 }

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList, Plus } from 'lucide-react'
+import { ArrowLeft, ClipboardList, GraduationCap, Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,8 @@ type ExamSession = {
   status: 'completed' | 'aborted'
   results_json: {
     parts: Record<string, { score: number; passed: boolean; questions: unknown[] }>
+    // Nur gesetzt für Leistungsnachweise (PROJ-21), siehe Implementation Notes.
+    assessment?: { title: string; released: boolean; grade?: number }
   } | null
 }
 
@@ -81,6 +83,7 @@ export default async function ExamHistoryPage() {
               const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null
               const allPassed = parts.every((p) => partResults[String(p)]?.passed)
               const date = new Date(session.started_at)
+              const assessment = session.results_json?.assessment
 
               return (
                 <Link key={session.id} href={`/exam/${session.id}/results`}>
@@ -88,12 +91,22 @@ export default async function ExamHistoryPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-2">
+                          {assessment && (
+                            <Badge className="text-xs border-0 bg-[#FF9600]/20 text-[#FF9600] flex items-center gap-1">
+                              <GraduationCap size={11} />
+                              Leistungsnachweis
+                            </Badge>
+                          )}
                           {parts.map((p) => (
                             <Badge key={p} variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
                               {PART_LABELS[p] ?? `Teil ${p}`}
                             </Badge>
                           ))}
                         </div>
+
+                        {assessment && (
+                          <p className="text-xs text-[#F9FAFB] font-medium mb-1 truncate">{assessment.title}</p>
+                        )}
 
                         <p className="text-xs text-[#9CA3AF]">
                           {date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
@@ -103,23 +116,36 @@ export default async function ExamHistoryPage() {
                       </div>
 
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        {avgScore != null && (
-                          <span className="text-lg font-bold text-[#F9FAFB]">{avgScore}%</span>
+                        {assessment ? (
+                          assessment.released ? (
+                            <>
+                              <span className="text-lg font-bold text-[#F9FAFB]">Note {assessment.grade}</span>
+                              <Badge className="text-xs border-0 bg-[#1CB0F6]/20 text-[#1CB0F6]">Freigegeben</Badge>
+                            </>
+                          ) : (
+                            <Badge className="text-xs border-0 bg-[#4B5563]/40 text-[#9CA3AF]">Note ausstehend</Badge>
+                          )
+                        ) : (
+                          <>
+                            {avgScore != null && (
+                              <span className="text-lg font-bold text-[#F9FAFB]">{avgScore}%</span>
+                            )}
+                            <Badge className={cn(
+                              'text-xs border-0',
+                              session.status === 'aborted'
+                                ? 'bg-[#FF9600]/20 text-[#FF9600]'
+                                : allPassed
+                                  ? 'bg-[#58CC02]/20 text-[#58CC02]'
+                                  : 'bg-[#FF4B4B]/20 text-[#FF4B4B]',
+                            )}>
+                              {session.status === 'aborted'
+                                ? 'Abgebrochen'
+                                : allPassed
+                                  ? 'Bestanden'
+                                  : 'Nicht bestanden'}
+                            </Badge>
+                          </>
                         )}
-                        <Badge className={cn(
-                          'text-xs border-0',
-                          session.status === 'aborted'
-                            ? 'bg-[#FF9600]/20 text-[#FF9600]'
-                            : allPassed
-                              ? 'bg-[#58CC02]/20 text-[#58CC02]'
-                              : 'bg-[#FF4B4B]/20 text-[#FF4B4B]',
-                        )}>
-                          {session.status === 'aborted'
-                            ? 'Abgebrochen'
-                            : allPassed
-                              ? 'Bestanden'
-                              : 'Nicht bestanden'}
-                        </Badge>
                       </div>
                     </div>
                   </div>

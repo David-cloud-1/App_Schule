@@ -24,8 +24,19 @@ export type PartResult = {
   passed: boolean
 }
 
+export type AssessmentResultInfo = {
+  title: string
+  accessCode: string
+  released: boolean
+  grade?: number
+  points?: number
+  totalPoints?: number
+}
+
 export type ExamResultsJson = {
   parts: Record<string, PartResult>
+  // Nur gesetzt für Leistungsnachweise (PROJ-21), siehe Implementation Notes.
+  assessment?: AssessmentResultInfo
 }
 
 export default async function ExamResultsPage({
@@ -72,6 +83,7 @@ export default async function ExamResultsPage({
           partsSelected={session.parts_selected as number[]}
           endedAt={session.ended_at}
           startedAt={session.started_at}
+          assessment={results?.assessment ?? null}
         />
       </main>
     </div>

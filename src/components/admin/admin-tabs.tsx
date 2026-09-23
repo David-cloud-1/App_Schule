@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Bot, ClipboardList, FileText, FolderKanban, ScrollText, Store, Tag, Users } from 'lucide-react'
+import { Bot, ClipboardList, FileText, FolderKanban, GraduationCap, ScrollText, Store, Tag, Users } from 'lucide-react'
 
 const TABS = [
   { href: '/admin/questions', label: 'Fragen', icon: FileText },
@@ -12,6 +12,7 @@ const TABS = [
   { href: '/admin/users', label: 'Nutzer', icon: Users },
   { href: '/admin/ai-generator', label: 'KI-Generator', icon: Bot },
   { href: '/admin/exam-sets', label: 'Prüfungssets', icon: ClipboardList },
+  { href: '/admin/leistungsnachweise', label: 'Leistungsnachweise', icon: GraduationCap },
   { href: '/admin/audit-log', label: 'Audit-Log', icon: ScrollText },
 ]
 

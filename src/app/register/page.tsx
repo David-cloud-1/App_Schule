@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -26,7 +27,9 @@ const registerSchema = z
 
 type RegisterFormValues = z.infer<typeof registerSchema>
 
-export default function RegisterPage() {
+function RegisterPageContent() {
+  const searchParams = useSearchParams()
+  const redirectTarget = searchParams.get('redirect') ?? '/'
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
@@ -46,7 +49,7 @@ export default function RegisterPage() {
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`,
       },
     })
 
@@ -63,7 +66,7 @@ export default function RegisterPage() {
 
     // Session is returned immediately when email confirmation is disabled
     if (data?.session) {
-      window.location.href = '/'
+      window.location.href = redirectTarget
       return
     }
 
@@ -76,7 +79,7 @@ export default function RegisterPage() {
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`,
       },
     })
   }
@@ -94,7 +97,10 @@ export default function RegisterPage() {
           Wir haben dir einen Bestätigungslink per E-Mail geschickt. Bitte klicke
           darauf, um dein Konto zu aktivieren.
         </p>
-        <Link href="/login" className="mt-6 text-[#1CB0F6] font-medium hover:underline text-sm">
+        <Link
+          href={redirectTarget !== '/' ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
+          className="mt-6 text-[#1CB0F6] font-medium hover:underline text-sm"
+        >
           Zurück zum Login
         </Link>
       </div>
@@ -236,12 +242,23 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-sm text-[#9CA3AF] text-center">
             Schon ein Konto?{' '}
-            <Link href="/login" className="text-[#1CB0F6] font-medium hover:underline">
+            <Link
+              href={redirectTarget !== '/' ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
+              className="text-[#1CB0F6] font-medium hover:underline"
+            >
               Anmelden
             </Link>
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageContent />
+    </Suspense>
   )
 }

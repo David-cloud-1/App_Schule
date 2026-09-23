@@ -1,12 +1,14 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   AlertTriangle,
   Check,
   ChevronDown,
   ChevronUp,
   FileUp,
+  GraduationCap,
   Loader2,
   Plus,
   Shield,
@@ -331,6 +333,16 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                 </button>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  <Link href={`/admin/leistungsnachweise?createFromSet=${set.id}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-lg text-xs px-3 border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10"
+                    >
+                      <GraduationCap size={14} className="mr-1" />
+                      Leistungsnachweis
+                    </Button>
+                  </Link>
                   <Button
                     size="sm"
                     variant="outline"

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,7 +19,9 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginPageContent() {
+  const searchParams = useSearchParams()
+  const redirectTarget = searchParams.get('redirect') ?? '/'
   const [error, setError] = useState<string | null>(null)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
 
@@ -50,7 +53,7 @@ export default function LoginPage() {
       return
     }
 
-    window.location.href = '/'
+    window.location.href = redirectTarget
   }
 
   async function signInWithOAuth(provider: 'google' | 'apple') {
@@ -59,7 +62,7 @@ export default function LoginPage() {
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTarget)}`,
       },
     })
   }
@@ -189,7 +192,10 @@ export default function LoginPage() {
             </Link>
             <p className="text-sm text-[#9CA3AF]">
               Noch kein Konto?{' '}
-              <Link href="/register" className="text-[#1CB0F6] font-medium hover:underline">
+              <Link
+                href={redirectTarget !== '/' ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : '/register'}
+                className="text-[#1CB0F6] font-medium hover:underline"
+              >
                 Registrieren
               </Link>
             </p>
@@ -197,5 +203,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   )
 }

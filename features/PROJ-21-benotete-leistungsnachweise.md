@@ -1,6 +1,6 @@
 # PROJ-21: Benotete Leistungsnachweise
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-14
 **Last Updated:** 2026-09-23
 
@@ -205,6 +205,126 @@ Kein neues Feld am Profil, keine Klassen-Tabelle — die Zuordnung „wer gehör
 - Eine schlanke QR-Code-Bibliothek für den Browser (erzeugt den QR-Code aus dem Beitrittslink, keine Server-Anbindung nötig)
 
 Keine weiteren neuen Pakete — Formulare, Tabellen, Dialoge und Diagramme werden mit den bereits vorhandenen shadcn/ui-Komponenten gebaut.
+
+## Implementation Notes (Frontend)
+
+**Stand 2026-09-23 — Frontend gebaut, Backend steht noch aus.** Datenbank-Tabelle
+und API-Routen für PROJ-21 existieren noch nicht; alle neuen UI-Bausteine sind
+bewusst clientseitig gegen den unten dokumentierten Vertrag verdrahtet und
+degradieren beim Fehlschlagen sanft (Lade-/Fehlerzustand statt Absturz) —
+geprüft per `npm run build` (fehlerfrei) und vollständigem Testlauf
+(324/324 grün, keine Regression).
+
+**Gebaut:**
+- `src/components/admin/grading-scale-editor.tsx` — Editor für die sechs
+  Notengrenzen, vorbelegt mit dem IHK-Schlüssel, mit Validierung (lückenlos
+  absteigend, Note 6 = 0 %)
+- `src/components/admin/create-assessment-modal.tsx` — Anlegen-Dialog (Set,
+  Titel, Zeitfenster, Dauer, Notenschlüssel)
+- `src/app/admin/leistungsnachweise/page.tsx` — Übersicht aller Nachweise,
+  öffnet den Anlegen-Dialog auch direkt aus den Prüfungssets heraus
+  (`?createFromSet=<id>`)
+- `src/app/admin/leistungsnachweise/[id]/page.tsx` — Detailseite: Code/Link/QR
+  (`qrcode.react`), Status-Steuerung (Öffnen/Schließen/Löschen/Freigeben),
+  Live-Kachel (pollt alle 8 s solange offen), drei Auswertungs-Tabs
+  (Teilnehmer inkl. Ausschluss-Checkbox + CSV-Export, Notenspiegel,
+  Fragenanalyse)
+- `src/app/admin/exam-sets/exam-sets-client.tsx` — neue Aktion „Leistungsnachweis"
+  je Set, verlinkt in den vorausgefüllten Anlegen-Dialog
+- `src/components/admin/admin-tabs.tsx` — neuer Reiter „Leistungsnachweise"
+- `src/components/join-assessment-client.tsx` + `src/app/pruefung/page.tsx` +
+  `src/app/pruefung/[code]/page.tsx` — Beitritts-Flow: Code eingeben (oder per
+  Link/QR vorausgefüllt) → einmalige Namensabfrage → Infobildschirm → Start;
+  bei bereits laufender/abgegebener Teilnahme direkter Sprung zur Session
+- `src/app/exam/exam-landing-client.tsx` — Kachel „Ich habe einen Code" auf
+  der bestehenden Prüfungssimulations-Seite als einziger Einstiegspunkt neben
+  Link/QR (bewusst kein Punkt in der Hauptnavigation)
+- `src/app/exam/[sessionId]/page.tsx` + `exam-session-client.tsx` — liest ein
+  optionales `results_json.assessment.title` und zeigt es als Badge im Header
+  („zählt für eine Note"); der Runner selbst (Timer, Autosave, keine
+  Sofortauflösung) ist unverändert wiederverwendet
+- `src/app/exam/[sessionId]/results/page.tsx` + `exam-results-client.tsx` —
+  vor Freigabe nur „Abgegeben, wartet auf Freigabe" statt Auflösung; nach
+  Freigabe zusätzlich Note/Punkte-Karte statt der normalen Trophy-Karte
+- `src/app/exam-history/page.tsx` — Leistungsnachweis-Badge und Note (bzw.
+  „Note ausstehend") statt der normalen Prozent-/Bestanden-Anzeige
+- `src/proxy.ts` — Redirect zu `/login` behält den ursprünglich angeforderten
+  Pfad jetzt als `?redirect=` (vorher ging er verloren); `login`- und
+  `register`-Seite lesen den Parameter und reichen ihn durch Passwort- und
+  OAuth-Login sowie den `/auth/callback?next=`-Umweg durch — nötig, damit ein
+  Azubi ohne Session über den Beitrittslink zuerst zum Login kommt und danach
+  automatisch mit erhaltenem Code zu `/pruefung/<code>` zurückkehrt (Edge Case
+  aus der Spec)
+
+**Bewusste Design-Entscheidung — Ergebnis-Gating über `results_json` statt
+neuer Tabellen-Joins:** Die Runner- und Ergebnisseiten sind Server-Components,
+die direkt per Supabase-Client auf `exam_sessions` lesen; `graded_assessments`
+existiert im generierten `database.types.ts` noch nicht und ließe sich dort
+nicht typsicher joinen. Damit das Frontend schon jetzt fertig und typsicher
+steht, erwartet es alle nötigen Leistungsnachweis-Infos direkt in
+`exam_sessions.results_json.assessment` (`title`, `accessCode`, `released`,
+und nach Freigabe zusätzlich `grade`, `points`, `totalPoints`) — vom Backend
+bei Beitritt geschrieben und bei Freigabe für jede betroffene Session
+aktualisiert. Das entspricht dem bereits bestehenden Muster (`setNames` aus
+PROJ-15 liegt genauso in `results_json`).
+
+**Angenommener API-Vertrag für `/backend`** (in dieser Form vom Frontend
+erwartet — abweichende Feldnamen brauchen sonst eine Anpassung hier):
+
+*Admin:*
+- `GET /api/admin/assessments` → `{ assessments: [{ id, title, examSetName,
+  part, status: 'draft'|'open'|'closed', accessCode, participantCount,
+  submittedCount, createdAt }] }`
+- `POST /api/admin/assessments`, Body `{ examSetId, title, opensAt, closesAt,
+  durationMinutes, gradingScale: {grade, minPercent}[] }` → 201 `{ id }`
+  (400 bei offenen Fragen im Set, < 5 Fragen, ungültigem Zeitfenster oder
+  ungültigem Notenschlüssel)
+- `GET /api/admin/assessments/[id]` → volles Detail inkl. `joinUrl`,
+  `gradingScale`, `resultsReleasedAt`, `live: { joined, inProgress, submitted }`
+- `PATCH /api/admin/assessments/[id]`, Body `{ action: 'open'|'close'|
+  'release_results' }` (friert bei `open` den Fragen-Snapshot ein; `release_results`
+  schreibt `assessment` in **jede** betroffene `exam_sessions.results_json`)
+- `DELETE /api/admin/assessments/[id]` — nur `draft` oder ohne Teilnehmer
+- `GET /api/admin/assessments/[id]/results` → `{ participants: [{ sessionId,
+  name, points, totalPoints, percent, grade, durationMinutes, submittedAt,
+  excluded, status }], gradeDistribution: { counts, average, passRate },
+  questions: [{ id, text, correctCount, totalCount, options: [{id, text,
+  isCorrect, selectedCount}] }] }`
+- `PATCH /api/admin/assessments/[id]/participants/[sessionId]`, Body
+  `{ excluded: boolean }`
+- `GET /api/admin/assessments/[id]/export` → CSV-Download (Semikolon, UTF-8
+  mit BOM)
+
+*Azubi:*
+- `POST /api/assessments/lookup`, Body `{ code }` → `{ id, title,
+  questionCount, durationMinutes, status: 'not_open'|'open'|'closed',
+  needsName, existingSessionId, existingSessionStatus? }`; 404 bei unbekanntem
+  Code, 429 bei zu vielen Versuchen (Schutz gegen Code-Erraten)
+- `POST /api/assessments/[id]/join`, Body `{ code, participantName? }` →
+  `{ sessionId }` — legt die `exam_sessions`-Zeile mit fixierter, gemischter
+  Fragen-/Antwortreihenfolge an (oder gibt die bestehende zurück) und
+  schreibt `results_json.assessment` hinein
+- Bestehende `PATCH /api/exam/sessions/[id]` (save/submit/abort) und
+  `/exam/[sessionId]`-Seiten laufen unverändert weiter; das Backend muss dort
+  nur intern erkennen, dass es sich um eine Leistungsnachweis-Session handelt
+  (z. B. über `assessment_id`), um MC-only + serverseitige Bewertung
+  durchzusetzen
+
+**Verifikation:** `npm run build` fehlerfrei, `npm test` 324/324 grün. Ein
+kurzer Testlauf mit `next dev` zeigte alle neuen und bestehenden Routen mit
+sauberen 307-Redirects zu `/login` (kein 500er) — ein erster Durchlauf hatte
+einen `adapterFn is not a function`-Fehler in `src/proxy.ts` gezeigt, der sich
+als einmaliger Turbopack-Kaltstart-Fehler erwies und beim erneuten Start nicht
+mehr auftrat; betraf ohnehin unveränderte Routen gleichermaßen. Interaktives
+Durchklicken mit echtem Login und echten Daten (Beitritts-Flow, Admin-Tabs,
+QR-Code-Darstellung) ist in dieser Umgebung nicht möglich — ein manueller Test
+durch den Nutzer nach `/backend` wird empfohlen, insbesondere für den
+Namensabfrage- und Freigabe-Flow.
+
+**Noch nicht möglich:** Kein Backend heißt, dass jede neue Admin-/Beitritts-
+Seite aktuell nur Lade- und Fehlerzustände zeigt (alle `fetch()`-Aufrufe
+laufen ins Leere, bis `/backend` die Routen anlegt) — erwartetes, gewolltes
+Verhalten in dieser Phase.
 
 ## QA Test Results
 _To be added by /qa_

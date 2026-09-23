@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, XCircle, ChevronDown, ChevronUp, RotateCcw, Trophy } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronUp, RotateCcw, Trophy, Clock3, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
-import type { ExamResultsJson, QuestionResult, PartResult } from './page'
+import type { ExamResultsJson, QuestionResult, PartResult, AssessmentResultInfo } from './page'
 
 interface Props {
   sessionId: string
@@ -16,6 +16,7 @@ interface Props {
   partsSelected: number[]
   startedAt: string
   endedAt: string | null
+  assessment?: AssessmentResultInfo | null
 }
 
 const PART_LABELS: Record<number, string> = {
@@ -24,7 +25,7 @@ const PART_LABELS: Record<number, string> = {
   3: 'Teil 3 – WiSo',
 }
 
-function PartSummaryCard({ part, partNum, label }: { part: PartResult; partNum: number; label: string }) {
+function PartSummaryCard({ part, partNum, label, readOnly }: { part: PartResult; partNum: number; label: string; readOnly?: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const [selfScores, setSelfScores] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {}
@@ -100,7 +101,7 @@ function PartSummaryCard({ part, partNum, label }: { part: PartResult; partNum: 
             </div>
           )}
 
-          {openQuestions.length > 0 && (
+          {openQuestions.length > 0 && !readOnly && (
             <div>
               <p className="text-xs font-semibold text-[#9CA3AF] mb-2">
                 Offene Fragen — Selbstbewertung
@@ -245,7 +246,7 @@ function OpenResultCard({
   )
 }
 
-export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt }: Props) {
+export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment }: Props) {
   const partEntries = partsSelected
     .map((p) => [p, results?.parts?.[String(p)]] as [number, PartResult | undefined])
     .filter(([, part]) => part != null) as [number, PartResult][]
@@ -261,32 +262,78 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
     : null
   const durationMinutes = durationMs ? Math.floor(durationMs / 60000) : null
 
+  // Leistungsnachweis, noch nicht freigegeben: keine Auflösung, keine Note —
+  // nur die Abgabebestätigung (PROJ-21).
+  if (assessment && !assessment.released) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-[#FF9600]/30 bg-[#FF9600]/5 p-6 text-center">
+          <Clock3 size={36} className="mx-auto mb-3 text-[#FF9600]" />
+          <p className="text-lg font-bold text-[#F9FAFB] mb-1">Abgegeben</p>
+          <p className="text-sm text-[#9CA3AF]">
+            Dein Ergebnis zu <span className="text-[#F9FAFB] font-medium">„{assessment.title}"</span> wird
+            freigegeben, sobald dein Ausbilder das für alle gemeinsam macht.
+          </p>
+          {durationMinutes != null && (
+            <p className="text-xs text-[#6B7280] mt-3">{durationMinutes} Minuten bearbeitet</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 pt-2">
+          <Link href="/exam-history">
+            <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
+              Prüfungsverlauf
+            </Button>
+          </Link>
+          <Link href="/">
+            <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
+              Zur Startseite
+            </Button>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       {/* Overall result card */}
-      <div className={cn(
-        'rounded-2xl border p-5 text-center',
-        allPassed ? 'border-[#58CC02]/30 bg-[#58CC02]/5' : 'border-[#FF4B4B]/30 bg-[#FF4B4B]/5',
-      )}>
-        <Trophy size={36} className={cn('mx-auto mb-3', allPassed ? 'text-[#FFD700]' : 'text-[#9CA3AF]')} />
-        <p className="text-4xl font-bold text-[#F9FAFB] mb-1">{overallScore}%</p>
-        <p className="text-sm text-[#9CA3AF] mb-3">Gesamtergebnis</p>
-
-        <Badge className={cn(
-          'text-sm px-4 py-1 border-0',
-          allPassed ? 'bg-[#58CC02]/20 text-[#58CC02]' : 'bg-[#FF4B4B]/20 text-[#FF4B4B]',
+      {assessment?.released ? (
+        <div className="rounded-2xl border border-[#1CB0F6]/30 bg-[#1CB0F6]/5 p-5 text-center">
+          <GraduationCap size={36} className="mx-auto mb-3 text-[#FFD700]" />
+          <p className="text-xs text-[#9CA3AF] mb-1">„{assessment.title}"</p>
+          <p className="text-4xl font-bold text-[#F9FAFB] mb-1">Note {assessment.grade}</p>
+          <p className="text-sm text-[#9CA3AF] mb-3">
+            {assessment.points}/{assessment.totalPoints} Punkte · {overallScore}%
+          </p>
+          <Badge className="bg-[#1CB0F6]/20 text-[#1CB0F6] text-sm px-4 py-1 border-0">
+            Benoteter Leistungsnachweis
+          </Badge>
+        </div>
+      ) : (
+        <div className={cn(
+          'rounded-2xl border p-5 text-center',
+          allPassed ? 'border-[#58CC02]/30 bg-[#58CC02]/5' : 'border-[#FF4B4B]/30 bg-[#FF4B4B]/5',
         )}>
-          {status === 'aborted'
-            ? 'Abgebrochen'
-            : allPassed
-              ? 'Bestanden (≥ 50% je Teil)'
-              : 'Nicht bestanden'}
-        </Badge>
+          <Trophy size={36} className={cn('mx-auto mb-3', allPassed ? 'text-[#FFD700]' : 'text-[#9CA3AF]')} />
+          <p className="text-4xl font-bold text-[#F9FAFB] mb-1">{overallScore}%</p>
+          <p className="text-sm text-[#9CA3AF] mb-3">Gesamtergebnis</p>
 
-        {durationMinutes != null && (
-          <p className="text-xs text-[#9CA3AF] mt-2">{durationMinutes} Minuten bearbeitet</p>
-        )}
-      </div>
+          <Badge className={cn(
+            'text-sm px-4 py-1 border-0',
+            allPassed ? 'bg-[#58CC02]/20 text-[#58CC02]' : 'bg-[#FF4B4B]/20 text-[#FF4B4B]',
+          )}>
+            {status === 'aborted'
+              ? 'Abgebrochen'
+              : allPassed
+                ? 'Bestanden (≥ 50% je Teil)'
+                : 'Nicht bestanden'}
+          </Badge>
+
+          {durationMinutes != null && (
+            <p className="text-xs text-[#9CA3AF] mt-2">{durationMinutes} Minuten bearbeitet</p>
+          )}
+        </div>
+      )}
 
       {/* Per-part results */}
       {partEntries.map(([partNum, part]) => (
@@ -295,17 +342,20 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
           part={part}
           partNum={partNum}
           label={PART_LABELS[partNum] ?? `Teil ${partNum}`}
+          readOnly={Boolean(assessment)}
         />
       ))}
 
       {/* Actions */}
       <div className="flex flex-col gap-3 pt-2">
-        <Link href="/exam">
-          <Button className="w-full rounded-2xl bg-[#1CB0F6] hover:bg-[#18a0e0] text-white font-bold py-6">
-            <RotateCcw size={18} className="mr-2" />
-            Neue Prüfung starten
-          </Button>
-        </Link>
+        {!assessment && (
+          <Link href="/exam">
+            <Button className="w-full rounded-2xl bg-[#1CB0F6] hover:bg-[#18a0e0] text-white font-bold py-6">
+              <RotateCcw size={18} className="mr-2" />
+              Neue Prüfung starten
+            </Button>
+          </Link>
+        )}
         <Link href="/exam-history">
           <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
             Prüfungsverlauf

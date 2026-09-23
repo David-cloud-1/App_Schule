@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Clock, AlertTriangle, Check } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, AlertTriangle, Check, GraduationCap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
@@ -26,6 +26,8 @@ interface Props {
   initialRemainingSeconds: number
   partsSelected: number[]
   initialAnswers: Record<string, string>
+  /** Titel des Leistungsnachweises (PROJ-21) — nur gesetzt, wenn diese Session zu einem benoteten Nachweis gehört. */
+  assessmentTitle?: string | null
 }
 
 const PART_LABELS: Record<number, string> = {
@@ -34,7 +36,7 @@ const PART_LABELS: Record<number, string> = {
   3: 'Teil 3 – WiSo',
 }
 
-export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected, initialAnswers }: Props) {
+export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected, initialAnswers, assessmentTitle }: Props) {
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers)
@@ -215,8 +217,15 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
 
           {/* Part label + autosave indicator */}
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs text-[#9CA3AF]">
-              {partsSelected.map((p) => PART_LABELS[p]).join(' → ')}
+            <span className="text-xs text-[#9CA3AF] flex items-center gap-1.5 min-w-0">
+              {assessmentTitle && (
+                <span className="flex items-center gap-1 text-[#FF9600] flex-shrink-0" title="Zählt für eine Note">
+                  <GraduationCap size={12} />
+                </span>
+              )}
+              <span className="truncate">
+                {assessmentTitle ?? partsSelected.map((p) => PART_LABELS[p]).join(' → ')}
+              </span>
             </span>
             {saveState !== 'idle' && (
               <span className="text-xs text-[#6B7280] flex items-center gap-1">

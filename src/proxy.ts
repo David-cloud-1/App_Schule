@@ -35,13 +35,20 @@ export async function proxy(request: NextRequest) {
   const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback']
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
-  // Redirect unauthenticated users to login (API routes get 401 JSON)
+  // Redirect unauthenticated users to login (API routes get 401 JSON).
+  // Preserve the originally requested path (e.g. /pruefung/ABCD) as ?redirect=
+  // so the login/register flow can send the user back where they came from —
+  // important for the graded-assessment join link (PROJ-21).
   if (!user && !isPublicPath) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    url.search = ''
+    if (pathname !== '/') {
+      url.searchParams.set('redirect', pathname + request.nextUrl.search)
+    }
     return NextResponse.redirect(url)
   }
 
