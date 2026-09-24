@@ -1,6 +1,6 @@
 # PROJ-19: Blitzrunde & Frachtmünzen
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-05
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -459,7 +459,48 @@ Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
 `/qa`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-24
+**Tester:** QA Engineer (AI)
+**Methode:** Code gegen die Akzeptanzkriterien geprüft, `npm test` (396/396 grün, inkl. der PROJ-19-Tests), `npm run build` (fehlerfrei), Sicherheitsprüfungen an der Produktions-DB mit simulierter Schüler-Rolle in zurückgerollten Transaktionen. Nicht getestet: Browser-Darstellung, Responsive, E2E. Dev-Server und Browser-Tests haben den Rechner des Nutzers überlastet.
+
+### Acceptance Criteria Status
+- [x] Währung: Münzstand auf `profiles`, Standard 0, Gutschriftformel normale Runde (1/richtig + 3 ab 5 Fragen), Anzeige Startseite und Abschlussbildschirm, keine Änderung an XP/Level/Streak/Badges
+- [x] Blitzrunde: Start von der Startseite, gemischte Fächer, 60-s-Countdown, falsche Antwort beendet die Runde nicht, Abschlussbildschirm, Formel 3/richtig + 10 Tagesbonus und 5 XP/richtig, Streak nach denselben Regeln, „heute erledigt" plus Wiederverfügbarkeit, Tageswechsel Europe/Berlin
+- [x] Verbrauch erst bei Wertung, zweiter Wertungsversuch serverseitig abgelehnt (UNIQUE `(user_id, calendar_day)`), Plausibilität (Token, Rundenalter ≤ 90 s, max. 60 Antworten)
+- [ ] **BUG-1:** „Münzstand ausschließlich serverseitig veränderbar": verletzt. Der Client kann den Kontostand direkt setzen.
+- [ ] **BUG-2:** „Manipulierter Client kann sich keine Münzen gutschreiben": verletzt. Der Server übernimmt `is_correct` vom Client.
+- [x] Startguthaben: Formel, nur Konten mit XP, idempotent, ≤ 250, Hinweis einmalig (im Backend gegen echte Daten geprüft: 39 Konten, 0 Abweichungen)
+- [x] Kosten: keine neuen Dienste, kein Cron
+
+### Bugs Found
+
+#### BUG-1: Schüler können Münzen, XP und Streak direkt selbst setzen
+- **Severity:** Critical
+- **Belegt:** An der Produktions-DB mit Schüler-Rolle geprüft: `update profiles set coin_balance = 999999, total_xp = 999999` auf das eigene Profil klappt. Die RLS-Policy `profiles_update_own` erlaubt jede Spalte. Der Anon-Key ist öffentlich, ein Aufruf aus den Browser-DevTools genügt.
+- **Auswirkung:** Die Münz-Ökonomie (PROJ-19/20) ist wirkungslos. Das gilt schon länger auch für XP, Level, Streak und damit die Rangliste (PROJ-4/5/8).
+- **Fix-Richtung:** Spaltenrechte. Nutzer dürfen nur `display_name`, `show_real_name`, `leaderboard_opt_out`, `starter_coins_seen` selbst ändern. XP, Streak und Münzen schreiben `quiz/sessions` und `quiz/blitz/finish` über den Service-Client.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Richtig/falsch meldet der Client
+- **Severity:** High
+- **Steps to Reproduce:** `POST /api/quiz/sessions` mit 20 Antworten, alle `is_correct: true` (beliebige Options-IDs) → 23 Münzen und 200 XP, beliebig oft wiederholbar. `POST /api/quiz/blitz/finish` mit 60 „richtigen" Antworten (auch dieselbe Frage mehrfach) → 190 Münzen und 300 XP am Tag.
+- **Nebenwirkung:** Die gemeldeten Werte landen so in `quiz_answers` und verfälschen „Lücken schließen" und die Badges.
+- **Fix-Richtung:** Der Server ermittelt `is_correct` selbst aus dem Lösungsschlüssel (`src/lib/answer-key.ts`, seit PROJ-21 vorhanden). Die Blitzrunde wertet jede Frage nur einmal.
+- **Priority:** Fix before deployment
+
+#### BUG-3: `quiz/today` rechnet den Tag in UTC
+- **Severity:** Low. Der Edge Case „Tagesgrenze vereinheitlichen" ist offen, zwischen 0 und 2 Uhr zählt der Vortag.
+- **Priority:** Fix in next sprint
+
+#### BUG-4: Zeitumstellung in `getBerlinDateStr(-1)`
+- **Severity:** Low. Das Problem gab es schon vorher und ist in der Spec vermerkt. Am Tag nach der Umstellung liefert die Funktion zwischen 0 und 1 Uhr den falschen Vortag.
+- **Priority:** Nice to have
+
+### Summary
+- **Acceptance Criteria:** alle bis auf die beiden Missbrauchsschutz-Kriterien bestanden (statisch)
+- **Bugs Found:** 4 (1 Critical, 1 High, 0 Medium, 2 Low)
+- **Production Ready:** NO. BUG-1 und BUG-2 zuerst beheben.
 
 ## Deployment
 _To be added by /deploy_

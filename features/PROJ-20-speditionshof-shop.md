@@ -1,6 +1,6 @@
 # PROJ-20: Speditionshof & Shop
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-13
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -353,7 +353,45 @@ Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
 `/qa`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-24
+**Tester:** QA Engineer (AI)
+**Methode:** Code gegen die Akzeptanzkriterien geprüft, `npm test` (396/396 grün, inkl. der PROJ-20-Tests), `npm run build` (fehlerfrei), DB-Prüfungen mit simulierter Schüler-Rolle, zurückgerollt. Nicht getestet: Browser-Darstellung, Responsive, E2E.
+
+### Acceptance Criteria Status
+- [x] Shop-Seite mit Kacheln (Icon, Name, Beschreibung, Preis), Münzstand sichtbar, „im Besitz" markiert, zu teure Items sichtbar mit „Dir fehlen N Münzen"
+- [x] Kauf atomar in `purchase_shop_item()` (Preis-/Aktiv-/Besitz-Prüfung und Abzug in einer Transaktion), serverseitige Guthabenprüfung, kein Doppelkauf (UNIQUE + bedingtes UPDATE), Bestätigungsdialog
+- [x] „Mein Hof" im Profil mit Leerzustand
+- [ ] **BUG-2:** Deaktivierte, bereits gekaufte Items verschwinden aus „Mein Hof"
+- [x] Admin: anlegen, bearbeiten, deaktivieren, kein Löschen (es gibt keinen DELETE-Endpunkt, dazu `ON DELETE RESTRICT`), Preisänderung wirkt nur künftig (`price_paid` wird gespeichert)
+- [ ] **BUG-1:** Die Kaufregeln lassen sich umgehen, weil der Münzstand vom Client beschreibbar ist
+
+### Edge Cases
+- [x] Preisänderung während die Seite offen ist → der Serverpreis beim Kauf zählt
+- [x] Deaktivierung während eines Kaufs → 409 „nicht mehr verfügbar", kein Abzug
+- [x] Guthaben gleich Preis → Kauf möglich (`>=`)
+- [x] Startkatalog enthält ein Item zu 75 Münzen
+- [x] Wenig oder kein Guthaben → alle Items bleiben sichtbar
+
+### Bugs Found
+
+#### BUG-1: Münzstand vom Client beschreibbar
+- **Severity:** Critical. Dieselbe Ursache wie PROJ-19 BUG-1 (`profiles_update_own` ohne Spaltenbeschränkung): Ein Schüler setzt `coin_balance` selbst und kauft danach alles. Wird mit dem PROJ-19-Fix behoben.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Gekaufte, später deaktivierte Items verschwinden aus „Mein Hof"
+- **Severity:** Medium
+- **Steps to Reproduce:** Item kaufen → Admin deaktiviert es → Profil öffnen → das Item fehlt. `HofGallery` liest `/api/shop/items`, das nur aktive Items liefert, und die RLS-Policy lässt Schüler ohnehin nur aktive Items sehen.
+- **Expected:** Laut AK bleiben gekaufte Items in der Sammlung, auch wenn sie deaktiviert sind.
+- **Priority:** Fix before deployment
+
+#### BUG-3: `purchase_shop_item` ist für die anon-Rolle aufrufbar
+- **Severity:** Low. Der Security-Advisor meldet es. Die Funktion lehnt ohne Login selbst ab (`not_authenticated`), deshalb ist das ohne Wirkung. Trotzdem das `EXECUTE`-Recht für anon entziehen.
+- **Priority:** Nice to have
+
+### Summary
+- **Bugs Found:** 3 (1 Critical, 0 High, 1 Medium, 1 Low)
+- **Production Ready:** NO. BUG-1 (gemeinsam mit PROJ-19) und BUG-2 zuerst beheben.
 
 ## Deployment
 _To be added by /deploy_
