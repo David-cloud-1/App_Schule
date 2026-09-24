@@ -1,6 +1,6 @@
 # PROJ-19: Blitzrunde & Frachtmünzen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-05
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -526,4 +526,16 @@ Der Nutzer hat den vollständigen Fix freigegeben, einschließlich der Rechte-Ä
 **Production Ready (nach Fixes):** YES. Voraussetzung: `20260924_lock_profile_columns.sql` wird direkt nach dem Deploy angewendet und an der DB geprüft.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-09-24
+**Production URL:** https://spedilern.vercel.app
+**Vercel Deployment ID:** dpl_4hHDTcthT28vAwSaCJsLqCiWTQ5M, ausgelöst per Push auf `main` (Commit c4c8caa)
+Gemeinsam deployt: PROJ-19, PROJ-20, PROJ-21.
+
+**Datenbank (Produktion, Supabase „Spedilern App"):**
+- 2026-09-23: `20260923_proj21_graded_assessments.sql` (vor dem Deploy, rein additiv)
+- 2026-09-24, vor dem Deploy: `20260924_hotfix_profiles_role_not_self_writable.sql` (Admin-Selbsternennung geschlossen)
+- 2026-09-24, **nach** dem Deploy: `20260924_proj21_lock_answer_key.sql` und `20260924_lock_profile_columns.sql`
+
+**Nach dem Deploy geprüft:** Neuer Code live (`/pruefung/<code>` leitet mit `?redirect=` zum Login). An der DB mit simulierter Schüler-Rolle (zurückgerollt): Lösungsschlüssel nicht lesbar ✅, Optionen ohne Lösung weiter lesbar ✅, Münzen/XP/Rolle nicht selbst setzbar ✅, eigene Einstellungen weiter änderbar ✅. Postgres-Logs seit dem Deploy: keine Rechte-Fehler (bei noch wenig Verkehr).
+
+**Noch offen:** Ein erster manueller Durchlauf im Browser durch den Nutzer (Quiz, Blitzrunde, Shop, Leistungsnachweis). Browser-Tests waren in dieser Umgebung nicht möglich.
