@@ -12,12 +12,13 @@ interface OwnedItem {
 }
 
 interface ShopItemsResponse {
-  items: (OwnedItem & { owned: boolean })[]
+  owned_items: OwnedItem[]
 }
 
 /**
- * Reuses GET /api/shop/items (PROJ-20) and filters to owned items, rather
- * than introducing a separate "collection" endpoint for the same data.
+ * Reuses GET /api/shop/items (PROJ-20), whose `owned_items` lists every
+ * purchase — including items deactivated since, which the shop list itself
+ * no longer shows.
  */
 export function HofGallery() {
   const [items, setItems] = useState<OwnedItem[] | null>(null)
@@ -31,7 +32,7 @@ export function HofGallery() {
         return res.json()
       })
       .then((data: ShopItemsResponse) => {
-        if (!cancelled) setItems(data.items.filter((i) => i.owned))
+        if (!cancelled) setItems(data.owned_items ?? [])
       })
       .catch((err) => {
         console.error('[HofGallery]', err)

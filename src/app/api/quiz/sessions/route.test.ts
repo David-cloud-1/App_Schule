@@ -4,9 +4,24 @@ import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase-server'
+// Correctness is decided server-side from the answer key (PROJ-19 BUG-2).
+// By default the "key" agrees with each fixture's is_correct flag; one test
+// overrides it to prove a client's own claim is ignored.
+vi.mock('@/lib/answer-key', () => ({
+  verifyAnswers: vi.fn(async (answers: { is_correct?: boolean }[]) =>
+    answers.map((a) => ({ ...a, is_correct: a.is_correct === true })),
+  ),
+}))
+
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { verifyAnswers } from '@/lib/answer-key'
+
+// The profile write now goes through the service client; tests route it to
+// the same mock so the existing SELECT-then-UPDATE call order still holds.
+let currentMock: unknown = null
 
 // Proper v4 UUIDs
 const Q1 = '550e8400-e29b-41d4-a716-446655440001'
@@ -89,7 +104,7 @@ function makeSupabaseMock(user: unknown, opts: MockOptions = {}) {
 
   let profileCallCount = 0
 
-  return {
+  currentMock = {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
     from: vi.fn().mockImplementation((table: string) => {
       if (table === 'profiles') {
@@ -101,10 +116,26 @@ function makeSupabaseMock(user: unknown, opts: MockOptions = {}) {
       return answersBuilder // quiz_answers
     }),
   }
+  return currentMock
 }
 
 describe('POST /api/quiz/sessions', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(createServiceClient).mockImplementation(() => currentMock as never)
+  })
+
+  it('ignores the client-reported is_correct and scores from the server-side key', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: 'user-1' }) as never)
+    vi.mocked(verifyAnswers).mockImplementationOnce(async (answers) =>
+      answers.map((a) => ({ ...a, is_correct: false })),
+    )
+    const res = await POST(makeRequest({ answers: ALL_CORRECT }))
+    const body = await res.json()
+    expect(body.score).toBe(0)
+    expect(body.xp_earned).toBe(0)
+    expect(body.coins_earned).toBe(0)
+  })
 
   it('returns 401 when unauthenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabaseMock(null) as never)

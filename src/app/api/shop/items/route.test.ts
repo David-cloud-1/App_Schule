@@ -3,9 +3,20 @@ import { GET } from './route'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+
+/** Service client for the "Mein Hof" query: user_shop_items joined to shop_items. */
+function makeServiceMock(ownedRows: unknown[] = []) {
+  const builder = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: ownedRows, error: null }),
+  }
+  return { from: vi.fn(() => builder) }
+}
 
 const ITEM_1 = { id: 'item-1', name: 'Sattelschlepper', description: 'desc', icon: '🚛', price: 75 }
 const ITEM_2 = { id: 'item-2', name: 'Ampel-Deko', description: 'desc', icon: '🚦', price: 40 }
@@ -46,7 +57,23 @@ function makeSupabaseMock(user: unknown, opts: MockOpts = {}) {
 }
 
 describe('GET /api/shop/items', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(createServiceClient).mockReturnValue(makeServiceMock() as never)
+  })
+
+  it('lists purchased items in owned_items even after they were deactivated (PROJ-20 BUG-2)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: 'user-1' }, { items: [ITEM_2] }) as never)
+    vi.mocked(createServiceClient).mockReturnValue(
+      makeServiceMock([{ purchased_at: '2026-09-20T10:00:00Z', shop_items: ITEM_1 }]) as never,
+    )
+    const res = await GET()
+    const body = await res.json()
+    // ITEM_1 is no longer in the active catalogue …
+    expect(body.items.map((i: { id: string }) => i.id)).toEqual(['item-2'])
+    // … but stays in the user's collection.
+    expect(body.owned_items.map((i: { id: string }) => i.id)).toEqual(['item-1'])
+  })
 
   it('returns 401 when unauthenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabaseMock(null) as never)

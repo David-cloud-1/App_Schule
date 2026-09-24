@@ -45,6 +45,27 @@ export async function fetchAnswerKey(questionIds: string[]): Promise<AnswerKey> 
   return key
 }
 
+/**
+ * Server-side grading of answers a client reports (PROJ-19 BUG-2): the
+ * client's own is_correct is ignored. Each question counts once (first
+ * answer wins), so repeating a known-correct answer can't farm coins/XP.
+ */
+export async function verifyAnswers<T extends { question_id: string; selected_option_id: string }>(
+  answers: T[],
+): Promise<(T & { is_correct: boolean })[]> {
+  const seen = new Set<string>()
+  const unique = answers.filter((a) => {
+    if (seen.has(a.question_id)) return false
+    seen.add(a.question_id)
+    return true
+  })
+  const key = await fetchAnswerKey(unique.map((a) => a.question_id))
+  return unique.map((a) => ({
+    ...a,
+    is_correct: key.get(a.question_id)?.options.get(a.selected_option_id) === true,
+  }))
+}
+
 type WithOptions = { id: string; answer_options?: { id: string }[] | null }
 
 /** Adds `is_correct` to every answer option — for practice flows that show instant feedback. */

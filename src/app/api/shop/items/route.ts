@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 
 export async function GET() {
   const supabase = await createClient()
@@ -38,8 +38,23 @@ export async function GET() {
     owned: ownedIds.has(item.id),
   }))
 
+  // "Mein Hof" shows everything the user bought — including items the admin
+  // has since deactivated (PROJ-20 BUG-2). Students can only SELECT active
+  // shop_items via RLS, so the owned catalogue rows come via the service
+  // client, strictly scoped to this user's own purchases.
+  const { data: ownedRows } = await createServiceClient()
+    .from('user_shop_items')
+    .select('purchased_at, shop_items(id, name, description, icon)')
+    .eq('user_id', user.id)
+    .order('purchased_at')
+
+  const owned_items = (ownedRows ?? [])
+    .map((r) => r.shop_items as unknown as { id: string; name: string; description: string; icon: string } | null)
+    .filter((i): i is { id: string; name: string; description: string; icon: string } => i != null)
+
   return NextResponse.json({
     items,
+    owned_items,
     coin_balance: (profileResult.data?.coin_balance as number | null) ?? 0,
   })
 }

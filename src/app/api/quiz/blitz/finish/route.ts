@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { verifyAnswers } from '@/lib/answer-key'
 
 const MAX_ANSWERS = 60
 const MAX_ROUND_AGE_SECONDS = 90 // 60s round + buffer for network/render latency
@@ -8,7 +9,8 @@ const MAX_ROUND_AGE_SECONDS = 90 // 60s round + buffer for network/render latenc
 const AnswerSchema = z.object({
   question_id:        z.string().uuid(),
   selected_option_id: z.string().uuid(),
-  is_correct:         z.boolean(),
+  // Still accepted from older clients, but ignored — the server decides.
+  is_correct:         z.boolean().optional(),
 })
 
 const BodySchema = z.object({
@@ -93,7 +95,10 @@ export async function POST(request: NextRequest) {
   // whether the day-uniqueness insert below succeeds.
   await supabase.from('blitz_starts').update({ consumed: true }).eq('id', startRow.id)
 
-  const correctCount = answers.filter((a) => a.is_correct).length
+  // Correctness is re-derived server-side and each question counts once —
+  // the client's own is_correct is ignored (PROJ-19 BUG-2).
+  const verified     = await verifyAnswers(answers)
+  const correctCount = verified.filter((a) => a.is_correct).length
   const coinsEarned  = correctCount * COIN_PER_CORRECT + COIN_ROUND_BONUS
   const xpEarned     = correctCount * XP_PER_CORRECT
   const today        = getBerlinDateStr() // Judged at finish time, not start time (edge case: round spans midnight)
@@ -135,7 +140,9 @@ export async function POST(request: NextRequest) {
   const newTotalXp     = prevTotalXp + xpEarned
   const newCoinBalance = prevCoinBalance + coinsEarned
 
-  const { error: profileError } = await supabase
+  // Service client: users may no longer write XP/streak/coins on their own
+  // profile row directly (PROJ-19 BUG-1).
+  const { error: profileError } = await createServiceClient()
     .from('profiles')
     .update({
       total_xp:          newTotalXp,

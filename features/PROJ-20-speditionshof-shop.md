@@ -1,6 +1,6 @@
 # PROJ-20: Speditionshof & Shop
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-09-13
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -392,6 +392,18 @@ Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
 ### Summary
 - **Bugs Found:** 3 (1 Critical, 0 High, 1 Medium, 1 Low)
 - **Production Ready:** NO. BUG-1 (gemeinsam mit PROJ-19) und BUG-2 zuerst beheben.
+
+### Nachtest nach den Fixes (2026-09-24)
+
+| Bug | Status | Wie behoben / geprüft |
+|---|---|---|
+| BUG-1 Münzstand beschreibbar | ✅ behoben | Mit der Profil-Sperre aus PROJ-19 (`20260924_lock_profile_columns.sql`, wird nach dem Deploy angewendet). Den Münzabzug beim Kauf macht weiter `purchase_shop_item()` (SECURITY DEFINER). |
+| BUG-2 „Mein Hof" | ✅ behoben | `GET /api/shop/items` liefert zusätzlich `owned_items`: alle Käufe inklusive inzwischen deaktivierter Items, über den Service-Client, auf die eigenen Käufe beschränkt. `HofGallery` nutzt diese Liste. Getestet. |
+| BUG-3 anon darf Kauf-Funktion aufrufen | ✅ behoben | `REVOKE EXECUTE … FROM anon` in derselben Migration |
+
+**Tests:** 400/400 grün, `npm run build` fehlerfrei.
+
+**Production Ready (nach Fixes):** YES. Gleiche Voraussetzung wie bei PROJ-19.
 
 ## Deployment
 _To be added by /deploy_

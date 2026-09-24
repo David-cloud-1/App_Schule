@@ -1,6 +1,6 @@
 # PROJ-19: Blitzrunde & Frachtmünzen
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-09-05
 **Last Updated:** 2026-09-13
 **Priorität:** P0
@@ -501,6 +501,29 @@ Browser-Automatisierungstool in dieser Umgebung verfügbar) — empfohlen vor
 - **Acceptance Criteria:** alle bis auf die beiden Missbrauchsschutz-Kriterien bestanden (statisch)
 - **Bugs Found:** 4 (1 Critical, 1 High, 0 Medium, 2 Low)
 - **Production Ready:** NO. BUG-1 und BUG-2 zuerst beheben.
+
+#### BUG-5 (beim Beheben gefunden): Jeder Schüler kann sich selbst zum Admin machen
+- **Severity:** Critical. Dieselbe Ursache wie BUG-1: `profiles_update_own` erlaubt auch die Spalte `role`.
+- **Belegt:** An der Produktions-DB mit Schüler-Rolle geprüft (zurückgerollt): `update profiles set role = 'admin'` auf das eigene Profil klappt. Die Lücke war in Produktion offen.
+- **Befund:** 12 Admin-Konten. Nur 3 Ernennungen stehen im Audit-Log (6. Mai, über die Admin-Oberfläche), die übrigen 9 stammen aus dem April, bevor protokolliert wurde. Ob darunter eine Selbst-Ernennung ist, lässt sich nicht feststellen. Die Liste muss der Nutzer prüfen.
+- **Sofortmaßnahme (2026-09-24, noch vor dem Deploy):** Hotfix `20260924_hotfix_profiles_role_not_self_writable.sql` angewendet. Nutzer können `role`, `id` und `created_at` nicht mehr selbst ändern. Alle anderen Spalten bleiben vorerst beschreibbar, damit der noch laufende alte Code weiter funktioniert. An der DB geprüft: Die Rollenänderung wird abgelehnt, XP schreiben geht weiter.
+
+### Nachtest nach den Fixes (2026-09-24)
+
+Der Nutzer hat den vollständigen Fix freigegeben, einschließlich der Rechte-Änderung an `profiles`.
+
+| Bug | Status | Wie behoben / geprüft |
+|---|---|---|
+| BUG-5 Admin-Selbsternennung | ✅ behoben (live) | Hotfix sofort angewendet und an der DB geprüft, siehe oben |
+| BUG-1 Spielstand selbst setzen | ✅ behoben | Migration `20260924_lock_profile_columns.sql`: Nutzer ändern nur noch `display_name`, `show_real_name`, `leaderboard_opt_out`, `starter_coins_seen`. XP, Streak und Münzen schreiben `quiz/sessions` und `quiz/blitz/finish` über den Service-Client. Wird nach dem Deploy angewendet (der alte Code schreibt XP noch mit dem Nutzer-Client). |
+| BUG-2 Client meldet richtig/falsch | ✅ behoben | `verifyAnswers` (`src/lib/answer-key.ts`) bestimmt richtig/falsch aus dem Lösungsschlüssel, ignoriert die Angabe des Clients und wertet jede Frage nur einmal. Gilt für normale Runden und die Blitzrunde, dadurch stimmen auch `quiz_answers` (Lücken schließen, Badges). Getestet. |
+| BUG-3, BUG-4 | offen | Low, nächster Sprint |
+
+**Bekannte Rest-Grenze (Low):** Die Zeilen in `quiz_sessions`, `quiz_answers` und `blitz_rounds` darf ein Nutzer per RLS weiterhin direkt anlegen. Münzen und XP bringt das nicht mehr, weil das Profil jetzt serverseitig geschützt ist. Es könnte aber Badge-Zählungen und die Statistik in „Lücken schließen" verfälschen. Als Folgeaufgabe notiert.
+
+**Tests:** 400/400 grün. Neu sind unter anderem: Behauptung des Clients wird ignoriert (normale Runde und Blitzrunde), `verifyAnswers` (Serverentscheid, eine Wertung pro Frage, unbekannte Fragen). `npm run build` fehlerfrei.
+
+**Production Ready (nach Fixes):** YES. Voraussetzung: `20260924_lock_profile_columns.sql` wird direkt nach dem Deploy angewendet und an der DB geprüft.
 
 ## Deployment
 _To be added by /deploy_

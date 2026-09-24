@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { verifyAnswers } from '@/lib/answer-key'
 import { getLevelFromXp } from '@/lib/xp-utils'
 import { checkAndAwardBadges } from '@/lib/badges'
 
 const AnswerSchema = z.object({
   question_id:        z.string().uuid(),
   selected_option_id: z.string().uuid(),
-  is_correct:         z.boolean(),
+  // Still accepted from older clients, but ignored — the server decides.
+  is_correct:         z.boolean().optional(),
 })
 
 const BodySchema = z.object({
@@ -74,9 +76,16 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { subject_id, answers } = parsed.data
+  // The client's is_correct is ignored: correctness is re-derived from the
+  // answer key server-side, one answer per question (PROJ-19 BUG-2).
+  const { subject_id } = parsed.data
+  const answers = await verifyAnswers(parsed.data.answers)
   const score = answers.filter((a) => a.is_correct).length
   const total = answers.length
+
+  // XP, streak and coins are written with the service client — the user's
+  // own role may only change their settings columns on profiles (BUG-1).
+  const service = createServiceClient()
 
   // ── Fetch current profile stats ────────────────────────────────────────────
   const { data: profile } = await supabase
@@ -146,7 +155,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Update profile (XP + streak) ──────────────────────────────────────────
-  const { error: profileError } = await supabase
+  const { error: profileError } = await service
     .from('profiles')
     .update({
       total_xp:          newTotalXp,

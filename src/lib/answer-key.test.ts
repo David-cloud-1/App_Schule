@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn() }))
 
 import { createServiceClient } from '@/lib/supabase-server'
-import { attachAnswerKey, fetchAnswerKey, getLockedQuestionIds } from './answer-key'
+import { attachAnswerKey, fetchAnswerKey, getLockedQuestionIds, verifyAnswers } from './answer-key'
 
 function keyClient(rows: unknown[]) {
   const inFn = vi.fn().mockImplementation((_col: string, ids: string[]) =>
@@ -77,5 +77,30 @@ describe('getLockedQuestionIds', () => {
     vi.mocked(createServiceClient).mockReturnValue({ from } as never)
 
     expect([...(await getLockedQuestionIds())].sort()).toEqual(['q1', 'q2', 'q3'])
+  })
+})
+
+describe('verifyAnswers', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('decides correctness from the key, ignores the client flag and counts each question once', async () => {
+    const { client } = keyClient([
+      { id: 'q1', explanation: null, sample_answer: null, answer_options: [{ id: 'a', is_correct: true }, { id: 'b', is_correct: false }] },
+      { id: 'q2', explanation: null, sample_answer: null, answer_options: [{ id: 'c', is_correct: false }, { id: 'd', is_correct: true }] },
+    ])
+    vi.mocked(createServiceClient).mockReturnValue(client as never)
+
+    const result = await verifyAnswers([
+      { question_id: 'q1', selected_option_id: 'a', is_correct: false }, // really correct
+      { question_id: 'q2', selected_option_id: 'c', is_correct: true },  // client lies
+      { question_id: 'q1', selected_option_id: 'a', is_correct: true },  // repeat → dropped
+      { question_id: 'qX', selected_option_id: 'z', is_correct: true },  // unknown question
+    ])
+
+    expect(result.map((a) => [a.question_id, a.is_correct])).toEqual([
+      ['q1', true],
+      ['q2', false],
+      ['qX', false],
+    ])
   })
 })
