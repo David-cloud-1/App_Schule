@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
-import { generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
+import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 
 const CreateAssessmentSchema = z.object({
   examSetId: z.string().uuid(),
@@ -48,7 +48,7 @@ export async function GET() {
     examSetName: (a.exam_question_sets as unknown as { name: string } | null)?.name ?? '—',
     part: a.part,
     status: a.status,
-    accessCode: a.access_code,
+    accessCode: formatAccessCode(a.access_code),
     participantCount: counts[a.id]?.participantCount ?? 0,
     submittedCount: counts[a.id]?.submittedCount ?? 0,
     createdAt: a.created_at,
@@ -89,15 +89,22 @@ export async function POST(request: NextRequest) {
   if (!set) return NextResponse.json({ error: 'Prüfungsset nicht gefunden.' }, { status: 404 })
 
   const questionIds: string[] = set.question_ids ?? []
-  if (questionIds.length < 5) {
-    return NextResponse.json({ error: 'Das Set hat weniger als 5 Fragen.' }, { status: 400 })
-  }
 
   const { count: openCount } = await supabase
     .from('questions')
     .select('id', { count: 'exact', head: true })
     .in('id', questionIds)
     .eq('type', 'open')
+
+  const { count: activeCount } = await supabase
+    .from('questions')
+    .select('id', { count: 'exact', head: true })
+    .in('id', questionIds)
+    .eq('is_active', true)
+
+  if ((activeCount ?? 0) < 5) {
+    return NextResponse.json({ error: 'Das Set hat weniger als 5 aktive Fragen.' }, { status: 400 })
+  }
 
   if ((openCount ?? 0) > 0) {
     return NextResponse.json({

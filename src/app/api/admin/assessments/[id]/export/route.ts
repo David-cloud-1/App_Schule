@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { buildParticipantRows, type SessionRow } from '@/lib/graded-assessments'
+import {
+  applyGrading,
+  buildParticipantRows,
+  csvEscape,
+  snapshotQuestionIds,
+  type GradeBoundary,
+  type SessionRow,
+} from '@/lib/graded-assessments'
+import { fetchAnswerKey } from '@/lib/answer-key'
 
-function csvEscape(value: string): string {
-  if (/[;"\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`
-  return value
-}
+const BERLIN = { timeZone: 'Europe/Berlin' } as const
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -28,8 +33,10 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     .eq('assessment_id', id)
     .order('participant_name', { ascending: true })
 
-  const rows = (sessions ?? []) as unknown as SessionRow[]
-  const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale)
+  const rawRows = (sessions ?? []) as unknown as SessionRow[]
+  const key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
+  const rows = applyGrading(rawRows, assessment.part, key, assessment.grading_scale as GradeBoundary[])
+  const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale as GradeBoundary[])
 
   const header = ['Name', 'Punkte', 'Von', 'Prozent', 'Note', 'Dauer (Min.)', 'Abgegeben', 'Zaehlt in Wertung']
   const lines = [header.join(';')]
@@ -41,7 +48,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
       p.percent != null ? String(p.percent) : '',
       p.grade != null ? String(p.grade) : '',
       p.durationMinutes != null ? String(p.durationMinutes) : '',
-      p.submittedAt ? new Date(p.submittedAt).toLocaleString('de-DE') : 'Schreibt noch',
+      p.submittedAt ? new Date(p.submittedAt).toLocaleString('de-DE', BERLIN) : 'Schreibt noch',
       p.excluded ? 'Nein' : 'Ja',
     ].join(';'))
   }

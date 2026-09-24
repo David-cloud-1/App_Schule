@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, POST } from './route'
+
+// The answer key is merged in server-side via the service client (PROJ-21).
+// These fixtures already carry is_correct, so pass questions through as-is.
+vi.mock('@/lib/answer-key', () => ({
+  attachAnswerKey: vi.fn(async (qs: unknown[]) => qs),
+  getLockedQuestionIds: vi.fn(async () => new Set<string>()),
+  fetchAnswerKey: vi.fn(async () => new Map()),
+}))
+
 import { NextRequest } from 'next/server'
 
 vi.mock('@/lib/supabase-server', () => ({

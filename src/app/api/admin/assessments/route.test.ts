@@ -32,6 +32,7 @@ interface Overrides {
   role?: string
   setData?: unknown
   openCount?: number
+  activeCount?: number
   codeCollisionOnce?: boolean
   insertData?: unknown
   insertError?: unknown
@@ -54,10 +55,13 @@ function makeAdminSupabase(overrides: Overrides = {}) {
       error: null,
     }),
   }
+  // Two count queries hit this builder: .eq('type', 'open') and .eq('is_active', true).
   const questionsBuilder = {
     select: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ count: overrides.openCount ?? 0 }),
+    eq: vi.fn().mockImplementation((column: string) =>
+      Promise.resolve({ count: column === 'type' ? (overrides.openCount ?? 0) : (overrides.activeCount ?? 5) }),
+    ),
   }
   let codeCheckCalls = 0
   let codeResolved = false
@@ -166,12 +170,11 @@ describe('POST /api/admin/assessments', () => {
     expect(res.status).toBe(400)
   })
 
-  it('returns 400 when the set has fewer than 5 questions', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeAdminSupabase({ setData: { id: validBody.examSetId, part: 1, question_ids: ['q1', 'q2'] } }) as never,
-    )
+  it('returns 400 when the set has fewer than 5 active questions', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ activeCount: 4 }) as never)
     const res = await POST(makeRequest('POST', validBody))
     expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/5 aktive/)
   })
 
   it('rejects a set containing open questions (MC-only rule)', async () => {

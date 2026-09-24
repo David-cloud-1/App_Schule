@@ -34,7 +34,7 @@
 | PROJ-18 | Rückkehr-Erinnerung per Web-Push | Architected | [PROJ-18-rueckkehr-erinnerung-push.md](PROJ-18-rueckkehr-erinnerung-push.md) | 2026-09-05 |
 | PROJ-19 | Blitzrunde & Frachtmünzen | In Progress | [PROJ-19-blitzrunde-frachtmuenzen.md](PROJ-19-blitzrunde-frachtmuenzen.md) | 2026-09-05 |
 | PROJ-20 | Speditionshof & Shop | In Progress | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
-| PROJ-21 | Benotete Leistungsnachweise | In Review | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |
+| PROJ-21 | Benotete Leistungsnachweise | Approved | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |
 
 <!-- Add features above this line -->
 

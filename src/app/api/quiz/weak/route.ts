@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -98,9 +99,11 @@ export async function GET(request: NextRequest) {
   // Limit to 50 worst questions to keep the query efficient
   const weakIds = allWeakIds.slice(0, 50)
 
+  // No is_correct here — students can't SELECT it directly any more (PROJ-21);
+  // it's merged in server-side below.
   const selectCols = subjectId
-    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order), question_subjects!inner(subject_id)'
-    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order)'
+    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order), question_subjects!inner(subject_id)'
+    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order)'
 
   let questionsQuery = supabase
     .from('questions')
@@ -119,8 +122,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
   }
 
+  const locked = await getLockedQuestionIds()
+  const withKey = await attachAnswerKey(
+    ((questions ?? []) as unknown as { id: string; answer_options: { id: string }[] }[]).filter((q) => !locked.has(q.id)),
+  )
+
   return NextResponse.json({
-    questions: questions ?? [],
-    count: questions?.length ?? 0,
+    questions: withKey,
+    count: withKey.length,
   })
 }

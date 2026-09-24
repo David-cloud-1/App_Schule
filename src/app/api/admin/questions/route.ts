@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { attachAnswerKey } from '@/lib/answer-key'
 
 const ListQuerySchema = z.object({
   q: z.string().optional(),
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
         topic_id,
         is_active,
         created_at,
-        answer_options ( id, option_text, is_correct, display_order ),
+        answer_options ( id, option_text, display_order ),
         question_subjects ( subjects ( id, code, name ) ),
         topics ( id, name )
       `,
@@ -135,7 +136,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
   }
 
-  const questions = (data ?? []).map((q) => ({
+  // is_correct via the service client: the authenticated role (admins
+  // included) no longer has SELECT on that column (PROJ-21).
+  const withKey = await attachAnswerKey(data ?? [])
+  const questions = withKey.map((q) => ({
     ...q,
     answer_options: [...(q.answer_options ?? [])].sort(
       (a: { display_order: number }, b: { display_order: number }) =>

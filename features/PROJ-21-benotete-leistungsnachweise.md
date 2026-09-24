@@ -1,8 +1,8 @@
 # PROJ-21: Benotete Leistungsnachweise
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-09-14
-**Last Updated:** 2026-09-23
+**Last Updated:** 2026-09-24
 
 ## Dependencies
 - Requires: PROJ-1 (User Authentication) — Teilnahme nur mit Account
@@ -573,6 +573,30 @@ nicht möglich (der Dev-Server hat den Rechner des Nutzers überlastet).
 - **Security:** Issues found (BUG-1, BUG-2, BUG-6)
 - **Production Ready:** NO
 - **Recommendation:** Vor dem Deploy mindestens BUG-1 bis BUG-6 beheben. Für BUG-1 Weg 1 ist eine Entscheidung nötig, weil der Fix bestehende Features berührt.
+
+### Nachtest nach den Fixes (2026-09-24)
+
+Der Nutzer hat für BUG-1 den vollständigen Fix gewählt und die Rechte-Änderung an `answer_options` damit freigegeben.
+
+| Bug | Status | Wie behoben / geprüft |
+|---|---|---|
+| BUG-1 Weg 1 (`answer_options`) | ✅ behoben | Migration `20260924_proj21_lock_answer_key.sql`: `anon`/`authenticated` sehen nur noch `id, question_id, option_text, display_order`. Die 7 Server-Pfade, die den Lösungsschlüssel brauchen (Übungs-API, Lücken schließen, Quiz-Seite, Blitzrunde, Prüfungssimulation, Admin-Fragenliste, Admin-Export), holen ihn über `src/lib/answer-key.ts` mit dem Service-Client. Die Fragen selbst lädt weiter der Nutzer-Client, die RLS-Regeln für Fragen gelten unverändert. Wird erst nach dem Deploy angewendet, weil der alte Code `is_correct` noch direkt liest. |
+| BUG-1 Weg 2 (Session-Zeile) | ✅ behoben | Die Nachweis-Session speichert beim Beitritt nur Fragen und Optionen, **ohne** Lösung, Erklärung und Musterlösung. Bei der Abgabe kommen nur die Antworten dazu (`submitted_answers`). Bewertet wird bei der Freigabe mit dem Schlüssel aus der DB (`gradeSnapshot`), die Admin-Ansicht bewertet live. Dadurch sind auch `GET /api/exam/sessions/[id]` und `/api/exam/history` ohne Lösungen. Test: vor der Freigabe stehen weder `is_correct` noch Erklärungen in der Zeile. |
+| BUG-1 Weg 3 (Übungs-API) | ✅ behoben | Fragen eines Nachweises, der offen ist oder in dem noch jemand schreibt, fehlen in Übungs-API, Quiz, Lücken schließen, Blitzrunde und Prüfungssimulation (`getLockedQuestionIds`). |
+| BUG-2 Zeitlimit | ✅ behoben | Nach `Start + Dauer + 60 s` beantwortet der Server Autosave mit 409 und ignoriert mit einer späten Abgabe geschickte Antworten. Es zählt der letzte rechtzeitig gespeicherte Stand. Getestet. |
+| BUG-3 „Beenden"-Abgaben | ✅ behoben | Die Freigabe verarbeitet `completed` **und** `aborted`. Getestet (`applyGrading`). |
+| BUG-4 deaktivierte Fragen | ✅ behoben | Beim Anlegen zählen nur aktive Fragen. Beim Öffnen wird der Snapshot auf aktive MC-Fragen eingefroren. Der Beitritt lädt den Snapshot per Service-Client ohne `is_active`-Filter, alle bekommen dieselben Fragen. |
+| BUG-5 offene Fragen nachträglich | ✅ behoben | „Öffnen" prüft das Set erneut und lehnt ab, wenn es inzwischen offene Fragen enthält. |
+| BUG-6 CSV-Injection | ✅ behoben | `csvEscape` entschärft Werte, die mit `= + - @` beginnen. Getestet. |
+| BUG-8 Code-Format | ✅ behoben | Admin-Liste und -Detail zeigen `7K2M-QX`. |
+| BUG-10 CSV in UTC | ✅ behoben | Abgabezeit in `Europe/Berlin`. |
+| BUG-7, BUG-9, BUG-11, BUG-12 | offen | Medium/Low, Priorität „next sprint" bzw. „nice to have". Blockieren den Deploy nicht. |
+
+**Bekannte Grenze (Nutzungshinweis, kein Bug):** Ist dasselbe Prüfungsset gleichzeitig als normale Prüfungssimulation **aktiviert**, konnten Azubis es vorher üben und die Lösungen sehen. Für einen Leistungsnachweis ein Set nehmen, das nicht zum Üben freigegeben ist.
+
+**Tests:** 396/396 grün (21 neu: `gradeSnapshot`, `applyGrading`, `csvEscape`, `answer-key`, Abgabe-Pfad inkl. Zeitlimit und „keine Lösungen vor Freigabe"). 5 bestehende Testdateien bekommen `answer-key` als Durchreiche gemockt, weil ihre Testdaten `is_correct` schon enthalten. `npm run build` fehlerfrei.
+
+**Production Ready (nach Fixes):** YES. Voraussetzung: Die Sperr-Migration wird direkt nach dem Deploy angewendet und an der DB geprüft.
 
 ## Deployment
 _To be added by /deploy_

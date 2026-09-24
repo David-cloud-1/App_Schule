@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 
 const QUESTION_POOL_SIZE = 300
 const BLITZ_QUESTION_COUNT = 40
@@ -24,7 +25,7 @@ type RawQuestion = {
   question_text: string
   explanation: string | null
   difficulty: string
-  answer_options: { id: string; option_text: string; is_correct: boolean; display_order: number }[]
+  answer_options: { id: string; option_text: string; display_order: number }[]
 }
 
 export async function POST() {
@@ -53,7 +54,7 @@ export async function POST() {
   // architecture decision — no new question-fetching mechanism needed).
   const { data: rawQuestions, error: questionsError } = await supabase
     .from('questions')
-    .select('id, question_text, explanation, difficulty, answer_options ( id, option_text, is_correct, display_order )')
+    .select('id, question_text, explanation, difficulty, answer_options ( id, option_text, display_order )')
     .eq('is_active', true)
     .order('id')
     .limit(QUESTION_POOL_SIZE)
@@ -67,8 +68,13 @@ export async function POST() {
     return NextResponse.json({ error: 'Keine Fragen verfügbar' }, { status: 500 })
   }
 
-  const questions = shuffle(rawQuestions as RawQuestion[])
-    .slice(0, BLITZ_QUESTION_COUNT)
+  // Locked = part of a graded assessment being written right now (PROJ-21).
+  // The answer key is merged in server-side for just the picked questions.
+  const locked = await getLockedQuestionIds()
+  const picked = await attachAnswerKey(
+    shuffle((rawQuestions as RawQuestion[]).filter((q) => !locked.has(q.id))).slice(0, BLITZ_QUESTION_COUNT),
+  )
+  const questions = picked
     .map((q) => ({
       id: q.id,
       question_text: q.question_text,

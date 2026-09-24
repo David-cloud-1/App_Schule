@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin } from '../../_lib/auth'
+import { attachAnswerKey } from '@/lib/answer-key'
 
 const ExportQuerySchema = z.object({
   q: z.string().optional(),
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
     .from('questions')
     .select(
       `id, question_text, explanation, difficulty, class_level, is_active,
-       answer_options ( id, option_text, is_correct, display_order ),
+       answer_options ( id, option_text, display_order ),
        question_subjects ( subjects ( id, code, name ) ),
        topics ( id, name )`
     )
@@ -97,7 +98,9 @@ export async function GET(request: NextRequest) {
 
   const header = 'Fragetext,Fach,Schwierigkeit,Jahrgangsstufe,Thema,Antwort A,Antwort B,Antwort C,Antwort D,Antwort E,Richtige Antwort,Erklärung,Status'
 
-  const rows = (data ?? []).map((q) => {
+  // is_correct via the service client (PROJ-21 column lock-down).
+  const withKey = await attachAnswerKey(data ?? [])
+  const rows = withKey.map((q) => {
     const sorted = [...(q.answer_options ?? [])].sort(
       (a: { display_order: number }, b: { display_order: number }) => a.display_order - b.display_order
     )

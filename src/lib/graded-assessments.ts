@@ -170,6 +170,109 @@ export function buildParticipantRows(
   })
 }
 
+/** Redacted question as stored in an assessment session: no answer key, no explanation. */
+export type RedactedQuestion = {
+  id: string
+  question_text: string
+  type: string
+  difficulty: string
+  part: number
+  answer_options: { id: string; option_text: string; display_order: number }[]
+}
+
+export type GradedQuestion = RedactedQuestion & {
+  explanation: string | null
+  sample_answer: string | null
+  student_answer: string | null
+  is_correct: boolean
+  correct_option_id: string | undefined
+  answer_options: { id: string; option_text: string; display_order: number; is_correct: boolean }[]
+}
+
+type KeyEntry = { explanation: string | null; sampleAnswer: string | null; options: Map<string, boolean> }
+
+/**
+ * Grades an assessment session from its redacted snapshot, the submitted
+ * answers and the answer key fetched server-side at grading time. The key
+ * is never stored in the (student-readable) session row before release.
+ * Questions missing from the key were deleted after the snapshot — they
+ * drop out of the wertung for everyone alike, as the spec requires.
+ */
+export function gradeSnapshot(
+  snapshot: RedactedQuestion[],
+  answers: Record<string, string>,
+  key: Map<string, KeyEntry>,
+  scale: GradeBoundary[],
+): { part: { questions: GradedQuestion[]; score: number; passed: boolean }; scored: ReturnType<typeof scoreAssessmentQuestions> } {
+  const questions: GradedQuestion[] = []
+  for (const q of snapshot) {
+    const entry = key.get(q.id)
+    if (!entry) continue
+    const studentAnswer = answers[q.id] ?? null
+    const correctOptionId = [...entry.options.entries()].find(([, correct]) => correct)?.[0]
+    questions.push({
+      ...q,
+      explanation: entry.explanation,
+      sample_answer: entry.sampleAnswer,
+      student_answer: studentAnswer,
+      is_correct: q.type === 'multiple_choice' && studentAnswer != null && studentAnswer === correctOptionId,
+      correct_option_id: correctOptionId,
+      answer_options: q.answer_options.map((o) => ({ ...o, is_correct: entry.options.get(o.id) ?? false })),
+    })
+  }
+  const scored = scoreAssessmentQuestions(questions, scale)
+  return { part: { questions, score: scored.percent, passed: scored.percent >= 50 }, scored }
+}
+
+/**
+ * For the admin views: grades every submitted attempt live from its stored
+ * snapshot + submitted answers, so the Ausbilder sees scores before the
+ * release too. In-progress attempts are left untouched (no score yet).
+ */
+export function applyGrading(
+  rows: SessionRow[],
+  part: number,
+  key: Map<string, KeyEntry>,
+  scale: GradeBoundary[],
+): SessionRow[] {
+  const partKey = String(part)
+  return rows.map((row) => {
+    if (row.status === 'in_progress') return row
+    const results = row.results_json as unknown as {
+      parts?: Record<string, RedactedQuestion[] | { questions: RedactedQuestion[] }>
+      submitted_answers?: Record<string, string>
+    } | null
+    const stored = results?.parts?.[partKey]
+    // Released rows already hold graded questions in { questions }; unreleased ones the raw snapshot array.
+    const snapshot = Array.isArray(stored) ? stored : (stored?.questions ?? [])
+    const { part: graded } = gradeSnapshot(snapshot, results?.submitted_answers ?? {}, key, scale)
+    return { ...row, results_json: { ...(row.results_json ?? {}), parts: { [partKey]: { questions: graded.questions } } } }
+  })
+}
+
+/** Question ids referenced by any stored snapshot — to fetch the answer key in one query. */
+export function snapshotQuestionIds(rows: SessionRow[], part: number): string[] {
+  const partKey = String(part)
+  const ids = new Set<string>()
+  for (const row of rows) {
+    const stored = (row.results_json as unknown as { parts?: Record<string, RedactedQuestion[] | { questions: RedactedQuestion[] }> } | null)?.parts?.[partKey]
+    const list = Array.isArray(stored) ? stored : (stored?.questions ?? [])
+    for (const q of list) ids.add(q.id)
+  }
+  return [...ids]
+}
+
+/**
+ * CSV cell for the Excel-bound export. Neutralises spreadsheet formulas
+ * (CSV injection): a Klarname like =HYPERLINK(...) would otherwise run as a
+ * formula when the Ausbilder opens the file.
+ */
+export function csvEscape(value: string): string {
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
+  if (/[;"\n\r]/.test(safe)) return `"${safe.replace(/"/g, '""')}"`
+  return safe
+}
+
 /** Fisher-Yates — used to fix a per-participant question/option order at join time. */
 export function shuffle<T>(items: T[]): T[] {
   const arr = [...items]

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
+import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 
 const QuerySchema = z.object({
   subject:     z.string().optional(),
@@ -70,11 +71,18 @@ export async function GET(request: NextRequest) {
       difficulty,
       class_level,
       topic_id,
-      answer_options ( id, option_text, is_correct, display_order ),
+      answer_options ( id, option_text, display_order ),
       question_subjects ( subjects ( id, code ) )
     `)
     .eq('is_active', true)
     .order('created_at')
+
+  // Questions of a graded assessment that's currently being written are
+  // left out of practice, so their answers can't be looked up here (PROJ-21).
+  const locked = await getLockedQuestionIds()
+  if (locked.size > 0) {
+    query = query.not('id', 'in', `(${[...locked].join(',')})`)
+  }
 
   if (filteredIds) {
     query = query.in('id', filteredIds)
@@ -96,8 +104,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
   }
 
-  // Sort answer_options by display_order
-  const questions = (data ?? []).map((q) => ({
+  // Sort answer_options by display_order; the answer key comes server-side
+  // (students can no longer SELECT answer_options.is_correct directly).
+  const withKey = await attachAnswerKey(data ?? [])
+  const questions = withKey.map((q) => ({
     ...q,
     answer_options: [...(q.answer_options ?? [])].sort(
       (a, b) => a.display_order - b.display_order

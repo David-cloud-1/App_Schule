@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { buildParticipantRows, type SessionRow, type SnapshotQuestion } from '@/lib/graded-assessments'
+import {
+  applyGrading,
+  buildParticipantRows,
+  snapshotQuestionIds,
+  type GradeBoundary,
+  type SessionRow,
+  type SnapshotQuestion,
+} from '@/lib/graded-assessments'
+import { fetchAnswerKey } from '@/lib/answer-key'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -23,9 +31,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     .eq('assessment_id', id)
     .order('started_at', { ascending: true })
 
-  const rows = (sessions ?? []) as unknown as SessionRow[]
+  const rawRows = (sessions ?? []) as unknown as SessionRow[]
+  const key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
+  const rows = applyGrading(rawRows, assessment.part, key, assessment.grading_scale as GradeBoundary[])
   const partKey = String(assessment.part)
-  const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale)
+  const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale as GradeBoundary[])
 
   // Grade distribution + per-question aggregation, both excluding sessions
   // the admin has taken out of the wertung.

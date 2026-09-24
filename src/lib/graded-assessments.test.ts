@@ -10,6 +10,10 @@ import {
   generateAccessCode,
   shuffle,
   buildParticipantRows,
+  gradeSnapshot,
+  applyGrading,
+  snapshotQuestionIds,
+  csvEscape,
 } from './graded-assessments'
 
 describe('validateGradingScale', () => {
@@ -161,5 +165,87 @@ describe('buildParticipantRows', () => {
       },
     ], 1, scale)
     expect(rows[0]).toMatchObject({ points: 2, totalPoints: 2, percent: 100, grade: 1, durationMinutes: 30, status: 'completed' })
+  })
+})
+
+describe('gradeSnapshot', () => {
+  const snapshot = [
+    { id: 'q1', question_text: 'Q1', type: 'multiple_choice', difficulty: 'leicht', part: 1, answer_options: [
+      { id: 'a', option_text: 'A', display_order: 1 }, { id: 'b', option_text: 'B', display_order: 2 },
+    ] },
+    { id: 'q2', question_text: 'Q2', type: 'multiple_choice', difficulty: 'leicht', part: 1, answer_options: [
+      { id: 'c', option_text: 'C', display_order: 1 }, { id: 'd', option_text: 'D', display_order: 2 },
+    ] },
+  ]
+  const key = new Map([
+    ['q1', { explanation: 'weil A', sampleAnswer: null, options: new Map([['a', true], ['b', false]]) }],
+    ['q2', { explanation: 'weil D', sampleAnswer: null, options: new Map([['c', false], ['d', true]]) }],
+  ])
+
+  it('grades from the server-side key, not from anything stored in the snapshot', () => {
+    const { part, scored } = gradeSnapshot(snapshot, { q1: 'a', q2: 'c' }, key, IHK_DEFAULT_SCALE)
+    expect(scored).toMatchObject({ points: 1, totalPoints: 2, percent: 50, grade: 4 })
+    expect(part.questions[0]).toMatchObject({ is_correct: true, correct_option_id: 'a', student_answer: 'a', explanation: 'weil A' })
+    expect(part.questions[1]).toMatchObject({ is_correct: false, correct_option_id: 'd', student_answer: 'c' })
+    expect(part.questions[1].answer_options.find((o) => o.id === 'd')?.is_correct).toBe(true)
+  })
+
+  it('keeps the participant-specific order of the snapshot', () => {
+    const { part } = gradeSnapshot([snapshot[1], snapshot[0]], {}, key, IHK_DEFAULT_SCALE)
+    expect(part.questions.map((q) => q.id)).toEqual(['q2', 'q1'])
+  })
+
+  it('drops questions deleted after the snapshot for everyone alike', () => {
+    const onlyQ1 = new Map([...key].filter(([id]) => id === 'q1'))
+    const { scored } = gradeSnapshot(snapshot, { q1: 'a' }, onlyQ1, IHK_DEFAULT_SCALE)
+    expect(scored).toMatchObject({ points: 1, totalPoints: 1, percent: 100 })
+  })
+})
+
+describe('applyGrading', () => {
+  const key = new Map([
+    ['q1', { explanation: null, sampleAnswer: null, options: new Map([['a', true], ['b', false]]) }],
+  ])
+  const snapshot = [{ id: 'q1', question_text: 'Q1', type: 'multiple_choice', difficulty: 'leicht', part: 1, answer_options: [
+    { id: 'a', option_text: 'A', display_order: 1 }, { id: 'b', option_text: 'B', display_order: 2 },
+  ] }]
+  const base = { participant_name: 'X', started_at: '2026-01-01T08:00:00Z', ended_at: '2026-01-01T08:10:00Z', excluded_from_grading: false }
+
+  it('grades unreleased (raw snapshot array) and aborted attempts alike', () => {
+    const rows = applyGrading([
+      { ...base, id: 's1', status: 'completed', results_json: { parts: { '1': snapshot }, submitted_answers: { q1: 'a' } } as never },
+      { ...base, id: 's2', status: 'aborted', results_json: { parts: { '1': snapshot }, submitted_answers: { q1: 'b' } } as never },
+    ], 1, key, IHK_DEFAULT_SCALE)
+    const participants = buildParticipantRows(rows, 1, IHK_DEFAULT_SCALE)
+    expect(participants.map((p) => p.grade)).toEqual([1, 6])
+  })
+
+  it('leaves in-progress attempts ungraded', () => {
+    const rows = applyGrading([
+      { ...base, id: 's1', ended_at: null, status: 'in_progress', results_json: { parts: { '1': snapshot } } as never },
+    ], 1, key, IHK_DEFAULT_SCALE)
+    expect(buildParticipantRows(rows, 1, IHK_DEFAULT_SCALE)[0].grade).toBeNull()
+  })
+
+  it('collects snapshot question ids from both stored shapes', () => {
+    expect(snapshotQuestionIds([
+      { ...base, id: 's1', status: 'completed', results_json: { parts: { '1': snapshot } } as never },
+      { ...base, id: 's2', status: 'completed', results_json: { parts: { '1': { questions: snapshot } } } as never },
+    ], 1)).toEqual(['q1'])
+  })
+})
+
+describe('csvEscape', () => {
+  it.each(['=HYPERLINK("http://x";"klick")', '+49 123', '-5', '@SUM(A1)'])('neutralises formula-like value %s', (value) => {
+    expect(csvEscape(value).replace(/^"/, '').startsWith("'")).toBe(true)
+  })
+
+  it('quotes values containing the separator or quotes', () => {
+    expect(csvEscape('Müller; Anna')).toBe('"Müller; Anna"')
+    expect(csvEscape('Anna "Nana" M.')).toBe('"Anna ""Nana"" M."')
+  })
+
+  it('leaves ordinary names untouched', () => {
+    expect(csvEscape('Anna Müller')).toBe('Anna Müller')
   })
 })

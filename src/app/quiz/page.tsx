@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
+import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
 
@@ -28,7 +29,7 @@ type RawQuestion = {
   question_text: string
   explanation: string | null
   difficulty: string
-  answer_options: { id: string; option_text: string; is_correct: boolean; display_order: number }[]
+  answer_options: { id: string; option_text: string; display_order: number }[]
 }
 
 export default async function QuizPage({
@@ -66,8 +67,8 @@ export default async function QuizPage({
 
   // ── Build question pool ───────────────────────────────────────────────────
   const selectCols = subjectId
-    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order), question_subjects!inner(subject_id)'
-    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, is_correct, display_order)'
+    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order), question_subjects!inner(subject_id)'
+    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order)'
 
   let rawQuestions: RawQuestion[] | null = null
   let fetchError: unknown = null
@@ -198,6 +199,13 @@ export default async function QuizPage({
     redirect('/subjects')
   }
 
+  // Questions of a graded assessment that's currently being written stay
+  // out of practice (PROJ-21), so their answers can't be looked up here.
+  if (rawQuestions && rawQuestions.length > 0) {
+    const locked = await getLockedQuestionIds()
+    if (locked.size > 0) rawQuestions = rawQuestions.filter((q) => !locked.has(q.id))
+  }
+
   // ── Empty state ───────────────────────────────────────────────────────────
   if (!rawQuestions || rawQuestions.length === 0) {
     return (
@@ -247,8 +255,10 @@ export default async function QuizPage({
   const totalAvailable = rawQuestions.length
 
   // ── Shuffle + limit ───────────────────────────────────────────────────────
-  const questions: QuizQuestion[] = shuffle(rawQuestions)
-    .slice(0, QUIZ_SIZE)
+  // The answer key is merged in server-side for just the picked questions —
+  // students can't SELECT answer_options.is_correct directly any more.
+  const picked = await attachAnswerKey(shuffle(rawQuestions).slice(0, QUIZ_SIZE))
+  const questions: QuizQuestion[] = picked
     .map((q) => ({
       id: q.id,
       question_text: q.question_text,

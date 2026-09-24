@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
+import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
+
+// No is_correct: students can't SELECT it directly any more (PROJ-21). A
+// practice exam still needs it in the stored session for grading, so it's
+// merged in server-side by withAnswerKey() below.
+const QUESTION_COLS = 'id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, display_order)'
+
+/**
+ * Drops questions of a graded assessment that's being written right now
+ * (the practice exam shows full solutions right after submit) and merges
+ * the answer key into the rest. Mutates the per-part map in place.
+ */
+async function withAnswerKey(allQuestions: Record<number, unknown[]>) {
+  const locked = await getLockedQuestionIds()
+  for (const [part, list] of Object.entries(allQuestions)) {
+    const filtered = (list as { id: string; answer_options?: { id: string }[] }[]).filter((q) => !locked.has(q.id))
+    allQuestions[Number(part)] = await attachAnswerKey(filtered)
+  }
+}
 
 const PART_CONFIG = {
   1: { subjects: ['STG', 'LOP'], questionCount: 20, durationMinutes: 90 },
@@ -59,12 +78,13 @@ export async function POST(request: NextRequest) {
 
       const { data } = await supabase
         .from('questions')
-        .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+        .select(QUESTION_COLS)
         .in('id', set.question_ids ?? [])
         .eq('is_active', true)
       allQuestions[set.part] = (data ?? []).map((q) => ({ ...(q as object), part: set.part }))
     }
 
+    await withAnswerKey(allQuestions)
     const selectedParts = Array.from(seenParts).sort()
     const totalDurationMinutes = selectedParts.reduce((sum, p) => sum + (partDurations[p] ?? 0), 0)
 
@@ -109,7 +129,7 @@ export async function POST(request: NextRequest) {
     if (activeSet?.question_ids?.length) {
       const { data } = await supabase
         .from('questions')
-        .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+        .select(QUESTION_COLS)
         .in('id', activeSet.question_ids)
         .eq('is_active', true)
       questions = data ?? []
@@ -147,14 +167,14 @@ export async function POST(request: NextRequest) {
         const [openResult, mcResult] = await Promise.all([
           supabase
             .from('questions')
-            .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+            .select(QUESTION_COLS)
             .in('id', questionIds)
             .eq('is_active', true)
             .eq('type', 'open')
             .limit(openCount),
           supabase
             .from('questions')
-            .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+            .select(QUESTION_COLS)
             .in('id', questionIds)
             .eq('is_active', true)
             .eq('type', 'multiple_choice')
@@ -166,7 +186,7 @@ export async function POST(request: NextRequest) {
       } else {
         const { data } = await supabase
           .from('questions')
-          .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+          .select(QUESTION_COLS)
           .in('id', questionIds)
           .eq('is_active', true)
           .limit(config.questionCount)
@@ -178,6 +198,7 @@ export async function POST(request: NextRequest) {
     allQuestions[part] = questions.map((q) => ({ ...(q as object), part }))
   }
 
+  await withAnswerKey(allQuestions)
   const totalDurationMinutes = parts.reduce((sum, p) => sum + (partDurations[p] ?? PART_CONFIG[p].durationMinutes), 0)
 
   const { data: session, error } = await supabase

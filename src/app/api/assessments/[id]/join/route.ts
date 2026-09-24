@@ -60,12 +60,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Bitte Vor- und Nachnamen eingeben.' }, { status: 400 })
   }
 
+  // Service client, no is_active filter: the snapshot frozen at "open" is
+  // the same for every participant, even if a question gets deactivated
+  // while the assessment runs (students can't read inactive questions via
+  // RLS, which would otherwise hand later joiners a shorter exam).
+  // Deliberately no is_correct / explanation / sample_answer: the session
+  // row is readable by its owner, so it must not carry the answer key.
   const questionIds: string[] = assessment.question_ids_snapshot ?? []
-  const { data: questionRows } = await supabase
+  const { data: questionRows } = await service
     .from('questions')
-    .select('id, question_text, type, difficulty, explanation, sample_answer, answer_options(id, option_text, is_correct, display_order)')
+    .select('id, question_text, type, difficulty, answer_options(id, option_text, display_order)')
     .in('id', questionIds)
-    .eq('is_active', true)
 
   if (!questionRows || questionRows.length < 5) {
     return NextResponse.json({ error: 'Die Fragen dieses Nachweises sind nicht mehr verfügbar.' }, { status: 400 })
@@ -77,6 +82,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const shuffledQuestions = shuffle(questionRows).map((q) => ({
     ...q,
     part: assessment.part,
+    explanation: null,
+    sample_answer: null,
     answer_options: shuffle(q.answer_options ?? []).map((opt, idx) => ({ ...opt, display_order: idx + 1 })),
   }))
 

@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { formatAccessCode, scoreAssessmentQuestions, validateGradingScale } from '@/lib/graded-assessments'
+import {
+  formatAccessCode,
+  gradeSnapshot,
+  validateGradingScale,
+  type GradeBoundary,
+  type RedactedQuestion,
+} from '@/lib/graded-assessments'
+import { fetchAnswerKey } from '@/lib/answer-key'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
@@ -56,7 +63,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     examSetName: set?.name ?? '—',
     part: assessment.part,
     status: assessment.status,
-    accessCode: assessment.access_code,
+    accessCode: formatAccessCode(assessment.access_code),
     joinUrl: `${request.nextUrl.origin}/pruefung/${assessment.access_code}`,
     opensAt: assessment.opens_at,
     closesAt: assessment.closes_at,
@@ -95,12 +102,29 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       const set = assessment.exam_question_sets as unknown as { question_ids: string[] } | null
       const snapshot = set?.question_ids ?? []
-      if (snapshot.length < 5) {
-        return NextResponse.json({ error: 'Das zugrunde liegende Set hat zu wenige Fragen.' }, { status: 400 })
+
+      // Re-check the set at open time: it may have been edited since the
+      // draft was created (e.g. an open question added, or questions
+      // deactivated) and the snapshot frozen now is what everyone writes.
+      const { data: snapshotQuestions } = await supabase
+        .from('questions')
+        .select('id, type, is_active')
+        .in('id', snapshot)
+      const activeMc = (snapshotQuestions ?? []).filter((q) => q.is_active && q.type === 'multiple_choice')
+      const openCount = (snapshotQuestions ?? []).filter((q) => q.type === 'open').length
+      if (openCount > 0) {
+        return NextResponse.json({
+          error: `Das Set enthält inzwischen ${openCount} offene Fragen. Benotete Leistungsnachweise unterstützen nur Multiple-Choice-Fragen.`,
+        }, { status: 400 })
       }
+      if (activeMc.length < 5) {
+        return NextResponse.json({ error: 'Das zugrunde liegende Set hat weniger als 5 aktive Fragen.' }, { status: 400 })
+      }
+      const activeIds = new Set(activeMc.map((q) => q.id))
+      const frozenSnapshot = snapshot.filter((qid) => activeIds.has(qid))
       const { error } = await supabase
         .from('graded_assessments')
-        .update({ status: 'open', question_ids_snapshot: snapshot })
+        .update({ status: 'open', question_ids_snapshot: frozenSnapshot })
         .eq('id', id)
       if (error) return NextResponse.json({ error: 'Öffnen fehlgeschlagen.' }, { status: 500 })
       await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.open', object_type: 'graded_assessment', object_id: id, object_label: assessment.title })
@@ -125,32 +149,40 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'Ergebnisse sind bereits freigegeben.' }, { status: 400 })
     }
 
+    // Both "completed" (timer / Abgeben) and "aborted" (Beenden) count as a
+    // submitted attempt — both must be released.
     const service = createServiceClient()
     const { data: sessions } = await service
       .from('exam_sessions')
       .select('id, results_json, status')
       .eq('assessment_id', id)
-      .eq('status', 'completed')
+      .in('status', ['completed', 'aborted'])
 
     const releasedAt = new Date().toISOString()
+    const partKey = String(assessment.part)
+    const snapshotIds = (sessions ?? []).flatMap((s) =>
+      ((s.results_json as { parts?: Record<string, RedactedQuestion[]> }).parts?.[partKey] ?? []).map((q) => q.id),
+    )
+    const key = await fetchAnswerKey([...new Set(snapshotIds)])
 
     for (const session of sessions ?? []) {
       const resultsJson = session.results_json as {
-        parts?: Record<string, { questions: { type: string; is_correct?: boolean }[] }>
-        assessment?: { title: string; accessCode: string }
+        parts?: Record<string, RedactedQuestion[]>
+        submitted_answers?: Record<string, string>
       }
-      const partData = resultsJson.parts?.[String(assessment.part)]
-      const scored = scoreAssessmentQuestions(partData?.questions ?? [], assessment.grading_scale)
+      const { part, scored } = gradeSnapshot(
+        resultsJson.parts?.[partKey] ?? [],
+        resultsJson.submitted_answers ?? {},
+        key,
+        assessment.grading_scale as GradeBoundary[],
+      )
       await service
         .from('exam_sessions')
         .update({
           results_json: {
             ...resultsJson,
-            assessment: {
-              ...(resultsJson.assessment ?? { title: assessment.title, accessCode: assessment.access_code }),
-              released: true,
-              ...scored,
-            },
+            parts: { [partKey]: part },
+            assessment: { title: assessment.title, accessCode: assessment.access_code, released: true, ...scored },
           },
         })
         .eq('id', session.id)
