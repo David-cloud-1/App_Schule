@@ -1,42 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** Minimum number of attempts before a question is considered "weak". */
-const MIN_ATTEMPTS = 1
-
-/** Error rate above which a question is considered weak (exclusive). */
-const ERROR_THRESHOLD = 0.5
-
-/**
- * Aggregates quiz_answers for the given user and returns weak question IDs,
- * sorted by error rate descending.
- */
-function computeWeakIds(
-  answers: { question_id: string; is_correct: boolean }[],
-): string[] {
-  const stats = new Map<string, { total: number; wrong: number }>()
-  for (const { question_id, is_correct } of answers) {
-    const s = stats.get(question_id) ?? { total: 0, wrong: 0 }
-    s.total++
-    if (!is_correct) s.wrong++
-    stats.set(question_id, s)
-  }
-
-  return [...stats.entries()]
-    .filter(([, { total, wrong }]) => total >= MIN_ATTEMPTS && wrong / total > ERROR_THRESHOLD)
-    .sort(([, a], [, b]) => b.wrong / b.total - a.wrong / a.total)
-    .map(([id]) => id)
-}
-
 /**
  * GET /api/quiz/weak
  *
- * Returns questions where the authenticated user has a >50% error rate
- * and at least MIN_ATTEMPTS attempt(s). Used by client components to show weak
+ * Returns the authenticated user's open gaps — questions answered wrong that
+ * haven't been answered correctly twice in a row since. Used by client components to show weak
  * question counts and, if needed, the full question list.
  *
  * Query params:
@@ -68,7 +42,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch answers' }, { status: 500 })
   }
 
-  const allWeakIds = computeWeakIds(answers)
+  const allWeakIds = computeWeakQuestionIds(answers)
 
   if (allWeakIds.length === 0) {
     return NextResponse.json({ questions: [], count: 0 })

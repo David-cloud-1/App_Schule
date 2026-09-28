@@ -4,14 +4,13 @@ import { ArrowLeft, CheckCircle2, Truck, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
 
 const QUIZ_SIZE = 10
-const WEAK_MIN_ATTEMPTS = 1
-const WEAK_ERROR_THRESHOLD = 0.5
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -77,19 +76,7 @@ export default async function QuizPage({
     // ── Weak mode: aggregate personal error rates ─────────────────────────
     const { rows: answers } = await fetchAllUserAnswers(supabase, user.id)
 
-    const stats = new Map<string, { total: number; wrong: number }>()
-    for (const { question_id, is_correct } of answers) {
-      const s = stats.get(question_id) ?? { total: 0, wrong: 0 }
-      s.total++
-      if (!is_correct) s.wrong++
-      stats.set(question_id, s)
-    }
-
-    const weakIds = [...stats.entries()]
-      .filter(([, { total, wrong }]) => total >= WEAK_MIN_ATTEMPTS && wrong / total > WEAK_ERROR_THRESHOLD)
-      .sort(([, a], [, b]) => b.wrong / b.total - a.wrong / a.total)
-      .map(([id]) => id)
-      .slice(0, 50)
+    const weakIds = computeWeakQuestionIds(answers).slice(0, 50)
 
     if (weakIds.length === 0) {
       return (
@@ -110,9 +97,9 @@ export default async function QuizPage({
             </h1>
             <p className="text-[#9CA3AF] mb-8 leading-relaxed">
               {subject
-                ? `Im Fach „${subject.code}" hast du noch keine Fragen oft genug falsch beantwortet.`
-                : 'Du hast noch keine Fragen oft genug falsch beantwortet.'}{' '}
-              Mach weiter so — Lücken entstehen nach mindestens 3 Versuchen mit über 50% Fehlerquote.
+                ? `Im Fach „${subject.code}" hast du gerade keine offenen Lücken.`
+                : 'Du hast gerade keine offenen Lücken.'}{' '}
+              Mach weiter so — eine falsch beantwortete Frage wird zur Lücke und ist nach 2× richtig in Folge wieder geschlossen.
             </p>
             <div className="flex flex-col gap-3 w-full max-w-xs">
               <Link href="/subjects">

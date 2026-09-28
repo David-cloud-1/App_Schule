@@ -30,18 +30,18 @@ function makeRequest(params: Record<string, string> = {}): NextRequest {
 
 /** Answers that make Q1 weak: 3 wrong out of 4 = 75% error rate. */
 const WEAK_ANSWERS_Q1 = [
-  { question_id: Q1, is_correct: false },
-  { question_id: Q1, is_correct: false },
-  { question_id: Q1, is_correct: false },
-  { question_id: Q1, is_correct: true },
+  { question_id: Q1, is_correct: false, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q1, is_correct: false, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q1, is_correct: false, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q1, is_correct: true, answered_at: '2026-09-28T10:00:00Z' },
 ]
 
-/** Answers that make Q2 strong: 3 correct out of 4 = 25% error rate. */
+/** Answers that make Q2 strong: the early mistake was followed by 3 correct in a row. */
 const STRONG_ANSWERS_Q2 = [
-  { question_id: Q2, is_correct: true },
-  { question_id: Q2, is_correct: true },
-  { question_id: Q2, is_correct: true },
-  { question_id: Q2, is_correct: false },
+  { question_id: Q2, is_correct: false, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q2, is_correct: true, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q2, is_correct: true, answered_at: '2026-09-28T10:00:00Z' },
+  { question_id: Q2, is_correct: true, answered_at: '2026-09-28T10:00:00Z' },
 ]
 
 const SAMPLE_QUESTIONS = [

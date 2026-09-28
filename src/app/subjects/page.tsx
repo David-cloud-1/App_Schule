@@ -7,10 +7,8 @@ import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/su
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
 import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
+import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
-
-const WEAK_MIN_ATTEMPTS = 1
-const WEAK_ERROR_THRESHOLD = 0.5
 
 export default async function SubjectsPage() {
   const supabase = await createClient()
@@ -34,16 +32,7 @@ export default async function SubjectsPage() {
   const totalXp = profileResult.data?.total_xp ?? 0
 
   // ── Compute weak question count ─────────────────────────────────────────
-  const answerStats = new Map<string, { total: number; wrong: number }>()
-  for (const { question_id, is_correct } of answers) {
-    const s = answerStats.get(question_id) ?? { total: 0, wrong: 0 }
-    s.total++
-    if (!is_correct) s.wrong++
-    answerStats.set(question_id, s)
-  }
-  const weakCount = [...answerStats.values()].filter(
-    ({ total, wrong }) => total >= WEAK_MIN_ATTEMPTS && wrong / total > WEAK_ERROR_THRESHOLD,
-  ).length
+  const weakCount = computeWeakQuestionIds(answers).length
 
   const activeIdsBySubject = groupQuestionIdsBySubject(questionSubjects)
 
@@ -95,7 +84,7 @@ export default async function SubjectsPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-[#F9FAFB]">Lücken schließen</p>
                 <p className="text-xs text-[#9CA3AF] mt-0.5">
-                  {weakCount} {weakCount === 1 ? 'Frage' : 'Fragen'} mit hoher Fehlerquote
+                  {weakCount} {weakCount === 1 ? 'offene Lücke' : 'offene Lücken'} — 2× richtig in Folge schließt sie
                 </p>
               </div>
               <ChevronRight size={18} className="text-[#FF9600] shrink-0" />

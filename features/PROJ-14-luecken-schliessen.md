@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-06-18
-**Last Updated:** 2026-06-18 (Frontend + Backend implementiert)
+**Last Updated:** 2026-09-28 (Lücken-Regel: 2× richtig in Folge schließt eine Lücke)
 
 ## Dependencies
 - PROJ-3 (Daily Learning Session / Quiz) — wiederverwendet den bestehenden Quiz-Flow
@@ -143,3 +143,23 @@ Schwellenwerte: Fehlerquote > 50% UND ≥ 3 Versuche.
 - **Commit:** cd8bbbb
 - **Build:** ✅ READY (50s, Washington D.C. – iad1)
 - **Post-Deploy Errors:** Keine
+
+## Änderung 2026-09-28: Lücken schließen sich wirklich
+
+**Anlass:** Eine Schülerin meldete, dass sich die Fehlerquote nicht verbessert, wenn eine Frage beim zweiten Mal oder im gezielten Üben richtig beantwortet wird.
+
+**Ursache:** Eine Lücke wurde über die Fehlerquote *aller* Versuche seit Beginn bestimmt (> 50 % falsch). Nach 2× falsch und 1× richtig lag die Quote bei 67 %, die Frage blieb also Lücke. Alte Fehler zählten genauso wie die neue richtige Antwort. In den Live-Daten standen 97 Lücken, die zuletzt richtig beantwortet worden waren, noch auf der Liste (5 Azubis betroffen).
+
+**Neue Regel (ersetzt die Schwellenwerte oben):**
+- Eine Frage wird zur Lücke, sobald sie falsch beantwortet wird.
+- Sie ist geschlossen, wenn sie danach **2× in Folge richtig** beantwortet wurde.
+- Eine neue falsche Antwort öffnet sie wieder.
+- **Stichtag 28.09.2026, 00:00 Uhr (Europe/Berlin), `GAP_RULE_SINCE`:** Nur Fehler ab diesem Zeitpunkt öffnen neue Lücken. Aus der Zeit davor bleiben nur die Lücken offen, die die alte Regel (> 50 % falsch) zum Stichtag offen hatte. Auch sie schließen sich durch 2× richtig in Folge, wobei richtige Antworten von vor dem Stichtag mitzählen. So stieg die Zahl der Lücken durch die Umstellung nicht plötzlich an.
+- Sortierung: Zuerst Lücken ohne richtige Antwort seit dem letzten Fehler, danach nach Fehlerquote insgesamt.
+
+**Umsetzung:**
+- `src/lib/weak-questions.ts` (`computeWeakQuestionIds`, `GAP_RULE_SINCE`): eine gemeinsame Regel statt drei Kopien in `quiz/page.tsx`, `subjects/page.tsx` und `api/quiz/weak/route.ts`.
+- `fetchAllUserAnswers` liefert jetzt `answered_at` mit und sortiert danach. Vorher wurde nach der UUID `id` sortiert, die nicht chronologisch ist.
+- Texte angepasst: Die Karte heißt jetzt „X offene Lücken — 2× richtig in Folge schließt sie“. Der Leer-Zustand erklärt die neue Regel; der alte Text („mindestens 3 Versuche“) stimmte ohnehin nicht mit dem Code überein.
+
+**Auswirkung auf den Bestand (Nachrechnung auf Live-Daten, 2026-09-28):** 1098 Lücken nach alter Regel, 1090 nach neuer. 13 schließen sich sofort (zuletzt 2× richtig), 5 kommen durch heutige Fehler hinzu. Ohne Stichtag wären es 1465 gewesen.
