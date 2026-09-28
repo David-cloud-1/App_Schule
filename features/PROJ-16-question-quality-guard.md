@@ -99,3 +99,38 @@ Offen: 22 Fragen mit ≠ 5 Optionen, 2 Füller-Optionen, 31 Satzanfang-Tells, 5 
 Verifiziert nach dem Deploy: Startseite leitet korrekt auf /login (HTTP 307), Login-Seite lädt (HTTP 200), `POST /api/admin/questions/bulk-import` antwortet ohne Anmeldung mit 401 — der Endpunkt ist erreichbar und geschützt.
 
 Noch vom Nutzer im angemeldeten Admin-Panel zu prüfen: Einfügen eines JSON mit absichtlich fehlerhaften Fragen zeigt die Beanstandungen an, der Korrekturauftrag landet in der Zwischenablage, und der Import überspringt die beanstandeten Zeilen.
+
+## Erweiterung: Fehlender Kontext (2026-09-28)
+
+**Anlass:** Schüler meldeten Fragen, die sich auf Angaben beziehen, die in der App nicht zu sehen sind („Was ist laut Text das oberste Ziel der EZB?“, „Wie hoch lag das BIP laut Grafik 2019?“, „Auftrag 3 (Dingolfing – Bozen) …“). Die Fragen stammen aus Skripten, Übungsaufgaben und Lernsituationen, deren Text oder Daten auf einer anderen Seite stehen.
+
+**Torwächter:** Neue Prüfung in `src/lib/question-quality.ts`, greift automatisch im Bulk-Import, im Draft-Flow und im Audit:
+- `missing_context` (Blocker): „laut/im/in der“ + Text, Skript, Grafik, Tabelle, Dokument, Statistik, Schaubild, Übungsaufgabe, Heft, Fußnote u. a.; „im Beispiel“ / „…-Beispiel“; „siehe“, „obige“, „oben genannt“, „vorherige Aufgabe“; „genannte Statistik/Tabelle/Werte“. „Artikel“ bewusst nicht, wegen „Lagerartikel“ und „Artikel 3 GG“.
+- `case_reference` (Warnung): nummerierte Fälle wie „Auftrag 3“ oder „Frachtbrief B-2“. Das ist nur eine Warnung, weil solche Fragen lösbar sind, wenn alle Zahlen in der Frage stehen. Mengenangaben („Auftrag 345 km“) schlagen nicht an.
+- Neue Audit-Kennzahl „Fehlender Kontext“, Ziel 0.
+
+**Generator-Prompt:** `src/lib/question-rules.ts` enthält jetzt die Regel „Jede Frage muss für sich allein lösbar sein“, mit Beispielen: kein „laut Text“, keine Details, die nur in der Vorlage stehen, alle Falldaten in die Frage.
+
+**`scripts/quality/apply.ts`:** Unterstützt jetzt `"deactivate": true` (setzt `is_active = false`, wird nicht gelöscht). Außerdem behoben: Der Rollback stellt jetzt auch geänderte Fragetexte und Erklärungen wieder her und reaktiviert deaktivierte Fragen. Vorher setzte er nur Optionen zurück.
+
+**Bestandsbereinigung (Durchlauf `kontext-1`, 216 Fragen):**
+
+| Maßnahme | Anzahl |
+|----------|--------|
+| Verweis gestrichen und neutral umformuliert (Fachwissen reicht) | ~135 |
+| Fehlende Angaben in die Frage geschrieben (Kalkulationsdaten, Sendungsdaten, Falldaten) | ~15 |
+| Deaktiviert (nur mit Vorlage lösbar: Zahlen aus Grafiken und Texten, Atlantis-Geschichte, Beispiel-Tarifvertrag, Stichtags-Zinssätze, Organigramm) | 29 |
+| Nur die Erklärung bereinigt („Laut Skript …“, „In der Übungsaufgabe ist c) richtig“) | ~20 |
+| Präfix „Übungsaufgabe:“ entfernt | 13 |
+
+Fehlender Kontext: 150 → 0 Fragen. Alle übrigen Kennzahlen blieben stabil, jeder Batch wurde über `apply.ts` verifiziert. Aktive Fragen: 3841 → 3812.
+
+**Sachfehler, die nebenbei gefunden und korrigiert wurden:**
+- Lkw-Maut: Zwei Fragen verlangten noch „ab 7,5 t“, seit 1. 7. 2024 gilt aber „mehr als 3,5 t“ (eine dritte Frage hatte das schon richtig, der Bestand widersprach sich).
+- Steuerklassenwechsel: Zwei Fragen verlangten „einmal im Jahr“, seit 2020 ist ein Wechsel mehrmals jährlich möglich.
+- Inflation: „Der Nominalwert des Geldes sinkt“ war als richtig markiert. Gemeint ist der Realwert (die Kaufkraft), die Frage wurde neu gefasst.
+- „Wodurch kann eine Inflation entstehen?“: Keine der fünf Optionen war inflationär. Die Frage wurde deaktiviert.
+- Geldpolitik: Der Distraktor „unverzinsliche Mindestreserven“ ist seit 2023 zutreffend und wurde ersetzt. Der Distraktor „Senkung der Kreditzinsen“ war ebenfalls inflationär und wurde ersetzt.
+- EZB-Inflationsziel: Die Erklärung „nahe, aber unter 2 %“ wurde auf das symmetrische 2-%-Ziel (seit 2021) aktualisiert.
+
+**Offen (nicht Teil dieses Durchlaufs):** „Gruber liefert verspätet; Lieferfristschaden 500 € (Fracht 450 €)“ markiert „Gruber trägt 450 €, PIL 50 €“ als richtig. Nach HGB (§ 431 Abs. 3) haftet der Frachtführer bei Lieferfristüberschreitung bis zur dreifachen Fracht, also voll. Das sollte fachlich geprüft werden.

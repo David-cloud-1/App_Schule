@@ -82,6 +82,32 @@ const FRAGMENT_STARTERS = [
   'wegen',
 ]
 
+/**
+ * Quellen, auf die sich aus Skripten übernommene Fragen beziehen — in der App
+ * gibt es weder den Text noch die Grafik, die Frage ist dann unlösbar
+ * ("Was ist laut Text das oberste Ziel der EZB?", "… laut Grafik 2019?").
+ */
+const CONTEXT_SOURCES =
+  '(Text|Textauszug|Beispieltext|Skript|Lehrfilm|Video|Grafik|Tabelle|Dokument|Statistik|Schaubild|Abbildung|Übungsaufgabe|Umfrage|Heft|Material|Fallbeispiel|Fußnote)'
+
+const MISSING_CONTEXT_RES: RegExp[] = [
+  new RegExp(
+    `(^|[^a-zäöüß])(laut|gemäß|im|in der|in dem|aus dem|aus der)\\s+(dem\\s+|der\\s+)?(genannten\\s+|obigen\\s+|vorliegenden\\s+)?${CONTEXT_SOURCES}([^a-zäöüß-]|$)`,
+    'i'
+  ),
+  /(^|[^a-zäöüß])(im|laut) ([a-zäöüß]+-)?beispiel([^a-zäöüß]|$)|[a-zäöüß]-beispiel([^a-zäöüß]|$)/i,
+  /(^|[^a-zäöüß])(siehe|vgl\.|obige[nmrs]?)\s|(oben|unten) (genannt|stehend|aufgeführt|beschrieben|abgebildet)|vorherige[nmrs]? (aufgabe|seite|frage)/i,
+  /(^|[^a-zäöüß])genannten (statistik|tabelle|grafik|daten|werte|angaben)/i,
+]
+
+/** Nummerierte Fälle aus Lernsituationen — lösbar nur, wenn die Daten in der Frage stehen. */
+const CASE_REFERENCE_RE =
+  /(^|[^a-zäöüß])(auftrag|aufgabe|anlage|material) \d+(?![\d.,]*\s*(km|kg|t|€|%|tage?|stück)([^a-zäöüß]|$))|frachtbrief [a-z]-\d/i
+
+export function hasMissingContext(questionText: string): boolean {
+  return MISSING_CONTEXT_RES.some((re) => re.test(questionText))
+}
+
 export function normalizeOption(text: string): string {
   return text.trim().replace(/\s+/g, ' ')
 }
@@ -144,6 +170,21 @@ export function analyzeQuestion(q: QuestionInput): QualityReport {
     add('correct_index', 'blocker', 'correct_index zeigt auf keine gültige Option.')
     return finish(findings)
   }
+  // ── Kontext: die Frage muss ohne Skript, Text oder Grafik lösbar sein ──────
+  if (hasMissingContext(q.question_text)) {
+    add(
+      'missing_context',
+      'blocker',
+      'Die Frage bezieht sich auf einen Text, eine Grafik oder ein Beispiel, das in der App nicht zu sehen ist („laut Text", „im Beispiel"). Die nötigen Angaben in die Frage schreiben oder den Verweis streichen.'
+    )
+  } else if (CASE_REFERENCE_RE.test(q.question_text)) {
+    add(
+      'case_reference',
+      'warning',
+      'Die Frage nennt einen nummerierten Fall („Auftrag 3"). Prüfen, ob alle nötigen Zahlen in der Frage selbst stehen.'
+    )
+  }
+
   if (!q.explanation || q.explanation.trim().length < 10) {
     add('missing_explanation', 'warning', 'Erklärung fehlt oder ist zu kurz (< 10 Zeichen).')
   }
@@ -291,6 +332,7 @@ export function analyzeBatch(questions: QuestionInput[]): BatchReport {
   let firstWordTell = 0
   let telegram = 0
   let structural = 0
+  let missingContext = 0
   let blocked = 0
   let optionsTotal = 0
   let optionsAbsolute = 0
@@ -311,6 +353,7 @@ export function analyzeBatch(questions: QuestionInput[]): BatchReport {
     ) {
       structural++
     }
+    if (found.has('missing_context')) missingContext++
 
     const options = (q.options ?? []).map(normalizeOption)
     optionsTotal += options.length
@@ -337,6 +380,7 @@ export function analyzeBatch(questions: QuestionInput[]): BatchReport {
       metric('first_word_tell', 'Satzanfang-Tell', firstWordTell, n, { max: 0.03 }, '≤ 3 %'),
       metric('telegram_style', 'Telegrammstil', telegram, n, { max: 0.05 }, '≤ 5 %'),
       metric('structural', 'Strukturfehler', structural, n, { max: 0 }, '0'),
+      metric('missing_context', 'Fehlender Kontext', missingContext, n, { max: 0 }, '0'),
       metric(
         'absolute_options',
         'Optionen mit Signalwort',

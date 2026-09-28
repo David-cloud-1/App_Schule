@@ -32,6 +32,10 @@ WEITERE REGELN:
 - Jede Option muss die gestellte Frage grammatisch beantworten. Bei "Welche Aussage zu X ist richtig?" müssen alle Optionen Aussagen über X sein ("Sie dienen einer verursachungsgerechten Kostenrechnung"), nicht Satzfragmente wie "Für eine verursachungsgerechte Kostenrechnung".
 - Vermeide "Alle Antworten sind richtig" / "Keine der genannten" als Lückenfüller.
 - Erfinde keine Fragen zu Grundlagenbegriffen, die in anderen Dokumenten schon abgefragt sein könnten (Wirtschaftlichkeit, Einzelkosten, Break-even, Aktiv-/Passivseite, Inventur). Halte dich an die Inhalte, die dieses Dokument tatsächlich hergibt.
+- JEDE FRAGE MUSS FÜR SICH ALLEIN LÖSBAR SEIN. Die Schüler sehen in der App nur die Frage und die fünf Optionen — nicht das Dokument, keinen Text, keine Grafik, keine Tabelle, keine vorherige Aufgabe. Deshalb:
+   - Nie "laut Text", "im Text genannt", "laut Grafik", "laut Tabelle", "im Beispiel", "im Heft", "siehe oben" o. Ä. schreiben. Frage stattdessen das Fachwissen selbst ab ("Was ist das vorrangige Ziel der EZB?" statt "Was ist laut Text das oberste Ziel der EZB?").
+   - Keine Fragen zu Details, die nur in der Vorlage stehen und kein prüfungsrelevantes Fachwissen sind (Zahlen aus einer Grafik, Namen und Ereignisse aus einer Beispielgeschichte, Stand eines Zinssatzes an einem bestimmten Datum).
+   - Bezieht sich eine Rechen- oder Fallaufgabe auf eine Situation (Firma, Auftrag, Kalkulationsdaten), müssen ALLE nötigen Angaben in der Frage selbst stehen. Nicht "Wie hoch sind die fixen Kosten von Auftrag 3?", sondern "Ein Lkw hat Fixkosten von 224 € je Tag. Ein Auftrag dauert 1,5 Tage. Wie hoch sind die fixen Kosten des Auftrags?"
 
 TON & SPRACHNIVEAU (WICHTIG):
 - Zielgruppe sind Berufsschüler (angehende Speditionskaufleute) in einer spielerischen Lern-App. Formuliere fachlich korrekt, aber verständlich und geerdet — NICHT übertrieben hochgestochen oder juristisch verschachtelt (z. B. "wichtige Tatsachen" statt "verkehrswesentliche Tatsachen").

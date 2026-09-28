@@ -257,3 +257,52 @@ describe('Signalwort-Schwelle', () => {
     expect(r.ok).toBe(false)
   })
 })
+
+describe('Fehlender Kontext', () => {
+  const withText = (question_text: string) => codes({ ...clean, question_text })
+
+  it.each([
+    'Was ist laut Text das oberste Ziel der EZB?',
+    'Welches Pro-Argument für betriebliche Mitbestimmung wird im Text genannt?',
+    'Wie hoch lag das nominale BIP Deutschlands laut Grafik im Jahr 2019?',
+    'Welche Versicherungszweige gehören laut Tabelle zur Sozialversicherung?',
+    'Welche Prämienart belohnt laut Dokument die Verringerung des Ausschusses?',
+    'Wovon wird im Heft der kalkulatorische Unternehmerlohn prozentual berechnet?',
+    'Welche Verpackung muss der Schuhhersteller im Beispiel lizensieren lassen?',
+    'Wer muss im Schuh-Beispiel die Versandkartons lizensieren lassen?',
+    'Wie hoch war laut Manteltarifvertrag-Beispiel die regelmäßige Arbeitszeit?',
+    'Womit schloss die Krankenversicherung laut der genannten Statistik ein Jahr ab?',
+    'Wodurch war die Zentralbank laut Fußnote besonders gekennzeichnet?',
+    'Welchen Raumnutzungsgrad hat laut Skript ein Paletten-Hochregallager ungefähr?',
+  ])('blockiert „%s"', (text) => {
+    expect(withText(text)).toContain('missing_context')
+  })
+
+  it.each([
+    'Welche Hauptaufgabe erfüllt die Statistik im Rechnungswesen?',
+    'Wie unterscheidet die Intrastat-Statistik „Versendung" und „Eingang"?',
+    'Welches Beispiel gehört zur halbbaren Zahlung?',
+    'In der Excel-Tabelle sollen die Kostensätze in eigenen Zellen stehen. Welchen Vorteil hat das?',
+    'Wie viele unterschiedliche Lernorte hat die duale Ausbildung laut Definition?',
+    'Was bedeutet die im Ausbildungsvertrag genannte Lernpflicht des Auszubildenden?',
+    'Ein Zentrallager, in dem Artikel durchschnittlich 1–4 Wochen bleiben. Welche Lagerart passt?',
+    'Was schützt Artikel 9 Abs. 3 GG?',
+  ])('lässt „%s" durch', (text) => {
+    expect(withText(text)).not.toContain('missing_context')
+  })
+
+  it('meldet nummerierte Fälle nur als Warnung', () => {
+    const report = analyzeQuestion({
+      ...clean,
+      question_text: 'Auftrag 3 erzielt 610,00 € Umsatz bei 575,40 € Gesamtkosten. Wie hoch ist das Ergebnis?',
+    })
+    expect(report.findings.find((f) => f.code === 'case_reference')?.severity).toBe('warning')
+    expect(report.blockers).toBe(0)
+  })
+
+  it('verwechselt eine Mengenangabe nicht mit einer Fallnummer', () => {
+    expect(withText('Für einen Auftrag 345 km geplant, gefahren 380 km. Wie hoch sind die Kosten?')).not.toContain(
+      'case_reference'
+    )
+  })
+})

@@ -21,7 +21,8 @@
  *       "update": [{ "option_id": "uuid", "option_text": "neuer Text" }],
  *       "insert": [{ "option_text": "neuer Distraktor" }],
  *       "question_text": "optional",
- *       "explanation": "optional" }
+ *       "explanation": "optional" },
+ *     { "question_id": "uuid", "note": "nur mit Vorlage lösbar", "deactivate": true }
  *   ]
  * }
  */
@@ -36,6 +37,8 @@ interface Change {
   insert?: { option_text: string; is_correct?: boolean }[]
   question_text?: string
   explanation?: string
+  /** Frage auf inaktiv setzen (nicht löschen) — für Fragen, die sich nicht retten lassen. */
+  deactivate?: boolean
 }
 
 interface Batch {
@@ -103,6 +106,7 @@ async function main() {
   for (const c of batch.changes) {
     const q = byId.get(c.question_id)
     if (!q) throw new Error(`Frage ${c.question_id} nicht gefunden oder inaktiv.`)
+    if (c.deactivate) continue
     const sim = simulate(q, c)
     const report = analyzeQuestion(sim)
     if (!report.ok) {
@@ -126,7 +130,8 @@ async function main() {
   }
 
   // Vorschau der Gesamtwirkung, bevor irgendetwas geschrieben wird
-  const preview = all.map((q) => simulated.get(q.id) ?? q)
+  const deactivated = new Set(batch.changes.filter((c) => c.deactivate).map((c) => c.question_id))
+  const preview = all.filter((q) => !deactivated.has(q.id)).map((q) => simulated.get(q.id) ?? q)
   const predicted = analyzeBatch(preview)
   const predictedRegressions = compare(before, predicted)
   if (predictedRegressions.length > 0) {
@@ -150,11 +155,18 @@ async function main() {
 
   // ── 3. Schreiben, mit Rollback-Daten ───────────────────────────────────────
   const rollback: { option_id: string; option_text: string }[] = []
+  const questionRollback: { id: string; question_text: string; explanation: string | null }[] = []
   const insertedIds: string[] = []
   const touched: string[] = []
 
   for (const c of batch.changes) {
     const q = byId.get(c.question_id)!
+    if (c.deactivate) {
+      const { error } = await supabase.from('questions').update({ is_active: false }).eq('id', c.question_id)
+      if (error) throw new Error(`Deaktivieren ${c.question_id}: ${error.message}`)
+      touched.push(c.question_id)
+      continue
+    }
     for (const u of c.update ?? []) {
       const idx = q.option_ids.indexOf(u.option_id)
       rollback.push({ option_id: u.option_id, option_text: q.options[idx] })
@@ -182,6 +194,7 @@ async function main() {
       const patch: Record<string, string> = {}
       if (c.question_text) patch.question_text = c.question_text
       if (c.explanation) patch.explanation = c.explanation
+      questionRollback.push({ id: q.id, question_text: q.question_text, explanation: q.explanation ?? null })
       const { error } = await supabase.from('questions').update(patch).eq('id', c.question_id)
       if (error) throw new Error(`Frage ${c.question_id}: ${error.message}`)
     }
@@ -204,7 +217,19 @@ async function main() {
     for (const id of insertedIds) {
       await supabase.from('answer_options').delete().eq('id', id)
     }
-    console.error(`\n  ${rollback.length} Option(en) zurückgesetzt, ${insertedIds.length} entfernt.`)
+    for (const r of questionRollback) {
+      await supabase
+        .from('questions')
+        .update({ question_text: r.question_text, explanation: r.explanation })
+        .eq('id', r.id)
+    }
+    for (const id of deactivated) {
+      await supabase.from('questions').update({ is_active: true }).eq('id', id)
+    }
+    console.error(
+      `\n  ${rollback.length} Option(en) zurückgesetzt, ${insertedIds.length} entfernt, ` +
+        `${questionRollback.length} Fragetext(e) wiederhergestellt, ${deactivated.size} Frage(n) reaktiviert.`
+    )
     console.error('  Kein Fortschritt eingetragen.\n')
     process.exit(1)
   }
@@ -220,7 +245,9 @@ async function main() {
   })
   if (error) throw new Error(`Fortschritt: ${error.message}`)
 
-  console.log(`\n  ${touched.length} Fragen geändert und verifiziert (Durchlauf „${batch.run}").`)
+  console.log(
+    `\n  ${touched.length} Fragen geändert und verifiziert (Durchlauf „${batch.run}"), davon ${deactivated.size} deaktiviert.`
+  )
   for (const m of after.metrics) {
     const b = before.metrics.find((x) => x.key === m.key)!
     const delta = (m.share - b.share) * 100
