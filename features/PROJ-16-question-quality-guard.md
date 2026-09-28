@@ -134,3 +134,5 @@ Fehlender Kontext: 150 → 0 Fragen. Alle übrigen Kennzahlen blieben stabil, je
 - EZB-Inflationsziel: Die Erklärung „nahe, aber unter 2 %“ wurde auf das symmetrische 2-%-Ziel (seit 2021) aktualisiert.
 
 **Offen (nicht Teil dieses Durchlaufs):** „Gruber liefert verspätet; Lieferfristschaden 500 € (Fracht 450 €)“ markiert „Gruber trägt 450 €, PIL 50 €“ als richtig. Nach HGB (§ 431 Abs. 3) haftet der Frachtführer bei Lieferfristüberschreitung bis zur dreifachen Fracht, also voll. Das sollte fachlich geprüft werden.
+
+**Deployed 2026-09-28:** Commit ad2cdd5, https://spedilern-qi7lj9571-david-cloud-1s-projects.vercel.app (Ready). Smoke-Test: /login 200, `POST /api/admin/questions/bulk-import` ohne Anmeldung 401.
