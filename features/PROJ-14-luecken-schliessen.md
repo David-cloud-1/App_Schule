@@ -163,3 +163,5 @@ Schwellenwerte: Fehlerquote > 50% UND ≥ 3 Versuche.
 - Texte angepasst: Die Karte heißt jetzt „X offene Lücken — 2× richtig in Folge schließt sie“. Der Leer-Zustand erklärt die neue Regel; der alte Text („mindestens 3 Versuche“) stimmte ohnehin nicht mit dem Code überein.
 
 **Auswirkung auf den Bestand (Nachrechnung auf Live-Daten, 2026-09-28):** 1098 Lücken nach alter Regel, 1090 nach neuer. 13 schließen sich sofort (zuletzt 2× richtig), 5 kommen durch heutige Fehler hinzu. Ohne Stichtag wären es 1465 gewesen.
+
+**Deployed:** 2026-09-28, Commit `25b2973`, Production: https://spedilern-mu8sol4py-david-cloud-1s-projects.vercel.app (Build ✅ Ready)
