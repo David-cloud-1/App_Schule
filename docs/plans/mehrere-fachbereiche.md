@@ -357,6 +357,7 @@ Kein Dev-Server / kein Playwright (bringt das MacBook zum Absturz) → Build, Vi
 | E7 | Können Azubis den Bereich nach der Wahl selbst wechseln? | ✅ Nein — Lehrkraft oder Super-Admin hängt um |
 | E8 | Neutraler App-Name? | ✅ Entfällt — jede Adresse hat ihren eigenen Namen; ohne bekannte Adresse gilt SpediLern |
 | E9 | Was darf die Tourismus-Lehrkraft? | ✅ Alles innerhalb von Tourismus (Fragen, Fächer/Themen, Prüfungen/Noten, Azubis/Shop); Rollen, Bereiche, App-Einstellungen und Qualitätsregeln nur Super-Admin |
+| E10 | Was passiert mit den bestehenden Admin-Konten? | **offen — vor PROJ-24 klären.** Befund 2026-09-29: Es gibt nicht einen, sondern 12 Konten mit `role = 'admin'` (überwiegend Lehrkräfte mit spedtour-Adresse). Mit dem geplanten Modell wären alle Super-Admins und sähen auch Tourismus-Noten. Vorschlag: nur du bleibst `admin`, die übrigen werden `department_admin` ihres Bereichs oder `student`. |
 
 ## 14. Was der Tourismus-Bereich liefern muss (vor Phase 4)
 

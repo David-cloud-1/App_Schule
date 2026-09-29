@@ -1,6 +1,6 @@
 # PROJ-22: Fachbereich als Datenbasis
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -446,4 +446,26 @@ Als echter Azubi (JWT-Claims, Rolle `authenticated`) in einer zurückgerollten T
 - **Recommendation:** Vor der Produktion eine Vercel-Vorschau ausliefern und dort (1) auf dem Handy prüfen, dass Spedition aussieht wie vorher, (2) Ladezeiten von Start- und Login-Seite mit der Live-App vergleichen (BUG-1). BUG-2 bis BUG-4 vor bzw. mit PROJ-25 beheben.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-09-29
+**Production URL:** https://spedilern.vercel.app (auch https://touristiklern.vercel.app — zeigt bis PROJ-25 den Rückfall-Bereich Spedition)
+**Vercel Deployment:** https://spedilern-3xsvoqy6q-david-cloud-1s-projects.vercel.app, ausgelöst per Push auf `main` (Commit 410cf37)
+
+### Ablauf
+1. Datenbank-Migrationen vorab angewendet (`20260929_proj22_departments`, `…_fallback_department_invoker`, `…_hof_short_name`) — die zuvor laufende Version lief damit fehlerfrei weiter.
+2. Zwei Vorschau-Auslieferungen (Umgebungsvariablen nur für die jeweilige Vorschau mitgegeben, Projekteinstellungen unverändert). Die erste zeigte QA BUG-1 deutlich (`/login` 1,2–3 s); nach der Behebung 0,15–0,29 s.
+3. Sichtprüfung auf der Vorschau durch den Nutzer: „sieht aus wie vorher".
+4. Push auf `main` → automatische Produktions-Auslieferung.
+
+### Prüfung nach der Auslieferung
+- `/login` auf beiden Adressen: HTTP 200, Titel „SpediLern – Prüfungsvorbereitung Speditionskaufleute", Überschrift „SpediLern", Untertitel aus dem Bereich.
+- Server-Funktionen laufen in `dub1` (`x-vercel-id: fra1::dub1::…`), neben der Datenbank in `eu-west-1`.
+- Ladezeit `/login`: 0,13–0,33 s.
+- Ohne Login: `/` → 307 auf `/login`; `/api/admin/question-prompt` → 401.
+- Vercel-Laufzeit-Logs und Supabase-Logs: keine Fehler.
+
+### Neu in der Infrastruktur
+- `vercel.json` mit `"regions": ["dub1"]` — gilt für alle Server-Funktionen der App.
+- Bereichsdaten werden 5 Minuten zwischengespeichert: Änderungen an `departments`/`exam_parts` per SQL werden erst danach sichtbar (sofort: neue Auslieferung).
+
+### Rückweg
+Vercel → Deployments → vorherige Produktion `spedilern-arevooe0j-…` → „Promote to Production". Die Datenbank-Änderungen sind abwärtskompatibel und müssen dafür nicht zurückgenommen werden.
