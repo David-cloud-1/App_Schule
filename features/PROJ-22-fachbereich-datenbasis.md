@@ -401,7 +401,8 @@ Als echter Azubi (JWT-Claims, Rolle `authenticated`) in einer zurückgerollten T
 
 ### Bugs Found
 
-#### BUG-1: Zusätzliche Anmelde- und Datenbankabfragen bei jedem Seitenaufruf
+#### BUG-1: Zusätzliche Anmelde- und Datenbankabfragen bei jedem Seitenaufruf — ✅ BEHOBEN (6382c1a)
+- **Behebung:** Auf der Vorschau gemessen: `/login` 1,2–3 s (Funktion in `iad1`, jede Abfrage transatlantisch nach `eu-west-1`). Bereiche und Prüfungsaufbau jetzt serverseitig zwischengespeichert (`unstable_cache`, 5 Min., Tags `departments`/`exam-parts`), pro Aufruf nur noch `department_id` aus dem Profil; Server-Funktionen per `vercel.json` nach `dub1` (neben der Datenbank). Danach `/login` 0,15–0,29 s (Live mit Zwischenspeicher: 0,08 s).
 - **Severity:** Medium
 - **Steps to Reproduce:**
   1. Beliebige Seite aufrufen (z. B. Startseite, eingeloggt)
@@ -439,7 +440,7 @@ Als echter Azubi (JWT-Claims, Rolle `authenticated`) in einer zurückgerollten T
 
 ### Summary
 - **Acceptance Criteria:** 32/32 passed (Code, Tests, SQL) — Sichtprüfung im Browser ausstehend
-- **Bugs Found:** 5 total (0 critical, 0 high, 1 medium, 4 low; davon 1 Altfehler)
+- **Bugs Found:** 5 total (0 critical, 0 high, 1 medium — behoben, 4 low; davon 1 Altfehler)
 - **Security:** Pass (1 Low-Befund, 1 Hinweis)
 - **Production Ready:** YES — keine Critical/High-Bugs
 - **Recommendation:** Vor der Produktion eine Vercel-Vorschau ausliefern und dort (1) auf dem Handy prüfen, dass Spedition aussieht wie vorher, (2) Ladezeiten von Start- und Login-Seite mit der Live-App vergleichen (BUG-1). BUG-2 bis BUG-4 vor bzw. mit PROJ-25 beheben.
