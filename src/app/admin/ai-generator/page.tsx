@@ -37,8 +37,8 @@ import { AiGeneratorJobCard } from '@/components/admin/ai-generator-job-card'
 import { AiGeneratorDraftCard } from '@/components/admin/ai-generator-draft-card'
 import { AiGeneratorDraftEditModal } from '@/components/admin/ai-generator-draft-edit-modal'
 import { createClient } from '@/lib/supabase-browser'
-import { QUESTION_QUALITY_RULES } from '@/lib/question-rules'
 import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } from '@/lib/question-import'
+import type { QuestionPromptResponse } from '@/app/api/admin/question-prompt/route'
 
 export type DraftQuestion = {
   id: string
@@ -59,50 +59,7 @@ const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP', 'PUG'] as const
 const DIFFICULTIES = ['leicht', 'mittel', 'schwer'] as const
 type DraftStatusFilter = 'all' | 'pending' | 'review_required' | 'accepted' | 'rejected'
 
-// ── Prompt that produces the exact bulk-import JSON format ────────────────────
-const CLAUDE_PROMPT = `Du bist ein Experte für Prüfungsfragen im Bereich Spedition und Logistik (IHK Bayern).
-
-Analysiere den folgenden Dokumentinhalt und erstelle daraus Multiple-Choice-Prüfungsfragen.
-
-FÄCHER:
-- BGP = Betriebliche und gesamtwirtschaftliche Prozesse
-- KSK = Kaufmännische Steuerung und Kontrolle
-- STG = Speditionelle und transportrelevante Geschäftsprozesse
-- LOP = Logistische Leistungsprozesse
-- PUG = Politik und Gesellschaft
-
-REGELN:
-- Genau 5 Antwortoptionen (A, B, C, D, E), davon exakt eine korrekt
-- Fragen auf Prüfungsniveau (nicht zu einfach, nicht zu komplex)
-- Schwierigkeit: "leicht" (Grundwissen), "mittel" (Anwendung), "schwer" (Analyse/Transfer)
-- Erklärung warum die Antwort korrekt ist (1-2 Sätze)
-- Maximal 75 Fragen
-- klassenstufe: 10, 11 oder 12 — falls nicht eindeutig aus dem Kontext, weglassen (null)
-
-${QUESTION_QUALITY_RULES}
-
-Antworte AUSSCHLIESSLICH mit diesem JSON (kein Text davor/danach, kein Markdown):
-{
-  "rows": [
-    {
-      "question_text": "Frage hier?",
-      "antwort_a": "Antwort A",
-      "antwort_b": "Antwort B",
-      "antwort_c": "Antwort C",
-      "antwort_d": "Antwort D",
-      "antwort_e": "Antwort E",
-      "korrekte_antwort": "A",
-      "erklaerung": "Erklärung warum A korrekt ist.",
-      "fach_code": "BGP",
-      "schwierigkeit": "mittel",
-      "klassenstufe": 11
-    }
-  ]
-}
-
---- DOKUMENT ---
-[Hier deinen Text einfügen]
---- ENDE ---`
+// Der kopierbare Prompt kommt aus dem Fachbereich (GET /api/admin/question-prompt, PROJ-22)
 
 type ParseState =
   | { status: 'empty' }
@@ -168,9 +125,21 @@ function ManualImportSection() {
   const [parseState, setParseState] = useState<ParseState>({ status: 'empty' })
   const [showFlagged, setShowFlagged] = useState(false)
   const [fixCopied, setFixCopied] = useState(false)
+  const [promptInfo, setPromptInfo] = useState<QuestionPromptResponse | null>(null)
+  const [promptError, setPromptError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/question-prompt')
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data: QuestionPromptResponse) => { if (!cancelled) setPromptInfo(data) })
+      .catch(() => { if (!cancelled) setPromptError(true) })
+    return () => { cancelled = true }
+  }, [])
 
   async function copyPrompt() {
-    await navigator.clipboard.writeText(CLAUDE_PROMPT)
+    if (!promptInfo) return
+    await navigator.clipboard.writeText(promptInfo.prompt)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -181,8 +150,8 @@ function ManualImportSection() {
   }
 
   async function copyFixPrompt() {
-    if (parseState.status !== 'ready' || parseState.check.flagged.length === 0) return
-    await navigator.clipboard.writeText(buildFixPrompt(parseState.check.flagged))
+    if (parseState.status !== 'ready' || parseState.check.flagged.length === 0 || !promptInfo) return
+    await navigator.clipboard.writeText(buildFixPrompt(parseState.check.flagged, promptInfo.targetGroup))
     setFixCopied(true)
     setTimeout(() => setFixCopied(false), 2000)
   }
@@ -257,13 +226,22 @@ function ManualImportSection() {
           </p>
         </div>
         <div className="relative">
-          <pre className="text-xs text-[#9CA3AF] bg-[#111827] rounded-xl p-4 overflow-auto max-h-48 leading-relaxed whitespace-pre-wrap">
-            {CLAUDE_PROMPT}
-          </pre>
+          {promptInfo ? (
+            <pre className="text-xs text-[#9CA3AF] bg-[#111827] rounded-xl p-4 overflow-auto max-h-48 leading-relaxed whitespace-pre-wrap">
+              {promptInfo.prompt}
+            </pre>
+          ) : promptError ? (
+            <p className="text-sm text-[#FF4B4B] bg-[#111827] rounded-xl p-4">
+              Der Prompt konnte nicht geladen werden. Bitte Seite neu laden.
+            </p>
+          ) : (
+            <Skeleton className="h-48 w-full rounded-xl bg-[#111827]" />
+          )}
           <Button
             size="sm"
             variant="ghost"
             onClick={copyPrompt}
+            disabled={!promptInfo}
             className="absolute top-2 right-2 text-[#9CA3AF] hover:text-[#F9FAFB] bg-[#1F2937]/80"
           >
             {copied ? (

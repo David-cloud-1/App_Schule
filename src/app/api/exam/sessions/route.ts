@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
+import { getDepartmentForUser } from '@/lib/departments'
+import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 
 // No is_correct: students can't SELECT it directly any more (PROJ-21). A
 // practice exam still needs it in the stored session for grading, so it's
@@ -21,15 +23,10 @@ async function withAnswerKey(allQuestions: Record<number, unknown[]>) {
   }
 }
 
-const PART_CONFIG = {
-  1: { subjects: ['STG', 'LOP'], questionCount: 20, durationMinutes: 90 },
-  2: { subjects: ['KSK'], questionCount: 15, durationMinutes: 90 },
-  3: { subjects: ['BGP'], questionCount: 15, durationMinutes: 45 },
-} as const
-
 const StartExamSchema = z.object({
   setIds: z.array(z.string().uuid()).min(1).optional(),
-  parts: z.array(z.union([z.literal(1), z.literal(2), z.literal(3)])).min(1).optional(),
+  // Teil-Nummern des Bereichs; welche es gibt, steht in exam_parts (PROJ-22)
+  parts: z.array(z.number().int().min(1).max(20)).min(1).optional(),
 }).refine((d) => (d.setIds?.length ?? 0) > 0 || (d.parts?.length ?? 0) > 0, {
   message: 'setIds oder parts erforderlich',
 })
@@ -50,6 +47,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  const department = await getDepartmentForUser(supabase, user.id)
+  if (!department) {
+    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 500 })
+  }
+  let examParts
+  try {
+    examParts = await fetchExamParts(supabase, department.id)
+  } catch (err) {
+    console.error('[POST /api/exam/sessions] exam parts:', err)
+    return NextResponse.json({ error: 'Prüfungsaufbau konnte nicht geladen werden' }, { status: 500 })
+  }
+
   const allQuestions: Record<number, unknown[]> = {}
   const partDurations: Record<number, number> = {}
   const setNames: Record<number, string> = {}
@@ -60,6 +69,7 @@ export async function POST(request: NextRequest) {
       .from('exam_question_sets')
       .select('id, name, part, question_ids, duration_minutes, is_active')
       .in('id', parsed.data.setIds)
+      .eq('department_id', department.id)
 
     const activeSets = (sets ?? []).filter((s) => s.is_active)
     if (!activeSets.length) {
@@ -73,7 +83,7 @@ export async function POST(request: NextRequest) {
       }
       seenParts.add(set.part)
 
-      partDurations[set.part] = set.duration_minutes ?? PART_CONFIG[set.part as 1 | 2 | 3].durationMinutes
+      partDurations[set.part] = set.duration_minutes ?? findExamPart(examParts, set.part)?.durationMinutes ?? 0
       setNames[set.part] = set.name
 
       const { data } = await supabase
@@ -108,15 +118,20 @@ export async function POST(request: NextRequest) {
 
   // Fallback path: parts-based selection (active set per part or random pool).
   const parts = parsed.data.parts!
+  const unknownParts = parts.filter((p) => !findExamPart(examParts, p))
+  if (unknownParts.length) {
+    return NextResponse.json({ error: `Unbekannter Prüfungsteil: ${unknownParts.join(', ')}` }, { status: 400 })
+  }
 
   for (const part of parts) {
-    const config = PART_CONFIG[part]
+    const config = findExamPart(examParts, part)!
 
     // Check if there's an active admin exam set for this part
     const { data: activeSet } = await supabase
       .from('exam_question_sets')
       .select('question_ids, duration_minutes')
       .eq('part', part)
+      .eq('department_id', department.id)
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -134,18 +149,11 @@ export async function POST(request: NextRequest) {
         .eq('is_active', true)
       questions = data ?? []
     } else {
-      // Get subject IDs for this part
-      const { data: subjects } = await supabase
-        .from('subjects')
-        .select('id')
-        .in('code', config.subjects)
-
-      if (!subjects?.length) {
+      const subjectIds = config.subjects.map((s) => s.id)
+      if (!subjectIds.length) {
         allQuestions[part] = []
         continue
       }
-
-      const subjectIds = subjects.map((s: { id: string }) => s.id)
 
       const { data: links } = await supabase
         .from('question_subjects')
@@ -159,9 +167,9 @@ export async function POST(request: NextRequest) {
         continue
       }
 
-      // For part 1: ~70% open, ~30% MC
-      if (part === 1) {
-        const openCount = Math.round(config.questionCount * 0.7)
+      // Teile mit offenem Anteil (Spedition Teil 1: ~70 % offen, ~30 % MC)
+      if (config.openQuestionShare > 0) {
+        const openCount = Math.round(config.questionCount * config.openQuestionShare)
         const mcCount = config.questionCount - openCount
 
         const [openResult, mcResult] = await Promise.all([
@@ -199,7 +207,7 @@ export async function POST(request: NextRequest) {
   }
 
   await withAnswerKey(allQuestions)
-  const totalDurationMinutes = parts.reduce((sum, p) => sum + (partDurations[p] ?? PART_CONFIG[p].durationMinutes), 0)
+  const totalDurationMinutes = parts.reduce((sum, p) => sum + (partDurations[p] ?? findExamPart(examParts, p)?.durationMinutes ?? 0), 0)
 
   const { data: session, error } = await supabase
     .from('exam_sessions')

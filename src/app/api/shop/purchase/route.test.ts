@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { POST } from './route'
 import { NextRequest } from 'next/server'
+import { chainMock } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -15,10 +16,23 @@ function makeRequest(body: unknown): NextRequest {
 }
 
 function makeSupabaseMock(user: unknown, rpcResult: { data?: unknown; error?: unknown } = { data: 15, error: null }) {
-  return {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-    rpc: vi.fn().mockResolvedValue(rpcResult),
-  }
+  return chainMock(
+    (table) => {
+      if (table === 'profiles') return { data: { department_id: 'dept-sped' } }
+      if (table === 'departments') return { data: DEPARTMENT_ROW }
+      return {}
+    },
+    {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+      rpc: vi.fn().mockResolvedValue(rpcResult),
+    },
+  ).client
+}
+
+const DEPARTMENT_ROW = {
+  id: 'dept-sped', code: 'SPED', slug: 'spedition', domain: null, name: 'Speditionskaufleute', app_name: 'SpediLern',
+  tagline: '', meta_title: '', meta_description: '', icon_name: 'Truck', currency_name: 'Frachtmünzen',
+  hof_name: 'Speditionshof', prompt_role: '', target_group: '', prompt_notes: null, class_levels: [10, 11, 12], pseudonym_nouns: [],
 }
 
 describe('POST /api/shop/purchase', () => {
@@ -65,5 +79,13 @@ describe('POST /api/shop/purchase', () => {
     )
     const res = await POST(makeRequest({ item_id: ITEM_ID }))
     expect(res.status).toBe(500)
+  })
+
+  it('names the department currency when funds are insufficient', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeSupabaseMock({ id: 'user-1' }, { data: null, error: { message: 'insufficient_funds' } }) as never,
+    )
+    const res = await POST(makeRequest({ item_id: ITEM_ID }))
+    expect((await res.json()).error).toBe('Nicht genug Frachtmünzen')
   })
 })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 
@@ -38,12 +39,8 @@ export async function GET(request: NextRequest) {
 
   let subjectFilteredIds: string[] | null = null
   if (subject) {
-    const code = subject.toUpperCase()
-    const { data: subjectRow } = await supabase
-      .from('subjects')
-      .select('id')
-      .eq('code', code)
-      .single()
+    // Kürzel nur im Bereich des Admins (PROJ-22)
+    const subjectRow = await resolveSubjectCode(supabase, auth.departmentId, subject)
 
     if (!subjectRow) {
       return new NextResponse('Fragetext,Fach,Schwierigkeit,Jahrgangsstufe,Thema,Antwort A,Antwort B,Antwort C,Antwort D,Antwort E,Richtige Antwort,Erklärung,Status\n', {

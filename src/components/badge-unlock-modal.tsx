@@ -2,12 +2,12 @@
 
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import type { BadgeDefinition } from '@/lib/badges'
+import type { BadgeDisplay } from '@/lib/badges'
 
 interface BadgeUnlockModalProps {
   open: boolean
   onClose: () => void
-  badge: BadgeDefinition
+  badge: BadgeDisplay
 }
 
 export function BadgeUnlockModal({ open, onClose, badge }: BadgeUnlockModalProps) {

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
+import { getDepartmentForUser } from '@/lib/departments'
+import { resolveSubjectCode } from '@/lib/subjects'
 
 const QuerySchema = z.object({
   subject:     z.string().optional(),
@@ -38,13 +40,9 @@ export async function GET(request: NextRequest) {
   // wrong pagination counts when subject + limit/offset were combined)
   let filteredIds: string[] | null = null
   if (subject) {
-    const code = subject.toUpperCase()
-
-    const { data: subjectRow } = await supabase
-      .from('subjects')
-      .select('id')
-      .eq('code', code)
-      .single()
+    // Kürzel nur im Bereich des Azubis (PROJ-22)
+    const department = await getDepartmentForUser(supabase, user.id)
+    const subjectRow = department ? await resolveSubjectCode(supabase, department.id, subject) : null
 
     if (!subjectRow) {
       return NextResponse.json({ questions: [], total: 0 })

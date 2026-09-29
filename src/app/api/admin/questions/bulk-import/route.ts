@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
 import { checkImportRows, type ImportRow } from '@/lib/question-import'
+import { getDepartmentById } from '@/lib/departments'
+import { fetchDepartmentSubjects, formatAllowedCodes, normalizeSubjectCode } from '@/lib/subjects'
 
 const RowSchema = z.object({
   question_text: z.string().min(1).max(1000),
@@ -14,7 +16,8 @@ const RowSchema = z.object({
   erklaerung: z.string().max(2000).optional().nullable(),
   fach_code: z.string().min(1).max(20),
   schwierigkeit: z.enum(['leicht', 'mittel', 'schwer']),
-  klassenstufe: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional().nullable(),
+  // Erlaubte Stufen hängen am Fachbereich — geprüft je Zeile weiter unten
+  klassenstufe: z.coerce.number().int().min(1).max(13).optional().nullable(),
   thema: z.string().max(100).optional().nullable(),
 })
 
@@ -27,7 +30,7 @@ const BodySchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -44,20 +47,50 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // Fächer und Klassenstufen des Bereichs (PROJ-22): ein Kürzel gilt nur in
+  // seinem Bereich; unbekannte Kürzel werden zeilengenau abgelehnt.
+  const department = await getDepartmentById(supabase, departmentId)
+  let departmentSubjects
+  try {
+    departmentSubjects = await fetchDepartmentSubjects(supabase, departmentId, { activeOnly: true })
+  } catch (err) {
+    console.error('[bulk-import] subject load', err)
+    return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
+  }
+  const subjectMap = new Map(departmentSubjects.map((s) => [normalizeSubjectCode(s.code), s.id]))
+  const allowedCodes = formatAllowedCodes(departmentSubjects)
+  const classLevels = department?.classLevels ?? []
+
+  const rejected: { index: number; question_text: string; reason: string }[] = []
+  const rejectedIndexes = new Set<number>()
+  parsed.data.rows.forEach((row, index) => {
+    let reason: string | null = null
+    if (!subjectMap.has(normalizeSubjectCode(row.fach_code))) {
+      reason = `fach_code "${row.fach_code}" gibt es in diesem Fachbereich nicht — erlaubt: ${allowedCodes}`
+    } else if (row.klassenstufe != null && !classLevels.includes(row.klassenstufe)) {
+      reason = `klassenstufe ${row.klassenstufe} gibt es in diesem Fachbereich nicht — erlaubt: ${classLevels.join(', ') || 'keine (weglassen)'}`
+    }
+    if (reason) {
+      rejected.push({ index, question_text: row.question_text, reason })
+      rejectedIndexes.add(index)
+    }
+  })
+
   // Qualitätsprüfung: läuft ohne KI und damit ohne Kosten. Beanstandete
   // Zeilen werden nicht importiert, sondern zurückgemeldet — der Admin kann
   // sie extern korrigieren lassen oder den Import bewusst erzwingen.
   const check = checkImportRows(parsed.data.rows as ImportRow[])
   const flaggedIndexes = new Set(check.flagged.map((f) => f.index))
   const allowFlagged = parsed.data.allow_flagged === true
-  const rowsToImport = allowFlagged
-    ? parsed.data.rows
-    : parsed.data.rows.filter((_, i) => !flaggedIndexes.has(i))
+  const rowsToImport = parsed.data.rows.filter(
+    (_, i) => !rejectedIndexes.has(i) && (allowFlagged || !flaggedIndexes.has(i))
+  )
 
   if (rowsToImport.length === 0) {
     return NextResponse.json({
       imported: 0,
-      skipped: 0,
+      skipped: rejected.length,
+      rejected,
       flagged: check.flagged.map((f) => ({
         index: f.index,
         question_text: f.row.question_text,
@@ -66,29 +99,22 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  // Preload subject lookup table
-  const { data: subjects, error: subErr } = await supabase.from('subjects').select('id, code')
-  if (subErr) {
-    console.error('[bulk-import] subject load', subErr)
-    return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
-  }
-  const subjectMap = new Map<string, string>()
-  for (const s of subjects ?? []) {
-    subjectMap.set((s.code as string).toUpperCase(), s.id as string)
-  }
-
   // Preload topic lookup: (subject_id + name) → topic id
-  const { data: allTopics } = await supabase.from('topics').select('id, name, subject_id')
+  const { data: allTopics } = await supabase
+    .from('topics')
+    .select('id, name, subject_id')
+    .in('subject_id', departmentSubjects.map((s) => s.id))
+    .limit(5000)
   const topicMap = new Map<string, string>()
   for (const t of allTopics ?? []) {
     topicMap.set(`${t.subject_id}::${(t.name as string).toLowerCase()}`, t.id as string)
   }
 
   let imported = 0
-  let skipped = 0
+  let skipped = rejected.length
 
   for (const row of rowsToImport) {
-    const subjectId = subjectMap.get(row.fach_code.toUpperCase())
+    const subjectId = subjectMap.get(normalizeSubjectCode(row.fach_code))
     if (!subjectId) {
       skipped++
       continue
@@ -179,12 +205,15 @@ export async function POST(request: NextRequest) {
       total: parsed.data.rows.length,
       flagged: check.flagged.length,
       forced: allowFlagged && check.flagged.length > 0,
+      rejected: rejected.length,
     },
+    department_id: departmentId,
   })
 
   return NextResponse.json({
     imported,
     skipped,
+    rejected,
     flagged: allowFlagged
       ? []
       : check.flagged.map((f) => ({

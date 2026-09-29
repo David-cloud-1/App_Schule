@@ -25,7 +25,7 @@ function makeAdminSupabase(opts: { role?: string; updateError?: unknown } = {}) 
   const profileBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: opts.role ?? 'admin' }, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { role: opts.role ?? 'admin', department_id: 'dept-sped' }, error: null }),
   }
   const itemUpdateBuilder = {
     update: vi.fn().mockReturnThis(),

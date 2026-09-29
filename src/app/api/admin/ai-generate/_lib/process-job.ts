@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { SupabaseClient } from '@supabase/supabase-js'
-import { QUESTION_QUALITY_RULES } from '@/lib/question-rules'
+import { buildUploadExamContext } from '@/lib/question-prompt'
+import { getDepartmentForUser } from '@/lib/departments'
+import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { analyzeQuestion } from '@/lib/question-quality'
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024 // 50 MB
@@ -18,23 +20,6 @@ interface GeneratedQuestion {
 interface ClaudeResponse {
   questions: GeneratedQuestion[]
 }
-
-const SUBJECT_NAMES: Record<string, string> = {
-  BGP: 'Betriebliche und gesamtwirtschaftliche Prozesse',
-  KSK: 'Kaufmännische Steuerung und Kontrolle',
-  STG: 'Speditionelle und transportrelevante Geschäftsprozesse',
-  LOP: 'Logistische Leistungsprozesse',
-  PUG: 'Politik und Gesellschaft',
-}
-
-const EXAM_CONTEXT = `
-Du erstellst Prüfungsfragen für angehende Speditionskaufleute (IHK Bayern).
-Fächer: BGP (Betriebliche und gesamtwirtschaftliche Prozesse), KSK (Kaufmännische Steuerung und Kontrolle), STG (Speditionelle und transportrelevante Geschäftsprozesse), LOP (Logistische Leistungsprozesse), PUG (Politik und Gesellschaft).
-Erstelle ausschließlich Multiple-Choice-Fragen mit genau 5 Antwortoptionen, wobei exakt eine korrekt ist.
-Setze "review_required": true wenn die Frage eine eindeutige korrekte Antwort nicht zweifelsfrei belegt.
-
-${QUESTION_QUALITY_RULES}
-`
 
 function detectWordFormat(buffer: Buffer): 'docx' | 'doc' | null {
   if (
@@ -96,14 +81,16 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
 }
 
 interface GenerationContext {
+  /** Rolle, Zielgruppe, Fächerliste und Qualitätsregeln des Fachbereichs */
+  examContext: string
   classLevel: number | null
-  subjectCode: string | null
+  subject: { code: string; name: string } | null
   topicName: string | null
 }
 
 export async function generateQuestionsWithClaude(
   text: string,
-  ctx: GenerationContext = { classLevel: null, subjectCode: null, topicName: null }
+  ctx: GenerationContext
 ): Promise<GeneratedQuestion[]> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY ist nicht konfiguriert.')
@@ -119,9 +106,8 @@ export async function generateQuestionsWithClaude(
     hints.push('Die Fragen sind für alle Klassenstufen geeignet.')
   }
 
-  if (ctx.subjectCode) {
-    const subjectName = SUBJECT_NAMES[ctx.subjectCode] ?? ctx.subjectCode
-    hints.push(`Das Fach ist: ${ctx.subjectCode} (${subjectName}). Erstelle ausschließlich Fragen zu diesem Fach.`)
+  if (ctx.subject) {
+    hints.push(`Das Fach ist: ${ctx.subject.code} (${ctx.subject.name}). Erstelle ausschließlich Fragen zu diesem Fach.`)
   }
 
   if (ctx.topicName) {
@@ -134,7 +120,7 @@ export async function generateQuestionsWithClaude(
     messages: [
       {
         role: 'user',
-        content: `${EXAM_CONTEXT}
+        content: `${ctx.examContext}
 ${hints.join('\n')}
 
 Dokumentinhalt:
@@ -191,14 +177,21 @@ export async function processJob(
   try {
     const { data: job } = await supabase
       .from('generation_jobs')
-      .select('class_level, subject_code, topic_id, topics(name)')
+      .select('admin_id, class_level, subject_id, topic_id, topics(name)')
       .eq('id', jobId)
       .single()
 
     const classLevel = (job?.class_level as number | null) ?? null
-    const subjectCode = (job?.subject_code as string | null) ?? null
+    const subjectId = (job?.subject_id as string | null) ?? null
     const topicId = (job?.topic_id as string | null) ?? null
     const topicName = (job?.topics as unknown as { name: string } | null)?.name ?? null
+
+    // Prompt aus dem Fachbereich des Admins, der den Upload gestartet hat (PROJ-22)
+    const department = await getDepartmentForUser(supabase, job?.admin_id as string)
+    if (!department) throw new Error('Fachbereich nicht gefunden.')
+    const subjects = await fetchDepartmentSubjects(supabase, department.id, { activeOnly: true })
+    const subject = subjects.find((s) => s.id === subjectId) ?? null
+    const examContext = buildUploadExamContext(department, subjects)
 
     const text = await extractText(buffer, mimeType)
 
@@ -210,7 +203,12 @@ export async function processJob(
       return
     }
 
-    const questions = await generateQuestionsWithClaude(text, { classLevel, subjectCode, topicName })
+    const questions = await generateQuestionsWithClaude(text, {
+      examContext,
+      classLevel,
+      subject: subject ? { code: subject.code, name: subject.name } : null,
+      topicName,
+    })
 
     if (questions.length === 0) {
       await supabase
@@ -240,7 +238,8 @@ export async function processJob(
         status: q.review_required || !quality.ok ? 'review_required' : 'pending',
         quality_report: quality,
         class_level: classLevel,
-        subject_code: subjectCode,
+        subject_code: subject?.code ?? null,
+        subject_id: subject?.id ?? null,
         topic_id: topicId,
       }
     })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { randomPseudonym } from '@/lib/pseudonyms'
+import { getDepartmentForUser } from '@/lib/departments'
 
 export async function POST() {
   const supabase = await createClient()
@@ -8,10 +9,13 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const service = createServiceClient()
+  // Nomen des eigenen Fachbereichs (PROJ-22)
+  const department = await getDepartmentForUser(supabase, user.id)
+  const nouns = department?.pseudonymNouns ?? []
 
   let pseudonym = ''
   for (let i = 0; i < 30; i++) {
-    const candidate = randomPseudonym()
+    const candidate = randomPseudonym(nouns)
     const { data } = await service
       .from('profiles')
       .select('id')

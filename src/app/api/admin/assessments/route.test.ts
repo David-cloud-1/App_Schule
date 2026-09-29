@@ -45,7 +45,7 @@ function makeAdminSupabase(overrides: Overrides = {}) {
   const profileBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: overrides.role ?? 'admin' }, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { role: overrides.role ?? 'admin', department_id: 'dept-sped' }, error: null }),
   }
   const setBuilder = {
     select: vi.fn().mockReturnThis(),

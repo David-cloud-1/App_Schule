@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { verifyAnswers } from '@/lib/answer-key'
 import { getLevelFromXp } from '@/lib/xp-utils'
-import { checkAndAwardBadges } from '@/lib/badges'
+import { checkAndAwardBadges, toBadgeDisplay } from '@/lib/badges'
 
 const AnswerSchema = z.object({
   question_id:        z.string().uuid(),
@@ -190,7 +190,10 @@ export async function POST(request: NextRequest) {
     leveled_up:   leveledUp,
     old_level:    oldLevel,
     new_level:    newLevel,
-    new_badges:   newBadges,
+    // IDs wie bisher; die Details (Name, Icon, Beschreibung) kommen seit
+    // PROJ-22 aus der Datenbank und nicht mehr aus einer Konstante im Client.
+    new_badges:        newBadges.map((b) => b.id),
+    new_badge_details: newBadges.map(toBadgeDisplay),
     coins_earned: coinsEarned,
   })
 }

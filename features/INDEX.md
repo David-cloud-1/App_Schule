@@ -35,7 +35,7 @@
 | PROJ-19 | Blitzrunde & Frachtmünzen | Deployed | [PROJ-19-blitzrunde-frachtmuenzen.md](PROJ-19-blitzrunde-frachtmuenzen.md) | 2026-09-05 |
 | PROJ-20 | Speditionshof & Shop | Deployed | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
 | PROJ-21 | Benotete Leistungsnachweise | Deployed | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |
-| PROJ-22 | Fachbereich als Datenbasis | Architected | [PROJ-22-fachbereich-datenbasis.md](PROJ-22-fachbereich-datenbasis.md) | 2026-09-29 |
+| PROJ-22 | Fachbereich als Datenbasis | In Progress | [PROJ-22-fachbereich-datenbasis.md](PROJ-22-fachbereich-datenbasis.md) | 2026-09-29 |
 
 <!-- Add features above this line -->
 

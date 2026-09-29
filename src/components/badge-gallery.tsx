@@ -1,6 +1,6 @@
 'use client'
 
-import { BADGE_DEFINITIONS } from '@/lib/badges'
+import type { BadgeDisplay } from '@/lib/badges'
 import { cn } from '@/lib/utils'
 
 export interface UnlockedBadge {
@@ -9,6 +9,8 @@ export interface UnlockedBadge {
 }
 
 interface BadgeGalleryProps {
+  /** Badges des eigenen Fachbereichs, sortiert */
+  definitions: BadgeDisplay[]
   unlockedBadges: UnlockedBadge[]
 }
 
@@ -20,7 +22,7 @@ function formatDate(isoString: string): string {
   })
 }
 
-export function BadgeGallery({ unlockedBadges }: BadgeGalleryProps) {
+export function BadgeGallery({ definitions, unlockedBadges }: BadgeGalleryProps) {
   const unlockedMap = new Map(unlockedBadges.map((b) => [b.badge_id, b.unlocked_at]))
 
   return (
@@ -36,7 +38,7 @@ export function BadgeGallery({ unlockedBadges }: BadgeGalleryProps) {
       )}
 
       <div className="grid grid-cols-3 gap-3">
-        {BADGE_DEFINITIONS.map((badge) => {
+        {definitions.map((badge) => {
           const unlockedAt = unlockedMap.get(badge.id)
           const isUnlocked = !!unlockedAt
 

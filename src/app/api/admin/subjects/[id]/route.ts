@@ -40,7 +40,22 @@ export async function PATCH(
 
   const update: Record<string, unknown> = {}
   if (parsed.data.name !== undefined) update.name = parsed.data.name
-  if (parsed.data.code !== undefined) update.code = parsed.data.code.toUpperCase()
+  if (parsed.data.code !== undefined) {
+    update.code = parsed.data.code.toUpperCase()
+    // Kürzel nur innerhalb des Fachbereichs des Fachs eindeutig (PROJ-22)
+    const { data: current } = await supabase.from('subjects').select('department_id').eq('id', id).maybeSingle()
+    if (!current) return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
+    const { data: clash } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('department_id', current.department_id)
+      .eq('code', update.code as string)
+      .neq('id', id)
+      .maybeSingle()
+    if (clash) {
+      return NextResponse.json({ error: 'Fach-Code existiert in diesem Fachbereich bereits.' }, { status: 409 })
+    }
+  }
 
   // Deactivation guard: only allow if no active questions
   if (parsed.data.is_active === false) {

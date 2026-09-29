@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
+import { getDepartmentForUser } from '@/lib/departments'
 
 const BodySchema = z.object({
   item_id: z.string().uuid(),
@@ -13,7 +14,8 @@ const ERROR_MAP: Record<string, { status: number; message: string }> = {
   item_not_found:      { status: 404, message: 'Item nicht gefunden' },
   item_inactive:       { status: 409, message: 'Dieses Item ist nicht mehr verfügbar' },
   already_owned:       { status: 409, message: 'Du besitzt dieses Item bereits' },
-  insufficient_funds:  { status: 409, message: 'Nicht genug Frachtmünzen' },
+  // Münz-Name kommt aus dem Fachbereich, siehe unten (PROJ-22)
+  insufficient_funds:  { status: 409, message: 'Nicht genug Münzen' },
 }
 
 export async function POST(request: NextRequest) {
@@ -50,7 +52,12 @@ export async function POST(request: NextRequest) {
   if (error) {
     const known = ERROR_MAP[error.message]
     if (known) {
-      return NextResponse.json({ error: known.message }, { status: known.status })
+      let message = known.message
+      if (error.message === 'insufficient_funds') {
+        const department = await getDepartmentForUser(supabase, user.id)
+        if (department) message = `Nicht genug ${department.currencyName}`
+      }
+      return NextResponse.json({ error: message }, { status: known.status })
     }
     console.error('[POST /api/shop/purchase]', error)
     return NextResponse.json({ error: 'Kauf fehlgeschlagen' }, { status: 500 })

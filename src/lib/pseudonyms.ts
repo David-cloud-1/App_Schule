@@ -14,56 +14,19 @@ export const ADJECTIVES = [
   'Besonnener','Nachdenklicher','Behäbiger','Unermüdlicher',
 ]
 
-export const NOUNS = [
-  // Wasserfahrzeuge
-  'Tanker','Frachter','Kutter','Schlepper','Barge','Fähre','Containerschiff',
-  'Motorschiff','Eisbrecher','Bulkcarrier','Kühlschiff','Schwergutschiff',
-  'Feederschiff','Gastanker','Hochseeschlepper','Schubboot','Schubleichter',
-  'Katamaran','Schnellboot','Küstenmotorschiff','Massengutfrachter',
-  'Stückgutfrachter','Mehrzweckfrachter','Autofrachter','Tankschiff',
-  'Küstenfahrer','Schleppkahn','Lotsenboot','Patrouillenboot','Schwimmkran',
-  // Landfahrzeuge
-  'Trailer','Sattelzug','Tieflader','Transporter','Tankwagen','Waggon',
-  'Lokomotive','Güterzug','Gliederzug','Hängerzug','Kühlfahrzeug','Kranwagen',
-  'Hubwagen','Muldenkipper','Tankzug','Silowagen','Autotransporter',
-  'Schienenfahrzeug','Rangierlokomotive','Güterwaggon',
-  // Luftfahrt
-  'Frachtflieger','Frachtflugzeug','Hubschrauber','Drohne','Zeppelin',
-  'Transportflugzeug','Luftfrachter','Chartermaschine',
-  // Infrastruktur
-  'Hafen','Kai','Dock','Terminal','Depot','Hub','Rampe','Lager','Hangar',
-  'Schleuse','Rollfeld','Bahnhof','Güterbahnhof','Freizone','Umschlaghalle',
-  'Containerterminal','Verteilzentrum','Logistikzentrum','Freihafen',
-  'Binnenhafen','Seehafen','Flughafen','Rangierbahnhof','Anleger','Pier',
-  'Mole','Kanal','Verladebahnhof','Umschlagzentrum','Kühlhaus',
-  'Hochregallager','Ladehof','Güterhalle','Außenlager','Zollager',
-  'Umschlagbahnhof','Abfertigungshalle','Kommissionierlager','Blocklager','Pufferlager',
-  // Ausrüstung
-  'Kran','Gabelstapler','Palette','Container','Anker','Kompass','Radar','Mast',
-  'Ladebrücke','Rolltor','Portalkran','Brückenkran','Schwenkkran','Reachstacker',
-  'Hubstapler','Förderband','Scanner','Transponder','Leuchtturm','Leine',
-  'Trosse','Winde','Spreader','Signalhorn','Klampe','Bake','Seilzug',
-  'Kettenzug','Rollwagen','Hubgerüst','Ladebordwand','Stapler','Radlader',
-  'Schienenweiche','Rangiermotor',
-  // Berufe
-  'Lotse','Kapitän','Stauer','Reeder','Spediteur','Kurier','Zöllner',
-  'Disponent','Frachtführer','Funker','Navigator','Steuermann','Matrose',
-  'Bootsmann','Hafenmeister','Lagerist','Verlader','Makler','Prüfer',
-  'Schiffsmakler','Charterer','Frachtmakler',
-  // Fachbegriffe
-  'Fracht','Cargo','Express','Charter','Manifest','Frachtbrief','Konossement',
-  'Sendung','Ladung','Stückgut','Sammelgut','Eilgut','Massengut','Schüttgut',
-  'Gefahrgut','Kühlgut','Schwergut','Langgut','Sperrgut','Transit','Zoll',
-  'Route','Tour','Disposition','Verladung','Entladung','Abfertigung',
-  'Konsolidierung','Umschlag','Lieferung','Routing','Korridor','Umlauf',
-  'Frachtrate','Akkreditiv',
-  // Prozesse & Dienste
-  'Schnelldienst','Direktdienst','Sammeldienst','Liniendienst','Expressversand',
-  'Nachtsprung','Stafette','Shuttle','Kurierdienst','Linienfracht',
+/**
+ * Die Nomen kommen aus dem Fachbereich (departments.pseudonym_nouns, PROJ-22).
+ * Neutraler Rückfall, falls ein Bereich keine hinterlegt hat — dieselbe Liste
+ * wie in der Datenbankfunktion generate_unique_pseudonym().
+ */
+export const FALLBACK_NOUNS = [
+  'Entdecker','Lerner','Planer','Profi','Stratege','Macher','Navigator',
+  'Kompass','Pionier','Tüftler','Denker','Könner','Aufsteiger','Champion',
 ]
 
-export function randomPseudonym(): string {
+export function randomPseudonym(nouns: string[]): string {
+  const pool = nouns.length > 0 ? nouns : FALLBACK_NOUNS
   const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+  const noun = pool[Math.floor(Math.random() * pool.length)]
   return `${adj} ${noun}`
 }

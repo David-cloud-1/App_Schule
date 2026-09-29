@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
   const { data: set } = await supabase
     .from('exam_question_sets')
-    .select('id, part, question_ids')
+    .select('id, part, question_ids, department_id')
     .eq('id', examSetId)
     .single()
 
@@ -133,6 +133,8 @@ export async function POST(request: NextRequest) {
     .insert({
       exam_set_id: examSetId,
       part: set.part,
+      // Der Nachweis gehört zum Bereich seines Prüfungssets (PROJ-22)
+      department_id: set.department_id,
       title,
       access_code: accessCode,
       duration_minutes: durationMinutes,

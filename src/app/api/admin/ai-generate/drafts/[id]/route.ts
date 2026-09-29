@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { resolveDraftSubject } from '../../_lib/draft-subject'
 
 const UpdateDraftSchema = z.object({
   question_text: z.string().min(1).max(1000).optional(),
   options: z.array(z.string().min(1).max(500)).length(4).optional(),
   correct_index: z.number().int().min(0).max(3).optional(),
   explanation: z.string().max(2000).nullable().optional(),
-  subject_code: z.enum(['BGP', 'KSK', 'STG', 'LOP']).nullable().optional(),
+  // Kürzel eines Fachs im Bereich des Admins (PROJ-22)
+  subject_code: z.string().min(1).max(20).nullable().optional(),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).nullable().optional(),
 })
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   const { id } = await params
 
@@ -51,6 +53,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const updates: Record<string, unknown> = { ...parsed.data }
+  if (parsed.data.subject_code !== undefined) {
+    if (parsed.data.subject_code === null) {
+      updates.subject_id = null
+    } else {
+      const subject = await resolveDraftSubject(supabase, departmentId, { subject_code: parsed.data.subject_code })
+      if (!subject) {
+        return NextResponse.json(
+          { error: `Fach "${parsed.data.subject_code}" gibt es in diesem Fachbereich nicht.` },
+          { status: 400 }
+        )
+      }
+      updates.subject_code = subject.code
+      updates.subject_id = subject.id
+    }
+  }
   // If review_required and user edits, downgrade to pending so they can accept
   if (existing.status === 'review_required' && Object.keys(updates).length > 0) {
     updates.status = 'pending'

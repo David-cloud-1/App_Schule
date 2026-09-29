@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 
@@ -61,12 +62,8 @@ export async function GET(request: NextRequest) {
   // Resolve subject filter to question ids
   let subjectFilteredIds: string[] | null = null
   if (subject) {
-    const code = subject.toUpperCase()
-    const { data: subjectRow } = await supabase
-      .from('subjects')
-      .select('id')
-      .eq('code', code)
-      .single()
+    // Kürzel nur im Bereich des Admins (PROJ-22)
+    const subjectRow = await resolveSubjectCode(supabase, auth.departmentId, subject)
 
     if (!subjectRow) {
       return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })

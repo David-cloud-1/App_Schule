@@ -32,7 +32,7 @@ function makeAdminClient() {
   const profileBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { role: 'admin', department_id: 'dept-sped' }, error: null }),
   }
   return {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid' } } }) },

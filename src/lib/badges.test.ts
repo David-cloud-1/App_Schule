@@ -1,380 +1,229 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { BADGE_DEFINITIONS, checkAndAwardBadges, type BadgeCheckContext } from './badges'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { describe, it, expect } from 'vitest'
+import { chainMock, hasCall, selectArg } from '@/test/supabase-chain-mock'
+import { checkAndAwardBadges, fetchBadgeDefinitions, isBadgeEarned, type BadgeDefinition, type BadgeStats } from './badges'
 
-// ── Badge Definitions ────────────────────────────────────────────────────────
+// ── Testdaten: die 15 Badges, wie sie die Migration 20260929_proj22 anlegt ────
 
-describe('BADGE_DEFINITIONS', () => {
-  it('contains exactly 15 badges', () => {
-    expect(BADGE_DEFINITIONS).toHaveLength(15)
+const SPED = 'dept-sped'
+const TOUR = 'dept-tour'
+const S = { BGP: 'sub-bgp', KSK: 'sub-ksk', STG: 'sub-stg', LOP: 'sub-lop', PUG: 'sub-pug' }
+
+function badge(id: string, rule: BadgeDefinition['rule'], threshold: number | null, subject_id: string | null = null, sort_order = 0): BadgeDefinition {
+  return { id, name: id, description: id, icon: '🏅', sort_order, rule, threshold, subject_id }
+}
+
+const SPED_BADGES: BadgeDefinition[] = [
+  badge('first_step', 'sessions', 1, null, 1),
+  badge('on_the_way', 'sessions', 10, null, 2),
+  badge('learning_pro', 'sessions', 50, null, 3),
+  badge('fire_starter', 'streak', 3, null, 4),
+  badge('week_warrior', 'streak', 7, null, 5),
+  badge('month_master', 'streak', 30, null, 6),
+  badge('all_rounder', 'all_rounder', 10, null, 7),
+  badge('bgp_expert', 'subject_expert', 100, S.BGP, 8),
+  badge('ksk_expert', 'subject_expert', 100, S.KSK, 9),
+  badge('stg_expert', 'subject_expert', 100, S.STG, 10),
+  badge('lop_expert', 'subject_expert', 100, S.LOP, 11),
+  badge('perfectionist', 'perfect_session', null, null, 12),
+  badge('level_10', 'level', 10, null, 13),
+  badge('level_25', 'level', 25, null, 14),
+  badge('exam_ready', 'level', 50, null, 15),
+]
+const byId = (id: string) => SPED_BADGES.find((b) => b.id === id)!
+
+const ALL_SPED_SUBJECTS = Object.values(S)
+
+function stats(over: Partial<BadgeStats> = {}): BadgeStats {
+  return {
+    totalSessions: 0,
+    streak: 0,
+    level: 1,
+    hasPerfectSession: false,
+    correctPerSubject: {},
+    activeSubjectIds: ALL_SPED_SUBJECTS,
+    ...over,
+  }
+}
+
+// ── isBadgeEarned: die Regeln ────────────────────────────────────────────────
+
+describe('isBadgeEarned', () => {
+  it.each([
+    ['first_step', { totalSessions: 1 }, true],
+    ['first_step', { totalSessions: 0 }, false],
+    ['on_the_way', { totalSessions: 10 }, true],
+    ['on_the_way', { totalSessions: 9 }, false],
+    ['learning_pro', { totalSessions: 50 }, true],
+    ['fire_starter', { streak: 3 }, true],
+    ['week_warrior', { streak: 6 }, false],
+    ['week_warrior', { streak: 7 }, true],
+    ['month_master', { streak: 30 }, true],
+    ['level_10', { level: 10 }, true],
+    ['level_25', { level: 24 }, false],
+    ['exam_ready', { level: 50 }, true],
+    ['perfectionist', { hasPerfectSession: true }, true],
+    ['perfectionist', { hasPerfectSession: false }, false],
+  ] as const)('%s bei %o → %s', (id, over, expected) => {
+    expect(isBadgeEarned(byId(id), stats(over))).toBe(expected)
   })
 
-  it('all badges have required fields: id, name, description, icon, sort_order', () => {
-    for (const badge of BADGE_DEFINITIONS) {
-      expect(badge.id).toBeTruthy()
-      expect(badge.name).toBeTruthy()
-      expect(badge.description).toBeTruthy()
-      expect(badge.icon).toBeTruthy()
-      expect(typeof badge.sort_order).toBe('number')
-    }
+  it('Fach-Experte zählt nur das eigene Fach', () => {
+    expect(isBadgeEarned(byId('ksk_expert'), stats({ correctPerSubject: { [S.KSK]: 100 } }))).toBe(true)
+    expect(isBadgeEarned(byId('ksk_expert'), stats({ correctPerSubject: { [S.KSK]: 99, [S.BGP]: 500 } }))).toBe(false)
   })
 
-  it('sort_order values are unique', () => {
-    const orders = BADGE_DEFINITIONS.map((b) => b.sort_order)
-    expect(new Set(orders).size).toBe(orders.length)
-  })
+  describe('Allrounder', () => {
+    const ten = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, 10]))
 
-  it('badge IDs are unique', () => {
-    const ids = BADGE_DEFINITIONS.map((b) => b.id)
-    expect(new Set(ids).size).toBe(ids.length)
-  })
+    it('verlangt 10 richtige in JEDEM aktiven Fach — inkl. PUG (Änderung PROJ-22)', () => {
+      const withoutPug = ten([S.BGP, S.KSK, S.STG, S.LOP])
+      expect(isBadgeEarned(byId('all_rounder'), stats({ correctPerSubject: withoutPug }))).toBe(false)
+      expect(isBadgeEarned(byId('all_rounder'), stats({ correctPerSubject: ten(ALL_SPED_SUBJECTS) }))).toBe(true)
+    })
 
-  it('contains all 15 required badge IDs from spec', () => {
-    const requiredIds = [
-      'first_step', 'on_the_way', 'learning_pro',
-      'fire_starter', 'week_warrior', 'month_master',
-      'all_rounder',
-      'bgp_expert', 'ksk_expert', 'stg_expert', 'lop_expert',
-      'perfectionist',
-      'level_10', 'level_25', 'exam_ready',
-    ]
-    const ids = BADGE_DEFINITIONS.map((b) => b.id)
-    for (const requiredId of requiredIds) {
-      expect(ids).toContain(requiredId)
-    }
+    it('ignoriert inaktive Fächer (nicht in activeSubjectIds)', () => {
+      const active = [S.BGP, S.KSK]
+      expect(isBadgeEarned(byId('all_rounder'), stats({ activeSubjectIds: active, correctPerSubject: ten(active) }))).toBe(true)
+    })
+
+    it('gibt es ohne aktive Fächer nicht', () => {
+      expect(isBadgeEarned(byId('all_rounder'), stats({ activeSubjectIds: [] }))).toBe(false)
+    })
   })
 })
 
+// ── Datenbank-Ersatz ─────────────────────────────────────────────────────────
+
+interface Db {
+  existing?: string[]
+  sessions?: number
+  correct?: { subject_id: string }[]
+  allSessions?: { score: number; total: number }[]
+  department?: string | null
+  subjectsOfDepartment?: string[]
+  badges?: (BadgeDefinition & { subjects: { department_id: string } | null })[]
+  userBadgesError?: boolean
+  insertError?: boolean
+}
+
+function db(opts: Db = {}) {
+  const {
+    existing = [],
+    sessions = 0,
+    correct = [],
+    allSessions = [],
+    department = SPED,
+    subjectsOfDepartment = ALL_SPED_SUBJECTS,
+    badges = SPED_BADGES.map((b) => ({ ...b, subjects: b.subject_id ? { department_id: SPED } : null })),
+    userBadgesError = false,
+    insertError = false,
+  } = opts
+  return chainMock((table, calls) => {
+    if (table === 'user_badges') {
+      if (hasCall(calls, 'insert')) return { error: insertError ? { message: 'insert error' } : null }
+      return userBadgesError
+        ? { data: null, error: { message: 'DB error' } }
+        : { data: existing.map((badge_id) => ({ badge_id })) }
+    }
+    if (table === 'profiles') return { data: { department_id: department } }
+    if (table === 'badges') return { data: badges }
+    if (table === 'subjects') return { data: subjectsOfDepartment.map((id) => ({ id })) }
+    if (table === 'quiz_sessions') {
+      return selectArg(calls) === 'score, total' ? { data: allSessions } : { count: sessions }
+    }
+    if (table === 'quiz_answers') return { data: correct.map((c) => ({ quiz_sessions: c })) }
+    return {}
+  })
+}
+
+const USER_ID = 'user-1'
+const ctx = { streak: 0, level: 1, sessionScore: 0, sessionTotal: 0 }
+const ids = (badges: { id: string }[]) => badges.map((b) => b.id)
+
 // ── checkAndAwardBadges ──────────────────────────────────────────────────────
 
-const USER_ID = 'test-user-id'
-
-/**
- * Creates a minimal Supabase mock for badge checking.
- * - existingBadges: badges the user already has (prevents re-awarding)
- * - sessionsCount: total quiz sessions for the user
- * - correctRows: correct answer rows (with joined subject codes)
- * - allSessions: all sessions with score/total (for perfectionist check)
- * - insertError: if true, the INSERT fails
- */
-function makeSupabaseMock(opts: {
-  existingBadges?: string[]
-  sessionsCount?: number
-  correctRows?: { quiz_sessions: { subjects: { code: string } } }[]
-  allSessions?: { score: number; total: number }[]
-  insertError?: boolean
-} = {}) {
-  const {
-    existingBadges = [],
-    sessionsCount = 0,
-    correctRows = [],
-    allSessions = [],
-    insertError = false,
-  } = opts
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mockFrom = vi.fn().mockImplementation((table: string): any => {
-    if (table === 'user_badges') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({
-            data: existingBadges.map((id) => ({ badge_id: id })),
-            error: null,
-          }),
-        }),
-        insert: vi.fn().mockResolvedValue({ error: insertError ? { message: 'insert error' } : null }),
-      }
-    }
-
-    if (table === 'quiz_sessions') {
-      return {
-        select: vi.fn().mockReturnValue({
-          count: 'exact',
-          head: true,
-          eq: vi.fn().mockReturnValue({
-            // for count query
-            then: (resolve: (v: unknown) => void) => resolve({ count: sessionsCount, error: null }),
-            // chainable for allSessions query
-            select: vi.fn().mockResolvedValue({ data: allSessions, error: null }),
-            filter: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          }),
-        }),
-      }
-    }
-
-    if (table === 'quiz_answers') {
-      // Correct answers are fetched page-by-page via .range().
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                range: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
-              }),
-            }),
-          }),
-        }),
-      }
-    }
-
-    return { select: vi.fn().mockResolvedValue({ data: [], error: null }) }
-  })
-
-  return { from: mockFrom } as unknown as SupabaseClient
-}
-
-/**
- * A simpler mock builder that handles the chained query pattern in checkAndAwardBadges.
- * Uses a spy-free approach: every `.from()` call returns a builder that resolves
- * to the appropriate data for that table.
- */
-function makeSimpleMock(opts: {
-  existingBadges?: string[]
-  sessionsCount?: number
-  correctRows?: Array<{ quiz_sessions: { subjects: { code: string } } }>
-  allSessions?: { score: number; total: number }[]
-  insertError?: boolean
-  userBadgesQueryError?: boolean
-} = {}) {
-  const {
-    existingBadges = [],
-    sessionsCount = 0,
-    correctRows = [],
-    allSessions = [],
-    insertError = false,
-    userBadgesQueryError = false,
-  } = opts
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const from = vi.fn().mockImplementation((table: string): any => {
-    if (table === 'user_badges') {
-      const insertMock = vi.fn().mockResolvedValue({
-        error: insertError ? { message: 'insert error' } : null,
-      })
-      const eqMock = vi.fn().mockResolvedValue({
-        data: userBadgesQueryError ? null : existingBadges.map((id) => ({ badge_id: id })),
-        error: userBadgesQueryError ? { message: 'DB error' } : null,
-      })
-      const selectMock = vi.fn().mockReturnValue({ eq: eqMock })
-      return { select: selectMock, insert: insertMock }
-    }
-
-    if (table === 'quiz_sessions') {
-      // count query: .select('id', { count: 'exact', head: true }).eq(...)
-      // allSessions query: .select('score, total').eq(...)
-      // perfectSessions query: .select('id').eq(...).filter(...).limit(...)
-      let selectCallCount = 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const selectMock = vi.fn().mockImplementation((..._args: any[]) => {
-        selectCallCount++
-        if (selectCallCount === 1) {
-          // First call: count query
-          return {
-            eq: vi.fn().mockResolvedValue({ count: sessionsCount, data: null, error: null }),
-          }
-        }
-        if (selectCallCount === 2) {
-          // Second call (retroactive perfectionist): allSessions
-          return {
-            eq: vi.fn().mockResolvedValue({ data: allSessions, error: null }),
-          }
-        }
-        if (selectCallCount === 3) {
-          // Third call (retroactive): perfectSessions unused query
-          return {
-            eq: vi.fn().mockReturnValue({
-              filter: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-              }),
-            }),
-          }
-        }
-        return { eq: vi.fn().mockResolvedValue({ data: [], error: null }) }
-      })
-      return { select: selectMock }
-    }
-
-    if (table === 'quiz_answers') {
-      // Correct answers are fetched page-by-page via .range().
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                range: vi.fn().mockResolvedValue({ data: correctRows, error: null }),
-              }),
-            }),
-          }),
-        }),
-      }
-    }
-
-    return { select: vi.fn().mockResolvedValue({ data: [], error: null }) }
-  })
-
-  return { from } as unknown as SupabaseClient
-}
-
 describe('checkAndAwardBadges', () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  // ── Session-count badges ─────────────────────────────────────────────────
-
-  it('awards first_step after 1 session', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('first_step')
+  it('vergibt neu verdiente Badges und speichert sie', async () => {
+    const { client, writes: inserts } = db({ sessions: 10 })
+    const awarded = await checkAndAwardBadges(client, USER_ID, { ...ctx, streak: 3, level: 10, sessionScore: 5, sessionTotal: 5 })
+    expect(ids(awarded).sort()).toEqual(['fire_starter', 'first_step', 'level_10', 'on_the_way', 'perfectionist'])
+    expect(inserts).toHaveLength(1)
+    expect((inserts[0].payload as { badge_id: string }[]).map((r) => r.badge_id)).toHaveLength(5)
   })
 
-  it('does NOT award first_step with 0 sessions', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 0 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 0, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).not.toContain('first_step')
+  it('vergibt keine Badges doppelt', async () => {
+    const { client } = db({ sessions: 1, existing: ['first_step'] })
+    expect(ids(await checkAndAwardBadges(client, USER_ID, ctx))).not.toContain('first_step')
   })
 
-  it('awards on_the_way after 10 sessions', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 10 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('first_step')
-    expect(awarded).toContain('on_the_way')
+  it('zählt richtige Antworten je Fach über das Fach der Sitzung', async () => {
+    const correct = Array.from({ length: 100 }, () => ({ subject_id: S.STG }))
+    const { client } = db({ correct })
+    expect(ids(await checkAndAwardBadges(client, USER_ID, ctx))).toEqual(['stg_expert'])
   })
 
-  it('awards learning_pro after 50 sessions', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 50 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('learning_pro')
+  it('Allrounder nur mit allen aktiven Fächern des Bereichs', async () => {
+    const correct = ALL_SPED_SUBJECTS.flatMap((subject_id) => Array.from({ length: 10 }, () => ({ subject_id })))
+    const { client } = db({ correct })
+    expect(ids(await checkAndAwardBadges(client, USER_ID, ctx))).toContain('all_rounder')
+
+    const { client: withoutPug } = db({ correct: correct.filter((c) => c.subject_id !== S.PUG) })
+    expect(ids(await checkAndAwardBadges(withoutPug, USER_ID, ctx))).not.toContain('all_rounder')
   })
 
-  // ── Streak badges ────────────────────────────────────────────────────────
-
-  it('awards fire_starter at streak >= 3', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 3, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('fire_starter')
-    expect(awarded).not.toContain('week_warrior')
-  })
-
-  it('awards week_warrior at streak >= 7', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 7, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('fire_starter')
-    expect(awarded).toContain('week_warrior')
-    expect(awarded).not.toContain('month_master')
-  })
-
-  it('awards month_master at streak >= 30', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 30, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('month_master')
-  })
-
-  // ── Level badges ─────────────────────────────────────────────────────────
-
-  it('awards level_10 at level >= 10', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 10, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('level_10')
-    expect(awarded).not.toContain('level_25')
-  })
-
-  it('awards level_25 at level >= 25 (also awards level_10)', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 25, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('level_10')
-    expect(awarded).toContain('level_25')
-  })
-
-  it('awards exam_ready at level >= 50', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 50, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('exam_ready')
-  })
-
-  // ── Perfectionist badge ───────────────────────────────────────────────────
-
-  it('awards perfectionist when session score equals total', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 10, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toContain('perfectionist')
-  })
-
-  it('does NOT award perfectionist when score < total', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 9, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).not.toContain('perfectionist')
-  })
-
-  it('does NOT award perfectionist when totalQuestions is 0', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 0, sessionTotal: 0 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).not.toContain('perfectionist')
-  })
-
-  // ── Already-earned badges are NOT re-awarded ──────────────────────────────
-
-  it('does not re-award badges the user already has', async () => {
-    // User already has first_step
-    const supabase = makeSimpleMock({
-      existingBadges: ['first_step'],
-      sessionsCount: 1,
-    })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).not.toContain('first_step')
-  })
-
-  it('returns [] when user already has all earnable badges', async () => {
-    const allBadgeIds = BADGE_DEFINITIONS.map((b) => b.id)
-    const supabase = makeSimpleMock({ existingBadges: allBadgeIds })
-    const ctx: BadgeCheckContext = { streak: 30, level: 50, sessionScore: 10, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toHaveLength(0)
-  })
-
-  // ── Retroactive mode ──────────────────────────────────────────────────────
-
-  it('returns [] for retroactive awards (no modals shown)', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1 })
-    const ctx: BadgeCheckContext = {
-      streak: 3,
-      level: 10,
-      sessionScore: 0,
-      sessionTotal: 0,
-      isRetroactive: true,
-    }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    // Badges are awarded in DB but not returned (no modal)
-    expect(awarded).toHaveLength(0)
-  })
-
-  // ── Error handling ────────────────────────────────────────────────────────
-
-  it('returns [] gracefully when user_badges query fails', async () => {
-    const supabase = makeSimpleMock({ userBadgesQueryError: true })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
+  it('zieht Perfektionist rückwirkend aus früheren Sitzungen, zeigt aber kein Popup', async () => {
+    const { client, writes: inserts } = db({ allSessions: [{ score: 3, total: 5 }, { score: 5, total: 5 }] })
+    const awarded = await checkAndAwardBadges(client, USER_ID, { ...ctx, isRetroactive: true })
     expect(awarded).toEqual([])
+    expect((inserts[0].payload as { badge_id: string; is_retroactive: boolean }[])).toEqual([
+      expect.objectContaining({ badge_id: 'perfectionist', is_retroactive: true }),
+    ])
   })
 
-  it('returns [] gracefully when insert fails', async () => {
-    const supabase = makeSimpleMock({ sessionsCount: 1, insertError: true })
-    const ctx: BadgeCheckContext = { streak: 0, level: 1, sessionScore: 5, sessionTotal: 10 }
-    const awarded = await checkAndAwardBadges(supabase, USER_ID, ctx)
-    expect(awarded).toEqual([])
+  it('Perfektionist nicht bei leerer Sitzung', async () => {
+    const { client } = db()
+    expect(ids(await checkAndAwardBadges(client, USER_ID, { ...ctx, sessionScore: 0, sessionTotal: 0 }))).not.toContain('perfectionist')
+  })
+
+  it('bietet Fach-Badges anderer Bereiche nicht an', async () => {
+    const tourBadge = { ...badge('rvt_expert', 'subject_expert', 1, 'sub-rvt'), subjects: { department_id: TOUR } }
+    const badges = [...SPED_BADGES.map((b) => ({ ...b, subjects: b.subject_id ? { department_id: SPED } : null })), tourBadge]
+    const { client } = db({ badges, correct: [{ subject_id: 'sub-rvt' }] })
+    expect(ids(await checkAndAwardBadges(client, USER_ID, ctx))).not.toContain('rvt_expert')
+  })
+
+  it('liefert [] ohne Absturz, wenn user_badges nicht lesbar ist', async () => {
+    const { client } = db({ sessions: 5, userBadgesError: true })
+    expect(await checkAndAwardBadges(client, USER_ID, ctx)).toEqual([])
+  })
+
+  it('liefert [] ohne Absturz, wenn das Speichern scheitert', async () => {
+    const { client } = db({ sessions: 5, insertError: true })
+    expect(await checkAndAwardBadges(client, USER_ID, ctx)).toEqual([])
+  })
+
+  it('liefert [], wenn alles schon verdient ist', async () => {
+    const { client, writes: inserts } = db({ sessions: 100, existing: SPED_BADGES.map((b) => b.id) })
+    expect(await checkAndAwardBadges(client, USER_ID, { ...ctx, level: 60, streak: 40 })).toEqual([])
+    expect(inserts).toHaveLength(0)
+  })
+})
+
+describe('fetchBadgeDefinitions', () => {
+  it('liefert allgemeine Badges plus Fach-Badges des Bereichs', async () => {
+    const badges = [
+      { ...badge('first_step', 'sessions', 1), subjects: null },
+      { ...badge('bgp_expert', 'subject_expert', 100, S.BGP), subjects: { department_id: SPED } },
+      { ...badge('rvt_expert', 'subject_expert', 100, 'sub-rvt'), subjects: { department_id: TOUR } },
+    ]
+    const { client } = chainMock(() => ({ data: badges }))
+    expect(ids(await fetchBadgeDefinitions(client, SPED))).toEqual(['first_step', 'bgp_expert'])
+    expect(ids(await fetchBadgeDefinitions(client, TOUR))).toEqual(['first_step', 'rvt_expert'])
+  })
+
+  it('gibt die Hilfsspalte subjects nicht weiter', async () => {
+    const { client } = chainMock(() => ({ data: [{ ...badge('first_step', 'sessions', 1), subjects: null }] }))
+    const [first] = await fetchBadgeDefinitions(client, SPED)
+    expect(first).not.toHaveProperty('subjects')
   })
 })

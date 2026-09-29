@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase-server'
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const ADMIN_USER = { id: 'admin-uuid', email: 'admin@test.com' }
-const ADMIN_PROFILE = { role: 'admin' }
+const ADMIN_PROFILE = { role: 'admin', department_id: 'dept-sped' }
 
 function builder(overrides: Record<string, unknown> = {}) {
   return {

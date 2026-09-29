@@ -9,7 +9,18 @@ vi.mock('@/lib/answer-key', () => ({
   fetchAnswerKey: vi.fn(async () => new Map()),
 }))
 
+// Bereich des Azubis und Fach-Auflösung (PROJ-22): LOP gibt es nur in Spedition
+vi.mock('@/lib/departments', () => ({
+  getDepartmentForUser: vi.fn(async () => ({ id: 'dept-sped' })),
+}))
+vi.mock('@/lib/subjects', () => ({
+  resolveSubjectCode: vi.fn(async (_sb: unknown, departmentId: string, code: string) =>
+    departmentId === 'dept-sped' && code.toUpperCase() === 'LOP' ? { id: 'subj-lop', code: 'LOP' } : null,
+  ),
+}))
+
 import { NextRequest } from 'next/server'
+import { resolveSubjectCode } from '@/lib/subjects'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -112,6 +123,18 @@ describe('GET /api/questions', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.questions).toHaveLength(1)
+    expect(vi.mocked(resolveSubjectCode)).toHaveBeenCalledWith(expect.anything(), 'dept-sped', 'LOP')
+  })
+
+  it('returns no questions for a subject code outside the own department', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeSupabaseMock({ id: 'user-1' }, [mockQuestion]) as never
+    )
+
+    const response = await GET(makeRequest({ subject: 'RVT' }))
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.questions).toHaveLength(0)
   })
 
   it('returns 400 for invalid difficulty value', async () => {

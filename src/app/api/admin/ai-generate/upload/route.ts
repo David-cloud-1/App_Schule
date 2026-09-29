@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../../_lib/auth'
 import { processJob, MAX_FILE_BYTES } from '../_lib/process-job'
 import { createClient } from '@/lib/supabase-server'
+import { resolveSubjectCode } from '@/lib/subjects'
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -33,11 +34,11 @@ export async function POST(request: NextRequest) {
       ? Number(classLevelRaw)
       : null
 
+  // Fach nur im eigenen Bereich auflösen (PROJ-22); unbekannt → ohne Fach
   const subjectCodeRaw = formData.get('subject_code')
-  const subjectCode: string | null =
-    subjectCodeRaw && ['BGP', 'KSK', 'STG', 'LOP', 'PUG'].includes(String(subjectCodeRaw))
-      ? String(subjectCodeRaw)
-      : null
+  const subject = subjectCodeRaw
+    ? await resolveSubjectCode(auth.supabase, auth.departmentId, String(subjectCodeRaw), { activeOnly: true })
+    : null
 
   const topicIdRaw = formData.get('topic_id')
   const topicId: string | null = topicIdRaw ? String(topicIdRaw) : null
@@ -68,7 +69,8 @@ export async function POST(request: NextRequest) {
       file_size_bytes: file.size,
       status: 'processing',
       class_level: classLevel,
-      subject_code: subjectCode,
+      subject_code: subject?.code ?? null,
+      subject_id: subject?.id ?? null,
       topic_id: topicId,
     })
     .select('*')

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
+import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 
 const QuestionSchema = z.object({
   question_text: z.string().min(1),
@@ -12,17 +14,16 @@ const QuestionSchema = z.object({
 
 const ImportSchema = z.object({
   name: z.string().min(1).max(100),
-  part: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  // Teil-Nummer im Bereich (PROJ-22)
+  part: z.number().int().min(1).max(20),
   questions: z.array(QuestionSchema).min(1),
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
 })
 
-const PART_DEFAULT_SUBJECT: Record<number, string> = { 1: 'STG', 2: 'KSK', 3: 'BGP' }
-
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -41,26 +42,30 @@ export async function POST(request: NextRequest) {
 
   const { name, part, questions } = parsed.data
 
-  // Load subjects lookup
-  const { data: subjects, error: subjErr } = await supabase
-    .from('subjects')
-    .select('id, code')
-    .limit(20)
-
-  if (subjErr) {
+  // Prüfungsteil und Fächer des Bereichs (PROJ-22)
+  let examPart
+  let subjects
+  try {
+    examPart = findExamPart(await fetchExamParts(supabase, departmentId), part)
+    subjects = await fetchDepartmentSubjects(supabase, departmentId)
+  } catch (err) {
+    console.error('[exam-sets/import]', err)
     return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
+  }
+  if (!examPart) {
+    return NextResponse.json({ error: `Prüfungsteil ${part} gibt es in diesem Fachbereich nicht.` }, { status: 400 })
   }
 
   const subjectMap: Record<string, string> = {}
-  for (const s of subjects ?? []) {
-    subjectMap[(s.code as string).toUpperCase()] = s.id as string
+  for (const s of subjects) {
+    subjectMap[normalizeSubjectCode(s.code)] = s.id
   }
 
-  const defaultSubjectCode = PART_DEFAULT_SUBJECT[part]
-  const defaultSubjectId = subjectMap[defaultSubjectCode]
+  // Fragen ohne (bekanntes) Kürzel landen im Standardfach des Teils
+  const defaultSubjectId = examPart.defaultSubjectId ?? examPart.subjects[0]?.id
   if (!defaultSubjectId) {
     return NextResponse.json(
-      { error: `Default subject ${defaultSubjectCode} not found` },
+      { error: `Prüfungsteil ${part} hat kein Standardfach.` },
       { status: 500 }
     )
   }
@@ -104,7 +109,7 @@ export async function POST(request: NextRequest) {
 
   // Batch insert question_subjects
   const subjectRows = insertedQuestions.map((q, i) => {
-    const fach = questions[i].fach_code?.toUpperCase()
+    const fach = questions[i].fach_code ? normalizeSubjectCode(questions[i].fach_code!) : null
     const subjectId = (fach && subjectMap[fach]) || defaultSubjectId
     return {
       question_id: q.id as string,
@@ -128,6 +133,7 @@ export async function POST(request: NextRequest) {
       question_ids: insertedIds,
       is_active: false,
       created_by: user.id,
+      department_id: departmentId,
       ...(parsed.data.duration_minutes != null ? { duration_minutes: parsed.data.duration_minutes } : {}),
     })
     .select()

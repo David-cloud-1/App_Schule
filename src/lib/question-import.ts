@@ -6,7 +6,7 @@
  * läuft ohne KI und kostet nichts, weder im Browser noch auf dem Server.
  */
 import { analyzeQuestion, type QualityFinding, type QuestionInput } from './question-quality'
-import { QUESTION_QUALITY_RULES } from './question-rules'
+import { buildQualityRules } from './question-rules'
 
 export interface ImportRow {
   question_text: string
@@ -67,8 +67,10 @@ export function checkImportRows(rows: ImportRow[]): ImportCheck {
  * Baut einen fertigen Korrekturauftrag für dieselbe KI, die die Fragen
  * erzeugt hat: konkrete Verstöße plus die betroffenen Fragen im
  * Ausgangsformat. Kostet nichts, weil der Nutzer ihn extern einfügt.
+ *
+ * @param targetGroup Zielgruppe des Fachbereichs (departments.target_group)
  */
-export function buildFixPrompt(flagged: FlaggedRow[]): string {
+export function buildFixPrompt(flagged: FlaggedRow[], targetGroup: string): string {
   const items = flagged
     .map((f, i) => {
       const issues = f.blockers.map((b) => `   - ${b.message}`).join('\n')
@@ -84,7 +86,7 @@ BEANSTANDUNGEN:
 
 ${items}
 
-${QUESTION_QUALITY_RULES}
+${buildQualityRules(targetGroup)}
 
 ZU ÜBERARBEITENDE FRAGEN:
 

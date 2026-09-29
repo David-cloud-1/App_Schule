@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { resolveDraftSubject } from '../../_lib/draft-subject'
+import { fetchDepartmentSubjects } from '@/lib/subjects'
 
 const BulkAcceptSchema = z.object({
   draft_ids: z.array(z.string().uuid()).min(1).max(200),
-  subject_code: z.enum(['BGP', 'KSK', 'STG', 'LOP', 'PUG']).optional(),
+  // Kürzel eines Fachs im Bereich des Admins (PROJ-22)
+  subject_code: z.string().min(1).max(20).optional(),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
 })
 
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -40,25 +43,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Entwürfe konnten nicht geladen werden.' }, { status: 500 })
   }
 
-  // Apply overrides if provided
+  // Fächer des Bereichs einmal laden — alle Kürzel werden nur hier aufgelöst
+  const departmentSubjects = await fetchDepartmentSubjects(supabase, departmentId)
+  if (subject_code && !(await resolveDraftSubject(supabase, departmentId, { subject_code }, departmentSubjects))) {
+    return NextResponse.json(
+      { error: `Fach "${subject_code}" gibt es in diesem Fachbereich nicht.` },
+      { status: 400 }
+    )
+  }
+
+  // Apply overrides if provided (ein vorgegebenes Kürzel ersetzt das Fach des Entwurfs)
   const toProcess = drafts.map((d) => ({
     ...d,
     subject_code: subject_code ?? d.subject_code,
+    subject_id: subject_code ? null : d.subject_id,
     difficulty: difficulty ?? d.difficulty,
   }))
 
   const skipped: string[] = []
   const accepted: string[] = []
   const failed: string[] = []
-
-  // Resolve subject ids upfront to avoid N+1
-  const subjectCodes = [...new Set(toProcess.map((d) => d.subject_code).filter(Boolean))]
-  const subjectMap: Record<string, string> = {}
-
-  for (const code of subjectCodes) {
-    const { data: sub } = await supabase.from('subjects').select('id').eq('code', code).single()
-    if (sub) subjectMap[code] = sub.id
-  }
 
   for (const draft of toProcess) {
     if (draft.status === 'review_required') {
@@ -69,12 +73,12 @@ export async function POST(request: NextRequest) {
       skipped.push(draft.id)
       continue
     }
-    if (!draft.subject_code || !draft.difficulty) {
+    if ((!draft.subject_id && !draft.subject_code) || !draft.difficulty) {
       skipped.push(draft.id)
       continue
     }
 
-    const subjectId = subjectMap[draft.subject_code]
+    const subjectId = (await resolveDraftSubject(supabase, departmentId, draft, departmentSubjects))?.id
     if (!subjectId) {
       failed.push(draft.id)
       continue

@@ -55,11 +55,12 @@ describe('buildFixPrompt', () => {
     const flagged = checkImportRows([
       row({ antwort_b: 'Unentgeltliche Überlassung zum Gebrauch' }),
     ]).flagged
-    const prompt = buildFixPrompt(flagged)
+    const prompt = buildFixPrompt(flagged, 'angehende Tourismuskaufleute')
     expect(prompt).toContain('Was kennzeichnet den Leihvertrag?')
     expect(prompt).toContain('Alle Distraktoren beginnen mit')
     expect(prompt).toContain('REGELN FÜR ANTWORTOPTIONEN')
     expect(prompt).toContain('"rows"')
     expect(prompt).toContain('Unentgeltliche Überlassung zum Gebrauch')
+    expect(prompt).toContain('Berufsschüler (angehende Tourismuskaufleute)')
   })
 })

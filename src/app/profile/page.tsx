@@ -6,6 +6,7 @@ import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
 import { XpProgressBar } from '@/components/xp-progress-bar'
 import { BadgeGallery, type UnlockedBadge } from '@/components/badge-gallery'
+import { fetchBadgeDefinitions, toBadgeDisplay, type BadgeDisplay } from '@/lib/badges'
 import { HofGallery } from '@/components/hof-gallery'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 import { PseudonymSettings } from '@/components/pseudonym-settings'
@@ -21,7 +22,7 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out')
+    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out, department_id')
     .eq('id', user.id)
     .single()
 
@@ -43,6 +44,15 @@ export default async function ProfilePage() {
     badge_id: r.badge_id as string,
     unlocked_at: r.unlocked_at as string,
   }))
+
+  // Badges des eigenen Fachbereichs (PROJ-22)
+  let badgeDefinitions: BadgeDisplay[] = []
+  try {
+    const defs = await fetchBadgeDefinitions(supabase, (profile?.department_id as string | null) ?? null)
+    badgeDefinitions = defs.map(toBadgeDisplay)
+  } catch (err) {
+    console.error('[profile] badge definitions:', err)
+  }
 
   return (
     <div className="min-h-screen bg-[#111827] flex flex-col">
@@ -86,7 +96,7 @@ export default async function ProfilePage() {
 
         {/* Badge gallery */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
-          <BadgeGallery unlockedBadges={unlockedBadges} />
+          <BadgeGallery definitions={badgeDefinitions} unlockedBadges={unlockedBadges} />
         </div>
 
         {/* Hof gallery (PROJ-20) */}

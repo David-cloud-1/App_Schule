@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { BADGE_DEFINITIONS } from '@/lib/badges'
+import { fetchBadgeDefinitions, toBadgeDisplay, type BadgeDisplay } from '@/lib/badges'
 
-export interface BadgeWithStatus {
-  id: string
-  name: string
-  description: string
-  icon: string
-  sort_order: number
+export interface BadgeWithStatus extends BadgeDisplay {
   unlocked: boolean
   unlocked_at: string | null
 }
@@ -22,6 +17,22 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Badges des eigenen Fachbereichs (PROJ-22)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('department_id')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  let definitions: BadgeDisplay[]
+  try {
+    const defs = await fetchBadgeDefinitions(supabase, (profile?.department_id as string | null) ?? null)
+    definitions = defs.map(toBadgeDisplay)
+  } catch (err) {
+    console.error('[GET /api/badges] definitions:', err)
+    return NextResponse.json({ error: 'Failed to load badges' }, { status: 500 })
+  }
+
   // Fetch this user's unlocked badges
   const { data: userBadges, error } = await supabase
     .from('user_badges')
@@ -31,11 +42,7 @@ export async function GET() {
   if (error) {
     // Table may not exist yet — return all badges as locked
     console.warn('[GET /api/badges] user_badges query failed:', error.message)
-    const badges: BadgeWithStatus[] = BADGE_DEFINITIONS.map((b) => ({
-      ...b,
-      unlocked: false,
-      unlocked_at: null,
-    }))
+    const badges: BadgeWithStatus[] = definitions.map((b) => ({ ...b, unlocked: false, unlocked_at: null }))
     return NextResponse.json({ badges })
   }
 
@@ -43,7 +50,7 @@ export async function GET() {
     (userBadges ?? []).map((r) => [r.badge_id as string, r.unlocked_at as string]),
   )
 
-  const badges: BadgeWithStatus[] = BADGE_DEFINITIONS.map((b) => ({
+  const badges: BadgeWithStatus[] = definitions.map((b) => ({
     ...b,
     unlocked: unlockedMap.has(b.id),
     unlocked_at: unlockedMap.get(b.id) ?? null,

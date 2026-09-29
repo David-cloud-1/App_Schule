@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, writeAuditLog } from '../../../../_lib/auth'
+import { resolveDraftSubject } from '../../../_lib/draft-subject'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   const { id } = await params
 
@@ -29,9 +30,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Entwurf wurde bereits akzeptiert.' }, { status: 409 })
   }
 
-  if (!draft.subject_code) {
+  if (!draft.subject_id && !draft.subject_code) {
     return NextResponse.json(
-      { error: 'Bitte Fach (BGP/KSK/STG/LOP/PUG) vor dem Akzeptieren zuweisen.' },
+      { error: 'Bitte ein Fach vor dem Akzeptieren zuweisen.' },
       { status: 422 }
     )
   }
@@ -43,16 +44,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     )
   }
 
-  // 1. Find or create subject
-  const { data: subject } = await supabase
-    .from('subjects')
-    .select('id')
-    .eq('code', draft.subject_code)
-    .single()
+  // 1. Fach im Bereich des Admins (PROJ-22)
+  const subject = await resolveDraftSubject(supabase, departmentId, draft)
 
   if (!subject) {
     return NextResponse.json(
-      { error: `Fach "${draft.subject_code}" nicht in der Datenbank gefunden.` },
+      { error: `Fach "${draft.subject_code ?? draft.subject_id}" gibt es in diesem Fachbereich nicht.` },
       { status: 422 }
     )
   }

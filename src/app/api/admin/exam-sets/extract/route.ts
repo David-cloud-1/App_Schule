@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAdmin } from '../../_lib/auth'
 import { extractText, MAX_FILE_BYTES } from '../../ai-generate/_lib/process-job'
+import { getDepartmentById } from '@/lib/departments'
+import { fetchDepartmentSubjects } from '@/lib/subjects'
 
 export const maxDuration = 60
 
@@ -24,7 +26,9 @@ const ALLOWED_TYPES = [
   'application/msword',
 ]
 
-const EXTRACTION_PROMPT = `Du bist ein Datentransformations-Tool für IHK-Prüfungsaufgaben (Speditionskaufleute Bayern).
+/** Prompt für die Extraktion aus Prüfungs-PDFs — Fächer aus dem Bereich (PROJ-22) */
+function buildExtractionPrompt(departmentName: string, subjectCodes: string[]): string {
+  return `Du bist ein Datentransformations-Tool für IHK-Prüfungsaufgaben (${departmentName}).
 
 Extrahiere alle Multiple-Choice-Fragen aus dem Dokument EXAKT wie sie im Original stehen.
 
@@ -35,7 +39,7 @@ STRENGE REGELN:
 4. Keine eigenen Fragen erfinden, keine Antworten ergänzen
 5. Lückentexte, Berechnungsaufgaben und reine Textaufgaben überspringen
 
-FÄCHER zuordnen: BGP, KSK, STG, LOP, PUG
+FÄCHER zuordnen: ${subjectCodes.join(', ')}
 
 Antworte NUR mit diesem JSON (kein Markdown, kein Text davor/danach):
 {
@@ -45,10 +49,11 @@ Antworte NUR mit diesem JSON (kein Markdown, kein Text davor/danach):
       "options": ["Antwort A", "Antwort B", "Antwort C", "Antwort D"],
       "correct_index": 0,
       "needs_review": false,
-      "fach_code": "STG"
+      "fach_code": "${subjectCodes[0] ?? 'FACH'}"
     }
   ]
 }`
+}
 
 function parseClaudeJson(text: string): ClaudeExtractionResponse | null {
   try {
@@ -128,7 +133,10 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey })
 
-  const promptContent = `${EXTRACTION_PROMPT}\n\n--- DOKUMENT ---\n${text.slice(0, 80_000)}\n--- ENDE ---`
+  const department = await getDepartmentById(auth.supabase, auth.departmentId)
+  const subjects = await fetchDepartmentSubjects(auth.supabase, auth.departmentId, { activeOnly: true }).catch(() => [])
+  const extractionPrompt = buildExtractionPrompt(department?.name ?? '', subjects.map((s) => s.code))
+  const promptContent = `${extractionPrompt}\n\n--- DOKUMENT ---\n${text.slice(0, 80_000)}\n--- ENDE ---`
 
   let responseText: string
   try {

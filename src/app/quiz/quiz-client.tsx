@@ -9,7 +9,7 @@ import { LevelUpDialog } from '@/components/level-up-dialog'
 import { BadgeUnlockModal } from '@/components/badge-unlock-modal'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { getLevelFromXp } from '@/lib/xp-utils'
-import { BADGE_MAP, type BadgeDefinition } from '@/lib/badges'
+import type { BadgeDisplay } from '@/lib/badges'
 import { cn } from '@/lib/utils'
 
 export interface QuizQuestion {
@@ -46,6 +46,7 @@ interface SessionResult {
   old_level: number
   new_level: number
   new_badges: string[]
+  new_badge_details?: BadgeDisplay[]
   // Added by PROJ-19 (Frachtmünzen) — optional until /backend returns it, so
   // this screen degrades gracefully in the meantime.
   coins_earned?: number
@@ -216,7 +217,7 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
   const [sessionAnswers, setSessionAnswers] = useState<SessionAnswer[]>([])
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null)
   const [showLevelUp, setShowLevelUp] = useState(false)
-  const [badgeQueue, setBadgeQueue] = useState<BadgeDefinition[]>([])
+  const [badgeQueue, setBadgeQueue] = useState<BadgeDisplay[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const totalQuestions = questions.length
@@ -251,12 +252,9 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
       setPhase('summary')
       if (result?.leveled_up) {
         setShowLevelUp(true)
-      } else if (result?.new_badges?.length) {
+      } else if (result?.new_badge_details?.length) {
         // No level-up: start badge queue immediately
-        const defs = result.new_badges
-          .map((id) => BADGE_MAP.get(id))
-          .filter((b): b is BadgeDefinition => !!b)
-        setBadgeQueue(defs)
+        setBadgeQueue(result.new_badge_details)
       }
     } else {
       setCurrentIndex((prev) => prev + 1)
@@ -286,11 +284,8 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
             open={showLevelUp}
             onClose={() => {
               setShowLevelUp(false)
-              if (sessionResult.new_badges?.length) {
-                const defs = sessionResult.new_badges
-                  .map((id) => BADGE_MAP.get(id))
-                  .filter((b): b is BadgeDefinition => !!b)
-                setBadgeQueue(defs)
+              if (sessionResult.new_badge_details?.length) {
+                setBadgeQueue(sessionResult.new_badge_details)
               }
             }}
             newLevel={sessionResult.new_level}

@@ -1,6 +1,6 @@
 # PROJ-22: Fachbereich als Datenbasis
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -55,7 +55,7 @@ Gesamtplan und alle Entscheidungen (E1–E9): [docs/plans/mehrere-fachbereiche.m
 
 ### Badges datengetrieben
 - [ ] Die Fach-Experten-Badges (BGP-, KSK-, STG-, LOP-Experte) sind Datensätze, die auf ein Fach und eine Schwelle (100 richtige Antworten) verweisen; ihre IDs bleiben unverändert.
-- [ ] Für den Badge „Allrounder" zählen **alle aktiven Fächer des Bereichs** — für Spedition also neu auch **PUG** (bisher nur BGP, KSK, STG, LOP). Schwelle unverändert 10 richtige Antworten je Fach. *Bewusste Änderung auf Wunsch des Nutzers (2026-09-29); betrifft heute niemanden negativ: Beide Azubis, die die alte Bedingung erfüllen, haben auch in PUG ≥ 10.*
+- [ ] Für den Badge „Allrounder" zählen **alle aktiven Fächer des Bereichs** — für Spedition also neu auch **PUG** (bisher nur BGP, KSK, STG, LOP). Schwelle unverändert 10 richtige Antworten je Fach. *Bewusste Änderung auf Wunsch des Nutzers (2026-09-29); betrifft heute niemanden negativ: Der einzige Azubi, der die alte Bedingung erfüllt, hat den Badge schon und auch in PUG ≥ 10 (gezählt wie die App: richtige Antworten je Fach der Quiz-Sitzung).*
 - [ ] Kein Azubi verliert einen bereits verdienten Badge; abgesehen von der Allrounder-Regel ergibt die neue Berechnung für jeden Azubi dieselben Badges wie die alte (Vergleich über alle Bestandsprofile).
 
 ### Fachkürzel je Bereich
@@ -206,6 +206,8 @@ Rund 45 Dateien werden angefasst, davon ~20 nur für Namen/Texte.
 | **Keine neuen Pakete** | Alles mit vorhandenen Mitteln (Next.js, Supabase). |
 
 ### E) Auslieferung in drei Schritten
+> **Nachtrag Backend (2026-09-29):** Schritt 1 und 3 sind zusammengelegt. Weil alle neuen Pflichtfelder den Standardwert „Spedition" haben, laufen alte Inserts weiter — Pflicht und „Kürzel je Bereich" können deshalb gleich in Schritt 1 gesetzt werden. `subject_code` im Upload-Pfad bleibt als Anzeige-Kopie erhalten; maßgeblich ist `subject_id`. Die Standardwerte selbst entfernt PROJ-24.
+
 
 1. **Datenbank erweitern und befüllen** — neue Felder zunächst optional, Spedition anlegen, alle Bestandsdaten zuordnen, Prüfungsaufbau und Badge-Regeln eintragen. Die laufende App merkt davon nichts (alte Felder bleiben).
 2. **Code ausliefern** — liest ab jetzt aus den Bereichsdaten.
@@ -228,6 +230,53 @@ Ohne Dev-Server, nur Build, Tests und Datenbank-Abfragen:
 
 ### G) Abhängigkeiten (Pakete)
 Keine neuen Pakete.
+
+## Implementation Notes (Backend)
+**Stand 2026-09-29 — Code fertig, Migration NOCH NICHT angewendet.**
+
+### Datenbank
+- `supabase/migrations/20260929_proj22_departments.sql` (Rückweg: `…_down.sql`). Probelauf gegen die Live-Datenbank in einer Transaktion mit erzwungenem Abbruch: alle Werte wie erwartet (1 Bereich, 0 Profile ohne Bereich, Teile 1–3 mit STG+LOP / KSK / BGP, 20/15/15 Fragen, 90/90/45 Min., 70 % offen in Teil 1, alle 15 Badges mit Regel, Experten-Badges am richtigen Fach). Der Probelauf hat einen Namenskonflikt (`badges_threshold_check`) gefunden, der behoben ist.
+- Neu: `departments`, `exam_part_subjects`, `fallback_department_id()`; `department_id` an profiles, subjects, exam_parts, exam_question_sets, graded_assessments, shop_items, admin_audit_log; `sort_order` + Beschreibungen an subjects; Prüfungsteil-Spalten an exam_parts; `rule`/`threshold`/`subject_id` an badges; `subject_id` an generation_jobs/questions_draft.
+- Prüfungssets und Leistungsnachweise verweisen per Fremdschlüssel `(department_id, part)` auf einen existierenden Prüfungsteil — ein Set mit unbekannter Teil-Nummer ist damit in der Datenbank unmöglich (Edge Case „Teil-Nummer, die es im Bereich nicht gibt").
+- `generate_unique_pseudonym(department_id)` nimmt die Nomen des Bereichs; neutraler Rückfall, wenn keine hinterlegt sind.
+- RLS: `departments` lesbar für alle (Login-Seite braucht Name/Icon vor dem Login; nichts Vertrauliches), schreibbar nur `is_admin()`. `exam_part_subjects` lesbar für eingeloggte Nutzer. Admin-Schreibrechte auf `exam_parts` neu.
+
+### Neue Bausteine (`src/lib/`)
+| Datei | Aufgabe |
+|---|---|
+| `departments.ts` / `departments-server.ts` | Bereich laden; eingeloggt → Profil, sonst Adresse, sonst Rückfall; `getCurrentDepartment()` einmal pro Anfrage |
+| `subjects.ts` | Fach-Auflöser — einzige Stelle, die Fächer über Kürzel sucht, immer mit Bereich |
+| `question-prompt.ts` | Prompt-Baukasten (kopierbarer Prompt, Upload-Kontext) |
+| `question-rules.ts` | `buildQualityRules(targetGroup)` statt Konstante; zwei Beispiele fachneutral (Lkw → Maschine, Sendung → Unterlagen) |
+| `exam-parts.ts` | Prüfungsaufbau laden, Beschriftungen |
+| `badges.ts` | Badges aus der Datenbank, Regeln als reine Funktion `isBadgeEarned` |
+| `src/test/supabase-chain-mock.ts` | gemeinsamer Datenbank-Ersatz für Tests |
+
+### Geänderte Schnittstellen
+- **Neu:** `GET /api/admin/question-prompt` — fertiger Prompt, Zielgruppe, erlaubte Kürzel, Klassenstufen.
+- `POST /api/quiz/sessions` liefert zusätzlich `new_badge_details` (Name, Icon, Beschreibung); `new_badges` (IDs) bleibt.
+- `POST /api/admin/questions/bulk-import`: unbekannte Kürzel und Klassenstufen werden **zeilengenau abgelehnt** (`rejected: [{index, question_text, reason}]`, Grund nennt erlaubte Werte) statt stillschweigend übersprungen; nur **aktive** Fächer des Bereichs sind erlaubt; `skipped` zählt Abgelehnte mit.
+- `POST /api/exam/sessions`, `POST /api/admin/exam-sets`, `POST /api/admin/exam-sets/import`: Teil-Nummer wird gegen den Prüfungsaufbau geprüft; Fragenzahl, Dauer, Fächer und Anteil offener Fragen kommen aus `exam_parts`.
+- `requireAdmin()` liefert `departmentId`; `writeAuditLog()` schreibt den Bereich (ohne Angabe: Bereich des Admins).
+- Upload-Pfad (`upload`, `drafts/[id]`, `accept`, `bulk-accept`, `process-job`, `exam-sets/extract`): Kürzel nur im Bereich, Fach als `subject_id`, Rolle/Zielgruppe/Fächer aus dem Bereich; feste `z.enum(['BGP', …])` entfernt.
+- `GET /api/badges`, Profilseite, Badge-Popup: Badges aus der Datenbank (nur die des eigenen Bereichs).
+- Shop-Kauf: „Nicht genug {Münz-Name des Bereichs}".
+
+### Nachweise
+- `question-prompt.test.ts`: erzeugter Spedition-Prompt ist **zeichengenau** der bisherige (Fixture aus Git), abgesehen von den zwei neutralisierten Beispielen.
+- `subjects.test.ts`, `bulk-import/route.test.ts`: gleiches Kürzel `KSK` in zwei Bereichen → immer das Fach des richtigen Bereichs.
+- `badges.test.ts`: alle 15 Regeln einzeln, Allrounder inkl. PUG, fremde Fach-Badges werden nicht angeboten.
+- Vitest: 45 Dateien, 487 Tests grün. `npm run build` grün.
+- Noch offen nach dem Anwenden: Badge-Vergleich vorher/nachher per SQL, Spielstand-Stichprobe.
+
+### Bekannte Punkte außerhalb dieses Features
+- `npm run lint` ist kaputt (`next lint` gibt es in Next.js 16 nicht mehr; `.eslintrc.json` inkompatibel mit ESLint 9) — schon vor PROJ-22.
+- `src/lib/graded-assessments.test.ts` hat 3 Typfehler (`tsc`), läuft aber in Vitest — schon vor PROJ-22.
+- Klassenstufen-Prüfungen `(10, 11, 12)` in `generation_jobs`/`questions_draft` (Datenbank) und im Upload-Formular bleiben fest → für PROJ-25 prüfen, falls Tourismus andere Stufen hat.
+- Upload-Pfad: Claude liefert 5 Optionen, `questions_draft.correct_index` erlaubt nur 0–3 und der Entwurfs-Editor 4 Optionen — Altfehler, Pfad wird nicht genutzt.
+
+### Für `/frontend` übrig (sichtbare Stellen mit festen Werten)
+Grundlayout/Metadaten + Bereichs-Kontext; „SpediLern"/LKW-Icon in Login, Registrierung, Passwort-Seiten, Ladeanzeige, Start-, Fächer-, Quiz-Seite, Admin-Kopf; Münz-/Hof-Namen in Shop, Hof-Galerie, Münzanzeige, Startguthaben-Banner, Quiz-Ergebnis, Admin-Shop; `SUBJECT_META` in `page.tsx` und `subjects-grid.tsx`, `subject-tag.tsx`; Prüfungs-Startseite `PARTS`, `exam-sets-client` `PART_*`, `create-assessment-modal` `PART_LABELS`; `exam-part-tag.tsx` (ungenutzt → entfernen); `SUBJECTS`-Listen im KI-Generator und Entwurfs-Editor; Fallback-Pseudonym „Unbekannter Frachter" im Profil; Anzeige der abgelehnten Import-Zeilen.
 
 ## QA Test Results
 _To be added by /qa_

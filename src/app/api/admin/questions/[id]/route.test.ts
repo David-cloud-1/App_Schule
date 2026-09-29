@@ -31,7 +31,7 @@ function makeAdminSupabase(
   const profileBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: 'admin' }, error: null }),
+    single: vi.fn().mockResolvedValue({ data: { role: 'admin', department_id: 'dept-sped' }, error: null }),
   }
   const questionUpdateBuilder = {
     update: vi.fn().mockReturnThis(),

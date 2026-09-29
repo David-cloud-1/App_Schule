@@ -28,7 +28,7 @@ function makeRequest(method: string, params: Record<string, string> = {}, body?:
 }
 
 const mockAdminUser = { id: 'admin-uuid', email: 'admin@test.com' }
-const mockProfile = { role: 'admin' }
+const mockProfile = { role: 'admin', department_id: 'dept-sped' }
 
 function makeAdminSupabase(overrides: {
   profileData?: unknown

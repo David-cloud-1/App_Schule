@@ -62,7 +62,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -81,22 +81,32 @@ export async function POST(request: NextRequest) {
 
   const code = parsed.data.code.toUpperCase()
 
-  // Ensure code is unique
+  // Kürzel muss nur innerhalb des Fachbereichs eindeutig sein (PROJ-22)
   const { data: existing } = await supabase
     .from('subjects')
+    .select('id, sort_order')
+    .eq('department_id', departmentId)
+    .limit(100)
+
+  const { data: sameCode } = await supabase
+    .from('subjects')
     .select('id')
+    .eq('department_id', departmentId)
     .eq('code', code)
     .maybeSingle()
 
-  if (existing) {
-    return NextResponse.json({ error: 'Fach-Code existiert bereits.' }, { status: 409 })
+  if (sameCode) {
+    return NextResponse.json({ error: 'Fach-Code existiert in diesem Fachbereich bereits.' }, { status: 409 })
   }
 
+  const maxSort = Math.max(0, ...((existing ?? []) as { sort_order: number | null }[]).map((s) => s.sort_order ?? 0))
   const insertPayload: Record<string, unknown> = {
     name: parsed.data.name,
     code,
     color: '#58CC02',
     icon_name: 'BookOpen',
+    department_id: departmentId,
+    sort_order: maxSort + 1,
   }
 
   const { data, error } = await supabase
