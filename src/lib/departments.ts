@@ -175,6 +175,26 @@ export async function getDepartmentForUser(supabase: AnyClient, userId: string):
 }
 
 /**
+ * Wählt den Bereich aus einer (zwischengespeicherten) Liste aktiver Bereiche,
+ * sortiert nach sort_order — ohne Datenbankzugriff. Dieselbe Regel wie
+ * resolveDepartment(): Profil vor Adresse vor Rückfall (erster der Liste).
+ */
+export function pickDepartment(
+  departments: Department[],
+  opts: { departmentId: string | null; host: string | null | undefined },
+): Department | null {
+  if (opts.departmentId) {
+    const own = departments.find((d) => d.id === opts.departmentId)
+    if (own) return own
+  } else {
+    const domain = normalizeHost(opts.host)
+    const byHost = domain ? departments.find((d) => d.domain === domain) : undefined
+    if (byHost) return byHost
+  }
+  return departments[0] ?? null
+}
+
+/**
  * Bereich für einen Seitenaufruf: nach dem Login zählt das Profil, davor die
  * aufgerufene Adresse, sonst der Rückfall-Bereich. Die Adresse ändert nie den
  * Bereich eines eingeloggten Nutzers.

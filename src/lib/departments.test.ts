@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { chainMock, eqValue, hasCall } from '@/test/supabase-chain-mock'
-import { normalizeHost, resolveDepartment, toBranding, mapDepartment } from './departments'
+import { normalizeHost, pickDepartment, resolveDepartment, toBranding, mapDepartment } from './departments'
 
 function row(id: string, domain: string | null, sort_order: number) {
   return {
@@ -66,5 +66,26 @@ describe('toBranding', () => {
     expect(branding).not.toHaveProperty('promptRole')
     expect(branding).not.toHaveProperty('pseudonymNouns')
     expect(branding).toMatchObject({ appName: 'App sped', currencyName: 'Münzen', hofName: 'Hof' })
+  })
+})
+
+describe('pickDepartment (zwischengespeicherte Liste, ohne Datenbank)', () => {
+  const list = DEPARTMENTS.map(mapDepartment)
+
+  it('nimmt nach dem Login den Bereich aus dem Profil', () => {
+    expect(pickDepartment(list, { departmentId: 'tour', host: null })?.id).toBe('tour')
+  })
+
+  it('nimmt vor dem Login den Bereich der Adresse', () => {
+    expect(pickDepartment(list, { departmentId: null, host: 'TouristikLern.vercel.app' })?.id).toBe('tour')
+  })
+
+  it('fällt bei unbekannter Adresse oder unbekanntem Profil-Bereich auf den ersten Bereich zurück', () => {
+    expect(pickDepartment(list, { departmentId: null, host: 'preview-xyz.vercel.app' })?.id).toBe('sped')
+    expect(pickDepartment(list, { departmentId: 'geloescht', host: 'touristiklern.vercel.app' })?.id).toBe('sped')
+  })
+
+  it('liefert null, wenn keine Bereiche geladen werden konnten', () => {
+    expect(pickDepartment([], { departmentId: null, host: 'spedilern.vercel.app' })).toBeNull()
   })
 })
