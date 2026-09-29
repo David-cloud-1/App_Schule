@@ -1,6 +1,6 @@
 # PROJ-23: Fachbereichs-Zuordnung für Azubis
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -225,7 +225,94 @@ Neue zwischengespeicherte Liste `getDepartmentSubjectIds(departmentId)` (5 Min.,
 - Sichtbar erst ab PROJ-25 (solange es nur Spedition gibt, gehört keine Adresse zu einem anderen Bereich).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-29
+**App URL:** — (kein Dev-Server/Playwright laut Projektvorgabe; geprüft per Vitest, Build, Code-Review und SQL gegen die Live-Datenbank)
+**Tester:** QA Engineer (AI)
+
+> **Einschränkung:** Keine Browser-/Responsive-Prüfung, keine neuen E2E-Tests. Es gibt noch keinen zweiten Bereich — die Trennung ist mit Testdaten zweier Bereiche (Vitest) und einem Test-Bereich in zurückgerollten SQL-Transaktionen geprüft. Die Ladezeit wird beim Deploy auf der Vorschau gemessen.
+
+### Acceptance Criteria Status
+
+#### AC-1: Zuordnung bei der Registrierung (6)
+- [x] Bereich der Adresse bei E-Mail-Registrierung (erster Seitenaufruf) und Google/E-Mail-Link (Login-Rückkehr) — Tests `departments-server.test.ts`, `auth/callback/route.test.ts`
+- [x] Automatisch, ohne Auswahlseite oder Code
+- [x] Unbekannte Adresse → erster Bereich (Test)
+- [x] Pseudonym mit den Nomen des zugeordneten Bereichs (Test: RPC mit Bereichs-ID)
+- [x] Nur serverseitig; kein Schreibrecht für Azubis auf `department_id` (PROJ-22 SQL-Test weiterhin gültig)
+- [x] Bestehender Bereich wird nie geändert, auch nicht über eine andere Adresse (Test „nur wenn leer")
+
+#### AC-2: Inhalte nur aus dem eigenen Bereich (7)
+- [x] Fächerliste Startseite/Fächer-Seite/Schnittstelle (Code + Test `GET /api/subjects`)
+- [x] Quiz je Fach, gemischt, Themen (Code-Review Quiz-Seite; Themen-Schnittstelle)
+- [x] Blitzrunde (Test)
+- [x] Lücken schließen (Tests: Zählung und fremdes Fach)
+- [x] Prüfungssimulation: nur Sets des Bereichs (Auswahlseite + Sitzungsstart)
+- [x] Shop: Anzeige gefiltert (Test) und Kauf fremder Artikel in der Datenbank verweigert (SQL als Azubi: `item_other_department`)
+- [x] Fragen-Schnittstelle ohne Kürzel nur Bereich (Code-Review, bestehende Tests grün)
+
+#### AC-3: Rangliste (2)
+- [x] Alle Zeiträume nur Profile des Bereichs (Tests Gesamt + Woche)
+- [x] Eigene Platzierung im eigenen Bereich (Wochen-XP fremder Nutzer werden verworfen, Test)
+
+#### AC-4: Leistungsnachweise (2)
+- [x] Code eines anderen Bereichs → 403 „Dieser Code gehört zu einem anderen Fachbereich." bei Code-Suche (Test) und Beitritt über den Link (neuer Test, keine Sitzung angelegt)
+- [x] Codes des eigenen Bereichs unverändert (bestehende Tests grün)
+
+#### AC-5: Hinweis bei falscher Adresse (3)
+- [x] Hinweis mit Link auf fremder Adresse (Komponententest)
+- [x] Kein Hinweis auf richtiger/Vorschau-Adresse (Komponententest + Server-Logik: nur wenn die Adresse einem anderen Bereich gehört)
+- [x] Schließbar, in der Sitzung gemerkt (Komponententest)
+
+#### AC-6: Unveränderter Betrieb für Spedition (2)
+- [x] Für die heutigen Daten sind alle Filter wirkungslos: 5/5 Fächer, 4/4 aktive Shop-Artikel, 1/1 aktive Prüfungssets, 59/59 Profile, 3.812/3.812 aktive Fragen gehören zu Spedition (SQL) — Inhalte, Rangliste, Shop, Sets und Blitzrunde unverändert
+- [ ] Ladezeit: noch nicht gemessen → beim Deploy auf der Vorschau (Indizes für alle neuen Filter vorhanden)
+
+### Edge Cases Status
+- [x] Registrierung auf `touristiklern.vercel.app` vor PROJ-25 → Spedition (Adresse hat noch keinen Bereich)
+- [x] Google-Login: Bereich nach der Adresse der Login-Rückkehr (Test)
+- [x] Bestehender Nutzer auf anderer Adresse → Bereich bleibt, Hinweis erscheint
+- [x] Profil ohne Bereich → wie Spedition, keine leeren Seiten (Rückfall in allen Pfaden; `NO_DEPARTMENT_ID` statt Fehler)
+- [x] Geteilter Nachweis-Link aus anderem Bereich → Ablehnung, keine Teilnahme (Test)
+- [x] Bereich ohne Inhalte → leere Listen wie bisher
+- [x] Admins sehen in den Lernwegen ihren Profil-Bereich
+- [x] Rangliste mit einem Azubi → nur dieser Eintrag
+- [x] Zusätzlich: Login scheitert nicht, wenn die Zuordnung fehlschlägt (Test)
+- [x] Zusätzlich: Keine weitere Stelle im Code legt Profile an (nur der Datenbank-Trigger)
+
+### Security Audit Results
+- [x] Shop-Kauf fremder Artikel per direktem RPC-Aufruf verweigert (SQL als Azubi, zurückgerollt)
+- [x] `generate_unique_pseudonym` ohne Login nicht mehr aufrufbar (PROJ-22 BUG-2 behoben, Grants geprüft)
+- [x] Bereich wird nie aus Browser-Daten gesetzt; die Adresse (Host) bestimmt nur die Zuordnung eines noch leeren Profils — wer eine andere Adresse vortäuscht, erreicht nichts, was er nicht auch durch Registrieren auf dieser Adresse erreicht
+- [x] Rangliste läuft mit Service-Client → Bereichsfilter im Code vorhanden und getestet
+- [x] Leistungsnachweise: fremder Bereich → 403 vor jeder Sitzungsanlage
+- [x] Neue Filter nutzen parametrisierte Abfragen; keine neuen Eingaben ohne Validierung
+
+### Bugs Found
+
+#### BUG-1: Neuer Bereich greift für Registrierungen erst nach bis zu 5 Minuten
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Bereich Tourismus mit Adresse `touristiklern.vercel.app` per SQL anlegen (PROJ-25)
+  2. Innerhalb von 5 Minuten auf `touristiklern.vercel.app` registrieren
+  3. Expected: Zuordnung zu Tourismus
+  4. Actual: Zuordnung zu Spedition — die Bereichsliste ist bis zu 5 Minuten zwischengespeichert (PROJ-22 BUG-1-Behebung)
+- **Priority:** In PROJ-25 berücksichtigen: nach dem Anlegen neu ausliefern oder Zwischenspeicher leeren, bevor der Link verteilt wird
+
+#### BUG-2: Lücken-Auswahl kürzt vor dem Bereichsfilter auf 50 Fragen
+- **Severity:** Low
+- **Steps to Reproduce:** Azubi mit vielen Lücken aus einem früheren Bereich (nach Umhängen, PROJ-24) → „Lücken schließen" zeigt weniger als 50 Fragen, obwohl im eigenen Bereich mehr Lücken existieren.
+- **Priority:** Nice to have (tritt nur nach einem Bereichswechsel auf)
+
+#### Hinweis (kein Fehler)
+- Ein bereits begonnener Leistungsnachweis bleibt nach einem Bereichswechsel wieder betretbar (die bestehende Sitzung wird vor der Bereichsprüfung erkannt). Gewollt: Wer rechtmäßig beigetreten ist, verliert seinen Versuch nicht.
+
+### Summary
+- **Acceptance Criteria:** 22/23 passed — offen nur die Ladezeit-Messung (beim Deploy)
+- **Bugs Found:** 2 total (0 critical, 0 high, 0 medium, 2 low)
+- **Security:** Pass
+- **Production Ready:** YES — keine Critical/High-Bugs
+- **Recommendation:** Deploy mit Vorschau-Messung der Ladezeit; danach Migration Schritt 2 (Standardwert am Profil entfernen) anwenden.
 
 ## Deployment
 _To be added by /deploy_
