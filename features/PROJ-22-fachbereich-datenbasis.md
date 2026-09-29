@@ -1,6 +1,6 @@
 # PROJ-22: Fachbereich als Datenbasis
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -313,7 +313,136 @@ Grundlayout/Metadaten + Bereichs-Kontext; „SpediLern"/LKW-Icon in Login, Regis
 - Kein Dev-Server/Playwright (siehe Projektvorgabe) — die Sichtprüfung erfolgt auf einer Vorschau-Adresse bzw. in `/qa`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-29
+**App URL:** — (kein Dev-Server/Playwright laut Projektvorgabe; geprüft per Vitest, Build, Code-Review und SQL gegen die Live-Datenbank)
+**Tester:** QA Engineer (AI)
+
+> **Einschränkung:** Keine Browser-, Cross-Browser- oder Responsive-Prüfung und keine neuen E2E-Tests — Dev-Server und Playwright bringen den Rechner zum Absturz. Die Sichtprüfung „Spedition sieht aus wie vorher" steht noch aus und soll auf einer Vercel-Vorschau erfolgen (siehe Empfehlung).
+
+### Acceptance Criteria Status
+
+#### AC-1: Fachbereich als Datensatz (5)
+- [x] Bereich Spedition mit allen Werten angelegt (SQL: App-Name, Icon, Münz-/Hof-Name, Prompt-Rolle, Zielgruppe, Klassenstufen, Nomen, Adresse, Kurzname)
+- [x] Alle Fächer, Prüfungsteile, -sets, Leistungsnachweise, Shop-Artikel, Profile zugeordnet (0 ohne Bereich)
+- [x] Bereich ist Pflicht (NOT NULL + Standardwert) an Fächern, Teilen, Sets, Nachweisen, Shop-Artikeln
+- [x] Neue Profile bekommen Spedition (Standardwert, greift auch ohne neuen Code)
+- [x] Audit-Log trägt den Bereich (alle Bestandseinträge befüllt; `writeAuditLog` ist die einzige Schreibstelle)
+
+#### AC-2: Kein Speditions-Wert mehr fest im Code (4)
+- [x] Codesuche nach Kürzeln und Speditions-Begriffen in `src/` (ohne Tests/Fixture/Kommentare): 0 Treffer
+- [x] Farben, Icons, Beschreibungen der Fächer aus den Fach-Daten
+- [x] App-Name, Untertitel, Icon auf allen genannten Seiten aus dem Bereich
+- [x] Münz-/Hof-Namen in allen genannten Stellen aus dem Bereich
+
+#### AC-3: Auftritt nach Adresse (3)
+- [x] Adresse → Bereich vor dem Login (Unit-Test `resolveDepartment`)
+- [x] Nach dem Login zählt das Profil, auch auf fremder Adresse (Unit-Test)
+- [x] Unbekannte Adressen → Rückfall-Bereich Spedition (Unit-Test)
+
+#### AC-4: Prüfungsaufbau aus der Datenbank (3)
+- [x] Teile 1–3 mit Fächern, Fragenzahl, Dauer, Bezeichnung wie vorher (SQL)
+- [x] Simulation, Prüfungssets, Leistungsnachweise lesen den Aufbau (Code + Route-Tests inkl. 70 %-Aufteilung, Dauer, Bereichsfilter)
+- [x] Anzahl der Teile nicht mehr auf 3 festgelegt (Validierung gegen `exam_parts`, Fremdschlüssel statt `CHECK (1,2,3)`)
+
+#### AC-5: Badges datengetrieben (3)
+- [x] Experten-Badges sind Datensätze mit Fach + Schwelle, IDs unverändert
+- [x] Allrounder = alle aktiven Fächer inkl. PUG (Unit-Tests)
+- [x] Kein Azubi verliert einen Badge; Regel alt vs. neu für alle Azubis identisch (SQL-Vergleich, 86 Badges, Prüfsumme gleich)
+
+#### AC-6: Fachkürzel je Bereich (4)
+- [x] Eindeutigkeit `(department_id, code)` in der Datenbank
+- [x] Alle Kürzel-Suchen laufen über den Bereich (Code-Review; verbleibende `.eq('code')` sind auf den Bereich eingeschränkt)
+- [x] Unbekanntes Kürzel → zeilengenaue Ablehnung mit erlaubten Kürzeln (Route-Test; gleiches Kürzel in zwei Bereichen getestet)
+- [x] Feste Kürzellisten im Upload-Pfad entfernt
+
+#### AC-7: Prompt-Baukasten (5)
+- [x] Prompt aus Bereichsdaten zusammengesetzt (`GET /api/admin/question-prompt`)
+- [x] Spedition-Prompt zeichengenau wie vorher, bis auf zwei neutralisierte Beispiele (Fixture-Test)
+- [x] Fachänderungen wirken beim nächsten Laden (Prompt wird pro Aufruf gebaut)
+- [x] Upload-Pfad und Korrekturauftrag nutzen dieselbe Rolle/Zielgruppe
+- [x] Qualitätsregeln unverändert, nur Zielgruppe eingesetzt; Beispiele fachneutral (Test: kein „Spedition/Lkw/Sendung")
+
+#### AC-8: Pseudonyme (2)
+- [x] Adjektive gemeinsam, Nomen aus dem Bereich (SQL: „Frischer Kran")
+- [x] Bestehende Pseudonyme unverändert (Prüfsumme)
+
+#### AC-9: Unveränderter Betrieb (3)
+- [x] Build und Tests grün (490/490); `npm run lint` ist unabhängig von PROJ-22 kaputt (siehe Implementation Notes)
+- [x] XP, Level, Streaks, Münzen, Hof-Gegenstände, Badges, Historie unverändert (Prüfsummen + Zählungen vor/nach)
+- [x] Rangliste, Blitzrunde, Lücken schließen unverändert (Code nicht berührt); Prüfungssimulation/Leistungsnachweise per Route-Tests
+
+### Edge Cases Status
+- [x] EC-1 Neues Profil während der Umstellung → Standardwert in der Datenbank
+- [x] EC-2 Fach ohne Bereich → Pflichtfeld, Admin-Route setzt Bereich
+- [x] EC-3 Gleiches Kürzel in zwei Bereichen → Tests für Auflöser und Import
+- [x] EC-4 Groß-/Kleinschreibung → `normalizeSubjectCode`, getestet
+- [x] EC-5 Prüfungsteil ohne aktive Fragen → Verhalten unverändert (leerer Teil)
+- [x] EC-6 Set mit unbekannter Teil-Nummer → per Fremdschlüssel unmöglich, API antwortet 400
+- [x] EC-7 Badge-Schwelle geändert → verdiente Badges bleiben (`user_badges` unberührt)
+- [x] EC-8 Unbekannte Adresse → Spedition (Unit-Test)
+- [x] EC-9 Fach deaktiviert → fällt aus Prompt und erlaubten Import-Kürzeln
+- [x] EC-10 Keine Pseudonym-Nomen → neutraler Rückfall (Datenbank und Code)
+- [x] Zusätzlich: Datenbank nicht erreichbar → neutraler Auftritt statt Absturz (`NEUTRAL_BRANDING`)
+- [x] Zusätzlich: Live laufende alte App-Version mit migrierter Datenbank → keine Datenbankfehler seit der Migration (Postgres-Logs)
+
+### Security Audit Results
+Als echter Azubi (JWT-Claims, Rolle `authenticated`) in einer zurückgerollten Transaktion:
+- [x] Eigene `department_id` ändern → verweigert (42501)
+- [x] Eigene `role` ändern → verweigert (42501)
+- [x] Bereich anlegen → verweigert; Bereiche, Prüfungsteile, Fach-Zuordnungen, Badges, Fächer ändern/löschen → 0 Zeilen betroffen
+- [x] Ohne Login lesbar: nur `departments` (gewollt, Login-Seite); `exam_parts`, `exam_part_subjects`, `subjects`, `profiles` → 0 Zeilen
+- [x] Neue Admin-Schnittstelle `/api/admin/question-prompt` hinter `requireAdmin()`
+- [x] Adresse (Host-Header) beeinflusst nur den Auftritt vor dem Login, nie den Bereich eines Profils; Abfrage parametrisiert
+- [x] XSS: alle Bereichstexte werden von React escaped gerendert (kein `dangerouslySetInnerHTML`)
+- [x] Supabase-Security-Advisor: keine neuen Hinweise mehr nach dem Nachtrag zu `fallback_department_id()`
+- [ ] BUG-2 (siehe unten)
+- Hinweis: `departments.prompt_notes` ist ohne Login lesbar. Heute leer; beim Einführen der Lehrkraft-Notizen (PROJ-24) keine vertraulichen Inhalte dort ablegen oder Spalte aus der öffentlichen Lesbarkeit nehmen.
+
+### Bugs Found
+
+#### BUG-1: Zusätzliche Anmelde- und Datenbankabfragen bei jedem Seitenaufruf
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Beliebige Seite aufrufen (z. B. Startseite, eingeloggt)
+  2. Expected: Ladezeit wie vorher (Technical Requirement „keine spürbar längeren Ladezeiten")
+  3. Actual: Das Grundlayout ruft zusätzlich `auth.getUser()` (Netzwerkaufruf zu Supabase Auth) sowie Profil, Bereich und Prüfungsteile ab — zusätzlich zu Proxy und Seite (3 statt 2 Anmeldeprüfungen). Login-, Registrier- und Passwort-Seiten waren statisch und werden jetzt pro Aufruf gerendert.
+- **Hinweis:** nicht gemessen (kein Server lokal). Auf der Vorschau messen; mögliche Entlastung: Bereich über den Proxy/ein Cookie weitergeben oder `getClaims()` statt `getUser()` im Layout.
+- **Priority:** Vor der Auslieferung auf der Vorschau messen; beheben, falls spürbar
+
+#### BUG-2: `REVOKE … FROM anon` auf `generate_unique_pseudonym` wirkungslos
+- **Severity:** Low
+- **Steps to Reproduce:**
+  1. Als `anon` `generate_unique_pseudonym()` aufrufen
+  2. Expected: verweigert (so beabsichtigt in der Migration)
+  3. Actual: erlaubt — die Funktion hat zusätzlich `EXECUTE` für `PUBLIC`. Kein Schaden (als `anon` keine Profile sichtbar, liefert nur einen Zufallsnamen).
+- **Priority:** Fix in next sprint (`REVOKE EXECUTE … FROM PUBLIC; GRANT … TO authenticated, service_role`)
+
+#### BUG-3: Klassenstufen 10/11/12 serverseitig noch fest
+- **Severity:** Low
+- **Steps to Reproduce:** Code: `src/app/quiz/page.tsx:51`, `src/app/api/topics/route.ts:20`, `src/app/api/questions/route.ts:11`, `src/app/api/admin/questions/route.ts:12`, `src/app/api/admin/questions/export/route.ts:12`, `src/app/api/admin/ai-generate/upload/route.ts:33`, dazu `CHECK (class_level IN (10,11,12))` in `generation_jobs`/`questions_draft`.
+- **Expected:** Klassenstufen aus `departments.class_levels` wie in den Oberflächen.
+- **Actual:** Für Spedition folgenlos; ein Bereich mit anderen Stufen könnte nicht danach filtern.
+- **Priority:** Vor PROJ-25, falls Tourismus andere Stufen hat
+
+#### BUG-4: CSV-Vorlage enthält Speditions-Beispiel mit `STG`
+- **Severity:** Low
+- **Steps to Reproduce:** Admin → Fragen → CSV-Import → Vorlage: Beispielzeile „CMR-Frachtbrief … STG".
+- **Expected:** Beispiel mit einem Fach des eigenen Bereichs.
+- **Actual:** Für Tourismus-Lehrkräfte irreführend, der Import der Vorlage würde abgelehnt.
+- **Priority:** Vor PROJ-25
+
+#### BUG-5 (Altfehler, nicht durch PROJ-22): Fachfilter der Entwurfsliste im KI-Generator wirkungslos
+- **Severity:** Low
+- **Steps to Reproduce:** KI-Generator → Entwürfe → Filter „Fach" wählen → Liste ändert sich nicht; `GET /api/admin/ai-generate/drafts` wertet den Parameter `subject` nicht aus.
+- **Priority:** Nice to have (bezahlter Upload-Pfad wird nicht genutzt)
+
+### Summary
+- **Acceptance Criteria:** 32/32 passed (Code, Tests, SQL) — Sichtprüfung im Browser ausstehend
+- **Bugs Found:** 5 total (0 critical, 0 high, 1 medium, 4 low; davon 1 Altfehler)
+- **Security:** Pass (1 Low-Befund, 1 Hinweis)
+- **Production Ready:** YES — keine Critical/High-Bugs
+- **Recommendation:** Vor der Produktion eine Vercel-Vorschau ausliefern und dort (1) auf dem Handy prüfen, dass Spedition aussieht wie vorher, (2) Ladezeiten von Start- und Login-Seite mit der Live-App vergleichen (BUG-1). BUG-2 bis BUG-4 vor bzw. mit PROJ-25 beheben.
 
 ## Deployment
 _To be added by /deploy_
