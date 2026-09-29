@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
+import { getDepartmentOfUser } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 export interface SubjectWithCount {
   id: string
@@ -23,8 +25,10 @@ export async function GET() {
 
   // Fetch subjects and active question links separately — an embedded
   // question_subjects join would truncate large subjects at the 1000-row cap.
+  // Nur Fächer des eigenen Bereichs (PROJ-23)
+  const departmentId = (await getDepartmentOfUser(supabase, user.id))?.id ?? NO_DEPARTMENT_ID
   const [{ data, error }, questionSubjects] = await Promise.all([
-    supabase.from('subjects').select('id, code, name, color, icon_name, description').order('code'),
+    supabase.from('subjects').select('id, code, name, color, icon_name, description').eq('department_id', departmentId).order('code'),
     fetchActiveQuestionSubjects(supabase),
   ])
 

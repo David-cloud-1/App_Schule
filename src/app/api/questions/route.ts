@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
-import { getDepartmentForUser } from '@/lib/departments'
+import { getDepartmentOfUser, getDepartmentSubjectIds } from '@/lib/departments-server'
 import { resolveSubjectCode } from '@/lib/subjects'
 
 const QuerySchema = z.object({
   subject:     z.string().optional(),
   difficulty:  z.enum(['leicht', 'mittel', 'schwer']).optional(),
-  class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
+  // Erlaubte Stufen hängen am Fachbereich — geprüft nach dem Laden des Bereichs
+  class_level: z.coerce.number().int().min(1).max(13).optional(),
   topic_id:    z.string().uuid().optional(),
   limit:       z.coerce.number().int().min(1).max(50).default(10),
   offset:      z.coerce.number().int().min(0).default(0),
@@ -35,13 +36,22 @@ export async function GET(request: NextRequest) {
 
   const { subject, difficulty, class_level, topic_id, limit, offset } = parsed.data
 
+  // Nur Fragen aus Fächern des eigenen Bereichs (PROJ-23)
+  const department = await getDepartmentOfUser(supabase, user.id)
+  const departmentSubjectIds = department ? await getDepartmentSubjectIds(department.id) : []
+  if (class_level != null && !(department?.classLevels ?? []).includes(class_level)) {
+    return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
+  }
+  if (departmentSubjectIds.length === 0) {
+    return NextResponse.json({ questions: [], total: 0 })
+  }
+
   // Resolve subject filter to question IDs at DB level (fixes BUG-M-01:
   // previously .range() was applied before in-memory subject filter, causing
   // wrong pagination counts when subject + limit/offset were combined)
   let filteredIds: string[] | null = null
   if (subject) {
     // Kürzel nur im Bereich des Azubis (PROJ-22)
-    const department = await getDepartmentForUser(supabase, user.id)
     const subjectRow = department ? await resolveSubjectCode(supabase, department.id, subject) : null
 
     if (!subjectRow) {
@@ -70,9 +80,10 @@ export async function GET(request: NextRequest) {
       class_level,
       topic_id,
       answer_options ( id, option_text, display_order ),
-      question_subjects ( subjects ( id, code ) )
+      question_subjects!inner ( subject_id, subjects ( id, code ) )
     `)
     .eq('is_active', true)
+    .in('question_subjects.subject_id', departmentSubjectIds)
     .order('created_at')
 
   // Questions of a graded assessment that's currently being written are

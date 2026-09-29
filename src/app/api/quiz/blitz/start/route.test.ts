@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk']),
+}))
 import { POST } from './route'
 
 // The answer key is merged in server-side via the service client (PROJ-21).
@@ -65,6 +71,7 @@ function makeSupabaseMock(user: unknown, opts: MockOpts = {}) {
   const questionsBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue({ data: questions, error: questionsError }),
   }
@@ -136,5 +143,13 @@ describe('POST /api/quiz/blitz/start', () => {
     )
     const res = await POST()
     expect(res.status).toBe(500)
+  })
+
+  it('zieht Fragen nur aus Fächern des eigenen Bereichs (PROJ-23)', async () => {
+    const mock = makeSupabaseMock({ id: 'user-1' })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await POST()
+    const questionsBuilder = mock.from.mock.results.find((_, i) => mock.from.mock.calls[i][0] === 'questions')!.value
+    expect(questionsBuilder.in).toHaveBeenCalledWith('question_subjects.subject_id', ['subj-lop', 'subj-ksk'])
   })
 })

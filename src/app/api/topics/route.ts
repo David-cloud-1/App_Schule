@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { getDepartmentOfUser, getDepartmentSubjectIds } from '@/lib/departments-server'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -16,8 +17,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'subject_id is required' }, { status: 400 })
   }
 
+  // Themen nur für Fächer des eigenen Bereichs (PROJ-23)
+  const department = await getDepartmentOfUser(supabase, user.id)
+  const departmentSubjectIds = department ? await getDepartmentSubjectIds(department.id) : []
+  if (!departmentSubjectIds.includes(subjectId)) {
+    return NextResponse.json({ topics: [] })
+  }
+
   const classLevelParam = request.nextUrl.searchParams.get('class_level')
-  const classLevel = ['10', '11', '12'].includes(classLevelParam ?? '') ? Number(classLevelParam) : null
+  const classLevel = (department?.classLevels ?? []).map(String).includes(classLevelParam ?? '') ? Number(classLevelParam) : null
 
   // Fetch all topics for this subject
   const { data: allTopics, error } = await supabase

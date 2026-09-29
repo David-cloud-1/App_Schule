@@ -13,6 +13,8 @@ export interface DepartmentContextValue {
   department: DepartmentBranding
   /** Leer vor dem Login (Prüfungsteile sind nur für eingeloggte Nutzer lesbar) */
   examParts: ExamPart[]
+  /** Nur gesetzt, wenn ein eingeloggter Nutzer auf der Adresse eines anderen Bereichs ist (PROJ-23) */
+  correctAddress?: { appName: string; domain: string } | null
 }
 
 const DepartmentContext = createContext<DepartmentContextValue | null>(null)

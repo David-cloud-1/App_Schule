@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk']),
+}))
 import { GET } from './route'
 
 // Mock the Supabase server client
@@ -33,6 +39,7 @@ function makeSupabaseMock(
 ) {
   const subjectsBuilder = {
     select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: subjectsData, error: subjectsError }),
   }
 
@@ -96,5 +103,13 @@ describe('GET /api/subjects', () => {
     expect(response.status).toBe(500)
     const body = await response.json()
     expect(body.error).toBe('Failed to fetch subjects')
+  })
+
+  it('lädt nur Fächer des eigenen Bereichs (PROJ-23)', async () => {
+    const mock = makeSupabaseMock({ id: 'user-1' }, mockSubjectsData)
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await GET()
+    const subjectsBuilder = mock.from.mock.results[mock.from.mock.calls.findIndex((c) => c[0] === 'subjects')].value
+    expect(subjectsBuilder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
   })
 })

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { getDepartmentOfUser } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 export async function GET() {
   const supabase = await createClient()
@@ -9,11 +11,16 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Nur Artikel des eigenen Bereichs (PROJ-23); der Kauf selbst prüft das in
+  // der Datenbankfunktion purchase_shop_item() noch einmal.
+  const departmentId = (await getDepartmentOfUser(supabase, user.id))?.id ?? NO_DEPARTMENT_ID
+
   const [itemsResult, ownedResult, profileResult] = await Promise.all([
     supabase
       .from('shop_items')
       .select('id, name, description, icon, price')
       .eq('is_active', true)
+      .eq('department_id', departmentId)
       .order('sort_order'),
     supabase
       .from('user_shop_items')

@@ -3,7 +3,8 @@ import { headers } from 'next/headers'
 import { unstable_cache } from 'next/cache'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
-import { DEPARTMENT_COLUMNS, mapDepartment, pickDepartment, toBranding, type Department } from '@/lib/departments'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { DEPARTMENT_COLUMNS, departmentForHost, mapDepartment, pickDepartment, toBranding, type Department } from '@/lib/departments'
 import { fetchExamParts, type ExamPart } from '@/lib/exam-parts'
 import type { DepartmentContextValue } from '@/components/department-provider'
 
@@ -17,6 +18,7 @@ import type { DepartmentContextValue } from '@/components/department-provider'
 const CACHE_SECONDS = 300
 export const DEPARTMENTS_CACHE_TAG = 'departments'
 export const EXAM_PARTS_CACHE_TAG = 'exam-parts'
+export const SUBJECTS_CACHE_TAG = 'department-subjects'
 
 /** Alle aktiven Bereiche, sortiert — ohne Nutzer-Cookies (öffentlich lesbar) */
 const loadActiveDepartments = unstable_cache(
@@ -50,9 +52,110 @@ const loadExamParts = unstable_cache(
   { tags: [EXAM_PARTS_CACHE_TAG], revalidate: CACHE_SECONDS },
 )
 
+/**
+ * IDs aller Fächer eines Bereichs (auch inaktive) — Grundlage jedes
+ * Lernweg-Filters (PROJ-23). Service-Client, weil ohne Nutzer-Cookies.
+ */
+const loadDepartmentSubjectIds = unstable_cache(
+  async (departmentId: string): Promise<string[]> => {
+    const { data, error } = await createServiceClient()
+      .from('subjects')
+      .select('id')
+      .eq('department_id', departmentId)
+      .limit(200)
+    if (error) throw new Error(`Fächer konnten nicht geladen werden: ${error.message}`)
+    return (data ?? []).map((s: { id: string }) => s.id)
+  },
+  ['department-subject-ids-v1'],
+  { tags: [SUBJECTS_CACHE_TAG], revalidate: CACHE_SECONDS },
+)
+
+async function loadDepartmentsSafe(): Promise<Department[]> {
+  try {
+    return await loadActiveDepartments()
+  } catch (err) {
+    console.error('[departments]', err)
+    return []
+  }
+}
+
+/** Adresse der aktuellen Anfrage */
+export async function requestHost(): Promise<string | null> {
+  const h = await headers()
+  return h.get('x-forwarded-host') ?? h.get('host')
+}
+
+/**
+ * Ordnet ein Profil ohne Bereich dem Bereich der Adresse zu (unbekannte
+ * Adresse → erster Bereich) und erzeugt das Pseudonym mit dessen Nomen neu.
+ * Gespeichert wird nur, wenn der Bereich noch leer ist — wiederholbar, ohne
+ * Wettlauf, und eine spätere Anmeldung über eine andere Adresse ändert nichts.
+ * Läuft ausschließlich serverseitig; der Browser liefert keinen Bereich mit.
+ *
+ * @returns der Bereich, den das Profil danach hat (oder null bei Fehler)
+ */
+export async function assignDepartmentIfMissing(userId: string, host: string | null | undefined): Promise<string | null> {
+  const departments = await loadDepartmentsSafe()
+  const target = departmentForHost(departments, host) ?? departments[0]
+  if (!target) return null
+
+  const service = createServiceClient()
+  const { data: updated, error } = await service
+    .from('profiles')
+    .update({ department_id: target.id })
+    .eq('id', userId)
+    .is('department_id', null)
+    .select('id')
+  if (error) {
+    console.error('[assignDepartmentIfMissing]', error.message)
+    return null
+  }
+
+  if (!updated || updated.length === 0) {
+    // Schon zugeordnet (z. B. paralleler Aufruf) — den gespeicherten Bereich nehmen
+    const { data: profile } = await service.from('profiles').select('department_id').eq('id', userId).maybeSingle()
+    return (profile as { department_id: string | null } | null)?.department_id ?? null
+  }
+
+  // Pseudonym passend zum Bereich neu erzeugen
+  const { data: pseudonym, error: pseudoErr } = await service.rpc('generate_unique_pseudonym', { p_department_id: target.id })
+  if (!pseudoErr && typeof pseudonym === 'string') {
+    await service.from('profiles').update({ pseudonym }).eq('id', userId)
+  } else if (pseudoErr) {
+    console.error('[assignDepartmentIfMissing] pseudonym', pseudoErr.message)
+  }
+  return target.id
+}
+
+/**
+ * Bereich eines eingeloggten Nutzers für Schnittstellen (API-Routen): Profil,
+ * sonst Rückfall-Bereich. Nutzt die zwischengespeicherte Bereichsliste.
+ */
+export async function getDepartmentOfUser(supabase: SupabaseClient, userId: string): Promise<Department | null> {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('department_id')
+    .eq('id', userId)
+    .maybeSingle()
+  const departmentId = (profile as { department_id: string | null } | null)?.department_id ?? null
+  return pickDepartment(await loadDepartmentsSafe(), { departmentId, host: null })
+}
+
+/** Fächer-IDs eines Bereichs (zwischengespeichert); leer bei Fehler */
+export async function getDepartmentSubjectIds(departmentId: string): Promise<string[]> {
+  try {
+    return await loadDepartmentSubjectIds(departmentId)
+  } catch (err) {
+    console.error('[getDepartmentSubjectIds]', err)
+    return []
+  }
+}
+
 interface RequestContext {
   userId: string | null
   department: Department | null
+  /** Gesetzt, wenn ein eingeloggter Nutzer auf der Adresse eines ANDEREN Bereichs ist */
+  correctAddress: { appName: string; domain: string } | null
 }
 
 /**
@@ -76,22 +179,28 @@ const getRequestContext = cache(async (): Promise<RequestContext> => {
     departmentId = (profile as { department_id: string | null } | null)?.department_id ?? null
   }
 
-  let departments: Department[] = []
-  try {
-    departments = await loadActiveDepartments()
-  } catch (err) {
-    console.error('[departments]', err)
+  const host = await requestHost()
+
+  // Neues Profil ohne Bereich → jetzt anhand der Adresse zuordnen (PROJ-23)
+  if (user && !departmentId) {
+    departmentId = await assignDepartmentIfMissing(user.id, host)
   }
 
-  const h = await headers()
-  return {
-    userId: user?.id ?? null,
-    department: pickDepartment(departments, {
-      departmentId,
-      // Die Adresse zählt nur vor dem Login
-      host: user ? null : h.get('x-forwarded-host') ?? h.get('host'),
-    }),
-  }
+  const departments = await loadDepartmentsSafe()
+  const department = pickDepartment(departments, {
+    departmentId,
+    // Die Adresse zählt nur vor dem Login
+    host: user ? null : host,
+  })
+
+  // Hinweis „Deine App heißt …", wenn die Adresse zu einem anderen Bereich gehört
+  const hostDepartment = departmentForHost(departments, host)
+  const correctAddress =
+    user && department?.domain && hostDepartment && hostDepartment.id !== department.id
+      ? { appName: department.appName, domain: department.domain }
+      : null
+
+  return { userId: user?.id ?? null, department, correctAddress }
 })
 
 /** Bereich des aktuellen Seitenaufrufs (Metadaten, Serverseiten) */
@@ -111,9 +220,19 @@ export const getCurrentExamParts = cache(async (): Promise<ExamPart[]> => {
   }
 })
 
+/** Fächer-IDs des Bereichs im aktuellen Seitenaufruf */
+export async function getCurrentDepartmentSubjectIds(): Promise<string[]> {
+  const department = await getCurrentDepartment()
+  return department ? getDepartmentSubjectIds(department.id) : []
+}
+
 /** Alles, was das Grundlayout an die Bildschirme im Browser weitergibt */
 export async function getDepartmentContextValue(): Promise<DepartmentContextValue | null> {
-  const department = await getCurrentDepartment()
+  const { department, correctAddress } = await getRequestContext()
   if (!department) return null
-  return { department: toBranding(department), examParts: await getCurrentExamParts() }
+  return {
+    department: toBranding(department),
+    examParts: await getCurrentExamParts(),
+    correctAddress,
+  }
 }

@@ -174,6 +174,12 @@ export async function getDepartmentForUser(supabase: AnyClient, userId: string):
   return getFallbackDepartment(supabase)
 }
 
+/** Bereich, dem diese Adresse gehört — oder null (Vorschau, localhost, unbekannt) */
+export function departmentForHost(departments: Department[], host: string | null | undefined): Department | null {
+  const domain = normalizeHost(host)
+  return (domain && departments.find((d) => d.domain === domain)) || null
+}
+
 /**
  * Wählt den Bereich aus einer (zwischengespeicherten) Liste aktiver Bereiche,
  * sortiert nach sort_order — ohne Datenbankzugriff. Dieselbe Regel wie
@@ -187,8 +193,7 @@ export function pickDepartment(
     const own = departments.find((d) => d.id === opts.departmentId)
     if (own) return own
   } else {
-    const domain = normalizeHost(opts.host)
-    const byHost = domain ? departments.find((d) => d.domain === domain) : undefined
+    const byHost = departmentForHost(departments, opts.host)
     if (byHost) return byHost
   }
   return departments[0] ?? null
@@ -224,3 +229,9 @@ export const NEUTRAL_BRANDING: DepartmentBranding = {
   hofShortName: 'Sammlung',
   classLevels: [],
 }
+
+/**
+ * Filterwert, wenn kein Bereich bestimmt werden konnte: eine gültige UUID,
+ * die zu keinem Datensatz passt — Listen bleiben leer statt fehlerhaft.
+ */
+export const NO_DEPARTMENT_ID = '00000000-0000-0000-0000-000000000000'

@@ -10,6 +10,8 @@ import { Zap, Target, ChevronRight } from 'lucide-react'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 import { BrandIcon, BrandName } from '@/components/app-brand'
+import { getCurrentDepartment } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 export default async function SubjectsPage() {
   const supabase = await createClient()
@@ -23,7 +25,8 @@ export default async function SubjectsPage() {
 
   const [profileResult, subjectsResult, questionSubjects, { rows: answers }] = await Promise.all([
     supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
-    supabase.from('subjects').select('id, code, name, color, icon_name, description').order('code'),
+    // Nur Fächer des eigenen Bereichs (PROJ-23)
+    supabase.from('subjects').select('id, code, name, color, icon_name, description').eq('department_id', (await getCurrentDepartment())?.id ?? NO_DEPARTMENT_ID).order('code'),
     fetchActiveQuestionSubjects(supabase),
     fetchAllUserAnswers(supabase, user.id),
   ])

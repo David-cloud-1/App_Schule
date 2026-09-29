@@ -10,6 +10,8 @@ import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
 import { BrandIcon, BrandName } from '@/components/app-brand'
+import { getCurrentDepartment, getDepartmentSubjectIds } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 const QUIZ_SIZE = 10
 
@@ -48,7 +50,11 @@ export default async function QuizPage({
 
   const { subject: subjectId, class_level, topic, mode } = await searchParams
   const isWeakMode = mode === 'weak'
-  const classLevel = ['10', '11', '12'].includes(class_level ?? '') ? Number(class_level) : null
+
+  // Nur Fragen aus Fächern des eigenen Bereichs (PROJ-23)
+  const department = await getCurrentDepartment()
+  const departmentSubjectIds = department ? await getDepartmentSubjectIds(department.id) : []
+  const classLevel = (department?.classLevels ?? []).map(String).includes(class_level ?? '') ? Number(class_level) : null
   const topicId = topic && UUID_RE.test(topic) ? topic : null
 
   // ── Resolve subject ───────────────────────────────────────────────────────
@@ -61,14 +67,15 @@ export default async function QuizPage({
       .eq('id', subjectId)
       .single()
 
-    if (!subjectData) redirect('/subjects')
+    // Fach eines anderen Bereichs → zurück zur Fächerauswahl
+    if (!subjectData || !departmentSubjectIds.includes(subjectData.id)) redirect('/subjects')
     subject = subjectData
   }
 
   // ── Build question pool ───────────────────────────────────────────────────
-  const selectCols = subjectId
-    ? 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order), question_subjects!inner(subject_id)'
-    : 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order)'
+  // Immer über das Fach verknüpft, damit nur Fragen des eigenen Bereichs kommen
+  const selectCols = 'id, question_text, explanation, difficulty, answer_options (id, option_text, display_order), question_subjects!inner(subject_id)'
+  const subjectFilter = subjectId ? [subjectId] : departmentSubjectIds.length ? departmentSubjectIds : [NO_DEPARTMENT_ID]
 
   let rawQuestions: RawQuestion[] | null = null
   let fetchError: unknown = null
@@ -125,9 +132,7 @@ export default async function QuizPage({
       .eq('is_active', true)
       .in('id', weakIds)
 
-    if (subjectId) {
-      weakQuery = weakQuery.eq('question_subjects.subject_id', subjectId)
-    }
+    weakQuery = weakQuery.in('question_subjects.subject_id', subjectFilter)
     if (classLevel) {
       weakQuery = weakQuery.or(`class_level.eq.${classLevel},class_level.is.null`)
     }
@@ -159,9 +164,7 @@ export default async function QuizPage({
         .select(selectCols)
         .eq('is_active', true)
 
-      if (subjectId) {
-        query = query.eq('question_subjects.subject_id', subjectId)
-      }
+      query = query.in('question_subjects.subject_id', subjectFilter)
       if (classLevel) {
         query = query.or(`class_level.eq.${classLevel},class_level.is.null`)
       }

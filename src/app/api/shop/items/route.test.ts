@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk']),
+}))
 import { GET } from './route'
 
 vi.mock('@/lib/supabase-server', () => ({
@@ -109,5 +115,13 @@ describe('GET /api/shop/items', () => {
     )
     const res = await GET()
     expect(res.status).toBe(500)
+  })
+
+  it('zeigt nur Artikel des eigenen Bereichs (PROJ-23)', async () => {
+    const mock = makeSupabaseMock({ id: 'user-1' })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await GET()
+    const itemsBuilder = mock.from.mock.results[mock.from.mock.calls.findIndex((c) => c[0] === 'shop_items')].value
+    expect(itemsBuilder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
   })
 })

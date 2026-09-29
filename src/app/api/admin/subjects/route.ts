@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { revalidateTag } from 'next/cache'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { SUBJECTS_CACHE_TAG } from '@/lib/departments-server'
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(100),
@@ -121,6 +123,9 @@ export async function POST(request: NextRequest) {
     console.error('[POST /api/admin/subjects]', error)
     return NextResponse.json({ error: 'Failed to create subject' }, { status: 500 })
   }
+
+  // Neues Fach sofort in den Lernwegen verfügbar machen (Filter je Bereich, PROJ-23)
+  revalidateTag(SUBJECTS_CACHE_TAG, { expire: 0 })
 
   await writeAuditLog(supabase, {
     admin_id: user.id,

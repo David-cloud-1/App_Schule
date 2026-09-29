@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk']),
+}))
 import { GET } from './route'
 import { NextRequest } from 'next/server'
+import { chainMock, eqValue } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -37,24 +44,11 @@ function makeAuthClient(user: unknown) {
   }
 }
 
+let lastService: ReturnType<typeof chainMock>
+
 function makeServiceClientAllTime(profiles: unknown[]) {
-  const builder = {
-    select: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    then: undefined as unknown,
-  }
-  // Final .order() call returns data
-  let orderCallCount = 0
-  builder.order = vi.fn().mockImplementation(() => {
-    orderCallCount++
-    if (orderCallCount >= 2) {
-      return Promise.resolve({ data: profiles, error: null })
-    }
-    return builder
-  })
-  return {
-    from: vi.fn().mockReturnValue(builder),
-  }
+  lastService = chainMock((table) => (table === 'profiles' ? { data: profiles } : {}))
+  return lastService.client
 }
 
 function makeServiceClientPeriod(
@@ -63,22 +57,12 @@ function makeServiceClientPeriod(
   sessionError: unknown = null,
   profileError: unknown = null,
 ) {
-  const sessionBuilder = {
-    select: vi.fn().mockReturnThis(),
-    gte: vi.fn().mockResolvedValue({ data: sessions, error: sessionError }),
-  }
-
-  const profileBuilder = {
-    select: vi.fn().mockResolvedValue({ data: profiles, error: profileError }),
-  }
-
-  let fromCallCount = 0
-  return {
-    from: vi.fn().mockImplementation(() => {
-      fromCallCount++
-      return fromCallCount === 1 ? sessionBuilder : profileBuilder
-    }),
-  }
+  lastService = chainMock((table) => {
+    if (table === 'quiz_sessions') return { data: sessions, error: sessionError }
+    if (table === 'profiles') return { data: profiles, error: profileError }
+    return {}
+  })
+  return lastService.client
 }
 
 describe('GET /api/leaderboard', () => {
@@ -301,6 +285,32 @@ describe('GET /api/leaderboard', () => {
 
       expect(body.entries[0].display_name).toBe('Anna')
       expect(body.entries[1].display_name).toBe('Zara')
+    })
+  })
+
+  describe('Bereichstrennung (PROJ-23)', () => {
+    it('lädt für die Gesamt-Rangliste nur Profile des eigenen Bereichs', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: 'u1' }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(makeServiceClientAllTime([]) as never)
+      await GET(makeRequest('all'))
+      const q = lastService.queries.find((x) => x.table === 'profiles')!
+      expect(eqValue(q.calls, 'department_id')).toBe('dept-sped')
+    })
+
+    it('zählt Wochen-XP von Nutzern anderer Bereiche nicht mit', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: 'u1' }) as never)
+      // u-fremd hat XP, gehört aber nicht zum Bereich (fehlt in der gefilterten Profilliste)
+      vi.mocked(createServiceClient).mockReturnValue(
+        makeServiceClientPeriod(
+          [{ user_id: 'u1', xp_earned: 10 }, { user_id: 'u-fremd', xp_earned: 999 }],
+          [{ id: 'u1', display_name: 'Ich', leaderboard_opt_out: false }],
+        ) as never,
+      )
+      const res = await GET(makeRequest('week'))
+      const body = await res.json()
+      expect(body.entries.map((e: { id: string }) => e.id)).toEqual(['u1'])
+      const q = lastService.queries.find((x) => x.table === 'profiles')!
+      expect(eqValue(q.calls, 'department_id')).toBe('dept-sped')
     })
   })
 })

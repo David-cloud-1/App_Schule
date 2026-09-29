@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { effectiveAssessmentStatus, normalizeAccessCode, shuffle } from '@/lib/graded-assessments'
+import { getDepartmentOfUser } from '@/lib/departments-server'
 
 const Schema = z.object({
   code: z.string().min(1).max(20),
@@ -41,12 +42,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const service = createServiceClient()
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('id, title, access_code, part, duration_minutes, status, opens_at, closes_at, question_ids_snapshot')
+    .select('id, title, access_code, part, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, department_id')
     .eq('id', id)
     .maybeSingle()
 
   if (!assessment || assessment.access_code !== normalizeAccessCode(parsed.data.code)) {
     return NextResponse.json({ error: 'Ungültiger Code.' }, { status: 404 })
+  }
+
+  // Nachweise anderer Bereiche sind nicht einlösbar (PROJ-23)
+  const department = await getDepartmentOfUser(supabase, user.id)
+  if (assessment.department_id !== department?.id) {
+    return NextResponse.json({ error: 'Dieser Code gehört zu einem anderen Fachbereich.' }, { status: 403 })
   }
 
   const status = effectiveAssessmentStatus(assessment.status as 'draft' | 'open' | 'closed', assessment.opens_at, assessment.closes_at)

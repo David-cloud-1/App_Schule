@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { effectiveAssessmentStatus, normalizeAccessCode } from '@/lib/graded-assessments'
+import { getDepartmentOfUser } from '@/lib/departments-server'
 
 const Schema = z.object({ code: z.string().min(1).max(20) })
 
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('id, title, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, exam_set_id')
+    .select('id, title, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, exam_set_id, department_id')
     .eq('access_code', code)
     .maybeSingle()
 
@@ -55,6 +56,12 @@ export async function POST(request: NextRequest) {
       attempt_count: currentCount + 1,
     })
     return NextResponse.json({ error: 'Code nicht gefunden.' }, { status: 404 })
+  }
+
+  // Nachweise anderer Bereiche sind nicht einlösbar (PROJ-23)
+  const department = await getDepartmentOfUser(supabase, user.id)
+  if (assessment.department_id !== department?.id) {
+    return NextResponse.json({ error: 'Dieser Code gehört zu einem anderen Fachbereich.' }, { status: 403 })
   }
 
   const { data: existingSession } = await supabase

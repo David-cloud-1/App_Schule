@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
+import { getDepartmentOfUser, getDepartmentSubjectIds } from '@/lib/departments-server'
 
 const QUESTION_POOL_SIZE = 300
 const BLITZ_QUESTION_COUNT = 40
@@ -49,13 +50,18 @@ export async function POST() {
     return NextResponse.json({ error: 'Blitzrunde heute schon gespielt' }, { status: 409 })
   }
 
-  // Mixed-subject pool: the existing questions endpoint already returns
-  // cross-subject results when no `subject` filter is given (PROJ-19
-  // architecture decision — no new question-fetching mechanism needed).
+  // Mixed-subject pool — nur aus Fächern des eigenen Bereichs (PROJ-23)
+  const department = await getDepartmentOfUser(supabase, user.id)
+  const departmentSubjectIds = department ? await getDepartmentSubjectIds(department.id) : []
+  if (departmentSubjectIds.length === 0) {
+    return NextResponse.json({ error: 'Keine Fragen verfügbar' }, { status: 500 })
+  }
+
   const { data: rawQuestions, error: questionsError } = await supabase
     .from('questions')
-    .select('id, question_text, explanation, difficulty, answer_options ( id, option_text, display_order )')
+    .select('id, question_text, explanation, difficulty, answer_options ( id, option_text, display_order ), question_subjects!inner(subject_id)')
     .eq('is_active', true)
+    .in('question_subjects.subject_id', departmentSubjectIds)
     .order('id')
     .limit(QUESTION_POOL_SIZE)
 
@@ -76,6 +82,7 @@ export async function POST() {
   )
   const questions = picked
     .map((q) => ({
+      // question_subjects (Filter-Verknüpfung) bewusst nicht mitschicken
       id: q.id,
       question_text: q.question_text,
       explanation: q.explanation,

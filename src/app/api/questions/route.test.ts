@@ -9,9 +9,10 @@ vi.mock('@/lib/answer-key', () => ({
   fetchAnswerKey: vi.fn(async () => new Map()),
 }))
 
-// Bereich des Azubis und Fach-Auflösung (PROJ-22): LOP gibt es nur in Spedition
-vi.mock('@/lib/departments', () => ({
-  getDepartmentForUser: vi.fn(async () => ({ id: 'dept-sped' })),
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk']),
 }))
 vi.mock('@/lib/subjects', () => ({
   resolveSubjectCode: vi.fn(async (_sb: unknown, departmentId: string, code: string) =>

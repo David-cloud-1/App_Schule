@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getLevelFromXp } from '@/lib/xp-utils'
+import { getDepartmentOfUser } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 type Period = 'week' | 'month' | 'all'
 
@@ -36,11 +38,16 @@ export async function GET(request: NextRequest) {
   const service = createServiceClient()
   const startDate = getStartDate(period)
 
+  // Nur Azubis des eigenen Bereichs (PROJ-23) — der Service-Client umgeht RLS,
+  // deshalb ist dieser Filter zwingend.
+  const departmentId = (await getDepartmentOfUser(supabase, user.id))?.id ?? NO_DEPARTMENT_ID
+
   if (period === 'all') {
     // All-time: use total_xp from profiles
     const { data: rows, error } = await service
       .from('profiles')
       .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
+      .eq('department_id', departmentId)
       .order('total_xp', { ascending: false })
       .order('display_name', { ascending: true })
 
@@ -105,6 +112,7 @@ export async function GET(request: NextRequest) {
   const { data: profileRows, error: profileError } = await service
     .from('profiles')
     .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
+    .eq('department_id', departmentId)
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
 
@@ -112,7 +120,8 @@ export async function GET(request: NextRequest) {
   const currentUserProfile = profileMap.get(user.id)
 
   // Build entries for all users with XP in period (include current user even if 0)
-  const userIds = new Set([...xpMap.keys(), user.id])
+  // Nur Nutzer des eigenen Bereichs (profileMap enthält nur diese)
+  const userIds = new Set([...[...xpMap.keys()].filter((uid) => profileMap.has(uid)), user.id])
   const allEntries = Array.from(userIds).map((uid) => {
     const profile = profileMap.get(uid)
     const shownName = profile?.show_real_name

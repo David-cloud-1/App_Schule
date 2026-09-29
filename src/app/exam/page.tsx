@@ -3,7 +3,8 @@ import Link from 'next/link'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { ExamLandingClient } from './exam-landing-client'
-import { getCurrentExamParts } from '@/lib/departments-server'
+import { getCurrentDepartment, getCurrentExamParts } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 
 export type ExamSetOption = { id: string; name: string; questionCount: number }
 
@@ -19,6 +20,8 @@ export default async function ExamPage() {
     .from('exam_question_sets')
     .select('id, name, part, question_ids')
     .eq('is_active', true)
+    // Nur Prüfungssets des eigenen Bereichs (PROJ-23)
+    .eq('department_id', (await getCurrentDepartment())?.id ?? NO_DEPARTMENT_ID)
     .order('created_at', { ascending: false })
 
   // Teile des Prüfungsaufbaus im Bereich (PROJ-22)

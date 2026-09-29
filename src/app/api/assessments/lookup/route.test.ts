@@ -7,6 +7,10 @@ vi.mock('@/lib/supabase-server', () => ({
   createServiceClient: vi.fn(),
 }))
 
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped' })),
+}))
+
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 
 function makeRequest(body: unknown) {
@@ -26,6 +30,7 @@ const openAssessment = {
   closes_at: new Date(Date.now() + 60 * 60_000).toISOString(),
   question_ids_snapshot: ['q1', 'q2', 'q3', 'q4', 'q5'],
   exam_set_id: 'set-1',
+  department_id: 'dept-sped',
 }
 
 function makeUserClient(opts: { user?: boolean; existingSession?: unknown } = {}) {
@@ -136,5 +141,14 @@ describe('POST /api/assessments/lookup', () => {
       existingSessionStatus: 'in_progress',
       needsName: false,
     })
+  })
+
+  it('lehnt den Code eines Nachweises aus einem anderen Bereich ab (PROJ-23)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeUserClient() as never)
+    const { client } = makeServiceClient({ assessment: { ...openAssessment, department_id: 'dept-tour' } })
+    vi.mocked(createServiceClient).mockReturnValue(client as never)
+    const res = await POST(makeRequest({ code: '7K2MQX' }))
+    expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe('Dieser Code gehört zu einem anderen Fachbereich.')
   })
 })

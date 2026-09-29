@@ -6,7 +6,12 @@ vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
 }))
 
+vi.mock('@/lib/departments-server', () => ({
+  assignDepartmentIfMissing: vi.fn(async () => 'dept-tour'),
+}))
+
 import { createClient } from '@/lib/supabase-server'
+import { assignDepartmentIfMissing } from '@/lib/departments-server'
 
 const mockCreateClient = vi.mocked(createClient)
 
@@ -75,5 +80,31 @@ describe('GET /auth/callback', () => {
     expect(res.headers.get('location')).toBe(
       'http://localhost:3000/login?error=auth_callback_failed'
     )
+  })
+
+  it('ordnet ein neues Profil dem Bereich der Adresse zu (PROJ-23)', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ data: { user: { id: 'new-user' } }, error: null }),
+      },
+    } as never)
+
+    const res = await GET(buildRequest('https://touristiklern.vercel.app/auth/callback?code=valid-code'))
+
+    expect(res.status).toBe(307)
+    expect(vi.mocked(assignDepartmentIfMissing)).toHaveBeenCalledWith('new-user', 'touristiklern.vercel.app')
+  })
+
+  it('lässt den Login nicht scheitern, wenn die Zuordnung fehlschlägt', async () => {
+    vi.mocked(assignDepartmentIfMissing).mockRejectedValueOnce(new Error('db down'))
+    mockCreateClient.mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ data: { user: { id: 'u' } }, error: null }),
+      },
+    } as never)
+
+    const res = await GET(buildRequest('https://spedilern.vercel.app/auth/callback?code=valid-code'))
+
+    expect(res.headers.get('location')).toBe('https://spedilern.vercel.app/')
   })
 })

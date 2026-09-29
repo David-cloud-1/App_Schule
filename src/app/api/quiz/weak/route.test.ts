@@ -1,4 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Bereich des Nutzers und Fächer seines Bereichs (PROJ-23)
+vi.mock('@/lib/departments-server', () => ({
+  getDepartmentOfUser: vi.fn(async () => ({ id: 'dept-sped', classLevels: [10, 11, 12] })),
+  getDepartmentSubjectIds: vi.fn(async () => ['subj-lop', 'subj-ksk', SUBJECT_ID]),
+}))
 import { GET } from './route'
 
 // The answer key is merged in server-side via the service client (PROJ-21).
@@ -10,6 +16,7 @@ vi.mock('@/lib/answer-key', () => ({
 }))
 
 import { NextRequest } from 'next/server'
+import { chainMock, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -62,36 +69,20 @@ function makeSupabaseMock(
   answersError: unknown = null,
   questionsError: unknown = null,
 ) {
-  // Answers are fetched page-by-page via .range(); a short page ends the loop.
-  const answersBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    range: vi.fn().mockResolvedValue({ data: answers, error: answersError }),
-  }
-
-  const questionsBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockResolvedValue({ data: questions, error: questionsError }),
-  }
-
-  const subjectMatchBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockResolvedValue({ data: subjectMatches, error: null }),
-  }
-
-  return {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'quiz_answers') return answersBuilder
-      if (table === 'questions') return questionsBuilder
-      if (table === 'question_subjects') return subjectMatchBuilder
+  const mock = chainMock(
+    (table) => {
+      // Answers are fetched page-by-page via .range(); a short page ends the loop.
+      if (table === 'quiz_answers') return { data: answersError ? null : answers, error: answersError }
+      if (table === 'questions') return { data: questions, error: questionsError }
+      if (table === 'question_subjects') return { data: subjectMatches }
       return {}
-    }),
-  }
+    },
+    { auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) } },
+  )
+  lastMock = mock
+  return mock.client as unknown as { from: typeof mock.from }
 }
+let lastMock: ReturnType<typeof chainMock>
 
 describe('GET /api/quiz/weak', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -143,7 +134,8 @@ describe('GET /api/quiz/weak', () => {
 
   it('returns count_only without fetching full question data', async () => {
     const answers = [...WEAK_ANSWERS_Q1]
-    const mock = makeSupabaseMock({ id: USER_ID }, answers)
+    // Q1 gehört zu einem Fach des eigenen Bereichs (PROJ-23: gezählt wird nur dort)
+    const mock = makeSupabaseMock({ id: USER_ID }, answers, SAMPLE_QUESTIONS, [{ question_id: Q1 }])
     vi.mocked(createClient).mockResolvedValue(mock as never)
     const res = await GET(makeRequest({ count_only: 'true' }))
     expect(res.status).toBe(200)
@@ -175,5 +167,23 @@ describe('GET /api/quiz/weak', () => {
     )
     const res = await GET(makeRequest())
     expect(res.status).toBe(500)
+  })
+
+  it('zählt Lücken nur in Fächern des eigenen Bereichs (PROJ-23)', async () => {
+    makeSupabaseMock({ id: USER_ID }, [...WEAK_ANSWERS_Q1], SAMPLE_QUESTIONS, [])
+    vi.mocked(createClient).mockResolvedValue(lastMock.client as never)
+    const res = await GET(makeRequest({ count_only: 'true' }))
+    expect((await res.json()).count).toBe(0)
+    const q = lastMock.queries.find((x) => x.table === 'question_subjects')!
+    expect(q.calls).toContainEqual({ method: 'in', args: ['subject_id', ['subj-lop', 'subj-ksk', SUBJECT_ID]] })
+  })
+
+  it('liefert für ein Fach eines anderen Bereichs keine Lücken', async () => {
+    makeSupabaseMock({ id: USER_ID }, [...WEAK_ANSWERS_Q1])
+    vi.mocked(createClient).mockResolvedValue(lastMock.client as never)
+    const res = await GET(makeRequest({ subject_id: '11111111-1111-4111-8111-111111111111' }))
+    const body = await res.json()
+    expect(body).toEqual({ questions: [], count: 0 })
+    expect(lastMock.queries.some((x) => x.table === 'questions' && hasCall(x.calls, 'select'))).toBe(false)
   })
 })

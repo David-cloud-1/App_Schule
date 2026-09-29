@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { getCurrentDepartment } from '@/lib/departments-server'
+import { NO_DEPARTMENT_ID } from '@/lib/departments'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { LogoutButton } from '@/components/logout-button'
@@ -43,7 +44,8 @@ export default async function HomePage() {
 
   if (!user) redirect('/login')
 
-  const hofName = (await getCurrentDepartment())?.hofName ?? 'Shop'
+  const department = await getCurrentDepartment()
+  const hofName = department?.hofName ?? 'Shop'
 
   // Date range for 7-day activity window
   const now = new Date()
@@ -60,7 +62,8 @@ export default async function HomePage() {
         .eq('id', user.id)
         .single(),
 
-      supabase.from('subjects').select('id, code, name, color, icon_name').order('code'),
+      // Nur Fächer des eigenen Bereichs (PROJ-23)
+      supabase.from('subjects').select('id, code, name, color, icon_name').eq('department_id', department?.id ?? NO_DEPARTMENT_ID).order('code'),
 
       fetchActiveQuestionSubjects(supabase),
 

@@ -1,6 +1,6 @@
 # PROJ-23: Fachbereichs-Zuordnung für Azubis
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -177,6 +177,45 @@ Rückweg: Standardwert wieder setzen; Code-Rücknahme per Vercel. Da es noch kei
 
 ### H) Abhängigkeiten (Pakete)
 Keine neuen Pakete.
+
+## Implementation Notes (Backend)
+**Stand 2026-09-29 — Code fertig, lokal committet. Migration Schritt 1 im Probelauf geprüft, noch nicht angewendet; Schritt 2 erst nach dem Deploy.**
+
+### Zuordnung
+- `assignDepartmentIfMissing(userId, host)` in `src/lib/departments-server.ts`: Bereich der Adresse (unbekannt → erster Bereich), Speichern per Service-Client **nur wenn `department_id` noch leer** (`.is('department_id', null)`), danach Pseudonym per `generate_unique_pseudonym(p_department_id)` neu. Bei bereits gesetztem Bereich: keine Änderung, kein neues Pseudonym.
+- Aufgerufen in `src/app/auth/callback/route.ts` (Google-Login, E-Mail-Links; Fehler blockiert den Login nicht) und in `getRequestContext()` bei jedem Seitenaufruf, falls das Profil noch keinen Bereich hat (E-Mail-Registrierung ohne Bestätigung).
+- Hinweis bei falscher Adresse: `getRequestContext()` liefert `correctAddress` (App-Name + Adresse des eigenen Bereichs), wenn die aufgerufene Adresse zu einem anderen Bereich gehört; über den Bereichs-Kontext an die Oberfläche (Anzeige: `/frontend`).
+
+### Filter
+Neue zwischengespeicherte Liste `getDepartmentSubjectIds(departmentId)` (5 Min., Tag `department-subjects`, beim Anlegen eines Fachs sofort geleert) und `getDepartmentOfUser()` (Profil + zwischengespeicherte Bereichsliste).
+
+| Stelle | Änderung |
+|---|---|
+| Startseite, Fächer-Seite, `GET /api/subjects` | nur Fächer des Bereichs |
+| Quiz-Seite (je Fach, gemischt, Lücken-Modus) | Fragen immer über `question_subjects` auf die Fächer des Bereichs beschränkt; Fach eines anderen Bereichs → zurück zur Fächerauswahl; Klassenstufen aus dem Bereich |
+| `GET /api/topics` | nur für Fächer des Bereichs; Klassenstufen aus dem Bereich |
+| `GET /api/questions` | ohne Kürzel nur Fragen des Bereichs; Klassenstufe muss im Bereich existieren |
+| `GET /api/quiz/weak` | Lücken und Zählung nur in Fächern des Bereichs; Fach eines anderen Bereichs → leer |
+| `POST /api/quiz/blitz/start` | Pool nur aus Fächern des Bereichs |
+| Prüfungs-Startseite | nur aktive Sets des Bereichs |
+| `GET /api/shop/items` | nur Artikel des Bereichs |
+| `purchase_shop_item()` (Datenbank) | neue Prüfung `item_other_department` (Route meldet „Item nicht gefunden") |
+| `GET /api/leaderboard` | alle Zeiträume nur Profile des Bereichs; Wochen-/Monats-XP fremder Nutzer werden verworfen |
+| `POST /api/assessments/lookup`, `POST /api/assessments/[id]/join` | Nachweis eines anderen Bereichs → 403 „Dieser Code gehört zu einem anderen Fachbereich." |
+
+`NO_DEPARTMENT_ID` (gültige UUID ohne Treffer) als Filterwert, falls kein Bereich bestimmbar ist — Listen bleiben leer statt fehlerhaft.
+
+### Datenbank
+- `20260929_proj23_shop_department_check.sql` — Kauf-Prüfung + PROJ-22 QA BUG-2 (`generate_unique_pseudonym` nicht mehr für `PUBLIC`/`anon`). Probelauf als echter Azubi (zurückgerollt): fremder Artikel → `item_other_department`, eigener Artikel → gekauft, anonymer Pseudonym-Aufruf → verweigert.
+- `20260929_proj23_profiles_no_default_department.sql` — Standardwert am Profil entfernen; **erst nach dem Deploy anwenden**.
+
+### Tests
+- 508/508 Vitest grün, `npm run build` grün.
+- Neu: `departments-server.test.ts` (Zuordnung je Adresse, Rückfall, „nur wenn leer", Pseudonym), Login-Rückkehr (Zuordnung + Login trotz Fehler), Rangliste (Filter + fremde Wochen-XP), Lücken (Zählung/fremdes Fach), Blitzrunde, Fächer, Shop, Code-Suche (fremder Bereich → 403).
+- `src/test/setup.ts` ersetzt `next/cache` in Tests (Zwischenspeicher durchreichen).
+
+### Nebenbei
+- PROJ-22 QA BUG-3 (feste Klassenstufen) teilweise behoben: Quiz-Seite, Themen- und Fragen-Schnittstelle nutzen die Stufen des Bereichs. Offen: Admin-Fragenliste/-Export, Upload-Pfad, Datenbank-Prüfungen in `generation_jobs`/`questions_draft`.
 
 ## QA Test Results
 _To be added by /qa_

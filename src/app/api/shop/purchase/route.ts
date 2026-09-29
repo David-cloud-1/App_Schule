@@ -14,6 +14,8 @@ const ERROR_MAP: Record<string, { status: number; message: string }> = {
   item_not_found:      { status: 404, message: 'Item nicht gefunden' },
   item_inactive:       { status: 409, message: 'Dieses Item ist nicht mehr verfügbar' },
   already_owned:       { status: 409, message: 'Du besitzt dieses Item bereits' },
+  // PROJ-23: Artikel eines anderen Fachbereichs (Prüfung in purchase_shop_item)
+  item_other_department: { status: 404, message: 'Item nicht gefunden' },
   // Münz-Name kommt aus dem Fachbereich, siehe unten (PROJ-22)
   insufficient_funds:  { status: 409, message: 'Nicht genug Münzen' },
 }
