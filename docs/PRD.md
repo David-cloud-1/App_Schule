@@ -51,6 +51,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P0 | PROJ-19: Blitzrunde & Frachtmünzen | Planned |
 | P0 | PROJ-20: Speditionshof & Shop | Planned |
 | P1 | PROJ-21: Benotete Leistungsnachweise | Planned |
+| P1 | PROJ-22: Fachbereich als Datenbasis | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
