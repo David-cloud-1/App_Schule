@@ -217,6 +217,13 @@ Neue zwischengespeicherte Liste `getDepartmentSubjectIds(departmentId)` (5 Min.,
 ### Nebenbei
 - PROJ-22 QA BUG-3 (feste Klassenstufen) teilweise behoben: Quiz-Seite, Themen- und Fragen-Schnittstelle nutzen die Stufen des Bereichs. Offen: Admin-Fragenliste/-Export, Upload-Pfad, Datenbank-Prüfungen in `generation_jobs`/`questions_draft`.
 
+## Implementation Notes (Frontend)
+- `src/components/wrong-address-banner.tsx`: Hinweis-Leiste oben auf jeder Seite (im Grundlayout), nur wenn der Bereichs-Kontext `correctAddress` liefert — also eingeloggt **und** Adresse eines anderen Bereichs. Text „Deine App heißt {App-Name} — hier geht's zu {Adresse}" mit Link, Icon des eigenen Bereichs, Schließen-Knopf (44 px, `aria-label`). Aufgebaut aus shadcn `Alert` + `Button`, Farben nach Design-System (Secondary Blau).
+- Schließen wird im Sitzungsspeicher gemerkt (`sessionStorage`, mit Rückfall, falls nicht verfügbar); angezeigt wird erst nach dem Lesen — kein Aufblitzen bei bereits geschlossenem Hinweis.
+- Test `wrong-address-banner.test.tsx`: Anzeige mit Link, keine Anzeige ohne `correctAddress`, Schließen bleibt in der Sitzung erhalten.
+- Gesamt: 511/511 Vitest grün, `npm run build` grün.
+- Sichtbar erst ab PROJ-25 (solange es nur Spedition gibt, gehört keine Adresse zu einem anderen Bereich).
+
 ## QA Test Results
 _To be added by /qa_
 

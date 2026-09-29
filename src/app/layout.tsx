@@ -4,6 +4,7 @@ import "./globals.css";
 import { DepartmentProvider, type DepartmentContextValue } from "@/components/department-provider";
 import { getCurrentDepartment, getDepartmentContextValue } from "@/lib/departments-server";
 import { NEUTRAL_BRANDING } from "@/lib/departments";
+import { WrongAddressBanner } from "@/components/wrong-address-banner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,7 +29,10 @@ export default async function RootLayout({
   return (
     <html lang="de" className="dark">
       <body className={`${inter.className} antialiased`}>
-        <DepartmentProvider value={value}>{children}</DepartmentProvider>
+        <DepartmentProvider value={value}>
+          <WrongAddressBanner />
+          {children}
+        </DepartmentProvider>
       </body>
     </html>
   );
