@@ -1,6 +1,6 @@
 # PROJ-22: Fachbereich als Datenbasis
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -110,7 +110,124 @@ Gesamtplan und alle Entscheidungen (E1–E9): [docs/plans/mehrere-fachbereiche.m
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Reiner Umbau „unter der Haube": Es entsteht **eine neue Datenquelle** (der Fachbereich) und **eine Handvoll zentraler Bausteine**, die diese Daten an alle Stellen verteilen, die heute Speditions-Werte fest eingebaut haben. Neue Seiten oder Knöpfe gibt es nicht. Backend (Datenbank) **und** Frontend sind betroffen.
+
+### A) Neue zentrale Bausteine
+
+```
+Fachbereich (Datenbank)
+│
+├── Bereichs-Lader (Server)
+│   ├── ermittelt den Bereich: eingeloggt → aus dem Profil,
+│   │   sonst → aus der aufgerufenen Adresse, unbekannt → Spedition
+│   ├── lädt Bereich + aktive Fächer + Prüfungsteile einmal pro Seitenaufruf
+│   └── liefert Browser-Tab-Titel und Beschreibung (Metadaten)
+│
+├── Bereichs-Kontext (Browser)
+│   └── stellt App-Name, Icon, Münz-Name, Hof-Name, Fachfarben
+│       allen Bildschirm-Bausteinen bereit (Login, Shop, Blitzrunde, Quiz …)
+│
+├── Fach-Auflöser
+│   └── „Kürzel + Bereich → Fach"; einzige Stelle, die Fächer über Kürzel sucht
+│
+├── Prompt-Baukasten
+│   ├── Fragen-Prompt (kopierbar + bezahlter Upload-Pfad)
+│   ├── Qualitätsregeln mit eingesetzter Zielgruppe
+│   └── Korrekturauftrag
+│
+├── Prüfungsaufbau
+│   └── Teile, Fächer je Teil, Fragenzahl, Dauer — für Simulation,
+│       Prüfungssets und Leistungsnachweise
+│
+├── Badge-Regeln
+│   └── Experten-Badges je Fach + Schwelle, Allrounder = alle aktiven Fächer
+│
+└── Pseudonym-Generator
+    └── gemeinsame Adjektive + Nomen des Bereichs
+```
+
+**Warum ein Kontext im Browser?** Login-, Registrier-, Shop- und Quiz-Bildschirme laufen im Browser und können die Datenbank vor dem Login nicht fragen. Das Grundlayout lädt den Bereich deshalb einmal auf dem Server und reicht ihn nach unten durch — so kennt jeder Bildschirm sofort den richtigen Namen, ohne zusätzliche Ladezeit oder Flackern.
+
+### B) Datenmodell (in Worten)
+
+**Neu: Fachbereich** — pro Bereich ein Eintrag mit:
+- Kurzname (`spedition`) und Adresse (`spedilern.vercel.app`)
+- Name, App-Name, Untertitel, Icon
+- Münz-Name, Hof-Name
+- Prompt-Rolle, Zielgruppe, optionale Zusatzhinweise
+- erlaubte Klassenstufen
+- Nomen für Pseudonyme
+- aktiv ja/nein
+
+**Erweitert:**
+
+| Was | Neu dazu |
+|---|---|
+| Profile | Bereich (Standard: Spedition, auch für neue Registrierungen) |
+| Fächer | Bereich; Kürzel nur noch **je Bereich** eindeutig |
+| Prüfungsteile (Tabelle existiert, war ungenutzt) | Bereich, Teil-Nummer, Untertitel, Fragenzahl, Dauer, Sortierung + Zuordnung „welche Fächer gehören zu welchem Teil" |
+| Prüfungssets, Leistungsnachweise, Shop-Artikel | Bereich |
+| Badges | optional: Fach + Schwelle (für Experten-Badges); Kennzeichen „Allrounder" |
+| Audit-Log | Bereich des betroffenen Objekts |
+| KI-Upload-Aufträge und -Entwürfe | Fach als Verweis statt als Kürzel-Text |
+
+**Bewusst nicht erweitert:** Fragen, Antwortoptionen und Themen — ihr Bereich ergibt sich eindeutig über ihr Fach (jede Frage hat genau ein Fach). Das vermeidet doppelte Daten, die auseinanderlaufen könnten.
+
+Gespeichert in: Supabase (bestehende Datenbank, kein neuer Dienst).
+
+### C) Welche Bereiche der App angepasst werden
+
+| Bereich der App | Was sich ändert (unsichtbar für Nutzer) |
+|---|---|
+| Grundlayout, Login, Registrierung, Passwort-Seiten, Ladeanzeige, Admin-Kopf | Name, Icon, Tab-Titel aus dem Bereich |
+| Start-, Fächer-, Quiz-Seite, Fach-Karten, Fach-Etiketten | Farben, Icons, Beschreibungen aus den Fach-Daten |
+| Prüfungssimulation (Start, Sitzung, Ergebnis), Prüfungs-Etiketten | Teile aus dem Prüfungsaufbau |
+| Admin: Prüfungssets, Leistungsnachweis anlegen | Teile aus dem Prüfungsaufbau |
+| Shop, Hof-Galerie, Münzanzeige, Startguthaben, Blitzrunde, Quiz-Ergebnis, Admin-Shop | Münz- und Hof-Name aus dem Bereich |
+| Badges (Berechnung + Nachberechnung) | Badge-Regeln aus Daten |
+| Admin: KI-Generator, CSV-Import, JSON-Import, Prüfungsset-Import/-Extraktion, Fragenliste/-Export, Fächer anlegen | Prompt-Baukasten, Fach-Auflöser |
+| Bezahlter Upload-Pfad (Aufträge, Entwürfe, Übernahme) | Prompt-Baukasten, Fach als Verweis |
+| Pseudonym neu würfeln + automatische Vergabe bei Registrierung | Pseudonym-Generator mit Bereichs-Nomen |
+
+Rund 45 Dateien werden angefasst, davon ~20 nur für Namen/Texte.
+
+### D) Technische Entscheidungen
+
+| Entscheidung | Begründung |
+|---|---|
+| **Eine zentrale Quelle je Thema** (Fach-Auflöser, Prompt-Baukasten, Prüfungsaufbau) statt Einzelanpassungen | Heute suchen ~15 Stellen Fächer über Kürzel. Wenn nur noch eine Stelle das tut, kann ein Kürzel später nicht aus Versehen im falschen Bereich landen — und es gibt genau einen Ort zum Testen. |
+| **Bereich einmal pro Seitenaufruf laden** und durchreichen | Keine zusätzliche Wartezeit; Seiten fragen nicht jede für sich die Datenbank. |
+| **Adresse nur vor dem Login maßgeblich** | Nach dem Login entscheidet das Profil — so kann eine falsch aufgerufene Adresse niemanden in einen fremden Bereich bringen. |
+| **Bereich nicht an Fragen speichern** | Jede Frage hat genau ein Fach; der Bereich folgt daraus. Weniger Pflege, keine Widersprüche. |
+| **Badge-IDs bleiben** | Verdiente Abzeichen hängen an diesen IDs — so geht nichts verloren. |
+| **Bereichsdaten zunächst nur per Migration pflegbar** | Es gibt in dieser Phase nur Spedition; die Einstellungsseite kommt mit den Bereichs-Admins (PROJ-24). |
+| **Keine neuen Pakete** | Alles mit vorhandenen Mitteln (Next.js, Supabase). |
+
+### E) Auslieferung in drei Schritten
+
+1. **Datenbank erweitern und befüllen** — neue Felder zunächst optional, Spedition anlegen, alle Bestandsdaten zuordnen, Prüfungsaufbau und Badge-Regeln eintragen. Die laufende App merkt davon nichts (alte Felder bleiben).
+2. **Code ausliefern** — liest ab jetzt aus den Bereichsdaten.
+3. **Verschärfen** — Bereich wird Pflicht, Fachkürzel-Eindeutigkeit wechselt auf „je Bereich", alte Kürzel-Textfelder im Upload-Pfad entfallen.
+
+Jeder Schritt hat einen Rückweg. Schritt 3 erst, wenn Schritt 2 live geprüft ist.
+
+### F) Nachweis „Spedition merkt nichts"
+
+Ohne Dev-Server, nur Build, Tests und Datenbank-Abfragen:
+
+| Prüfung | Wie |
+|---|---|
+| Prompt identisch | Test vergleicht den erzeugten Spedition-Prompt mit dem heutigen Text |
+| Badges identisch (außer Allrounder-Regel) | Abfrage „welche Badges stünden jedem Azubi zu" vorher/nachher |
+| Prüfungsaufbau identisch | Test: Teile, Fächer, Fragenzahl, Dauer = heutige Werte |
+| Gleiches Kürzel in zwei Bereichen | Test mit zwei Test-Bereichen, beide mit `KSK` |
+| Spielstände unverändert | Stichprobe XP, Streak, Münzen, Hof-Gegenstände vor/nach Deploy |
+| Keine festen Werte mehr | Suche im Code nach Kürzeln und Speditions-Begriffen (außer Tests/Migrationen) |
+
+### G) Abhängigkeiten (Pakete)
+Keine neuen Pakete.
 
 ## QA Test Results
 _To be added by /qa_
