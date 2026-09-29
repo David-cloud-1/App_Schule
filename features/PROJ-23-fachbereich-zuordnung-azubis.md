@@ -179,7 +179,7 @@ Rückweg: Standardwert wieder setzen; Code-Rücknahme per Vercel. Da es noch kei
 Keine neuen Pakete.
 
 ## Implementation Notes (Backend)
-**Stand 2026-09-29 — Code fertig, lokal committet. Migration Schritt 1 im Probelauf geprüft, noch nicht angewendet; Schritt 2 erst nach dem Deploy.**
+**Stand 2026-09-29 — Code fertig, lokal committet. Migration Schritt 1 angewendet (Kauf-Prüfung aktiv, Pseudonym-Funktion nur noch für authenticated/service_role); Schritt 2 erst nach dem Deploy.**
 
 ### Zuordnung
 - `assignDepartmentIfMissing(userId, host)` in `src/lib/departments-server.ts`: Bereich der Adresse (unbekannt → erster Bereich), Speichern per Service-Client **nur wenn `department_id` noch leer** (`.is('department_id', null)`), danach Pseudonym per `generate_unique_pseudonym(p_department_id)` neu. Bei bereits gesetztem Bereich: keine Änderung, kein neues Pseudonym.
