@@ -1,6 +1,6 @@
 # PROJ-23: Fachbereichs-Zuordnung für Azubis
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -88,7 +88,95 @@ Grundlage und Entscheidungen: [docs/plans/mehrere-fachbereiche.md](../docs/plans
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Zwei Teile: **(1) Zuordnung** neuer Profile anhand der Adresse und **(2) Filter** aller Lernwege auf den eigenen Bereich. Beides baut auf den Bausteinen aus PROJ-22 auf (zwischengespeicherte Bereichsliste, Bereich pro Seitenaufruf). Überwiegend Backend; sichtbar neu ist nur der Hinweis bei falscher Adresse.
+
+### A) Zuordnung bei der Registrierung
+
+**Problem:** Das Profil entsteht automatisch in der Datenbank, sobald ein Konto angelegt wird — in dem Moment weiß niemand, über welche Adresse die Person kam. Heute setzt die Datenbank deshalb pauschal „Spedition".
+
+**Lösung: Zuordnung beim ersten Kontakt mit dem Server**
+
+```
+Registrierung (E-Mail oder Google)
+│
+├── Datenbank legt Profil an ── Bereich: leer (neu: kein Standardwert mehr)
+│
+└── erster Server-Kontakt nach der Anmeldung — an zwei Stellen:
+    ├── Rückkehr vom Google-Login / aus einem E-Mail-Link (Login-Rückkehr-Route)
+    └── jeder Seitenaufruf (der Bereich wird dort ohnehin gelesen)
+        │
+        └── "Bereich zuordnen" (nur wenn noch leer):
+            ├── Adresse der Anfrage → Bereich (unbekannt → erster Bereich)
+            ├── Bereich speichern — nur wenn er noch leer ist
+            └── Pseudonym mit den Nomen dieses Bereichs neu erzeugen
+```
+
+- Die Zuordnung läuft ausschließlich auf dem Server mit Admin-Rechten; der Browser liefert keinen Bereich mit. Azubis haben weiterhin kein Schreibrecht auf den Bereich.
+- „Nur wenn noch leer" macht den Schritt wiederholbar und sicher: Zwei gleichzeitige Seitenaufrufe führen nicht zu zwei verschiedenen Bereichen, ein späterer Login auf einer anderen Adresse ändert nichts.
+- Bis zur Zuordnung (Sekundenbruchteile) und falls sie scheitert, gilt wie in PROJ-22 der Rückfall-Bereich — keine leeren Seiten.
+
+### B) Filter auf den eigenen Bereich
+
+Eine zentrale Frage „Welche Fächer gehören zum Bereich dieses Nutzers?" — zwischengespeichert wie die Bereichsliste — ersetzt überall die bisherige Annahme „alle Fächer". Daraus folgen alle Filter:
+
+| Lernweg | Filter |
+|---|---|
+| Startseite (Fach-Fortschritt), Fächer-Seite, Fächer-Schnittstelle | nur Fächer des Bereichs |
+| Quiz je Fach, gemischtes Lernen, Themen | nur Fragen/Themen dieser Fächer; ein Fach eines anderen Bereichs → keine Fragen |
+| Fragen-Schnittstelle | Fach-Kürzel schon seit PROJ-22 im Bereich; zusätzlich ohne Kürzel nur Fragen des Bereichs |
+| Blitzrunde | Fragenpool = Fragen der Fächer des Bereichs |
+| Lücken schließen, Tagesziel | nur Fragen des Bereichs |
+| Prüfungssimulation | nur aktive Sets des Bereichs (Sitzungsstart ist seit PROJ-22 gefiltert, jetzt auch die Auswahlseite) |
+| Shop-Anzeige | nur Artikel des Bereichs |
+| **Shop-Kauf** | Prüfung **in der Datenbank-Kauffunktion**: Artikel muss zum Bereich des Käufers gehören (die Funktion ist direkt aus dem Browser aufrufbar, ein Filter im Code allein reicht nicht) |
+| Rangliste | nur Profile des Bereichs (läuft mit Admin-Rechten, daher Filter im Code zwingend) |
+| Leistungsnachweis: Code-Suche und Beitritt | Bereich des Nachweises = Bereich des Azubis, sonst „Dieser Code gehört zu einem anderen Fachbereich." |
+
+### C) Hinweis bei falscher Adresse
+
+```
+Grundlayout
+└── Bereichs-Kontext (aus PROJ-22) — neu zusätzlich: "richtige Adresse"
+    └── Hinweis-Leiste (nur eingeloggt + Adresse gehört zu einem ANDEREN Bereich)
+        ├── „Deine App heißt TouristikLern — hier geht's zu touristiklern.vercel.app"
+        └── Schließen (gemerkt für diese Browser-Sitzung)
+```
+Der Server erkennt beides bereits: den Bereich der Adresse und den Bereich des Profils. Weichen sie ab und hat die Adresse einen Bereich, gibt das Layout die richtige Adresse mit. Vorschau-Adressen (ohne Bereich) lösen keinen Hinweis aus.
+
+### D) Datenmodell (in Worten)
+Keine neuen Tabellen. Zwei Änderungen:
+- **Profile:** Der Standardwert „Spedition" für den Bereich entfällt — neue Profile starten leer und werden wie oben zugeordnet. Bestehende Profile bleiben unverändert.
+- **Shop-Kauffunktion:** prüft zusätzlich, dass der Artikel zum Bereich des Käufers gehört (neue Fehlermeldung „Artikel gehört zu einem anderen Fachbereich").
+
+Die Standardwerte an Fächern, Prüfungssets usw. bleiben bis PROJ-24.
+
+### E) Technische Entscheidungen
+
+| Entscheidung | Begründung |
+|---|---|
+| Zuordnung auf dem Server statt beim Anlegen in der Datenbank | Nur der Server kennt die Adresse der Anfrage; der Browser könnte sie fälschen. |
+| Zuordnung an zwei Stellen (Login-Rückkehr + Seitenaufruf) | Google- und E-Mail-Link-Anmeldungen laufen über die Rückkehr-Route, E-Mail-Registrierung ohne Bestätigung springt direkt in die App — so ist jeder Weg abgedeckt. |
+| „Nur speichern, wenn leer" | Wiederholbar, keine Wettläufe, kein nachträglicher Wechsel durch eine andere Adresse. |
+| Fächer je Bereich zwischengespeichert | Jeder Lernweg braucht diese Liste; so kostet der Filter keine zusätzliche Datenbankabfrage (Lehre aus PROJ-22 BUG-1). |
+| Kauf-Prüfung in der Datenbank | Einzige Stelle, die auch direkte Aufrufe erfasst. |
+| Filter im Code, nicht per Zugriffsregeln (E5) | Inhalte sind nicht vertraulich; weniger Risiko am Kern der App. Personen- und Notendaten trennt PROJ-24 per RLS. |
+
+### F) Auslieferung
+1. **Code ausliefern** (Filter, Zuordnung, Hinweis, neue Kauf-Prüfung). Solange der Standardwert noch existiert, bekommen neue Profile weiterhin sofort Spedition — nichts ändert sich.
+2. **Danach Standardwert am Profil entfernen** — ab dann greift die Zuordnung per Adresse.
+
+Rückweg: Standardwert wieder setzen; Code-Rücknahme per Vercel. Da es noch keinen zweiten Bereich gibt, landen bis PROJ-25 alle neuen Profile ohnehin in Spedition.
+
+### G) Nachweis ohne Dev-Server
+- Vitest mit **zwei Bereichen** (Test-Daten): Zuordnung je Adresse, „nur wenn leer", Filter je Lernweg, Rangliste, Nachweis-Code eines anderen Bereichs, Hinweis-Bedingung.
+- Kauffunktion per SQL als Azubi in einer zurückgerollten Transaktion gegen einen Test-Artikel eines Test-Bereichs.
+- Vorher/nachher-Stichprobe für Spedition: Fächer, Fragenzahlen, Rangliste, Shop, Prüfungssets.
+- Ladezeit auf der Vercel-Vorschau gegen die Werte aus PROJ-22.
+
+### H) Abhängigkeiten (Pakete)
+Keine neuen Pakete.
 
 ## QA Test Results
 _To be added by /qa_
