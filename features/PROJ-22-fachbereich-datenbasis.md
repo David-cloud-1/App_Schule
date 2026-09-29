@@ -232,7 +232,7 @@ Ohne Dev-Server, nur Build, Tests und Datenbank-Abfragen:
 Keine neuen Pakete.
 
 ## Implementation Notes (Backend)
-**Stand 2026-09-29 — Code fertig, Migration NOCH NICHT angewendet.**
+**Stand 2026-09-29 — Migration auf der Live-Datenbank angewendet und geprüft; Code committet, aber noch nicht ausgeliefert.**
 
 ### Datenbank
 - `supabase/migrations/20260929_proj22_departments.sql` (Rückweg: `…_down.sql`). Probelauf gegen die Live-Datenbank in einer Transaktion mit erzwungenem Abbruch: alle Werte wie erwartet (1 Bereich, 0 Profile ohne Bereich, Teile 1–3 mit STG+LOP / KSK / BGP, 20/15/15 Fragen, 90/90/45 Min., 70 % offen in Teil 1, alle 15 Badges mit Regel, Experten-Badges am richtigen Fach). Der Probelauf hat einen Namenskonflikt (`badges_threshold_check`) gefunden, der behoben ist.
@@ -267,7 +267,12 @@ Keine neuen Pakete.
 - `subjects.test.ts`, `bulk-import/route.test.ts`: gleiches Kürzel `KSK` in zwei Bereichen → immer das Fach des richtigen Bereichs.
 - `badges.test.ts`: alle 15 Regeln einzeln, Allrounder inkl. PUG, fremde Fach-Badges werden nicht angeboten.
 - Vitest: 45 Dateien, 487 Tests grün. `npm run build` grün.
-- Noch offen nach dem Anwenden: Badge-Vergleich vorher/nachher per SQL, Spielstand-Stichprobe.
+- **Nach dem Anwenden (Live-Datenbank):**
+  - Prüfsummen über alle 59 Profile (XP, Streak, längster Streak, Münzen, Pseudonym) und alle 86 verdienten Badges vorher = nachher. Hof-Gegenstände (6), Quiz-Sitzungen (688), Prüfungssitzungen (32), Fragen und Fach-Zuordnungen (je 3.846) unverändert.
+  - Badge-Regeln alt vs. neu für jeden Azubi: identisch (6 Fach-/Allrounder-Ansprüche, keine Abweichung, alle bereits vergeben).
+  - Pseudonyme werden aus den Nomen der Spedition gebildet; Prüfungsteile und Fach-Reihenfolge wie erwartet.
+  - Security-Advisor: einziger neuer Hinweis (`fallback_department_id()` als SECURITY DEFINER für anon aufrufbar) mit `20260929_proj22_fallback_department_invoker.sql` behoben; Standardwert funktioniert für `anon` und `authenticated`.
+- `src/lib/database.types.ts` ist nicht neu generiert (wird vom Code nicht verwendet, Client ist untypisiert).
 
 ### Bekannte Punkte außerhalb dieses Features
 - `npm run lint` ist kaputt (`next lint` gibt es in Next.js 16 nicht mehr; `.eslintrc.json` inkompatibel mit ESLint 9) — schon vor PROJ-22.

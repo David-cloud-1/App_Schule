@@ -13,6 +13,7 @@
 -- Inhalten, sobald Bereichs-Admins explizit einen Bereich setzen.
 --
 -- Rückweg: siehe 20260929_proj22_departments_down.sql
+-- Nachtrag: 20260929_proj22_fallback_department_invoker.sql (SECURITY INVOKER)
 
 BEGIN;
 
