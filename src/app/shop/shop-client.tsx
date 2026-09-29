@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useDepartment } from '@/components/department-provider'
 
 interface ShopItem {
   id: string
@@ -35,6 +36,7 @@ async function loadItems(): Promise<ItemsResponse | null> {
 }
 
 export function ShopClient() {
+  const { hofName, hofShortName } = useDepartment()
   const [items, setItems] = useState<ShopItem[] | null>(null)
   const [coinBalance, setCoinBalance] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -95,7 +97,7 @@ export function ShopClient() {
             <Link href="/" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
               <ArrowLeft size={20} />
             </Link>
-            <span className="font-semibold text-[#F9FAFB]">Speditionshof</span>
+            <span className="font-semibold text-[#F9FAFB]">{hofName}</span>
           </div>
           <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">
             <Coins size={13} className="text-[#FFD700]" />
@@ -116,7 +118,7 @@ export function ShopClient() {
         ) : failed ? (
           <div className="flex flex-col items-center justify-center text-center py-16">
             <Store size={48} className="text-[#4B5563] mb-4" />
-            <p className="text-[#9CA3AF] mb-4">Der Hof konnte nicht geladen werden.</p>
+            <p className="text-[#9CA3AF] mb-4">Der {hofShortName} konnte nicht geladen werden.</p>
             <Button onClick={load} variant="outline" className="rounded-2xl border-[#4B5563] text-[#9CA3AF]">
               Erneut versuchen
             </Button>
@@ -124,7 +126,7 @@ export function ShopClient() {
         ) : !items || items.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center py-16">
             <Store size={48} className="text-[#4B5563] mb-4" />
-            <p className="text-[#9CA3AF]">Der Hof ist noch leer — schau bald wieder vorbei.</p>
+            <p className="text-[#9CA3AF]">Der {hofShortName} ist noch leer — schau bald wieder vorbei.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -200,7 +202,7 @@ export function ShopClient() {
               </div>
               <div className="mb-1">
                 <span className="text-xs font-semibold uppercase tracking-wider text-[#FFD700]">
-                  Neu für deinen Hof!
+                  Neu für deinen {hofShortName}!
                 </span>
               </div>
               <h2 className="text-2xl font-bold text-[#F9FAFB] mb-2">{justPurchased.name}</h2>

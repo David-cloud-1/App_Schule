@@ -3,35 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import type { LucideIcon } from 'lucide-react'
-import { BarChart3, Calculator, Truck, Package, Scale, Shuffle } from 'lucide-react'
+import { Package, Shuffle } from 'lucide-react'
+import { resolveIcon } from '@/components/department-icon'
+import { useDepartment } from '@/components/department-provider'
 import { SubjectCard } from '@/components/subject-card'
 import { ClassLevelFilter } from '@/components/class-level-filter'
 import { SubjectSessionSheet } from '@/components/subject-session-sheet'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
-
-const SUBJECT_META: Record<string, { icon: LucideIcon; description: string }> = {
-  BGP: {
-    icon: BarChart3,
-    description: 'Wirtschaft, Recht, Unternehmensprozesse und gesamtwirtschaftliche Zusammenhänge',
-  },
-  KSK: {
-    icon: Calculator,
-    description: 'Kosten-/Leistungsrechnung, Controlling, Preisangebote und Kalkulation',
-  },
-  STG: {
-    icon: Truck,
-    description: 'Transport, Umschlag, Lager, Zoll und internationale Logistik',
-  },
-  LOP: {
-    icon: Package,
-    description: 'Logistikdienstleistungen, Lagerung, Kommissionierung und Warenfluss',
-  },
-  PUG: {
-    icon: Scale,
-    description: 'Politische Systeme, Gesellschaft, Grundrechte und staatliche Ordnung',
-  },
-}
 
 interface SelectedSubject {
   id: string
@@ -46,7 +24,8 @@ interface Props {
 
 export function SubjectsGrid({ subjects }: Props) {
   const searchParams = useSearchParams()
-  const classLevelParam = ['10', '11', '12'].includes(searchParams.get('class_level') ?? '')
+  const { classLevels } = useDepartment()
+  const classLevelParam = classLevels.map(String).includes(searchParams.get('class_level') ?? '')
     ? searchParams.get('class_level')!
     : ''
 
@@ -80,16 +59,15 @@ export function SubjectsGrid({ subjects }: Props) {
       {/* Subject cards */}
       <div className="grid grid-cols-1 gap-4">
         {subjects.map((subject) => {
-          const meta = SUBJECT_META[subject.code] ?? { icon: Package, description: subject.name }
           return (
             <SubjectCard
               key={subject.id}
               id={subject.id}
               code={subject.code}
               name={subject.name}
-              description={meta.description}
+              description={subject.description ?? subject.name}
               color={subject.color}
-              icon={meta.icon}
+              icon={resolveIcon(subject.icon_name, Package)}
               activeQuestionCount={subject.active_question_count}
               onLearnClick={
                 subject.active_question_count > 0

@@ -6,12 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const PART_LABELS: Record<number, string> = {
-  1: 'Teil 1',
-  2: 'Teil 2',
-  3: 'Teil 3',
-}
-
 type ExamSession = {
   id: string
   parts_selected: number[]
@@ -99,7 +93,7 @@ export default async function ExamHistoryPage() {
                           )}
                           {parts.map((p) => (
                             <Badge key={p} variant="outline" className="text-xs border-[#4B5563] text-[#9CA3AF]">
-                              {PART_LABELS[p] ?? `Teil ${p}`}
+                              {`Teil ${p}`}
                             </Badge>
                           ))}
                         </div>

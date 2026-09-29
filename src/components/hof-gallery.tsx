@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Store } from 'lucide-react'
+import { useDepartment } from '@/components/department-provider'
 
 interface OwnedItem {
   id: string
@@ -21,6 +22,7 @@ interface ShopItemsResponse {
  * no longer shows.
  */
 export function HofGallery() {
+  const { hofName, hofShortName } = useDepartment()
   const [items, setItems] = useState<OwnedItem[] | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -48,7 +50,7 @@ export function HofGallery() {
   return (
     <div>
       <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-3">
-        Mein Hof
+        Mein {hofShortName}
       </h2>
 
       {items === null ? (
@@ -57,10 +59,10 @@ export function HofGallery() {
         <div className="text-center py-4">
           <Store className="w-8 h-8 text-[#4B5563] mx-auto mb-2" />
           <p className="text-sm text-[#6B7280] mb-2">
-            Noch nichts für deinen Hof gekauft.
+            Noch nichts für deinen {hofShortName} gekauft.
           </p>
           <Link href="/shop" className="text-xs text-[#FFD700] underline underline-offset-2">
-            Zum Speditionshof
+            Zum {hofName}
           </Link>
         </div>
       ) : (

@@ -1,13 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-
-const LEVELS = [
-  { value: '', label: 'Alle Klassen' },
-  { value: '10', label: 'Klasse 10' },
-  { value: '11', label: 'Klasse 11' },
-  { value: '12', label: 'Klasse 12' },
-]
+import { useClassLevelOptions } from '@/components/department-provider'
 
 interface Props {
   current: string
@@ -17,6 +11,7 @@ export function ClassLevelFilter({ current }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const LEVELS = [{ value: '', label: 'Alle Klassen' }, ...useClassLevelOptions()]
 
   function select(value: string) {
     const params = new URLSearchParams(searchParams.toString())

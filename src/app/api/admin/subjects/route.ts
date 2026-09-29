@@ -24,8 +24,9 @@ type SubjectWithLinks = {
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
+  // Nur Fächer des eigenen Bereichs (PROJ-22)
   const { data, error } = await supabase
     .from('subjects')
     .select(
@@ -34,6 +35,7 @@ export async function GET() {
         question_subjects ( questions ( is_active ) )
       `
     )
+    .eq('department_id', departmentId)
     .order('code')
 
   if (error) {

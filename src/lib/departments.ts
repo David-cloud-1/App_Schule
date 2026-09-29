@@ -19,6 +19,8 @@ export interface Department {
   iconName: string
   currencyName: string
   hofName: string
+  /** Kurzform, z. B. für "Mein Hof" und "Hof-Items" */
+  hofShortName: string
   promptRole: string
   targetGroup: string
   promptNotes: string | null
@@ -32,11 +34,11 @@ export interface Department {
  */
 export type DepartmentBranding = Pick<
   Department,
-  'id' | 'code' | 'slug' | 'name' | 'appName' | 'tagline' | 'iconName' | 'currencyName' | 'hofName' | 'classLevels'
+  'id' | 'code' | 'slug' | 'name' | 'appName' | 'tagline' | 'iconName' | 'currencyName' | 'hofName' | 'hofShortName' | 'classLevels'
 >
 
 export const DEPARTMENT_COLUMNS =
-  'id, code, slug, domain, name, app_name, tagline, meta_title, meta_description, icon_name, currency_name, hof_name, prompt_role, target_group, prompt_notes, class_levels, pseudonym_nouns'
+  'id, code, slug, domain, name, app_name, tagline, meta_title, meta_description, icon_name, currency_name, hof_name, hof_short_name, prompt_role, target_group, prompt_notes, class_levels, pseudonym_nouns'
 
 interface DepartmentRow {
   id: string
@@ -51,6 +53,7 @@ interface DepartmentRow {
   icon_name: string
   currency_name: string
   hof_name: string
+  hof_short_name?: string | null
   prompt_role: string
   target_group: string
   prompt_notes: string | null
@@ -72,6 +75,7 @@ export function mapDepartment(row: DepartmentRow): Department {
     iconName: row.icon_name,
     currencyName: row.currency_name,
     hofName: row.hof_name,
+    hofShortName: row.hof_short_name ?? row.hof_name,
     promptRole: row.prompt_role,
     targetGroup: row.target_group,
     promptNotes: row.prompt_notes,
@@ -91,6 +95,7 @@ export function toBranding(d: Department): DepartmentBranding {
     iconName: d.iconName,
     currencyName: d.currencyName,
     hofName: d.hofName,
+    hofShortName: d.hofShortName,
     classLevels: d.classLevels,
   }
 }
@@ -180,4 +185,22 @@ export async function resolveDepartment(
 ): Promise<Department | null> {
   if (opts.userId) return getDepartmentForUser(supabase, opts.userId)
   return (await getDepartmentByHost(supabase, opts.host)) ?? getFallbackDepartment(supabase)
+}
+
+/**
+ * Neutraler Auftritt, falls kein Bereich geladen werden kann (Datenbank nicht
+ * erreichbar). Kein Bereich wird damit vorgetäuscht.
+ */
+export const NEUTRAL_BRANDING: DepartmentBranding = {
+  id: '',
+  code: '',
+  slug: '',
+  name: 'Azubis',
+  appName: 'Lern-App',
+  tagline: 'Täglich lernen. Besser werden. Prüfung bestehen.',
+  iconName: 'GraduationCap',
+  currencyName: 'Münzen',
+  hofName: 'Sammlung',
+  hofShortName: 'Sammlung',
+  classLevels: [],
 }

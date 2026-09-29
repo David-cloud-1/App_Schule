@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, Truck, Target } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
@@ -9,6 +9,7 @@ import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
+import { BrandIcon, BrandName } from '@/components/app-brand'
 
 const QUIZ_SIZE = 10
 
@@ -86,8 +87,8 @@ export default async function QuizPage({
               <Link href="/subjects" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
                 <ArrowLeft size={20} />
               </Link>
-              <Truck className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold text-[#F9FAFB]">SpediLern</span>
+              <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+              <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
             </div>
           </header>
           <main className="max-w-md mx-auto px-4 py-16 flex-1 flex flex-col items-center justify-center text-center">
@@ -202,8 +203,8 @@ export default async function QuizPage({
             <Link href="/subjects" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
               <ArrowLeft size={20} />
             </Link>
-            <Truck className="w-5 h-5 text-[#58CC02]" />
-            <span className="font-bold text-[#F9FAFB]">SpediLern</span>
+            <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+            <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
           </div>
         </header>
         <main className="max-w-md mx-auto px-4 py-16 flex-1 flex flex-col items-center justify-center text-center">

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Target } from 'lucide-react'
+import { useClassLevelOptions } from '@/components/department-provider'
 
 interface Topic {
   id: string
@@ -30,15 +31,9 @@ interface Props {
   onClose: () => void
 }
 
-const CLASS_LEVELS = [
-  { value: '', label: 'Alle Klassen' },
-  { value: '10', label: 'Klasse 10' },
-  { value: '11', label: 'Klasse 11' },
-  { value: '12', label: 'Klasse 12' },
-]
-
 export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Props) {
   const router = useRouter()
+  const CLASS_LEVELS = [{ value: '', label: 'Alle Klassen' }, ...useClassLevelOptions()]
   const [classLevel, setClassLevel] = useState(initialClassLevel)
   const [topicId, setTopicId] = useState<string>('')   // '' = Gemischt
   const [topics, setTopics] = useState<Topic[]>([])

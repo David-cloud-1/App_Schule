@@ -39,6 +39,7 @@ import { AiGeneratorDraftEditModal } from '@/components/admin/ai-generator-draft
 import { createClient } from '@/lib/supabase-browser'
 import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } from '@/lib/question-import'
 import type { QuestionPromptResponse } from '@/app/api/admin/question-prompt/route'
+import { useAdminSubjectCodes } from '@/hooks/use-admin-subject-codes'
 
 export type DraftQuestion = {
   id: string
@@ -55,7 +56,6 @@ export type DraftQuestion = {
   expires_at: string
 }
 
-const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP', 'PUG'] as const
 const DIFFICULTIES = ['leicht', 'mittel', 'schwer'] as const
 type DraftStatusFilter = 'all' | 'pending' | 'review_required' | 'accepted' | 'rejected'
 
@@ -183,16 +183,30 @@ function ManualImportSection() {
         return
       }
       const skippedNote = data.skipped > 0 ? ` (${data.skipped} übersprungen)` : ''
-      // Beanstandete Zeilen bleiben im Feld stehen — so kann nichts doppelt
-      // importiert werden und der Korrekturauftrag bleibt verfügbar.
-      const remaining = force ? [] : parseState.check.flagged.map((f) => f.row)
+      // Abgelehnt: Fach oder Klassenstufe gibt es in diesem Fachbereich nicht (PROJ-22)
+      const rejected: { index: number; reason: string }[] = data.rejected ?? []
+      if (rejected.length > 0) {
+        toast.error(
+          `${rejected.length} ${rejected.length === 1 ? 'Frage wurde' : 'Fragen wurden'} abgelehnt: ${rejected[0].reason}` +
+            (rejected.length > 1 ? ` (und ${rejected.length - 1} weitere)` : ''),
+          { duration: 10000 }
+        )
+      }
+      // Beanstandete und abgelehnte Zeilen bleiben im Feld stehen — so kann
+      // nichts doppelt importiert werden und der Korrekturauftrag bleibt verfügbar.
+      const postedRows = (parseState.parsed as { rows: ImportRow[] }).rows
+      const keepIndexes = new Set<number>([
+        ...(force ? [] : parseState.check.flagged.map((f) => f.index)),
+        ...rejected.map((r) => r.index),
+      ])
+      const remaining = postedRows.filter((_, i) => keepIndexes.has(i))
 
       if (remaining.length > 0) {
         const rest = JSON.stringify({ rows: remaining }, null, 2)
         setJsonInput(rest)
         setParseState(analyzeInput(rest))
         toast.success(
-          `${data.imported ?? 0} Fragen importiert${skippedNote}. Die ${remaining.length} beanstandeten stehen noch im Feld — Korrekturauftrag kopieren und überarbeiten lassen.`
+          `${data.imported ?? 0} Fragen importiert${skippedNote}. Die ${remaining.length} beanstandeten oder abgelehnten stehen noch im Feld — bitte überarbeiten.`
         )
       } else {
         setJsonInput('')
@@ -485,6 +499,7 @@ export default function AiGeneratorPage() {
   const [editingDraft, setEditingDraft] = useState<DraftQuestion | null>(null)
   const [statusFilter, setStatusFilter] = useState<DraftStatusFilter>('pending')
   const [subjectFilter, setSubjectFilter] = useState('all')
+  const subjectCodes = useAdminSubjectCodes()
   const [jobFilter, setJobFilter] = useState('all')
   const [bulkSubject, setBulkSubject] = useState('_none')
   const [bulkDifficulty, setBulkDifficulty] = useState('_none')
@@ -709,7 +724,7 @@ export default function AiGeneratorPage() {
               </SelectTrigger>
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                 <SelectItem value="all">Alle Fächer</SelectItem>
-                {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {subjectCodes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
 
@@ -738,7 +753,7 @@ export default function AiGeneratorPage() {
               </SelectTrigger>
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                 <SelectItem value="_none">Kein Fach</SelectItem>
-                {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {subjectCodes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
 

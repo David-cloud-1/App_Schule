@@ -8,6 +8,7 @@ export interface SubjectWithCount {
   name: string
   color: string
   icon_name: string
+  description: string | null
   active_question_count: number
 }
 
@@ -23,7 +24,7 @@ export async function GET() {
   // Fetch subjects and active question links separately — an embedded
   // question_subjects join would truncate large subjects at the 1000-row cap.
   const [{ data, error }, questionSubjects] = await Promise.all([
-    supabase.from('subjects').select('id, code, name, color, icon_name').order('code'),
+    supabase.from('subjects').select('id, code, name, color, icon_name, description').order('code'),
     fetchActiveQuestionSubjects(supabase),
   ])
 
@@ -41,6 +42,7 @@ export async function GET() {
     name: s.name,
     color: s.color,
     icon_name: s.icon_name,
+    description: s.description,
     active_question_count: (activeIdsBySubject.get(s.id) ?? []).length,
   }))
 

@@ -1,8 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { ExamSessionClient } from './exam-session-client'
-
-const PART_DURATION_MINUTES: Record<number, number> = { 1: 90, 2: 90, 3: 45 }
+import { getCurrentExamParts } from '@/lib/departments-server'
 
 export type ExamQuestion = {
   id: string
@@ -45,7 +44,9 @@ export default async function ExamSessionPage({
 
   const parts: number[] = session.parts_selected ?? []
   const storedDuration = (session.results_json as { durationMinutes?: number } | null)?.durationMinutes
-  const totalMinutes = storedDuration ?? parts.reduce((sum: number, p: number) => sum + (PART_DURATION_MINUTES[p] ?? 0), 0)
+  // Ältere Sitzungen ohne gespeicherte Dauer: Dauer der Teile aus dem Prüfungsaufbau
+  const examParts = storedDuration == null ? await getCurrentExamParts() : []
+  const totalMinutes = storedDuration ?? parts.reduce((sum: number, p: number) => sum + (examParts.find((ep) => ep.partNumber === p)?.durationMinutes ?? 0), 0)
   const elapsedSeconds = Math.floor((Date.now() - new Date(session.started_at).getTime()) / 1000)
   const remainingSeconds = Math.max(0, totalMinutes * 60 - elapsedSeconds)
 

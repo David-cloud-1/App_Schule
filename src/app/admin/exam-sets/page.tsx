@@ -36,23 +36,18 @@ async function fetchAllActiveQuestions(supabase: SupabaseClient): Promise<Questi
 export default async function AdminExamSetsPage() {
   const supabase = await createClient()
 
-  const [{ data: sets }, questions, { data: subjects }] = await Promise.all([
+  const [{ data: sets }, questions] = await Promise.all([
     supabase
       .from('exam_question_sets')
       .select('*')
       .order('created_at', { ascending: false }),
     fetchAllActiveQuestions(supabase),
-    supabase
-      .from('subjects')
-      .select('id, code, name')
-      .order('code'),
   ])
 
   return (
     <ExamSetsClient
       initialSets={sets ?? []}
       questions={questions}
-      subjects={subjects ?? []}
     />
   )
 }

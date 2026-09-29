@@ -280,8 +280,37 @@ Keine neuen Pakete.
 - Klassenstufen-Prüfungen `(10, 11, 12)` in `generation_jobs`/`questions_draft` (Datenbank) und im Upload-Formular bleiben fest → für PROJ-25 prüfen, falls Tourismus andere Stufen hat.
 - Upload-Pfad: Claude liefert 5 Optionen, `questions_draft.correct_index` erlaubt nur 0–3 und der Entwurfs-Editor 4 Optionen — Altfehler, Pfad wird nicht genutzt.
 
-### Für `/frontend` übrig (sichtbare Stellen mit festen Werten)
+### Für `/frontend` übrig (sichtbare Stellen mit festen Werten) — ✅ erledigt, siehe Implementation Notes (Frontend)
 Grundlayout/Metadaten + Bereichs-Kontext; „SpediLern"/LKW-Icon in Login, Registrierung, Passwort-Seiten, Ladeanzeige, Start-, Fächer-, Quiz-Seite, Admin-Kopf; Münz-/Hof-Namen in Shop, Hof-Galerie, Münzanzeige, Startguthaben-Banner, Quiz-Ergebnis, Admin-Shop; `SUBJECT_META` in `page.tsx` und `subjects-grid.tsx`, `subject-tag.tsx`; Prüfungs-Startseite `PARTS`, `exam-sets-client` `PART_*`, `create-assessment-modal` `PART_LABELS`; `exam-part-tag.tsx` (ungenutzt → entfernen); `SUBJECTS`-Listen im KI-Generator und Entwurfs-Editor; Fallback-Pseudonym „Unbekannter Frachter" im Profil; Anzeige der abgelehnten Import-Zeilen.
+
+## Implementation Notes (Frontend)
+**Stand 2026-09-29 — umgesetzt, lokal committet, noch nicht ausgeliefert.**
+
+### Aufbau
+- **Grundlayout** (`src/app/layout.tsx`) lädt den Bereich einmal pro Anfrage (`getDepartmentContextValue()`), setzt Browser-Tab-Titel und Beschreibung per `generateMetadata` und reicht den Bereich über `DepartmentProvider` an alle Bildschirme weiter. Vor dem Login bestimmt die aufgerufene Adresse den Bereich, danach das Profil; ohne Datenbank ein neutraler Auftritt (`NEUTRAL_BRANDING`).
+- **Neue Bausteine:** `department-provider.tsx` (`useDepartment`, `useExamParts`, `useExamPartLabel`, `useClassLevelOptions`), `app-brand.tsx` (`BrandIcon`, `BrandName`, `BrandTagline`), `department-icon.tsx` (Icon-Name aus der Datenbank → Lucide-Icon, feste Auswahl für kleines Bundle), `hooks/use-admin-subject-codes.ts`.
+- **Folge:** Alle Seiten werden pro Anfrage gerendert (auch Login/Registrierung, vorher statisch), weil der Auftritt von der Adresse abhängt.
+
+### Umgestellte Stellen
+| Bereich | Vorher fest | Jetzt aus |
+|---|---|---|
+| Login, Registrierung, Passwort vergessen/zurücksetzen, Ladeanzeige, Start-, Fächer-, Quiz-Seite, Admin-Kopf | „SpediLern", LKW-Icon, Login-Untertitel | `departments.app_name`, `icon_name`, `tagline` |
+| Shop, Hof-Galerie, Münzanzeige, Startguthaben-Banner, Admin-Shop, Admin-Reiter, Shop-Formular, Startseite (Hof-Link) | „Frachtmünzen", „Speditionshof", „Hof" | `currency_name`, `hof_name`, **neu** `hof_short_name` (Migration `20260929_proj22_hof_short_name.sql`) |
+| Startseite, Fachkarten | `SUBJECT_META` (Icons, Beschreibungen) | `subjects.icon_name`, `subjects.description` |
+| Prüfungs-Startseite, Sitzung, Ergebnis, Verlauf, Prüfungssets, Leistungsnachweis-Dialog | `PARTS`, `PART_LABELS`, `PART_SUBJECT_CODES`, `PART_DURATION_MINUTES`, `[1, 2, 3]` | `exam_parts` + `exam_part_subjects` |
+| Klassenstufen-Filter, Themen-Auswahl, Admin-Fragenliste, Fragen-Formular, Upload-Zone, Entwurfs-Editor | `10/11/12` fest | `departments.class_levels` |
+| KI-Generator, Entwurfs-Editor | `SUBJECTS = ['BGP', …]` | aktive Fächer des Bereichs (`/api/admin/subjects`, jetzt nach Bereich gefiltert) |
+| Profil | Ersatz-Pseudonym „Unbekannter Frachter" | „Unbekannt" |
+| Fach-Formular | Platzhalter „KSK" | „z. B. ABC" |
+
+- **Entfernt:** `subject-tag.tsx`, `exam-part-tag.tsx` (nirgends verwendet).
+- **Import-Rückmeldung:** KI-Generator und CSV-Import zeigen abgelehnte Zeilen mit Begründung (Fach/Klassenstufe gibt es im Bereich nicht); im KI-Generator bleiben sie zusammen mit den beanstandeten im Eingabefeld.
+- **Für Spedition sichtbar gleich:** alle Texte, Icons, Farben, Prüfungsteile, Klassenstufen. Einzige bewusst sichtbare Änderung: Profil-Ersatzname (greift nur ohne Pseudonym), Platzhalter im Admin-Fachformular, Meldung abgelehnter Import-Zeilen.
+
+### Nachweise
+- Vitest 45 Dateien / 490 Tests grün, `npm run build` grün.
+- Suche nach `'BGP'`, `'KSK'`, `'STG'`, `'LOP'`, `'PUG'`, „SpediLern", „Frachtmünzen", „Speditionshof", „Speditionskaufleute" in `src/` (ohne Tests, Fixture, Kommentare, generierte Typen): **0 Treffer**.
+- Kein Dev-Server/Playwright (siehe Projektvorgabe) — die Sichtprüfung erfolgt auf einer Vorschau-Adresse bzw. in `/qa`.
 
 ## QA Test Results
 _To be added by /qa_

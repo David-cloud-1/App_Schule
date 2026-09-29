@@ -122,6 +122,7 @@ ALTER TABLE subjects ADD CONSTRAINT subjects_code_key UNIQUE (code);
 
 -- Profile
 ALTER TABLE profiles DROP COLUMN department_id;
+-- (hof_short_name aus 20260929_proj22_hof_short_name verschwindet mit DROP TABLE departments)
 
 DROP FUNCTION fallback_department_id();
 DROP TABLE departments;

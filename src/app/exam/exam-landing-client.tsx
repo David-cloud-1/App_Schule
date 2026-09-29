@@ -3,7 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { BookOpen, Calculator, Truck, AlertCircle, Lock, Check, GraduationCap, ChevronRight } from 'lucide-react'
+import { AlertCircle, Lock, Check, GraduationCap, ChevronRight } from 'lucide-react'
+import { useExamParts } from '@/components/department-provider'
+import { resolveIcon } from '@/components/department-icon'
+import { examPartSubjectCodes } from '@/lib/exam-parts'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -13,35 +16,17 @@ interface Props {
   setsByPart: Record<number, ExamSetOption[]>
 }
 
-const PARTS = [
-  {
-    id: 1,
-    label: 'Teil 1',
-    title: 'Leistungserstellung',
-    subtitle: 'Spedition & Logistik',
-    subjects: 'STG / LOP',
-    icon: Truck,
-  },
-  {
-    id: 2,
-    label: 'Teil 2',
-    title: 'Kaufm. Steuerung',
-    subtitle: '& Kontrolle',
-    subjects: 'KSK',
-    icon: Calculator,
-  },
-  {
-    id: 3,
-    label: 'Teil 3',
-    title: 'Wirtschafts- &',
-    subtitle: 'Sozialkunde',
-    subjects: 'BGP',
-    icon: BookOpen,
-  },
-]
-
 export function ExamLandingClient({ setsByPart }: Props) {
   const router = useRouter()
+  // Kacheln je Prüfungsteil des Bereichs (PROJ-22)
+  const PARTS = useExamParts().map((p) => ({
+    id: p.partNumber,
+    label: `Teil ${p.partNumber}`,
+    title: p.title,
+    subtitle: p.subtitle,
+    subjects: examPartSubjectCodes(p),
+    icon: resolveIcon(p.iconName),
+  }))
   // One chosen exam set per part (part → setId). Parts can be combined.
   const [selected, setSelected] = useState<Map<number, string>>(new Map())
   const [isStarting, setIsStarting] = useState(false)

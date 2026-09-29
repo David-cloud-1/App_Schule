@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, POST } from './route'
 import { NextRequest } from 'next/server'
+import { chainMock, eqValue, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -33,6 +34,8 @@ const mockSubjects = [
   },
 ]
 
+let lastMock: ReturnType<typeof chainMock>
+
 function makeAdminSupabase(overrides: {
   subjectsData?: unknown
   subjectsError?: unknown
@@ -40,54 +43,27 @@ function makeAdminSupabase(overrides: {
   insertData?: unknown
   insertError?: unknown
 } = {}) {
-  const profileBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: 'admin', department_id: 'dept-sped' }, error: null }),
-  }
-  const subjectsListBuilder = {
-    select: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({
-      data: overrides.subjectsData ?? mockSubjects,
-      error: overrides.subjectsError ?? null,
-    }),
-  }
-  // For unique-code check (maybeSingle)
-  const duplicateCheckBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    maybeSingle: vi.fn().mockResolvedValue({ data: overrides.existingSubject ?? null, error: null }),
-  }
-  const insertBuilder = {
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({
-      data: overrides.insertData ?? { id: 'new-subj-uuid' },
-      error: overrides.insertError ?? null,
-    }),
-  }
-  const auditBuilder = { insert: vi.fn().mockResolvedValue({ error: null }) }
-
-  let callCount = 0
-  return {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid', email: 'a@a.com' } } }) },
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'profiles') return profileBuilder
-      if (table === 'admin_audit_log') return auditBuilder
+  lastMock = chainMock(
+    (table, calls) => {
+      if (table === 'profiles') return { data: { role: 'admin', department_id: 'dept-sped' } }
+      if (table === 'admin_audit_log') return {}
       if (table === 'subjects') {
-        callCount++
-        // First call (GET): returns list builder; POST calls: duplicate check then insert
-        if (callCount === 1 && overrides.subjectsData !== undefined) return subjectsListBuilder
-        if (overrides.existingSubject !== undefined || overrides.insertData !== undefined) {
-          // POST path: first call = duplicate check, second = insert
-          if (callCount % 2 === 1) return duplicateCheckBuilder
-          return insertBuilder
+        // POST: Anlegen
+        if (hasCall(calls, 'insert')) {
+          return { data: overrides.insertData ?? { id: 'new-subj-uuid' }, error: overrides.insertError ?? null }
         }
-        return subjectsListBuilder
+        // POST: gleiches Kürzel im Bereich?
+        if (hasCall(calls, 'maybeSingle')) return { data: overrides.existingSubject ?? null }
+        // POST: Fächer des Bereichs für die Sortierung
+        if (hasCall(calls, 'limit')) return { data: [] }
+        // GET: Liste
+        return { data: overrides.subjectsData ?? mockSubjects, error: overrides.subjectsError ?? null }
       }
-      return subjectsListBuilder
-    }),
-  }
+      return {}
+    },
+    { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid', email: 'a@a.com' } } }) } },
+  )
+  return lastMock.client
 }
 
 function makeUnauthSupabase() {
@@ -141,6 +117,13 @@ describe('GET /api/admin/subjects', () => {
     const body = await res.json()
     expect(body.subjects[0].is_active).toBe(true)
   })
+
+  it('lists only subjects of the admin\'s department (PROJ-22)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ subjectsData: mockSubjects }) as never)
+    await GET()
+    const list = lastMock.queries.find((q) => q.table === 'subjects')!
+    expect(eqValue(list.calls, 'department_id')).toBe('dept-sped')
+  })
 })
 
 describe('POST /api/admin/subjects', () => {
@@ -174,5 +157,20 @@ describe('POST /api/admin/subjects', () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { name: 'Test', code: 'ABCDEF' }))
     expect(res.status).toBe(400)
+  })
+
+  it('creates the subject in the admin\'s department (PROJ-22)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ insertData: { id: 'new-subj-uuid' } }) as never)
+    const res = await POST(makeRequest('POST', { name: 'Reiseverkehr', code: 'rvt' }))
+    expect(res.status).toBe(201)
+    expect(lastMock.writes.find((w) => w.table === 'subjects')?.payload).toMatchObject({ code: 'RVT', department_id: 'dept-sped' })
+  })
+
+  it('returns 409 when the code already exists in the same department', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ existingSubject: { id: 'x' } }) as never)
+    const res = await POST(makeRequest('POST', { name: 'KSK', code: 'KSK' }))
+    expect(res.status).toBe(409)
+    const check = lastMock.queries.find((q) => q.table === 'subjects' && hasCall(q.calls, 'maybeSingle'))!
+    expect(eqValue(check.calls, 'department_id')).toBe('dept-sped')
   })
 })

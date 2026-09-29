@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useDepartment } from '@/components/department-provider'
 
 export type AdminShopItemRow = {
   id: string
@@ -41,6 +42,7 @@ type FormState = {
 const EMPTY: FormState = { name: '', description: '', icon: '🚛', price: '75' }
 
 export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props) {
+  const { currencyName, hofName, hofShortName } = useDepartment()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -114,11 +116,11 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Hof-Item bearbeiten' : 'Neues Hof-Item'}</DialogTitle>
+          <DialogTitle>{isEdit ? `${hofShortName}-Item bearbeiten` : `Neues ${hofShortName}-Item`}</DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
             {isEdit
               ? 'Item-Details anpassen. Wirkt nur auf künftige Käufe.'
-              : 'Neues Sammelstück für den Speditionshof anlegen.'}
+              : `Neues Sammelstück für den ${hofName} anlegen.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -162,7 +164,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price">Preis (Frachtmünzen)</Label>
+            <Label htmlFor="price">Preis ({currencyName})</Label>
             <Input
               id="price"
               type="number"

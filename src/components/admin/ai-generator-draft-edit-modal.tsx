@@ -23,8 +23,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { DraftQuestion } from '@/app/admin/ai-generator/page'
-
-const SUBJECTS = ['BGP', 'KSK', 'STG', 'LOP', 'PUG'] as const
+import { useAdminSubjectCodes } from '@/hooks/use-admin-subject-codes'
+import { useClassLevelOptions } from '@/components/department-provider'
 
 interface Props {
   draft: DraftQuestion | null
@@ -49,6 +49,8 @@ type FormState = {
 const OPT_KEYS = ['opt_a', 'opt_b', 'opt_c', 'opt_d', 'opt_e'] as const
 
 export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
+  const subjectCodes = useAdminSubjectCodes()
+  const classLevelOptions = useClassLevelOptions()
   const [form, setForm] = useState<FormState>({
     question_text: '',
     opt_a: '', opt_b: '', opt_c: '', opt_d: '', opt_e: '',
@@ -182,7 +184,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 </SelectTrigger>
                 <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                   <SelectItem value="_none">Kein Fach</SelectItem>
-                  {SUBJECTS.map((s) => (
+                  {subjectCodes.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
                 </SelectContent>
@@ -217,9 +219,9 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 </SelectTrigger>
                 <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                   <SelectItem value="_all">Alle</SelectItem>
-                  <SelectItem value="10">Kl. 10</SelectItem>
-                  <SelectItem value="11">Kl. 11</SelectItem>
-                  <SelectItem value="12">Kl. 12</SelectItem>
+                  {classLevelOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>Kl. {o.value}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

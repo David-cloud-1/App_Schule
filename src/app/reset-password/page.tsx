@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Truck, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { BrandIcon, BrandName } from '@/components/app-brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,7 +60,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
         <div className="bg-blue-600 rounded-2xl p-4 mb-6">
-          <Truck className="w-10 h-10 text-white" />
+          <BrandIcon className="w-10 h-10 text-white" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2 text-center">
           Passwort gesetzt! 🎉
@@ -84,9 +85,9 @@ export default function ResetPasswordPage() {
       {/* Top hero section */}
       <div className="bg-blue-600 flex flex-col items-center justify-center py-12 px-4 text-white">
         <div className="bg-white/20 rounded-2xl p-4 mb-4">
-          <Truck className="w-10 h-10 text-white" />
+          <BrandIcon className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">SpediLern</h1>
+        <h1 className="text-3xl font-bold tracking-tight"><BrandName /></h1>
         <p className="mt-2 text-blue-100 text-sm text-center">
           Neues Passwort festlegen
         </p>

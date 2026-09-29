@@ -19,8 +19,10 @@ const CHAIN_METHODS = [
 
 export function chainMock(resolve: ChainResolver, extra: Record<string, unknown> = {}) {
   const writes: { table: string; method: string; payload: unknown }[] = []
+  const queries: { table: string; calls: ChainCall[] }[] = []
   const from = vi.fn((table: string) => {
     const calls: ChainCall[] = []
+    queries.push({ table, calls })
     const builder: Record<string, unknown> = {}
     for (const method of CHAIN_METHODS) {
       builder[method] = (...args: unknown[]) => {
@@ -35,7 +37,7 @@ export function chainMock(resolve: ChainResolver, extra: Record<string, unknown>
       Promise.resolve({ data: null, error: null, ...resolve(table, calls) }).then(onFulfilled, onRejected)
     return builder
   })
-  return { client: { from, ...extra } as unknown as SupabaseClient, from, writes }
+  return { client: { from, ...extra } as unknown as SupabaseClient, from, writes, queries }
 }
 
 /** Erster Wert, der mit `.eq(spalte, wert)` gefiltert wurde */

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import type { ExamResultsJson, QuestionResult, PartResult, AssessmentResultInfo } from './page'
+import { useExamPartLabel } from '@/components/department-provider'
 
 interface Props {
   sessionId: string
@@ -17,12 +18,6 @@ interface Props {
   startedAt: string
   endedAt: string | null
   assessment?: AssessmentResultInfo | null
-}
-
-const PART_LABELS: Record<number, string> = {
-  1: 'Teil 1 – Leistungserstellung',
-  2: 'Teil 2 – KSK',
-  3: 'Teil 3 – WiSo',
 }
 
 function PartSummaryCard({ part, partNum, label, readOnly }: { part: PartResult; partNum: number; label: string; readOnly?: boolean }) {
@@ -247,6 +242,7 @@ function OpenResultCard({
 }
 
 export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment }: Props) {
+  const partLabel = useExamPartLabel()
   const partEntries = partsSelected
     .map((p) => [p, results?.parts?.[String(p)]] as [number, PartResult | undefined])
     .filter(([, part]) => part != null) as [number, PartResult][]
@@ -341,7 +337,7 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
           key={partNum}
           part={part}
           partNum={partNum}
-          label={PART_LABELS[partNum] ?? `Teil ${partNum}`}
+          label={partLabel(partNum)}
           readOnly={Boolean(assessment)}
         />
       ))}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Coins } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useDepartment } from '@/components/department-provider'
 
 interface CoinBalanceProps {
   variant?: 'pill' | 'inline'
@@ -15,6 +16,7 @@ interface CoinBalanceProps {
  * requiring every page that renders it to thread the value through props.
  */
 export function CoinBalance({ variant = 'pill', className }: CoinBalanceProps) {
+  const { currencyName } = useDepartment()
   const [balance, setBalance] = useState<number | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -57,7 +59,7 @@ export function CoinBalance({ variant = 'pill', className }: CoinBalanceProps) {
         'flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]',
         className,
       )}
-      aria-label="Frachtmünzen-Stand"
+      aria-label={`${currencyName}-Stand`}
     >
       <Coins size={13} className="text-[#FFD700]" />
       <span className="text-xs font-bold text-[#F9FAFB]">{display}</span>

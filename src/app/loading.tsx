@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton'
-import { Truck } from 'lucide-react'
+import { BrandIcon, BrandName } from '@/components/app-brand'
 
 export default function DashboardLoading() {
   return (
@@ -8,8 +8,8 @@ export default function DashboardLoading() {
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-[#58CC02]" />
-            <span className="font-bold text-[#F9FAFB]">SpediLern</span>
+            <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+            <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-7 w-20 rounded-full bg-[#374151]" />

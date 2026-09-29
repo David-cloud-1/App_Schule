@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Truck, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { BrandIcon, BrandName, BrandTagline } from '@/components/app-brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -72,11 +73,11 @@ function LoginPageContent() {
       {/* Top hero section */}
       <div className="bg-[#1F2937] flex flex-col items-center justify-center py-12 px-4">
         <div className="bg-[#58CC02]/20 rounded-2xl p-4 mb-4">
-          <Truck className="w-10 h-10 text-[#58CC02]" />
+          <BrandIcon className="w-10 h-10 text-[#58CC02]" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#F9FAFB]">SpediLern</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-[#F9FAFB]"><BrandName /></h1>
         <p className="mt-2 text-[#9CA3AF] text-sm text-center">
-          Täglich lernen. Besser werden. Prüfung bestehen.
+          <BrandTagline />
         </p>
       </div>
 

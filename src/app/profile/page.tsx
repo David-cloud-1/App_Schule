@@ -27,7 +27,7 @@ export default async function ProfilePage() {
     .single()
 
   const displayName = (profile?.display_name as string | null) ?? user.email?.split('@')[0] ?? 'Azubi'
-  const pseudonym = (profile?.pseudonym as string | null) ?? 'Unbekannter Frachter'
+  const pseudonym = (profile?.pseudonym as string | null) ?? 'Unbekannt'
   const showRealName = (profile?.show_real_name as boolean | null) ?? false
   const totalXp = (profile?.total_xp as number | null) ?? 0
   const currentStreak = (profile?.current_streak as number | null) ?? 0

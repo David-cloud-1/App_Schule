@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
+import { useExamPartLabel } from '@/components/department-provider'
 
 type ExamSetOption = {
   id: string
@@ -23,12 +24,6 @@ type ExamSetOption = {
   part: number
   question_ids: string[]
   duration_minutes: number | null
-}
-
-const PART_LABELS: Record<number, string> = {
-  1: 'Teil 1 – Leistungserstellung',
-  2: 'Teil 2 – KSK',
-  3: 'Teil 3 – WiSo',
 }
 
 interface Props {
@@ -51,6 +46,7 @@ function defaultWindow() {
 }
 
 export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSetId, onSuccess }: Props) {
+  const partLabel = useExamPartLabel()
   const [setId, setSetId] = useState<string>('')
   const [title, setTitle] = useState('')
   const [opensAt, setOpensAt] = useState('')
@@ -149,7 +145,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                 {sets.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.name} — {PART_LABELS[s.part] ?? `Teil ${s.part}`} ({s.question_ids.length} Fragen)
+                    {s.name} — {partLabel(s.part)} ({s.question_ids.length} Fragen)
                   </SelectItem>
                 ))}
               </SelectContent>

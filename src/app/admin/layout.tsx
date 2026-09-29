@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Shield, Truck } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { Toaster } from '@/components/ui/sonner'
 import { AdminTabs } from '@/components/admin/admin-tabs'
+import { BrandIcon, BrandName } from '@/components/app-brand'
 
 export default async function AdminLayout({
   children,
@@ -31,8 +32,8 @@ export default async function AdminLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-              <Truck className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold hidden sm:inline">SpediLern</span>
+              <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+              <span className="font-bold hidden sm:inline"><BrandName /></span>
             </Link>
             <span className="text-[#4B5563]">/</span>
             <div className="flex items-center gap-2">

@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useClassLevelOptions } from '@/components/department-provider'
 
 export type AdminSubject = {
   id: string
@@ -107,6 +108,7 @@ export function QuestionFormModal({
   subjects,
   onSuccess,
 }: Props) {
+  const classLevelOptions = useClassLevelOptions()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const saveAndNewRef = useRef(false)
@@ -431,9 +433,7 @@ export function QuestionFormModal({
                 </SelectTrigger>
                 <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                   <SelectItem value="_all">Alle Klassen</SelectItem>
-                  <SelectItem value="10">Klasse 10</SelectItem>
-                  <SelectItem value="11">Klasse 11</SelectItem>
-                  <SelectItem value="12">Klasse 12</SelectItem>
+                  {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

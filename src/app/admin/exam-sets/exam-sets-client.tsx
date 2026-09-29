@@ -25,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { useExamParts } from '@/components/department-provider'
+import { examPartLabel, examPartSubjectCodes, findExamPart } from '@/lib/exam-parts'
 
 type ExamSet = {
   id: string
@@ -44,12 +46,6 @@ type Question = {
   question_subjects: { subject_id: string }[]
 }
 
-type Subject = {
-  id: string
-  code: string
-  name: string
-}
-
 type ExtractedQuestion = {
   question_text: string
   options: string[]
@@ -63,26 +59,21 @@ type PreviewQuestion = ExtractedQuestion & { _key: string }
 interface Props {
   initialSets: ExamSet[]
   questions: Question[]
-  subjects: Subject[]
-}
-
-const PART_SUBJECT_CODES: Record<number, string[]> = {
-  1: ['STG', 'LOP'],
-  2: ['KSK'],
-  3: ['BGP'],
-}
-
-const PART_LABELS: Record<number, string> = {
-  1: 'Teil 1 – Leistungserstellung (STG/LOP)',
-  2: 'Teil 2 – KSK',
-  3: 'Teil 3 – WiSo (BGP)',
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 type ImportStep = 'configure' | 'extracting' | 'preview' | 'importing'
 
-export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
+export function ExamSetsClient({ initialSets, questions }: Props) {
+  // Prüfungsaufbau des Bereichs (PROJ-22): Teile, zugehörige Fächer, Beschriftung
+  const examParts = useExamParts()
+  const partNumbers = examParts.map((p) => p.partNumber)
+  const partLabel = (n: number) => {
+    const part = findExamPart(examParts, n)
+    const codes = part ? examPartSubjectCodes(part).replace(/ \/ /g, '/') : ''
+    return codes && part && part.shortLabel !== codes ? `${examPartLabel(part)} (${codes})` : examPartLabel(part, n)
+  }
   const [sets, setSets] = useState(initialSets)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [expandedSet, setExpandedSet] = useState<string | null>(null)
@@ -109,11 +100,8 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
   const [importError, setImportError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const subjectCodeMap = Object.fromEntries(subjects.map((s) => [s.code, s.id]))
-
   function getQuestionsForPart(part: number) {
-    const codes = PART_SUBJECT_CODES[part] ?? []
-    const allowedSubjectIds = codes.map((code) => subjectCodeMap[code]).filter(Boolean)
+    const allowedSubjectIds = findExamPart(examParts, part)?.subjects.map((s) => s.id) ?? []
     return questions.filter((q) =>
       q.question_subjects.some((qs) => allowedSubjectIds.includes(qs.subject_id))
     )
@@ -322,7 +310,7 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-[#9CA3AF]">{PART_LABELS[set.part]}</span>
+                      <span className="text-xs text-[#9CA3AF]">{partLabel(set.part)}</span>
                       <span className="text-xs text-[#6B7280]">· {set.question_ids.length} Fragen</span>
                       {set.duration_minutes != null && (
                         <span className="text-xs text-[#1CB0F6]">· {set.duration_minutes} Min.</span>
@@ -436,8 +424,8 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                   <SelectValue placeholder="Teil auswählen…" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                  {[1, 2, 3].map((p) => (
-                    <SelectItem key={p} value={String(p)}>{PART_LABELS[p]}</SelectItem>
+                  {partNumbers.map((p) => (
+                    <SelectItem key={p} value={String(p)}>{partLabel(p)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -555,8 +543,8 @@ export function ExamSetsClient({ initialSets, questions, subjects }: Props) {
                     <SelectValue placeholder="Teil auswählen…" />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                    {[1, 2, 3].map((p) => (
-                      <SelectItem key={p} value={String(p)}>{PART_LABELS[p]}</SelectItem>
+                    {partNumbers.map((p) => (
+                      <SelectItem key={p} value={String(p)}>{partLabel(p)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

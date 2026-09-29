@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from './page'
+import { useExamPartLabel } from '@/components/department-provider'
 
 interface Props {
   sessionId: string
@@ -30,13 +31,8 @@ interface Props {
   assessmentTitle?: string | null
 }
 
-const PART_LABELS: Record<number, string> = {
-  1: 'Teil 1 – Leistungserstellung',
-  2: 'Teil 2 – KSK',
-  3: 'Teil 3 – WiSo',
-}
-
 export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected, initialAnswers, assessmentTitle }: Props) {
+  const partLabel = useExamPartLabel()
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers)
@@ -224,7 +220,7 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
                 </span>
               )}
               <span className="truncate">
-                {assessmentTitle ?? partsSelected.map((p) => PART_LABELS[p]).join(' → ')}
+                {assessmentTitle ?? partsSelected.map((p) => partLabel(p)).join(' → ')}
               </span>
             </span>
             {saveState !== 'idle' && (

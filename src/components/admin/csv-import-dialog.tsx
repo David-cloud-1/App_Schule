@@ -237,6 +237,11 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
       toast.success(
         `Fertig! ${data.imported ?? 0} Fragen importiert${data.skipped ? `, ${data.skipped} übersprungen` : ''}.`
       )
+      // Abgelehnt: Fach oder Klassenstufe gibt es in diesem Fachbereich nicht (PROJ-22)
+      const rejected: { reason: string }[] = data.rejected ?? []
+      if (rejected.length > 0) {
+        toast.error(`${rejected.length} abgelehnt: ${rejected[0].reason}`, { duration: 10000 })
+      }
       onSuccess()
       handleDialogChange(false)
     } catch {

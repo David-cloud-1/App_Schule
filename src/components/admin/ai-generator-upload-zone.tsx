@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useClassLevelOptions } from '@/components/department-provider'
 
 export type GenerationJob = {
   id: string
@@ -41,6 +42,7 @@ interface Props {
 type PendingFile = { file: File; error?: string }
 
 export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
+  const classLevelOptions = useClassLevelOptions()
   const [pending, setPending] = useState<PendingFile[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -139,9 +141,7 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectItem value="all">Alle Klassenstufen</SelectItem>
-              <SelectItem value="10">Klasse 10</SelectItem>
-              <SelectItem value="11">Klasse 11</SelectItem>
-              <SelectItem value="12">Klasse 12</SelectItem>
+              {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

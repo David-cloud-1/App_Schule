@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import type { LucideIcon } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
+import { getCurrentDepartment } from '@/lib/departments-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { LogoutButton } from '@/components/logout-button'
@@ -16,30 +16,19 @@ import { StarterCoinsBanner } from '@/components/starter-coins-banner'
 import { Button } from '@/components/ui/button'
 import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent, MAX_LEVEL } from '@/lib/xp-utils'
 import {
-  Truck,
   Zap,
   Flame,
   Shield,
   BookOpen,
-  BarChart3,
-  Calculator,
   Package,
-  Scale,
   User,
   Trophy,
   Store,
   ClipboardList,
   CheckCircle2,
 } from 'lucide-react'
-
-// Static subject metadata (icon per IHK code)
-const SUBJECT_META: Record<string, { icon: LucideIcon }> = {
-  BGP: { icon: BarChart3 },
-  KSK: { icon: Calculator },
-  STG: { icon: Truck },
-  LOP: { icon: Package },
-  PUG: { icon: Scale },
-}
+import { BrandIcon, BrandName } from '@/components/app-brand'
+import { resolveIcon } from '@/components/department-icon'
 
 /** Format a Date as YYYY-MM-DD in Europe/Berlin timezone */
 function toBerlinDateStr(date: Date): string {
@@ -53,6 +42,8 @@ export default async function HomePage() {
   } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
+
+  const hofName = (await getCurrentDepartment())?.hofName ?? 'Shop'
 
   // Date range for 7-day activity window
   const now = new Date()
@@ -69,7 +60,7 @@ export default async function HomePage() {
         .eq('id', user.id)
         .single(),
 
-      supabase.from('subjects').select('id, code, name, color').order('code'),
+      supabase.from('subjects').select('id, code, name, color, icon_name').order('code'),
 
       fetchActiveQuestionSubjects(supabase),
 
@@ -122,6 +113,7 @@ export default async function HomePage() {
       code: s.code,
       name: s.name,
       color: s.color,
+      iconName: s.icon_name as string | null,
       totalQuestions: total,
       seenCount,
       correctCount,
@@ -155,8 +147,8 @@ export default async function HomePage() {
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-[#58CC02]" />
-            <span className="font-bold text-[#F9FAFB]">SpediLern</span>
+            <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+            <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
           </div>
           <div className="flex items-center gap-2">
             {/* XP pill */}
@@ -170,11 +162,11 @@ export default async function HomePage() {
             <StreakBadge streak={currentStreak} variant="pill" />
             {/* Coin pill */}
             <CoinBalance variant="pill" />
-            {/* Speditionshof link */}
+            {/* Hof link */}
             <Link
               href="/shop"
               className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
-              aria-label="Speditionshof"
+              aria-label={hofName}
             >
               <Store className="w-4 h-4" />
             </Link>
@@ -327,10 +319,10 @@ export default async function HomePage() {
             Fach-Fortschritt
           </h2>
           <div className="space-y-3">
-            {subjects.map((subject) => (
+            {subjects.map(({ iconName, ...subject }) => (
               <SubjectProgressCard
                 key={subject.id}
-                icon={SUBJECT_META[subject.code]?.icon ?? Package}
+                icon={resolveIcon(iconName, Package)}
                 {...subject}
               />
             ))}

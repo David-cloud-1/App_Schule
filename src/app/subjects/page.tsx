@@ -6,9 +6,10 @@ import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { LogoutButton } from '@/components/logout-button'
-import { Truck, Zap, Target, ChevronRight } from 'lucide-react'
+import { Zap, Target, ChevronRight } from 'lucide-react'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
+import { BrandIcon, BrandName } from '@/components/app-brand'
 
 export default async function SubjectsPage() {
   const supabase = await createClient()
@@ -22,7 +23,7 @@ export default async function SubjectsPage() {
 
   const [profileResult, subjectsResult, questionSubjects, { rows: answers }] = await Promise.all([
     supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
-    supabase.from('subjects').select('id, code, name, color, icon_name').order('code'),
+    supabase.from('subjects').select('id, code, name, color, icon_name, description').order('code'),
     fetchActiveQuestionSubjects(supabase),
     fetchAllUserAnswers(supabase, user.id),
   ])
@@ -42,6 +43,7 @@ export default async function SubjectsPage() {
     name: s.name,
     color: s.color,
     icon_name: s.icon_name,
+    description: s.description,
     active_question_count: (activeIdsBySubject.get(s.id) ?? []).length,
   }))
 
@@ -51,8 +53,8 @@ export default async function SubjectsPage() {
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Truck className="w-5 h-5 text-[#58CC02]" />
-            <span className="font-bold text-[#F9FAFB]">SpediLern</span>
+            <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+            <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">

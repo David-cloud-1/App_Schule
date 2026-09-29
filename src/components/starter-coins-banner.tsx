@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Coins, X } from 'lucide-react'
+import { useDepartment } from '@/components/department-provider'
 
 /**
  * One-time "welcome back" hint for the PROJ-19 starter-coin grant. Reads
@@ -9,6 +10,7 @@ import { Coins, X } from 'lucide-react'
  * user dismisses it, which calls POST /api/profile/coins/ack-starter).
  */
 export function StarterCoinsBanner() {
+  const { currencyName } = useDepartment()
   const [amount, setAmount] = useState<number | null>(null)
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function StarterCoinsBanner() {
         <Coins size={18} className="text-[#FFD700]" />
       </div>
       <p className="flex-1 min-w-0 text-sm text-[#F9FAFB]">
-        Willkommen zurück! Du hast <span className="font-bold text-[#FFD700]">{amount} Frachtmünzen</span> aus
+        Willkommen zurück! Du hast <span className="font-bold text-[#FFD700]">{amount} {currencyName}</span> aus
         deinem bisherigen Lernfortschritt erhalten.
       </p>
       <button

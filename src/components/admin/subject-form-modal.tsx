@@ -130,7 +130,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
               className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] font-mono uppercase"
-              placeholder="KSK"
+              placeholder="z. B. ABC"
               maxLength={5}
             />
             {errors.code && <p className="text-xs text-[#FF4B4B]">{errors.code}</p>}

@@ -3,8 +3,7 @@ import Link from 'next/link'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { ExamLandingClient } from './exam-landing-client'
-
-const PARTS = [1, 2, 3]
+import { getCurrentExamParts } from '@/lib/departments-server'
 
 export type ExamSetOption = { id: string; name: string; questionCount: number }
 
@@ -22,8 +21,9 @@ export default async function ExamPage() {
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
+  // Teile des Prüfungsaufbaus im Bereich (PROJ-22)
   const setsByPart: Record<number, ExamSetOption[]> = {}
-  for (const part of PARTS) setsByPart[part] = []
+  for (const part of await getCurrentExamParts()) setsByPart[part.partNumber] = []
   for (const set of activeSets ?? []) {
     if (!setsByPart[set.part]) setsByPart[set.part] = []
     setsByPart[set.part].push({

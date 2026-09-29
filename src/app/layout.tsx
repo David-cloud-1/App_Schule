@@ -1,23 +1,34 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { DepartmentProvider, type DepartmentContextValue } from "@/components/department-provider";
+import { getCurrentDepartment, getDepartmentContextValue } from "@/lib/departments-server";
+import { NEUTRAL_BRANDING } from "@/lib/departments";
 
 const inter = Inter({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "SpediLern – Prüfungsvorbereitung Speditionskaufleute",
-  description: "Täglich lernen. Besser werden. IHK-Prüfung bestehen.",
-};
+// Titel und Beschreibung kommen aus dem Fachbereich — vor dem Login aus der
+// aufgerufenen Adresse, danach aus dem Profil (PROJ-22).
+export async function generateMetadata(): Promise<Metadata> {
+  const department = await getCurrentDepartment();
+  return {
+    title: department?.metaTitle ?? NEUTRAL_BRANDING.appName,
+    description: department?.metaDescription ?? "",
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const value: DepartmentContextValue =
+    (await getDepartmentContextValue()) ?? { department: NEUTRAL_BRANDING, examParts: [] };
+
   return (
     <html lang="de" className="dark">
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <DepartmentProvider value={value}>{children}</DepartmentProvider>
       </body>
     </html>
   );

@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bot, ClipboardList, FileText, FolderKanban, GraduationCap, ScrollText, Store, Tag, Users } from 'lucide-react'
+import { useDepartment } from '@/components/department-provider'
 
 const TABS = [
   { href: '/admin/questions', label: 'Fragen', icon: FileText },
   { href: '/admin/subjects', label: 'Fächer', icon: FolderKanban },
   { href: '/admin/topics', label: 'Themen', icon: Tag },
-  { href: '/admin/shop-items', label: 'Hof-Items', icon: Store },
+  { href: '/admin/shop-items', label: 'Shop-Items', icon: Store },
   { href: '/admin/users', label: 'Nutzer', icon: Users },
   { href: '/admin/ai-generator', label: 'KI-Generator', icon: Bot },
   { href: '/admin/exam-sets', label: 'Prüfungssets', icon: ClipboardList },
@@ -17,6 +18,7 @@ const TABS = [
 ]
 
 export function AdminTabs() {
+  const { hofShortName } = useDepartment()
   const pathname = usePathname()
 
   return (
@@ -24,7 +26,8 @@ export function AdminTabs() {
       className="flex gap-1 overflow-x-auto -mb-px"
       aria-label="Admin Bereiche"
     >
-      {TABS.map(({ href, label, icon: Icon }) => {
+      {TABS.map(({ href, label: tabLabel, icon: Icon }) => {
+        const label = href === '/admin/shop-items' ? `${hofShortName}-Items` : tabLabel
         const active = pathname === href || pathname.startsWith(href + '/')
         return (
           <Link

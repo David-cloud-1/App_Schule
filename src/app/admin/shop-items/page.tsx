@@ -24,6 +24,7 @@ import {
   ShopItemFormModal,
   type AdminShopItemRow,
 } from '@/components/admin/shop-item-form-modal'
+import { useDepartment } from '@/components/department-provider'
 
 type ShopItemListItem = {
   id: string
@@ -36,6 +37,7 @@ type ShopItemListItem = {
 }
 
 export default function AdminShopItemsPage() {
+  const { hofName, hofShortName } = useDepartment()
   const [items, setItems] = useState<ShopItemListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -46,7 +48,7 @@ export default function AdminShopItemsPage() {
     try {
       const res = await fetch('/api/admin/shop-items')
       if (!res.ok) {
-        toast.error('Hof-Items konnten nicht geladen werden.')
+        toast.error(`${hofShortName}-Items konnten nicht geladen werden.`)
         return
       }
       const json = await res.json()
@@ -57,7 +59,7 @@ export default function AdminShopItemsPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [hofShortName])
 
   useEffect(() => {
     load()
@@ -87,9 +89,9 @@ export default function AdminShopItemsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Hof-Items</h1>
+          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">{hofShortName}-Items</h1>
           <p className="text-sm text-[#9CA3AF] mt-1">
-            {items.length} {items.length === 1 ? 'Item' : 'Items'} im Speditionshof-Katalog
+            {items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog
           </p>
         </div>
         <Button
@@ -139,7 +141,7 @@ export default function AdminShopItemsPage() {
             ) : items.length === 0 ? (
               <TableRow className="border-[#4B5563]">
                 <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
-                  Noch keine Hof-Items angelegt.
+                  Noch keine {hofShortName}-Items angelegt.
                 </TableCell>
               </TableRow>
             ) : (

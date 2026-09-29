@@ -63,6 +63,7 @@ import {
   type AdminSubject,
 } from '@/components/admin/question-form-modal'
 import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
+import { useClassLevelOptions } from '@/components/department-provider'
 
 type SortColumn = 'created_at' | 'difficulty' | 'question_text'
 type SortDir = 'asc' | 'desc'
@@ -103,6 +104,7 @@ function SortIcon({ col, current, dir }: { col: SortColumn; current: SortColumn;
 }
 
 export default function AdminQuestionsPage() {
+  const classLevelOptions = useClassLevelOptions()
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounced(search, 300)
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
@@ -581,9 +583,7 @@ export default function AdminQuestionsPage() {
             </SelectTrigger>
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectItem value="all">Alle Klassen</SelectItem>
-              <SelectItem value="10">Klasse 10</SelectItem>
-              <SelectItem value="11">Klasse 11</SelectItem>
-              <SelectItem value="12">Klasse 12</SelectItem>
+              {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={topicFilter} onValueChange={setTopicFilter}>
@@ -639,9 +639,7 @@ export default function AdminQuestionsPage() {
               </SelectTrigger>
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                 <SelectItem value="_all">Alle Klassen</SelectItem>
-                <SelectItem value="10">Klasse 10</SelectItem>
-                <SelectItem value="11">Klasse 11</SelectItem>
-                <SelectItem value="12">Klasse 12</SelectItem>
+                {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={bulkDifficulty} onValueChange={setBulkDifficulty}>
