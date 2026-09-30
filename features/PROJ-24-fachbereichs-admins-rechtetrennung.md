@@ -162,8 +162,8 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] AC-1 `profiles.role` erlaubt `department_admin` — verifiziert (Constraint + reale Daten)
 - [x] AC-2 Migration E10 (1 admin, 11 department_admin, SPED) — verifiziert per SQL (`select role, count(*) from profiles group by role` → 1/11/51)
 - [x] AC-3 Letzter Super-Admin geschützt — verifiziert: `UPDATE profiles SET role='student' WHERE id=<letzter admin>` löst die erwartete Exception aus
-- [ ] **AC-4 Alle RLS-Policies bereichsbewusst — TEILWEISE.** `questions`, `answer_options`, `question_subjects`, `graded_assessments`, `user_shop_items`, `questions_draft`, `generation_jobs`, `admin_audit_log`, `quality_fix_progress`, `profiles` per SQL-Matrix bestätigt korrekt. **`shop_items` und `exam_question_sets` sind es nicht vollständig** — siehe BUG-1.
-- [ ] **AC-5 department_admin sieht/ändert ausschließlich eigenen Bereich — TEILWEISE.** Schreiben ist korrekt blockiert (siehe unten). Lesen über die Admin-Oberfläche ist korrekt gefiltert (Code-Ebene, per Vitest bestätigt). Lesen direkt über die Datenbank/REST-API ist es für `shop_items`/`exam_question_sets` nicht — siehe BUG-1.
+- [x] AC-4 Alle RLS-Policies bereichsbewusst — nach BUG-1-Fix vollständig: alle 14 in der Spec genannten Tabellen sowie `subjects`/`exam_parts`/`exam_part_subjects` (siehe Implementation Notes) per SQL-Matrix bestätigt
+- [x] AC-5 department_admin sieht/ändert ausschließlich eigenen Bereich — Schreiben war von Anfang an blockiert; Lesen (Admin-Oberfläche und jetzt auch direkter DB-/REST-Zugriff nach BUG-1-Fix) per SQL-Matrix bestätigt
 - [x] AC-6 Super-Admin sieht/ändert alle Bereiche — verifiziert (`can_admin_department()` = true für fremden Testbereich, Fach sichtbar)
 - [ ] **AC-7 Nur Super-Admin verschiebt Nutzer zwischen Bereichen — widerspricht AC-8, siehe BUG-2.** Rollenvergabe ist korrekt Super-Admin-only (verifiziert: 403 für department_admin). App-weite Qualitätsregeln/Prompt-Grundgerüst bleiben wie im Plan vorgesehen Code (kein DB-Feld) — das war nie als DB-Einstellung vorgesehen.
 - [x] AC-8 department_admin verschiebt eigene Azubis, nicht eigene role/department_id — verifiziert (Selbst-Bearbeitung 400, Rollen-Feld 403 für department_admin)
@@ -174,7 +174,7 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] AC-13 Audit-Log bereichsgefiltert — verifiziert per SQL: department_admin sieht 347 (SPED), Super-Admin sieht 348 (inkl. Test-Bereich)
 - [x] AC-14 Bestandsfunktionalität unverändert — 558/558 Vitest-Tests grün, `npm run build` grün, SPED-Fächer weiterhin lesbar/zählbar wie vorher
 
-**12 / 14 vollständig bestanden** (2 davon nur teilweise wegen BUG-1, 2 bewusst nicht umgesetzt).
+**12 / 14 vollständig bestanden** (nach BUG-1-Fix; 2 bewusst nicht umgesetzt — UI, siehe AC-10/AC-11).
 
 ### Edge Cases Status
 
@@ -202,6 +202,7 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 ### Bugs Found
 
 #### BUG-1: RLS erlaubt bereichsübergreifendes Lesen von `shop_items` und `exam_question_sets`
+- **Status: BEHOBEN (2026-09-30)** — Migration `20260930_proj24_bug1_shop_examsets_rls.sql` angewendet (`shop_items_select_active` und `"Users read active exam sets"` prüfen jetzt zusätzlich `department_id = my_department_id()`). Fix per derselben SQL-Matrix verifiziert: fremder Testbereich für department_admin und Student nicht mehr sichtbar (0/0), eigener Bereich weiterhin sichtbar (Regression bestanden), Super-Admin weiterhin uneingeschränkt (über `can_admin_department()`). `npm test` (558/558) danach erneut grün. Rückweg: `20260930_proj24_bug1_shop_examsets_rls_down.sql`.
 - **Severity:** High
 - **Mechanismus:** Beide Tabellen haben zusätzlich zur neuen bereichsbewussten Admin-Policy eine unveränderte, vor-PROJ-24 bestehende Richtlinie für „aktive Einträge": `shop_items_select_active` (`is_active = true`, kein Bereichsfilter) und `"Users read active exam sets"` (`is_active = true`, kein Bereichsfilter). Da PostgreSQL-RLS-Policies permissiv ODER-verknüpft werden, genügt die alte Policy, um einem `department_admin` per direktem Datenbank-/REST-Zugriff (z. B. eigener `fetch` mit dem eigenen Supabase-Session-Token, am Admin-Panel vorbei) aktive Shop-Artikel und Prüfungssets **jedes** anderen Bereichs zu zeigen.
 - **Steps to Reproduce (SQL, transaktional, per Rollback rückgängig gemacht):**
@@ -220,11 +221,11 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - **Priority:** Nutzer-Entscheidung nötig, ob die Umsetzung (department_admin darf in jeden Bereich abgeben) so bleibt oder auf bestimmte Zielbereiche beschränkt werden soll. Kein Sicherheitsrisiko (der Azubi verliert dabei keine Daten, der department_admin erhält keine Rechte im Zielbereich), daher niedrige Priorität.
 
 ### Summary
-- **Acceptance Criteria:** 10/14 vollständig bestanden, 2 teilweise (BUG-1), 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
-- **Bugs Found:** 2 total (1 High, 1 Low)
-- **Security:** Schreibschutz solide; ein High-Fund beim Lesen (BUG-1)
-- **Production Ready:** NO (UI fehlt ohnehin noch; zusätzlich sollte BUG-1 vor dem Abschluss von PROJ-24 behoben werden)
-- **Recommendation:** Status bleibt **In Review**. Die bereits live angewendete Migration muss **nicht** zurückgerollt werden — die Kernzusage (Bereichs-Admins können fremde Bereiche nicht *ändern*, Rollen-Eskalation ist unmöglich) hält stand. Empfehlung: (1) kleines Folge-Migrationsskript für BUG-1, (2) Nutzer-Entscheidung zu BUG-2, (3) danach `/frontend` für Umschalter/Einstellungen-Seite, (4) abschließend erneut `/qa`.
+- **Acceptance Criteria:** 12/14 vollständig bestanden (nach BUG-1-Fix), 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
+- **Bugs Found:** 2 total (1 High — **behoben**, 1 Low — offen, Nutzer-Entscheidung ausstehend)
+- **Security:** Schreibschutz solide; der High-Fund beim Lesen (BUG-1) ist behoben und verifiziert
+- **Production Ready:** NO — nicht wegen offener Sicherheitslücken, sondern weil die UI (AC-10, AC-11) noch fehlt
+- **Recommendation:** Status bleibt **In Review**, bis `/frontend` den Bereichs-Umschalter und die Fachbereich-Einstellungen-Seite gebaut hat. BUG-2 (AC-7/AC-8-Widerspruch) braucht vorher noch eine Nutzer-Entscheidung.
 
 ## Deployment
 _To be added by /deploy_
