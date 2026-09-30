@@ -1,6 +1,6 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 
@@ -61,7 +61,61 @@ Entspricht Phase 3 aus `docs/plans/mehrere-fachbereiche.md`. Führt eine neue Ro
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Aufbau des Admin-Panels (Komponenten-Baum)
+
+```
+Admin-Panel (Grundgerüst, bestehend)
+├── Kopfzeile
+│   ├── Bereichs-Umschalter (NEU — nur sichtbar für Super-Admin)
+│   │   → Dropdown mit allen Fachbereichen; wählt, in welchem Bereich
+│   │     der Super-Admin gerade arbeitet (Fragen sieht, importiert, …)
+│   └── Angemeldeter Name (bestehend)
+│
+├── Reiterleiste (bestehend, 9 Reiter — jetzt automatisch bereichsgefiltert)
+│   ├── Fragen, Fächer, Themen, Shop-Items, KI-Generator,
+│   │   Prüfungssets, Leistungsnachweise, Audit-Log
+│   │   → zeigen für Bereichs-Admins nur noch Inhalte des eigenen Bereichs,
+│   │     für den Super-Admin nur Inhalte des im Umschalter gewählten Bereichs
+│   └── Nutzer (bestehend, erweitert)
+│       → Liste zeigt nur Azubis/Admins des eigenen bzw. gewählten Bereichs
+│       → NEU: Aktion „In anderen Fachbereich verschieben“ pro Nutzer
+│
+├── Fachbereich-Einstellungen (NEU — eigener Reiter)
+│   → Für Bereichs-Admin UND Super-Admin (jeweils für den eigenen/gewählten Bereich)
+│   ├── Formular: Zusatzhinweise für den Fragen-Prompt (Freitext)
+│   ├── Formular: Name der Münzen, Name des Hofs
+│   └── Anzeigefeld (nur lesbar): eigene Bereichs-Adresse zum Kopieren
+│
+└── Fachbereiche verwalten (NEU — eigener Reiter, NUR Super-Admin)
+    ├── Liste aller Fachbereiche mit Kurzdaten (Name, Adresse, Anzahl Azubis)
+    ├── „Neuen Fachbereich anlegen“ (Formular: Name, Adresse, Branding-Basiswerte)
+    └── Rollenverwaltung: Person suchen → Rolle setzen
+        (Azubi / Bereichs-Admin für Bereich X / Super-Admin)
+```
+
+Alle neuen Bildschirme verwenden ausschließlich Bausteine, die im Projekt bereits im Einsatz sind (Tabs, Formulare, Tabellen, Dropdowns, Dialoge) — es entsteht kein neuer visueller Stil.
+
+### B) Datenmodell (in einfachen Worten)
+
+- **Rollen:** Jedes Profil hat weiterhin genau eine Rolle. Bisher gab es „Azubi“ und „Admin“. Neu kommt eine dritte Möglichkeit dazu: **„Bereichs-Admin“** — hat dieselben Admin-Werkzeuge wie „Admin“, aber ausschließlich für den eigenen Fachbereich. Nur der Super-Admin darf Rollen vergeben.
+- **Fachbereiche:** Die Tabelle mit allen Fachbereichen (Name, Adresse, Branding, Prompt-Texte, Münz-/Hof-Namen) existiert bereits seit PROJ-22 — hier wird nichts Neues gespeichert, nur die Bedienoberfläche dafür ergänzt.
+- **Zugehörigkeit:** Jede Frage, jedes Fach, jedes Prüfungsset, jeder Leistungsnachweis, jeder Shop-Artikel und jeder Protokoll-Eintrag „weiß“ bereits heute, zu welchem Fachbereich er gehört (ebenfalls seit PROJ-22). Neu ist nur die **Prüfung**: Bevor ein Bereichs-Admin etwas sieht, ändert oder anlegt, vergleicht die App den Fachbereich des Objekts mit dem eigenen. Passt es nicht zusammen, verhält sich die App so, als gäbe es das Objekt gar nicht — es erscheint keine Fehlermeldung, die verraten würde, dass fremde Daten existieren.
+- **Migration der Bestandsdaten:** Beim Ausrollen wird automatisch genau ein Konto (dein Konto) auf „Admin“ (Super-Admin) belassen; die übrigen 11 heutigen Admin-Konten werden zu „Bereichs-Admin“ für Spedition umgestellt (siehe Kontext-Abschnitt oben). Alle bestehenden Fragen, Noten, Abzeichen und Protokoll-Einträge bleiben unverändert erhalten.
+- Gespeichert wird weiterhin ausschließlich in der bestehenden Supabase-Datenbank — kein neuer Dienst, keine neue Datenbank.
+
+### C) Technische Entscheidungen (Begründung)
+
+- **Dritte Rolle statt eigenes Berechtigungssystem:** Die App kennt bereits das Muster „eine Rolle pro Profil“ (Azubi/Admin). Eine dritte Rolle fügt sich in dieses bestehende Muster ein, statt ein komplett neues Rechte-System einzuführen — kleinste sinnvolle Änderung, am wenigsten neue Fehlerquellen.
+- **Doppelte Absicherung nur bei sensiblen Daten:** Nutzerprofile, Noten und Prüfungsteilnahmen werden sowohl auf Datenbankebene als auch im Programmcode geprüft — das ist der Bereich, in dem ein Fehler am meisten schaden würde (Datenschutz). Lerninhalte (Fragen, Fächer) werden nur im Programmcode gefiltert, weil sie nicht geheim sind und die zusätzliche Datenbank-Absicherung bei der großen Fragenmenge spürbar Ladezeit kosten würde.
+- **„Nicht gefunden“ statt „Kein Zugriff“ bei fremden Daten:** Verhindert, dass ein Bereichs-Admin durch gezieltes Ausprobieren von Adressen/IDs herausfindet, was im anderen Bereich überhaupt existiert (z. B. wie viele Leistungsnachweise Tourismus hat).
+- **Rollenprüfung bei jeder Anfrage, nicht nur beim Login:** Wenn du jemandem die Admin-Rechte entziehst, wirkt das sofort — auch wenn die Person gerade eingeloggt ist. Es gibt keine Verzögerung durch zwischengespeicherte Berechtigungen.
+- **Kein neuer Anbieter, keine neuen Kosten:** Alles baut auf der bestehenden Supabase-Datenbank und den bestehenden Admin-Seiten auf. Die Grundlage (Fachbereichs-Tabelle) wurde bereits mit PROJ-22 bezahlt und gebaut.
+- **Sichtbarkeit des Bereichs-Umschalters:** Nur der Super-Admin sieht ihn, weil nur er mehrere Bereiche verwaltet. Ein Bereichs-Admin braucht ihn nicht — für sie/ihn ist immer nur der eigene Bereich sichtbar, ohne Auswahl.
+
+### D) Abhängigkeiten (Pakete)
+
+Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn/ui-Bausteine verwendet (Dropdown/Select für den Umschalter, Dialog für die Rollenvergabe, Tabelle für die Fachbereichs-Liste, Formularfelder für die Einstellungen-Seite).
 
 ## QA Test Results
 _To be added by /qa_
