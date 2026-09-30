@@ -37,7 +37,7 @@
 | PROJ-21 | Benotete Leistungsnachweise | Deployed | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |
 | PROJ-22 | Fachbereich als Datenbasis | Deployed | [PROJ-22-fachbereich-datenbasis.md](PROJ-22-fachbereich-datenbasis.md) | 2026-09-29 |
 | PROJ-23 | Fachbereichs-Zuordnung für Azubis | Deployed | [PROJ-23-fachbereich-zuordnung-azubis.md](PROJ-23-fachbereich-zuordnung-azubis.md) | 2026-09-29 |
-| PROJ-24 | Fachbereichs-Admins & Rechtetrennung | In Progress | [PROJ-24-fachbereichs-admins-rechtetrennung.md](PROJ-24-fachbereichs-admins-rechtetrennung.md) | 2026-09-30 |
+| PROJ-24 | Fachbereichs-Admins & Rechtetrennung | Approved | [PROJ-24-fachbereichs-admins-rechtetrennung.md](PROJ-24-fachbereichs-admins-rechtetrennung.md) | 2026-09-30 |
 
 <!-- Add features above this line -->
 

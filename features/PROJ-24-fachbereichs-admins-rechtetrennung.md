@@ -1,6 +1,6 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 
@@ -168,13 +168,13 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] AC-7 Nur Super-Admin vergibt Rollen/verwaltet Fachbereiche — verifiziert (403 für department_admin bei Rollenänderung); Wortlaut nach BUG-2 präzisiert (Nutzer-Entscheidung 2026-09-30: „Nutzer verschieben" bezieht sich nur auf Admin-Konten, nicht auf Azubis). App-weite Qualitätsregeln/Prompt-Grundgerüst bleiben wie im Plan vorgesehen Code, kein DB-Feld.
 - [x] AC-8 department_admin verschiebt eigene Azubis, nicht eigene role/department_id — verifiziert (Selbst-Bearbeitung 400, Rollen-Feld 403 für department_admin)
 - [x] AC-9 role/department_id nicht selbst schreibbar — verifiziert per SQL: `UPDATE profiles SET role='admin'` als Student → `permission denied` (Spalten-Grant)
-- [ ] **AC-10 Bereichs-Umschalter im Admin-Panel — NICHT UMGESETZT.** Bewusster Scope-Cut für diesen Durchlauf (Backend-API vorhanden, UI fehlt), mit dem Nutzer abgestimmt.
-- [ ] **AC-11 Seite „Fachbereich-Einstellungen" — NICHT UMGESETZT.** Gleicher Grund wie AC-10; `GET/PATCH /api/admin/department-settings` existiert und ist getestet.
+- [x] AC-10 Bereichs-Umschalter im Admin-Panel — umgesetzt (Runde 2, 2026-09-30): `DepartmentSwitcher` wird serverseitig nur für `isSuperAdmin` gerendert; `POST /api/admin/context/department` lehnt department_admin zusätzlich mit 403 ab (Vitest bestätigt) — doppelt abgesichert, nicht nur versteckt.
+- [x] AC-11 Seite „Fachbereich-Einstellungen" — umgesetzt (Runde 2, 2026-09-30): `/admin/department-settings` nutzt `GET/PATCH /api/admin/department-settings`, beide Rollen sehen ihren eigenen Bereich, Adresse per Kopier-Button.
 - [x] AC-12 Admin-API-Routen wenden Berechtigungsprüfung an — verifiziert für alle geänderten Routen (Vitest + Codereview); die verbleibende Lücke ist die RLS-Ebene aus BUG-1, nicht die Routen selbst
 - [x] AC-13 Audit-Log bereichsgefiltert — verifiziert per SQL: department_admin sieht 347 (SPED), Super-Admin sieht 348 (inkl. Test-Bereich)
 - [x] AC-14 Bestandsfunktionalität unverändert — 558/558 Vitest-Tests grün, `npm run build` grün, SPED-Fächer weiterhin lesbar/zählbar wie vorher
 
-**12 / 14 vollständig bestanden** (nach BUG-1-Fix; 2 bewusst nicht umgesetzt — UI, siehe AC-10/AC-11).
+**14 / 14 vollständig bestanden** (Stand nach Runde 2 — siehe unten).
 
 ### Edge Cases Status
 
@@ -221,12 +221,44 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - **Zugehöriger Edge Case EC-6** ist ebenso widersprüchlich formuliert („kann Azubis abgeben" vs. „nur Super-Admin darf beliebige Zielbereiche wählen").
 - **Priority:** Nutzer-Entscheidung nötig, ob die Umsetzung (department_admin darf in jeden Bereich abgeben) so bleibt oder auf bestimmte Zielbereiche beschränkt werden soll. Kein Sicherheitsrisiko (der Azubi verliert dabei keine Daten, der department_admin erhält keine Rechte im Zielbereich), daher niedrige Priorität.
 
-### Summary
+### Summary (Runde 1, Backend)
 - **Acceptance Criteria:** 12/14 vollständig bestanden, 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
 - **Bugs Found:** 2 total — beide **geklärt** (1 High behoben und verifiziert, 1 Low per Nutzer-Entscheidung geklärt, keine Code-Änderung nötig)
 - **Security:** Schreibschutz solide; der einzige Lesezugriffs-Fund (BUG-1) ist behoben und verifiziert
 - **Production Ready:** NO — einzig weil die UI (AC-10, AC-11) noch fehlt, nicht wegen offener Bugs
 - **Recommendation:** Status bleibt **In Review**, bis `/frontend` den Bereichs-Umschalter und die Fachbereich-Einstellungen-Seite gebaut hat. Backend-seitig ist PROJ-24 damit abgeschlossen.
+
+---
+
+### Runde 2 (Frontend, 2026-09-30)
+
+**Getestet:** `npm test` (558/558 grün), `npm run build` (grün). Kein Dev-Server/Playwright (Projekt-Memory) — stattdessen Codereview der neuen Client-Komponenten und API-Antworten (welche Felder gehen tatsächlich über das Netzwerk an welche Rolle).
+
+**AC-10 und AC-11 jetzt bestanden** (siehe oben) — damit sind alle 14 Acceptance Criteria der Spec erfüllt.
+
+**Zusätzliche Edge Cases geprüft:**
+- [x] department_admin ruft `/admin/departments` direkt per URL auf (Tab ist versteckt) → sieht die Liste (siehe BUG-3), jeder Schreibversuch (Anlegen/Bearbeiten) scheitert serverseitig mit 403 — kein Sicherheitsproblem, nur ein generischer Fehler-Toast statt sauberer Weiterleitung. Konsistent mit allen anderen Admin-Unterseiten der App (keine hat ein clientseitiges Rollen-Gate, alle verlassen sich auf die API) — keine Regression, nur erwähnenswert.
+- [x] Super-Admin versucht, die eigene Rolle zu ändern → Button ist im UI deaktiviert (`disabled={isSelf}`), zusätzlich serverseitig durch „Du kannst dich nicht selbst bearbeiten" (400) und den Letzter-Admin-Trigger abgesichert — dreifach abgesichert.
+
+#### BUG-3: `GET /api/admin/departments` liefert department_admin interne Felder fremder Bereiche
+- **Severity:** Medium
+- **Mechanismus:** Für den „In anderen Fachbereich verschieben"-Dialog wurde `GET /api/admin/departments` in diesem Durchlauf für beide Rollen geöffnet (siehe Implementation Notes unten). Die Route liefert aber weiterhin das volle `Department`-Objekt für **alle** Bereiche — inklusive `promptNotes` (interner Freitext der Lehrkraft für den Fragen-Prompt), `promptRole`, `targetGroup`, `pseudonymNouns` und `classLevels` — nicht nur die für den Dialog tatsächlich nötigen Felder `id`/`name`/`code`/`domain`. Ein `department_admin` sieht damit interne Konfigurationstexte fremder Bereiche, sobald ein zweiter Bereich existiert.
+- **Steps to Reproduce:** Als `department_admin` in der Nutzerverwaltung bei einem Azubi auf „In anderen Fachbereich verschieben" klicken → Netzwerk-Tab zeigt die Antwort von `GET /api/admin/departments` mit den vollen Feldern aller Bereiche, nicht nur des eigenen.
+- **Einordnung:** Aktuell **nicht beobachtbar** in Produktion, da nur der Bereich SPED existiert — der Fund wird erst mit PROJ-25 (zweiter Bereich) real. Betrifft keine Personen-/Notendaten (die bleiben laut BUG-1-Fix und Runde 1 hart getrennt), sondern interne Bereichs-Konfiguration — deshalb Medium statt High.
+- **Empfohlener Fix:** `GET /api/admin/departments` liefert für `department_admin` nur ein schlankes `{id, name, code, domain}` je Bereich; Super-Admin weiterhin alle Felder (z. B. Feld-Auswahl abhängig von `auth.isSuperAdmin`).
+- **Priority:** Vor PROJ-25 (Tourismus anlegen) beheben, da der Fund erst dann wirksam wird.
+
+#### BUG-4 (Low): Bestätigungsdialog für Rollenwechsel zu „Bereichs-Admin" irreführend, wenn die Person keinen Bereich hat
+- **Severity:** Low
+- **Details:** Der Bestätigungstext sagt immer „… wird „Bereichs-Admin" für den eigenen Fachbereich", auch wenn `department_id` der Person `null` ist. In diesem Fall bricht die Aktion nach Bestätigung mit einer Fehlermeldung der API ab („Bereichs-Admin braucht einen Fachbereich"), statt das vorher im Dialog klarzustellen.
+- **Priority:** Nice to have — seltener Fall (Profile ohne Bereich sind laut PROJ-23 nur ein kurzes Übergangs-Fenster direkt nach Registrierung).
+
+### Summary (Runde 2, gesamt)
+- **Acceptance Criteria:** 14/14 vollständig bestanden
+- **Bugs Found (Runde 2):** 2 neu (1 Medium — BUG-3, offen; 1 Low — BUG-4, offen), zusätzlich zu den aus Runde 1 bereits geklärten BUG-1/BUG-2
+- **Security:** Kein Critical/High-Fund in dieser Runde; BUG-3 ist ein echter, aber aktuell folgenloser Informationsleck (kein zweiter Bereich vorhanden)
+- **Production Ready:** **YES** — kein Critical/High-Bug offen; BUG-3 sollte vor PROJ-25 behoben werden, blockiert aber nicht den Abschluss von PROJ-24
+- **Recommendation:** Status auf **Approved** setzen. BUG-3 als Aufgabe für den PROJ-25-Vorlauf (oder einen kurzen Folge-`/backend`-Durchlauf) vormerken.
 
 ## Implementation Notes (Frontend Developer)
 
