@@ -330,8 +330,8 @@ Neue zwischengespeicherte Liste `getDepartmentSubjectIds(departmentId)` (5 Min.,
 - Ohne Login: `/` → 307 auf `/login`; `/api/subjects` → 401.
 - Edge-Logs seit der Auslieferung: 0 Serverfehler.
 
-### Noch ausstehend: Migration Schritt 2
-`20260929_proj23_profiles_no_default_department.sql` (Standardwert am Profil entfernen) ist **noch nicht angewendet** — erst jetzt, nach dem Deploy des Codes, sinnvoll: Der Code ordnet neue Profile jetzt aktiv der Adresse zu; ohne diesen Schritt bekommen sie vorher weiterhin automatisch Spedition zugewiesen (unschädlich, aber die Zuordnungs-Logik greift dann nie). Wird als nächstes angewendet und hier nachgetragen.
+### Migration Schritt 2 — angewendet 2026-09-30
+`20260929_proj23_profiles_no_default_department.sql` ist angewendet: `profiles.department_id` hat keinen Standardwert mehr. Geprüft direkt danach: `column_default = null`, und alle 59 Bestandsprofile haben weiterhin ihren Bereich (0 Profile ohne Bereich). Neue Registrierungen werden ab jetzt ausschließlich über `assignDepartmentIfMissing()` (Adresse der Anfrage, Rückfall: erster Bereich) zugeordnet.
 
 ### Rückweg
 Vercel → Deployments → vorherige Produktion `spedilern-3xsvoqy6q-…` (PROJ-22) → „Promote to Production". Migration Schritt 1 ist abwärtskompatibel (nur eine zusätzliche Prüfung + engere Rechte) und muss dafür nicht zurückgenommen werden.
