@@ -30,7 +30,7 @@ Entspricht Phase 3 aus `docs/plans/mehrere-fachbereiche.md`. Führt eine neue Ro
 - [ ] Alle RLS-Policies auf `questions`, `answer_options`, `question_subjects`, `topics`, `exam_question_sets`, `graded_assessments`, `shop_items`, `user_shop_items`, `questions_draft`, `generation_jobs`, `admin_audit_log`, `quality_fix_progress`, `profiles` berücksichtigen den Fachbereich
 - [ ] `department_admin` sieht und ändert ausschließlich Daten des eigenen Fachbereichs; Zugriff auf ein Objekt eines fremden Bereichs liefert 404 (nicht 403, um dessen Existenz nicht zu verraten)
 - [ ] `admin` (Super-Admin) sieht und ändert weiterhin alle Fachbereiche ohne Einschränkung
-- [ ] Nur Super-Admin kann: Rollen vergeben/entziehen, Fachbereiche anlegen/bearbeiten, App-weite Qualitätsregeln und Prompt-Grundgerüst ändern, Nutzer zwischen Fachbereichen verschieben
+- [ ] Nur Super-Admin kann: Rollen vergeben/entziehen, Fachbereiche anlegen/bearbeiten, App-weite Qualitätsregeln und Prompt-Grundgerüst ändern. (Präzisiert nach BUG-2, 2026-09-30: „Nutzer zwischen Fachbereichen verschieben" gilt nur für Admin-Konten — ein `department_admin` darf eigene **Azubis** eigenständig in jeden Bereich abgeben, siehe AC unten.)
 - [ ] `department_admin` kann eigene Azubis in einen anderen Fachbereich verschieben, aber weder die eigene `role` noch die eigene `department_id` ändern
 - [ ] `role` und `department_id` bleiben für alle Nutzer per Spalten-Grant nicht selbst schreibbar (bestehendes Verhalten wird nicht geschwächt)
 - [ ] Admin-Panel zeigt einen Bereichs-Umschalter, der nur für Super-Admin sichtbar ist
@@ -45,7 +45,7 @@ Entspricht Phase 3 aus `docs/plans/mehrere-fachbereiche.md`. Führt eine neue Ro
 - Ein Bulk-Import enthält ein Fachkürzel, das im Zielbereich nicht existiert (z. B. Kürzel nur in einem anderen Bereich vorhanden) → betroffene Zeile wird mit klarer Fehlermeldung abgelehnt, restlicher Import läuft weiter
 - Der letzte verbleibende Super-Admin würde versehentlich auf `department_admin` oder `student` zurückgestuft → verhindert, mindestens ein `admin`-Konto muss bestehen bleiben
 - Zwei Fachbereiche verwenden dasselbe Fachkürzel (z. B. `KSK`) und ein Super-Admin importiert Fragen → Import erfolgt immer in den im Umschalter aktuell gewählten Bereich, nie fachkürzel-basiert bereichsübergreifend
-- Ein `department_admin` versucht, einen Azubi seines Bereichs in einen Bereich zu verschieben, für den er selbst keine Admin-Rechte hat → nur Super-Admin darf beliebige Zielbereiche wählen; `department_admin` kann Azubis abgeben, aber keine bereichsfremden Admin-Funktionen ausüben
+- Ein `department_admin` verschiebt einen Azubi seines Bereichs in einen anderen Bereich → erlaubt für jeden existierenden Zielbereich (präzisiert nach BUG-2, 2026-09-30); er bekommt dadurch **keine** Admin-Rechte im Zielbereich, nur der Azubi wechselt. Rollen vergeben und Fachbereiche verwalten bleibt weiterhin ausschließlich Super-Admin.
 - Export-Routen für Leistungsnachweise/Noten (`admin/assessments/[id]/export`) werden mit der ID eines fremden Bereichs aufgerufen → 404, kein Datenexport
 - Ein neu auf `department_admin` zurückgestuftes Konto ist gerade eingeloggt, während die Migration läuft → nächste Anfrage nutzt die neue Rolle; keine Altrechte durch gecachte Sessions (Server prüft Rolle bei jeder Anfrage aus der DB, nicht aus dem Client-Token)
 - Ein Konto ohne aktiven Fachbereich (`department_id IS NULL`) hat `role = 'department_admin'` → darf nirgends etwas sehen/ändern (fail closed), nicht versehentlich alles
@@ -165,7 +165,7 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] AC-4 Alle RLS-Policies bereichsbewusst — nach BUG-1-Fix vollständig: alle 14 in der Spec genannten Tabellen sowie `subjects`/`exam_parts`/`exam_part_subjects` (siehe Implementation Notes) per SQL-Matrix bestätigt
 - [x] AC-5 department_admin sieht/ändert ausschließlich eigenen Bereich — Schreiben war von Anfang an blockiert; Lesen (Admin-Oberfläche und jetzt auch direkter DB-/REST-Zugriff nach BUG-1-Fix) per SQL-Matrix bestätigt
 - [x] AC-6 Super-Admin sieht/ändert alle Bereiche — verifiziert (`can_admin_department()` = true für fremden Testbereich, Fach sichtbar)
-- [ ] **AC-7 Nur Super-Admin verschiebt Nutzer zwischen Bereichen — widerspricht AC-8, siehe BUG-2.** Rollenvergabe ist korrekt Super-Admin-only (verifiziert: 403 für department_admin). App-weite Qualitätsregeln/Prompt-Grundgerüst bleiben wie im Plan vorgesehen Code (kein DB-Feld) — das war nie als DB-Einstellung vorgesehen.
+- [x] AC-7 Nur Super-Admin vergibt Rollen/verwaltet Fachbereiche — verifiziert (403 für department_admin bei Rollenänderung); Wortlaut nach BUG-2 präzisiert (Nutzer-Entscheidung 2026-09-30: „Nutzer verschieben" bezieht sich nur auf Admin-Konten, nicht auf Azubis). App-weite Qualitätsregeln/Prompt-Grundgerüst bleiben wie im Plan vorgesehen Code, kein DB-Feld.
 - [x] AC-8 department_admin verschiebt eigene Azubis, nicht eigene role/department_id — verifiziert (Selbst-Bearbeitung 400, Rollen-Feld 403 für department_admin)
 - [x] AC-9 role/department_id nicht selbst schreibbar — verifiziert per SQL: `UPDATE profiles SET role='admin'` als Student → `permission denied` (Spalten-Grant)
 - [ ] **AC-10 Bereichs-Umschalter im Admin-Panel — NICHT UMGESETZT.** Bewusster Scope-Cut für diesen Durchlauf (Backend-API vorhanden, UI fehlt), mit dem Nutzer abgestimmt.
@@ -183,7 +183,7 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] EC-3 Bulk-Import unbekanntes Kürzel → klare Fehlermeldung — unverändert aus PROJ-22/23, durch bestehende Tests abgedeckt, nicht erneut manuell geprüft
 - [x] EC-4 Letzter Super-Admin geschützt — bestätigt
 - [x] EC-5 Gleiches Kürzel in zwei Bereichen, Super-Admin importiert in gewählten Bereich — per Codereview bestätigt (`resolveSubjectCode` nutzt konsequent `departmentId` aus dem Umschalter-Cookie)
-- [ ] **EC-6 department_admin verschiebt Azubi nur in Bereiche, für die er Rechte hat — WIDERSPRÜCHLICH FORMULIERT, siehe BUG-2.**
+- [x] EC-6 department_admin verschiebt eigene Azubis in jeden Bereich, ohne dadurch Rechte im Zielbereich zu erhalten — bestätigt (Nutzer-Entscheidung 2026-09-30, Wortlaut korrigiert, Implementierung unverändert)
 - [x] EC-7 Export mit fremder Leistungsnachweis-ID → 404 — bestätigt (keine konkurrierende RLS-Policy auf `graded_assessments`, Codereview der Export-Route)
 - [x] EC-8 Sofortige Rollenwirkung, keine Session-Altrechte — bestätigt per Codereview (`requireAdmin()` liest die Rolle bei jeder Anfrage aus der DB)
 - [x] EC-9 department_admin ohne Bereich → fail closed — bestätigt per Vitest-Test (403 statt Rückfall auf Standardbereich)
@@ -215,17 +215,18 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - **Priority:** Vor `/deploy` der UI beheben (nächster `/backend`-Durchlauf), da es sonst dauerhaft als offene Lücke bestehen bleibt, sobald PROJ-25 einen zweiten echten Bereich anlegt.
 
 #### BUG-2: AC-7 und AC-8 widersprechen sich zur Frage, wer Azubis zwischen Bereichen verschieben darf
+- **Status: GEKLÄRT (2026-09-30)** — Nutzer-Entscheidung: Die bestehende Implementierung bleibt so (department_admin darf eigene Azubis in jeden existierenden Bereich abgeben, ohne dadurch Rechte im Zielbereich zu erhalten; Rollenvergabe und Fachbereichsverwaltung bleiben Super-Admin-only). AC-7, EC-6 und der Plan-Dokument-Verweis oben im Text präzisiert. Keine Code-Änderung nötig.
 - **Severity:** Low (Spec-Inkonsistenz, keine technische Lücke)
 - **Details:** AC-7 sagt „Nur Super-Admin kann … Nutzer zwischen Fachbereichen verschieben", AC-8 sagt „department_admin kann eigene Azubis in einen anderen Fachbereich verschieben" — wörtlich widersprüchlich. Die Umsetzung folgt AC-8 und dem Plan-Dokument (`docs/plans/mehrere-fachbereiche.md`, „Falsch zugeordnet? Die Lehrkraft … hängt Azubis … um"): `department_admin` darf eigene Azubis in **jeden** existierenden Bereich verschieben (kein Ziel-Bereichs-Check), nur Rollenvergabe bleibt Super-Admin-only.
 - **Zugehöriger Edge Case EC-6** ist ebenso widersprüchlich formuliert („kann Azubis abgeben" vs. „nur Super-Admin darf beliebige Zielbereiche wählen").
 - **Priority:** Nutzer-Entscheidung nötig, ob die Umsetzung (department_admin darf in jeden Bereich abgeben) so bleibt oder auf bestimmte Zielbereiche beschränkt werden soll. Kein Sicherheitsrisiko (der Azubi verliert dabei keine Daten, der department_admin erhält keine Rechte im Zielbereich), daher niedrige Priorität.
 
 ### Summary
-- **Acceptance Criteria:** 12/14 vollständig bestanden (nach BUG-1-Fix), 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
-- **Bugs Found:** 2 total (1 High — **behoben**, 1 Low — offen, Nutzer-Entscheidung ausstehend)
-- **Security:** Schreibschutz solide; der High-Fund beim Lesen (BUG-1) ist behoben und verifiziert
-- **Production Ready:** NO — nicht wegen offener Sicherheitslücken, sondern weil die UI (AC-10, AC-11) noch fehlt
-- **Recommendation:** Status bleibt **In Review**, bis `/frontend` den Bereichs-Umschalter und die Fachbereich-Einstellungen-Seite gebaut hat. BUG-2 (AC-7/AC-8-Widerspruch) braucht vorher noch eine Nutzer-Entscheidung.
+- **Acceptance Criteria:** 12/14 vollständig bestanden, 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
+- **Bugs Found:** 2 total — beide **geklärt** (1 High behoben und verifiziert, 1 Low per Nutzer-Entscheidung geklärt, keine Code-Änderung nötig)
+- **Security:** Schreibschutz solide; der einzige Lesezugriffs-Fund (BUG-1) ist behoben und verifiziert
+- **Production Ready:** NO — einzig weil die UI (AC-10, AC-11) noch fehlt, nicht wegen offener Bugs
+- **Recommendation:** Status bleibt **In Review**, bis `/frontend` den Bereichs-Umschalter und die Fachbereich-Einstellungen-Seite gebaut hat. Backend-seitig ist PROJ-24 damit abgeschlossen.
 
 ## Deployment
 _To be added by /deploy_
