@@ -26,11 +26,15 @@ const CreateSchema = z.object({
   is_active: z.boolean().optional(),
 })
 
-/** Nur Super-Admin: Fachbereiche anlegen/verwalten (PROJ-24, E9). */
+/**
+ * Liste aller Fachbereiche — für beide Admin-Rollen lesbar (departments ist
+ * per RLS ohnehin öffentlich lesbar, z. B. für Login-Seiten; department_admin
+ * braucht die Liste, um eigene Azubis gezielt in einen anderen Bereich
+ * abzugeben). Anlegen/Bearbeiten bleibt Super-Admin-only (PROJ-24, E9).
+ */
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  if (!auth.isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { data, error } = await auth.supabase
     .from('departments')

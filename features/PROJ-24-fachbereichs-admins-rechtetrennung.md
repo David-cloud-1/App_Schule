@@ -1,6 +1,6 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: In Review
+## Status: In Progress
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 
@@ -227,6 +227,28 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - **Security:** Schreibschutz solide; der einzige Lesezugriffs-Fund (BUG-1) ist behoben und verifiziert
 - **Production Ready:** NO — einzig weil die UI (AC-10, AC-11) noch fehlt, nicht wegen offener Bugs
 - **Recommendation:** Status bleibt **In Review**, bis `/frontend` den Bereichs-Umschalter und die Fachbereich-Einstellungen-Seite gebaut hat. Backend-seitig ist PROJ-24 damit abgeschlossen.
+
+## Implementation Notes (Frontend Developer)
+
+**Neue Seiten:**
+- `/admin/department-settings` — Formular für `prompt_notes`, Münz-/Hof-Name, Kurzform, plus schreibgeschütztes Adressfeld mit Kopier-Button. Für beide Rollen sichtbar, nutzt `GET/PATCH /api/admin/department-settings`.
+- `/admin/departments` — Liste aller Fachbereiche + „Neuer Fachbereich"-Formular (`DepartmentFormModal`), nur Super-Admin. Nutzt `GET/POST /api/admin/departments`, `PATCH /api/admin/departments/[id]`.
+
+**Neue Komponenten:**
+- `AdminRoleProvider`/`useAdminRole()` (`src/components/admin/admin-role-provider.tsx`) — stellt `role`/`isSuperAdmin` aus dem Server-Layout allen Client-Komponenten im Admin-Panel bereit, analog zu `DepartmentProvider`.
+- `DepartmentSwitcher` (`src/components/admin/department-switcher.tsx`) — in der Kopfzeile, nur für Super-Admin gerendert, und nur sichtbar, wenn mehr als ein Fachbereich existiert (aktuell also unsichtbar, bis ein zweiter Bereich angelegt wird). Setzt das Cookie über `POST /api/admin/context/department` und lädt die Seite danach neu (`window.location.reload()`), damit alle Client-Seiten ihre Daten für den neuen Bereich frisch abrufen.
+- `MoveDepartmentDialog` — „In anderen Fachbereich verschieben" für Azubis, in der Nutzerverwaltung verbaut.
+
+**Nutzerverwaltung (`/admin/users`) erweitert:**
+- Rollen-Badge zeigt jetzt „Bereichs-Admin" statt nur „Admin"
+- Die frühere Admin/Student-Umschaltfläche wurde durch ein Dropdown mit allen drei Rollen ersetzt (nur für Super-Admin sichtbar, AC-7); bei Wahl von „Bereichs-Admin" wird automatisch der bisherige Fachbereich der Person als Ziel mitgeschickt
+- Neue Aktion „In anderen Fachbereich verschieben" pro Azubi-Zeile (für beide Admin-Rollen sichtbar, passend zu AC-8/BUG-2-Klärung)
+
+**Kleine Backend-Anpassung während dieses Durchlaufs:** `GET /api/admin/departments` war bisher Super-Admin-only; für die Zielbereich-Auswahl im „Verschieben"-Dialog braucht auch ein `department_admin` die Liste. Da `departments` laut RLS ohnehin öffentlich lesbar ist (Name/Adresse stehen schon auf der Login-Seite), wurde das GET für beide Admin-Rollen geöffnet — Anlegen/Bearbeiten (POST/PATCH) bleibt Super-Admin-only. Zugehöriger Vitest-Test angepasst.
+
+**Bewusst nicht umgesetzt:** Pseudonym-Wortliste eines Fachbereichs ist über die UI nicht editierbar (nur beim Anlegen per Datenbank-Default „neutral" möglich) — laut Tech Design kein Pflichtfeld für diesen Durchlauf, kann bei Bedarf in PROJ-25 ergänzt werden.
+
+**Verifiziert:** `npm test` (558/558 grün), `npm run build` grün (kein Dev-Server/Playwright laut Projekt-Memory).
 
 ## Deployment
 _To be added by /deploy_

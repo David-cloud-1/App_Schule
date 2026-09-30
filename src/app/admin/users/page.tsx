@@ -2,10 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, Loader2, Search, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Ban, CheckCircle2, ChevronDown, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -32,25 +38,38 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { createClient } from '@/lib/supabase-browser'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
+
+type Role = 'student' | 'department_admin' | 'admin'
 
 type AdminUserRow = {
   id: string
   display_name: string | null
   email: string | null
-  role: string
+  role: Role
+  department_id: string | null
   total_xp: number
   current_streak: number
   last_session_date: string | null
   banned: boolean
 }
 
+const ROLE_LABEL: Record<Role, string> = {
+  student: 'Azubi',
+  department_admin: 'Bereichs-Admin',
+  admin: 'Super-Admin',
+}
+
 export default function AdminUsersPage() {
+  const { isSuperAdmin } = useAdminRole()
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [ownId, setOwnId] = useState<string | null>(null)
   const [target, setTarget] = useState<AdminUserRow | null>(null)
-  const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null)
+  const [roleChange, setRoleChange] = useState<{ user: AdminUserRow; newRole: Role } | null>(null)
+  const [moveTarget, setMoveTarget] = useState<AdminUserRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const load = useCallback(async () => {
@@ -115,22 +134,27 @@ export default function AdminUsersPage() {
   }
 
   async function handleRoleConfirm() {
-    if (!roleTarget) return
+    if (!roleChange) return
     setSubmitting(true)
-    const newRole = roleTarget.role === 'admin' ? 'student' : 'admin'
     try {
-      const res = await fetch(`/api/admin/users/${roleTarget.id}`, {
+      const payload: { role: Role; department_id?: string } = { role: roleChange.newRole }
+      // Bereichs-Admin braucht zwingend einen Bereich — der eigene (bestehende)
+      // Bereich der Person ist der sinnvolle Standard.
+      if (roleChange.newRole === 'department_admin' && roleChange.user.department_id) {
+        payload.department_id = roleChange.user.department_id
+      }
+      const res = await fetch(`/api/admin/users/${roleChange.user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify(payload),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         toast.error(data?.error ?? 'Aktion fehlgeschlagen')
         return
       }
-      toast.success(newRole === 'admin' ? 'Admin-Rolle vergeben' : 'Admin-Rolle entzogen')
-      setRoleTarget(null)
+      toast.success(`Rolle geändert zu „${ROLE_LABEL[roleChange.newRole]}"`)
+      setRoleChange(null)
       load()
     } catch (err) {
       console.error(err)
@@ -199,13 +223,13 @@ export default function AdminUsersPage() {
                     <TableCell className="text-[#F9FAFB] font-medium">
                       <div className="flex items-center gap-2">
                         {u.display_name ?? '—'}
-                        {u.role === 'admin' && (
+                        {u.role !== 'student' && (
                           <Badge
                             variant="outline"
                             className="border-[#58CC02]/50 text-[#58CC02] bg-[#58CC02]/10"
                           >
                             <ShieldCheck className="w-3 h-3 mr-1" />
-                            Admin
+                            {ROLE_LABEL[u.role]}
                           </Badge>
                         )}
                       </div>
@@ -232,43 +256,59 @@ export default function AdminUsersPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Rollen vergeben — nur Super-Admin (AC-7) */}
+                        {isSuperAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={isSelf}
+                                className="text-[#1CB0F6] hover:text-[#1CB0F6]"
+                              >
+                                <ShieldCheck className="w-4 h-4 mr-1" />
+                                Rolle
+                                <ChevronDown className="w-3 h-3 ml-1" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                              {(['student', 'department_admin', 'admin'] as Role[])
+                                .filter((r) => r !== u.role)
+                                .map((r) => (
+                                  <DropdownMenuItem
+                                    key={r}
+                                    onClick={() => setRoleChange({ user: u, newRole: r })}
+                                    className="focus:bg-[#111827] focus:text-[#F9FAFB]"
+                                  >
+                                    {ROLE_LABEL[r]}
+                                  </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+
+                        {/* Bereich verschieben — Azubis, beide Admin-Rollen dürfen das */}
+                        {u.role === 'student' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  disabled={isSelf}
-                                  onClick={() => setRoleTarget(u)}
-                                  className={
-                                    u.role === 'admin'
-                                      ? 'text-[#9CA3AF] hover:text-[#FF4B4B]'
-                                      : 'text-[#1CB0F6] hover:text-[#1CB0F6]'
-                                  }
+                                  onClick={() => setMoveTarget(u)}
+                                  className="text-[#9CA3AF] hover:text-[#F9FAFB]"
                                 >
-                                  {u.role === 'admin' ? (
-                                    <>
-                                      <ShieldOff className="w-4 h-4 mr-1" />
-                                      Entziehen
-                                    </>
-                                  ) : (
-                                    <>
-                                      <ShieldCheck className="w-4 h-4 mr-1" />
-                                      Admin
-                                    </>
-                                  )}
+                                  <MapPinned className="w-4 h-4" />
                                 </Button>
-                              </span>
-                            </TooltipTrigger>
-                            {isSelf && (
+                              </TooltipTrigger>
                               <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                                Du kannst deine eigene Rolle nicht ändern.
+                                In anderen Fachbereich verschieben
                               </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -285,24 +325,20 @@ export default function AdminUsersPage() {
                                   }
                                 >
                                   {u.banned ? (
-                                    <>
-                                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                                      Entsperren
-                                    </>
+                                    <CheckCircle2 className="w-4 h-4" />
                                   ) : (
-                                    <>
-                                      <Ban className="w-4 h-4 mr-1" />
-                                      Sperren
-                                    </>
+                                    <Ban className="w-4 h-4" />
                                   )}
                                 </Button>
                               </span>
                             </TooltipTrigger>
-                            {isSelf && (
-                              <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                                Du kannst dich nicht selbst sperren.
-                              </TooltipContent>
-                            )}
+                            <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
+                              {isSelf
+                                ? 'Du kannst dich nicht selbst sperren.'
+                                : u.banned
+                                  ? 'Entsperren'
+                                  : 'Sperren'}
+                            </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
@@ -316,20 +352,22 @@ export default function AdminUsersPage() {
       </div>
 
       <AlertDialog
-        open={roleTarget !== null}
+        open={roleChange !== null}
         onOpenChange={(v) => {
-          if (!v) setRoleTarget(null)
+          if (!v) setRoleChange(null)
         }}
       >
         <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {roleTarget?.role === 'admin' ? 'Admin-Rolle entziehen?' : 'Admin-Rolle vergeben?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Rolle ändern?</AlertDialogTitle>
             <AlertDialogDescription className="text-[#9CA3AF]">
-              {roleTarget?.role === 'admin'
-                ? `${roleTarget?.display_name ?? roleTarget?.email} verliert den Admin-Zugang und kann das Admin-Panel nicht mehr nutzen.`
-                : `${roleTarget?.display_name ?? roleTarget?.email} erhält vollen Admin-Zugang und kann Inhalte verwalten.`}
+              {roleChange &&
+                `${roleChange.user.display_name ?? roleChange.user.email} wird „${ROLE_LABEL[roleChange.newRole]}"` +
+                  (roleChange.newRole === 'department_admin'
+                    ? ' für den eigenen Fachbereich.'
+                    : roleChange.newRole === 'admin'
+                      ? '. Diese Person erhält vollen Zugriff auf alle Fachbereiche.'
+                      : ' und verliert jeden Admin-Zugang.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -340,14 +378,10 @@ export default function AdminUsersPage() {
                 handleRoleConfirm()
               }}
               disabled={submitting}
-              className={
-                roleTarget?.role === 'admin'
-                  ? 'bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white'
-                  : 'bg-[#1CB0F6] hover:bg-[#17a0e0] text-white'
-              }
+              className="bg-[#1CB0F6] hover:bg-[#17a0e0] text-white"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {roleTarget?.role === 'admin' ? 'Entziehen' : 'Admin machen'}
+              Ändern
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -390,6 +424,17 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MoveDepartmentDialog
+        open={moveTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setMoveTarget(null)
+        }}
+        userId={moveTarget?.id ?? null}
+        userLabel={moveTarget?.display_name ?? moveTarget?.email ?? 'Der Azubi'}
+        currentDepartmentId={moveTarget?.department_id ?? null}
+        onSuccess={load}
+      />
     </div>
   )
 }

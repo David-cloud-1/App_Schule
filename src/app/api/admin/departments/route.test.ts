@@ -69,10 +69,10 @@ const validCreateBody = {
 describe('GET /api/admin/departments', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns 403 for a department_admin (super-admin only)', async () => {
+  it('lists departments for a department_admin too (read-only)', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase('department_admin') as never)
     const res = await GET()
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(200)
   })
 
   it('lists all departments for the super-admin', async () => {

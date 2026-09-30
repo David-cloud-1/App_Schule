@@ -4,6 +4,8 @@ import { Shield } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
 import { Toaster } from '@/components/ui/sonner'
 import { AdminTabs } from '@/components/admin/admin-tabs'
+import { AdminRoleProvider } from '@/components/admin/admin-role-provider'
+import { DepartmentSwitcher } from '@/components/admin/department-switcher'
 import { BrandIcon, BrandName } from '@/components/app-brand'
 
 export default async function AdminLayout({
@@ -26,33 +28,40 @@ export default async function AdminLayout({
 
   if (!profile || (profile.role !== 'admin' && profile.role !== 'department_admin')) redirect('/')
 
+  const isSuperAdmin = profile.role === 'admin'
+
   return (
-    <div className="min-h-screen bg-[#111827]">
-      <header className="bg-[#1F2937] border-b border-[#4B5563] sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-              <BrandIcon className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold hidden sm:inline"><BrandName /></span>
-            </Link>
-            <span className="text-[#4B5563]">/</span>
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold text-[#F9FAFB]">Admin Panel</span>
+    <AdminRoleProvider value={{ role: profile.role, isSuperAdmin }}>
+      <div className="min-h-screen bg-[#111827]">
+        <header className="bg-[#1F2937] border-b border-[#4B5563] sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Link href="/" className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
+                <BrandIcon className="w-5 h-5 text-[#58CC02]" />
+                <span className="font-bold hidden sm:inline"><BrandName /></span>
+              </Link>
+              <span className="text-[#4B5563]">/</span>
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-[#58CC02]" />
+                <span className="font-bold text-[#F9FAFB]">Admin Panel</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {isSuperAdmin && <DepartmentSwitcher />}
+              <div className="text-sm text-[#9CA3AF] truncate max-w-[200px]">
+                {profile.display_name ?? user.email}
+              </div>
             </div>
           </div>
-          <div className="text-sm text-[#9CA3AF] truncate max-w-[200px]">
-            {profile.display_name ?? user.email}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <AdminTabs />
           </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <AdminTabs />
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
 
-      <Toaster />
-    </div>
+        <Toaster />
+      </div>
+    </AdminRoleProvider>
   )
 }
