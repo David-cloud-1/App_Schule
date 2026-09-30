@@ -36,7 +36,7 @@
 | PROJ-20 | Speditionshof & Shop | Deployed | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
 | PROJ-21 | Benotete Leistungsnachweise | Deployed | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |
 | PROJ-22 | Fachbereich als Datenbasis | Deployed | [PROJ-22-fachbereich-datenbasis.md](PROJ-22-fachbereich-datenbasis.md) | 2026-09-29 |
-| PROJ-23 | Fachbereichs-Zuordnung für Azubis | Approved | [PROJ-23-fachbereich-zuordnung-azubis.md](PROJ-23-fachbereich-zuordnung-azubis.md) | 2026-09-29 |
+| PROJ-23 | Fachbereichs-Zuordnung für Azubis | Deployed | [PROJ-23-fachbereich-zuordnung-azubis.md](PROJ-23-fachbereich-zuordnung-azubis.md) | 2026-09-29 |
 
 <!-- Add features above this line -->
 

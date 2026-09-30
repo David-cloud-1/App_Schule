@@ -1,6 +1,6 @@
 # PROJ-23: Fachbereichs-Zuordnung für Azubis
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-29
 **Last Updated:** 2026-09-29
 
@@ -315,4 +315,23 @@ Neue zwischengespeicherte Liste `getDepartmentSubjectIds(departmentId)` (5 Min.,
 - **Recommendation:** Deploy mit Vorschau-Messung der Ladezeit; danach Migration Schritt 2 (Standardwert am Profil entfernen) anwenden.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-09-30
+**Production URL:** https://spedilern.vercel.app (auch https://touristiklern.vercel.app — zeigt bis PROJ-25 den Rückfall-Bereich Spedition)
+**Vercel Deployment:** https://spedilern-1acf6090z-david-cloud-1s-projects.vercel.app, ausgelöst per Push auf `main` (Commit c874442)
+
+### Ablauf
+1. Datenbank-Migration Schritt 1 (`20260929_proj23_shop_department_check`) bereits vorab angewendet (siehe Backend-Notizen) — Kauf-Prüfung und Pseudonym-Rechte griffen schon vor dem Code-Deploy, ohne die laufende Version zu stören.
+2. Vorschau-Auslieferung mit den Projekt-Umgebungsvariablen; Ladezeit gegen die Live-App verglichen: `/login` Vorschau 0,18–0,34 s, Live 0,12–0,27 s (nach dem ersten Kaltstart-Wert) — keine Regression durch PROJ-23.
+3. Keine Serverfehler in den Edge-Logs während der Vorschau-Prüfung.
+4. Push auf `main` → automatische Produktions-Auslieferung.
+
+### Prüfung nach der Auslieferung
+- `/login` auf beiden Adressen: HTTP 200, Titel „SpediLern – Prüfungsvorbereitung Speditionskaufleute".
+- Ohne Login: `/` → 307 auf `/login`; `/api/subjects` → 401.
+- Edge-Logs seit der Auslieferung: 0 Serverfehler.
+
+### Noch ausstehend: Migration Schritt 2
+`20260929_proj23_profiles_no_default_department.sql` (Standardwert am Profil entfernen) ist **noch nicht angewendet** — erst jetzt, nach dem Deploy des Codes, sinnvoll: Der Code ordnet neue Profile jetzt aktiv der Adresse zu; ohne diesen Schritt bekommen sie vorher weiterhin automatisch Spedition zugewiesen (unschädlich, aber die Zuordnungs-Logik greift dann nie). Wird als nächstes angewendet und hier nachgetragen.
+
+### Rückweg
+Vercel → Deployments → vorherige Produktion `spedilern-3xsvoqy6q-…` (PROJ-22) → „Promote to Production". Migration Schritt 1 ist abwärtskompatibel (nur eine zusätzliche Prüfung + engere Rechte) und muss dafür nicht zurückgenommen werden.
