@@ -1,6 +1,6 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 
@@ -152,7 +152,79 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 **Noch offen für /frontend:** Bereichs-Umschalter-Dropdown in der Kopfzeile, Seite „Fachbereich-Einstellungen" (nutzt `GET/PATCH /api/admin/department-settings`), Seite „Fachbereiche verwalten" (nutzt `GET/POST /api/admin/departments`, `PATCH /api/admin/departments/[id]`), Rollenvergabe-UI für `department_admin` in der Nutzerverwaltung.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-09-30
+**App URL:** kein Dev-Server verwendet (Projekt-Memory „Kein Dev-Server" — `npm run dev`/Playwright bringen die Maschine zum Absturz). Getestet über `npm test`, `npm run build` und eine transaktionale RLS-Matrix per SQL direkt gegen die Produktions-DB (Rollback, keine Daten verändert) — genau der in den Technical Requirements der Spec vorgeschriebene Ansatz.
+**Tester:** QA Engineer (AI)
+
+### Acceptance Criteria Status
+
+- [x] AC-1 `profiles.role` erlaubt `department_admin` — verifiziert (Constraint + reale Daten)
+- [x] AC-2 Migration E10 (1 admin, 11 department_admin, SPED) — verifiziert per SQL (`select role, count(*) from profiles group by role` → 1/11/51)
+- [x] AC-3 Letzter Super-Admin geschützt — verifiziert: `UPDATE profiles SET role='student' WHERE id=<letzter admin>` löst die erwartete Exception aus
+- [ ] **AC-4 Alle RLS-Policies bereichsbewusst — TEILWEISE.** `questions`, `answer_options`, `question_subjects`, `graded_assessments`, `user_shop_items`, `questions_draft`, `generation_jobs`, `admin_audit_log`, `quality_fix_progress`, `profiles` per SQL-Matrix bestätigt korrekt. **`shop_items` und `exam_question_sets` sind es nicht vollständig** — siehe BUG-1.
+- [ ] **AC-5 department_admin sieht/ändert ausschließlich eigenen Bereich — TEILWEISE.** Schreiben ist korrekt blockiert (siehe unten). Lesen über die Admin-Oberfläche ist korrekt gefiltert (Code-Ebene, per Vitest bestätigt). Lesen direkt über die Datenbank/REST-API ist es für `shop_items`/`exam_question_sets` nicht — siehe BUG-1.
+- [x] AC-6 Super-Admin sieht/ändert alle Bereiche — verifiziert (`can_admin_department()` = true für fremden Testbereich, Fach sichtbar)
+- [ ] **AC-7 Nur Super-Admin verschiebt Nutzer zwischen Bereichen — widerspricht AC-8, siehe BUG-2.** Rollenvergabe ist korrekt Super-Admin-only (verifiziert: 403 für department_admin). App-weite Qualitätsregeln/Prompt-Grundgerüst bleiben wie im Plan vorgesehen Code (kein DB-Feld) — das war nie als DB-Einstellung vorgesehen.
+- [x] AC-8 department_admin verschiebt eigene Azubis, nicht eigene role/department_id — verifiziert (Selbst-Bearbeitung 400, Rollen-Feld 403 für department_admin)
+- [x] AC-9 role/department_id nicht selbst schreibbar — verifiziert per SQL: `UPDATE profiles SET role='admin'` als Student → `permission denied` (Spalten-Grant)
+- [ ] **AC-10 Bereichs-Umschalter im Admin-Panel — NICHT UMGESETZT.** Bewusster Scope-Cut für diesen Durchlauf (Backend-API vorhanden, UI fehlt), mit dem Nutzer abgestimmt.
+- [ ] **AC-11 Seite „Fachbereich-Einstellungen" — NICHT UMGESETZT.** Gleicher Grund wie AC-10; `GET/PATCH /api/admin/department-settings` existiert und ist getestet.
+- [x] AC-12 Admin-API-Routen wenden Berechtigungsprüfung an — verifiziert für alle geänderten Routen (Vitest + Codereview); die verbleibende Lücke ist die RLS-Ebene aus BUG-1, nicht die Routen selbst
+- [x] AC-13 Audit-Log bereichsgefiltert — verifiziert per SQL: department_admin sieht 347 (SPED), Super-Admin sieht 348 (inkl. Test-Bereich)
+- [x] AC-14 Bestandsfunktionalität unverändert — 558/558 Vitest-Tests grün, `npm run build` grün, SPED-Fächer weiterhin lesbar/zählbar wie vorher
+
+**12 / 14 vollständig bestanden** (2 davon nur teilweise wegen BUG-1, 2 bewusst nicht umgesetzt).
+
+### Edge Cases Status
+
+- [x] EC-1 Fremder Bereich → 404 bei Schreibzugriff — bestätigt (UPDATE betrifft 0 Zeilen an allen getesteten Tabellen; Routen-Codereview bestätigt 404 statt Fehlerleck)
+- [x] EC-2 department_admin ändert eigene role/department_id → abgelehnt — bestätigt
+- [x] EC-3 Bulk-Import unbekanntes Kürzel → klare Fehlermeldung — unverändert aus PROJ-22/23, durch bestehende Tests abgedeckt, nicht erneut manuell geprüft
+- [x] EC-4 Letzter Super-Admin geschützt — bestätigt
+- [x] EC-5 Gleiches Kürzel in zwei Bereichen, Super-Admin importiert in gewählten Bereich — per Codereview bestätigt (`resolveSubjectCode` nutzt konsequent `departmentId` aus dem Umschalter-Cookie)
+- [ ] **EC-6 department_admin verschiebt Azubi nur in Bereiche, für die er Rechte hat — WIDERSPRÜCHLICH FORMULIERT, siehe BUG-2.**
+- [x] EC-7 Export mit fremder Leistungsnachweis-ID → 404 — bestätigt (keine konkurrierende RLS-Policy auf `graded_assessments`, Codereview der Export-Route)
+- [x] EC-8 Sofortige Rollenwirkung, keine Session-Altrechte — bestätigt per Codereview (`requireAdmin()` liest die Rolle bei jeder Anfrage aus der DB)
+- [x] EC-9 department_admin ohne Bereich → fail closed — bestätigt per Vitest-Test (403 statt Rückfall auf Standardbereich)
+
+### Security Audit Results (Red Team)
+
+- [x] Authentifizierung: `/admin` und `/api/admin/*` ohne Login → 401/Redirect (Middleware, unverändert getestet)
+- [x] Autorisierung (Schreiben): department_admin kann in 6 Tabellen (Fach, Frage, Shop-Item, geprüft) keine fremden Bereichsdaten ändern — UPDATE betrifft 0 Zeilen
+- [ ] **Autorisierung (Lesen): department_admin kann fremde `shop_items`/`exam_question_sets` direkt per Datenbank-/REST-Zugriff lesen — siehe BUG-1**
+- [x] Rollen-Eskalation: Student kann `role`/`department_id` nicht selbst setzen (Spaltengrant, per SQL bestätigt: `permission denied`)
+- [x] Letzter-Admin-Schutz technisch erzwungen (Trigger), nicht nur dokumentiert
+- [x] Keine Geheimnisse in den geänderten Dateien (Migration, Routen) hartkodiert
+- [x] `department-settings`-Endpunkt: Zod-Schema lässt nur unkritische Branding-Felder zu, kein Weg zu `domain`/`code`/`is_active` für department_admin
+- [x] Cookie-basierter Bereichs-Umschalter: `httpOnly`, `sameSite=lax`, nur Super-Admin kann ihn setzen (403 für department_admin geprüft), Server validiert den Bereich serverseitig neu (kein Vertrauen in den Cookie-Wert allein)
+
+### Bugs Found
+
+#### BUG-1: RLS erlaubt bereichsübergreifendes Lesen von `shop_items` und `exam_question_sets`
+- **Severity:** High
+- **Mechanismus:** Beide Tabellen haben zusätzlich zur neuen bereichsbewussten Admin-Policy eine unveränderte, vor-PROJ-24 bestehende Richtlinie für „aktive Einträge": `shop_items_select_active` (`is_active = true`, kein Bereichsfilter) und `"Users read active exam sets"` (`is_active = true`, kein Bereichsfilter). Da PostgreSQL-RLS-Policies permissiv ODER-verknüpft werden, genügt die alte Policy, um einem `department_admin` per direktem Datenbank-/REST-Zugriff (z. B. eigener `fetch` mit dem eigenen Supabase-Session-Token, am Admin-Panel vorbei) aktive Shop-Artikel und Prüfungssets **jedes** anderen Bereichs zu zeigen.
+- **Steps to Reproduce (SQL, transaktional, per Rollback rückgängig gemacht):**
+  1. Fachbereich „QATEST" mit einem aktiven Shop-Item und einem aktiven Prüfungsset anlegen
+  2. Als echter SPED-`department_admin` (`c7f45450-…`) einloggen (`request.jwt.claim.sub` setzen)
+  3. `SELECT * FROM shop_items WHERE id = '<QATEST-Item>'` → erwartet 0 Zeilen, tatsächlich 1
+  4. `SELECT * FROM exam_question_sets WHERE id = '<QATEST-Set>'` → erwartet 0 Zeilen, tatsächlich 1
+- **Wichtig zur Einordnung:** Die Admin-Oberfläche selbst ist **nicht** betroffen — `GET /api/admin/shop-items` und `GET /api/admin/exam-sets` filtern bereits korrekt per Code (`eq('department_id', departmentId)`, per Vitest bestätigt). Die Lücke wirkt nur, wenn jemand die Datenbank/REST-API direkt anspricht statt die App-Routen zu nutzen. Schreiben ist über beide Wege weiterhin korrekt blockiert.
+- **Empfohlener Fix:** Beide Policies bereichsbewusst machen, z. B. `shop_items_select_active` → `USING (is_active = true AND (department_id = my_department_id() OR my_department_id() IS NULL))` (damit Azubis weiterhin nur den eigenen Bereich sehen) bzw. analog für `"Users read active exam sets"`. Kurzes Folge-Migrationsskript, kein Rollback des bestehenden PROJ-24-Stands nötig.
+- **Priority:** Vor `/deploy` der UI beheben (nächster `/backend`-Durchlauf), da es sonst dauerhaft als offene Lücke bestehen bleibt, sobald PROJ-25 einen zweiten echten Bereich anlegt.
+
+#### BUG-2: AC-7 und AC-8 widersprechen sich zur Frage, wer Azubis zwischen Bereichen verschieben darf
+- **Severity:** Low (Spec-Inkonsistenz, keine technische Lücke)
+- **Details:** AC-7 sagt „Nur Super-Admin kann … Nutzer zwischen Fachbereichen verschieben", AC-8 sagt „department_admin kann eigene Azubis in einen anderen Fachbereich verschieben" — wörtlich widersprüchlich. Die Umsetzung folgt AC-8 und dem Plan-Dokument (`docs/plans/mehrere-fachbereiche.md`, „Falsch zugeordnet? Die Lehrkraft … hängt Azubis … um"): `department_admin` darf eigene Azubis in **jeden** existierenden Bereich verschieben (kein Ziel-Bereichs-Check), nur Rollenvergabe bleibt Super-Admin-only.
+- **Zugehöriger Edge Case EC-6** ist ebenso widersprüchlich formuliert („kann Azubis abgeben" vs. „nur Super-Admin darf beliebige Zielbereiche wählen").
+- **Priority:** Nutzer-Entscheidung nötig, ob die Umsetzung (department_admin darf in jeden Bereich abgeben) so bleibt oder auf bestimmte Zielbereiche beschränkt werden soll. Kein Sicherheitsrisiko (der Azubi verliert dabei keine Daten, der department_admin erhält keine Rechte im Zielbereich), daher niedrige Priorität.
+
+### Summary
+- **Acceptance Criteria:** 10/14 vollständig bestanden, 2 teilweise (BUG-1), 2 bewusst nicht umgesetzt (UI, nächster `/frontend`-Durchlauf)
+- **Bugs Found:** 2 total (1 High, 1 Low)
+- **Security:** Schreibschutz solide; ein High-Fund beim Lesen (BUG-1)
+- **Production Ready:** NO (UI fehlt ohnehin noch; zusätzlich sollte BUG-1 vor dem Abschluss von PROJ-24 behoben werden)
+- **Recommendation:** Status bleibt **In Review**. Die bereits live angewendete Migration muss **nicht** zurückgerollt werden — die Kernzusage (Bereichs-Admins können fremde Bereiche nicht *ändern*, Rollen-Eskalation ist unmöglich) hält stand. Empfehlung: (1) kleines Folge-Migrationsskript für BUG-1, (2) Nutzer-Entscheidung zu BUG-2, (3) danach `/frontend` für Umschalter/Einstellungen-Seite, (4) abschließend erneut `/qa`.
 
 ## Deployment
 _To be added by /deploy_
