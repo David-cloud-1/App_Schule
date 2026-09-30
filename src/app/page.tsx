@@ -81,7 +81,7 @@ export default async function HomePage() {
   const totalXp = (profile?.total_xp as number) ?? 0
   const currentStreak = (profile?.current_streak as number) ?? 0
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'department_admin'
 
   // ── Aggregate answer data ─────────────────────────────────────────────────
   const seenQuestionIds = new Set(answers.map((a) => a.question_id))

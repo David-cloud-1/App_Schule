@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
+import { fetchQuestionIdsForDepartment } from '@/lib/subject-questions'
 
 const ListQuerySchema = z.object({
   q: z.string().optional(),
@@ -43,7 +44,7 @@ const PAGE_SIZE = 20
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -59,11 +60,18 @@ export async function GET(request: NextRequest) {
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
+  // Fragen haben keine eigene department_id — der Bereich kommt über das
+  // verknüpfte Fach. Ohne diesen Filter sähe jeder Admin alle Bereiche (PROJ-24).
+  const departmentQuestionIds = await fetchQuestionIdsForDepartment(supabase, departmentId)
+  if (departmentQuestionIds.size === 0) {
+    return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
+  }
+
   // Resolve subject filter to question ids
   let subjectFilteredIds: string[] | null = null
   if (subject) {
     // Kürzel nur im Bereich des Admins (PROJ-22)
-    const subjectRow = await resolveSubjectCode(supabase, auth.departmentId, subject)
+    const subjectRow = await resolveSubjectCode(supabase, departmentId, subject)
 
     if (!subjectRow) {
       return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
@@ -79,6 +87,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
     }
   }
+
+  // Bereichsfilter mit einem eventuellen Fachfilter schneiden.
+  const idFilter = subjectFilteredIds
+    ? subjectFilteredIds.filter((id) => departmentQuestionIds.has(id))
+    : [...departmentQuestionIds]
+  if (idFilter.length === 0) {
+    return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
+  }
+  subjectFilteredIds = idFilter
 
   let query = supabase
     .from('questions')

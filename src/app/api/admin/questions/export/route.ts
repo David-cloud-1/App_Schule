@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
+import { fetchQuestionIdsForDepartment } from '@/lib/subject-questions'
 
 const ExportQuerySchema = z.object({
   q: z.string().optional(),
@@ -26,7 +27,7 @@ function escapeCsv(value: string | null | undefined): string {
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const parsed = ExportQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -37,19 +38,25 @@ export async function GET(request: NextRequest) {
 
   const { q, subject, status, difficulty, class_level, topic_id, missing_topic } = parsed.data
 
+  const emptyCsv = () =>
+    new NextResponse('Fragetext,Fach,Schwierigkeit,Jahrgangsstufe,Thema,Antwort A,Antwort B,Antwort C,Antwort D,Antwort E,Richtige Antwort,Erklärung,Status\n', {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="fragen.csv"',
+      },
+    })
+
+  // Fragen haben keine eigene department_id — ohne diesen Filter exportierte
+  // jeder Admin den kompletten Bestand aller Bereiche (PROJ-24).
+  const departmentQuestionIds = await fetchQuestionIdsForDepartment(supabase, departmentId)
+  if (departmentQuestionIds.size === 0) return emptyCsv()
+
   let subjectFilteredIds: string[] | null = null
   if (subject) {
     // Kürzel nur im Bereich des Admins (PROJ-22)
-    const subjectRow = await resolveSubjectCode(supabase, auth.departmentId, subject)
+    const subjectRow = await resolveSubjectCode(supabase, departmentId, subject)
 
-    if (!subjectRow) {
-      return new NextResponse('Fragetext,Fach,Schwierigkeit,Jahrgangsstufe,Thema,Antwort A,Antwort B,Antwort C,Antwort D,Antwort E,Richtige Antwort,Erklärung,Status\n', {
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': 'attachment; filename="fragen.csv"',
-        },
-      })
-    }
+    if (!subjectRow) return emptyCsv()
 
     const { data: links } = await supabase
       .from('question_subjects')
@@ -57,15 +64,15 @@ export async function GET(request: NextRequest) {
       .eq('subject_id', subjectRow.id)
 
     subjectFilteredIds = (links ?? []).map((l) => l.question_id as string)
-    if (subjectFilteredIds.length === 0) {
-      return new NextResponse('Fragetext,Fach,Schwierigkeit,Jahrgangsstufe,Thema,Antwort A,Antwort B,Antwort C,Antwort D,Antwort E,Richtige Antwort,Erklärung,Status\n', {
-        headers: {
-          'Content-Type': 'text/csv; charset=utf-8',
-          'Content-Disposition': 'attachment; filename="fragen.csv"',
-        },
-      })
-    }
+    if (subjectFilteredIds.length === 0) return emptyCsv()
   }
+
+  // Bereichsfilter mit einem eventuellen Fachfilter schneiden.
+  const idFilter = subjectFilteredIds
+    ? subjectFilteredIds.filter((id) => departmentQuestionIds.has(id))
+    : [...departmentQuestionIds]
+  if (idFilter.length === 0) return emptyCsv()
+  subjectFilteredIds = idFilter
 
   let query = supabase
     .from('questions')

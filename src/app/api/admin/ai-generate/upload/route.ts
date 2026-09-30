@@ -72,6 +72,10 @@ export async function POST(request: NextRequest) {
       subject_code: subject?.code ?? null,
       subject_id: subject?.id ?? null,
       topic_id: topicId,
+      // Ohne diese Angabe griffe der Spalten-Default (immer SPED) — für einen
+      // department_admin eines anderen Bereichs würde die RLS-Prüfung den
+      // Insert sonst ablehnen (PROJ-24).
+      department_id: auth.departmentId,
     })
     .select('*')
     .single()

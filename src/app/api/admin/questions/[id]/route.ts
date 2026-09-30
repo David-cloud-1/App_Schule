@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+
+/** Fachbereich einer Frage über ihr (einziges) verknüpftes Fach (PROJ-24). */
+async function loadQuestionDepartment(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
+  questionId: string
+): Promise<string | null> {
+  const { data } = await supabase!
+    .from('question_subjects')
+    .select('subjects!inner(department_id)')
+    .eq('question_id', questionId)
+    .limit(1)
+    .maybeSingle()
+  return (data?.subjects as unknown as { department_id: string } | null)?.department_id ?? null
+}
 
 const AnswerSchema = z.object({
   text: z.string().min(1).max(500),
@@ -34,6 +48,10 @@ export async function PATCH(
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const questionDept = await loadQuestionDepartment(supabase, id)
+  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  if (forbidden) return forbidden
 
   let body: unknown
   try {
@@ -150,6 +168,10 @@ export async function DELETE(
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const questionDept = await loadQuestionDepartment(supabase, id)
+  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  if (forbidden) return forbidden
 
   // If the question appears in quiz history, soft-delete to preserve learner records
   const { count } = await supabase

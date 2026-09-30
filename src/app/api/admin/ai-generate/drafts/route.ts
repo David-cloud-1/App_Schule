@@ -13,7 +13,7 @@ const PAGE_SIZE = 50
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       'id, job_id, question_text, options, correct_index, explanation, subject_code, difficulty, status, expires_at, created_at',
       { count: 'exact' }
     )
+    .eq('department_id', departmentId)
     .order('created_at', { ascending: true })
 
   if (job_id) query = query.eq('job_id', job_id)

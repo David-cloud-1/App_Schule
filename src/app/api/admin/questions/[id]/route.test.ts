@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PATCH, DELETE } from './route'
 import { NextRequest } from 'next/server'
+import { chainMock, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -23,53 +24,46 @@ function makeRequest(method: string, body?: unknown) {
   })
 }
 
-function makeAdminSupabase(
-  updateError: unknown = null,
-  deleteError: unknown = null,
-  quizHistoryCount: number | null = 0
-) {
-  const profileBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: 'admin', department_id: 'dept-sped' }, error: null }),
-  }
-  const questionUpdateBuilder = {
-    update: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ error: updateError }),
-  }
-  const questionDeleteBuilder = {
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ error: deleteError }),
-  }
-  const answerBuilder = {
-    delete: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockResolvedValue({ error: null }),
-    eq: vi.fn().mockResolvedValue({ error: null }),
-  }
-  const subjectsBuilder = {
-    delete: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockResolvedValue({ error: null }),
-    eq: vi.fn().mockResolvedValue({ error: null }),
-  }
-  const quizHistoryBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ count: quizHistoryCount, error: null }),
-  }
-  const auditBuilder = { insert: vi.fn().mockResolvedValue({ error: null }) }
+function makeAdminSupabase(opts: {
+  updateError?: unknown
+  deleteError?: unknown
+  quizHistoryCount?: number | null
+  role?: string
+  departmentId?: string
+  questionDepartmentId?: string | null
+} = {}) {
+  const {
+    updateError = null,
+    deleteError = null,
+    quizHistoryCount = 0,
+    role = 'admin',
+    departmentId = 'dept-sped',
+    questionDepartmentId = 'dept-sped',
+  } = opts
 
-  const mockAdmin = { id: 'admin-uuid', email: 'admin@test.com' }
-  return {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: mockAdmin } }) },
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'profiles') return profileBuilder
-      if (table === 'answer_options') return answerBuilder
-      if (table === 'question_subjects') return subjectsBuilder
-      if (table === 'quiz_answers') return quizHistoryBuilder
-      if (table === 'admin_audit_log') return auditBuilder
-      // questions: returns update or delete builder depending on context
-      return { ...questionUpdateBuilder, ...questionDeleteBuilder }
-    }),
-  }
+  const { client } = chainMock((table, calls) => {
+    if (table === 'profiles') return { data: { role, department_id: departmentId } }
+    if (table === 'admin_audit_log') return {}
+    if (table === 'answer_options') return { error: null }
+    if (table === 'question_subjects') {
+      if (hasCall(calls, 'maybeSingle')) {
+        return {
+          data: questionDepartmentId === null ? null : { subjects: { department_id: questionDepartmentId } },
+        }
+      }
+      return { error: null }
+    }
+    if (table === 'quiz_answers') return { count: quizHistoryCount, error: null }
+    if (table === 'questions') {
+      if (hasCall(calls, 'update')) return { error: updateError }
+      if (hasCall(calls, 'delete')) return { error: deleteError }
+      return {}
+    }
+    return {}
+  }, {
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid', email: 'admin@test.com' } } }) },
+  })
+  return client
 }
 
 function makeUnauthSupabase() {
@@ -103,6 +97,20 @@ describe('PATCH /api/admin/questions/[id]', () => {
     expect(res.status).toBe(403)
   })
 
+  it('department_admin gets 404 for an orphaned question with no subject link (fail closed)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', questionDepartmentId: null }) as never
+    )
+    const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
+    expect(res.status).toBe(404)
+  })
+
+  it('super-admin can still reach an orphaned question with no subject link', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ questionDepartmentId: null }) as never)
+    const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
+    expect(res.status).toBe(200)
+  })
+
   it('toggles is_active and returns ok', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
@@ -134,6 +142,14 @@ describe('PATCH /api/admin/questions/[id]', () => {
     const res = await PATCH(req, makeCtx())
     expect(res.status).toBe(400)
   })
+
+  it('department_admin gets 404 for a question of a foreign department (PROJ-24)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
+    )
+    const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
+    expect(res.status).toBe(404)
+  })
 })
 
 describe('DELETE /api/admin/questions/[id]', () => {
@@ -152,7 +168,7 @@ describe('DELETE /api/admin/questions/[id]', () => {
   })
 
   it('hard-deletes question when no quiz history exists', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase(null, null, 0) as never)
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ quizHistoryCount: 0 }) as never)
     const res = await DELETE(makeRequest('DELETE'), makeCtx())
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -161,11 +177,19 @@ describe('DELETE /api/admin/questions/[id]', () => {
   })
 
   it('soft-deletes question when quiz history exists', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase(null, null, 3) as never)
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ quizHistoryCount: 3 }) as never)
     const res = await DELETE(makeRequest('DELETE'), makeCtx())
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
     expect(body.softDeleted).toBe(true)
+  })
+
+  it('department_admin gets 404 when deleting a question of a foreign department (PROJ-24)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
+    )
+    const res = await DELETE(makeRequest('DELETE'), makeCtx())
+    expect(res.status).toBe(404)
   })
 })

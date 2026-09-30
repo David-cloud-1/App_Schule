@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
@@ -72,6 +72,16 @@ export async function DELETE(
   const { supabase, user } = auth
 
   const { id } = await ctx.params
+
+  const { data: existing } = await supabase
+    .from('topics')
+    .select('subjects!inner(department_id)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const subjectDept = (existing.subjects as unknown as { department_id: string }).department_id
+  const forbidden = assertCanAdminDepartment(auth, subjectDept)
+  if (forbidden) return forbidden
 
   const { error } = await supabase.from('topics').delete().eq('id', id)
   if (error) {

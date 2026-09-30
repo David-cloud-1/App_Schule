@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
   async function handleRoleConfirm() {
     if (!roleTarget) return
     setSubmitting(true)
-    const newRole = roleTarget.role === 'admin' ? 'user' : 'admin'
+    const newRole = roleTarget.role === 'admin' ? 'student' : 'admin'
     try {
       const res = await fetch(`/api/admin/users/${roleTarget.id}`, {
         method: 'PATCH',

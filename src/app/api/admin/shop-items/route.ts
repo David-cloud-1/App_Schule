@@ -12,12 +12,16 @@ const CreateSchema = z.object({
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
+  // shop_items hat zusätzlich eine öffentliche "is_active"-Lese-Policy für
+  // Azubis (ohne Bereichsfilter) — ohne diesen Code-Filter sähe ein
+  // Bereichs-Admin hier auch aktive Artikel anderer Bereiche (PROJ-24).
   const [itemsResult, ownedCountsResult] = await Promise.all([
     supabase
       .from('shop_items')
       .select('id, name, description, icon, price, is_active, sort_order')
+      .eq('department_id', departmentId)
       .order('sort_order'),
     supabase.from('user_shop_items').select('item_id'),
   ])
@@ -44,7 +48,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('shop_items')
-    .insert(parsed.data)
+    .insert({ ...parsed.data, department_id: departmentId })
     .select('id')
     .single()
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../_lib/auth'
+import { requireAdmin, assertCanAdminDepartment } from '../../_lib/auth'
 
 const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
@@ -28,11 +28,13 @@ export async function PATCH(
 
   const { data: existing } = await supabase
     .from('exam_question_sets')
-    .select('part')
+    .select('part, department_id')
     .eq('id', id)
     .single()
 
   if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
+  const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
+  if (forbidden) return forbidden
 
   // Multiple sets may be active per part simultaneously (e.g. different exams
   // for different classes). Activating one no longer deactivates the others.
@@ -56,6 +58,15 @@ export async function DELETE(
   const auth = await requireAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
+
+  const { data: existing } = await supabase
+    .from('exam_question_sets')
+    .select('department_id')
+    .eq('id', id)
+    .maybeSingle()
+  if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
+  const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
+  if (forbidden) return forbidden
 
   const { error } = await supabase.from('exam_question_sets').delete().eq('id', id)
   if (error) return NextResponse.json({ error: 'Failed to delete exam set' }, { status: 500 })

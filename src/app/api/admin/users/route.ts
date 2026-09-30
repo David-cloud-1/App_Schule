@@ -9,18 +9,25 @@ type ProfileRow = {
   total_xp: number
   current_streak: number
   last_session_date: string | null
+  department_id: string | null
 }
 
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
+  const { isSuperAdmin, departmentId } = auth
 
+  // Service-Role-Route (umgeht RLS) — Bereichs-Admin sieht nur den eigenen
+  // Bereich, deshalb muss der Filter hier im Code passieren (Plan-Abschnitt 2.1).
   const service = createServiceClient()
 
-  const { data: profiles, error: pErr } = await service
+  let query = service
     .from('profiles')
-    .select('id, display_name, role, total_xp, current_streak, last_session_date')
+    .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id')
     .order('total_xp', { ascending: false })
+  if (!isSuperAdmin) query = query.eq('department_id', departmentId)
+
+  const { data: profiles, error: pErr } = await query
 
   if (pErr) {
     console.error('[GET /api/admin/users] profiles', pErr)
@@ -65,6 +72,7 @@ export async function GET() {
       display_name: p.display_name,
       email: au?.email ?? null,
       role: p.role,
+      department_id: p.department_id,
       total_xp: p.total_xp,
       current_streak: p.current_streak,
       last_session_date: p.last_session_date,

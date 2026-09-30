@@ -14,6 +14,7 @@ const PAGE_SIZE = 50
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
+  const { isSuperAdmin, departmentId } = auth
 
   const parsed = QuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -41,6 +42,12 @@ export async function GET(request: NextRequest) {
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
+
+    // Service-Role-Route (umgeht RLS) — Bereichs-Admin sieht nur den eigenen
+    // Bereich, Super-Admin bereichsübergreifend (PROJ-24).
+    if (!isSuperAdmin) {
+      query = query.eq('department_id', departmentId)
+    }
 
     if (period !== 'all') {
       const days = period === '7d' ? 7 : 30

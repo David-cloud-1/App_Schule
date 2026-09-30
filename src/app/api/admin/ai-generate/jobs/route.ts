@@ -4,11 +4,12 @@ import { requireAdmin } from '../../_lib/auth'
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const { data, error } = await supabase
     .from('generation_jobs')
     .select('id, filename, file_size_bytes, status, questions_generated, error_message, created_at')
+    .eq('department_id', departmentId)
     .order('created_at', { ascending: false })
     .limit(100)
 

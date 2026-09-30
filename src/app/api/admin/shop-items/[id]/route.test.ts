@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PATCH } from './route'
 import { NextRequest } from 'next/server'
+import { chainMock, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -21,26 +22,27 @@ function makeCtx(id = 'item-1') {
   return { params: Promise.resolve({ id }) }
 }
 
-function makeAdminSupabase(opts: { role?: string; updateError?: unknown } = {}) {
-  const profileBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({ data: { role: opts.role ?? 'admin', department_id: 'dept-sped' }, error: null }),
-  }
-  const itemUpdateBuilder = {
-    update: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ error: opts.updateError ?? null }),
-  }
-  const auditBuilder = { insert: vi.fn().mockResolvedValue({ error: null }) }
-
-  return {
+function makeAdminSupabase(opts: {
+  role?: string
+  departmentId?: string
+  itemDepartmentId?: string | null
+  updateError?: unknown
+} = {}) {
+  const { client } = chainMock((table, calls) => {
+    if (table === 'profiles') {
+      return { data: { role: opts.role ?? 'admin', department_id: opts.departmentId ?? 'dept-sped' } }
+    }
+    if (table === 'admin_audit_log') return {}
+    if (table === 'shop_items') {
+      if (hasCall(calls, 'update')) return { error: opts.updateError ?? null }
+      // existence/department check via .select('department_id').eq('id', id).maybeSingle()
+      return { data: opts.itemDepartmentId === null ? null : { department_id: opts.itemDepartmentId ?? 'dept-sped' } }
+    }
+    return {}
+  }, {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid', email: 'a@a.com' } } }) },
-    from: vi.fn().mockImplementation((table: string) => {
-      if (table === 'profiles') return profileBuilder
-      if (table === 'admin_audit_log') return auditBuilder
-      return itemUpdateBuilder
-    }),
-  }
+  })
+  return client
 }
 
 function makeUnauthSupabase() {
@@ -60,6 +62,12 @@ describe('PATCH /api/admin/shop-items/[id]', () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ role: 'student' }) as never)
     const res = await PATCH(makeRequest({ is_active: false }), makeCtx())
     expect(res.status).toBe(403)
+  })
+
+  it('returns 404 when the item does not exist', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ itemDepartmentId: null }) as never)
+    const res = await PATCH(makeRequest({ is_active: false }), makeCtx())
+    expect(res.status).toBe(404)
   })
 
   it('returns 400 when no fields are provided', async () => {
@@ -95,5 +103,21 @@ describe('PATCH /api/admin/shop-items/[id]', () => {
     )
     const res = await PATCH(makeRequest({ is_active: false }), makeCtx())
     expect(res.status).toBe(500)
+  })
+
+  it('department_admin gets 404 when the item belongs to another department (PROJ-24)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', itemDepartmentId: 'dept-tour' }) as never,
+    )
+    const res = await PATCH(makeRequest({ is_active: false }), makeCtx())
+    expect(res.status).toBe(404)
+  })
+
+  it('department_admin can update an item in their own department', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', itemDepartmentId: 'dept-sped' }) as never,
+    )
+    const res = await PATCH(makeRequest({ is_active: false }), makeCtx())
+    expect(res.status).toBe(200)
   })
 })

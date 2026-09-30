@@ -14,7 +14,7 @@ const CreateSchema = z.object({
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -23,9 +23,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
   }
 
+  // topics ist für alle authentifizierten Nutzer lesbar (fachneutrale
+  // RLS-Policy) — der Bereichsfilter muss deshalb hier im Code passieren,
+  // sonst sieht ein Bereichs-Admin auch Themen anderer Bereiche (PROJ-24).
   let query = supabase
     .from('topics')
-    .select('id, name, subject_id, created_at, subjects(id, code, name)')
+    .select('id, name, subject_id, created_at, subjects!inner(id, code, name, department_id)')
+    .eq('subjects.department_id', departmentId)
     .order('name')
 
   if (parsed.data.subject_id) {
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId, isSuperAdmin } = auth
 
   let body: unknown
   try {
@@ -62,6 +66,11 @@ export async function POST(request: NextRequest) {
   }
 
   const { subject_id, name } = parsed.data
+
+  const { data: subject } = await supabase.from('subjects').select('department_id').eq('id', subject_id).maybeSingle()
+  if (!subject || (!isSuperAdmin && subject.department_id !== departmentId)) {
+    return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
+  }
 
   const { data, error } = await supabase
     .from('topics')

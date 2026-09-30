@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
 
 const UpdateSchema = z
   .object({
@@ -24,6 +24,11 @@ export async function PATCH(
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const { data: existing } = await supabase.from('shop_items').select('department_id').eq('id', id).maybeSingle()
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
+  if (forbidden) return forbidden
 
   let body: unknown
   try {

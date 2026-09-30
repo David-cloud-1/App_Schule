@@ -241,6 +241,9 @@ export async function processJob(
         subject_code: subject?.code ?? null,
         subject_id: subject?.id ?? null,
         topic_id: topicId,
+        // Ohne diese Angabe griffe der Spalten-Default (immer SPED) — die
+        // RLS-Prüfung würde den Insert sonst für andere Bereiche ablehnen (PROJ-24).
+        department_id: department.id,
       }
     })
 

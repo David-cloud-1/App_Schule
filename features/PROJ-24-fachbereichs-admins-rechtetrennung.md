@@ -1,6 +1,6 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-30
 **Last Updated:** 2026-09-30
 
@@ -116,6 +116,40 @@ Alle neuen Bildschirme verwenden ausschließlich Bausteine, die im Projekt berei
 ### D) Abhängigkeiten (Pakete)
 
 Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn/ui-Bausteine verwendet (Dropdown/Select für den Umschalter, Dialog für die Rollenvergabe, Tabelle für die Fachbereichs-Liste, Formularfelder für die Einstellungen-Seite).
+
+## Implementation Notes (Backend Developer)
+
+**Umfang dieses Durchlaufs (mit Nutzer abgestimmt):** Nur Server-Seite — Migration, Rollen-Logik, alle Admin-Routen abgesichert, neue API-Endpunkte. Keine neuen Bildschirme (Bereichs-Umschalter-UI, Fachbereich-Einstellungen-Seite, Fachbereiche-Verwaltungs-Seite) — die bestehenden 9 Admin-Reiter funktionieren aber bereits bereichsgefiltert für `department_admin`. Testtiefe: `requireAdmin()`/`canAdminDepartment()` gründlich getestet (14 Tests) plus je ein Routen-Test pro Berechtigungsmuster (direkte `department_id`-Spalte, über Fach abgeleitet, Service-Role-Route) statt aller 34 Routen × 4 Szenarien.
+
+**Migration `20260930_proj24_department_admins.sql` (angewendet auf Produktion):**
+- Rolle `department_admin` zum `profiles.role`-Constraint hinzugefügt
+- Datenmigration E10 ausgeführt: nur `david.zach@spedtour...` blieb `admin`; die übrigen 11 Konten wurden `department_admin` (Ergebnis geprüft: 1 admin, 11 department_admin, 51 student)
+- Schutz-Trigger `prevent_last_admin_change`: verhindert, dass der letzte Super-Admin zurückgestuft/gelöscht wird
+- Hilfsfunktionen: `my_department_id()`, `is_department_admin()`, `can_admin_department(uuid)`, `subject_department(uuid)`, `question_department(uuid)`
+- `department_id`-Spalten an `generation_jobs` und `questions_draft` ergänzt (fehlten in PROJ-22 trotz Ankündigung im Plan)
+- RLS-Policies bereichsbewusst gemacht auf: `questions`, `answer_options`, `question_subjects`, `topics`, `exam_question_sets`, `graded_assessments`, `shop_items`, `user_shop_items`, `questions_draft`, `generation_jobs`, `admin_audit_log`, `profiles`, `quality_fix_progress` — **plus** `subjects` (hatte seit PROJ-22 gar keine Schreib-Policy — echte Sicherheitslücke, hier geschlossen) und `exam_parts`/`exam_part_subjects` (in der ursprünglichen Bestandsaufnahme nicht gelistet, gehören aber zur Prüfungsverwaltung nach E9)
+- Rückweg: `20260930_proj24_department_admins_down.sql`
+
+**`requireAdmin()` (`src/app/api/admin/_lib/auth.ts`) überarbeitet:**
+- Gibt jetzt zusätzlich `role`, `isSuperAdmin` zurück
+- Super-Admin: `departmentId` kommt aus dem Cookie `admin_department_id` (Bereichs-Umschalter), sonst Rückfall auf eigenes Profil/Standardbereich
+- `department_admin`: immer der eigene Bereich, **kein** Rückfall auf den Standardbereich, wenn `department_id` fehlt (fail closed, Edge Case aus der Spec) — liefert dann 403 statt heimlich Zugriff zu gewähren
+- Neue Helfer `canAdminDepartment()` / `assertCanAdminDepartment()` (404 statt 403 bei fremdem Bereich)
+
+**Kritische Lücke gefunden und behoben:** `src/proxy.ts` (Middleware) sperrte `/admin` und `/api/admin` bisher hart auf `role === 'admin'` — ohne diese Korrektur wären alle 11 `department_admin`-Konten komplett ausgesperrt gewesen, unabhängig von allen anderen Änderungen. Ebenso angepasst: `src/app/admin/layout.tsx` (Seiten-Gate), `src/app/page.tsx` (`isAdmin`-Flag für den Panel-Link auf der Startseite).
+
+**Bestehende Admin-Routen gehärtet** (Liste filtert nach Bereich, Einzelobjekt prüft Bereich → 404, Anlegen setzt `department_id` explizit): `subjects`, `subjects/[id]`, `topics`, `topics/[id]`, `shop-items`, `shop-items/[id]`, `exam-sets/[id]`, `questions` (Liste + Export hatten **gar keinen** Bereichsfilter — echte Datenlecks, geschlossen über neues `fetchQuestionIdsForDepartment()` in `src/lib/subject-questions.ts`), `questions/[id]`, `audit-log` (nutzte Service-Client ohne Bereichsfilter — echtes Leck, geschlossen), `users`, `users/[id]` (Rollenvergabe jetzt Super-Admin-only, Bereichs-Verschiebung für beide Rollen, dabei auch den Vorab-Bug `role: 'user'` statt `'student'` in `src/app/admin/users/page.tsx` und der API-Validierung behoben), `ai-generate/upload`, `ai-generate/_lib/process-job.ts`, `ai-generate/jobs`, `ai-generate/drafts`, `assessments/[id]/participants/[sessionId]` (Service-Role-Route ohne Bereichsprüfung — echtes Leck, geschlossen).
+
+**Nicht geändert (bewusst, per Review sicher):** `questions/bulk`, `questions/bulk-import`, `ai-generate/drafts/[id]`, `ai-generate/drafts/[id]/accept`, `ai-generate/drafts/bulk-accept`, `ai-generate/drafts/bulk-reject`, `ai-generate/jobs/[id]/retry`, `exam-sets/import`, `exam-sets/extract`, `question-prompt`, `assessments` (GET), `assessments/[id]` (GET/PATCH/DELETE), `assessments/[id]/export`, `assessments/[id]/results` — arbeiten bereits über den nutzer-gebundenen Client, dessen RLS-Policies jetzt bereichsbewusst sind, oder setzen `department_id` bereits korrekt. `questions/[id]/stats` liefert nur Aggregat-Zahlen ohne Fragetext — geringes Risiko, nicht zusätzlich abgesichert.
+
+**Neue Endpunkte:**
+- `POST /api/admin/context/department` — Bereichs-Umschalter-Cookie, nur Super-Admin
+- `GET/PATCH /api/admin/department-settings` — eigene Bereichs-Branding-Felder (`prompt_notes`, `currency_name`, `hof_name`, `hof_short_name`) für beide Rollen, läuft über den Service-Client mit Code-Prüfung (wie `admin/users`), weil `departments` per RLS nur Super-Admin-Schreibrechte hat
+- `GET/POST /api/admin/departments` + `PATCH /api/admin/departments/[id]` — volle Bereichsverwaltung, nur Super-Admin
+
+**Verifiziert:** `npm test` (558/558 grün, inkl. 14 neue Tests für `requireAdmin`/`canAdminDepartment` und je 1 Routen-Test-Datei für die drei Berechtigungsmuster), `npm run build` (grün). `npm run lint` schlägt projektweit mit einem vorbestehenden ESLint-v9-Konfigurationsfehler fehl (keine `eslint.config.js`) — nicht durch PROJ-24 verursacht, sollte separat behoben werden.
+
+**Noch offen für /frontend:** Bereichs-Umschalter-Dropdown in der Kopfzeile, Seite „Fachbereich-Einstellungen" (nutzt `GET/PATCH /api/admin/department-settings`), Seite „Fachbereiche verwalten" (nutzt `GET/POST /api/admin/departments`, `PATCH /api/admin/departments/[id]`), Rollenvergabe-UI für `department_admin` in der Nutzerverwaltung.
 
 ## QA Test Results
 _To be added by /qa_

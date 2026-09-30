@@ -38,6 +38,7 @@ function makeAdminSupabase(overrides: {
   queryCount?: number
   insertData?: unknown
   insertError?: unknown
+  departmentQuestionIds?: { question_id: string }[]
 } = {}) {
   const questionInsertBuilder = {
     insert: vi.fn().mockReturnThis(),
@@ -52,10 +53,20 @@ function makeAdminSupabase(overrides: {
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockResolvedValue({ error: null }),
   }
+  // Zwei verschiedene Aufrufmuster auf derselben Tabelle: der alte
+  // Fach-Filter awaitet direkt nach .eq(...) (→ then()), der neue
+  // Bereichs-Filter (fetchQuestionIdsForDepartment, PROJ-24) hängt noch
+  // .order()/.range() an.
   const questionSubjectsBuilder = {
     insert: vi.fn().mockResolvedValue({ error: null }),
     select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    range: vi.fn().mockResolvedValue({
+      data: overrides.departmentQuestionIds ?? [{ question_id: 'q1' }],
+      error: null,
+    }),
+    then: (resolve: (v: unknown) => unknown) => resolve({ data: [], error: null }),
   }
   const subjectBuilder = {
     select: vi.fn().mockReturnThis(),
@@ -171,6 +182,17 @@ describe('GET /api/admin/questions', () => {
     expect(body.questions).toHaveLength(1)
     expect(body.total).toBe(1)
     expect(body.totalPages).toBe(1)
+  })
+
+  it('returns empty results when the department has no questions at all (PROJ-24)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ departmentQuestionIds: [], queryData: [{ id: 'q1' }], queryCount: 1 }) as never
+    )
+    const res = await GET(makeRequest('GET'))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.questions).toHaveLength(0)
+    expect(body.total).toBe(0)
   })
 
   it('returns 400 for invalid query params', async () => {
