@@ -1,8 +1,8 @@
 # PROJ-24: Fachbereichs-Admins & Rechtetrennung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-09-30
-**Last Updated:** 2026-09-30
+**Last Updated:** 2026-10-01
 
 ## Kontext
 Entspricht Phase 3 aus `docs/plans/mehrere-fachbereiche.md`. Führt eine neue Rolle `department_admin` ein und trennt Admin-Rechte hart nach Fachbereich, damit eine künftige Tourismus-Lehrkraft (PROJ-25) nur ihren eigenen Bereich verwalten kann, ohne Speditions-Daten (insbesondere Noten und Nutzerprofile) einzusehen oder zu ändern.
@@ -284,4 +284,22 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 **Verifiziert:** `npm test` (558/558 grün), `npm run build` grün (kein Dev-Server/Playwright laut Projekt-Memory).
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-10-01
+**Production URL:** https://spedilern.vercel.app
+**Vercel-Projekt:** `spedilern` (`prj_cd5B6uCEbsCyrwuMmprc1PkBViO5`)
+
+**Pre-Deployment-Checks:**
+- [x] `npm run build` lokal erfolgreich
+- [ ] `npm run lint` — schlägt projektweit mit vorbestehendem ESLint-v9-Konfigurationsfehler fehl (keine `eslint.config.js`, siehe QA Runde 1); nicht durch PROJ-24 verursacht, nicht blockierend
+- [x] QA-Status: **Approved** (14/14 Acceptance Criteria, keine offenen Critical/High/Medium-Bugs — BUG-4 ist Low/nice-to-have)
+- [x] Datenbank-Migrationen bereits während `/backend` und `/qa` direkt gegen Produktion angewendet und verifiziert (`20260930_proj24_department_admins.sql`, `20260930_proj24_bug1_shop_examsets_rls.sql`) — kein weiterer Migrationsschritt beim Deploy nötig
+- [x] Keine neuen Umgebungsvariablen — nichts an `.env.local.example` zu ergänzen
+- [x] Keine Geheimnisse im Diff
+- [x] Alles committet; Deploy per `git push origin main` (Vercel Auto-Deploy, wie bei PROJ-22/23)
+
+**Bekannt und akzeptiert vor dem Deploy:**
+- BUG-4 (Low): Bestätigungsdialog für Rollenwechsel zu „Bereichs-Admin" ist irreführend, wenn die Zielperson keinen Bereich hat — nice-to-have, kein Blocker.
+- Bereichs-Umschalter und „Fachbereiche verwalten" sind heute praktisch unsichtbar/leer, weil nur der Bereich SPED existiert — das ist erwartet und wird erst mit PROJ-25 sichtbar relevant.
+
+**Post-Deployment-Verifikation:** siehe Antwort im Chat nach dem Push (Vercel-Deployment-Status geprüft über die Vercel-Integration).
