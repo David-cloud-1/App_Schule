@@ -38,7 +38,6 @@ function makeAdminSupabase(overrides: {
   queryCount?: number
   insertData?: unknown
   insertError?: unknown
-  departmentQuestionIds?: { question_id: string }[]
 } = {}) {
   const questionInsertBuilder = {
     insert: vi.fn().mockReturnThis(),
@@ -53,20 +52,14 @@ function makeAdminSupabase(overrides: {
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockResolvedValue({ error: null }),
   }
-  // Zwei verschiedene Aufrufmuster auf derselben Tabelle: der alte
-  // Fach-Filter awaitet direkt nach .eq(...) (→ then()), der neue
-  // Bereichs-Filter (fetchQuestionIdsForDepartment, PROJ-24) hängt noch
-  // .order()/.range() an.
+  // Nur noch für den POST-Pfad (Fach-Verknüpfung beim Anlegen) gebraucht —
+  // der Bereichsfilter im GET läuft jetzt direkt über einen aliasierten
+  // Inner-Join-Embed auf der questions-Query selbst (PROJ-24-Hotfix,
+  // 2026-10-01), nicht mehr über eine vorab geladene ID-Liste.
   const questionSubjectsBuilder = {
     insert: vi.fn().mockResolvedValue({ error: null }),
     select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    range: vi.fn().mockResolvedValue({
-      data: overrides.departmentQuestionIds ?? [{ question_id: 'q1' }],
-      error: null,
-    }),
-    then: (resolve: (v: unknown) => unknown) => resolve({ data: [], error: null }),
+    eq: vi.fn().mockResolvedValue({ data: [], error: null }),
   }
   const subjectBuilder = {
     select: vi.fn().mockReturnThis(),
@@ -184,15 +177,34 @@ describe('GET /api/admin/questions', () => {
     expect(body.totalPages).toBe(1)
   })
 
-  it('returns empty results when the department has no questions at all (PROJ-24)', async () => {
+  it('returns empty results when the department has no matching questions (PROJ-24)', async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeAdminSupabase({ departmentQuestionIds: [], queryData: [{ id: 'q1' }], queryCount: 1 }) as never
+      makeAdminSupabase({ queryData: [], queryCount: 0 }) as never
     )
     const res = await GET(makeRequest('GET'))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.questions).toHaveLength(0)
     expect(body.total).toBe(0)
+  })
+
+  it('filters by department via the aliased inner-join embed, not a pre-fetched ID list (PROJ-24 hotfix)', async () => {
+    const mock = makeAdminSupabase({ queryData: [{ id: 'q1', question_text: 'Test?', answer_options: [], question_subjects: [] }], queryCount: 1 })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await GET(makeRequest('GET'))
+    const questionsCall = mock.from.mock.results.find(
+      (r, i) => mock.from.mock.calls[i][0] === 'questions'
+    )
+    expect(questionsCall).toBeDefined()
+    const builder = questionsCall!.value
+    expect(builder.select).toHaveBeenCalledWith(
+      expect.stringContaining('qs_filter:question_subjects!inner'),
+      expect.anything()
+    )
+    expect(builder.eq).toHaveBeenCalledWith('qs_filter.subjects.department_id', 'dept-sped')
+    // Kein .in('id', [...]) mehr — genau das erzeugte bei ~3800 Fragen eine
+    // zu lange URL und ließ die Anfrage scheitern.
+    expect(builder.in).not.toHaveBeenCalled()
   })
 
   it('returns 400 for invalid query params', async () => {

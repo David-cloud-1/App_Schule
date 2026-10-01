@@ -303,3 +303,17 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - Bereichs-Umschalter und „Fachbereiche verwalten" sind heute praktisch unsichtbar/leer, weil nur der Bereich SPED existiert — das ist erwartet und wird erst mit PROJ-25 sichtbar relevant.
 
 **Post-Deployment-Verifikation:** siehe Antwort im Chat nach dem Push (Vercel-Deployment-Status geprüft über die Vercel-Integration).
+
+### Incident: „Fragen"-Liste nach dem Deploy leer (BUG-5, Critical, behoben)
+
+**Gemeldet:** 2026-10-01, direkt nach dem Go-Live, vom Nutzer per Screenshot (Admin-Panel → Fragen → „0 Fragen insgesamt").
+
+**Ursache:** `GET /api/admin/questions` und `GET /api/admin/questions/export` luden für den Bereichsfilter vorab **alle** Fragen-IDs des Bereichs (bei SPED: 3846) und übergaben sie als `.in('id', [...])` — das erzeugt eine URL mit ca. 140.000 Zeichen und überschreitet jedes URL-Längenlimit. Die Anfrage scheiterte dadurch für **jeden** Admin (Super-Admin wie Bereichs-Admin), nicht nur in einem Spezialfall — da beide Routen denselben fehlerhaften Code-Pfad nutzten, sobald kein engerer Fach-Filter gesetzt war (der Normalfall beim Öffnen der Fragen-Liste).
+
+**Diagnose:** Weder `npm test` (Mocks prüfen nur, dass der Code die Postgrest-Query korrekt *aufbaut*, nicht die tatsächliche URL-Länge) noch `npm run build` hätten das je gefunden — nötig war ein Live-Test gegen die echte Produktions-DB mit einer echten, authentifizierten Session (ein eigens angelegtes, danach wieder gelöschtes Testkonto), um die tatsächliche PostgREST-Anfrage nachzustellen.
+
+**Fix:** Der Bereichsfilter läuft jetzt direkt über einen zweiten, aliasierten Inner-Join-Embed derselben Beziehung (`qs_filter:question_subjects!inner(subjects!inner(department_id))`) auf der `questions`-Hauptabfrage selbst — keine vorab geladene ID-Liste mehr, keine lange URL. Live gegen Produktion mit echter Session verifiziert (korrekte Zeilen- und Gesamtzahl für SPED), zusätzlich ein neuer Vitest-Test, der `.in('id', …)` explizit als NICHT mehr aufgerufen prüft, um diese Regression dauerhaft abzufangen. 560/560 Tests grün, Build grün.
+
+**Severity:** Critical (Kernfunktion „Fragen verwalten" für jeden Admin unbenutzbar), aber sehr kurze Lebensdauer (innerhalb derselben Session gefunden und behoben, kein weiterer Nutzer betroffen außer dem meldenden Admin).
+
+**Lehre für künftige Durchläufe:** Bei Mengen-Filtern (IDs aus einer Zwischenabfrage) immer die realistische Datenmenge bedenken — `.in()` mit potenziell tausenden Werten ist bei PostgREST/Supabase-REST ein Anti-Pattern; ein aliasierter Inner-Join-Filter auf derselben Beziehung ist der richtige Weg. Gehört in die nächste Überarbeitung der Backend-Checkliste.

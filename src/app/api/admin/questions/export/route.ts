@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
-import { fetchQuestionIdsForDepartment } from '@/lib/subject-questions'
 
 const ExportQuerySchema = z.object({
   q: z.string().optional(),
@@ -46,33 +45,18 @@ export async function GET(request: NextRequest) {
       },
     })
 
-  // Fragen haben keine eigene department_id — ohne diesen Filter exportierte
-  // jeder Admin den kompletten Bestand aller Bereiche (PROJ-24).
-  const departmentQuestionIds = await fetchQuestionIdsForDepartment(supabase, departmentId)
-  if (departmentQuestionIds.size === 0) return emptyCsv()
-
-  let subjectFilteredIds: string[] | null = null
+  // Fragen haben keine eigene department_id — gefiltert wird über einen
+  // zweiten, aliasierten Inner-Join-Embed derselben Beziehung (qs_filter)
+  // statt über eine vorab geladene ID-Liste: Bei ~3800 Fragen pro Bereich
+  // würde eine .in('id', [...]) sonst eine URL weit über jedem Längenlimit
+  // erzeugen und die Anfrage scheitern lassen (PROJ-24-Regression, 2026-10-01).
+  let subjectId: string | null = null
   if (subject) {
     // Kürzel nur im Bereich des Admins (PROJ-22)
     const subjectRow = await resolveSubjectCode(supabase, departmentId, subject)
-
     if (!subjectRow) return emptyCsv()
-
-    const { data: links } = await supabase
-      .from('question_subjects')
-      .select('question_id')
-      .eq('subject_id', subjectRow.id)
-
-    subjectFilteredIds = (links ?? []).map((l) => l.question_id as string)
-    if (subjectFilteredIds.length === 0) return emptyCsv()
+    subjectId = subjectRow.id
   }
-
-  // Bereichsfilter mit einem eventuellen Fachfilter schneiden.
-  const idFilter = subjectFilteredIds
-    ? subjectFilteredIds.filter((id) => departmentQuestionIds.has(id))
-    : [...departmentQuestionIds]
-  if (idFilter.length === 0) return emptyCsv()
-  subjectFilteredIds = idFilter
 
   let query = supabase
     .from('questions')
@@ -80,12 +64,14 @@ export async function GET(request: NextRequest) {
       `id, question_text, explanation, difficulty, class_level, is_active,
        answer_options ( id, option_text, display_order ),
        question_subjects ( subjects ( id, code, name ) ),
-       topics ( id, name )`
+       topics ( id, name ),
+       qs_filter:question_subjects!inner ( subject_id, subjects!inner ( department_id ) )`
     )
+    .eq('qs_filter.subjects.department_id', departmentId)
     .order('created_at', { ascending: false })
     .limit(5000)
 
-  if (subjectFilteredIds) query = query.in('id', subjectFilteredIds)
+  if (subjectId) query = query.eq('qs_filter.subject_id', subjectId)
   if (difficulty) query = query.eq('difficulty', difficulty)
   if (class_level) query = query.eq('class_level', class_level)
   if (topic_id) query = query.eq('topic_id', topic_id)

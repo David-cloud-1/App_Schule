@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
-import { fetchQuestionIdsForDepartment } from '@/lib/subject-questions'
 
 const ListQuerySchema = z.object({
   q: z.string().optional(),
@@ -61,41 +60,20 @@ export async function GET(request: NextRequest) {
   const to = from + PAGE_SIZE - 1
 
   // Fragen haben keine eigene department_id — der Bereich kommt über das
-  // verknüpfte Fach. Ohne diesen Filter sähe jeder Admin alle Bereiche (PROJ-24).
-  const departmentQuestionIds = await fetchQuestionIdsForDepartment(supabase, departmentId)
-  if (departmentQuestionIds.size === 0) {
-    return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
-  }
-
-  // Resolve subject filter to question ids
-  let subjectFilteredIds: string[] | null = null
+  // verknüpfte Fach. Gefiltert wird über einen zweiten, aliasierten
+  // Inner-Join-Embed derselben Beziehung (qs_filter) statt über eine
+  // vorab geladene ID-Liste: Bei ~3800 Fragen pro Bereich würde eine
+  // .in('id', [...]) sonst eine URL weit über jedem Längenlimit erzeugen
+  // und die Anfrage scheitern lassen (PROJ-24-Regression, 2026-10-01).
+  let subjectId: string | null = null
   if (subject) {
     // Kürzel nur im Bereich des Admins (PROJ-22)
     const subjectRow = await resolveSubjectCode(supabase, departmentId, subject)
-
     if (!subjectRow) {
       return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
     }
-
-    const { data: links } = await supabase
-      .from('question_subjects')
-      .select('question_id')
-      .eq('subject_id', subjectRow.id)
-
-    subjectFilteredIds = (links ?? []).map((l) => l.question_id as string)
-    if (subjectFilteredIds.length === 0) {
-      return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
-    }
+    subjectId = subjectRow.id
   }
-
-  // Bereichsfilter mit einem eventuellen Fachfilter schneiden.
-  const idFilter = subjectFilteredIds
-    ? subjectFilteredIds.filter((id) => departmentQuestionIds.has(id))
-    : [...departmentQuestionIds]
-  if (idFilter.length === 0) {
-    return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
-  }
-  subjectFilteredIds = idFilter
 
   let query = supabase
     .from('questions')
@@ -111,14 +89,16 @@ export async function GET(request: NextRequest) {
         created_at,
         answer_options ( id, option_text, display_order ),
         question_subjects ( subjects ( id, code, name ) ),
-        topics ( id, name )
+        topics ( id, name ),
+        qs_filter:question_subjects!inner ( subject_id, subjects!inner ( department_id ) )
       `,
       { count: 'exact' }
     )
+    .eq('qs_filter.subjects.department_id', departmentId)
     .order(sort, { ascending: sort_dir === 'asc' })
 
-  if (subjectFilteredIds) {
-    query = query.in('id', subjectFilteredIds)
+  if (subjectId) {
+    query = query.eq('qs_filter.subject_id', subjectId)
   }
   if (difficulty) {
     query = query.eq('difficulty', difficulty)
@@ -153,13 +133,17 @@ export async function GET(request: NextRequest) {
   // is_correct via the service client: the authenticated role (admins
   // included) no longer has SELECT on that column (PROJ-21).
   const withKey = await attachAnswerKey(data ?? [])
-  const questions = withKey.map((q) => ({
-    ...q,
-    answer_options: [...(q.answer_options ?? [])].sort(
-      (a: { display_order: number }, b: { display_order: number }) =>
-        a.display_order - b.display_order
-    ),
-  }))
+  const questions = withKey.map((q) => {
+    // qs_filter diente nur dem Bereichsfilter (s. o.) und gehört nicht in die Antwort.
+    const { qs_filter: _qsFilter, ...rest } = q as typeof q & { qs_filter?: unknown }
+    return {
+      ...rest,
+      answer_options: [...(rest.answer_options ?? [])].sort(
+        (a: { display_order: number }, b: { display_order: number }) =>
+          a.display_order - b.display_order
+      ),
+    }
+  })
 
   const total = count ?? 0
   const totalPages = total === 0 ? 0 : Math.ceil(total / PAGE_SIZE)

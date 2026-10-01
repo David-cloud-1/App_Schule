@@ -30,27 +30,6 @@ export async function fetchActiveQuestionSubjects(
   return rows.map(({ subject_id, question_id }) => ({ subject_id, question_id }))
 }
 
-/**
- * Alle Fragen-IDs eines Fachbereichs (aktiv und inaktiv — für die Admin-Liste,
- * die auch inaktive Fragen verwaltet). Fragen haben keine eigene
- * department_id-Spalte (PROJ-22-Entscheidung); der Bereich kommt über das
- * verknüpfte Fach.
- */
-export async function fetchQuestionIdsForDepartment(
-  supabase: SupabaseClient,
-  departmentId: string,
-): Promise<Set<string>> {
-  const { rows } = await fetchAllRows<{ question_id: string }>('question_subjects', (from, to) =>
-    supabase
-      .from('question_subjects')
-      .select('question_id, subjects!inner(department_id)')
-      .eq('subjects.department_id', departmentId)
-      .order('question_id')
-      .range(from, to),
-  )
-  return new Set(rows.map((r) => r.question_id))
-}
-
 /** Group active question IDs by subject ID. */
 export function groupQuestionIdsBySubject(
   links: QuestionSubjectLink[],
