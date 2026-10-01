@@ -1,6 +1,6 @@
 # PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-01
 **Last Updated:** 2026-10-01
 
@@ -113,6 +113,21 @@ Es entstehen **keine neuen Tabellen und keine neuen Spalten** — nur neue Zeile
 ### D) Abhängigkeiten (Pakete)
 
 Keine. Es wird keine neue Bibliothek und kein neuer Dienst gebraucht.
+
+## Implementation Notes (Backend Developer)
+
+**Migration `20261001_proj25_tourismus_bootstrap.sql` (angewendet auf Produktion, 2026-10-01):**
+- Fachbereich `TOUR` angelegt: `Tourismuskaufleute` / `TouristikLern`, Adresse `touristiklern.vercel.app`, Münzname „Reisetaler“, Hofname „Reisebüro“ (Kurzform „Büro“), Klassenstufen `{10,11,12}`, `sort_order=2`
+- 3 Prüfungsteile angelegt: `GPT` (Geschäftsprozesse im Tourismus, 150 Min, Richtwert 30 Fragen), `KSD` (Kaufm. Steuerung & Dienstleistungen, 90 Min, 15 Fragen), `WISO` (Wirtschafts- & Sozialkunde, 60 Min, 15 Fragen) — Farben/Icons an die bestehende Spedition-Palette angeglichen (Blau/Orange/Lila je Teil-Nummer, app-weit konsistent)
+- Bewusst **kein** `default_subject_id` je Teil gesetzt (keine Fächer vorhanden) und **keine** Fächer/Shop-Artikel/Pseudonym-Wortliste/Lehrkraft-Rolle — wie in der Spec festgelegt
+- Rückweg: `20261001_proj25_tourismus_bootstrap_down.sql` (löscht `TOUR` nur, solange keine Fächer/Nutzer/Prüfungssets dort hängen — durch bestehende Fremdschlüssel technisch erzwungen)
+
+**Kein Anwendungscode geändert** — wie im Tech Design vorgesehen. Verifiziert direkt nach der Migration:
+- Spedition unverändert: 5 Fächer weiterhin SPED, Profilanzahl unverändert (organisches Wachstum durch reale Nutzung seit der letzten Prüfung, nicht durch diese Migration verursacht)
+- Tourismus korrekt leer: 0 Fächer, 0 Profile unter `TOUR`
+- `npm test` (560/560) und `npm run build` weiterhin grün (unverändert, da kein Code angefasst wurde)
+
+**Für die QA-Prüfung noch offen:** Live-Verhalten der Login-/Registrierseite auf `touristiklern.vercel.app` (Branding, automatische Bereichszuordnung neuer Azubis) sowie Sichtbarkeit von „Tourismuskaufleute“ im Bereichs-Umschalter des Super-Admin — beides sollte jetzt automatisch funktionieren (PROJ-22/23/24-Mechanik), aber noch nicht erneut einzeln verifiziert.
 
 ## QA Test Results
 _To be added by /qa_
