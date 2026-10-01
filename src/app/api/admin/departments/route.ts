@@ -27,14 +27,30 @@ const CreateSchema = z.object({
 })
 
 /**
- * Liste aller Fachbereiche — für beide Admin-Rollen lesbar (departments ist
- * per RLS ohnehin öffentlich lesbar, z. B. für Login-Seiten; department_admin
- * braucht die Liste, um eigene Azubis gezielt in einen anderen Bereich
- * abzugeben). Anlegen/Bearbeiten bleibt Super-Admin-only (PROJ-24, E9).
+ * Liste aller Fachbereiche. department_admin braucht sie nur, um eigene
+ * Azubis gezielt in einen anderen Bereich abzugeben — bekommt deshalb
+ * ausschließlich die dafür nötigen, unkritischen Felder (id/name/code/
+ * domain), keine internen Konfigurationsfelder fremder Bereiche wie
+ * prompt_notes (PROJ-24 BUG-3, Fund aus der Runde-2-QA). Volle Daten und
+ * Anlegen/Bearbeiten bleiben Super-Admin-only (PROJ-24, E9).
  */
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
+
+  if (!auth.isSuperAdmin) {
+    const { data, error } = await auth.supabase
+      .from('departments')
+      .select('id, name, code, domain')
+      .order('sort_order')
+      .order('created_at')
+
+    if (error) {
+      console.error('[GET /api/admin/departments]', error)
+      return NextResponse.json({ error: 'Fachbereiche konnten nicht geladen werden.' }, { status: 500 })
+    }
+    return NextResponse.json({ departments: data ?? [] })
+  }
 
   const { data, error } = await auth.supabase
     .from('departments')

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, POST } from './route'
 import { NextRequest } from 'next/server'
-import { chainMock, hasCall } from '@/test/supabase-chain-mock'
+import { chainMock, hasCall, selectArg } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -39,8 +39,10 @@ function makeRequest(body?: unknown) {
   })
 }
 
+let lastMock: ReturnType<typeof chainMock>
+
 function makeSupabase(role: 'admin' | 'department_admin' = 'admin', insertError: unknown = null) {
-  const { client } = chainMock((table, calls) => {
+  lastMock = chainMock((table, calls) => {
     if (table === 'profiles') return { data: { role, department_id: 'dept-sped' } }
     if (table === 'admin_audit_log') return {}
     if (table === 'departments') {
@@ -51,7 +53,7 @@ function makeSupabase(role: 'admin' | 'department_admin' = 'admin', insertError:
   }, {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1', email: 'u1@example.com' } } }) },
   })
-  return client
+  return lastMock.client
 }
 
 const validCreateBody = {
@@ -75,13 +77,24 @@ describe('GET /api/admin/departments', () => {
     expect(res.status).toBe(200)
   })
 
-  it('lists all departments for the super-admin', async () => {
+  it("department_admin only gets the trimmed fields, not other departments' internal config (PROJ-24 BUG-3)", async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('department_admin') as never)
+    await GET()
+    const list = lastMock.queries.find((q) => q.table === 'departments')!
+    const requestedColumns = selectArg(list.calls)
+    expect(requestedColumns).toBe('id, name, code, domain')
+    expect(requestedColumns).not.toContain('prompt_notes')
+    expect(requestedColumns).not.toContain('prompt_role')
+  })
+
+  it('lists all departments with full fields for the super-admin', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase('admin') as never)
     const res = await GET()
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.departments).toHaveLength(1)
     expect(body.departments[0].code).toBe('SPED')
+    expect(body.departments[0].promptNotes).toBeDefined()
   })
 })
 

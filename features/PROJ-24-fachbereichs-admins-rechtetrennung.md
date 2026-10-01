@@ -241,6 +241,7 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - [x] Super-Admin versucht, die eigene Rolle zu ändern → Button ist im UI deaktiviert (`disabled={isSelf}`), zusätzlich serverseitig durch „Du kannst dich nicht selbst bearbeiten" (400) und den Letzter-Admin-Trigger abgesichert — dreifach abgesichert.
 
 #### BUG-3: `GET /api/admin/departments` liefert department_admin interne Felder fremder Bereiche
+- **Status: BEHOBEN (2026-10-01)** — `GET /api/admin/departments` fragt für `department_admin` jetzt nur noch `id, name, code, domain` ab (eigener Code-Pfad vor dem vollen `DEPARTMENT_COLUMNS`-Select für Super-Admin). Mit Vitest verifiziert: `requestedColumns` enthält weder `prompt_notes` noch `prompt_role`; Super-Admin erhält weiterhin alle Felder (`promptNotes` im Response vorhanden). `npm test` (559/559) und `npm run build` danach grün.
 - **Severity:** Medium
 - **Mechanismus:** Für den „In anderen Fachbereich verschieben"-Dialog wurde `GET /api/admin/departments` in diesem Durchlauf für beide Rollen geöffnet (siehe Implementation Notes unten). Die Route liefert aber weiterhin das volle `Department`-Objekt für **alle** Bereiche — inklusive `promptNotes` (interner Freitext der Lehrkraft für den Fragen-Prompt), `promptRole`, `targetGroup`, `pseudonymNouns` und `classLevels` — nicht nur die für den Dialog tatsächlich nötigen Felder `id`/`name`/`code`/`domain`. Ein `department_admin` sieht damit interne Konfigurationstexte fremder Bereiche, sobald ein zweiter Bereich existiert.
 - **Steps to Reproduce:** Als `department_admin` in der Nutzerverwaltung bei einem Azubi auf „In anderen Fachbereich verschieben" klicken → Netzwerk-Tab zeigt die Antwort von `GET /api/admin/departments` mit den vollen Feldern aller Bereiche, nicht nur des eigenen.
@@ -255,10 +256,10 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 
 ### Summary (Runde 2, gesamt)
 - **Acceptance Criteria:** 14/14 vollständig bestanden
-- **Bugs Found (Runde 2):** 2 neu (1 Medium — BUG-3, offen; 1 Low — BUG-4, offen), zusätzlich zu den aus Runde 1 bereits geklärten BUG-1/BUG-2
-- **Security:** Kein Critical/High-Fund in dieser Runde; BUG-3 ist ein echter, aber aktuell folgenloser Informationsleck (kein zweiter Bereich vorhanden)
-- **Production Ready:** **YES** — kein Critical/High-Bug offen; BUG-3 sollte vor PROJ-25 behoben werden, blockiert aber nicht den Abschluss von PROJ-24
-- **Recommendation:** Status auf **Approved** setzen. BUG-3 als Aufgabe für den PROJ-25-Vorlauf (oder einen kurzen Folge-`/backend`-Durchlauf) vormerken.
+- **Bugs Found (Runde 2):** 2 neu — 1 Medium (**BUG-3, behoben**), 1 Low (BUG-4, offen, nice-to-have), zusätzlich zu den aus Runde 1 bereits geklärten BUG-1/BUG-2
+- **Security:** Kein Critical/High-Fund in dieser Runde; BUG-3 behoben und verifiziert
+- **Production Ready:** **YES** — kein Critical/High/Medium-Bug mehr offen
+- **Recommendation:** Status **Approved**, bereit für `/deploy`.
 
 ## Implementation Notes (Frontend Developer)
 
