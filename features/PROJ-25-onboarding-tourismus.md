@@ -1,6 +1,6 @@
 # PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-01
 **Last Updated:** 2026-10-01
 
@@ -174,4 +174,20 @@ Keine.
 - **Recommendation:** Status auf **Approved**. Kein `/deploy` nötig — es gibt keinen neuen Anwendungscode, die Migration wirkt bereits seit ihrer Anwendung live. Die Spec kann direkt als **Deployed** geführt werden, sobald das bestätigt ist.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-10-01
+**Production URL:** https://spedilern.vercel.app (Super-Admin, Bereichs-Umschalter) und https://touristiklern.vercel.app (neuer Fachbereich)
+**Vercel-Projekt:** `spedilern` (`prj_cd5B6uCEbsCyrwuMmprc1PkBViO5`)
+
+**Besonderheit dieses Deploys:** Kein neuer Anwendungscode — die Datenmigration (`20261001_proj25_tourismus_bootstrap.sql`) wurde bereits während `/backend` direkt gegen Produktion angewendet und während `/qa` live verifiziert (u. a. `touristiklern.vercel.app` antwortet bereits mit korrektem Branding). Dieser Schritt ist reine Buchführung: ausstehende Commits (Spec, Design, Backend, QA) nach `origin/main` pushen, damit Repo-Historie und Produktionsstand übereinstimmen, plus Git-Tag.
+
+**Pre-Deployment-Checks:**
+- [x] `npm run build` lokal erfolgreich (zuletzt während `/qa` geprüft)
+- [ ] `npm run lint` — weiterhin derselbe vorbestehende, nicht PROJ-bezogene ESLint-v9-Konfigurationsfehler (siehe PROJ-24 QA)
+- [x] QA-Status: **Approved** (8/8 Acceptance Criteria, keine Bugs)
+- [x] Datenbank-Migration bereits angewendet und verifiziert — kein weiterer Migrationsschritt nötig
+- [x] Keine neuen Umgebungsvariablen
+- [x] Keine Geheimnisse im Diff
+- [x] Alle 4 ausstehenden PROJ-25-Commits gepusht (Spec, Tech Design, Backend, QA)
+
+**Post-Deployment-Verifikation:** siehe Antwort im Chat nach dem Push (Vercel-Build-Status geprüft, obwohl funktional unverändert — reiner Bookkeeping-Push kann trotzdem einen Rebuild auslösen).
