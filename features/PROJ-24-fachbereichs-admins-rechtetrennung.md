@@ -261,6 +261,13 @@ Keine neuen Pakete nötig. Es werden ausschließlich bereits installierte shadcn
 - **Production Ready:** **YES** — kein Critical/High/Medium-Bug mehr offen
 - **Recommendation:** Status **Approved**, bereit für `/deploy`.
 
+### Post-Deployment: BUG-5 — Bereichs-Umschalter wirkte nicht in der Nutzerverwaltung (gemeldet 2026-10-01, sofort behoben)
+- **Status: BEHOBEN (2026-10-01)**
+- **Severity:** Medium (sichtbare Falschanzeige, kein Datenleck — alle Felder waren ohnehin nur für Admin-Rollen zugänglich)
+- **Meldung:** Nutzer berichtet, dass im Admin-Panel unter „Nutzer" trotz Auswahl „Tourismuskaufleute" im Bereichs-Umschalter weiterhin alle 93 Nutzer (inkl. Spedition) angezeigt wurden.
+- **Ursache:** `GET /api/admin/users` ([src/app/api/admin/users/route.ts](../src/app/api/admin/users/route.ts)) filterte den Fachbereich nur für `department_admin`, nicht für Super-Admin (`if (!isSuperAdmin) query = query.eq('department_id', departmentId)`). `requireAdmin()` liefert den `departmentId` für Super-Admin aber bereits korrekt aus dem Bereichs-Umschalter-Cookie — die Route hat diesen Wert schlicht ignoriert.
+- **Fix:** Der Filter `.eq('department_id', departmentId)` wird jetzt immer angewendet, unabhängig von der Rolle — auf Nutzerentscheidung hin soll der Umschalter für Super-Admins ausnahmslos den gewählten Bereich filtern. Test ergänzt (`route.test.ts`: „filters by the chosen department even for a super-admin"). `npm test` für die Route grün (5/5).
+
 ## Implementation Notes (Frontend Developer)
 
 **Neue Seiten:**

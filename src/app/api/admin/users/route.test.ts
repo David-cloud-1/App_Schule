@@ -50,6 +50,7 @@ function makeAdminClient() {
 function makeServiceClient(profilesData = mockProfiles, profilesError: unknown = null) {
   const profilesBuilder = {
     select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
   }
   return {
@@ -104,6 +105,17 @@ describe('GET /api/admin/users', () => {
     expect(body.users).toHaveLength(2)
     expect(body.users[0].email).toBe('alice@test.com')
     expect(body.users[0].banned).toBe(false)
+  })
+
+  it('filters by the chosen department even for a super-admin (PROJ-24 Bereichs-Umschalter)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
+    const service = makeServiceClient()
+    vi.mocked(createServiceClient).mockReturnValue(service as never)
+
+    await GET()
+
+    const profilesBuilder = service.from.mock.results[0].value
+    expect(profilesBuilder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
   })
 
   it('returns 500 when profiles query fails', async () => {
