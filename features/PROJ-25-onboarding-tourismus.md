@@ -1,6 +1,6 @@
 # PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-01
 **Last Updated:** 2026-10-01
 
@@ -68,7 +68,51 @@ Quellen: [Verordnung ReiseKfmAusbV 2011](https://www.gesetze-im-internet.de/reis
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Was sichtbar wird (kein neues UI nötig)
+
+PROJ-25 baut **keine einzige neue Bildschirmkomponente**. Es füllt nur zwei bestehende Datentöpfe mit Inhalt, die alle schon gebauten Admin-Seiten automatisch aufgreifen:
+
+```
+Bereichs-Umschalter (Kopfzeile, Super-Admin, aus PROJ-24)
+ └── zeigt ab jetzt 2 Einträge statt 1: „Speditionskaufleute“, „Tourismuskaufleute“
+      └── Super-Admin wechselt auf „Tourismuskaufleute“
+           ├── Fächer-Seite           → leer, „Neues Fach“-Formular funktioniert sofort
+           ├── Hof-Items-Seite        → leer, „Neues Item“-Formular funktioniert sofort
+           ├── Prüfungssets-Seite     → Teil-Auswahl zeigt die 3 echten Tourismus-Teile
+           ├── Nutzer-Seite           → zunächst leer, bis sich jemand über touristiklern.vercel.app registriert
+           └── Fachbereich-Einstellungen → zeigt Name, Adresse, Münz-/Hofname, editierbar
+```
+
+Login-/Registrierseite auf `touristiklern.vercel.app` zeigt ab sofort automatisch Name „TouristikLern“ und eigenes Branding (Mechanismus aus PROJ-22/23, läuft allein über die Host-Adresse — keine neue Logik).
+
+### B) Datenmodell (in einfachen Worten)
+
+Es entstehen **keine neuen Tabellen und keine neuen Spalten** — nur neue Zeilen in zwei bereits bestehenden Tabellen:
+
+- **Ein neuer Fachbereichs-Datensatz** „Tourismuskaufleute“: Name, App-Name „TouristikLern“, Adresse `touristiklern.vercel.app`, Münzname „Reisetaler“, Hofname „Reisebüro“, Klassenstufen 10–12, sowie die Texte, die den KI-Prompt für Tourismus-Fragen später automatisch zusammensetzen (Rolle „Experte für Tourismuskaufleute (Privat-/Geschäftsreisen), IHK Bayern“, Zielgruppe „angehende Tourismuskaufleute“).
+- **Drei neue Prüfungsteil-Datensätze**, mit den recherchierten echten IHK-Werten:
+
+  | Teil | Titel | Dauer | Richtwert Fragenanzahl (App-Quiz, anpassbar) |
+  |---|---|---|---|
+  | 1 | Geschäftsprozesse im Tourismus | 150 Min | 30 |
+  | 2 | Kaufmännische Steuerung & Dienstleistungen | 90 Min | 15 |
+  | 3 | Wirtschafts- und Sozialkunde | 60 Min | 15 |
+
+  Die Fragenanzahl ist ein reiner App-Komfortwert für die Prüfungssimulation (kein IHK-Wert) — an der echten Dauer und Gewichtung orientiert, später vom Super-Admin änderbar.
+- **Bewusst leer gelassen:** keine Fächer, keine Shop-Artikel, keine Pseudonym-Wortliste (nutzt den bestehenden neutralen Rückfall „Entdecker“, „Lerner“ usw., bis die Lehrkraft eigene Wörter wünscht), keine zugeordnete Lehrkraft.
+- Gespeichert wird weiterhin ausschließlich in der bestehenden Supabase-Datenbank.
+
+### C) Technische Entscheidungen (Begründung)
+
+- **Datenmigration statt neuer Oberfläche:** Einen Fachbereich samt Prüfungsstruktur anzulegen ist ein seltenes, einmaliges Ereignis (bisher genau einmal für Spedition passiert). Dafür eine dauerhafte „Prüfungsteile verwalten“-Seite zu bauen wäre Aufwand für eine Aktion, die vermutlich nie wieder gebraucht wird, solange nicht ständig neue Ausbildungsberufe dazukommen. Genau nach diesem Muster wurde auch Spedition ursprünglich angelegt.
+- **Fächer/Shop-Artikel/Lehrkraft bewusst leer:** Diese Entscheidungen gehören inhaltlich der Tourismus-Lehrkraft, nicht dem Super-Admin — und die Werkzeuge dafür (Fächer-Seite, Hof-Items-Seite, Nutzerverwaltung mit Rollenvergabe) existieren bereits vollständig aus PROJ-9, PROJ-20 und PROJ-24. Sie jetzt vorab mit geratenen Inhalten zu befüllen würde nur Arbeit erzeugen, die später wieder verworfen wird.
+- **Warum die reale IHK-Struktur statt eigener Annahmen:** Die Prüfungsteile bestimmen später, wie Prüfungssimulationen und benotete Leistungsnachweise aufgebaut sind — falsche Werte wären für die Lehrkraft mühsam nachträglich zu korrigieren. Die recherchierten Werte (Dauer, Gewichtung, Teil-Namen) stammen direkt aus der Ausbildungsverordnung und IHK-Quellen.
+- **Keine Infrastruktur-Arbeit:** Adresse und Weiterleitung für `touristiklern.vercel.app` sind laut Plan-Dokument bereits eingerichtet — PROJ-25 muss daran nichts ändern.
+
+### D) Abhängigkeiten (Pakete)
+
+Keine. Es wird keine neue Bibliothek und kein neuer Dienst gebraucht.
 
 ## QA Test Results
 _To be added by /qa_
