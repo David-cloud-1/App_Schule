@@ -59,6 +59,7 @@ REGELN:
 - Schwierigkeit: "leicht" (Grundwissen), "mittel" (Anwendung), "schwer" (Analyse/Transfer)
 - Erklärung warum die Antwort korrekt ist (1-2 Sätze)
 - Maximal 75 Fragen
+- Die Anzahl richtet sich nach dem tatsächlichen Stoffumfang des Dokuments, nicht nach einer Zielzahl — bei einem kurzen Dokument sind deutlich weniger als 75 Fragen normal und richtig. Lieber wenige gute Fragen als Fragen erzwingen oder wiederholen.
 ${classLevelRule(department.classLevels)}
 
 ${buildQualityRules(department.targetGroup)}${notesBlock}

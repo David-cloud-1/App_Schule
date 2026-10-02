@@ -33,13 +33,21 @@ const NEUTRALIZED_EXAMPLES: [string, string][] = [
   ['"Ein Lkw hat Fixkosten von 224 € je Tag.', '"Eine Maschine hat Fixkosten von 224 € je Tag.'],
 ]
 
+// Zusätzliche, bewusste Neuerung (2026-10-02): Fachbereiche mit kurzen
+// Dokumenten (z. B. Tourismus) sollen nicht auf 75 Fragen hin "aufgefüllt"
+// werden. Siehe [[tourismus-kurze-skripte-prompt]] in docs/Memory.
+const ADDED_RULE_LINE =
+  '- Die Anzahl richtet sich nach dem tatsächlichen Stoffumfang des Dokuments, nicht nach einer Zielzahl — bei einem kurzen Dokument sind deutlich weniger als 75 Fragen normal und richtig. Lieber wenige gute Fragen als Fragen erzwingen oder wiederholen.\n'
+
 describe('buildQuestionPrompt', () => {
-  it('erzeugt für Spedition exakt den bisherigen Prompt (bis auf die neutralisierten Beispiele)', () => {
+  it('erzeugt für Spedition exakt den bisherigen Prompt (bis auf die neutralisierten Beispiele und die neue Mengen-Regel)', () => {
     let expected = BEFORE
     for (const [from, to] of NEUTRALIZED_EXAMPLES) {
       expect(expected).toContain(from)
       expected = expected.replace(from, to)
     }
+    expect(expected).toContain('- Maximal 75 Fragen\n')
+    expected = expected.replace('- Maximal 75 Fragen\n', `- Maximal 75 Fragen\n${ADDED_RULE_LINE}`)
     expect(buildQuestionPrompt(SPED, SPED_SUBJECTS)).toBe(expected)
   })
 
