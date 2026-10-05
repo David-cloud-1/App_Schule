@@ -14,6 +14,17 @@
  * Bereich eingesetzt (PROJ-22). Beispiele deshalb fachneutral halten.
  */
 
+/**
+ * Gegen Detailfragen (Nutzer-Feedback 2026-10-05): externe KIs fragen sonst
+ * jede Zahl und jeden Exkurs eines Skripts ab. Maßstab sind die Aufgaben im
+ * Dokument. Nicht deterministisch prüfbar — wirkt nur über den Prompt.
+ */
+export const DETAIL_RULE = `- KEINE EXTREMEN DETAILFRAGEN. Frage das ab, was die Schüler für Prüfung und Berufsalltag wirklich können müssen: Kernaussagen, Zusammenhänge und Anwendungen. Maßstab für Tiefe und Schwerpunkt sind die Aufgaben, Übungen und Merkkästen im Dokument — was dort abgefragt wird, gehört in die Fragen.
+   - Keine Fragen zu Exkursen, Randnotizen, Zusatz- oder Lehrerinfos und zu Fachbegriffen, die das Dokument nur einmal nebenbei erwähnt.
+   - Keine isolierten Jahreszahlen, Maße, Mengen, Prozentwerte, Namen oder Kürzel, wenn sie nicht selbst Lernziel sind. Geschichtliche Einzelheiten nur dort, wo sie die Bedeutung eines zentralen Themas erklären — nicht als eigenes Abfragewissen.
+   - Prüfe jede Frage so: Würde eine Lehrkraft sie in einer Klassenarbeit zu diesem Thema stellen? Wenn nein, weglassen. Lieber weniger Fragen zum Kern als viele zu Nebensächlichkeiten.
+`
+
 export function buildQualityRules(targetGroup: string): string {
   return `REGELN FÜR ANTWORTOPTIONEN (WICHTIG, streng einhalten):
 
@@ -37,7 +48,7 @@ WEITERE REGELN:
 - Jede Option muss die gestellte Frage grammatisch beantworten. Bei "Welche Aussage zu X ist richtig?" müssen alle Optionen Aussagen über X sein ("Sie dienen einer verursachungsgerechten Kostenrechnung"), nicht Satzfragmente wie "Für eine verursachungsgerechte Kostenrechnung".
 - Vermeide "Alle Antworten sind richtig" / "Keine der genannten" als Lückenfüller.
 - Erfinde keine Fragen zu Grundlagenbegriffen, die in anderen Dokumenten schon abgefragt sein könnten (Wirtschaftlichkeit, Einzelkosten, Break-even, Aktiv-/Passivseite, Inventur). Halte dich an die Inhalte, die dieses Dokument tatsächlich hergibt.
-- JEDE FRAGE MUSS FÜR SICH ALLEIN LÖSBAR SEIN. Die Schüler sehen in der App nur die Frage und die fünf Optionen — nicht das Dokument, keinen Text, keine Grafik, keine Tabelle, keine vorherige Aufgabe. Deshalb:
+${DETAIL_RULE}- JEDE FRAGE MUSS FÜR SICH ALLEIN LÖSBAR SEIN. Die Schüler sehen in der App nur die Frage und die fünf Optionen — nicht das Dokument, keinen Text, keine Grafik, keine Tabelle, keine vorherige Aufgabe. Deshalb:
    - Nie "laut Text", "im Text genannt", "laut Grafik", "laut Tabelle", "im Beispiel", "im Heft", "siehe oben" o. Ä. schreiben. Frage stattdessen das Fachwissen selbst ab ("Was ist das vorrangige Ziel der EZB?" statt "Was ist laut Text das oberste Ziel der EZB?").
    - Keine Fragen zu Details, die nur in der Vorlage stehen und kein prüfungsrelevantes Fachwissen sind (Zahlen aus einer Grafik, Namen und Ereignisse aus einer Beispielgeschichte, Stand eines Zinssatzes an einem bestimmten Datum).
    - Bezieht sich eine Rechen- oder Fallaufgabe auf eine Situation (Firma, Auftrag, Kalkulationsdaten), müssen ALLE nötigen Angaben in der Frage selbst stehen. Nicht "Wie hoch sind die fixen Kosten von Auftrag 3?", sondern "Eine Maschine hat Fixkosten von 224 € je Tag. Ein Auftrag dauert 1,5 Tage. Wie hoch sind die fixen Kosten des Auftrags?"

@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildQuestionPrompt, buildUploadExamContext, formatClassLevels } from './question-prompt'
-import { buildQualityRules } from './question-rules'
+import { buildQualityRules, DETAIL_RULE } from './question-rules'
 
 // Werte des Bereichs Spedition, wie sie die Migration 20260929_proj22 anlegt
 const SPED = {
@@ -39,8 +39,13 @@ const NEUTRALIZED_EXAMPLES: [string, string][] = [
 const ADDED_RULE_LINE =
   '- Die Anzahl richtet sich nach dem tatsächlichen Stoffumfang des Dokuments, nicht nach einer Zielzahl — bei einem kurzen Dokument sind deutlich weniger als 75 Fragen normal und richtig. Lieber wenige gute Fragen als Fragen erzwingen oder wiederholen.\n'
 
+// Zusätzliche, bewusste Neuerung (2026-10-05): keine extremen Detailfragen —
+// Maßstab sind die Aufgaben im Dokument. Steht in den Qualitätsregeln direkt
+// vor der Regel zur Lösbarkeit ohne Vorlage.
+const DETAIL_RULE_ANCHOR = '- JEDE FRAGE MUSS FÜR SICH ALLEIN LÖSBAR SEIN.'
+
 describe('buildQuestionPrompt', () => {
-  it('erzeugt für Spedition exakt den bisherigen Prompt (bis auf die neutralisierten Beispiele und die neue Mengen-Regel)', () => {
+  it('erzeugt für Spedition exakt den bisherigen Prompt (bis auf die neutralisierten Beispiele, die Mengen-Regel und die Detail-Regel)', () => {
     let expected = BEFORE
     for (const [from, to] of NEUTRALIZED_EXAMPLES) {
       expect(expected).toContain(from)
@@ -48,6 +53,8 @@ describe('buildQuestionPrompt', () => {
     }
     expect(expected).toContain('- Maximal 75 Fragen\n')
     expected = expected.replace('- Maximal 75 Fragen\n', `- Maximal 75 Fragen\n${ADDED_RULE_LINE}`)
+    expect(expected).toContain(DETAIL_RULE_ANCHOR)
+    expected = expected.replace(DETAIL_RULE_ANCHOR, `${DETAIL_RULE}${DETAIL_RULE_ANCHOR}`)
     expect(buildQuestionPrompt(SPED, SPED_SUBJECTS)).toBe(expected)
   })
 
