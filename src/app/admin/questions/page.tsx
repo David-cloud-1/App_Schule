@@ -781,10 +781,6 @@ export default function AdminQuestionsPage() {
                 </TableRow>
               )
               : rows.map((q) => {
-                  const truncated =
-                    q.question_text.length > 60
-                      ? q.question_text.slice(0, 60) + '…'
-                      : q.question_text
                   const codes = q.question_subjects
                     .map((qs) => qs.subjects?.code)
                     .filter(Boolean) as string[]
@@ -816,8 +812,8 @@ export default function AdminQuestionsPage() {
                           }}
                           title="Klicken für Vorschau"
                         >
-                          <span className="hover:text-[#58CC02] transition-colors">
-                            {truncated}
+                          <span className="hover:text-[#58CC02] transition-colors line-clamp-3">
+                            {q.question_text}
                           </span>
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
@@ -889,6 +885,10 @@ export default function AdminQuestionsPage() {
                       {isExpanded && (
                         <TableRow className="border-[#4B5563] bg-[#111827]/60">
                           <TableCell colSpan={9} className="p-4">
+                            {/* Vollständiger Fragetext */}
+                            <p className="mb-3 max-w-2xl text-base font-medium text-[#F9FAFB] whitespace-pre-line">
+                              {q.question_text}
+                            </p>
                             {/* Lernstatistiken */}
                             <div className="mb-3 flex items-center gap-3 text-xs text-[#9CA3AF]">
                               <Users className="w-3.5 h-3.5 shrink-0" />
