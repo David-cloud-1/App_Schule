@@ -9,6 +9,8 @@ type QuestionRow = {
   question_text: string
   type: string
   difficulty: string
+  class_level: number | null
+  topics: { name: string } | null
   question_subjects: { subject_id: string }[]
 }
 
@@ -22,7 +24,7 @@ async function fetchAllActiveQuestions(supabase: SupabaseClient): Promise<Questi
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await supabase
       .from('questions')
-      .select('id, question_text, type, difficulty, question_subjects(subject_id)')
+      .select('id, question_text, type, difficulty, class_level, topics(name), question_subjects(subject_id)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1)

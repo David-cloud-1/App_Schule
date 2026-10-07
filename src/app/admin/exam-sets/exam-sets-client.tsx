@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Loader2,
   Plus,
+  Search,
   Shield,
   ShieldOff,
   Trash2,
@@ -25,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import { useExamParts } from '@/components/department-provider'
+import { useClassLevelOptions, useExamParts } from '@/components/department-provider'
 import { examPartLabel, examPartSubjectCodes, findExamPart } from '@/lib/exam-parts'
 
 type ExamSet = {
@@ -43,8 +44,22 @@ type Question = {
   question_text: string
   type: string
   difficulty: string
+  class_level: number | null
+  topics: { name: string } | null
   question_subjects: { subject_id: string }[]
 }
+
+type PickerSort = 'newest' | 'class' | 'subject' | 'topic' | 'difficulty' | 'text'
+
+const PICKER_SORT_LABELS: Record<PickerSort, string> = {
+  newest: 'Neueste zuerst',
+  class: 'Klasse',
+  subject: 'Fach',
+  topic: 'Thema',
+  difficulty: 'Schwierigkeit',
+  text: 'Fragetext A–Z',
+}
+const DIFFICULTY_ORDER: Record<string, number> = { leicht: 0, mittel: 1, schwer: 2 }
 
 type ExtractedQuestion = {
   question_text: string
@@ -68,6 +83,7 @@ type ImportStep = 'configure' | 'extracting' | 'preview' | 'importing'
 export function ExamSetsClient({ initialSets, questions }: Props) {
   // Prüfungsaufbau des Bereichs (PROJ-22): Teile, zugehörige Fächer, Beschriftung
   const examParts = useExamParts()
+  const classLevelOptions = useClassLevelOptions()
   const partNumbers = examParts.map((p) => p.partNumber)
   const partLabel = (n: number) => {
     const part = findExamPart(examParts, n)
@@ -88,6 +104,11 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [pickerSearch, setPickerSearch] = useState('')
+  const [pickerClass, setPickerClass] = useState('all')
+  const [pickerSubject, setPickerSubject] = useState('all')
+  const [pickerTopic, setPickerTopic] = useState('all')
+  const [pickerSort, setPickerSort] = useState<PickerSort>('newest')
 
   // Import flow state
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -105,6 +126,47 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
     return questions.filter((q) =>
       q.question_subjects.some((qs) => allowedSubjectIds.includes(qs.subject_id))
     )
+  }
+
+  function subjectCodeOf(q: Question) {
+    const allSubjects = examParts.flatMap((p) => p.subjects)
+    return q.question_subjects
+      .map((qs) => allSubjects.find((s) => s.id === qs.subject_id)?.code)
+      .filter(Boolean)
+      .join('/')
+  }
+
+  function resetPickerFilters() {
+    setPickerSearch('')
+    setPickerClass('all')
+    setPickerSubject('all')
+    setPickerTopic('all')
+    setPickerSort('newest')
+  }
+
+  // Filtered + sorted view of the picker; the base order from the server is
+  // newest-first, and Array.sort is stable, so ties keep that order.
+  function getPickerQuestions(part: number) {
+    const base = getQuestionsForPart(part)
+    const needle = pickerSearch.trim().toLowerCase()
+    const allSubjects = examParts.flatMap((p) => p.subjects)
+    const list = base.filter((q) => {
+      if (needle && !q.question_text.toLowerCase().includes(needle) && !(q.topics?.name ?? '').toLowerCase().includes(needle)) return false
+      if (pickerClass !== 'all' && String(q.class_level ?? '') !== pickerClass) return false
+      if (pickerSubject !== 'all') {
+        const subjectId = allSubjects.find((s) => s.code === pickerSubject)?.id
+        if (!q.question_subjects.some((qs) => qs.subject_id === subjectId)) return false
+      }
+      if (pickerTopic !== 'all' && (q.topics?.name ?? '') !== pickerTopic) return false
+      return true
+    })
+    const byText = (a: string, b: string) => a.localeCompare(b, 'de')
+    if (pickerSort === 'class') list.sort((a, b) => (a.class_level ?? 99) - (b.class_level ?? 99))
+    else if (pickerSort === 'subject') list.sort((a, b) => byText(subjectCodeOf(a), subjectCodeOf(b)))
+    else if (pickerSort === 'topic') list.sort((a, b) => byText(a.topics?.name ?? '\uffff', b.topics?.name ?? '\uffff'))
+    else if (pickerSort === 'difficulty') list.sort((a, b) => (DIFFICULTY_ORDER[a.difficulty] ?? 9) - (DIFFICULTY_ORDER[b.difficulty] ?? 9))
+    else if (pickerSort === 'text') list.sort((a, b) => byText(a.question_text, b.question_text))
+    return list
   }
 
   async function handleToggleActive(set: ExamSet) {
@@ -419,7 +481,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
 
             <div className="space-y-2">
               <Label className="text-[#9CA3AF]">Prüfungsteil</Label>
-              <Select onValueChange={(v) => { setNewPart(Number(v)); setSelectedQuestionIds(new Set()) }}>
+              <Select onValueChange={(v) => { setNewPart(Number(v)); setSelectedQuestionIds(new Set()); resetPickerFilters() }}>
                 <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
                   <SelectValue placeholder="Teil auswählen…" />
                 </SelectTrigger>
@@ -451,8 +513,64 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 <Label className="text-[#9CA3AF]">
                   Fragen auswählen ({selectedQuestionIds.size} ausgewählt)
                 </Label>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+                  <Input
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Stichwort in Frage oder Thema…"
+                    className="pl-9 bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Select value={pickerClass} onValueChange={setPickerClass}>
+                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                      <SelectItem value="all">Alle Klassen</SelectItem>
+                      {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={pickerSubject} onValueChange={setPickerSubject}>
+                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                      <SelectItem value="all">Alle Fächer</SelectItem>
+                      {(findExamPart(examParts, newPart)?.subjects ?? []).map((s) => <SelectItem key={s.id} value={s.code}>{s.code}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={pickerTopic} onValueChange={setPickerTopic}>
+                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-h-72">
+                      <SelectItem value="all">Alle Themen</SelectItem>
+                      {[...new Set(getQuestionsForPart(newPart).map((q) => q.topics?.name).filter((n): n is string => !!n))]
+                        .sort((a, b) => a.localeCompare(b, 'de'))
+                        .map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={pickerSort} onValueChange={(v) => setPickerSort(v as PickerSort)}>
+                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                      {(Object.keys(PICKER_SORT_LABELS) as PickerSort[]).map((k) => <SelectItem key={k} value={k}>Sortieren: {PICKER_SORT_LABELS[k]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+                  <span>{getPickerQuestions(newPart).length} von {getQuestionsForPart(newPart).length} Fragen</span>
+                  <button
+                    type="button"
+                    className="text-[#1CB0F6] hover:underline"
+                    onClick={() => setSelectedQuestionIds((prev) => {
+                      const next = new Set(prev)
+                      const visible = getPickerQuestions(newPart)
+                      const allSelected = visible.length > 0 && visible.every((q) => next.has(q.id))
+                      visible.forEach((q) => (allSelected ? next.delete(q.id) : next.add(q.id)))
+                      return next
+                    })}
+                  >
+                    Alle angezeigten an-/abwählen
+                  </button>
+                </div>
                 <div className="max-h-64 overflow-y-auto space-y-1 bg-[#111827] rounded-xl p-3">
-                  {getQuestionsForPart(newPart).map((q) => (
+                  {getPickerQuestions(newPart).map((q) => (
                     <label key={q.id} className="flex items-start gap-3 py-1.5 cursor-pointer group">
                       <Checkbox
                         checked={selectedQuestionIds.has(q.id)}
@@ -475,6 +593,9 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                           q.type === 'open' ? 'text-[#FF9600]' : 'text-[#1CB0F6]',
                         )}>
                           {q.type === 'open' ? 'Offen' : 'MC'} · {q.difficulty}
+                          {q.class_level != null && ` · Kl. ${q.class_level}`}
+                          {subjectCodeOf(q) && ` · ${subjectCodeOf(q)}`}
+                          {q.topics?.name && ` · ${q.topics.name}`}
                         </span>
                       </div>
                     </label>
