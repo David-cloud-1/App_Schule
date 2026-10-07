@@ -94,7 +94,7 @@ export function SubjectSessionSheet({ subject, initialClassLevel, onClose }: Pro
     <Sheet open={!!subject} onOpenChange={(open) => { if (!open) onClose() }}>
       <SheetContent
         side="bottom"
-        className="bg-[#1F2937] border-t border-[#4B5563] rounded-t-3xl px-5 pb-8 pt-6 max-w-md mx-auto"
+        className="bg-[#1F2937] border-t border-[#4B5563] rounded-t-3xl px-5 pb-8 pt-6 max-w-md mx-auto max-h-[90dvh] overflow-y-auto overscroll-contain"
       >
         <SheetHeader className="mb-6 text-left">
           <SheetTitle className="text-[#F9FAFB] text-lg font-bold">
