@@ -122,9 +122,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       const activeIds = new Set(activeMc.map((q) => q.id))
       const frozenSnapshot = snapshot.filter((qid) => activeIds.has(qid))
+      // Explicitly opening means "joinable now": a start time still in the
+      // future (e.g. the create-dialog default of now + 5 min) would
+      // otherwise keep reporting "noch nicht freigegeben" to students.
+      const update: Record<string, unknown> = { status: 'open', question_ids_snapshot: frozenSnapshot }
+      if (new Date(assessment.opens_at).getTime() > Date.now()) {
+        update.opens_at = new Date().toISOString()
+      }
       const { error } = await supabase
         .from('graded_assessments')
-        .update({ status: 'open', question_ids_snapshot: frozenSnapshot })
+        .update(update)
         .eq('id', id)
       if (error) return NextResponse.json({ error: 'Öffnen fehlgeschlagen.' }, { status: 500 })
       await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.open', object_type: 'graded_assessment', object_id: id, object_label: assessment.title })
