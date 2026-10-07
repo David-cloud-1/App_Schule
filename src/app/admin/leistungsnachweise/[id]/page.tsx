@@ -179,7 +179,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         toast.error(data?.error ?? 'Löschen fehlgeschlagen')
         return
       }
-      toast.success('Entwurf gelöscht')
+      toast.success('Leistungsnachweis gelöscht')
       router.push('/admin/leistungsnachweise')
     } catch (err) {
       console.error(err)
@@ -288,15 +288,6 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 <Unlock size={14} className="mr-1.5" />
                 Öffnen
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => setConfirmDelete(true)}
-                disabled={actionPending}
-                className="rounded-xl border-[#FF4B4B]/30 text-[#FF4B4B] hover:bg-[#FF4B4B]/10"
-              >
-                <Trash2 size={14} className="mr-1.5" />
-                Löschen
-              </Button>
             </>
           )}
           {detail.status === 'open' && (
@@ -320,6 +311,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               Ergebnisse freigeben
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={() => setConfirmDelete(true)}
+            disabled={actionPending}
+            className="rounded-xl border-[#FF4B4B]/30 text-[#FF4B4B] hover:bg-[#FF4B4B]/10"
+          >
+            <Trash2 size={14} className="mr-1.5" />
+            Löschen
+          </Button>
           {detail.resultsReleasedAt && (
             <Badge className="bg-[#58CC02]/20 text-[#58CC02] border-0">
               Ergebnisse freigegeben · {new Date(detail.resultsReleasedAt).toLocaleString('de-DE')}
@@ -496,9 +496,11 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Entwurf löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Leistungsnachweis löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-[#9CA3AF]">
-              Der Leistungsnachweis wird endgültig gelöscht. Das geht nur, solange er noch nicht geöffnet wurde.
+              {detail.live.joined > 0
+                ? `Der Leistungsnachweis wird endgültig gelöscht – samt ${detail.live.joined} Teilnehmer-Versuch${detail.live.joined === 1 ? '' : 'en'} und allen Ergebnissen. Das lässt sich nicht rückgängig machen.`
+                : 'Der Leistungsnachweis wird endgültig gelöscht.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

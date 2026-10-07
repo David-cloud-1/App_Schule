@@ -259,8 +259,12 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     .select('id', { count: 'exact', head: true })
     .eq('assessment_id', id)
 
-  if (assessment.status !== 'draft' && (count ?? 0) > 0) {
-    return NextResponse.json({ error: 'Nur Entwürfe oder Nachweise ohne Teilnehmer können gelöscht werden.' }, { status: 400 })
+  // Attempts hang off the assessment via ON DELETE SET NULL — left behind
+  // they would turn into orphaned "normal" exams carrying assessment data,
+  // so they go together with it.
+  if ((count ?? 0) > 0) {
+    const { error: sessionsError } = await service.from('exam_sessions').delete().eq('assessment_id', id)
+    if (sessionsError) return NextResponse.json({ error: 'Löschen fehlgeschlagen.' }, { status: 500 })
   }
 
   const { error } = await supabase.from('graded_assessments').delete().eq('id', id)
