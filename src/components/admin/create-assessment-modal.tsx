@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import {
@@ -16,7 +16,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
-import { useExamPartLabel } from '@/components/department-provider'
+import { useExamParts } from '@/components/department-provider'
+import { examPartLabel } from '@/lib/exam-parts'
+import { AssessmentQuestionSelector } from './assessment-question-selector'
+import type { PickerQuestion } from './question-picker'
 
 type ExamSetOption = {
   id: string
@@ -45,9 +48,15 @@ function defaultWindow() {
   return { opensAt: toLocal(opens), closesAt: toLocal(closes) }
 }
 
+const NO_START = 'none'
+const MIN_QUESTIONS = 5
+
 export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSetId, onSuccess }: Props) {
-  const partLabel = useExamPartLabel()
-  const [setId, setSetId] = useState<string>('')
+  const examParts = useExamParts()
+  const [part, setPart] = useState<number | null>(null)
+  const [startSetId, setStartSetId] = useState<string>(NO_START)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [skippedFromSet, setSkippedFromSet] = useState(0)
   const [title, setTitle] = useState('')
   const [opensAt, setOpensAt] = useState('')
   const [closesAt, setClosesAt] = useState('')
@@ -56,25 +65,102 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
+  // Fragen-IDs des zuletzt geladenen Teils und eine noch ausstehende Set-Vorauswahl:
+  // Set-Fragen werden erst nach dem Laden gegen die wählbaren Fragen abgeglichen
+  // (offene und deaktivierte Fragen fallen heraus).
+  const loadedRef = useRef<{ part: number; ids: Set<string> } | null>(null)
+  const pendingSetRef = useRef<string[] | null>(null)
+
+  function applySetQuestions(questionIds: string[], forPart: number) {
+    if (loadedRef.current?.part === forPart) {
+      const ids = loadedRef.current.ids
+      const kept = questionIds.filter((id) => ids.has(id))
+      setSelectedIds(new Set(kept))
+      setSkippedFromSet(questionIds.length - kept.length)
+      pendingSetRef.current = null
+    } else {
+      pendingSetRef.current = questionIds
+      setSelectedIds(new Set())
+      setSkippedFromSet(0)
+    }
+  }
+
+  // Aktuell gewählter Teil, synchron nachgeführt: eine verspätete Ladeantwort
+  // eines früheren Teils darf Vorauswahl und Abgleich nicht mehr beeinflussen.
+  const partRef = useRef<number | null>(null)
+
+  function handleLoaded(questions: PickerQuestion[], loadedPart: number) {
+    if (loadedPart !== partRef.current) return
+    loadedRef.current = { part: loadedPart, ids: new Set(questions.map((q) => q.id)) }
+    if (pendingSetRef.current) applySetQuestions(pendingSetRef.current, loadedPart)
+  }
+
   useEffect(() => {
-    if (!open) return
-    const initialSetId = preselectedSetId ?? sets[0]?.id ?? ''
-    setSetId(initialSetId)
-    const set = sets.find((s) => s.id === initialSetId)
-    setTitle(set ? `${set.name} – Leistungsnachweis` : '')
-    setDurationMinutes(String(set?.duration_minutes ?? 90))
+    if (!open) {
+      // Beim nächsten Öffnen soll nicht kurz der alte Teil geladen werden
+      partRef.current = null
+      setPart(null)
+      return
+    }
+    loadedRef.current = null
+    pendingSetRef.current = null
+    setSkippedFromSet(0)
+    const preset = sets.find((s) => s.id === preselectedSetId)
+    if (preset) {
+      partRef.current = preset.part
+      setPart(preset.part)
+      setStartSetId(preset.id)
+      setTitle(`${preset.name} – Leistungsnachweis`)
+      setDurationMinutes(String(preset.duration_minutes ?? 90))
+      pendingSetRef.current = preset.question_ids
+      setSelectedIds(new Set())
+    } else {
+      partRef.current = examParts[0]?.partNumber ?? null
+      setPart(partRef.current)
+      setStartSetId(NO_START)
+      setTitle('')
+      setDurationMinutes('90')
+      setSelectedIds(new Set())
+    }
     const { opensAt, closesAt } = defaultWindow()
     setOpensAt(opensAt)
     setClosesAt(closesAt)
     setScale(IHK_DEFAULT_SCALE)
     setErrors({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, preselectedSetId, sets])
 
-  const selectedSet = sets.find((s) => s.id === setId)
+  function handlePartChange(value: string) {
+    const next = Number(value)
+    partRef.current = next
+    setPart(next)
+    setStartSetId(NO_START)
+    setSelectedIds(new Set())
+    setSkippedFromSet(0)
+    pendingSetRef.current = null
+    loadedRef.current = null
+  }
+
+  function handleStartSetChange(value: string) {
+    setStartSetId(value)
+    if (value === NO_START) {
+      setSelectedIds(new Set())
+      setSkippedFromSet(0)
+      return
+    }
+    const set = sets.find((s) => s.id === value)
+    if (!set) return
+    if (!title.trim()) setTitle(`${set.name} – Leistungsnachweis`)
+    if (set.duration_minutes) setDurationMinutes(String(set.duration_minutes))
+    applySetQuestions(set.question_ids, set.part)
+  }
+
+  const setsOfPart = sets.filter((s) => s.part === part)
 
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (!setId) e.setId = 'Bitte ein Prüfungsset wählen.'
+    if (part === null) e.part = 'Bitte einen Teil wählen.'
+    if (selectedIds.size < MIN_QUESTIONS) e.questions = `Mindestens ${MIN_QUESTIONS} Fragen auswählen.`
     if (!title.trim()) e.title = 'Titel ist Pflicht.'
     if (!opensAt) e.opensAt = 'Startzeit fehlt.'
     if (!closesAt) e.closesAt = 'Endzeit fehlt.'
@@ -85,9 +171,6 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     if (!Number.isInteger(dur) || dur < 5 || dur > 600) e.durationMinutes = 'Dauer zwischen 5 und 600 Minuten.'
     const scaleError = validateGradingScale(scale)
     if (scaleError) e.scale = scaleError
-    if (selectedSet && selectedSet.question_ids.length < 5) {
-      e.setId = 'Dieses Set hat weniger als 5 Fragen und eignet sich nicht für einen Leistungsnachweis.'
-    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -101,7 +184,8 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          examSetId: setId,
+          part,
+          questionIds: [...selectedIds],
           title: title.trim(),
           opensAt: new Date(opensAt).toISOString(),
           closesAt: new Date(closesAt).toISOString(),
@@ -127,34 +211,72 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Neuer Leistungsnachweis</DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
-            Ein einmaliger, benoteter Durchlauf zu einem bestehenden Prüfungsset — mit eigenem Beitrittscode.
+            Ein einmaliger, benoteter Durchlauf mit selbst zusammengestellten Fragen — mit eigenem Beitrittscode.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="set">Prüfungsset</Label>
-            <Select value={setId} onValueChange={setSetId}>
-              <SelectTrigger id="set" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
-                <SelectValue placeholder="Set wählen" />
+            <Label htmlFor="part">Prüfungsteil</Label>
+            <Select value={part === null ? undefined : String(part)} onValueChange={handlePartChange}>
+              <SelectTrigger id="part" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Teil wählen" />
               </SelectTrigger>
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                {sets.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} — {partLabel(s.part)} ({s.question_ids.length} Fragen)
+                {examParts.map((p) => (
+                  <SelectItem key={p.id} value={String(p.partNumber)}>
+                    {examPartLabel(p)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {errors.setId && <p className="text-xs text-[#FF4B4B]">{errors.setId}</p>}
-            <p className="text-xs text-[#6B7280]">
-              Nur Multiple-Choice-Fragen werden unterstützt — enthält das Set offene Fragen, lehnt das Anlegen ab.
-            </p>
+            {errors.part && <p className="text-xs text-[#FF4B4B]">{errors.part}</p>}
           </div>
+
+          {setsOfPart.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="startSet">Startauswahl aus Prüfungsset <span className="font-normal text-[#6B7280]">— optional</span></Label>
+              <Select value={startSetId} onValueChange={handleStartSetChange}>
+                <SelectTrigger id="startSet" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectItem value={NO_START}>Ohne Startauswahl</SelectItem>
+                  {setsOfPart.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.question_ids.length} Fragen)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-[#6B7280]">
+                Die Fragen werden kopiert und sind danach unabhängig vom Set.
+              </p>
+              {skippedFromSet > 0 && (
+                <p className="text-xs text-[#FF9600]">
+                  {skippedFromSet} Fragen aus dem Set wurden übersprungen (offene oder deaktivierte Fragen).
+                </p>
+              )}
+            </div>
+          )}
+
+          {part !== null && (
+            <div className="space-y-2">
+              <Label>Fragen</Label>
+              <AssessmentQuestionSelector
+                key={part}
+                part={part}
+                selectedIds={selectedIds}
+                onChange={setSelectedIds}
+                onLoaded={handleLoaded}
+              />
+              {errors.questions && <p className="text-xs text-[#FF4B4B]">{errors.questions}</p>}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="title">Titel</Label>
@@ -219,7 +341,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
             </Button>
             <Button
               type="submit"
-              disabled={submitting || sets.length === 0}
+              disabled={submitting}
               className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

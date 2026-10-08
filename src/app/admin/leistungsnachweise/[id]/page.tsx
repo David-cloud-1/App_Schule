@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Copy,
   Download,
+  ListChecks,
   Loader2,
   Lock,
   PlayCircle,
@@ -39,6 +40,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
+import { useExamPartLabel } from '@/components/department-provider'
 import { cn } from '@/lib/utils'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
@@ -46,7 +49,7 @@ type AssessmentStatus = 'draft' | 'open' | 'closed'
 type AssessmentDetail = {
   id: string
   title: string
-  examSetName: string
+  examSetName: string | null
   part: number
   status: AssessmentStatus
   accessCode: string
@@ -58,6 +61,8 @@ type AssessmentDetail = {
   resultsReleasedAt: string | null
   createdAt: string
   questionCount: number
+  /** Entwurfs-Fragenliste (nur im Status Entwurf) */
+  draftQuestionIds?: string[]
   live: { joined: number; inProgress: number; submitted: number }
 }
 
@@ -113,6 +118,8 @@ async function fetchResults(id: string): Promise<ResultsResponse | null> {
 export default function AssessmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const partLabel = useExamPartLabel()
+  const [editQuestionsOpen, setEditQuestionsOpen] = useState(false)
   const [detail, setDetail] = useState<AssessmentDetail | null>(null)
   const [results, setResults] = useState<ResultsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -159,7 +166,11 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         return
       }
       toast.success(
-        action === 'open' ? 'Nachweis geöffnet' : action === 'close' ? 'Beitritt geschlossen' : 'Ergebnisse freigegeben',
+        action === 'open'
+          ? data?.removedCount > 0
+            ? `Nachweis geöffnet – ${data.removedCount} deaktivierte oder gelöschte Fragen entfernt`
+            : 'Nachweis geöffnet'
+          : action === 'close' ? 'Beitritt geschlossen' : 'Ergebnisse freigegeben',
       )
       load()
     } catch (err) {
@@ -248,7 +259,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </Link>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-[#F9FAFB]">{detail.title}</h1>
-          <p className="text-sm text-[#9CA3AF]">{detail.examSetName} · {detail.questionCount} Fragen · {detail.durationMinutes} Min.</p>
+          <p className="text-sm text-[#9CA3AF]">{[detail.examSetName, partLabel(detail.part)].filter(Boolean).join(' · ')} · {detail.questionCount} Fragen · {detail.durationMinutes} Min.</p>
         </div>
         <Badge className={cn(
           'text-xs border-0',
@@ -287,6 +298,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               >
                 <Unlock size={14} className="mr-1.5" />
                 Öffnen
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setEditQuestionsOpen(true)}
+                disabled={actionPending}
+                className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+              >
+                <ListChecks size={14} className="mr-1.5" />
+                Fragen bearbeiten
               </Button>
             </>
           )}
@@ -492,6 +512,17 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           </div>
         </TabsContent>
       </Tabs>
+
+      {detail.status === 'draft' && (
+        <EditAssessmentQuestionsDialog
+          open={editQuestionsOpen}
+          onOpenChange={setEditQuestionsOpen}
+          assessmentId={detail.id}
+          part={detail.part}
+          initialQuestionIds={detail.draftQuestionIds ?? []}
+          onSaved={load}
+        />
+      )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">

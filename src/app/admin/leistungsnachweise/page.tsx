@@ -17,12 +17,13 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
+import { useExamPartLabel } from '@/components/department-provider'
 import { cn } from '@/lib/utils'
 
 type AssessmentListItem = {
   id: string
   title: string
-  examSetName: string
+  examSetName: string | null
   part: number
   status: 'draft' | 'open' | 'closed'
   accessCode: string
@@ -52,6 +53,7 @@ const STATUS_STYLES: Record<AssessmentListItem['status'], string> = {
 }
 
 function AssessmentsPageContent() {
+  const partLabel = useExamPartLabel()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [assessments, setAssessments] = useState<AssessmentListItem[]>([])
@@ -69,12 +71,13 @@ function AssessmentsPageContent() {
         fetch('/api/admin/assessments'),
         fetch('/api/admin/exam-sets'),
       ])
-      if (!assessmentsRes.ok || !setsRes.ok) {
+      if (!assessmentsRes.ok) {
         setFailed(true)
         return
       }
       const assessmentsJson = await assessmentsRes.json()
-      const setsJson = await setsRes.json()
+      // Sets sind nur optionale Startauswahl — ihr Fehlen blockiert die Seite nicht
+      const setsJson = setsRes.ok ? await setsRes.json() : { sets: [] }
       setAssessments(assessmentsJson.assessments ?? [])
       setSets(setsJson.sets ?? [])
     } catch (err) {
@@ -103,7 +106,7 @@ function AssessmentsPageContent() {
         <div>
           <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Leistungsnachweise</h1>
           <p className="text-sm text-[#9CA3AF] mt-1">
-            Benotete Durchläufe zu bestehenden Prüfungssets — Zugang per Code, keine Klassenzuordnung.
+            Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code, keine Klassenzuordnung.
           </p>
         </div>
         <Button
@@ -111,7 +114,6 @@ function AssessmentsPageContent() {
             setPreselectedSetId(null)
             setCreateOpen(true)
           }}
-          disabled={sets.length === 0}
           className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -132,7 +134,7 @@ function AssessmentsPageContent() {
             <TableHeader>
               <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
                 <TableHead className="text-[#9CA3AF]">Titel</TableHead>
-                <TableHead className="text-[#9CA3AF]">Set</TableHead>
+                <TableHead className="text-[#9CA3AF]">Teil</TableHead>
                 <TableHead className="text-[#9CA3AF]">Status</TableHead>
                 <TableHead className="text-[#9CA3AF]">Code</TableHead>
                 <TableHead className="text-[#9CA3AF]">Teilnehmer</TableHead>
@@ -156,11 +158,6 @@ function AssessmentsPageContent() {
                   <TableCell colSpan={6} className="text-center text-[#9CA3AF] py-10">
                     <GraduationCap size={32} className="mx-auto mb-2 text-[#374151]" />
                     Noch keine Leistungsnachweise angelegt.
-                    {sets.length === 0 && (
-                      <p className="text-xs text-[#6B7280] mt-2">
-                        Lege zuerst unter „Prüfungssets" ein Set mit mindestens 5 Multiple-Choice-Fragen an.
-                      </p>
-                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -171,7 +168,7 @@ function AssessmentsPageContent() {
                         {a.title}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-[#9CA3AF] text-sm">{a.examSetName}</TableCell>
+                    <TableCell className="text-[#9CA3AF] text-sm">{partLabel(a.part)}</TableCell>
                     <TableCell>
                       <Badge className={cn('text-xs border-0', STATUS_STYLES[a.status])}>
                         {STATUS_LABELS[a.status]}

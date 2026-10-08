@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 
 const CreateAssessmentSchema = z.object({
-  examSetId: z.string().uuid(),
+  part: z.number().int().min(1).max(20),
+  questionIds: z.array(z.string().uuid()).min(1).max(500),
   title: z.string().min(1).max(100),
   opensAt: z.string().datetime(),
   closesAt: z.string().datetime(),
@@ -18,11 +20,12 @@ const CreateAssessmentSchema = z.object({
 export async function GET() {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, departmentId } = auth
 
   const { data, error } = await supabase
     .from('graded_assessments')
     .select('id, title, part, status, access_code, created_at, exam_set_id, exam_question_sets(name)')
+    .eq('department_id', departmentId)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: 'Failed to fetch assessments' }, { status: 500 })
@@ -45,7 +48,7 @@ export async function GET() {
   const assessments = (data ?? []).map((a) => ({
     id: a.id,
     title: a.title,
-    examSetName: (a.exam_question_sets as unknown as { name: string } | null)?.name ?? '—',
+    examSetName: (a.exam_question_sets as unknown as { name: string } | null)?.name ?? null,
     part: a.part,
     status: a.status,
     accessCode: formatAccessCode(a.access_code),
@@ -60,7 +63,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, user } = auth
+  const { supabase, user, departmentId } = auth
 
   let body: unknown
   try {
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { examSetId, title, opensAt, closesAt, durationMinutes, gradingScale } = parsed.data
+  const { part, questionIds, title, opensAt, closesAt, durationMinutes, gradingScale } = parsed.data
 
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
@@ -80,37 +83,15 @@ export async function POST(request: NextRequest) {
   const scaleError = validateGradingScale(gradingScale)
   if (scaleError) return NextResponse.json({ error: scaleError }, { status: 400 })
 
-  const { data: set } = await supabase
-    .from('exam_question_sets')
-    .select('id, part, question_ids, department_id')
-    .eq('id', examSetId)
-    .single()
-
-  if (!set) return NextResponse.json({ error: 'Prüfungsset nicht gefunden.' }, { status: 404 })
-
-  const questionIds: string[] = set.question_ids ?? []
-
-  const { count: openCount } = await supabase
-    .from('questions')
-    .select('id', { count: 'exact', head: true })
-    .in('id', questionIds)
-    .eq('type', 'open')
-
-  const { count: activeCount } = await supabase
-    .from('questions')
-    .select('id', { count: 'exact', head: true })
-    .in('id', questionIds)
-    .eq('is_active', true)
-
-  if ((activeCount ?? 0) < 5) {
-    return NextResponse.json({ error: 'Das Set hat weniger als 5 aktive Fragen.' }, { status: 400 })
+  // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereich und Teil (PROJ-27)
+  let check
+  try {
+    check = await checkQuestionSelection(supabase, departmentId, part, questionIds)
+  } catch (err) {
+    console.error('[POST /api/admin/assessments]', err)
+    return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
   }
-
-  if ((openCount ?? 0) > 0) {
-    return NextResponse.json({
-      error: `Benotete Leistungsnachweise unterstützen nur Multiple-Choice-Fragen. Dieses Set enthält ${openCount} offene Fragen.`,
-    }, { status: 400 })
-  }
+  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
 
   // Generate a unique code, retrying on collision (extremely unlikely given
   // ~887M combinations, but the spec calls out the edge case explicitly).
@@ -131,10 +112,10 @@ export async function POST(request: NextRequest) {
   const { data: created, error } = await supabase
     .from('graded_assessments')
     .insert({
-      exam_set_id: examSetId,
-      part: set.part,
-      // Der Nachweis gehört zum Bereich seines Prüfungssets (PROJ-22)
-      department_id: set.department_id,
+      // Kein Prüfungsset: die Fragen stehen bis zum Öffnen im Entwurf (PROJ-27)
+      part,
+      department_id: departmentId,
+      draft_question_ids: check.ids,
       title,
       access_code: accessCode,
       duration_minutes: durationMinutes,

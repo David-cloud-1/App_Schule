@@ -7,7 +7,14 @@ vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
 }))
 
+vi.mock('@/lib/assessment-questions', () => ({
+  checkQuestionSelection: vi.fn(),
+}))
+
 import { createClient } from '@/lib/supabase-server'
+import { checkQuestionSelection } from '@/lib/assessment-questions'
+
+const QUESTION_IDS = [1, 2, 3, 4, 5].map((n) => `6f1a2b3c-4d5e-4f60-8a7b-9c0d1e2f3a0${n}`)
 
 function makeRequest(method: string, body?: unknown) {
   const url = new URL('http://localhost/api/admin/assessments')
@@ -19,8 +26,8 @@ function makeRequest(method: string, body?: unknown) {
 }
 
 const validBody = {
-  // Zod v4's .uuid() is RFC-strict (version + variant nibble) — must be a real v4 UUID.
-  examSetId: '6f1a2b3c-4d5e-4f60-8a7b-9c0d1e2f3a4b',
+  part: 1,
+  questionIds: QUESTION_IDS,
   title: 'LN 2 – Verkehrsträger Straße',
   opensAt: '2026-10-01T08:00:00.000Z',
   closesAt: '2026-10-01T10:00:00.000Z',
@@ -30,9 +37,6 @@ const validBody = {
 
 interface Overrides {
   role?: string
-  setData?: unknown
-  openCount?: number
-  activeCount?: number
   codeCollisionOnce?: boolean
   insertData?: unknown
   insertError?: unknown
@@ -47,26 +51,11 @@ function makeAdminSupabase(overrides: Overrides = {}) {
     eq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { role: overrides.role ?? 'admin', department_id: 'dept-sped' }, error: null }),
   }
-  const setBuilder = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue({
-      data: overrides.setData ?? { id: validBody.examSetId, part: 1, question_ids: ['q1', 'q2', 'q3', 'q4', 'q5'] },
-      error: null,
-    }),
-  }
-  // Two count queries hit this builder: .eq('type', 'open') and .eq('is_active', true).
-  const questionsBuilder = {
-    select: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockImplementation((column: string) =>
-      Promise.resolve({ count: column === 'type' ? (overrides.openCount ?? 0) : (overrides.activeCount ?? 5) }),
-    ),
-  }
   let codeCheckCalls = 0
   let codeResolved = false
   const gradedAssessmentsListBuilder = {
     select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: overrides.listData ?? [], error: overrides.listError ?? null }),
   }
   const gradedAssessmentsCodeCheckBuilder = {
@@ -97,8 +86,6 @@ function makeAdminSupabase(overrides: Overrides = {}) {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'admin-uuid', email: 'a@a.com' } } }) },
     from: vi.fn().mockImplementation((table: string) => {
       if (table === 'profiles') return profileBuilder
-      if (table === 'exam_question_sets') return setBuilder
-      if (table === 'questions') return questionsBuilder
       if (table === 'admin_audit_log') return auditBuilder
       if (table === 'exam_sessions') return sessionsBuilder
       if (table === 'graded_assessments') {
@@ -137,7 +124,10 @@ describe('GET /api/admin/assessments', () => {
 })
 
 describe('POST /api/admin/assessments', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(checkQuestionSelection).mockResolvedValue({ ok: true, ids: QUESTION_IDS })
+  })
 
   it('returns 401 when not authenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
@@ -170,19 +160,24 @@ describe('POST /api/admin/assessments', () => {
     expect(res.status).toBe(400)
   })
 
-  it('returns 400 when the set has fewer than 5 active questions', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ activeCount: 4 }) as never)
+  it('rejects an invalid question selection (open, inactive or foreign questions)', async () => {
+    vi.mocked(checkQuestionSelection).mockResolvedValue({ ok: false, status: 400, error: '2 gewählte Fragen sind nicht zulässig' })
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', validBody))
     expect(res.status).toBe(400)
-    expect((await res.json()).error).toMatch(/5 aktive/)
+    expect((await res.json()).error).toMatch(/nicht zulässig/)
   })
 
-  it('rejects a set containing open questions (MC-only rule)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ openCount: 2 }) as never)
-    const res = await POST(makeRequest('POST', validBody))
+  it('validates the selection against the admin department and part', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    await POST(makeRequest('POST', validBody))
+    expect(checkQuestionSelection).toHaveBeenCalledWith(expect.anything(), 'dept-sped', 1, QUESTION_IDS)
+  })
+
+  it('returns 400 when no question ids are sent', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await POST(makeRequest('POST', { ...validBody, questionIds: [] }))
     expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body.error).toMatch(/Multiple-Choice/)
   })
 
   it('retries the access code on a collision and still creates the assessment', async () => {

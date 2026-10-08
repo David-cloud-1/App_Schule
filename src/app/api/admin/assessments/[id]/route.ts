@@ -9,12 +9,14 @@ import {
   type GradeBoundary,
   type RedactedQuestion,
 } from '@/lib/graded-assessments'
+import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { fetchAnswerKey } from '@/lib/answer-key'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
 const EditSchema = z.object({
   title: z.string().min(1).max(100).optional(),
+  questionIds: z.array(z.string().uuid()).min(1).max(500).optional(),
   opensAt: z.string().datetime().optional(),
   closesAt: z.string().datetime().optional(),
   durationMinutes: z.number().int().min(5).max(600).optional(),
@@ -60,7 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     id: assessment.id,
     title: assessment.title,
     examSetId: assessment.exam_set_id,
-    examSetName: set?.name ?? '—',
+    examSetName: set?.name ?? null,
     part: assessment.part,
     status: assessment.status,
     accessCode: formatAccessCode(assessment.access_code),
@@ -71,7 +73,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     gradingScale: assessment.grading_scale,
     resultsReleasedAt: assessment.results_released_at,
     createdAt: assessment.created_at,
-    questionCount: assessment.question_ids_snapshot?.length ?? set?.question_ids?.length ?? 0,
+    questionCount: assessment.question_ids_snapshot?.length ?? assessment.draft_question_ids?.length ?? set?.question_ids?.length ?? 0,
+    // Nur im Entwurf: Auswahl zum Bearbeiten (Altnachweise: Fragen des Sets)
+    draftQuestionIds: assessment.status === 'draft' ? (assessment.draft_question_ids ?? set?.question_ids ?? []) : undefined,
     live,
   })
 }
@@ -101,27 +105,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return NextResponse.json({ error: 'Nur ein Entwurf kann geöffnet werden.' }, { status: 400 })
       }
       const set = assessment.exam_question_sets as unknown as { question_ids: string[] } | null
-      const snapshot = set?.question_ids ?? []
+      const snapshot: string[] = assessment.draft_question_ids ?? set?.question_ids ?? []
 
-      // Re-check the set at open time: it may have been edited since the
-      // draft was created (e.g. an open question added, or questions
-      // deactivated) and the snapshot frozen now is what everyone writes.
-      const { data: snapshotQuestions } = await supabase
-        .from('questions')
-        .select('id, type, is_active')
-        .in('id', snapshot)
-      const activeMc = (snapshotQuestions ?? []).filter((q) => q.is_active && q.type === 'multiple_choice')
-      const openCount = (snapshotQuestions ?? []).filter((q) => q.type === 'open').length
+      // Beim Öffnen neu prüfen: Fragen können seit dem Anlegen deaktiviert,
+      // gelöscht oder (Altnachweise mit Set) durch offene Fragen ergänzt worden
+      // sein — der jetzt eingefrorene Snapshot ist, was alle schreiben.
+      // In Blöcken abfragen: bis zu 500 IDs in einer URL sprengen das Längenlimit
+      const snapshotQuestions: { id: string; type: string; is_active: boolean }[] = []
+      for (let i = 0; i < snapshot.length; i += 100) {
+        const { data, error: qError } = await supabase
+          .from('questions')
+          .select('id, type, is_active')
+          .in('id', snapshot.slice(i, i + 100))
+        if (qError) {
+          console.error('[PATCH /api/admin/assessments/[id]] open', qError)
+          return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden. Bitte erneut versuchen.' }, { status: 500 })
+        }
+        snapshotQuestions.push(...(data ?? []))
+      }
+      const activeMc = snapshotQuestions.filter((q) => q.is_active && q.type === 'multiple_choice')
+      const openCount = snapshotQuestions.filter((q) => q.type === 'open').length
       if (openCount > 0) {
         return NextResponse.json({
-          error: `Das Set enthält inzwischen ${openCount} offene Fragen. Benotete Leistungsnachweise unterstützen nur Multiple-Choice-Fragen.`,
+          error: `Die Auswahl enthält inzwischen ${openCount} offene Fragen. Benotete Leistungsnachweise unterstützen nur Multiple-Choice-Fragen.`,
         }, { status: 400 })
       }
       if (activeMc.length < 5) {
-        return NextResponse.json({ error: 'Das zugrunde liegende Set hat weniger als 5 aktive Fragen.' }, { status: 400 })
+        return NextResponse.json({
+          error: `Nach dem Entfernen deaktivierter oder gelöschter Fragen bleiben nur ${activeMc.length} aktive Fragen (mindestens 5 nötig).`,
+        }, { status: 400 })
       }
       const activeIds = new Set(activeMc.map((q) => q.id))
       const frozenSnapshot = snapshot.filter((qid) => activeIds.has(qid))
+      const removedCount = snapshot.length - frozenSnapshot.length
       // Explicitly opening means "joinable now": a start time still in the
       // future (e.g. the create-dialog default of now + 5 min) would
       // otherwise keep reporting "noch nicht freigegeben" to students.
@@ -134,8 +150,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         .update(update)
         .eq('id', id)
       if (error) return NextResponse.json({ error: 'Öffnen fehlgeschlagen.' }, { status: 500 })
-      await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.open', object_type: 'graded_assessment', object_id: id, object_label: assessment.title })
-      return NextResponse.json({ success: true })
+      await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.open', object_type: 'graded_assessment', object_id: id, object_label: assessment.title, details: { removedCount } })
+      return NextResponse.json({ success: true, removedCount })
     }
 
     if (action === 'close') {
@@ -233,6 +249,17 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const update: Record<string, unknown> = {}
+  if (patch.questionIds !== undefined) {
+    let check
+    try {
+      check = await checkQuestionSelection(supabase, assessment.department_id, assessment.part, patch.questionIds)
+    } catch (err) {
+      console.error('[PATCH /api/admin/assessments/[id]]', err)
+      return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
+    }
+    if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
+    update.draft_question_ids = check.ids
+  }
   if (patch.title !== undefined) update.title = patch.title
   if (patch.opensAt !== undefined) update.opens_at = patch.opensAt
   if (patch.closesAt !== undefined) update.closes_at = patch.closesAt
