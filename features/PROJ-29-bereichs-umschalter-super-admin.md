@@ -1,6 +1,6 @@
 # PROJ-29: Bereichs-Umschalter für den Super-Admin
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-08
 **Last Updated:** 2026-10-08
 
@@ -245,4 +245,9 @@ Keine Critical- oder High-Bugs.
 **READY** — keine Critical/High-Bugs. Einschränkung: M-1 (Live-Test des Sitzungswechsels) bleibt ein Rauchtest nach dem Deploy.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-10-08 · Commit `99610b2` auf `main` · Vercel-Build 49 s, Status Ready
+- **Production:** https://spedilern.vercel.app (Spedition) und https://touristiklern.vercel.app (Tourismus)
+- **Datenbank:** Migration `proj29_linked_accounts` vor dem Deploy auf „Spedilern App" angewendet (Rückweg: `20261008_proj29_linked_accounts_down.sql`)
+- **Prüfung nach dem Deploy:** beide Adressen laden (200), `POST /api/profile/switch-area` ohne Login → 401, keine Fehler in den Vercel-Logs.
+- **Noch offen (manuell):** Rauchtest des echten Sitzungswechsels mit dem Admin-Konto (Schritte siehe QA, Befund M-1).
