@@ -19,6 +19,13 @@ import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type Grade
 import { useExamPartLabel } from '@/components/department-provider'
 import { AssessmentQuestionSelector } from './assessment-question-selector'
 import type { PickerQuestion } from './question-picker'
+import {
+  DEFAULT_FOCUS_FORM,
+  FocusSettingsFields,
+  focusFormToPayload,
+  validateFocusForm,
+  type FocusFormValue,
+} from './focus-settings-fields'
 
 type ExamSetOption = {
   id: string
@@ -60,6 +67,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
   const [closesAt, setClosesAt] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('90')
   const [scale, setScale] = useState<GradeBoundary[]>(IHK_DEFAULT_SCALE)
+  const [focus, setFocus] = useState<FocusFormValue>(DEFAULT_FOCUS_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -109,6 +117,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     setOpensAt(opensAt)
     setClosesAt(closesAt)
     setScale(IHK_DEFAULT_SCALE)
+    setFocus(DEFAULT_FOCUS_FORM)
     setErrors({})
   }, [open, preselectedSetId, sets])
 
@@ -139,6 +148,8 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     if (!Number.isInteger(dur) || dur < 5 || dur > 600) e.durationMinutes = 'Dauer zwischen 5 und 600 Minuten.'
     const scaleError = validateGradingScale(scale)
     if (scaleError) e.scale = scaleError
+    const focusError = validateFocusForm(focus)
+    if (focusError) e.focus = focusError
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -158,6 +169,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
           closesAt: new Date(closesAt).toISOString(),
           durationMinutes: Number(durationMinutes),
           gradingScale: scale,
+          ...focusFormToPayload(focus),
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -276,6 +288,8 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
           </div>
 
           <GradingScaleEditor scale={scale} onChange={setScale} error={errors.scale} />
+
+          <FocusSettingsFields value={focus} onChange={setFocus} error={errors.focus} />
 
           <DialogFooter className="gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>

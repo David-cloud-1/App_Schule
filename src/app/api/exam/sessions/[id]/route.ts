@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient, createServiceClient } from '@/lib/supabase-server'
-import { gradeSnapshot, type GradeBoundary, type RedactedQuestion } from '@/lib/graded-assessments'
-import { fetchAnswerKey } from '@/lib/answer-key'
+import { createClient } from '@/lib/supabase-server'
+import { finishAssessmentAttempt, saveAssessmentDraft } from '@/lib/assessment-submit'
 
 const PART_DURATION_MINUTES: Record<number, number> = { 1: 90, 2: 90, 3: 45 }
 
@@ -76,7 +75,12 @@ export async function PATCH(
   }
 
   if (session.assessment_id) {
-    return handleAssessmentPatch(supabase, session, action, answers)
+    // Leistungsnachweis (PROJ-21): Zeitlimit, Snapshot und Bewertung in der gemeinsamen Abgabe-Logik
+    const outcome = action === 'save'
+      ? await saveAssessmentDraft(supabase, session, answers)
+      : await finishAssessmentAttempt({ client: supabase, session, action, answers })
+    if (!outcome.ok) return NextResponse.json({ error: outcome.error }, { status: outcome.status })
+    return NextResponse.json({ success: true })
   }
 
   // Autosave: persist draft answers without ending the session or scoring
@@ -127,94 +131,5 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
 
-  return NextResponse.json({ success: true })
-}
-
-// Grace period on top of the attempt's duration for network latency and the
-// client's own auto-submit round trip.
-const DEADLINE_GRACE_SECONDS = 60
-
-type AssessmentResultsJson = {
-  durationMinutes?: number
-  parts: Record<string, RedactedQuestion[]>
-  draft_answers?: Record<string, string>
-  assessment?: { title: string; accessCode: string; released: boolean }
-}
-
-/**
- * Leistungsnachweis (PROJ-21). Differs from a normal exam in three ways:
- * the time limit is enforced here rather than trusted to the browser; the
- * answer key never lands in the (owner-readable) session row before
- * release — only the submitted answers do; and a submission that arrives
- * after the admin already released results is graded on the spot.
- */
-async function handleAssessmentPatch(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  session: { id: string; started_at: string; assessment_id: string | null; results_json: unknown },
-  action: 'submit' | 'abort' | 'save',
-  answers: Record<string, string>,
-) {
-  const resultsJson = session.results_json as AssessmentResultsJson
-  const durationMinutes = resultsJson.durationMinutes ?? 0
-  const deadline = new Date(session.started_at).getTime() + (durationMinutes * 60 + DEADLINE_GRACE_SECONDS) * 1000
-  const pastDeadline = Date.now() > deadline
-
-  if (action === 'save') {
-    if (pastDeadline) {
-      return NextResponse.json({ error: 'Die Bearbeitungszeit ist abgelaufen.' }, { status: 409 })
-    }
-    const { error } = await supabase
-      .from('exam_sessions')
-      .update({ results_json: { ...resultsJson, draft_answers: { ...(resultsJson.draft_answers ?? {}), ...answers } } })
-      .eq('id', session.id)
-    if (error) return NextResponse.json({ error: 'Failed to save answers' }, { status: 500 })
-    return NextResponse.json({ success: true })
-  }
-
-  // After the deadline only what was autosaved in time counts — answers
-  // sent with a late submit are ignored.
-  const submittedAnswers = pastDeadline
-    ? { ...(resultsJson.draft_answers ?? {}) }
-    : { ...(resultsJson.draft_answers ?? {}), ...answers }
-
-  const service = createServiceClient()
-  const { data: assessment } = await service
-    .from('graded_assessments')
-    .select('title, access_code, part, grading_scale, results_released_at')
-    .eq('id', session.assessment_id!)
-    .single()
-
-  if (!assessment) return NextResponse.json({ error: 'Leistungsnachweis nicht gefunden.' }, { status: 404 })
-
-  const partKey = String(assessment.part)
-  const snapshot = resultsJson.parts[partKey] ?? []
-  let nextResults: Record<string, unknown> = {
-    durationMinutes: resultsJson.durationMinutes,
-    parts: { [partKey]: snapshot },
-    submitted_answers: submittedAnswers,
-    assessment: { title: assessment.title, accessCode: assessment.access_code, released: false },
-  }
-
-  // Straggler: results were released while this attempt was still running.
-  if (assessment.results_released_at) {
-    const key = await fetchAnswerKey(snapshot.map((q) => q.id))
-    const { part, scored } = gradeSnapshot(snapshot, submittedAnswers, key, assessment.grading_scale as GradeBoundary[])
-    nextResults = {
-      ...nextResults,
-      parts: { [partKey]: part },
-      assessment: { title: assessment.title, accessCode: assessment.access_code, released: true, ...scored },
-    }
-  }
-
-  const { error } = await supabase
-    .from('exam_sessions')
-    .update({
-      status: action === 'abort' ? 'aborted' : 'completed',
-      ended_at: new Date().toISOString(),
-      results_json: nextResults,
-    })
-    .eq('id', session.id)
-
-  if (error) return NextResponse.json({ error: 'Failed to update session' }, { status: 500 })
   return NextResponse.json({ success: true })
 }

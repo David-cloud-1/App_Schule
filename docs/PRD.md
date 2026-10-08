@@ -59,6 +59,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-27: Leistungsnachweis – eigene Fragen-Zusammenstellung | Planned |
 | P1 | PROJ-28: Leistungsnachweis – Druck & Klassenauswertung | Planned |
 | P1 | PROJ-29: Bereichs-Umschalter für den Super-Admin | Planned |
+| P1 | PROJ-30: Fokus-Verlust-Protokoll bei Leistungsnachweisen | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

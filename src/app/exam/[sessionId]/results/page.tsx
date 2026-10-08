@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ClipboardList } from 'lucide-react'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { ExamResultsClient } from './exam-results-client'
 
 export type QuestionResult = {
@@ -72,6 +72,18 @@ export default async function ExamResultsPage({
       ? { assessment: { title: rawResults.assessment.title, accessCode: rawResults.assessment.accessCode, released: false }, parts: {} }
       : rawResults
 
+  // PROJ-30: Wurde automatisch abgegeben, bekommt der Azubi den Grund genannt.
+  // Das Protokoll selbst bleibt unlesbar — nur dieses eine Kennzeichen geht raus.
+  let autoSubmittedByFocus = false
+  if (session.assessment_id) {
+    const { data: summary } = await createServiceClient()
+      .from('assessment_focus_summary')
+      .select('auto_submitted')
+      .eq('session_id', sessionId)
+      .maybeSingle()
+    autoSubmittedByFocus = Boolean(summary?.auto_submitted)
+  }
+
   return (
     <div className="min-h-screen bg-[#111827] flex flex-col">
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
@@ -95,6 +107,7 @@ export default async function ExamResultsPage({
           endedAt={session.ended_at}
           startedAt={session.started_at}
           assessment={results?.assessment ?? null}
+          autoSubmittedByFocus={autoSubmittedByFocus}
         />
       </main>
     </div>

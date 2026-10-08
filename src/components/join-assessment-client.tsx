@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { GraduationCap, KeyRound, Loader2, ListChecks, Timer } from 'lucide-react'
+import { Eye, GraduationCap, KeyRound, Loader2, ListChecks, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,10 @@ type LookupResponse = {
   durationMinutes: number
   status: LookupStatus
   needsName: boolean
+  /** PROJ-30: Verlassen der Prüfung wird protokolliert */
+  focusTracking?: boolean
+  /** PROJ-30: Grenze der automatischen Abgabe; null = keine */
+  focusAutoSubmitAfter?: number | null
   existingSessionId: string | null
   existingSessionStatus?: 'in_progress' | 'completed'
 }
@@ -244,6 +248,17 @@ export function JoinAssessmentClient({ initialCode }: Props) {
           <GraduationCap size={18} className="text-[#FF9600]" />
           <span className="text-sm text-[#F9FAFB]">1 Versuch — zählt für eine Note</span>
         </div>
+        {lookup?.focusTracking && (
+          <div className="flex items-start gap-3">
+            <Eye size={18} className="text-[#FF9600] mt-0.5 flex-shrink-0" />
+            <span className="text-sm text-[#F9FAFB]">
+              Das Verlassen dieser Seite während der Prüfung wird protokolliert und deiner Lehrkraft angezeigt.
+              {lookup.focusAutoSubmitAfter != null && (
+                <> Bei {lookup.focusAutoSubmitAfter} Wechseln wird deine Arbeit automatisch abgegeben.</>
+              )}
+            </span>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-[#FF4B4B] text-center">{error}</p>}

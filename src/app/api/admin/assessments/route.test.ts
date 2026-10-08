@@ -192,4 +192,38 @@ describe('POST /api/admin/assessments', () => {
     const body = await res.json()
     expect(body.id).toBe('new-assessment-uuid')
   })
+
+  function insertedPayload(supabase: ReturnType<typeof makeAdminSupabase>) {
+    const calls = supabase.from.mock.results.flatMap((r) => {
+      const builder = r.value as { insert?: { mock: { calls: unknown[][] } } } | undefined
+      return builder?.insert?.mock.calls ?? []
+    })
+    return calls.map((c) => c[0] as Record<string, unknown>).find((c) => 'focus_tracking' in c)
+  }
+
+  it('stores the focus settings (PROJ-30) when tracking and auto-submit are set', async () => {
+    const supabase = makeAdminSupabase()
+    vi.mocked(createClient).mockResolvedValue(supabase as never)
+    const res = await POST(makeRequest('POST', { ...validBody, focusTracking: true, focusAutoSubmitAfter: 3 }))
+    expect(res.status).toBe(201)
+    expect(insertedPayload(supabase)).toMatchObject({ focus_tracking: true, focus_auto_submit_after: 3 })
+  })
+
+  it('leaves tracking off when the request does not mention it (older clients)', async () => {
+    const supabase = makeAdminSupabase()
+    vi.mocked(createClient).mockResolvedValue(supabase as never)
+    const res = await POST(makeRequest('POST', validBody))
+    expect(res.status).toBe(201)
+    expect(insertedPayload(supabase)).toMatchObject({ focus_tracking: false, focus_auto_submit_after: null })
+  })
+
+  it('rejects auto-submit without tracking and limits outside 1-20', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const noTracking = await POST(makeRequest('POST', { ...validBody, focusTracking: false, focusAutoSubmitAfter: 3 }))
+    expect(noTracking.status).toBe(400)
+    const tooHigh = await POST(makeRequest('POST', { ...validBody, focusTracking: true, focusAutoSubmitAfter: 25 }))
+    expect(tooHigh.status).toBe(400)
+    const zero = await POST(makeRequest('POST', { ...validBody, focusTracking: true, focusAutoSubmitAfter: 0 }))
+    expect(zero.status).toBe(400)
+  })
 })

@@ -1,11 +1,12 @@
 'use client'
 
-import { use, useCallback, useEffect, useState } from 'react'
+import { Fragment, use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import {
+  AlertTriangle,
   ArrowLeft,
   Copy,
   Download,
@@ -41,6 +42,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
+import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
+import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
@@ -58,6 +61,9 @@ type AssessmentDetail = {
   durationMinutes: number
   gradingScale: { grade: number; minPercent: number }[]
   resultsReleasedAt: string | null
+  /** PROJ-30 */
+  focusTracking: boolean
+  focusAutoSubmitAfter: number | null
   createdAt: string
   questionCount: number
   /** Entwurfs-Fragenliste (nur im Status Entwurf) */
@@ -76,6 +82,8 @@ type Participant = {
   submittedAt: string | null
   excluded: boolean
   status: 'in_progress' | 'completed'
+  /** PROJ-30: null, wenn der Nachweis das Verlassen nicht protokolliert */
+  focus: ParticipantFocus | null
 }
 
 type QuestionStat = {
@@ -87,6 +95,7 @@ type QuestionStat = {
 }
 
 type ResultsResponse = {
+  focusTracking: boolean
   participants: Participant[]
   gradeDistribution: { counts: Record<string, number>; average: number | null; passRate: number | null }
   questions: QuestionStat[]
@@ -125,6 +134,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const [actionPending, setActionPending] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
+  const [expandedFocus, setExpandedFocus] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const [d, r] = await Promise.all([fetchDetail(id), fetchResults(id)])
@@ -247,6 +257,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
 
   const activeParticipants = (results?.participants ?? []).filter((p) => !p.excluded)
   const gradeCounts = results?.gradeDistribution.counts ?? {}
+  const showFocus = Boolean(results?.focusTracking)
+  const conspicuousCount = (results?.participants ?? []).filter((p) => p.focus?.conspicuous).length
   const maxGradeCount = Math.max(1, ...Object.values(gradeCounts).map((n) => Number(n) || 0))
 
   return (
@@ -361,6 +373,30 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      {/* PROJ-30: Fokus-Verlust-Protokoll — im Entwurf einstellbar, danach nur als Hinweis */}
+      {detail.status === 'draft' ? (
+        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4">
+          <FocusDraftSettings
+            key={`${detail.focusTracking}-${detail.focusAutoSubmitAfter}`}
+            assessmentId={id}
+            focusTracking={detail.focusTracking}
+            focusAutoSubmitAfter={detail.focusAutoSubmitAfter}
+            onSaved={load}
+          />
+        </div>
+      ) : (
+        <p className="text-xs text-[#9CA3AF]">
+          Verlassen der Prüfung:{' '}
+          <span className="text-[#F9FAFB]">
+            {detail.focusTracking
+              ? detail.focusAutoSubmitAfter != null
+                ? `wird protokolliert, automatische Abgabe ab ${detail.focusAutoSubmitAfter} Wechseln`
+                : 'wird protokolliert (keine automatische Abgabe)'
+              : 'wird nicht protokolliert'}
+          </span>
+        </p>
+      )}
+
       {/* Auswertung */}
       <Tabs defaultValue="participants">
         <TabsList className="bg-[#1F2937] border border-[#4B5563]">
@@ -384,6 +420,17 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </Button>
             </a>
           </div>
+          {showFocus && conspicuousCount > 0 && (
+            <div role="status" className="mb-3 flex items-start gap-3 rounded-2xl border border-[#FF9600]/30 bg-[#FF9600]/5 p-4">
+              <AlertTriangle size={18} className="text-[#FF9600] flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-sm text-[#F9FAFB]">
+                {conspicuousCount === 1
+                  ? '1 Teilnehmer hat die Prüfung verlassen.'
+                  : `${conspicuousCount} Teilnehmer haben die Prüfung verlassen.`}{' '}
+                <span className="text-[#9CA3AF]">Details in der Spalte „Fokus". Ein Eintrag beweist kein Nachschlagen.</span>
+              </p>
+            </div>
+          )}
           <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937] overflow-x-auto">
             <Table>
               <TableHeader>
@@ -394,20 +441,22 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   <TableHead className="text-[#9CA3AF]">Note</TableHead>
                   <TableHead className="text-[#9CA3AF]">Dauer</TableHead>
                   <TableHead className="text-[#9CA3AF]">Abgegeben</TableHead>
+                  {showFocus && <TableHead className="text-[#9CA3AF]">Fokus</TableHead>}
                   <TableHead className="text-[#9CA3AF]">Zählt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!results || results.participants.length === 0 ? (
                   <TableRow className="border-[#4B5563]">
-                    <TableCell colSpan={7} className="text-center text-[#9CA3AF] py-10 flex flex-col items-center gap-2">
+                    <TableCell colSpan={showFocus ? 8 : 7} className="text-center text-[#9CA3AF] py-10 flex flex-col items-center gap-2">
                       <Users size={28} className="text-[#374151]" />
                       Noch niemand beigetreten.
                     </TableCell>
                   </TableRow>
                 ) : (
                   results.participants.map((p) => (
-                    <TableRow key={p.sessionId} className={cn('border-[#4B5563]', p.excluded && 'opacity-50')}>
+                    <Fragment key={p.sessionId}>
+                    <TableRow className={cn('border-[#4B5563]', p.excluded && 'opacity-50')}>
                       <TableCell className="text-[#F9FAFB] font-medium">{p.name}</TableCell>
                       <TableCell className="text-[#F9FAFB]">{p.points}/{p.totalPoints}</TableCell>
                       <TableCell className="text-[#F9FAFB]">{p.percent}%</TableCell>
@@ -416,6 +465,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                       <TableCell className="text-[#9CA3AF] text-xs">
                         {p.submittedAt ? new Date(p.submittedAt).toLocaleString('de-DE') : 'Schreibt noch'}
                       </TableCell>
+                      {showFocus && (
+                        <TableCell>
+                          <FocusCell
+                            focus={p.focus}
+                            expanded={expandedFocus === p.sessionId}
+                            onToggle={() => setExpandedFocus((cur) => (cur === p.sessionId ? null : p.sessionId))}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Checkbox
                           checked={!p.excluded}
@@ -424,6 +482,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                         />
                       </TableCell>
                     </TableRow>
+                    {showFocus && expandedFocus === p.sessionId && (
+                      <TableRow className="border-[#4B5563] bg-[#111827]/60 hover:bg-[#111827]/60">
+                        <TableCell colSpan={8} className="py-3">
+                          <FocusDetailPanel assessmentId={id} sessionId={p.sessionId} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                   ))
                 )}
               </TableBody>

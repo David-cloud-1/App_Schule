@@ -10,6 +10,7 @@ import {
   type SnapshotQuestion,
 } from '@/lib/graded-assessments'
 import { fetchAnswerKey } from '@/lib/answer-key'
+import { buildParticipantFocus, type FocusOpenEvent, type FocusSummaryRow } from '@/lib/focus-tracking'
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -19,7 +20,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const { data: assessment } = await supabase
     .from('graded_assessments')
-    .select('id, part, grading_scale')
+    .select('id, part, grading_scale, focus_tracking')
     .eq('id', id)
     .single()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
@@ -35,7 +36,45 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
   const rows = applyGrading(rawRows, assessment.part, key, assessment.grading_scale as GradeBoundary[])
   const partKey = String(assessment.part)
-  const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale as GradeBoundary[])
+  const baseParticipants = buildParticipantRows(rows, assessment.part, assessment.grading_scale as GradeBoundary[])
+
+  // PROJ-30: Fokus-Zusammenfassung je Teilnehmer, nur wenn der Nachweis sie protokolliert.
+  // Noch offene Einträge (Azubi ist gerade weg) werden live mitgerechnet.
+  const focusTracking = Boolean(assessment.focus_tracking)
+  const summaryBySession = new Map<string, FocusSummaryRow>()
+  const openBySession = new Map<string, FocusOpenEvent[]>()
+  if (focusTracking && rawRows.length > 0) {
+    const sessionIds = rawRows.map((r) => r.id)
+    const [{ data: summaries }, { data: openEvents }] = await Promise.all([
+      service
+        .from('assessment_focus_summary')
+        .select('session_id, counted_switches, counted_seconds, short_count, auto_submitted')
+        .eq('assessment_id', id)
+        .limit(2000),
+      service
+        .from('assessment_focus_events')
+        .select('session_id, left_at')
+        .in('session_id', sessionIds)
+        .is('returned_at', null)
+        .limit(2000),
+    ])
+    for (const row of summaries ?? []) summaryBySession.set(row.session_id as string, row as FocusSummaryRow)
+    for (const ev of openEvents ?? []) {
+      const list = openBySession.get(ev.session_id as string) ?? []
+      list.push({ left_at: ev.left_at as string })
+      openBySession.set(ev.session_id as string, list)
+    }
+  }
+  const participants = baseParticipants.map((p) => ({
+    ...p,
+    focus: focusTracking
+      ? buildParticipantFocus(
+          summaryBySession.get(p.sessionId),
+          // Ein abgegebener Versuch hat keine offenen Einträge mehr (Abgabe schließt sie)
+          p.status === 'in_progress' ? (openBySession.get(p.sessionId) ?? []) : [],
+        )
+      : null,
+  }))
 
   // Grade distribution + per-question aggregation, both excluding sessions
   // the admin has taken out of the wertung.
@@ -89,6 +128,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     })
 
   return NextResponse.json({
+    focusTracking,
     participants,
     gradeDistribution: {
       counts: gradeCounts,

@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { ExamQuestion } from './page'
 import { useExamPartLabel } from '@/components/department-provider'
+import { useFocusTracking } from '@/hooks/use-focus-tracking'
 
 interface Props {
   sessionId: string
@@ -29,9 +30,25 @@ interface Props {
   initialAnswers: Record<string, string>
   /** Titel des Leistungsnachweises (PROJ-21) — nur gesetzt, wenn diese Session zu einem benoteten Nachweis gehört. */
   assessmentTitle?: string | null
+  /** PROJ-30: Verlassen der Prüfung wird protokolliert (nur Leistungsnachweise). */
+  focusTracking?: boolean
+  /** PROJ-30: Automatische Abgabe ab dieser Zahl zählender Wechsel; null = keine. */
+  focusAutoSubmitAfter?: number | null
+  /** PROJ-30: bereits gezählte Wechsel (Wiedereinstieg). */
+  initialFocusCount?: number
 }
 
-export function ExamSessionClient({ sessionId, questions, initialRemainingSeconds, partsSelected, initialAnswers, assessmentTitle }: Props) {
+export function ExamSessionClient({
+  sessionId,
+  questions,
+  initialRemainingSeconds,
+  partsSelected,
+  initialAnswers,
+  assessmentTitle,
+  focusTracking = false,
+  focusAutoSubmitAfter = null,
+  initialFocusCount = 0,
+}: Props) {
   const partLabel = useExamPartLabel()
   const router = useRouter()
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -42,9 +59,29 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
   const hasSubmitted = useRef(false)
   const answersRef = useRef(answers)
   answersRef.current = answers
+  // PROJ-30: Abgabe durch den Server wegen zu vieler Fokus-Verluste
+  const [focusEnded, setFocusEnded] = useState(false)
 
   const totalQuestions = questions.length
   const currentQuestion = questions[currentIndex]
+
+  const currentQuestionRef = useRef({ id: currentQuestion?.id ?? null, number: currentIndex + 1 })
+  currentQuestionRef.current = { id: currentQuestion?.id ?? null, number: currentIndex + 1 }
+
+  const { warningNumber, dismissWarning } = useFocusTracking({
+    sessionId,
+    enabled: focusTracking,
+    initialCount: initialFocusCount,
+    currentQuestionRef,
+    isFinished: () => hasSubmitted.current,
+    onEnded: (autoSubmitted) => {
+      // Der Server hat die Arbeit bereits abgegeben: nichts mehr senden
+      hasSubmitted.current = true
+      setIsSubmitting(true)
+      if (autoSubmitted) setFocusEnded(true)
+      else router.push(`/exam/${sessionId}/results`)
+    },
+  })
   const answeredCount = Object.keys(answers).length
   const unansweredCount = totalQuestions - answeredCount
 
@@ -388,6 +425,54 @@ export function ExamSessionClient({ sessionId, questions, initialRemainingSecond
           ))}
         </div>
       </nav>
+
+      {/* PROJ-30: Warnung beim Zurückkommen. Die Prüfungszeit läuft währenddessen weiter. */}
+      <AlertDialog open={warningNumber != null && !focusEnded}>
+        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-[#FF9600]" />
+              Du hast die Prüfung verlassen
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#9CA3AF]">
+              Wechsel Nr. {warningNumber}. Das wird deiner Lehrkraft angezeigt.
+              {focusAutoSubmitAfter != null && (
+                <> Bei {focusAutoSubmitAfter} Wechseln wird deine Arbeit automatisch abgegeben.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={dismissWarning}
+              className="bg-[#1CB0F6] hover:bg-[#18a0e0] text-white min-h-11 rounded-2xl"
+            >
+              Verstanden, weiter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={focusEnded}>
+        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-[#FF4B4B]" />
+              Deine Arbeit wurde abgegeben
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#9CA3AF]">
+              Deine Arbeit wurde abgegeben, weil du die Prüfung zu oft verlassen hast.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() => router.push(`/exam/${sessionId}/results`)}
+              className="bg-[#1CB0F6] hover:bg-[#18a0e0] text-white min-h-11 rounded-2xl"
+            >
+              Weiter
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

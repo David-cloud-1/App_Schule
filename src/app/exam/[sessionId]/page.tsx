@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { ExamSessionClient } from './exam-session-client'
 import { getCurrentExamParts } from '@/lib/departments-server'
 
@@ -76,6 +76,31 @@ export default async function ExamSessionPage({
     }))
   }
 
+  // PROJ-30: Einstellungen und bisheriger Zählerstand. graded_assessments und
+  // das Protokoll sind für Azubis per RLS nicht lesbar — nur die zwei Werte,
+  // die der Runner braucht, gehen an den Browser.
+  let focusTracking = false
+  let focusAutoSubmitAfter: number | null = null
+  let initialFocusCount = 0
+  if (session.assessment_id) {
+    const service = createServiceClient()
+    const { data: assessment } = await service
+      .from('graded_assessments')
+      .select('focus_tracking, focus_auto_submit_after')
+      .eq('id', session.assessment_id)
+      .maybeSingle()
+    focusTracking = Boolean(assessment?.focus_tracking)
+    if (focusTracking) {
+      focusAutoSubmitAfter = (assessment?.focus_auto_submit_after as number | null) ?? null
+      const { data: summary } = await service
+        .from('assessment_focus_summary')
+        .select('counted_switches')
+        .eq('session_id', sessionId)
+        .maybeSingle()
+      initialFocusCount = (summary?.counted_switches as number | undefined) ?? 0
+    }
+  }
+
   return (
     <ExamSessionClient
       sessionId={sessionId}
@@ -84,6 +109,9 @@ export default async function ExamSessionPage({
       partsSelected={parts}
       initialAnswers={initialAnswers}
       assessmentTitle={resultsJson?.assessment?.title ?? null}
+      focusTracking={focusTracking}
+      focusAutoSubmitAfter={focusAutoSubmitAfter}
+      initialFocusCount={initialFocusCount}
     />
   )
 }

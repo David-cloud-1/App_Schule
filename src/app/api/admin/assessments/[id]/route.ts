@@ -11,6 +11,7 @@ import {
 } from '@/lib/graded-assessments'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { fetchAnswerKey } from '@/lib/answer-key'
+import { validateFocusSettings } from '@/lib/focus-tracking'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
@@ -24,6 +25,8 @@ const EditSchema = z.object({
     grade: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
     minPercent: z.number().min(0).max(100),
   })).length(6).optional(),
+  focusTracking: z.boolean().optional(),
+  focusAutoSubmitAfter: z.number().int().nullable().optional(),
 })
 
 async function loadAssessment(supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'], id: string) {
@@ -71,6 +74,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     closesAt: assessment.closes_at,
     durationMinutes: assessment.duration_minutes,
     gradingScale: assessment.grading_scale,
+    focusTracking: assessment.focus_tracking ?? false,
+    focusAutoSubmitAfter: assessment.focus_auto_submit_after ?? null,
     resultsReleasedAt: assessment.results_released_at,
     createdAt: assessment.created_at,
     questionCount: assessment.question_ids_snapshot?.length ?? assessment.draft_question_ids?.length ?? set?.question_ids?.length ?? 0,
@@ -242,6 +247,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const scaleError = validateGradingScale(patch.gradingScale)
     if (scaleError) return NextResponse.json({ error: scaleError }, { status: 400 })
   }
+  // PROJ-30: Einstellungen gemeinsam mit dem Bestand prüfen (Auto-Abgabe setzt Protokollierung voraus)
+  const focusTracking = patch.focusTracking ?? assessment.focus_tracking ?? false
+  let focusAutoSubmitAfter = patch.focusAutoSubmitAfter !== undefined
+    ? patch.focusAutoSubmitAfter
+    : (assessment.focus_auto_submit_after ?? null)
+  // Wird die Protokollierung ausgeschaltet, entfällt die Auto-Abgabe mit
+  if (!focusTracking && patch.focusAutoSubmitAfter === undefined) focusAutoSubmitAfter = null
+  const focusError = validateFocusSettings({ focusTracking, focusAutoSubmitAfter })
+  if (focusError) return NextResponse.json({ error: focusError }, { status: 400 })
+
   const opensAt = patch.opensAt ?? assessment.opens_at
   const closesAt = patch.closesAt ?? assessment.closes_at
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
@@ -266,6 +281,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (patch.closesAt !== undefined) update.closes_at = patch.closesAt
   if (patch.durationMinutes !== undefined) update.duration_minutes = patch.durationMinutes
   if (patch.gradingScale !== undefined) update.grading_scale = patch.gradingScale
+  if (patch.focusTracking !== undefined || patch.focusAutoSubmitAfter !== undefined) {
+    update.focus_tracking = focusTracking
+    update.focus_auto_submit_after = focusAutoSubmitAfter
+  }
 
   const { error } = await supabase.from('graded_assessments').update(update).eq('id', id)
   if (error) return NextResponse.json({ error: 'Speichern fehlgeschlagen.' }, { status: 500 })

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, XCircle, ChevronDown, ChevronUp, RotateCcw, Trophy, Clock3, GraduationCap } from 'lucide-react'
+import { CheckCircle2, XCircle, ChevronDown, ChevronUp, RotateCcw, Trophy, Clock3, GraduationCap, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Slider } from '@/components/ui/slider'
@@ -18,6 +18,8 @@ interface Props {
   startedAt: string
   endedAt: string | null
   assessment?: AssessmentResultInfo | null
+  /** PROJ-30: Die Arbeit wurde automatisch abgegeben, weil die Prüfung zu oft verlassen wurde. */
+  autoSubmittedByFocus?: boolean
 }
 
 function PartSummaryCard({ part, partNum, label, readOnly }: { part: PartResult; partNum: number; label: string; readOnly?: boolean }) {
@@ -241,7 +243,7 @@ function OpenResultCard({
   )
 }
 
-export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment }: Props) {
+export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment, autoSubmittedByFocus = false }: Props) {
   const partLabel = useExamPartLabel()
   const partEntries = partsSelected
     .map((p) => [p, results?.parts?.[String(p)]] as [number, PartResult | undefined])
@@ -274,6 +276,14 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
             <p className="text-xs text-[#6B7280] mt-3">{durationMinutes} Minuten bearbeitet</p>
           )}
         </div>
+        {autoSubmittedByFocus && (
+          <div role="status" className="rounded-2xl border border-[#FF4B4B]/30 bg-[#FF4B4B]/5 p-4 flex items-start gap-3">
+            <AlertTriangle size={18} className="text-[#FF4B4B] flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-[#F9FAFB]">
+              Deine Arbeit wurde abgegeben, weil du die Prüfung zu oft verlassen hast.
+            </p>
+          </div>
+        )}
         <div className="flex flex-col gap-3 pt-2">
           <Link href="/exam-history">
             <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">

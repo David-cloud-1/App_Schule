@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
+import { validateFocusSettings } from '@/lib/focus-tracking'
 
 const CreateAssessmentSchema = z.object({
   questionIds: z.array(z.string().uuid()).min(1).max(500),
@@ -14,6 +15,9 @@ const CreateAssessmentSchema = z.object({
     grade: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
     minPercent: z.number().min(0).max(100),
   })).length(6),
+  // PROJ-30: Fokus-Verlust-Protokoll. Ohne Angabe aus (der Dialog schickt „an" ausdrücklich).
+  focusTracking: z.boolean().default(false),
+  focusAutoSubmitAfter: z.number().int().nullable().default(null),
 })
 
 export async function GET() {
@@ -74,13 +78,15 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale } = parsed.data
+  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale, focusTracking, focusAutoSubmitAfter } = parsed.data
 
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
   }
   const scaleError = validateGradingScale(gradingScale)
   if (scaleError) return NextResponse.json({ error: scaleError }, { status: 400 })
+  const focusError = validateFocusSettings({ focusTracking, focusAutoSubmitAfter })
+  if (focusError) return NextResponse.json({ error: focusError }, { status: 400 })
 
   // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereich (PROJ-27)
   let check
@@ -122,6 +128,8 @@ export async function POST(request: NextRequest) {
       opens_at: opensAt,
       closes_at: closesAt,
       grading_scale: gradingScale,
+      focus_tracking: focusTracking,
+      focus_auto_submit_after: focusAutoSubmitAfter,
       created_by: user.id,
     })
     .select('id')

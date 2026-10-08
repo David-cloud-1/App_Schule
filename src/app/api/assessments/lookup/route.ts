@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('id, title, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, exam_set_id, department_id')
+    .select('id, title, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, exam_set_id, department_id, focus_tracking, focus_auto_submit_after')
     .eq('access_code', code)
     .maybeSingle()
 
@@ -85,6 +85,9 @@ export async function POST(request: NextRequest) {
     questionCount,
     durationMinutes: assessment.duration_minutes,
     status,
+    // PROJ-30: für den Hinweis auf dem Startbildschirm
+    focusTracking: assessment.focus_tracking ?? false,
+    focusAutoSubmitAfter: assessment.focus_tracking ? (assessment.focus_auto_submit_after ?? null) : null,
     needsName: !existingSession,
     existingSessionId: existingSession?.id ?? null,
     existingSessionStatus: existingSession?.status === 'in_progress' ? 'in_progress' : 'completed',
