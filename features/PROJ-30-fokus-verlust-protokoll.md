@@ -1,6 +1,6 @@
 # PROJ-30: Fokus-Verlust-Protokoll bei Leistungsnachweisen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-08
 **Last Updated:** 2026-10-08
 
@@ -348,4 +348,16 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 - **Production Ready:** YES — mit der Empfehlung eines kurzen Geräte-Tests (iPhone, Android, Desktop) nach dem Deploy. Wirksam ist die Funktion nur für **neu angelegte** Nachweise mit eingeschalteter Protokollierung; alles Bestehende bleibt unverändert.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-10-08
+**Production URL:** https://spedilern.vercel.app
+**Vercel Deployment:** `spedilern-iv6cnwuk8` (Production, Status Ready), ausgelöst per Push auf `main` (Commit d6747d3).
+
+**Datenbank (Produktion, Supabase „Spedilern App"):** `proj30_focus_protocol` wurde **vor** dem Deploy angewendet (rein additiv; alte Nachweise haben die Protokollierung aus, daher ist der Bestand vom neuen Code unberührt). Rollback: `supabase/migrations/20261008_proj30_focus_protocol_down.sql` (löscht das Protokoll).
+
+**Vor dem Deploy geprüft:** 654/654 Tests und `tsc` im **getrennten Checkout des committeten Stands** (ohne die fremden, uncommitteten Arbeiten an PROJ-26/28), dort auch `npm run build` fehlerfrei. Im Commit steckt ausschließlich PROJ-30; Detailseite und Beitritts-Client wurden aus dem letzten Commit plus nur den PROJ-30-Änderungen gebaut.
+
+**Nach dem Deploy geprüft:** Build Ready; die neuen Routen antworten ohne Login mit 401 (Fokus-Meldung, Admin-Detailprotokoll, Beitrittsabfrage).
+
+**Noch offen:**
+- Manueller Test an echten Geräten (iPhone, Android, Desktop): einen Nachweis mit eingeschalteter Protokollierung anlegen, öffnen, beitreten, Tab/App wechseln, Warnung und Teilnehmerliste prüfen — auch die automatische Abgabe mit kleiner Grenze (z. B. 1).
+- BUG-3 („Keine Überwachung möglich") und BUG-4 (Policy der Einzel-Einträge für Bereichs-Admins), beide Low.
