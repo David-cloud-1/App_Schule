@@ -170,13 +170,18 @@ const getRequestContext = cache(async (): Promise<RequestContext> => {
   } = await supabase.auth.getUser()
 
   let departmentId: string | null = null
+  // Super-Admin und sein verknüpftes Zweitkonto (PROJ-29) wechseln bewusst
+  // zwischen Bereichen — der Hinweis auf die „richtige" Adresse entfällt für sie
+  let isSwitchAccount = false
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('department_id')
+      .select('department_id, role, linked_main_user_id')
       .eq('id', user.id)
       .maybeSingle()
-    departmentId = (profile as { department_id: string | null } | null)?.department_id ?? null
+    const row = profile as { department_id: string | null; role?: string; linked_main_user_id?: string | null } | null
+    departmentId = row?.department_id ?? null
+    isSwitchAccount = row?.role === 'admin' || !!row?.linked_main_user_id
   }
 
   const host = await requestHost()
@@ -196,7 +201,7 @@ const getRequestContext = cache(async (): Promise<RequestContext> => {
   // Hinweis „Deine App heißt …", wenn die Adresse zu einem anderen Bereich gehört
   const hostDepartment = departmentForHost(departments, host)
   const correctAddress =
-    user && department?.domain && hostDepartment && hostDepartment.id !== department.id
+    user && !isSwitchAccount && department?.domain && hostDepartment && hostDepartment.id !== department.id
       ? { appName: department.appName, domain: department.domain }
       : null
 

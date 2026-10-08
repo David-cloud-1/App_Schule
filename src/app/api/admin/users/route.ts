@@ -26,6 +26,8 @@ export async function GET() {
     .from('profiles')
     .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id')
     .eq('department_id', departmentId)
+    // Verknüpftes Zweitkonto des Super-Admins (PROJ-29) ist kein echter Azubi
+    .is('linked_main_user_id', null)
     .order('total_xp', { ascending: false })
 
   if (pErr) {

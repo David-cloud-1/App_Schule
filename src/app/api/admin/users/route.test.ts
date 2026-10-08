@@ -51,6 +51,7 @@ function makeServiceClient(profilesData = mockProfiles, profilesError: unknown =
   const profilesBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     order: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
   }
   return {

@@ -55,6 +55,10 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-23: Fachbereichs-Zuordnung für Azubis | Planned |
 | P1 | PROJ-24: Fachbereichs-Admins & Rechtetrennung | Planned |
 | P1 | PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst) | Planned |
+| P1 | PROJ-26: Visuelle Hof-Szene & kategorisierter Item-Katalog | Planned |
+| P1 | PROJ-27: Leistungsnachweis – eigene Fragen-Zusammenstellung | Planned |
+| P1 | PROJ-28: Leistungsnachweis – Druck & Klassenauswertung | Planned |
+| P1 | PROJ-29: Bereichs-Umschalter für den Super-Admin | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

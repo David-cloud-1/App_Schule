@@ -48,10 +48,10 @@ function bar(share: number, width = 24): string {
 async function load() {
   const supabase = db()
   const [profiles, sessions, answers, badges, userBadges, examSessions, subjects] = await Promise.all([
-    loadAll<ProfileRow & { role: string }>(
+    loadAll<ProfileRow & { role: string; linked_main_user_id: string | null }>(
       supabase,
       'profiles',
-      'id, role, created_at, current_streak, longest_streak, total_xp, last_session_date, leaderboard_opt_out'
+      'id, role, created_at, current_streak, longest_streak, total_xp, last_session_date, leaderboard_opt_out, linked_main_user_id'
     ),
     loadAll<SessionRow>(supabase, 'quiz_sessions', 'user_id, subject_id, score, total, completed_at'),
     loadAll<AnswerRow>(supabase, 'quiz_answers', 'user_id, session_id, is_correct, answered_at'),
@@ -187,7 +187,9 @@ if (single) {
 } else {
   const includeAdmins = has('mit-admins')
   const all = data.profiles.length
-  const profiles = includeAdmins ? data.profiles : data.profiles.filter((p) => p.role === 'student')
+  // Verknüpfte Zweitkonten des Super-Admins (PROJ-29) sind keine echten Azubis
+  const real = data.profiles.filter((p) => !p.linked_main_user_id)
+  const profiles = includeAdmins ? real : real.filter((p) => p.role === 'student')
   const report = analyzeEngagement({ ...data, profiles, now: new Date() })
   report.users.excludedAdmins = all - profiles.length
 

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User } from 'lucide-react'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
 import { XpProgressBar } from '@/components/xp-progress-bar'
@@ -10,6 +10,8 @@ import { fetchBadgeDefinitions, toBadgeDisplay, type BadgeDisplay } from '@/lib/
 import { HofGallery } from '@/components/hof-gallery'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 import { PseudonymSettings } from '@/components/pseudonym-settings'
+import { AreaSwitcher } from '@/components/area-switcher'
+import { getLinkContext, LINKED_DEPARTMENT_CODE } from '@/lib/linked-account'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -54,6 +56,29 @@ export default async function ProfilePage() {
     console.error('[profile] badge definitions:', err)
   }
 
+  // Bereichs-Umschalter nur für Super-Admin und dessen Zweitkonto (PROJ-29)
+  let areaSwitch: { current: 'main' | 'linked'; mainName: string; linkedName: string } | null = null
+  try {
+    const service = createServiceClient()
+    const link = await getLinkContext(service, user.id)
+    if (link) {
+      let mainDepartmentId = (profile?.department_id as string | null) ?? null
+      if (link.current === 'linked') {
+        const { data: main } = await service.from('profiles').select('department_id').eq('id', link.mainUserId).maybeSingle()
+        mainDepartmentId = (main as { department_id: string | null } | null)?.department_id ?? null
+      }
+      const { data: departments } = await service.from('departments').select('id, code, name').limit(50)
+      const rows = (departments ?? []) as { id: string; code: string; name: string }[]
+      areaSwitch = {
+        current: link.current,
+        mainName: rows.find((d) => d.id === mainDepartmentId)?.name ?? 'Hauptkonto',
+        linkedName: rows.find((d) => d.code === LINKED_DEPARTMENT_CODE)?.name ?? 'Tourismus',
+      }
+    }
+  } catch (err) {
+    console.error('[profile] area switch:', err)
+  }
+
   return (
     <div className="min-h-screen bg-[#111827] flex flex-col">
       {/* Header */}
@@ -67,6 +92,12 @@ export default async function ProfilePage() {
       </header>
 
       <main className="max-w-md mx-auto px-4 py-6 w-full space-y-5">
+        {areaSwitch && (
+          <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
+            <AreaSwitcher {...areaSwitch} />
+          </div>
+        )}
+
         {/* Profile card */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
           <div className="flex items-center gap-4 mb-4">
