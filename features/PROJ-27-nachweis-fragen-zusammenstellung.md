@@ -146,6 +146,9 @@ Keine neuen Pakete.
 - Tests: `assessment-questions.test.ts`, `questions/route.test.ts`, `route.test.ts` angepasst – alle grün.
 - Bewusst: Anlegen verlangt sofort ≥ 5 Fragen (Akzeptanzkriterium); der Edge Case „leerer Entwurf" ist damit nicht möglich.
 
+## Änderung nach Deploy: Auswahl ohne Prüfungsteil (2026-10-08)
+Auf Wunsch entfällt die Teil-Auswahl im Anlegen-Dialog. Stattdessen Filter in der Reihenfolge **Klasse → Fach → Thema**, je mit „gemischt" als Standard; die Fragenliste umfasst alle aktiven MC-Fragen des Bereichs (alle Fächer). Der technische Prüfungsteil (Schlüssel für die Teilnehmer-Pfade) wird serverseitig aus den gewählten Fragen abgeleitet (Teil mit den meisten Fragen, bei Gleichstand der niedrigere) und beim Ändern der Fragen neu bestimmt. Schnittstellen: `GET .../questions` und `POST .../questions/import` ohne `part`, `POST /assessments` ohne `part`. Nachweis-Liste ohne Spalte „Teil". Bug 1 (Teilwechsel-Race) entfällt damit.
+
 ## QA Test Results (2026-10-08)
 
 **Umfang:** Code-Review gegen die Akzeptanzkriterien, Sicherheitsprüfung der Schnittstellen, Datenbank-Check, automatische Tests. **Nicht durchgeführt:** Browser-Test, Playwright/E2E, Cross-Browser und Responsive-Prüfung (laut Projektregel kein Dev-Server/Playwright wegen Systemabstürzen). Die Oberfläche ist daher nur gelesen, nicht bedient worden.

@@ -41,7 +41,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
-import { useExamPartLabel } from '@/components/department-provider'
 import { cn } from '@/lib/utils'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
@@ -118,7 +117,6 @@ async function fetchResults(id: string): Promise<ResultsResponse | null> {
 export default function AssessmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const partLabel = useExamPartLabel()
   const [editQuestionsOpen, setEditQuestionsOpen] = useState(false)
   const [detail, setDetail] = useState<AssessmentDetail | null>(null)
   const [results, setResults] = useState<ResultsResponse | null>(null)
@@ -259,7 +257,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </Link>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-[#F9FAFB]">{detail.title}</h1>
-          <p className="text-sm text-[#9CA3AF]">{[detail.examSetName, partLabel(detail.part)].filter(Boolean).join(' · ')} · {detail.questionCount} Fragen · {detail.durationMinutes} Min.</p>
+          <p className="text-sm text-[#9CA3AF]">{detail.examSetName ? `${detail.examSetName} · ` : ''}{detail.questionCount} Fragen · {detail.durationMinutes} Min.</p>
         </div>
         <Badge className={cn(
           'text-xs border-0',
@@ -518,7 +516,6 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           open={editQuestionsOpen}
           onOpenChange={setEditQuestionsOpen}
           assessmentId={detail.id}
-          part={detail.part}
           initialQuestionIds={detail.draftQuestionIds ?? []}
           onSaved={load}
         />

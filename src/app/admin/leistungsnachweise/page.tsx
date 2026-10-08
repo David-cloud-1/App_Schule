@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
-import { useExamPartLabel } from '@/components/department-provider'
 import { cn } from '@/lib/utils'
 
 type AssessmentListItem = {
@@ -53,7 +52,6 @@ const STATUS_STYLES: Record<AssessmentListItem['status'], string> = {
 }
 
 function AssessmentsPageContent() {
-  const partLabel = useExamPartLabel()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [assessments, setAssessments] = useState<AssessmentListItem[]>([])
@@ -134,7 +132,6 @@ function AssessmentsPageContent() {
             <TableHeader>
               <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
                 <TableHead className="text-[#9CA3AF]">Titel</TableHead>
-                <TableHead className="text-[#9CA3AF]">Teil</TableHead>
                 <TableHead className="text-[#9CA3AF]">Status</TableHead>
                 <TableHead className="text-[#9CA3AF]">Code</TableHead>
                 <TableHead className="text-[#9CA3AF]">Teilnehmer</TableHead>
@@ -146,7 +143,6 @@ function AssessmentsPageContent() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={`sk-${i}`} className="border-[#4B5563]">
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
@@ -155,7 +151,7 @@ function AssessmentsPageContent() {
                 ))
               ) : assessments.length === 0 ? (
                 <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={6} className="text-center text-[#9CA3AF] py-10">
+                  <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
                     <GraduationCap size={32} className="mx-auto mb-2 text-[#374151]" />
                     Noch keine Leistungsnachweise angelegt.
                   </TableCell>
@@ -168,7 +164,6 @@ function AssessmentsPageContent() {
                         {a.title}
                       </Link>
                     </TableCell>
-                    <TableCell className="text-[#9CA3AF] text-sm">{partLabel(a.part)}</TableCell>
                     <TableCell>
                       <Badge className={cn('text-xs border-0', STATUS_STYLES[a.status])}>
                         {STATUS_LABELS[a.status]}

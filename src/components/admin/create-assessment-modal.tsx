@@ -16,8 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
-import { useExamParts } from '@/components/department-provider'
-import { examPartLabel } from '@/lib/exam-parts'
+import { useExamPartLabel } from '@/components/department-provider'
 import { AssessmentQuestionSelector } from './assessment-question-selector'
 import type { PickerQuestion } from './question-picker'
 
@@ -52,8 +51,7 @@ const NO_START = 'none'
 const MIN_QUESTIONS = 5
 
 export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSetId, onSuccess }: Props) {
-  const examParts = useExamParts()
-  const [part, setPart] = useState<number | null>(null)
+  const partLabel = useExamPartLabel()
   const [startSetId, setStartSetId] = useState<string>(NO_START)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [skippedFromSet, setSkippedFromSet] = useState(0)
@@ -65,15 +63,15 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  // Fragen-IDs des zuletzt geladenen Teils und eine noch ausstehende Set-Vorauswahl:
-  // Set-Fragen werden erst nach dem Laden gegen die wählbaren Fragen abgeglichen
-  // (offene und deaktivierte Fragen fallen heraus).
-  const loadedRef = useRef<{ part: number; ids: Set<string> } | null>(null)
+  // IDs der wählbaren Fragen und eine noch ausstehende Set-Vorauswahl: Set-Fragen
+  // werden erst nach dem Laden gegen die wählbaren Fragen abgeglichen (offene
+  // und deaktivierte Fragen fallen heraus).
+  const loadedIdsRef = useRef<Set<string> | null>(null)
   const pendingSetRef = useRef<string[] | null>(null)
 
-  function applySetQuestions(questionIds: string[], forPart: number) {
-    if (loadedRef.current?.part === forPart) {
-      const ids = loadedRef.current.ids
+  function applySetQuestions(questionIds: string[]) {
+    if (loadedIdsRef.current) {
+      const ids = loadedIdsRef.current
       const kept = questionIds.filter((id) => ids.has(id))
       setSelectedIds(new Set(kept))
       setSkippedFromSet(questionIds.length - kept.length)
@@ -85,61 +83,34 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     }
   }
 
-  // Aktuell gewählter Teil, synchron nachgeführt: eine verspätete Ladeantwort
-  // eines früheren Teils darf Vorauswahl und Abgleich nicht mehr beeinflussen.
-  const partRef = useRef<number | null>(null)
-
-  function handleLoaded(questions: PickerQuestion[], loadedPart: number) {
-    if (loadedPart !== partRef.current) return
-    loadedRef.current = { part: loadedPart, ids: new Set(questions.map((q) => q.id)) }
-    if (pendingSetRef.current) applySetQuestions(pendingSetRef.current, loadedPart)
+  function handleLoaded(questions: PickerQuestion[]) {
+    loadedIdsRef.current = new Set(questions.map((q) => q.id))
+    if (pendingSetRef.current) applySetQuestions(pendingSetRef.current)
   }
 
   useEffect(() => {
-    if (!open) {
-      // Beim nächsten Öffnen soll nicht kurz der alte Teil geladen werden
-      partRef.current = null
-      setPart(null)
-      return
-    }
-    loadedRef.current = null
+    if (!open) return
+    loadedIdsRef.current = null
     pendingSetRef.current = null
     setSkippedFromSet(0)
+    setSelectedIds(new Set())
     const preset = sets.find((s) => s.id === preselectedSetId)
     if (preset) {
-      partRef.current = preset.part
-      setPart(preset.part)
       setStartSetId(preset.id)
       setTitle(`${preset.name} – Leistungsnachweis`)
       setDurationMinutes(String(preset.duration_minutes ?? 90))
       pendingSetRef.current = preset.question_ids
-      setSelectedIds(new Set())
     } else {
-      partRef.current = examParts[0]?.partNumber ?? null
-      setPart(partRef.current)
       setStartSetId(NO_START)
       setTitle('')
       setDurationMinutes('90')
-      setSelectedIds(new Set())
     }
     const { opensAt, closesAt } = defaultWindow()
     setOpensAt(opensAt)
     setClosesAt(closesAt)
     setScale(IHK_DEFAULT_SCALE)
     setErrors({})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, preselectedSetId, sets])
-
-  function handlePartChange(value: string) {
-    const next = Number(value)
-    partRef.current = next
-    setPart(next)
-    setStartSetId(NO_START)
-    setSelectedIds(new Set())
-    setSkippedFromSet(0)
-    pendingSetRef.current = null
-    loadedRef.current = null
-  }
 
   function handleStartSetChange(value: string) {
     setStartSetId(value)
@@ -152,14 +123,11 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     if (!set) return
     if (!title.trim()) setTitle(`${set.name} – Leistungsnachweis`)
     if (set.duration_minutes) setDurationMinutes(String(set.duration_minutes))
-    applySetQuestions(set.question_ids, set.part)
+    applySetQuestions(set.question_ids)
   }
-
-  const setsOfPart = sets.filter((s) => s.part === part)
 
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (part === null) e.part = 'Bitte einen Teil wählen.'
     if (selectedIds.size < MIN_QUESTIONS) e.questions = `Mindestens ${MIN_QUESTIONS} Fragen auswählen.`
     if (!title.trim()) e.title = 'Titel ist Pflicht.'
     if (!opensAt) e.opensAt = 'Startzeit fehlt.'
@@ -184,7 +152,6 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          part,
           questionIds: [...selectedIds],
           title: title.trim(),
           opensAt: new Date(opensAt).toISOString(),
@@ -220,24 +187,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="part">Prüfungsteil</Label>
-            <Select value={part === null ? undefined : String(part)} onValueChange={handlePartChange}>
-              <SelectTrigger id="part" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
-                <SelectValue placeholder="Teil wählen" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                {examParts.map((p) => (
-                  <SelectItem key={p.id} value={String(p.partNumber)}>
-                    {examPartLabel(p)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.part && <p className="text-xs text-[#FF4B4B]">{errors.part}</p>}
-          </div>
-
-          {setsOfPart.length > 0 && (
+          {sets.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="startSet">Startauswahl aus Prüfungsset <span className="font-normal text-[#6B7280]">— optional</span></Label>
               <Select value={startSetId} onValueChange={handleStartSetChange}>
@@ -246,9 +196,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
                 </SelectTrigger>
                 <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                   <SelectItem value={NO_START}>Ohne Startauswahl</SelectItem>
-                  {setsOfPart.map((s) => (
+                  {sets.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.name} ({s.question_ids.length} Fragen)
+                      {s.name} — {partLabel(s.part)} ({s.question_ids.length} Fragen)
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -264,19 +214,11 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
             </div>
           )}
 
-          {part !== null && (
-            <div className="space-y-2">
-              <Label>Fragen</Label>
-              <AssessmentQuestionSelector
-                key={part}
-                part={part}
-                selectedIds={selectedIds}
-                onChange={setSelectedIds}
-                onLoaded={handleLoaded}
-              />
-              {errors.questions && <p className="text-xs text-[#FF4B4B]">{errors.questions}</p>}
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Fragen</Label>
+            <AssessmentQuestionSelector selectedIds={selectedIds} onChange={setSelectedIds} onLoaded={handleLoaded} />
+            {errors.questions && <p className="text-xs text-[#FF4B4B]">{errors.questions}</p>}
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="title">Titel</Label>

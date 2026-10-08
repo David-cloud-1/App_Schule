@@ -26,7 +26,6 @@ function makeRequest(method: string, body?: unknown) {
 }
 
 const validBody = {
-  part: 1,
   questionIds: QUESTION_IDS,
   title: 'LN 2 – Verkehrsträger Straße',
   opensAt: '2026-10-01T08:00:00.000Z',
@@ -126,7 +125,7 @@ describe('GET /api/admin/assessments', () => {
 describe('POST /api/admin/assessments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(checkQuestionSelection).mockResolvedValue({ ok: true, ids: QUESTION_IDS })
+    vi.mocked(checkQuestionSelection).mockResolvedValue({ ok: true, ids: QUESTION_IDS, part: 2 })
   })
 
   it('returns 401 when not authenticated', async () => {
@@ -168,10 +167,10 @@ describe('POST /api/admin/assessments', () => {
     expect((await res.json()).error).toMatch(/nicht zulässig/)
   })
 
-  it('validates the selection against the admin department and part', async () => {
+  it('validates the selection against the admin department and stores the derived part', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     await POST(makeRequest('POST', validBody))
-    expect(checkQuestionSelection).toHaveBeenCalledWith(expect.anything(), 'dept-sped', 1, QUESTION_IDS)
+    expect(checkQuestionSelection).toHaveBeenCalledWith(expect.anything(), 'dept-sped', QUESTION_IDS)
   })
 
   it('returns 400 when no question ids are sent', async () => {

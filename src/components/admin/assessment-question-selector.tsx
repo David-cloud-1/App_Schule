@@ -15,8 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useExamParts } from '@/components/department-provider'
-import { findExamPart } from '@/lib/exam-parts'
 import { QuestionPicker, type PickerQuestion } from './question-picker'
 
 type ExtractedQuestion = {
@@ -32,26 +30,23 @@ type ImportStep = 'file' | 'extracting' | 'preview' | 'importing'
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 interface Props {
-  part: number
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
   /** Wird nach jedem Laden der Fragenliste aufgerufen (z. B. um übersprungene Set-Fragen zu zählen) */
-  onLoaded?: (questions: PickerQuestion[], part: number) => void
+  onLoaded?: (questions: PickerQuestion[]) => void
 }
 
 /**
  * Lädt die wählbaren Fragen eines Prüfungsteils (aktiv, Multiple-Choice, eigener
  * Fachbereich) und zeigt die Fragenauswahl samt Datei-Import.
  */
-export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoaded }: Props) {
-  const examParts = useExamParts()
-  const subjectCodes = findExamPart(examParts, part)?.subjects.map((s) => s.code) ?? []
+export function AssessmentQuestionSelector({ selectedIds, onChange, onLoaded }: Props) {
   const [questions, setQuestions] = useState<PickerQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
 
-  // Antworten eines früheren Ladevorgangs (Teilwechsel, Unmount) werden verworfen
+  // Antworten eines früheren Ladevorgangs (Unmount) werden verworfen
   const requestRef = useRef(0)
 
   const load = useCallback(async () => {
@@ -59,7 +54,7 @@ export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoad
     setLoading(true)
     setFailed(false)
     try {
-      const res = await fetch(`/api/admin/assessments/questions?part=${part}`)
+      const res = await fetch('/api/admin/assessments/questions')
       if (requestId !== requestRef.current) return
       if (!res.ok) {
         setFailed(true)
@@ -69,15 +64,15 @@ export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoad
       if (requestId !== requestRef.current) return
       const list: PickerQuestion[] = data.questions ?? []
       setQuestions(list)
-      onLoaded?.(list, part)
+      onLoaded?.(list)
     } catch {
       if (requestId === requestRef.current) setFailed(true)
     } finally {
       if (requestId === requestRef.current) setLoading(false)
     }
-    // onLoaded bewusst nicht als Abhängigkeit: es soll nur beim Teilwechsel laden
+    // onLoaded bewusst nicht als Abhängigkeit: es soll nur einmal laden
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [part])
+  }, [])
 
   useEffect(() => {
     load()
@@ -119,7 +114,7 @@ export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoad
 
   return (
     <div className="space-y-2">
-      <QuestionPicker questions={questions} selectedIds={selectedIds} onChange={onChange} subjectCodes={subjectCodes} />
+      <QuestionPicker questions={questions} selectedIds={selectedIds} onChange={onChange} />
       <Button
         type="button"
         variant="outline"
@@ -130,7 +125,7 @@ export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoad
         <FileUp size={14} className="mr-1.5" />
         Fragen aus Datei importieren
       </Button>
-      <ImportDialog open={importOpen} onOpenChange={setImportOpen} part={part} onImported={handleImported} />
+      <ImportDialog open={importOpen} onOpenChange={setImportOpen} onImported={handleImported} />
     </div>
   )
 }
@@ -138,12 +133,10 @@ export function AssessmentQuestionSelector({ part, selectedIds, onChange, onLoad
 function ImportDialog({
   open,
   onOpenChange,
-  part,
   onImported,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  part: number
   onImported: (questions: PickerQuestion[]) => void
 }) {
   const [step, setStep] = useState<ImportStep>('file')
@@ -195,7 +188,7 @@ function ImportDialog({
       const res = await fetch('/api/admin/assessments/questions/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ part, questions: preview }),
+        body: JSON.stringify({ questions: preview }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {

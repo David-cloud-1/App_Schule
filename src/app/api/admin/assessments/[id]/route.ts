@@ -252,13 +252,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (patch.questionIds !== undefined) {
     let check
     try {
-      check = await checkQuestionSelection(supabase, assessment.department_id, assessment.part, patch.questionIds)
+      check = await checkQuestionSelection(supabase, assessment.department_id, patch.questionIds)
     } catch (err) {
       console.error('[PATCH /api/admin/assessments/[id]]', err)
       return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
     }
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
     update.draft_question_ids = check.ids
+    update.part = check.part
   }
   if (patch.title !== undefined) update.title = patch.title
   if (patch.opensAt !== undefined) update.opens_at = patch.opensAt

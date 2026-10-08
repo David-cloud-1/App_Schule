@@ -5,7 +5,6 @@ import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 
 const CreateAssessmentSchema = z.object({
-  part: z.number().int().min(1).max(20),
   questionIds: z.array(z.string().uuid()).min(1).max(500),
   title: z.string().min(1).max(100),
   opensAt: z.string().datetime(),
@@ -75,7 +74,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { part, questionIds, title, opensAt, closesAt, durationMinutes, gradingScale } = parsed.data
+  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale } = parsed.data
 
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
@@ -83,10 +82,10 @@ export async function POST(request: NextRequest) {
   const scaleError = validateGradingScale(gradingScale)
   if (scaleError) return NextResponse.json({ error: scaleError }, { status: 400 })
 
-  // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereich und Teil (PROJ-27)
+  // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereich (PROJ-27)
   let check
   try {
-    check = await checkQuestionSelection(supabase, departmentId, part, questionIds)
+    check = await checkQuestionSelection(supabase, departmentId, questionIds)
   } catch (err) {
     console.error('[POST /api/admin/assessments]', err)
     return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
@@ -113,7 +112,8 @@ export async function POST(request: NextRequest) {
     .from('graded_assessments')
     .insert({
       // Kein Prüfungsset: die Fragen stehen bis zum Öffnen im Entwurf (PROJ-27)
-      part,
+      // Technischer Teil, aus den gewählten Fragen abgeleitet
+      part: check.part,
       department_id: departmentId,
       draft_question_ids: check.ids,
       title,

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
+import { fetchExamParts, type ExamPart } from '@/lib/exam-parts'
+import { fetchDepartmentSubjects } from '@/lib/subjects'
 
 /** Mindestanzahl Fragen für einen Leistungsnachweis */
 export const MIN_ASSESSMENT_QUESTIONS = 5
@@ -26,20 +27,18 @@ type QuestionRow = {
 const PAGE_SIZE = 1000
 
 /**
- * Alle aktiven Multiple-Choice-Fragen, die zu den Fächern des Prüfungsteils im
- * Bereich gehören (neueste zuerst). Seitenweise geladen, weil PostgREST bei
- * 1000 Zeilen kappt. `null`, wenn der Teil im Bereich nicht existiert.
+ * Alle aktiven Multiple-Choice-Fragen des Fachbereichs (neueste zuerst),
+ * über alle Fächer hinweg. Seitenweise geladen, weil PostgREST bei 1000
+ * Zeilen kappt.
  */
 export async function fetchSelectableQuestions(
   supabase: SupabaseClient,
   departmentId: string,
-  part: number,
-): Promise<PickerQuestion[] | null> {
-  const examPart = findExamPart(await fetchExamParts(supabase, departmentId), part)
-  if (!examPart) return null
-  const subjectIds = examPart.subjects.map((s) => s.id)
-  if (subjectIds.length === 0) return []
-  const codeById = new Map(examPart.subjects.map((s) => [s.id, s.code]))
+): Promise<PickerQuestion[]> {
+  const subjects = await fetchDepartmentSubjects(supabase, departmentId)
+  if (subjects.length === 0) return []
+  const subjectIds = subjects.map((s) => s.id)
+  const codeById = new Map(subjects.map((s) => [s.id, s.code]))
 
   const all: PickerQuestion[] = []
   for (let from = 0; ; from += PAGE_SIZE) {
@@ -68,34 +67,62 @@ export async function fetchSelectableQuestions(
   return all
 }
 
+/**
+ * Technischer Prüfungsteil eines Nachweises: der Teil, zu dem die meisten
+ * gewählten Fragen (über ihre Fächer) gehören; bei Gleichstand der niedrigere.
+ * Der Nachweis hat keine Teil-Auswahl mehr, die Teilnehmer-Pfade brauchen die
+ * Nummer aber als Schlüssel.
+ */
+export function derivePartNumber(examParts: ExamPart[], questions: Pick<PickerQuestion, 'subject_codes'>[]): number | null {
+  if (examParts.length === 0) return null
+  const sorted = [...examParts].sort((a, b) => a.partNumber - b.partNumber)
+  let best = sorted[0]
+  let bestCount = -1
+  for (const part of sorted) {
+    const codes = new Set(part.subjects.map((s) => s.code))
+    const count = questions.filter((q) => q.subject_codes.some((c) => codes.has(c))).length
+    if (count > bestCount) {
+      best = part
+      bestCount = count
+    }
+  }
+  return best.partNumber
+}
+
 export type QuestionSelectionCheck =
-  | { ok: true; ids: string[] }
+  | { ok: true; ids: string[]; part: number }
   | { ok: false; status: number; error: string }
 
 /**
  * Serverseitige Prüfung einer Fragenauswahl: Duplikate raus, jede Frage muss
- * aktiv, Multiple-Choice und im Bereich/Teil sein, mindestens 5 Fragen.
+ * aktiv, Multiple-Choice und im Fachbereich sein, mindestens 5 Fragen. Liefert
+ * zusätzlich den abgeleiteten technischen Prüfungsteil.
  */
 export async function checkQuestionSelection(
   supabase: SupabaseClient,
   departmentId: string,
-  part: number,
   questionIds: string[],
 ): Promise<QuestionSelectionCheck> {
   const ids = [...new Set(questionIds)]
-  const selectable = await fetchSelectableQuestions(supabase, departmentId, part)
-  if (!selectable) return { ok: false, status: 400, error: `Prüfungsteil ${part} gibt es in diesem Fachbereich nicht.` }
-  const allowed = new Set(selectable.map((q) => q.id))
-  const invalid = ids.filter((id) => !allowed.has(id)).length
+  const [selectable, examParts] = await Promise.all([
+    fetchSelectableQuestions(supabase, departmentId),
+    fetchExamParts(supabase, departmentId),
+  ])
+  const byId = new Map(selectable.map((q) => [q.id, q]))
+  const invalid = ids.filter((id) => !byId.has(id)).length
   if (invalid > 0) {
     return {
       ok: false,
       status: 400,
-      error: `${invalid} gewählte Fragen sind nicht zulässig (offen, deaktiviert oder aus einem anderen Bereich/Teil).`,
+      error: `${invalid} gewählte Fragen sind nicht zulässig (offen, deaktiviert oder aus einem anderen Bereich).`,
     }
   }
   if (ids.length < MIN_ASSESSMENT_QUESTIONS) {
     return { ok: false, status: 400, error: `Mindestens ${MIN_ASSESSMENT_QUESTIONS} Fragen nötig.` }
   }
-  return { ok: true, ids }
+  const part = derivePartNumber(examParts, ids.map((id) => byId.get(id)!))
+  if (part === null) {
+    return { ok: false, status: 400, error: 'Für diesen Fachbereich sind keine Prüfungsteile eingerichtet.' }
+  }
+  return { ok: true, ids, part }
 }

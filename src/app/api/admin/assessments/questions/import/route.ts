@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
-import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
+import { fetchExamParts } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 import type { PickerQuestion } from '@/lib/assessment-questions'
 
@@ -14,12 +14,11 @@ const QuestionSchema = z.object({
 }).refine((q) => q.correct_index < q.options.length, { message: 'correct_index außerhalb der Optionen', path: ['correct_index'] })
 
 const ImportSchema = z.object({
-  part: z.number().int().min(1).max(20),
   questions: z.array(QuestionSchema).min(1).max(200),
 })
 
 /**
- * Legt ausgelesene Fragen nur als Fragen an (kein Prüfungsset) und gibt sie für
+ * Legt ausgelesene Fragen nur als Fragen an (Fach über das Kürzel, sonst Standardfach) (kein Prüfungsset) und gibt sie für
  * die Auswahl im Nachweis-Dialog zurück (PROJ-27).
  */
 export async function POST(request: NextRequest) {
@@ -37,32 +36,27 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { part, questions } = parsed.data
+  const { questions } = parsed.data
 
-  let examPart
+  let examParts
   let subjects
   try {
-    examPart = findExamPart(await fetchExamParts(supabase, departmentId), part)
+    examParts = await fetchExamParts(supabase, departmentId)
     subjects = await fetchDepartmentSubjects(supabase, departmentId)
   } catch (err) {
     console.error('[assessments/questions/import]', err)
     return NextResponse.json({ error: 'Fächer konnten nicht geladen werden.' }, { status: 500 })
   }
-  if (!examPart) {
-    return NextResponse.json({ error: `Prüfungsteil ${part} gibt es in diesem Fachbereich nicht.` }, { status: 400 })
-  }
-  const defaultSubjectId = examPart.defaultSubjectId ?? examPart.subjects[0]?.id
+  // Ohne erkanntes Fachkürzel: Standardfach des ersten Prüfungsteils
+  const firstPart = [...examParts].sort((a, b) => a.partNumber - b.partNumber)[0]
+  const defaultSubjectId = firstPart?.defaultSubjectId ?? firstPart?.subjects[0]?.id ?? subjects[0]?.id
   if (!defaultSubjectId) {
-    return NextResponse.json({ error: `Prüfungsteil ${part} hat kein Standardfach.` }, { status: 500 })
+    return NextResponse.json({ error: 'Für diesen Fachbereich sind keine Fächer eingerichtet.' }, { status: 500 })
   }
 
-  // Nur Fächer des gewählten Teils sind zulässig; alles andere → Standardfach
-  const partSubjectIds = new Set(examPart.subjects.map((s) => s.id))
   const subjectMap: Record<string, string> = {}
-  for (const s of subjects) {
-    if (partSubjectIds.has(s.id)) subjectMap[normalizeSubjectCode(s.code)] = s.id
-  }
-  const codeById = new Map(examPart.subjects.map((s) => [s.id, s.code]))
+  for (const s of subjects) subjectMap[normalizeSubjectCode(s.code)] = s.id
+  const codeById = new Map(subjects.map((s) => [s.id, s.code]))
 
   const { data: inserted, error: qErr } = await supabase
     .from('questions')
@@ -116,7 +110,7 @@ export async function POST(request: NextRequest) {
     action_type: 'import',
     object_type: 'question',
     object_label: `Nachweis-Import (${ids.length} Fragen)`,
-    details: { questions_imported: ids.length, part },
+    details: { questions_imported: ids.length },
   })
 
   const result: PickerQuestion[] = inserted.map((q, i) => ({

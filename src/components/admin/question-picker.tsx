@@ -37,8 +37,6 @@ interface Props {
   questions: PickerQuestion[]
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
-  /** Kürzel der Fächer, die im Fach-Filter angeboten werden */
-  subjectCodes: string[]
   minSelection?: number
 }
 
@@ -46,13 +44,19 @@ interface Props {
  * Fragenauswahl mit Suche, Filter und Sortierung — Alle/Keine wirkt nur auf
  * die gefilterte Liste, bereits gewählte, gerade ausgeblendete Fragen bleiben.
  */
-export function QuestionPicker({ questions, selectedIds, onChange, subjectCodes, minSelection = 5 }: Props) {
+export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5 }: Props) {
   const classLevelOptions = useClassLevelOptions()
   const [search, setSearch] = useState('')
   const [classLevel, setClassLevel] = useState('all')
   const [subject, setSubject] = useState('all')
   const [topic, setTopic] = useState('all')
   const [sort, setSort] = useState<PickerSort>('newest')
+
+  // Fächer und Klassen, zu denen es tatsächlich Fragen gibt
+  const subjectCodes = useMemo(
+    () => [...new Set(questions.flatMap((q) => q.subject_codes))].sort((a, b) => a.localeCompare(b, 'de')),
+    [questions],
+  )
 
   const topicOptions = useMemo(() => {
     const names = questions
@@ -108,39 +112,41 @@ export function QuestionPicker({ questions, selectedIds, onChange, subjectCodes,
         </span>
       </div>
 
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Stichwort in Frage oder Thema…"
-          aria-label="Fragen durchsuchen"
-          className="pl-9 bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Select value={classLevel} onValueChange={(v) => { setClassLevel(v); setTopic('all') }}>
           <SelectTrigger className={TRIGGER} aria-label="Klasse"><SelectValue /></SelectTrigger>
           <SelectContent className={CONTENT}>
-            <SelectItem value="all">Alle Klassen</SelectItem>
+            <SelectItem value="all">Klasse: gemischt</SelectItem>
             {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={subject} onValueChange={(v) => { setSubject(v); setTopic('all') }}>
           <SelectTrigger className={TRIGGER} aria-label="Fach"><SelectValue /></SelectTrigger>
           <SelectContent className={CONTENT}>
-            <SelectItem value="all">Alle Fächer</SelectItem>
+            <SelectItem value="all">Fach: gemischt</SelectItem>
             {subjectCodes.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={topic} onValueChange={setTopic}>
           <SelectTrigger className={TRIGGER} aria-label="Thema"><SelectValue /></SelectTrigger>
           <SelectContent className={`${CONTENT} max-h-72`}>
-            <SelectItem value="all">Alle Themen</SelectItem>
+            <SelectItem value="all">Thema: gemischt</SelectItem>
             {topicOptions.map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Stichwort in Frage oder Thema…"
+            aria-label="Fragen durchsuchen"
+            className="pl-9 bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+          />
+        </div>
         <Select value={sort} onValueChange={(v) => setSort(v as PickerSort)}>
           <SelectTrigger className={TRIGGER} aria-label="Sortierung"><SelectValue /></SelectTrigger>
           <SelectContent className={CONTENT}>
