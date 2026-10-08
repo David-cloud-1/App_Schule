@@ -39,7 +39,7 @@
 | PROJ-23 | Fachbereichs-Zuordnung für Azubis | Deployed | [PROJ-23-fachbereich-zuordnung-azubis.md](PROJ-23-fachbereich-zuordnung-azubis.md) | 2026-09-29 |
 | PROJ-24 | Fachbereichs-Admins & Rechtetrennung | Deployed | [PROJ-24-fachbereichs-admins-rechtetrennung.md](PROJ-24-fachbereichs-admins-rechtetrennung.md) | 2026-09-30 |
 | PROJ-25 | Onboarding Tourismus (Touristiklern-Grundgerüst) | Deployed | [PROJ-25-onboarding-tourismus.md](PROJ-25-onboarding-tourismus.md) | 2026-10-01 |
-| PROJ-27 | Leistungsnachweis – eigene Fragen-Zusammenstellung | In Review | [PROJ-27-nachweis-fragen-zusammenstellung.md](PROJ-27-nachweis-fragen-zusammenstellung.md) | 2026-10-07 |
+| PROJ-27 | Leistungsnachweis – eigene Fragen-Zusammenstellung | Deployed | [PROJ-27-nachweis-fragen-zusammenstellung.md](PROJ-27-nachweis-fragen-zusammenstellung.md) | 2026-10-07 |
 
 <!-- Add features above this line -->
 

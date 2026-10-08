@@ -1,6 +1,6 @@
 # PROJ-27: Leistungsnachweis – eigene Fragen-Zusammenstellung
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 
@@ -201,4 +201,8 @@ Keine Critical/High-Bugs. **Bedingt bereit:** erst BUG-1 beheben und einmal von 
 
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-10-08, Produktion (spedilern.vercel.app), Commit `966b065` + `5804116`, Vercel-Deployment READY.
+- **Datenbank:** Migration `20261008_proj27_assessment_own_questions.sql` vorab auf „Spedilern App" angewendet (abwärtskompatibel, alter Code lief damit weiter).
+- **Kurzer Check nach Deploy:** Startseite erreichbar (Weiterleitung), neue Fragen-Schnittstelle antwortet ohne Login mit 401.
+- **Offen:** Manueller Klick-Test im Browser (Anlegen, Set-Start, Import, Entwurf bearbeiten, Öffnen) steht aus; Bug 1 ist nur per Code-Review behoben.
+- Bewusst nicht mit deployt/committet: unfertige Arbeit anderer Features (PROJ-26/28/29) im selben Arbeitsverzeichnis.
