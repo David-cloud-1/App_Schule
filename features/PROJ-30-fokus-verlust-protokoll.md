@@ -359,8 +359,7 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 
 **Nach dem Deploy geprüft:** Build Ready; die neuen Routen antworten ohne Login mit 401 (Fokus-Meldung, Admin-Detailprotokoll, Beitrittsabfrage).
 
-**Noch offen:**
-- Manueller Test an echten Geräten (iPhone, Android, Desktop): einen Nachweis mit eingeschalteter Protokollierung anlegen, öffnen, beitreten, Tab/App wechseln, Warnung und Teilnehmerliste prüfen — auch die automatische Abgabe mit kleiner Grenze (z. B. 1).
-- Keine offenen Bugs. (BUG-3 „Keine Überwachung möglich" und BUG-4 Policy der Einzel-Einträge wurden am 2026-10-09 behoben, siehe unten.)
+**Zweiter Deploy 2026-10-09** (Commit 75978d9, Vercel `spedilern-3cmfueb2r`, Production, Ready): Lese-Policy der Einzel-Einträge für Bereichs-Admins (`20261009_proj30_focus_events_policy.sql`, BUG-4) und Kennzeichen „Keine Überwachung möglich" (`20261009_proj30_tracking_unavailable.sql`, BUG-3). Beide Migrationen wurden vor dem Deploy in Produktion angewendet (Policy-Änderung bzw. additive Spalte mit Standard false); Rollback über die jeweiligen `_down`-Dateien. Im getrennten Checkout des Commits: 675/675 Tests, Build fehlerfrei; live antworten die neuen Routen ohne Login mit 401, die Spalte `tracking_unavailable` existiert in Produktion.
 
-**Nachtrag 2026-10-09:** Zweiter Deploy mit zwei Korrekturen — Lese-Policy der Einzel-Einträge für Bereichs-Admins (`20261009_proj30_focus_events_policy.sql`) und das Kennzeichen „Keine Überwachung möglich" (`20261009_proj30_tracking_unavailable.sql`). Beide Migrationen wurden vor dem Deploy in Produktion angewendet und sind rein additiv bzw. verändern nur eine Leserechte-Policy; Rollback über die jeweiligen `_down`-Dateien.
+**Noch offen:**
+- Manueller Test an echten Geräten (iPhone, Android, Desktop): einen Nachweis mit eingeschalteter Protokollierung anlegen, öffnen, beitreten, Tab/App wechseln, Warnung und Teilnehmerliste prüfen — auch die automatische Abgabe mit kleiner Grenze (z. B. 1). Das ist der einzige verbleibende Punkt und lässt sich nur am Gerät klären. Keine offenen Bugs.
