@@ -59,4 +59,20 @@ describe('Sprite-Katalog Mein Betrieb (PROJ-34)', () => {
   it('scales sprites with the shared factor', () => {
     expect(getBetriebSprite('SPED', 'pokal').skala).toBe(SPRITE_SKALA)
   })
+
+  it('covers every flat Spedition icon with an isometric sprite (no placeholder in the shop catalogue)', () => {
+    for (const icon of getHofIconSet('SPED')) {
+      expect(hatBetriebSprite('SPED', icon.key), `kein Sprite für ${icon.key}`).toBe(true)
+    }
+  })
+
+  it('draws sprites with a plausible size (not empty, not huge)', () => {
+    for (const k of betriebSpriteSchluessel('SPED')) {
+      const s = getBetriebSprite('SPED', k)
+      expect(s.w).toBeGreaterThanOrEqual(60)
+      expect(s.w).toBeLessThanOrEqual(220)
+      expect(s.h).toBeGreaterThanOrEqual(40)
+      expect(s.h).toBeLessThanOrEqual(220)
+    }
+  })
 })

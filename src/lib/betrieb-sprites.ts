@@ -3,6 +3,7 @@ import { fahrzeugBild } from './hof-welt/fahrzeuge'
 import * as N from './hof-welt/natur'
 import * as V from './hof-welt/sprites-betrieb'
 import { STIL_WEICH, stilAnwenden } from './hof-welt/stil'
+import { SPEDITION_WEICH } from './hof-welt/spedition-weich'
 
 /**
  * Sprite-Katalog für „Mein Betrieb" (PROJ-34): Icon-Schlüssel eines Shop-Items
@@ -63,6 +64,8 @@ const SPEDITION: Record<string, Baumeister> = {
   container: () => aus(N.containerWeich()),
   // Abzeichen & Trophäen
   pokal: () => aus(N.pokalWeich()),
+  // Serie aus spedition-weich.ts (Fahrzeuge, Hofdeko, Ladung, Abzeichen)
+  ...Object.fromEntries(Object.entries(SPEDITION_WEICH).map(([k, f]) => [k, () => aus(f())])),
 }
 
 const KATALOG: Record<string, Record<string, Baumeister>> = {
