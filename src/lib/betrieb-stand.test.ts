@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { baueBetriebStand, type KaufZeile } from './betrieb-stand'
-import { LAND_ITEMS_JE_STUFE, LAND_START } from './betrieb-land'
+import { LAND_START, itemsBisNaechstemLand, landSeite } from './betrieb-land'
 
 const kauf = (id: string, over: Partial<NonNullable<KaufZeile['shop_items']>> = {}, at = '2026-10-01T10:00:00Z'): KaufZeile => ({
   purchased_at: at,
@@ -32,8 +32,9 @@ describe('Betriebs-Stand (PROJ-34)', () => {
   })
 
   it('grows the land with the number of purchases, counting deactivated ones too', () => {
-    const viele = Array.from({ length: LAND_ITEMS_JE_STUFE }, (_, i) => kauf(`k${i}`))
-    expect(baueBetriebStand(viele, []).seite).toBe(LAND_START + 1)
+    const viele = Array.from({ length: 7 }, (_, i) => kauf(`k${i}`))
+    expect(baueBetriebStand(viele, []).seite).toBe(landSeite(7))
+    expect(landSeite(7)).toBeGreaterThan(LAND_START)
   })
 
   it('ignores purchases whose catalogue row is missing (does not crash, does not count)', () => {
@@ -63,7 +64,7 @@ describe('Betriebs-Stand (PROJ-34)', () => {
   it('orders items by purchase time and reports the purchases until the next land', () => {
     const s = baueBetriebStand([kauf('spaet', {}, '2026-10-03T00:00:00Z'), kauf('frueh', {}, '2026-10-01T00:00:00Z')], [])
     expect(s.items.map((i) => i.id)).toEqual(['frueh', 'spaet'])
-    expect(s.bis_naechstes_land).toBe(LAND_ITEMS_JE_STUFE - 2)
+    expect(s.bis_naechstes_land).toBe(itemsBisNaechstemLand(2))
   })
 
   it('reports no further growth at the maximum land', () => {

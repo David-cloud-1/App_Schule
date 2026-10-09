@@ -86,8 +86,10 @@ describe('PUT /api/betrieb/platzierung (PROJ-34)', () => {
     vi.mocked(createClient).mockResolvedValue(authClient({ id: 'u1' }) as never)
     const owned = [ITEM, ...Array.from({ length: 5 }, (_, i) => `00000000-0000-4000-8000-00000000000${i}`)]
     vi.mocked(createServiceClient).mockReturnValue(serviceClient({ owned }).client as never)
-    // 6 Käufe -> 4 + 2 = 6x6, Kachel (5,5) ist gültig
-    expect((await PUT(put({ item_id: ITEM, x: 5, y: 5 }))).status).toBe(200)
+    // 6 Käufe -> Land 5x5 (Wurzel aus 2·6+12), Kachel (4,4) ist gültig, (5,5) nicht
+    expect((await PUT(put({ item_id: ITEM, x: 4, y: 4 }))).status).toBe(200)
+    vi.mocked(createServiceClient).mockReturnValue(serviceClient({ owned }).client as never)
+    expect((await PUT(put({ item_id: ITEM, x: 5, y: 5 }))).status).toBe(400)
   })
 
   it('stores the placement for the authenticated user only (user id comes from the session, not the body)', async () => {

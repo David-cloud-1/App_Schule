@@ -242,9 +242,11 @@ Eintrag. Die Datenbank garantiert selbst, dass
 - keine Kachel zweimal belegt wird.
 
 **Nicht gespeichert, sondern berechnet:**
-- **Landgröße.** Aus der Zahl der gekauften Items nach einer festen Regel (Vorschlag:
-  Start 4 x 4 Kacheln, je 3 weitere Items eine Kachel Kantenlänge mehr,
-  höchstens 10 x 10). Das Land wächst nach vorne/außen; die Kachel (0,0) hinten
+- **Landgröße.** Aus der Zahl der gekauften Items nach einer festen Regel
+  (**umgesetzt:** Kantenlänge = Wurzel aus 2·Items + 12, aufgerundet, zwischen 4
+  und 10 – also 0 Items 4×4, 7 Items 6×6, 16 Items 7×7, 31 Items 9×9, ab 44 Items
+  10×10; ursprünglicher Vorschlag „je 3 Items eine Kachel mehr“ machte den Betrieb
+  schon bei 31 Items zu leer). Das Land wächst nach vorne/außen; die Kachel (0,0) hinten
   bleibt der Anker. Dadurch ändert Wachstum nie die Position gesetzter Items,
   und das Land kann nicht schrumpfen.
 - **Seltenheit** (wie PROJ-32), **Sprite** (aus dem Icon-Schlüssel des Items).
@@ -325,15 +327,20 @@ Keine neuen Pakete.
 
 ## Implementation Notes
 
-### Stand 2026-10-09 – Schritt 1 und 2 von 8 erledigt (noch nicht live, von der App aus nicht erreichbar)
+### Stand 2026-10-09 – Schritte 1 bis 7 umgesetzt, Schritt 8 (Prüfung) läuft; noch nicht live
 - **Stil (Schritt 1, freigegeben):** erst Tycoon-Stil, dann „Hay-Day, bunt/verspielt" (dicke braune Konturen) – vom Nutzer anhand seines Hay-Day-Screenshots zugunsten eines **weichen Stils** verworfen: nahtlose Wiese mit Gräsern/Blümchen, Erdweg, üppige Bäume aus Kugeln mit Licht/Schatten, dünne Konturen, weiße Lattenzäune, weiche Schatten. Probebilder in `docs/vorschau/`.
 - **Technik (Schritt 2):** Tycoon-Zeichentechnik nach `src/lib/hof-welt/` kopiert (Herkunft und Änderungen: dortige `README.md`); Palette dort bunter. Neu: `natur.ts` (weicher Stil: Wiese, Weg, Baum, Scheune, Zaun, Lagerhalle, Bürohaus, Container, Pokal, Platzhalter), `stil.ts`, `sprites-betrieb.ts` (Wimpel, Markise, Beet, Busch, Kegel, Wegweiser).
-- **Landregel** `src/lib/betrieb-land.ts`: Start 4×4, je 3 Items +1 Kantenlänge, max. 10×10; nie schrumpfend, Wachstum verschiebt keine Items.
+- **Landregel** `src/lib/betrieb-land.ts`: Kantenlänge = ⌈√(2·Items + 12)⌉, 4 bis 10; nie schrumpfend, Wachstum verschiebt keine Items. (Erste Fassung „+1 je 3 Items“ im Bild als zu leer erkannt und ersetzt.)
 - **Welt-Layout** `src/lib/betrieb-welt.ts`: Betriebsgrund + 1 Kachel Rand (hinten Wiese hinter weißem Zaun, vorne Straße); Bildschirmposition hängt nur von der Kachel ab; Zeichenreihenfolge hinten→vorne.
 - **Sprite-Katalog** `src/lib/betrieb-sprites.ts`: Icon-Schlüssel → Sprite, Platzhalter-Kiste für alles ohne Sprite. Aktuell 15 Einträge (u. a. Lagerhalle, Bürogebäude, Sattelschlepper, Container, Pokal, Scheune, Baum, Beet, Busch, Kegel, Wegweiser). Der Tippfehler-Test fing `buerohaus` statt `buerogebaeude` ab.
 - **Komponente** `src/components/betrieb-welt.tsx`: ein SVG, Boden/Zaun/Sprites einmal in `defs` und per `use` wiederholt; Seltenheits-Raute unter Items; Items außerhalb des Landes werden nicht gezeichnet.
 - Bilder: `docs/vorschau/betrieb-welt-start.png`, `betrieb-welt-gewachsen.png`.
-- **Offen:** Schritt 3 (Datenhaltung/Schnittstellen), 4 (Seite, Kamera, Lager-Leiste, Setzen), 5 (Animationen), 6 (Sprite-Serie, Lkw im weichen Stil neu), 7 (Shop/Admin/Profil, Bezeichnung), 8 (Prüfung).
+- **Schritt 3 – Daten:** Tabelle `betrieb_platzierungen` (Migration `20261009_proj34_betrieb_platzierungen`): Primärschlüssel (user, item), Fremdschlüssel auf `user_shop_items` (nur wirklich Gekauftes), `UNIQUE (user, x, y)` (eine Kachel ein Item), Kacheln 0–9; RLS nur Lesen eigener Zeilen, Schreibrechte entzogen (Service-Rolle). Gegen die echte DB in einer zurückgerollten Transaktion geprüft. Schnittstellen `GET /api/betrieb`, `PUT/DELETE /api/betrieb/platzierung` (Zod, Besitz, Landgrenze, 409 bei belegter Kachel), `src/lib/betrieb-stand.ts`.
+- **Schritt 4 – Seite:** `/betrieb` mit Kamera (Ziehen, Pinch, Mausrad, Zoom-Knöpfe, Zentrieren, begrenzt), Lager-Leiste, Antippen-Setzen (Item → freie Kachel), Verschieben, „Ins Lager“, Zugriff „Per Liste setzen“ für Tastatur/Screenreader, optimistische Updates mit Rückfall; Treffererkennung (Sprite-Fläche, vorderstes Item). Reine Logik in `betrieb-kamera.ts` und `betrieb-treffer.ts` getestet.
+- **Schritt 5 – Animationen:** Aufstell-Hüpfer, hüpfendes neues Item im Lager (`?neu=…` aus dem Shop-Dialog „Jetzt aufstellen“), sanftes Einblenden neuen Landes beim ersten Öffnen nach Wachstum (+ Hinweis); alle entfallen bei „Bewegung reduzieren“.
+- **Schritt 6 – Sprites:** alle 31 Spedition-Items haben ein weiches Sprite (`spedition-weich.ts`); ein Test erzwingt das für jedes flache Icon.
+- **Schritt 7 – Einbindung:** `HofItemIcon` bevorzugt das Sprite (Shop-Kachel, Kaufdialog, Admin-Liste, Icon-Picker); Profil zeigt `BetriebVorschau` statt der flachen Galerie (Tourismus behält die Galerie bis PROJ-35); Startseite-Link; Shop-Titel „Shop“; Migration `20261009_proj34_betrieb_name` (Bezeichnung „Betrieb“).
+- **Offen:** Schritt 8 (Prüfung) abschließen, Migrationen auf Produktion anwenden, Deploy, Abnahme am Handy (Gesten!).
 
 ## QA Test Results
 _To be added by /qa_
