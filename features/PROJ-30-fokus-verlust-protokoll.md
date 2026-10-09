@@ -250,7 +250,7 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 **Abweichungen von der Spec:**
 - Texte sagen „deiner **Lehrkraft**" statt „deinem Ausbilder" — passend zur neuen Wortwahl in der App (Tourismus-Bereich).
 - „Keine Überwachung möglich" für Browser ohne Sichtbarkeits-Ereignisse (Spec-Edge-Case) ist **nicht** umgesetzt: Es bräuchte ein weiteres Feld, und die Unterstützung ist in allen gängigen Browsern gegeben. Bei einem solchen Browser bleibt der Nachweis nutzbar, es entstehen nur keine Einträge.
-- Die Admin-Lesepolicy der Einzel-Einträge läuft über `exam_sessions`; ein Bereichs-Admin kann sie dadurch **nicht direkt per Datenbank** lesen (sicher, weil strenger). Die App liest sie über die Server-Route mit Bereichsprüfung und Service-Client, daher keine Auswirkung auf die Funktion. Eine Korrektur der Policy wurde im Lauf abgelehnt und ist offen.
+- Die Admin-Lesepolicy der Einzel-Einträge läuft über `exam_sessions`; ein Bereichs-Admin kann sie dadurch **nicht direkt per Datenbank** lesen (sicher, weil strenger). Die App liest sie über die Server-Route mit Bereichsprüfung und Service-Client, daher keine Auswirkung auf die Funktion. Die Policy wurde am 2026-10-09 mit Freigabe korrigiert (siehe BUG-4).
 
 **Noch nicht möglich:** Prüfung an echten Geräten (Tab-/App-Wechsel, Bildschirmsperre und Anruf verhalten sich je nach Browser und Handy verschieden) — in dieser Umgebung steht kein Browser zur Verfügung und `npm run dev` ist auf der Maschine nicht nutzbar. Ein kurzer Test mit iPhone, Android und Desktop wird empfohlen.
 
@@ -338,12 +338,12 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 #### BUG-3: „Keine Überwachung möglich" nicht umgesetzt (offen)
 - **Severity:** Low. In allen gängigen Browsern vorhanden, bei fehlender Unterstützung entstehen nur keine Einträge. Nicht blockierend.
 
-#### BUG-4: Bereichs-Admin kann Einzel-Einträge nicht direkt per Datenbank lesen (offen)
-- **Severity:** Low. Die Leserechte-Policy läuft über `exam_sessions`, die ein Bereichs-Admin nicht lesen darf. Fail-closed, die App liest über die Server-Route mit Bereichsprüfung, daher keine Funktionsauswirkung. Die Korrektur (Policy über die Zusammenfassungs-Tabelle) wurde im Lauf abgelehnt und nicht angewendet.
+#### BUG-4: Bereichs-Admin konnte Einzel-Einträge nicht direkt per Datenbank lesen (behoben 2026-10-09)
+- **Severity:** Low. Die Leserechte-Policy lief über `exam_sessions`, die ein Bereichs-Admin nicht lesen darf. Fail-closed, die App las über die Server-Route, daher keine Funktionsauswirkung. Mit Freigabe per `ALTER POLICY` auf den Weg über die Zusammenfassungs-Tabelle umgestellt (`20261009_proj30_focus_events_policy.sql`, in Produktion angewendet). An der Produktions-DB in zurückgerollter Transaktion geprüft: Azubi 0 Einträge, Super-Admin und Bereichs-Admin des eigenen Bereichs sehen sie. Ein Bereichs-Admin eines fremden Bereichs existiert derzeit nicht und konnte nicht getestet werden (die Bereichslogik ist die bestehende `can_admin_department`).
 
 ### Summary
 - **Acceptance Criteria:** alle bis auf einen Edge-Case-Punkt (BUG-3) erfüllt, soweit ohne Browser prüfbar
-- **Bugs Found:** 4 (2 behoben, 2 offen/Low)
+- **Bugs Found:** 4 (3 behoben, 1 offen/Low: BUG-3)
 - **Security:** keine offenen Lücken
 - **Production Ready:** YES — mit der Empfehlung eines kurzen Geräte-Tests (iPhone, Android, Desktop) nach dem Deploy. Wirksam ist die Funktion nur für **neu angelegte** Nachweise mit eingeschalteter Protokollierung; alles Bestehende bleibt unverändert.
 
@@ -360,4 +360,4 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 
 **Noch offen:**
 - Manueller Test an echten Geräten (iPhone, Android, Desktop): einen Nachweis mit eingeschalteter Protokollierung anlegen, öffnen, beitreten, Tab/App wechseln, Warnung und Teilnehmerliste prüfen — auch die automatische Abgabe mit kleiner Grenze (z. B. 1).
-- BUG-3 („Keine Überwachung möglich") und BUG-4 (Policy der Einzel-Einträge für Bereichs-Admins), beide Low.
+- BUG-3 („Keine Überwachung möglich"), Low. (BUG-4, die Policy der Einzel-Einträge, wurde am 2026-10-09 behoben.)
