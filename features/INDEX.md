@@ -49,8 +49,8 @@
 | PROJ-33 | Echte Hof-Illustration (Spedition & Tourismus) | Deployed | [PROJ-33-hof-illustration.md](PROJ-33-hof-illustration.md) | 2026-10-09 |
 | PROJ-34 | „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | Deployed | [PROJ-34-mein-betrieb-iso.md](PROJ-34-mein-betrieb-iso.md) | 2026-10-09 |
 | PROJ-35 | „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Deployed | [PROJ-35-mein-resort-tourismus.md](PROJ-35-mein-resort-tourismus.md) | 2026-10-09 |
-| PROJ-36 | Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | In Review | [PROJ-36-mehr-deko.md](PROJ-36-mehr-deko.md) | 2026-10-09 |
-| PROJ-37 | Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | In Review | [PROJ-37-belebte-welt.md](PROJ-37-belebte-welt.md) | 2026-10-09 |
+| PROJ-36 | Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Deployed | [PROJ-36-mehr-deko.md](PROJ-36-mehr-deko.md) | 2026-10-09 |
+| PROJ-37 | Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Deployed | [PROJ-37-belebte-welt.md](PROJ-37-belebte-welt.md) | 2026-10-09 |
 
 <!-- Add features above this line -->
 

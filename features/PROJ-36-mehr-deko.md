@@ -1,6 +1,6 @@
 # PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -131,4 +131,8 @@ Grafikaufwand (40 Sprites); Preis-/Balance-Gefühl muss der Nutzer prüfen.
 - **Nicht geprüft:** Preis-/Balance-Gefühl, Optik am Handy.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://spedilern.vercel.app, https://touristiklern.vercel.app (Seite `/betrieb`)
+- **Deployed:** 2026-10-09 (Commit 0a8ba28, Vercel-Deployment spedilern-49eirmley, Status Ready, keine Fehler-Logs)
+- **Reihenfolge eingehalten:** zuerst die Migrationen auf Produktion (`proj36_mehr_deko`, `proj37_tiere`), danach Push. Verifiziert: Spedition 9 → 32 Items, Tourismus 19 → 43 Items (inkl. 3 bzw. 4 Tiere). 
+- Build und 951 Tests auf dem sauberen Commit grün; Login-Seiten 200; `/betrieb` ohne Anmeldung → 307, `/api/betrieb` und `PUT /api/betrieb/platzierung` ohne Anmeldung → 401.
+- **Offen – Abnahme am Handy:** Gefühl der Bewegung, Akku/Leistung bei bis zu 12 Figuren, Tippen auf Tiere, Preise und Optik der neuen Items.
