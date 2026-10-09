@@ -9,6 +9,7 @@ import {
   ChevronUp,
   FileUp,
   GraduationCap,
+  Pencil,
   Loader2,
   Plus,
   Search,
@@ -21,7 +22,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -102,6 +103,8 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
   const [newPart, setNewPart] = useState<number | null>(null)
   const [newDuration, setNewDuration] = useState<string>('')
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [newScope, setNewScope] = useState<string | undefined>(undefined)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [pickerSearch, setPickerSearch] = useState('')
@@ -142,6 +145,18 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
     setPickerSubject('all')
     setPickerTopic('all')
     setPickerSort('newest')
+  }
+
+  // Themen, die zur gewählten Klasse und zum gewählten Fach tatsächlich Fragen haben
+  function getTopicOptions(part: number) {
+    const allSubjects = examParts.flatMap((p) => p.subjects)
+    const subjectId = pickerSubject !== 'all' ? allSubjects.find((s) => s.code === pickerSubject)?.id : null
+    const names = getQuestionsForPart(part)
+      .filter((q) => pickerClass === 'all' || String(q.class_level ?? '') === pickerClass)
+      .filter((q) => !subjectId || q.question_subjects.some((qs) => qs.subject_id === subjectId))
+      .map((q) => q.topics?.name)
+      .filter((n): n is string => !!n)
+    return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'de'))
   }
 
   // Filtered + sorted view of the picker; the base order from the server is
@@ -193,6 +208,64 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       if (res.ok) setSets((prev) => prev.filter((s) => s.id !== id))
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  function openCreate() {
+    setEditingId(null)
+    setNewScope(undefined)
+    setNewName('')
+    setNewPart(null)
+    setNewDuration('')
+    setSelectedQuestionIds(new Set())
+    setCreateError(null)
+    resetPickerFilters()
+    setShowCreateModal(true)
+  }
+
+  function openEdit(set: ExamSet) {
+    setEditingId(set.id)
+    setNewName(set.name)
+    setNewPart(set.part)
+    setNewDuration(set.duration_minutes != null ? String(set.duration_minutes) : '')
+    setSelectedQuestionIds(new Set(set.question_ids))
+    setCreateError(null)
+    resetPickerFilters()
+    setShowCreateModal(true)
+  }
+
+  async function handleSave() {
+    if (!editingId) return handleCreate()
+    if (!newName.trim() || selectedQuestionIds.size === 0) {
+      setCreateError('Bitte Name und mindestens eine Frage auswählen.')
+      return
+    }
+    setIsCreating(true)
+    setCreateError(null)
+    try {
+      const durationVal = newDuration.trim() ? parseInt(newDuration.trim(), 10) : null
+      const res = await fetch(`/api/admin/exam-sets/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newName.trim(),
+          question_ids: Array.from(selectedQuestionIds),
+          duration_minutes: durationVal && durationVal > 0 ? durationVal : null,
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setCreateError(data.error ?? 'Fehler beim Speichern.')
+        return
+      }
+      const { set } = await res.json()
+      setSets((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...set } : s)))
+      setShowCreateModal(false)
+      setEditingId(null)
+    } catch {
+      setCreateError('Netzwerkfehler.')
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -341,7 +414,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
             Aus Datei importieren
           </Button>
           <Button
-            onClick={() => setShowCreateModal(true)}
+            onClick={openCreate}
             className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
           >
             <Plus size={16} className="mr-2" />
@@ -411,6 +484,15 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                   <Button
                     size="sm"
                     variant="outline"
+                    onClick={() => openEdit(set)}
+                    aria-label="Prüfungsset bearbeiten"
+                    className="rounded-lg border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151] px-2"
+                  >
+                    <Pencil size={14} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => setConfirmDeleteId(set.id)}
                     disabled={deletingId === set.id}
                     className="rounded-lg border-[#FF4B4B]/30 text-[#FF4B4B] hover:bg-[#FF4B4B]/10 px-2"
@@ -465,7 +547,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Neues Prüfungsset erstellen</DialogTitle>
+            <DialogTitle>{editingId ? 'Prüfungsset bearbeiten' : 'Neues Prüfungsset erstellen'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -480,17 +562,54 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[#9CA3AF]">Prüfungsteil</Label>
-              <Select onValueChange={(v) => { setNewPart(Number(v)); setSelectedQuestionIds(new Set()); resetPickerFilters() }}>
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
-                  <SelectValue placeholder="Teil auswählen…" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                  {partNumbers.map((p) => (
-                    <SelectItem key={p} value={String(p)}>{partLabel(p)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-[#9CA3AF]">{editingId ? 'Prüfungsteil' : 'Prüfung / Fach'}</Label>
+              {editingId ? (
+                <Input
+                  value={newPart ? partLabel(newPart) : ''}
+                  disabled
+                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                />
+              ) : (
+                <>
+                  <Select
+                    value={newScope}
+                    onValueChange={(v) => {
+                      const [kind, key] = [v.slice(0, v.indexOf(':')), v.slice(v.indexOf(':') + 1)]
+                      const part = kind === 'part'
+                        ? examParts.find((p) => p.partNumber === Number(key))
+                        : examParts.find((p) => p.subjects.some((sub) => sub.code === key))
+                      if (!part) return
+                      setNewScope(v)
+                      setNewPart(part.partNumber)
+                      setSelectedQuestionIds(new Set())
+                      resetPickerFilters()
+                      if (kind === 'subject') setPickerSubject(key)
+                    }}
+                  >
+                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
+                      <SelectValue placeholder="Prüfung oder Fach auswählen…" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                      <SelectGroup>
+                        <SelectLabel className="text-[#9CA3AF]">Abschlussprüfung (Simulation)</SelectLabel>
+                        {examParts.map((p) => (
+                          <SelectItem key={p.id} value={`part:${p.partNumber}`}>
+                            {p.shortLabel} — Teil {p.partNumber}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectSeparator />
+                      <SelectGroup>
+                        <SelectLabel className="text-[#9CA3AF]">Einzelnes Fach</SelectLabel>
+                        {[...new Set(examParts.flatMap((p) => p.subjects.map((sub) => sub.code)))].map((code) => (
+                          <SelectItem key={code} value={`subject:${code}`}>{code}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  {newPart && <p className="text-xs text-[#6B7280]">Gehört zu {partLabel(newPart)}</p>}
+                </>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -523,14 +642,14 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Select value={pickerClass} onValueChange={setPickerClass}>
+                  <Select value={pickerClass} onValueChange={(v) => { setPickerClass(v); setPickerTopic('all') }}>
                     <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                       <SelectItem value="all">Alle Klassen</SelectItem>
                       {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Select value={pickerSubject} onValueChange={setPickerSubject}>
+                  <Select value={pickerSubject} onValueChange={(v) => { setPickerSubject(v); setPickerTopic('all') }}>
                     <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
                       <SelectItem value="all">Alle Fächer</SelectItem>
@@ -541,9 +660,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-h-72">
                       <SelectItem value="all">Alle Themen</SelectItem>
-                      {[...new Set(getQuestionsForPart(newPart).map((q) => q.topics?.name).filter((n): n is string => !!n))]
-                        .sort((a, b) => a.localeCompare(b, 'de'))
-                        .map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
+                      {getTopicOptions(newPart).map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={pickerSort} onValueChange={(v) => setPickerSort(v as PickerSort)}>
@@ -616,11 +733,11 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
               Abbrechen
             </Button>
             <Button
-              onClick={handleCreate}
+              onClick={handleSave}
               disabled={isCreating}
               className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
             >
-              {isCreating ? 'Wird erstellt…' : 'Set erstellen'}
+              {editingId ? (isCreating ? 'Wird gespeichert…' : 'Speichern') : (isCreating ? 'Wird erstellt…' : 'Set erstellen')}
             </Button>
           </DialogFooter>
         </DialogContent>

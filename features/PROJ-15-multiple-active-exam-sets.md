@@ -44,3 +44,16 @@ Diese Erweiterung erlaubt **beliebig viele gleichzeitig aktive Sets pro Teil**. 
 - Set wird während der Auswahl deaktiviert → POST prüft `is_active` erneut und lehnt ab.
 - Kein aktives Set für einen Teil → Teil gesperrt ("Noch keine Prüfung freigegeben").
 - Zwei Sets desselben Teils via API → 400.
+
+## Nachtrag (2026-10-09): Prüfungssets bearbeiten
+
+Bestehende Sets lassen sich jetzt nachträglich ändern, statt sie löschen und neu anlegen zu müssen.
+
+- **Admin-Oberfläche:** Neben „Aktivieren/Deaktivieren" steht ein Stift-Symbol (`aria-label` „Prüfungsset bearbeiten"). Es öffnet denselben Dialog wie „Neues Prüfungsset", vorbelegt mit Name, Dauer und den gewählten Fragen. Der **Prüfungsteil ist beim Bearbeiten gesperrt** (nur angezeigt), weil Fragen und Teil zusammenpassen müssen.
+- **Neu beim Anlegen:** Statt nur „Prüfungsteil" gibt es „Prüfung / Fach": entweder eine ganze Abschlussprüfung (Teil) oder ein einzelnes Fach; der Teil wird aus dem Fach abgeleitet und angezeigt. Beim Fach-Weg ist der Fächerfilter der Fragenauswahl vorbelegt.
+- **Themenfilter:** Die Themenliste der Fragenauswahl zeigt nur Themen, zu denen es zur gewählten Klasse und zum gewählten Fach Fragen gibt; ein Wechsel von Klasse oder Fach setzt das Thema zurück.
+- **Nur eigener Fachbereich:** Die Seite listet nur Sets des gerade gewählten Fachbereichs (auch für den Super-Admin mit Bereichs-Umschalter).
+- **API:** `PATCH /api/admin/exam-sets/[id]` nimmt zusätzlich `question_ids` (1–1000 UUIDs) an; die Bereichsprüfung gilt wie bisher vor jedem Schreibzugriff. Das Anlegen (`POST`) ist unverändert.
+- **Keine Auswirkung auf laufende oder abgeschlossene Prüfungen:** Prüfungssitzungen kopieren ihre Fragen beim Start, und Leistungsnachweise frieren die Fragen beim Öffnen ein (PROJ-21/27). Eine Änderung wirkt nur auf neue Durchläufe.
+- **Tests:** 9 neue Fälle für die Route (Login, Rolle, unbekanntes Set, fremder Bereich ohne Schreibzugriff, Austausch der Fragen, Statuswechsel allein, ungültige Eingaben, Löschen).
+- **Nicht getestet:** Der Dialog im Browser (Bearbeiten, Fach-Auswahl, Themenfilter) — hier ohne Browser nicht möglich.

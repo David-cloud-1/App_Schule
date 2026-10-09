@@ -6,6 +6,8 @@ const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
   name: z.string().min(1).max(100).optional(),
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
+  // Fragen eines bestehenden Sets austauschen; echte IDs, damit nichts Beliebiges im Set landet
+  question_ids: z.array(z.string().uuid()).min(1).max(1000).optional(),
 })
 
 export async function PATCH(

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { requireAdmin } from '@/app/api/admin/_lib/auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { ExamSetsClient } from './exam-sets-client'
 
@@ -37,11 +38,14 @@ async function fetchAllActiveQuestions(supabase: SupabaseClient): Promise<Questi
 
 export default async function AdminExamSetsPage() {
   const supabase = await createClient()
+  const auth = await requireAdmin()
+  if (auth.error) return null
 
   const [{ data: sets }, questions] = await Promise.all([
     supabase
       .from('exam_question_sets')
       .select('*')
+      .eq('department_id', auth.departmentId)
       .order('created_at', { ascending: false }),
     fetchAllActiveQuestions(supabase),
   ])
