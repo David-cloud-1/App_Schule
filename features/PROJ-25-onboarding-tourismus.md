@@ -191,3 +191,12 @@ Keine.
 - [x] Alle 4 ausstehenden PROJ-25-Commits gepusht (Spec, Tech Design, Backend, QA)
 
 **Post-Deployment-Verifikation:** siehe Antwort im Chat nach dem Push (Vercel-Build-Status geprüft, obwohl funktional unverändert — reiner Bookkeeping-Push kann trotzdem einen Rebuild auslösen).
+
+## Nachtrag (2026-10-02): Eigene Pseudonym-Wortliste für Tourismus
+
+Die beim Bootstrap bewusst leer gelassene `pseudonym_nouns`-Liste (siehe „Bewusst leer gelassen" oben) wurde nachträglich gefüllt, auf Wunsch des Nutzers — analog zur Schifffahrts-/Logistik-Wortliste von SPED.
+
+- Migration `20261002_proj25_tourismus_pseudonyme.sql`: 130 thematisch passende, eindeutige Tourismus-Begriffe (Transportmittel, Orte, Ausrüstung, Berufe, Reisearten, Dienste) für `TOUR` gesetzt; angewendet direkt gegen Produktion über `scripts/lib/db.ts` (reines `UPDATE`, kein Schema-Wechsel)
+- Rückweg: `20261002_proj25_tourismus_pseudonyme_down.sql` (setzt auf `{}` zurück, neutraler Rückfall greift dann wieder)
+- Verifiziert: 130/130 Nomen eindeutig, `departments.pseudonym_nouns` für `TOUR` korrekt befüllt; `npm test -- src/lib/departments` weiterhin grün (kein Anwendungscode geändert, `generate_unique_pseudonym()` liest die Spalte bereits seit PROJ-22 serverseitig)
+- Keine neue Lehrkraft nötig, damit das wirkt — die Wortliste gilt sofort für alle künftigen Registrierungen unter `touristiklern.vercel.app`

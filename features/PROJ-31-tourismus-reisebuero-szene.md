@@ -1,6 +1,6 @@
 # PROJ-31: Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -154,7 +154,107 @@ Hof-Szene aus PROJ-26 zeigt neutrale Zonen mit Spedition-Beschriftung
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+PROJ-26 hat die Weichen bereits gestellt: Grafiken, Kategorien und Szene
+hängen am Fachbereichs-Code. Dieses Feature füllt die vorbereiteten
+Leerstellen für Tourismus, **ohne neue Tabellen oder neue Seiten**. Es gibt
+nur drei kleine Verallgemeinerungen am Bestehenden und viel neuen Inhalt
+(Grafiken, Szene, Katalog).
+
+### A) Bausteine (visueller Baum)
+
+```
+Profil → "Mein Büro" / "Mein Hof"          (bestehende Seite, unverändert eingebunden)
++-- Hof-Galerie                            (bestehend, wird fachbereichsbewusst)
+    +-- Leerzustand "noch nichts gekauft"  (bestehend, Wortlaut aus Fachbereich)
+    +-- Szene des Fachbereichs             (NEU: je Fachbereich eine Szene)
+    |   +-- Spedition-Szene                (bisheriges Zonen-Layout, unverändert)
+    |   +-- Tourismus-Szene                (NEU)
+    |       +-- Hintergrund-Illustration   (Flughafen-/Hafen-Vorfeld, Hotels, Regal)
+    |       +-- Zone Verkehrsmittel        (Vorfeld/Kai)
+    |       +-- Zone Hotels & Reise-Deko   (Hintergrund)
+    |       +-- Zone Reiseausstattung      (Vordergrund)
+    |       +-- Zone Abzeichen & Trophäen  (Regal im Reisebüro)
+    +-- Versteckte Textliste für Screenreader (bestehend)
+
+Shop-Seite / Admin "Hof-Items"             (bestehend)
++-- Kategorie-Anzeige                      (zeigt künftig den Namen des Fachbereichs)
++-- Icon-Auswahl mit Vorschau              (zeigt automatisch das Tourismus-Set)
+
+Grafik-Bibliothek
++-- Spedition-Set (21+ Grafiken)           (bestehend)
++-- Tourismus-Set (mind. 20 Grafiken)      (NEU)
+```
+
+### B) Daten (Klartext)
+**Keine neue Datenstruktur.** Jedes Shop-Item hat bereits Name, Beschreibung,
+Preis, Fachbereich, Kategorie und Grafik-Schlüssel (PROJ-26).
+
+- **Neu sind nur Inhalte:** ca. 8 bis 10 Startitems für den Fachbereich
+  Tourismus (mind. 2 je Kategorie, eines zu 75 Reisetalern).
+- **Kategorienamen:** Die vier technischen Kategorien in der Datenbank bleiben
+  gleich. Der *angezeigte* Name wird je Fachbereich im Code hinterlegt, direkt
+  neben dem jeweiligen Grafik-Set. Er gehört fachlich zum Set (Name und
+  Grafiken ändern sich zusammen) und braucht deshalb keine eigene
+  Datenbank-Pflege.
+- **Gespeichert in:** der bestehenden Shop-Tabelle (Startitems per
+  Daten-Migration) und im Code (Grafiken, Szene, Kategorienamen).
+
+### C) Technische Entscheidungen (Begründung)
+
+1. **Szene im Code, nicht in der Datenbank.** Die Szene ist eine feste
+   Illustration (wie die Grafiken). Eine Datenbank-Lösung würde einen
+   Szenen-Editor erfordern, den es nicht braucht. Folge: Szenen-Änderungen
+   brauchen einen Code-Deploy, genau wie neue Grafiken (bereits so in PROJ-26
+   akzeptiert).
+2. **Szene als Inline-Grafik, nicht als Bilddatei.** Kein Bild-Hosting, keine
+   Ladezeit, keine Kosten, scharf auf jedem Bildschirm, und die Farben der
+   App (Dunkelmodus) lassen sich direkt verwenden.
+3. **Zonen bleiben dieselben vier Kategorien.** So muss die Datenbank-Prüfung
+   („Kategorie ist einer der vier Werte") nicht angefasst werden, und die
+   serverseitige Prüfung „Grafik passt zur Kategorie und zum Fachbereich"
+   funktioniert für Tourismus ohne Änderung, sobald das Set existiert.
+4. **Spedition wird nicht angefasst.** Die bestehende Szene bleibt als
+   eigener Baustein erhalten und wird nur dann gezeigt, wenn der Fachbereich
+   Spedition ist. Damit ist das Regressions-Risiko für den produktiven
+   Spedition-Bereich minimal.
+5. **Startkatalog per Daten-Migration** (wie der Spedition-Seed in PROJ-26):
+   wiederholbar ohne Duplikate, mit Rückgängig-Datei, ohne Code-Deploy
+   änderbar durch die Lehrkraft.
+6. **Kein Eingriff in Rechte (RLS) oder Login.** Es ändern sich weder
+   Zugriffsregeln noch Authentifizierung.
+
+### D) Was sich an Bestehendem ändert (klein)
+| Bereich | Änderung |
+|---------|----------|
+| Kategorienamen (Shop-Kachel, Admin-Liste, Admin-Formular, Hof-Galerie, Screenreader-Liste) | Anzeigename kommt aus dem Fachbereich statt global fest |
+| Hof-Galerie | wählt die Szene nach Fachbereich; Spedition-Szene bleibt unverändert |
+| Grafik-Bibliothek | Tourismus-Set statt leerer Liste |
+| Admin-Icon-Auswahl, Server-Prüfung | keine Änderung nötig, greifen automatisch |
+
+### E) Reihenfolge der Umsetzung (Vorschlag)
+1. Kategorienamen je Fachbereich (kleine Verallgemeinerung, Spedition
+   verhält sich identisch) mit Tests
+2. Tourismus-Grafikset (mind. 20) mit Tests (Schlüssel eindeutig, je
+   Kategorie mind. 5, Zuordnung korrekt)
+3. Tourismus-Szene und Auswahl der Szene nach Fachbereich
+4. Startkatalog als Daten-Migration (mit Rückgängig-Datei)
+5. Regressionstest Spedition (Kauf, Szene, Kategorienamen unverändert)
+
+### F) Abhängigkeiten (Pakete)
+Keine neuen Pakete. Alles nutzt vorhandene Mittel (Inline-SVG, Tailwind,
+Lucide für den Platzhalter).
+
+### G) Risiken & Hinweise
+- **Gestaltungsaufwand ist der Hauptaufwand**, nicht Technik: 20+ Grafiken und
+  eine Szene müssen stilistisch zu den 21 Spedition-Grafiken passen.
+- **Fallback bleibt:** Fehlt eine Grafik, greift wie in PROJ-26 das Emoji-Feld
+  bzw. ein Platzhalter-Icon.
+- **Mehrfachnutzung der Szene in PROJ-32:** Die Seltenheits-Effekte kommen
+  später auf Item-Ebene und müssen in *beiden* Szenen funktionieren. Deshalb
+  wird die Kachel eines einzelnen Items als eigener, wiederverwendbarer
+  Baustein geführt, den beide Szenen nutzen.
 
 ## QA Test Results
 _To be added by /qa_
