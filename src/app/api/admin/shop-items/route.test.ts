@@ -52,6 +52,7 @@ interface Overrides {
   insertData?: unknown
   insertError?: unknown
   role?: string
+  departmentCode?: string
 }
 
 let lastMock: ReturnType<typeof chainMock>
@@ -62,7 +63,7 @@ function makeAdminSupabase(overrides: Overrides = {}) {
       if (table === 'profiles') return { data: { role: overrides.role ?? 'admin', department_id: 'dept-sped' } }
       if (table === 'admin_audit_log') return {}
       if (table === 'user_shop_items') return { data: overrides.ownedRows ?? [] }
-      if (table === 'departments') return { data: { id: 'dept-sped', code: 'SPED', hof_name: 'Speditionshof' } }
+      if (table === 'departments') return { data: { id: 'dept-sped', code: overrides.departmentCode ?? 'SPED', hof_name: 'Speditionshof' } }
       if (table === 'shop_items') {
         if (hasCall(calls, 'insert')) {
           return { data: overrides.insertData ?? { id: 'new-item-uuid' }, error: overrides.insertError ?? null }
@@ -172,5 +173,23 @@ describe('POST /api/admin/shop-items', () => {
     const body = await res.json()
     expect(body.id).toBe('new-item-uuid')
     expect(lastMock.writes.find((w) => w.table === 'shop_items')?.payload).toMatchObject({ department_id: 'dept-sped' })
+  })
+
+  it('accepts a Tourismus icon for a Tourismus admin (PROJ-31)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'flugzeug' }))
+    expect(res.status).toBe(201)
+  })
+
+  it('rejects a Spedition icon for a Tourismus admin (PROJ-31)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'sattelschlepper-rot' }))
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects a Tourismus icon for a Spedition admin (PROJ-31)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'flugzeug' }))
+    expect(res.status).toBe(400)
   })
 })

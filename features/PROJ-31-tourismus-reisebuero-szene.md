@@ -1,6 +1,6 @@
 # PROJ-31: Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -256,8 +256,21 @@ Lucide für den Platzhalter).
   wird die Kachel eines einzelnen Items als eigener, wiederverwendbarer
   Baustein geführt, den beide Szenen nutzen.
 
+## Implementation Notes (Frontend/Backend, 2026-10-09)
+- **Grafikset:** `src/lib/hof-icons-tour.tsx` — 24 Inline-SVGs (je 6 pro Kategorie), eingebunden als `TOUR` in `hof-icons.tsx`. Keine Schlüssel-Überschneidung mit `SPED`.
+- **Kategorienamen je Fachbereich:** `getHofCategories(code)` / `hofCategoryLabel(cat, code)`. Tourismus: Verkehrsmittel · Hotels & Reise-Deko · Reiseausstattung · Abzeichen & Trophäen. DB-Werte unverändert; ohne Fachbereich/Spedition gelten die bisherigen Namen. Angepasst in Shop-Kachel, Admin-Liste, Admin-Formular, Galerie, Screenreader-Liste.
+- **Szene:** `hof-gallery.tsx` wählt nach Fachbereich: `HofSceneTourismus` (Himmel, Sonne, Wolken, Skyline, Landebahn als SVG-Hintergrund; Zonen Hotels → Verkehrsmittel/Vorfeld → Ausstattung → Trophäen/Regal) oder `HofSceneDefault` (bisherige Spedition-Optik, ausgelagert). Item-Kachel als eigener Baustein `hof-item-tile.tsx` (für PROJ-32).
+- **Startkatalog:** Migration `20261009_proj31_tourismus_katalog.sql` (+ `_down`): 10 Items, 3/2/2/3 je Kategorie, Referenzitem Flugzeug zu 75, idempotent. **Noch nicht in der Produktions-DB angewendet.**
+- **Keine Änderung** an RLS, Auth, DB-Schema oder Server-Validierung (greift für `TOUR` automatisch).
+
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisierte Prüfung, visuelle Abnahme steht aus**
+
+- Unit/Komponenten: 718 Tests grün (neu u. a. Set-Größe/Eindeutigkeit, Fachbereichs-Trennung der Icons, Kategorienamen inkl. Spedition-Regression, Szenen-Rendering inkl. 20 Items in einer Zone, Emoji-Fallback, Admin-API: Tourismus-Icon für Tourismus-Admin ok, Spedition-Icon für Tourismus-Admin abgelehnt und umgekehrt).
+- `tsc` ohne Fehler in `src`, Lint 0 Fehler.
+- DB-Vorabprüfung (read-only): `TOUR` vorhanden, 0 Tourismus-Items, Constraints nur Kategorie-/Preis-Check.
+- **Nicht geprüft (kein Dev-Server/Browser auf diesem Rechner):** tatsächliche Optik der Szene und Grafiken, 320-px-Layout, Kontrast. Diese Punkte müssen nach dem Deploy auf touristiklern.vercel.app von Hand angesehen werden (Profil → „Mein Büro" mit gekauften Items, Shop, Admin „Hof-Items").
+- Offen: AC „Mindestens ein Item zu 75" und „2 je Kategorie" erst nach Anwenden der Migration in Produktion erfüllt.
 
 ## Deployment
 _To be added by /deploy_

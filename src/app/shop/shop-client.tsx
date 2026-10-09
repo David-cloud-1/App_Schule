@@ -156,7 +156,7 @@ export function ShopClient() {
                   />
                   {item.category && (
                     <span className="text-[9px] uppercase tracking-wide font-semibold text-[#1CB0F6] bg-[#1CB0F6]/10 rounded-full px-2 py-0.5">
-                      {hofCategoryLabel(item.category)}
+                      {hofCategoryLabel(item.category, departmentCode)}
                     </span>
                   )}
                   <p className="text-sm font-bold text-[#F9FAFB] leading-tight">{item.name}</p>

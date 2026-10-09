@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select'
 import { useDepartment } from '@/components/department-provider'
 import { HofIconPicker } from '@/components/admin/hof-icon-picker'
-import { HOF_CATEGORIES, type HofCategory } from '@/lib/hof-icons'
+import { getHofCategories, type HofCategory } from '@/lib/hof-icons'
 
 export type AdminShopItemRow = {
   id: string
@@ -174,7 +174,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
                 <SelectValue placeholder="Kategorie wählen" />
               </SelectTrigger>
               <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                {HOF_CATEGORIES.map((c) => (
+                {getHofCategories(departmentCode).map((c) => (
                   <SelectItem key={c.value} value={c.value}>
                     {c.label}
                   </SelectItem>

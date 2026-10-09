@@ -173,7 +173,7 @@ export default function AdminShopItemsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-[#9CA3AF] text-sm">
-                      {item.category ? hofCategoryLabel(item.category) : '—'}
+                      {item.category ? hofCategoryLabel(item.category, departmentCode) : '—'}
                     </TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.price}</TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.purchase_count}</TableCell>

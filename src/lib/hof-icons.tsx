@@ -8,12 +8,13 @@
  * Jede Illustration trägt eine feste Kategorie. Diese Zuordnung bestimmt
  * sowohl die Auswahl im Admin-Formular als auch die Zone in der Hof-Szene.
  *
- * Nur das Spedition-Set (`SPED`) ist aktuell befüllt — Tourismus hat laut
- * PROJ-25 bewusst noch keinen Shop-Katalog. Ein `TOUR`-Set lässt sich später
- * ergänzen, ohne diese Struktur zu ändern.
+ * Spedition (`SPED`) und Tourismus (`TOUR`, PROJ-31, eigene Datei
+ * hof-icons-tour.tsx) haben je ein eigenes Set. Weitere Fachbereiche lassen
+ * sich ergänzen, ohne diese Struktur zu ändern.
  */
 
 import type { SVGProps } from 'react'
+import { TOUR_ICONS } from './hof-icons-tour'
 
 export type HofCategory =
   | 'fahrzeuge'
@@ -28,8 +29,29 @@ export const HOF_CATEGORIES: { value: HofCategory; label: string }[] = [
   { value: 'abzeichen_trophaeen', label: 'Abzeichen & Trophäen' },
 ]
 
-export function hofCategoryLabel(category: string): string {
-  return HOF_CATEGORIES.find((c) => c.value === category)?.label ?? category
+/**
+ * Anzeigenamen der Kategorien je Fachbereich (PROJ-31). Die technischen Werte
+ * bleiben überall gleich (DB-Check, Validierung); nur die Beschriftung ändert
+ * sich. Ohne Eintrag gelten die Standardnamen oben (Spedition).
+ */
+const CATEGORY_LABELS_BY_DEPARTMENT: Record<string, Record<HofCategory, string>> = {
+  TOUR: {
+    fahrzeuge: 'Verkehrsmittel',
+    gebaeude_deko: 'Hotels & Reise-Deko',
+    ladung_ausstattung: 'Reiseausstattung',
+    abzeichen_trophaeen: 'Abzeichen & Trophäen',
+  },
+}
+
+/** Die vier Kategorien mit den Anzeigenamen des Fachbereichs. */
+export function getHofCategories(departmentCode?: string): { value: HofCategory; label: string }[] {
+  const labels = departmentCode ? CATEGORY_LABELS_BY_DEPARTMENT[departmentCode] : undefined
+  if (!labels) return HOF_CATEGORIES
+  return HOF_CATEGORIES.map((c) => ({ value: c.value, label: labels[c.value] }))
+}
+
+export function hofCategoryLabel(category: string, departmentCode?: string): string {
+  return getHofCategories(departmentCode).find((c) => c.value === category)?.label ?? category
 }
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => React.JSX.Element
@@ -363,15 +385,9 @@ const SPED_ICONS: HofIconDef[] = [
   { key: 'krone', label: 'Krone', category: 'abzeichen_trophaeen', Svg: IconKrone },
 ]
 
-/**
- * Tourismus hat laut PROJ-25 bewusst noch keinen Shop-Katalog — ein eigenes
- * Set folgt erst, wenn dieser Fachbereich einen Katalog bekommt. Leeres Array
- * statt Spedition-Icons zu missbrauchen, damit ein fehlendes Set sofort als
- * solches erkennbar ist (resolveHofIcon fällt dann aufs Emoji-Feld zurück).
- */
 const ICON_SETS: Record<string, HofIconDef[]> = {
   SPED: SPED_ICONS,
-  TOUR: [],
+  TOUR: TOUR_ICONS,
 }
 
 export function getHofIconSet(departmentCode: string): HofIconDef[] {
