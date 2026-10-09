@@ -190,7 +190,138 @@ alles gleich aussieht.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+Drei neue Dinge: **(1)** die isometrische Zeichentechnik aus dem Tycoon wird als
+Baustein in die App übernommen, **(2)** eine kleine neue Datenhaltung für
+„welches Item steht auf welcher Kachel", **(3)** eine neue Seite mit Welt,
+Lager-Leiste und Bedienung. Kauf, Münzen und Seltenheit bleiben unverändert.
+
+### A) Bausteine (visueller Baum)
+
+```
+Startseite (bestehend)
++-- Link "Mein Betrieb"                    (NEU, neben Shop/Rangliste/Profil)
+
+Profil (bestehend)
++-- "Mein Betrieb"-Vorschau                (ersetzt die flache Illustration)
+    +-- kleine, nicht bedienbare Welt
+    +-- Link zur Seite / Link zum Shop bei leerem Konto
+
+Seite "Mein Betrieb"                       (NEU)
++-- Kopfzeile (Name, Zentrieren, Zoom + / -)
++-- Welt-Ansicht (Bildschirmbreite, halbe Höhe, verschieb- und zoombar)
+|   +-- Boden mit Kacheln, Straße ringsum, Zaun (hinten)
+|   +-- Gesetzte Items als Sprites (hinten nach vorne sortiert)
+|   +-- Markierung freier Kacheln beim Platzieren
+|   +-- Platzier-/Wachstums-Animation
++-- Lager-Leiste (gekaufte, noch nicht gesetzte Items)
++-- Hinweis-Zeile ("Tippe ein Item, dann eine Kachel")
++-- Textliste für Screenreader (Name, Status, Kachel)
+
+Shop / Admin (bestehend)
++-- Item-Bild zeigt das isometrische Sprite   (statt flachem Icon)
++-- Seltenheits-Rahmen bleibt (PROJ-32)
+
+Zeichentechnik (aus dem Tycoon übernommen)
++-- Iso-Bausteine, Palette, Bodenkacheln, Zaun, Fahrzeuge, Gebäudeteile
++-- Sprite-Katalog "Schlüssel -> Sprite" (NEU, je Item ein Eintrag)
++-- Stilvorgabe (Dokument)
+```
+
+### B) Daten (Klartext)
+
+**Neu: „Platzierung".** Pro Konto und gekauftem Item höchstens ein Eintrag mit:
+- wem es gehört (Konto),
+- welches gekaufte Item,
+- auf welcher Kachel (zwei Zahlen: Spalte und Reihe im Betriebsgrund).
+
+Ein Item ohne Eintrag liegt im Lager. „Zurück ins Lager legen" löscht den
+Eintrag. Die Datenbank garantiert selbst, dass
+- ein Item nicht doppelt gesetzt werden kann und
+- keine Kachel zweimal belegt wird.
+
+**Nicht gespeichert, sondern berechnet:**
+- **Landgröße.** Aus der Zahl der gekauften Items nach einer festen Regel (Vorschlag:
+  Start 4 x 4 Kacheln, je 3 weitere Items eine Kachel Kantenlänge mehr,
+  höchstens 10 x 10). Das Land wächst nach vorne/außen; die Kachel (0,0) hinten
+  bleibt der Anker. Dadurch ändert Wachstum nie die Position gesetzter Items,
+  und das Land kann nicht schrumpfen.
+- **Seltenheit** (wie PROJ-32), **Sprite** (aus dem Icon-Schlüssel des Items).
+- **Kamera** (Verschiebung/Zoom): nur im Browser, wird nicht gespeichert.
+
+**Die Bezeichnung „Mein Betrieb"** kommt aus den bestehenden Fachbereichsdaten
+(Hofname, Kurzname). Beim Umstellen müssen alle Textstellen, die den Namen in
+Sätzen verwenden („Zum …", „…-Items"), geprüft werden.
+
+### C) Technische Entscheidungen (Begründung)
+
+1. **Tycoon-Technik kopieren statt neu bauen.** Der Probe-Hof zeigt: Sie läuft
+   in der App ohne Änderung. Das spart Wochen und garantiert denselben Look wie
+   der Tycoon. Nachteil: Zwei Kopien können auseinanderlaufen; deshalb eigener
+   Ordner und kurze Herkunfts-Notiz.
+2. **Welt als ein SVG mit gemeinsamer Kamera-Gruppe.** Verschieben und Zoomen
+   sind dann nur eine Transformation auf einer Gruppe: läuft flüssig auch auf
+   schwächeren Handys. Boden-Kacheln werden einmal definiert und wiederverwendet
+   (nicht 100 einzelne Bilder), damit die Seite leicht bleibt.
+3. **Eigene kleine Gestensteuerung** (Ein-Finger-Ziehen, Zwei-Finger-Zoom,
+   Mausrad, Zoom-Knöpfe, Begrenzung, „Zentrieren"). Der Tycoon macht es
+   genauso; wir brauchen keine zusätzliche Bibliothek.
+4. **Setzen per Antippen ist der Hauptweg, Ziehen die Komfort-Variante.**
+   Antippen funktioniert zuverlässig auf dem Handy, mit Tastatur und
+   Screenreader; Ziehen kollidiert auf dem Handy mit dem Verschieben der Welt.
+5. **Server prüft alles.** Besitz, Kachel im freigeschalteten Land, nicht belegt,
+   nur eigene Daten. Zusätzlich sichern Eindeutigkeits-Regeln in der
+   Datenbank gegen Doppelbelegung bei gleichzeitigen Aktionen
+   (zwei Geräte).
+6. **Land aus der Zahl der Käufe ableiten, nicht speichern.** Keine
+   Inkonsistenz, keine Migration bei Regeländerung, nichts zu pflegen.
+7. **Kauf-Ablauf bleibt unangetastet.** Gekaufte Items landen automatisch im
+   Lager (kein Platzierungs-Eintrag). Der Kauf muss deshalb nichts über den
+   Betrieb wissen.
+8. **Kein Eingriff in Münzen, XP, Login oder Seltenheit.** Es kommen zwei
+   Zugriffsregeln für die neue Platzierungs-Tabelle hinzu (nur eigene Zeilen).
+9. **Sprites als Katalog „Icon-Schlüssel -> Zeichenfunktion".** Gleicher
+   Schlüssel wie bisher; das alte flache Icon bleibt als Rückfall für Items
+   ohne isometrisches Sprite (Platzhalter, kein leerer Platz).
+10. **Stilprobe als feste Hürde.** 3 bis 4 Probe-Sprites werden gezeichnet und
+    von dir freigegeben, bevor die Serie entsteht. So kostet ein falscher Stil
+    kein ganzes Set.
+
+### D) Was sich an Bestehendem ändert
+| Bereich | Änderung |
+|---------|----------|
+| Datenbank | neue Tabelle „Platzierung" mit Eindeutigkeitsregeln und Zugriffsregeln für eigene Zeilen; Fachbereichsdaten Spedition: Bezeichnung |
+| Schnittstellen | neu: Platzierungen lesen, Item setzen/verschieben, Item zurücklegen; bestehende Shop-Schnittstelle bleibt |
+| Startseite, Profil | Link bzw. Vorschau „Mein Betrieb" |
+| Hof-Galerie (PROJ-33) | wird durch die Vorschau ersetzt; Textliste bleibt |
+| Shop-Kachel, Admin-Formular/-Liste | zeigen das isometrische Sprite, Rahmen bleibt |
+| Tourismus | unverändert bis PROJ-35 |
+
+### E) Reihenfolge der Umsetzung (Vorschlag)
+1. **Stilprobe** (3 bis 4 Sprites) -> deine Freigabe
+2. Zeichentechnik übernehmen + statische Welt mit Land-Regel und Tests
+3. Datenhaltung + Schnittstellen + Tests (Besitz, Grenzen, Doppelbelegung)
+4. Seite: Kamera, Lager-Leiste, Setzen/Verschieben/Zurücklegen
+5. Animationen (Kauf, Setzen, Wachstum) mit Reduced-Motion
+6. Sprite-Serie für alle Spedition-Items
+7. Shop/Admin/Profil-Vorschau, Bezeichnung „Mein Betrieb"
+8. Sicht- und Regressionsprüfung (Bilder rendern, Spedition-Kauf unverändert)
+
+### F) Abhängigkeiten (Pakete)
+Keine neuen Pakete.
+
+### G) Risiken & Hinweise
+- **Größter Posten ist die Grafik** (Sprites für alle Spedition-Items, einige
+  neu zu zeichnen). Deshalb die Stilfreigabe vorweg.
+- **Bedienung auf dem Handy** (Verschieben/Zoomen gegen Ziehen eines Items)
+  ist der heikelste Teil; Antippen-Setzen ist der sichere Weg.
+- **Gleichzeitiges Setzen auf zwei Geräten:** Der Server entscheidet, das
+  zweite Gerät lädt neu und zeigt eine Meldung.
+- **Auf diesem Rechner kein Browser-Test:** Ich prüfe per gerendertem Bild und
+  Tests; Gestensteuerung und Gefühl müssen am Handy von dir abgenommen werden.
+- **Name „Mein Betrieb"** steckt in Sätzen („Zum …"); Texte vor dem Deploy
+  alle ansehen.
 
 ## QA Test Results
 _To be added by /qa_
