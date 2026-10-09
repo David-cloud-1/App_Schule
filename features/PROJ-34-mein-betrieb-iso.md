@@ -1,6 +1,6 @@
 # PROJ-34: „Mein Betrieb" – isometrische Ansicht & Selbst-Platzieren (Spedition)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
