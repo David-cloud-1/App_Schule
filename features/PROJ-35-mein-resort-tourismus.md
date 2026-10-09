@@ -1,6 +1,6 @@
 # PROJ-35: „Mein Resort" – Tourismus-Hotelkomplex (isometrisch)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -77,7 +77,85 @@ Sonnenschirme, Brunnen) und Transfer (Shuttlebus, Kleinbus), dazu Abzeichen.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+Die gesamte Technik aus PROJ-34 (Welt, Kamera, Lager, Setzen, Animationen,
+Schnittstellen, Datenhaltung) gilt für Tourismus **unverändert** – der Katalog
+„Icon-Schlüssel → Sprite" und der Ort-Aufbau sind fachbereichsabhängig und
+brauchen nur Tourismus-Inhalt. Neu sind: Sprites, ein Resort-Motiv für die Welt,
+ein erweiterter Katalog und die Bezeichnung.
+
+### A) Bausteine
+```
+Bestehend aus PROJ-34 (nur befüllt, nicht neu gebaut)
++-- Seite "Mein Resort", Lager-Leiste, Kamera, Animationen, Profil-Vorschau
++-- Datenhaltung "Platzierung" (gilt für beide Fachbereiche)
+
+Neu für Tourismus
++-- Sprite-Satz Resort (weicher Stil)
+|   +-- alle 32 bisherigen Tourismus-Icons bekommen ein isometrisches Sprite
+|   +-- neue Resort-Sprites: Pool, Spielplatz, Restaurant, Strandbar, Minigolf, Liegen, Brunnen ...
++-- Resort-Motiv der Welt (Wiese heller, Sandweg, Promenade statt Straße, weiße Hecke)
++-- Startkatalog: bestehende 10 Items bleiben, ca. 10 Resort-Items kommen dazu
++-- Anzeigenamen der Kategorien: Transfer · Gebäude & Freizeit · Natur & Deko · Abzeichen
++-- Bezeichnung "Resort" (Fachbereichsdaten)
+```
+
+### B) Daten (Klartext)
+- **Keine neue Tabelle, keine Schema-Änderung.** Platzierungen, Käufe, Seltenheit
+  und Kategorien bestehen schon.
+- **Neu:** ca. 10 Resort-Items als Daten (Migration), Preise in Reisetalern, mit
+  Kategorie und Icon-Schlüssel.
+- **Kategorien bleiben technisch dieselben vier.** Die Resort-Gruppen (Gebäude,
+  Freizeit, Natur & Deko, Transfer) werden auf sie abgebildet:
+  Transfer = Fahrzeuge · Gebäude & Freizeit = Gebäude/Deko ·
+  Natur & Deko = Ausstattung · Abzeichen unverändert. Es ändern sich nur die
+  Anzeigenamen (wie in PROJ-31).
+- **Bereits gekaufte Items bleiben erhalten:** Jeder bisherige Tourismus-Schlüssel
+  (Flugzeug, Reisebus, Palme, Strandhotel, Koffer, Globus, Reisepass, Pokal …)
+  bekommt ein passendes Resort-Sprite; ein Test erzwingt das.
+
+### C) Entscheidungen (Begründung)
+1. **Technik wiederverwenden:** Der Fachbereichscode steuert Sprites, Motiv und
+   Beschriftung schon heute (PROJ-34). Dadurch sind Link, Profil-Vorschau und
+   Gating automatisch aktiv, sobald der Tourismus-Katalog nicht mehr leer ist.
+2. **Neue Resort-Schlüssel brauchen auch einen Eintrag im flachen Tourismus-Set**,
+   weil die Server-Prüfung „Icon passt zur Kategorie und zum Fachbereich" und der
+   Admin-Picker darauf beruhen. Das flache Bild wird dafür aus dem Sprite
+   erzeugt – kein zweites Zeichnen.
+3. **Eigenes Welt-Motiv, gleiche Logik:** Nur Boden und Randgestaltung hängen am
+   Fachbereich (Weg/Straße vs. Sand-Promenade); Layout, Kamera und Setzen nicht.
+4. **Resort-Items als Daten:** Die Lehrkraft kann Preise, Seltenheit und
+   Aktivstatus ändern; nur neue Sprites brauchen einen Deploy.
+5. **Stil wie Spedition:** weicher Stil (Verläufe, dünne Konturen, weiche
+   Schatten), damit beide Fachbereiche aus einem Guss wirken.
+6. **Kein Eingriff in Rechte, Münzen, Login.**
+
+### D) Was sich an Bestehendem ändert
+| Bereich | Änderung |
+|---------|----------|
+| Sprite-Katalog | Eintrag für Tourismus statt leer |
+| Flaches Tourismus-Set | + neue Resort-Schlüssel (Bild aus dem Sprite) |
+| Welt-Komponente | Motiv-Auswahl nach Fachbereich (Boden/Randgestaltung) |
+| Kategorie-Anzeigenamen Tourismus | Transfer / Gebäude & Freizeit / Natur & Deko / Abzeichen |
+| Daten | neue Resort-Items; Bezeichnung „Resort" |
+| Tourismus-Profil/Startseite | zeigen automatisch die neue Welt statt der flachen Galerie |
+
+### E) Reihenfolge (Vorschlag)
+1. Sprites für die 32 bestehenden Tourismus-Icons (in Teilen, mit Übersichtsbild)
+2. Neue Resort-Sprites + Einträge im flachen Set
+3. Resort-Motiv der Welt
+4. Katalog-Migration + Bezeichnung + Kategorienamen
+5. Tests und Sichtprüfung
+
+### F) Abhängigkeiten
+Keine neuen Pakete.
+
+### G) Risiken
+- **Umfang der Grafik** (ca. 42 Sprites) ist der größte Posten.
+- **Abnahme am Handy** wie bei PROJ-34 durch den Nutzer.
+- **Datenänderung auf Produktion** (neue Items sichtbar für alle Tourismus-Azubis):
+  Zeitpunkt abstimmen.
 
 ## QA Test Results
 _To be added by /qa_
