@@ -1,6 +1,6 @@
 # PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -96,7 +96,75 @@ bleiben stehen, winken oder wedeln. Alles läuft nur im Browser (reine Anzeige).
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+Die Bewegung ist **reine Anzeige im Browser**. Nichts davon wird gespeichert.
+Nur ein Punkt berührt die Datenhaltung: **Tiere sind Shop-Items**, die nicht
+platziert werden. Alles andere (Gäste, Arbeiter, Wandern, Zeichnen) ist neuer
+Browser-Code mit reiner, testbarer Rechnung.
+
+### A) Bausteine
+```
+Seite "Mein Betrieb/Resort" (bestehend)
++-- Welt (bestehend)
+|   +-- Figuren-Ebene (NEU): Tiere, Gäste, Personal, in die Zeichenreihenfolge einsortiert
++-- Bewegungs-Schleife (NEU): langsamer Takt, pausiert bei verstecktem Tab, aus bei "Bewegung reduzieren"
++-- Reaktion auf Antippen eines Tiers (NEU): kleines Herz, keine Auswahländerung
+
+Reine Rechnung (NEU, ohne Browser testbar)
++-- Wandern: nächster Schritt auf freien Nachbarkacheln, Pausen, Ausweichen
++-- Figuren-Regeln: welche Gebäude welche Figuren hervorbringen, Obergrenze 12
++-- Figuren-Zeichnungen: Mensch, Hund, Katze, Huhn, Flamingo, Papagei, Krebs (2 Blickrichtungen, 2 Schritt-Posen)
+
+Daten
++-- Tiere = normale Shop-Items (Migration), vom Server als "läuft frei" markiert
++-- Gäste/Personal: keine Daten
+```
+
+### B) Daten
+- **Keine neue Tabelle.** Die vorhandene Platzierungs-Tabelle bleibt unberührt.
+- **Tiere** sind Einträge im Katalog (Preis, Seltenheit, Aktiv wie bei allen Items).
+  Welche Schlüssel „Lebewesen“ sind, steht im Code (eine Liste je Fachbereich). Der
+  Bestand-Abruf markiert sie; sie erscheinen nie im Lager. Die Schnittstelle
+  „Item setzen“ lehnt sie ab.
+- **Land:** Tiere zählen wie jeder Kauf.
+
+### C) Entscheidungen
+1. **Bewegung nur im Browser:** keine Kosten, keine Synchronisation, kein Datenschutzthema.
+2. **Wandern auf dem Kachelgitter:** Figuren gehen von Kachel zu Kachel (4 Richtungen)
+   über freie Felder. Das passt zur Platzier-Logik und braucht keine Kollisionsphysik.
+3. **Deterministisch:** ein Startwert pro Figur liefert immer denselben Ablauf. Das
+   macht die Rechnung testbar (kein Zufall im Test).
+4. **Langsamer Takt (ca. 8 Aktualisierungen pro Sekunde) mit weicher Überblendung**
+   statt 60 Bilder pro Sekunde: schont Akku und ältere Handys.
+5. **Obergrenze 12 Figuren**, Reihenfolge: Tiere zuerst, dann Gäste/Personal.
+6. **Hohe Gebäude verdecken Figuren dahinter** (Zeichenreihenfolge nach Tiefe wie bei Items).
+7. **Antippen:** Treffer auf ein Tier hat Vorrang und löst nur eine Reaktion aus; für
+   Gäste/Personal gilt das normale Verhalten (Kachel/Item).
+8. **„Bewegung reduzieren“:** Figuren stehen still an ihrem Startplatz.
+9. **Profil-Vorschau:** Figuren stehen still (keine Schleife).
+10. **Kein Eingriff in Münzen, Rechte, Login.**
+
+### D) Was sich an Bestehendem ändert
+| Bereich | Änderung |
+|---------|----------|
+| Bestand-Berechnung | Tiere als „läuft frei“ markiert, nicht im Lager |
+| Schnittstelle „Item setzen“ | lehnt Tiere ab (neuer Fehlercode) |
+| Lager-Leiste, Textliste | Tiere ausgeblendet bzw. „läuft frei herum“ |
+| Welt-Komponente | optionale Figuren-Ebene |
+| Seite | Schleife, Antippen-Reaktion |
+| Katalog/Flache Sets | Tier-Schlüssel mit Standbild |
+| Daten | Tier-Items als Migration |
+
+### E) Reihenfolge
+1. Wander-Rechnung + Tests · 2. Figuren-Regeln + Tests · 3. Figuren-Zeichnungen +
+Übersichtsbild · 4. Tier-Items (Katalog, Server, Bestand, Migration) · 5. Welt +
+Seite (Schleife, Reaktion, Reduced-Motion) · 6. Tests, Sichtprüfung
+
+### F) Risiken
+- Gefühl der Bewegung ist ohne Browser nicht prüfbar (Handy-Abnahme).
+- Performance mit 12 Figuren: Takt und Obergrenze sind die Gegenmaßnahmen.
+- Zeichenreihenfolge bei Figuren zwischen zwei Kacheln (Tiefe wird beim Überschreiten der Kachelgrenze umgesetzt).
 
 ## QA Test Results
 _To be added by /qa_
