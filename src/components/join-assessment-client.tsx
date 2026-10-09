@@ -183,7 +183,7 @@ export function JoinAssessmentClient({ initialCode }: Props) {
         <div className="text-center">
           <h1 className="text-xl font-bold text-[#F9FAFB] mb-1">Wie heißt du?</h1>
           <p className="text-sm text-[#9CA3AF]">
-            Dein Name erscheint nur in der Notenliste deines Ausbilders — nicht im Leaderboard.
+            Dein Name erscheint nur in der Notenliste deiner Lehrkraft — nicht im Leaderboard.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3">
