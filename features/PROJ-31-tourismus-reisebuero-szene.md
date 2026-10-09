@@ -1,6 +1,6 @@
 # PROJ-31: Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -273,4 +273,8 @@ Lucide für den Platzhalter).
 - Offen: AC „Mindestens ein Item zu 75" und „2 je Kategorie" erst nach Anwenden der Migration in Produktion erfüllt.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://touristiklern.vercel.app (Tourismus), https://spedilern.vercel.app (Spedition unverändert)
+- **Deployed:** 2026-10-09 (Code mit Commit cebe579 über den Push von ebd764c, Vercel-Deployment spedilern-cnj6xn4rl, Status Ready)
+- Migration `20261009_proj31_tourismus_katalog` in der Produktions-DB angewendet: 10 Tourismus-Items (Verkehrsmittel 3, Hotels & Deko 2, Ausstattung 2, Trophäen 3), Referenzitem Flugzeug zu 75. Spedition-Katalog unverändert (2/3/2/2).
+- Build, Lint und 718 Tests auf dem sauberen Commit grün; beide Login-Seiten antworten mit HTTP 200.
+- **Offen – visuelle Abnahme von Hand:** Szene „Mein Büro" mit gekauften Items, Shop-Kacheln, Admin „Hof-Items", Layout bei 320 px, Kontrast der Grafiken (kein Browser-Test möglich).
