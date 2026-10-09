@@ -65,7 +65,7 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
   it('lists stored items in the storage bar and placed items only in the world', async () => {
     antworten(STAND)
     renderClient()
-    await screen.findByRole('heading', { name: 'Mein Betrieb' })
+    await screen.findByText(/Land 4 × 4/)
     expect(screen.getByText('Im Lager (1)')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Pokal aus dem Lager wählen' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Lagerhalle aus dem Lager wählen' })).toBeNull()
@@ -74,7 +74,7 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
   it('offers a text alternative for screen readers with status per item', async () => {
     antworten(STAND)
     renderClient()
-    await screen.findByRole('heading', { name: 'Mein Betrieb' })
+    await screen.findByText(/Land 4 × 4/)
     expect(screen.getByText(/Pokal – im Lager/)).toBeTruthy()
     expect(screen.getByText(/Lagerhalle – steht auf Reihe 2, Spalte 2/)).toBeTruthy()
   })
@@ -153,7 +153,7 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
   it('has zoom and centre controls with accessible names', async () => {
     antworten(STAND)
     renderClient()
-    await screen.findByRole('heading', { name: 'Mein Betrieb' })
+    await screen.findByText(/Land 4 × 4/)
     for (const name of ['Hineinzoomen', 'Herauszoomen', 'Zentrieren']) {
       expect(screen.getByRole('button', { name })).toBeTruthy()
     }
@@ -181,5 +181,56 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
     renderClient('TOUR')
     expect(await screen.findByText(/Hier entsteht bald/)).toBeTruthy()
     expect(document.querySelectorAll('svg[role="img"]').length).toBe(0)
+  })
+
+  it('plays the placement animation on the item that was just placed, then removes it', async () => {
+    antworten(STAND)
+    renderClient()
+    fireEvent.click(await screen.findByRole('button', { name: 'Pokal aus dem Lager wählen' }))
+    fireEvent.click(screen.getByText('Per Liste setzen'))
+    fireEvent.change(screen.getByLabelText('Freie Kachel wählen'), { target: { value: '2,3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Setzen' }))
+    await waitFor(() => expect(document.querySelector('[data-item="a"]')?.getAttribute('class')).toContain('betrieb-plop'))
+    await waitFor(() => expect(document.querySelector('[data-item="a"]')?.getAttribute('class')).toBeNull(), { timeout: 2000 })
+  })
+
+  it('selects and highlights a freshly bought item from ?neu=… and lets it hop', async () => {
+    window.history.replaceState({}, '', '/betrieb?neu=a')
+    antworten(STAND)
+    renderClient()
+    const chip = await screen.findByRole('button', { name: 'Pokal aus dem Lager wählen' })
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    expect(chip.className).toContain('betrieb-huepf')
+    expect(document.querySelectorAll('[data-frei]').length).toBe(15)
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('ignores ?neu=… for an item that is not in storage (already placed or unknown)', async () => {
+    window.history.replaceState({}, '', '/betrieb?neu=b')
+    antworten(STAND)
+    renderClient()
+    await screen.findByText(/Land 4 × 4/)
+    expect(document.querySelectorAll('[data-frei]').length).toBe(0)
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('announces and animates a land that has grown since the last visit', async () => {
+    localStorage.setItem('betrieb-land-SPED', '4')
+    antworten({ ...STAND, seite: 5 })
+    renderClient()
+    await screen.findByText(/Land 5 × 5/)
+    expect(toast).toHaveBeenCalledWith('Dein Land ist gewachsen!')
+    expect(document.querySelectorAll('.betrieb-wachse').length).toBe(25 - 16)
+    expect(localStorage.getItem('betrieb-land-SPED')).toBe('5')
+  })
+
+  it('stays quiet on the first visit and when the land did not grow', async () => {
+    localStorage.clear()
+    antworten(STAND)
+    renderClient()
+    await screen.findByText(/Land 4 × 4/)
+    expect(toast).not.toHaveBeenCalledWith('Dein Land ist gewachsen!')
+    expect(document.querySelectorAll('.betrieb-wachse').length).toBe(0)
+    expect(localStorage.getItem('betrieb-land-SPED')).toBe('4')
   })
 })

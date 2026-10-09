@@ -65,6 +65,10 @@ export function BetriebClient() {
   const [kamera, setKamera] = useState<Kamera | null>(null)
   const [groesse, setGroesse] = useState({ w: 360, h: 420 })
   const [listenKachel, setListenKachel] = useState('')
+  const [frischId, setFrischId] = useState<string | null>(null)
+  const [huepfId, setHuepfId] = useState<string | null>(null)
+  const [wachstumVon, setWachstumVon] = useState<number | null>(null)
+  const initialisiert = useRef(false)
 
   const fensterRef = useRef<HTMLDivElement>(null)
   const zeiger = useRef(new Map<number, { x: number; y: number }>())
@@ -88,6 +92,46 @@ export function BetriebClient() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void laden()
   }, [laden])
+
+  // Beim ersten Anzeigen: neues Land erkennen (Animation + Hinweis) und ein frisch
+  // gekauftes Item (?neu=…) gleich auswählen und hüpfen lassen.
+  useEffect(() => {
+    if (!stand || initialisiert.current) return
+    initialisiert.current = true
+    const key = `betrieb-land-${departmentCode}`
+    try {
+      const alt = Number(localStorage.getItem(key))
+      if (Number.isInteger(alt) && alt >= 1 && alt < stand.seite) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setWachstumVon(alt)
+        toast('Dein Land ist gewachsen!')
+      }
+      localStorage.setItem(key, String(stand.seite))
+    } catch {
+      // Speicher nicht verfügbar (privater Modus): dann eben ohne Animation
+    }
+    const neu = new URLSearchParams(window.location.search).get('neu')
+    if (neu && stand.items.some((i) => i.id === neu && i.x === null)) {
+      setAuswahl(neu)
+      setHuepfId(neu)
+    }
+  }, [stand, departmentCode])
+
+  useEffect(() => {
+    if (!frischId) return
+    const t = setTimeout(() => setFrischId(null), 900)
+    return () => clearTimeout(t)
+  }, [frischId])
+  useEffect(() => {
+    if (!huepfId) return
+    const t = setTimeout(() => setHuepfId(null), 2600)
+    return () => clearTimeout(t)
+  }, [huepfId])
+  useEffect(() => {
+    if (wachstumVon === null) return
+    const t = setTimeout(() => setWachstumVon(null), 1600)
+    return () => clearTimeout(t)
+  }, [wachstumVon])
 
   // Größe des Anzeigefensters verfolgen: der Ausschnitt braucht das Seitenverhältnis.
   useEffect(() => {
@@ -148,6 +192,7 @@ export function BetriebClient() {
       if (!vorher) return
       setzeLokal(id, x, y)
       setAuswahl(null)
+      setFrischId(id)
       const antwort = await sende(
         fetch('/api/betrieb/platzierung', {
           method: 'PUT',
@@ -350,6 +395,8 @@ export function BetriebClient() {
                 viewBox={`${ausschnitt.x} ${ausschnitt.y} ${ausschnitt.w} ${ausschnitt.h}`}
                 freieKacheln={freieKacheln}
                 ausgewaehltId={gewaehlt && gewaehlt.x !== null ? gewaehlt.id : null}
+                frischId={frischId}
+                wachstumVon={wachstumVon}
               />
               <div className="absolute top-2 right-2 flex flex-col gap-2">
                 {[
@@ -405,7 +452,7 @@ export function BetriebClient() {
                 <h2 id="lager-titel" className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide">
                   Im Lager ({lager.length})
                 </h2>
-                <BetriebLager items={lager} departmentCode={departmentCode} ausgewaehltId={auswahl} onWaehle={(id) => setAuswahl((a) => (a === id ? null : id))} />
+                <BetriebLager items={lager} departmentCode={departmentCode} ausgewaehltId={auswahl} huepfId={huepfId} onWaehle={(id) => setAuswahl((a) => (a === id ? null : id))} />
               </section>
             )}
 

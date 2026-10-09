@@ -3,7 +3,7 @@ import { TILE_H, TILE_W } from '@/lib/hof-welt/iso'
 import { wegUrl, wieseUrl, zaunWeissUrl } from '@/lib/hof-welt/natur'
 import { getBetriebSprite, type BetriebSprite } from '@/lib/betrieb-sprites'
 import { istImLand } from '@/lib/betrieb-land'
-import { baueKacheln, baueZaun, grundMitte, kachelMitte, tiefe, weltGrenzen, type BodenArt } from '@/lib/betrieb-welt'
+import { baueKacheln, baueZaun, grundMitte, istNeueKachel, kachelMitte, tiefe, weltGrenzen, type BodenArt } from '@/lib/betrieb-welt'
 import type { HofRarity } from '@/lib/hof-rarity'
 
 /**
@@ -40,6 +40,10 @@ interface Props {
   freieKacheln?: { x: number; y: number }[]
   /** Gewähltes, bereits gesetztes Item (gestrichelter Ring um seine Kachel). */
   ausgewaehltId?: string | null
+  /** Eben gesetztes Item: spielt einmal die Aufstell-Animation ab. */
+  frischId?: string | null
+  /** Frühere Landgröße: das seither neue Land blendet sich ein. */
+  wachstumVon?: number | null
 }
 
 const bodenCache = new Map<string, string>()
@@ -64,7 +68,7 @@ function rautePunkte(mx: number, my: number, inset: number): string {
   return `${f1(mx)},${f1(my - TILE_H / 2 + inset)} ${f1(mx + TILE_W / 2 - inset * 2)},${f1(my)} ${f1(mx)},${f1(my + TILE_H / 2 - inset)} ${f1(mx - TILE_W / 2 + inset * 2)},${f1(my)}`
 }
 
-export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel, viewBox, svgRef, freieKacheln, ausgewaehltId }: Props) {
+export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel, viewBox, svgRef, freieKacheln, ausgewaehltId, frischId, wachstumVon }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const grenzen = weltGrenzen(seite)
   const kacheln = baueKacheln(seite)
@@ -117,7 +121,7 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
     objekte.push({
       z: tiefe(gx, gy) + 0.1,
       node: (
-        <g key={`i${i.id}`} data-item={i.id}>
+        <g key={`i${i.id}`} data-item={i.id} className={frischId === i.id ? 'betrieb-plop' : undefined}>
           <title>{i.name}</title>
           {ausgewaehltId === i.id && (
             <polygon
@@ -182,6 +186,7 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
             x={f1(m.x - TILE_W / 2)}
             y={f1(m.y - TILE_H / 2)}
             data-kachel=""
+            className={wachstumVon != null && istNeueKachel(k.gx, k.gy, wachstumVon, seite) ? 'betrieb-wachse' : undefined}
           />
         )
       })}

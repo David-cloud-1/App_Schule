@@ -104,3 +104,14 @@ export function weltGrenzen(seite: number, platzOben = 96): Grenzen {
   const unten = kachelMitte(g - 1, g - 1).y + TILE_H / 2 + 6
   return { minX: links, minY: oben, breite: rechts - links, hoehe: unten - oben }
 }
+
+/**
+ * Gehört die Gitterkachel zum Land, das seit einer früheren Landgröße neu
+ * dazugekommen ist? (für die Wachstums-Animation; der Rand zählt nicht)
+ */
+export function istNeueKachel(gx: number, gy: number, vonSeite: number, seite: number): boolean {
+  const x = gx - RAND
+  const y = gy - RAND
+  const imLand = x >= 0 && y >= 0 && x < seite && y < seite
+  return imLand && (x >= vonSeite || y >= vonSeite)
+}

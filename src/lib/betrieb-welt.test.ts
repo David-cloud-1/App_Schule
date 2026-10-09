@@ -6,6 +6,7 @@ import {
   gitterGroesse,
   grundMitte,
   grundZuGitter,
+  istNeueKachel,
   kachelMitte,
   tiefe,
   weltGrenzen,
@@ -84,5 +85,27 @@ describe('Welt-Layout (PROJ-34)', () => {
     const seite = landSeite(0)
     expect(seite).toBe(LAND_START)
     expect(baueZaun(seite)).toHaveLength(2 * LAND_START)
+  })
+
+  it('recognises exactly the newly added land as new (growth animation)', () => {
+    const alt = 4
+    const neu = 5
+    let anzahl = 0
+    for (const k of baueKacheln(neu)) {
+      const neuHier = istNeueKachel(k.gx, k.gy, alt, neu)
+      const x = k.gx - RAND
+      const y = k.gy - RAND
+      if (neuHier) {
+        anzahl++
+        expect(x === neu - 1 || y === neu - 1).toBe(true)
+      }
+    }
+    expect(anzahl).toBe(neu * neu - alt * alt)
+  })
+
+  it('never calls margin tiles or old land new', () => {
+    expect(istNeueKachel(0, 0, 4, 5)).toBe(false)
+    expect(istNeueKachel(2, 2, 4, 5)).toBe(false)
+    expect(istNeueKachel(6, 6, 4, 5)).toBe(false)
   })
 })

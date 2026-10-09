@@ -25,11 +25,13 @@ import {
   User,
   Trophy,
   Store,
+  Warehouse,
   ClipboardList,
   CheckCircle2,
 } from 'lucide-react'
 import { BrandIcon, BrandName } from '@/components/app-brand'
 import { resolveIcon } from '@/components/department-icon'
+import { betriebSpriteSchluessel } from '@/lib/betrieb-sprites'
 
 /** Format a Date as YYYY-MM-DD in Europe/Berlin timezone */
 function toBerlinDateStr(date: Date): string {
@@ -46,6 +48,9 @@ export default async function HomePage() {
 
   const department = await getCurrentDepartment()
   const hofName = department?.hofName ?? 'Shop'
+  // „Mein Betrieb“ (PROJ-34) gibt es nur für Bereiche mit isometrischen Sprites.
+  const hatBetrieb = betriebSpriteSchluessel(department?.code ?? '').length > 0
+  const betriebName = `Mein ${department?.hofShortName ?? 'Betrieb'}`
 
   // Date range for 7-day activity window
   const now = new Date()
@@ -165,6 +170,16 @@ export default async function HomePage() {
             <StreakBadge streak={currentStreak} variant="pill" />
             {/* Coin pill */}
             <CoinBalance variant="pill" />
+            {/* Mein Betrieb (PROJ-34) */}
+            {hatBetrieb && (
+              <Link
+                href="/betrieb"
+                className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#58CC02] hover:text-[#58CC02]/80"
+                aria-label={betriebName}
+              >
+                <Warehouse className="w-4 h-4" />
+              </Link>
+            )}
             {/* Hof link */}
             <Link
               href="/shop"

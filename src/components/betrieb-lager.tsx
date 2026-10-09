@@ -11,11 +11,14 @@ export function BetriebLager({
   items,
   departmentCode,
   ausgewaehltId,
+  huepfId,
   onWaehle,
 }: {
   items: BetriebItem[]
   departmentCode: string
   ausgewaehltId: string | null
+  /** Frisch gekauftes Item: hüpft kurz, damit man es findet. */
+  huepfId?: string | null
   onWaehle: (id: string) => void
 }) {
   if (items.length === 0) return null
@@ -34,6 +37,7 @@ export function BetriebLager({
               aria-label={`${item.name} aus dem Lager wählen`}
               className={cn(
                 'flex flex-col items-center gap-1 w-[76px] min-h-[44px] rounded-2xl border p-1.5 transition-all duration-200 active:scale-95',
+                huepfId === item.id && 'betrieb-huepf',
                 aktiv
                   ? 'border-[#FFD700] bg-[#FFD700]/15 scale-105'
                   : 'border-[#4B5563] bg-[#1F2937] hover:bg-[#374151]',

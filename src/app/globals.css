@@ -124,3 +124,41 @@
     display: none;
   }
 }
+
+/* PROJ-34: Animationen von „Mein Betrieb". Alle kurz und einmalig; entfallen bei „Bewegung reduzieren". */
+@keyframes betrieb-plop {
+  0%   { transform: translateY(-16px) scale(0.86); opacity: 0; }
+  55%  { transform: translateY(2px) scale(1.05); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.betrieb-plop {
+  animation: betrieb-plop 0.5s ease-out 1 both;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes betrieb-wachse {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: none; }
+}
+.betrieb-wachse {
+  animation: betrieb-wachse 0.9s ease-out 1 both;
+}
+
+@keyframes betrieb-huepf {
+  0%, 100% { transform: translateY(0) scale(1.05); }
+  30%      { transform: translateY(-8px) scale(1.1); }
+  60%      { transform: translateY(0) scale(1.05); }
+  80%      { transform: translateY(-3px) scale(1.07); }
+}
+.betrieb-huepf {
+  animation: betrieb-huepf 1.1s ease-in-out 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .betrieb-plop,
+  .betrieb-wachse,
+  .betrieb-huepf {
+    animation: none;
+  }
+}

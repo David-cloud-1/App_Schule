@@ -12,6 +12,7 @@ import { useDepartment } from '@/components/department-provider'
 import { HofItemIcon } from '@/components/hof-item-icon'
 import { HofRarityFrame, HofRarityLabel } from '@/components/hof-rarity-frame'
 import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
+import { betriebSpriteSchluessel } from '@/lib/betrieb-sprites'
 import type { HofRarity } from '@/lib/hof-rarity'
 
 interface ShopItem {
@@ -241,6 +242,15 @@ export function ShopClient() {
               >
                 Weiter 🎉
               </Button>
+              {/* Mein Betrieb (PROJ-34): direkt zum Aufstellen, nur wo es die Aufbau-Welt gibt */}
+              {betriebSpriteSchluessel(departmentCode).length > 0 && (
+                <Link
+                  href={`/betrieb?neu=${encodeURIComponent(justPurchased.id)}`}
+                  className="mt-3 block text-sm font-semibold text-[#58CC02] underline underline-offset-2 min-h-[44px] leading-[44px]"
+                >
+                  Jetzt aufstellen
+                </Link>
+              )}
             </>
           )}
         </DialogContent>

@@ -152,4 +152,19 @@ describe('BetriebWelt (PROJ-34)', () => {
     expect(container.querySelectorAll('[data-frei]').length).toBe(0)
     expect(container.querySelectorAll('[data-ausgewaehlt]').length).toBe(0)
   })
+
+  it('plays the placement animation only on the freshly placed item', () => {
+    const { container } = render(
+      <BetriebWelt departmentCode="SPED" seite={4} items={[item({ id: 'a', x: 0, y: 0 }), item({ id: 'b', x: 1, y: 0 })]} frischId="b" />,
+    )
+    expect(container.querySelector('[data-item="b"]')!.getAttribute('class')).toContain('betrieb-plop')
+    expect(container.querySelector('[data-item="a"]')!.getAttribute('class')).toBeNull()
+  })
+
+  it('fades in only the newly grown land tiles', () => {
+    const { container } = render(<BetriebWelt departmentCode="SPED" seite={5} items={[]} wachstumVon={4} />)
+    expect(container.querySelectorAll('.betrieb-wachse').length).toBe(5 * 5 - 4 * 4)
+    const ohne = render(<BetriebWelt departmentCode="SPED" seite={5} items={[]} />)
+    expect(ohne.container.querySelectorAll('.betrieb-wachse').length).toBe(0)
+  })
 })
