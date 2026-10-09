@@ -1,7 +1,8 @@
 import type { SVGProps } from 'react'
 import type { HofIconDef } from './hof-icons'
 import { RESORT_NEU } from './hof-welt/resort-weich'
-import { getBetriebSprite } from './betrieb-sprites'
+import { RESORT_DEKO } from './hof-welt/resort-deko'
+import { iconsAusSprites } from './hof-icons-sprite'
 
 /**
  * Tourismus-Grafikset (PROJ-31) — handgefertigte Inline-SVG-Illustrationen
@@ -496,23 +497,9 @@ export const TOUR_ICONS: HofIconDef[] = [
 ]
 
 /**
- * Neue Resort-Bauten (PROJ-35): Für sie gibt es kein eigenes flaches Bild. Damit
- * Server-Prüfung ("Icon passt zu Kategorie und Fachbereich") und Admin-Auswahl
- * trotzdem für alle Schlüssel gleich funktionieren, wird das flache Icon aus dem
- * isometrischen Sprite erzeugt – es wird nur einmal gezeichnet.
+ * Neue Resort-Bauten (PROJ-35) und Deko (PROJ-36): flache Icons aus den Sprites,
+ * siehe hof-icons-sprite.tsx.
  */
-const RESORT_ICONS: HofIconDef[] = RESORT_NEU.map((n) => ({
-  key: n.key,
-  label: n.label,
-  category: n.category,
-  Svg: (props: SVGProps<SVGSVGElement>) => {
-    const sprite = getBetriebSprite('TOUR', n.key)
-    return (
-      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false" {...props}>
-        <image href={sprite.url} x={0} y={-3} width={48} height={Math.min(48, (48 * sprite.h) / sprite.w)} preserveAspectRatio="xMidYMax meet" />
-      </svg>
-    )
-  },
-}))
+const RESORT_ICONS: HofIconDef[] = iconsAusSprites('TOUR', [...RESORT_NEU, ...RESORT_DEKO])
 
 export const TOUR_ALLE_ICONS: HofIconDef[] = [...TOUR_ICONS, ...RESORT_ICONS]

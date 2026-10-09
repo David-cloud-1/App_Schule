@@ -1,6 +1,6 @@
 # PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -118,8 +118,17 @@ Schnittstellen oder Rechten.
 ### F) Risiken
 Grafikaufwand (40 Sprites); Preis-/Balance-Gefühl muss der Nutzer prüfen.
 
+## Implementation Notes (2026-10-09)
+- **Sprites:** `src/lib/hof-welt/spedition-deko.ts` (20: Tankwagen, Kipper, Abschleppwagen, Hecke, Blumenkübel, Parkbank, Werbeschild, Verkehrsschild, Schranke, Schuppen, Wasserturm, Imbisswagen, Brückenwaage, Wetterfahne, Reifenstapel, Ölfässer, Hubwagen, Containerturm, Mülleimer, Rasttisch) und `resort-deko.ts` (20: Golfcart, Tuk-Tuk, Fahrradständer, Tennisplatz, Hochzeitsbogen, Pavillon, Saunahaus, Eisdiele, Volleyballfeld, Bungalow, Lotusteich, Strandkorb, Blütenhecke, Hängematte, Tiki-Fackeln, Surfbretter, Gartenlaterne, Blumenkübel, Rettungsring, Sandburg). Teils mit Bewegung (Rauch, Fahne, flackerndes Licht).
+- **Einbindung:** Sprite-Katalog (`betrieb-sprites.ts`) und flache Sets (`hof-icons.tsx`, `hof-icons-tour.tsx`) über die gemeinsame Hilfsfunktion `iconsAusSprites` (`hof-icons-sprite.tsx`) – ein Bild pro Item.
+- **Daten:** Migration `20261009_proj36_mehr_deko` (+ Rollback): 20 + 20 Items, Preise Spedition 15–190, Tourismus 20–200; je Fachbereich mind. 10 Items bis 60. Idempotent, nur INSERT. **Noch nicht auf Produktion angewendet.**
+
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisiert + Sichtprüfung; Abnahme der Preise/Optik durch den Nutzer steht aus**
+- Tests grün (Gesamtsuite zweimal). Neu (`betrieb-deko.test.ts`, 13 Tests): je Fachbereich mind. 20 neue Items mit Sprite und flachem Icon, Server-Prüfung „Icon gehört zur Kategorie“, **Abgleich Sprite ⇄ Migration** (gleiche Schlüssel und Kategorien, keine Extras), Preisgrenzen 15–200, mind. 8 Einstiegs-Items ≤ 60, eindeutige Namen, keine Schlüssel-Überschneidung zwischen den Fachbereichen, Migration nur INSERT mit Namensprüfung.
+- Migration gegen die echte Datenbank in zurückgerollter Transaktion geprüft: Spedition 9 → 29, Tourismus 19 → 39 Items.
+- Sichtprüfung: `docs/vorschau/sprites-spedition-deko.png`, `sprites-resort-deko.png`.
+- **Nicht geprüft:** Preis-/Balance-Gefühl, Optik am Handy.
 
 ## Deployment
 _To be added by /deploy_

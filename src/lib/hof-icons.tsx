@@ -15,6 +15,8 @@
 
 import type { SVGProps } from 'react'
 import { TOUR_ALLE_ICONS } from './hof-icons-tour'
+import { SPEDITION_DEKO } from './hof-welt/spedition-deko'
+import { iconsAusSprites } from './hof-icons-sprite'
 
 export type HofCategory =
   | 'fahrzeuge'
@@ -530,7 +532,7 @@ const SPED_ICONS: HofIconDef[] = [
 ]
 
 const ICON_SETS: Record<string, HofIconDef[]> = {
-  SPED: SPED_ICONS,
+  SPED: [...SPED_ICONS, ...iconsAusSprites('SPED', SPEDITION_DEKO)],
   TOUR: TOUR_ALLE_ICONS,
 }
 

@@ -5,6 +5,8 @@ import * as V from './hof-welt/sprites-betrieb'
 import { STIL_WEICH, stilAnwenden } from './hof-welt/stil'
 import { SPEDITION_WEICH } from './hof-welt/spedition-weich'
 import { RESORT_NEU, RESORT_TEIL_1 } from './hof-welt/resort-weich'
+import { SPEDITION_DEKO } from './hof-welt/spedition-deko'
+import { RESORT_DEKO } from './hof-welt/resort-deko'
 
 /**
  * Sprite-Katalog für „Mein Betrieb" (PROJ-34): Icon-Schlüssel eines Shop-Items
@@ -67,6 +69,8 @@ const SPEDITION: Record<string, Baumeister> = {
   pokal: () => aus(N.pokalWeich()),
   // Serie aus spedition-weich.ts (Fahrzeuge, Hofdeko, Ladung, Abzeichen)
   ...Object.fromEntries(Object.entries(SPEDITION_WEICH).map(([k, f]) => [k, () => aus(f())])),
+  // Deko-Erweiterung (PROJ-36)
+  ...Object.fromEntries(SPEDITION_DEKO.map((n) => [n.key, () => aus(n.bild())])),
 }
 
 const KATALOG: Record<string, Record<string, Baumeister>> = {
@@ -75,6 +79,8 @@ const KATALOG: Record<string, Record<string, Baumeister>> = {
   TOUR: {
     ...Object.fromEntries(Object.entries(RESORT_TEIL_1).map(([k, f]) => [k, () => aus(f())])),
     ...Object.fromEntries(RESORT_NEU.map((n) => [n.key, () => aus(n.bild())])),
+    // Deko-Erweiterung (PROJ-36)
+    ...Object.fromEntries(RESORT_DEKO.map((n) => [n.key, () => aus(n.bild())])),
   },
 }
 
