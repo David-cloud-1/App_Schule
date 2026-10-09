@@ -47,7 +47,7 @@
 | PROJ-31 | Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene | Deployed | [PROJ-31-tourismus-reisebuero-szene.md](PROJ-31-tourismus-reisebuero-szene.md) | 2026-10-09 |
 | PROJ-32 | Hof-Ausbau – Effekte für teure Items & mehr Grafiken | Deployed | [PROJ-32-hof-ausbau-effekte-grafiken.md](PROJ-32-hof-ausbau-effekte-grafiken.md) | 2026-10-09 |
 | PROJ-33 | Echte Hof-Illustration (Spedition & Tourismus) | Deployed | [PROJ-33-hof-illustration.md](PROJ-33-hof-illustration.md) | 2026-10-09 |
-| PROJ-34 | „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | Architected | [PROJ-34-mein-betrieb-iso.md](PROJ-34-mein-betrieb-iso.md) | 2026-10-09 |
+| PROJ-34 | „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | In Progress | [PROJ-34-mein-betrieb-iso.md](PROJ-34-mein-betrieb-iso.md) | 2026-10-09 |
 | PROJ-35 | „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Planned | [PROJ-35-mein-resort-tourismus.md](PROJ-35-mein-resort-tourismus.md) | 2026-10-09 |
 
 <!-- Add features above this line -->

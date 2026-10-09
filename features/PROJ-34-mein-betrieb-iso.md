@@ -1,6 +1,6 @@
 # PROJ-34: „Mein Betrieb" – isometrische Ansicht & Selbst-Platzieren (Spedition)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -322,6 +322,18 @@ Keine neuen Pakete.
   Tests; Gestensteuerung und Gefühl müssen am Handy von dir abgenommen werden.
 - **Name „Mein Betrieb"** steckt in Sätzen („Zum …"); Texte vor dem Deploy
   alle ansehen.
+
+## Implementation Notes
+
+### Stand 2026-10-09 – Schritt 1 und 2 von 8 erledigt (noch nicht live, von der App aus nicht erreichbar)
+- **Stil (Schritt 1, freigegeben):** erst Tycoon-Stil, dann „Hay-Day, bunt/verspielt" (dicke braune Konturen) – vom Nutzer anhand seines Hay-Day-Screenshots zugunsten eines **weichen Stils** verworfen: nahtlose Wiese mit Gräsern/Blümchen, Erdweg, üppige Bäume aus Kugeln mit Licht/Schatten, dünne Konturen, weiße Lattenzäune, weiche Schatten. Probebilder in `docs/vorschau/`.
+- **Technik (Schritt 2):** Tycoon-Zeichentechnik nach `src/lib/hof-welt/` kopiert (Herkunft und Änderungen: dortige `README.md`); Palette dort bunter. Neu: `natur.ts` (weicher Stil: Wiese, Weg, Baum, Scheune, Zaun, Lagerhalle, Bürohaus, Container, Pokal, Platzhalter), `stil.ts`, `sprites-betrieb.ts` (Wimpel, Markise, Beet, Busch, Kegel, Wegweiser).
+- **Landregel** `src/lib/betrieb-land.ts`: Start 4×4, je 3 Items +1 Kantenlänge, max. 10×10; nie schrumpfend, Wachstum verschiebt keine Items.
+- **Welt-Layout** `src/lib/betrieb-welt.ts`: Betriebsgrund + 1 Kachel Rand (hinten Wiese hinter weißem Zaun, vorne Straße); Bildschirmposition hängt nur von der Kachel ab; Zeichenreihenfolge hinten→vorne.
+- **Sprite-Katalog** `src/lib/betrieb-sprites.ts`: Icon-Schlüssel → Sprite, Platzhalter-Kiste für alles ohne Sprite. Aktuell 15 Einträge (u. a. Lagerhalle, Bürogebäude, Sattelschlepper, Container, Pokal, Scheune, Baum, Beet, Busch, Kegel, Wegweiser). Der Tippfehler-Test fing `buerohaus` statt `buerogebaeude` ab.
+- **Komponente** `src/components/betrieb-welt.tsx`: ein SVG, Boden/Zaun/Sprites einmal in `defs` und per `use` wiederholt; Seltenheits-Raute unter Items; Items außerhalb des Landes werden nicht gezeichnet.
+- Bilder: `docs/vorschau/betrieb-welt-start.png`, `betrieb-welt-gewachsen.png`.
+- **Offen:** Schritt 3 (Datenhaltung/Schnittstellen), 4 (Seite, Kamera, Lager-Leiste, Setzen), 5 (Animationen), 6 (Sprite-Serie, Lkw im weichen Stil neu), 7 (Shop/Admin/Profil, Bezeichnung), 8 (Prüfung).
 
 ## QA Test Results
 _To be added by /qa_
