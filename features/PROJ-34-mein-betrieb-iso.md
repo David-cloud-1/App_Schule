@@ -1,6 +1,6 @@
 # PROJ-34: „Mein Betrieb" – isometrische Ansicht & Selbst-Platzieren (Spedition)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -368,4 +368,8 @@ Keine neuen Pakete.
 **Production Ready:** Ja für den Code; **vor dem Deploy zwingend:** Migrationen `20261009_proj34_betrieb_platzierungen` (Tabelle, sonst liefert die Seite Fehler) und `20261009_proj34_betrieb_name` auf Produktion anwenden.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://spedilern.vercel.app (Seite `/betrieb`)
+- **Deployed:** 2026-10-09 (Commit e4983cc, Vercel-Deployment spedilern-crmjvas09, Status Ready, keine Fehler-Logs)
+- **Reihenfolge eingehalten:** zuerst die Migrationen auf Produktion (`proj34_betrieb_platzierungen`, `proj34_betrieb_name`), danach Push. Danach verifiziert: Tabelle vorhanden, RLS an, `authenticated` nur SELECT, Spedition heißt „Betrieb“, Tourismus unverändert.
+- Build, Lint (0 Fehler) und 879 Tests auf dem sauberen Commit grün. Live geprüft: beide Login-Seiten 200; `/betrieb` ohne Anmeldung → Weiterleitung zum Login; `/api/betrieb` und `PUT /api/betrieb/platzierung` ohne Anmeldung → 401.
+- **Offen – Abnahme am Handy:** Ziehen, Pinch-Zoom, Antippen-Setzen (trifft die Kachel?), Lager-Leiste, Animationen, Profil-Vorschau, Shop/Admin mit den neuen Sprites.
