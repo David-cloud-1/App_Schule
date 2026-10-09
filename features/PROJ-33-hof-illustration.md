@@ -1,6 +1,6 @@
 # PROJ-33: Echte Hof-Illustration (Spedition & Tourismus)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -189,4 +189,7 @@ Keine neuen Pakete.
 - Schimmer: einmalig, `prefers-reduced-motion` blendet ihn aus (CSS, nicht automatisiert testbar).
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://spedilern.vercel.app, https://touristiklern.vercel.app
+- **Deployed:** 2026-10-09 (Commit f82fdba, Vercel-Deployment spedilern-3qooeg9xn, Status Ready, keine Fehler-Logs)
+- Keine Migration nötig. Build und 765 Tests auf dem sauberen Commit grün; beide Login-Seiten antworten mit HTTP 200.
+- **Offen – Abnahme von Hand:** Profil → „Mein Hof/Büro" am Smartphone (Schrift, Tooltip per Langdruck, Schimmerablauf, 320 px).
