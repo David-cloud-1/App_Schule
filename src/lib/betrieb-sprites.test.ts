@@ -42,9 +42,30 @@ describe('Sprite-Katalog Mein Betrieb (PROJ-34)', () => {
     }
   })
 
-  it('shows the placeholder for every Tourismus item until PROJ-35 delivers sprites', () => {
-    expect(betriebSpriteSchluessel('TOUR')).toEqual([])
-    expect(getBetriebSprite('TOUR', 'flugzeug').platzhalter).toBe(true)
+  it('covers every Tourismus icon with a sprite as well (PROJ-35), so no bought item loses its look', () => {
+    for (const icon of getHofIconSet('TOUR')) {
+      expect(hatBetriebSprite('TOUR', icon.key), `kein Sprite für ${icon.key}`).toBe(true)
+      expect(getBetriebSprite('TOUR', icon.key).platzhalter).toBe(false)
+    }
+    expect(betriebSpriteSchluessel('TOUR').length).toBeGreaterThanOrEqual(40)
+  })
+
+  it('builds valid, plausibly sized sprites for all Tourismus keys', () => {
+    for (const k of betriebSpriteSchluessel('TOUR')) {
+      const s = getBetriebSprite('TOUR', k)
+      const svg = dekodiere(s.url)
+      expect(svg.startsWith('<svg')).toBe(true)
+      expect(/NaN|undefined/.test(svg), k).toBe(false)
+      expect(s.w).toBeGreaterThanOrEqual(60)
+      expect(s.w).toBeLessThanOrEqual(220)
+      expect(s.h).toBeGreaterThanOrEqual(40)
+      expect(s.h).toBeLessThanOrEqual(240)
+    }
+  })
+
+  it('uses only keys that exist in the Tourismus flat set (typo guard for the new resort keys)', () => {
+    const flach = new Set(getHofIconSet('TOUR').map((i) => i.key))
+    for (const k of betriebSpriteSchluessel('TOUR')) expect(flach.has(k), k).toBe(true)
   })
 
   it('does not hand out a Spedition sprite for a Tourismus key and vice versa', () => {

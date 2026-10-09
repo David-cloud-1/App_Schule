@@ -14,7 +14,7 @@
  */
 
 import type { SVGProps } from 'react'
-import { TOUR_ICONS } from './hof-icons-tour'
+import { TOUR_ALLE_ICONS } from './hof-icons-tour'
 
 export type HofCategory =
   | 'fahrzeuge'
@@ -36,9 +36,9 @@ export const HOF_CATEGORIES: { value: HofCategory; label: string }[] = [
  */
 const CATEGORY_LABELS_BY_DEPARTMENT: Record<string, Record<HofCategory, string>> = {
   TOUR: {
-    fahrzeuge: 'Verkehrsmittel',
-    gebaeude_deko: 'Hotels & Reise-Deko',
-    ladung_ausstattung: 'Reiseausstattung',
+    fahrzeuge: 'Transfer',
+    gebaeude_deko: 'Gebäude & Freizeit',
+    ladung_ausstattung: 'Ausstattung & Deko',
     abzeichen_trophaeen: 'Abzeichen & Trophäen',
   },
 }
@@ -531,7 +531,7 @@ const SPED_ICONS: HofIconDef[] = [
 
 const ICON_SETS: Record<string, HofIconDef[]> = {
   SPED: SPED_ICONS,
-  TOUR: TOUR_ICONS,
+  TOUR: TOUR_ALLE_ICONS,
 }
 
 export function getHofIconSet(departmentCode: string): HofIconDef[] {

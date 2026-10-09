@@ -74,9 +74,9 @@ describe('Profil-Vorschau Mein Betrieb (PROJ-34)', () => {
     expect(container.textContent).toBe('')
   })
 
-  it('keeps the old flat gallery for departments without an isometric world (Tourismus until PROJ-35)', async () => {
+  it('keeps the old flat gallery for departments without an isometric world', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ items: [], owned_items: [] }) }) as Response))
-    renderMit('TOUR')
+    renderMit('UNBEKANNT')
     expect(await screen.findByText(/Mein Betrieb/)).toBeTruthy()
     // keine isometrische Welt
     expect(document.querySelectorAll('svg[role="img"]').length).toBe(0)

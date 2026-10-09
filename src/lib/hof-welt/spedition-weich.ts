@@ -7,22 +7,22 @@ import type { Teil } from './bauteile'
  * Verläufen, dünne Konturen, weiche Schatten). Fahrzeuge schauen nach Südost.
  */
 
-const r1 = (n: number) => Math.round(n * 10) / 10
-const pu = (u: number, v: number, w: number) => iso(u, v, w).map(r1).join(',')
-const BLUR = '<filter id="b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter>'
-const KONTUR = '#5a3a24'
+export const r1 = (n: number) => Math.round(n * 10) / 10
+export const pu = (u: number, v: number, w: number) => iso(u, v, w).map(r1).join(',')
+export const BLUR = '<filter id="b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter>'
+export const KONTUR = '#5a3a24'
 
-const oval = (rx: number): string => {
+export const oval = (rx: number): string => {
   const [x, y] = iso(0, 0, 0)
   return `<defs>${BLUR}</defs><ellipse cx="${r1(x)}" cy="${r1(y + 1)}" rx="${rx}" ry="${r1(rx * 0.42)}" fill="#1e4d12" opacity="0.3" filter="url(#b)"/>`
 }
 
 /** Quader aus Mittelpunkt und Maßen. */
-const box = (u: number, v: number, z: number, lu: number, lv: number, h: number, farbe: string, dach?: string): string =>
+export const box = (u: number, v: number, z: number, lu: number, lv: number, h: number, farbe: string, dach?: string): string =>
   quader({ u0: u - lu / 2, v0: v - lv / 2, u1: u + lu / 2, v1: v + lv / 2, z, h, farbe, dachFarbe: dach })
 
 /** Rad an der Südwest-Seite (v konstant). */
-const rad = (u: number, v: number, z: number, r = 5): string => {
+export const rad = (u: number, v: number, z: number, r = 5): string => {
   const [x, y] = iso(u, v, z)
   return (
     `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r}" fill="#2b2f3a" stroke="#14161c" stroke-width="0.7"/>` +
@@ -30,7 +30,7 @@ const rad = (u: number, v: number, z: number, r = 5): string => {
   )
 }
 
-const kreis = (x: number, y: number, r: number, f: string, st = KONTUR, sw = 0.8): string =>
+export const kreis = (x: number, y: number, r: number, f: string, st = KONTUR, sw = 0.8): string =>
   `<circle cx="${r1(x)}" cy="${r1(y)}" r="${r}" fill="${f}" stroke="${st}" stroke-width="${sw}"/>`
 
 // ── Fahrzeuge ────────────────────────────────────────────────────────────────
@@ -270,14 +270,14 @@ export function warnweste(): Teil {
 
 // ── Abzeichen & Trophäen ─────────────────────────────────────────────────────
 
-const SOCKEL = (): string =>
+export const SOCKEL = (): string =>
   quader({ u0: -0.27, v0: -0.27, u1: 0.27, v1: 0.27, h: 9, farbe: '#e8e0d0', dachFarbe: '#f5efe3' }) +
   quader({ u0: -0.17, v0: -0.17, u1: 0.17, v1: 0.17, z: 9, h: 4, farbe: '#b87a3a', dachFarbe: '#d99a54' })
 
-const GOLD = `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="0.5" stop-color="#f6b81a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient></defs>`
-const GOLDK = '#a8700a'
+export const GOLD = `<defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="0.5" stop-color="#f6b81a"/><stop offset="1" stop-color="#c98a0a"/></linearGradient></defs>`
+export const GOLDK = '#a8700a'
 
-const stern = (cx: number, cy: number, r: number, f: string, st: string): string => {
+export const stern = (cx: number, cy: number, r: number, f: string, st: string): string => {
   const pts: string[] = []
   for (let i = 0; i < 10; i++) {
     const a = (Math.PI / 5) * i - Math.PI / 2

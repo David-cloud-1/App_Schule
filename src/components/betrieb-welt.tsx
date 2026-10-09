@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import { TILE_H, TILE_W } from '@/lib/hof-welt/iso'
-import { wegUrl, wieseUrl, zaunWeissUrl } from '@/lib/hof-welt/natur'
+import { sandUrl, wegUrl, wieseUrl, zaunWeissUrl } from '@/lib/hof-welt/natur'
 import { getBetriebSprite, type BetriebSprite } from '@/lib/betrieb-sprites'
 import { istImLand } from '@/lib/betrieb-land'
 import { baueKacheln, baueZaun, grundMitte, istNeueKachel, kachelMitte, tiefe, weltGrenzen, type BodenArt } from '@/lib/betrieb-welt'
@@ -46,12 +46,13 @@ interface Props {
   wachstumVon?: number | null
 }
 
+/** Motiv je Fachbereich: Spedition hat vorne eine Erdstraße, Tourismus eine Sand-Promenade. */
 const bodenCache = new Map<string, string>()
-function bodenBild(art: BodenArt, variante: number): string {
-  const key = `${art}${variante}`
+function bodenBild(departmentCode: string, art: BodenArt, variante: number): string {
+  const key = `${departmentCode}${art}${variante}`
   let url = bodenCache.get(key)
   if (!url) {
-    url = art === 'weg' ? wegUrl(variante) : wieseUrl(variante)
+    url = art === 'weg' ? (departmentCode === 'TOUR' ? sandUrl(variante) : wegUrl(variante)) : wieseUrl(variante)
     bodenCache.set(key, url)
   }
   return url
@@ -167,7 +168,7 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
         {[...bodenIds.entries()].map(([key, id]) => {
           const art = key.startsWith('weg') ? 'weg' : 'wiese'
           const variante = Number(key.replace(/\D/g, ''))
-          return <image key={id} id={id} href={bodenBild(art, variante)} width={TILE_W} height={TILE_H + 1} />
+          return <image key={id} id={id} href={bodenBild(departmentCode, art, variante)} width={TILE_W} height={TILE_H + 1} />
         })}
         <image id={`${uid}zx`} href={zaunWeissUrl('x')} width={TILE_W} height={TILE_H + 14} />
         <image id={`${uid}zy`} href={zaunWeissUrl('y')} width={TILE_W} height={TILE_H + 14} />

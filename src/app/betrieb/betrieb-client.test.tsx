@@ -178,7 +178,7 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
 
   it('shows a notice instead of the world for a department without sprites yet', async () => {
     antworten(STAND)
-    renderClient('TOUR')
+    renderClient('UNBEKANNT')
     expect(await screen.findByText(/Hier entsteht bald/)).toBeTruthy()
     expect(document.querySelectorAll('svg[role="img"]').length).toBe(0)
   })

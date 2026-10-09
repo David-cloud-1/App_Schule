@@ -27,7 +27,7 @@ describe('HofScene (PROJ-33)', () => {
   it('always shows all four zones with the department wording, also without items in a zone', () => {
     const { container } = render(<HofScene departmentCode="TOUR" items={[item({ id: '1', icon_key: 'flugzeug' })]} />)
     const text = container.textContent!
-    for (const label of ['VERKEHRSMITTEL', 'HOTELS & REISE-DEKO', 'REISEAUSSTATTUNG', 'ABZEICHEN & TROPHÄEN']) {
+    for (const label of ['TRANSFER', 'GEBÄUDE & FREIZEIT', 'AUSSTATTUNG & DEKO', 'ABZEICHEN & TROPHÄEN']) {
       expect(text).toContain(label)
     }
     expect(text).not.toContain('FAHRZEUGE')
@@ -37,7 +37,7 @@ describe('HofScene (PROJ-33)', () => {
     const { container } = render(<HofScene departmentCode="SPED" items={[item({ id: '1' })]} />)
     expect(container.textContent).toContain('FAHRZEUGE')
     expect(container.textContent).toContain('GEBÄUDE & HOF-DEKO')
-    expect(container.textContent).not.toContain('VERKEHRSMITTEL')
+    expect(container.textContent).not.toContain('TRANSFER')
   })
 
   it('draws each item with its illustration and a name tooltip', () => {

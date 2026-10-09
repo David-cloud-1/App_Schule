@@ -4,6 +4,7 @@ import * as N from './hof-welt/natur'
 import * as V from './hof-welt/sprites-betrieb'
 import { STIL_WEICH, stilAnwenden } from './hof-welt/stil'
 import { SPEDITION_WEICH } from './hof-welt/spedition-weich'
+import { RESORT_NEU, RESORT_TEIL_1 } from './hof-welt/resort-weich'
 
 /**
  * Sprite-Katalog für „Mein Betrieb" (PROJ-34): Icon-Schlüssel eines Shop-Items
@@ -70,8 +71,11 @@ const SPEDITION: Record<string, Baumeister> = {
 
 const KATALOG: Record<string, Record<string, Baumeister>> = {
   SPED: SPEDITION,
-  // Tourismus folgt mit PROJ-35; bis dahin zeigt jedes Item den Platzhalter.
-  TOUR: {},
+  // Tourismus-Resort (PROJ-35): alle bisherigen Icons plus die neuen Resort-Bauten.
+  TOUR: {
+    ...Object.fromEntries(Object.entries(RESORT_TEIL_1).map(([k, f]) => [k, () => aus(f())])),
+    ...Object.fromEntries(RESORT_NEU.map((n) => [n.key, () => aus(n.bild())])),
+  },
 }
 
 const cache = new Map<string, BetriebSprite>()

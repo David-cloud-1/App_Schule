@@ -12,8 +12,13 @@ describe('HofItemIcon (PROJ-26/PROJ-34)', () => {
     expect(container.querySelector('svg')).toBeNull()
   })
 
-  it('falls back to the flat illustration for a department without isometric sprites', () => {
+  it('shows the Tourismus sprite for Tourismus keys (PROJ-35)', () => {
     const { container } = render(<HofItemIcon departmentCode="TOUR" iconKey="flugzeug" name="Flugzeug" />)
+    expect(container.querySelector('img')).not.toBeNull()
+  })
+
+  it('shows a generic icon for a department without any sprites or flat set', () => {
+    const { container } = render(<HofItemIcon departmentCode="UNBEKANNT" iconKey="flugzeug" name="Flugzeug" />)
     expect(container.querySelector('img')).toBeNull()
     expect(container.querySelector('svg')).not.toBeNull()
   })

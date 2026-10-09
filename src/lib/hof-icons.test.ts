@@ -98,9 +98,9 @@ describe('hof-icons Tourismus-Set (PROJ-31)', () => {
   it('uses Tourismus category labels for TOUR but keeps the technical values', () => {
     const cats = getHofCategories('TOUR')
     expect(cats.map((c) => c.value)).toEqual(HOF_CATEGORIES.map((c) => c.value))
-    expect(hofCategoryLabel('fahrzeuge', 'TOUR')).toBe('Verkehrsmittel')
-    expect(hofCategoryLabel('gebaeude_deko', 'TOUR')).toBe('Hotels & Reise-Deko')
-    expect(hofCategoryLabel('ladung_ausstattung', 'TOUR')).toBe('Reiseausstattung')
+    expect(hofCategoryLabel('fahrzeuge', 'TOUR')).toBe('Transfer')
+    expect(hofCategoryLabel('gebaeude_deko', 'TOUR')).toBe('Gebäude & Freizeit')
+    expect(hofCategoryLabel('ladung_ausstattung', 'TOUR')).toBe('Ausstattung & Deko')
   })
 
   it('SPED and unknown departments keep the default labels (no regression)', () => {

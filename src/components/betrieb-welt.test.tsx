@@ -57,7 +57,7 @@ describe('BetriebWelt (PROJ-34)', () => {
 
   it('shows a placeholder for items without a sprite instead of dropping them', () => {
     const { container } = render(
-      <BetriebWelt departmentCode="TOUR" seite={4} items={[item({ id: 'x', iconKey: 'flugzeug', x: 1, y: 1 })]} />,
+      <BetriebWelt departmentCode="SPED" seite={4} items={[item({ id: 'x', iconKey: 'gibt-es-nicht', x: 1, y: 1 })]} />,
     )
     expect(container.querySelectorAll('[data-item]').length).toBe(1)
   })
@@ -166,5 +166,25 @@ describe('BetriebWelt (PROJ-34)', () => {
     expect(container.querySelectorAll('.betrieb-wachse').length).toBe(5 * 5 - 4 * 4)
     const ohne = render(<BetriebWelt departmentCode="SPED" seite={5} items={[]} />)
     expect(ohne.container.querySelectorAll('.betrieb-wachse').length).toBe(0)
+  })
+
+  it('uses a sand promenade instead of the dirt road for Tourismus (PROJ-35)', () => {
+    const sped = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} />)
+    const tour = render(<BetriebWelt departmentCode="TOUR" seite={4} items={[]} />)
+    const hrefs = (c: HTMLElement) => new Set([...c.querySelectorAll('defs image')].map((i) => i.getAttribute('href')))
+    const a = hrefs(sped.container)
+    const b = hrefs(tour.container)
+    // Wiese und Zaun gleich, die Randgestaltung vorne unterscheidet sich
+    expect([...b].filter((h) => !a.has(h)).length).toBeGreaterThan(0)
+    expect([...a].filter((h) => b.has(h)).length).toBeGreaterThan(0)
+  })
+
+  it('draws Tourismus items with their own sprites (no placeholder)', () => {
+    const { container } = render(
+      <BetriebWelt departmentCode="TOUR" seite={4} items={[item({ id: 'p', iconKey: 'pool', x: 1, y: 1 }), item({ id: 'h', iconKey: 'hotel', x: 2, y: 2 })]} />,
+    )
+    expect(container.querySelectorAll('[data-item]').length).toBe(2)
+    const sprites = [...container.querySelectorAll('defs image')].filter((i) => /s\d+$/.test(i.id))
+    expect(sprites.length).toBe(2)
   })
 })

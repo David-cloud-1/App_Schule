@@ -1,6 +1,6 @@
 # PROJ-35: „Mein Resort" – Tourismus-Hotelkomplex (isometrisch)
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -46,7 +46,7 @@ Sonnenschirme, Brunnen) und Transfer (Shuttlebus, Kleinbus), dazu Abzeichen.
 - [ ] Mindestens 30 Resort-Sprites, mindestens 6 je Kategorie, im Stil der
       Stilvorgabe aus PROJ-34; Probe-Sprites werden vor der Serie freigegeben
 - [ ] Die Shop-Kategorien des Fachbereichs heißen Gebäude, Freizeit,
-      Natur & Deko, Transfer; die technischen Kategorienwerte in der
+      Ausstattung & Deko, Transfer; die technischen Kategorienwerte in der
       Datenbank bleiben unverändert (nur Anzeigenamen), Abzeichen bleiben als
       Auswahl erreichbar
 - [ ] Der Startkatalog Tourismus wird auf Resort-Items umgestellt oder
@@ -157,8 +157,20 @@ Keine neuen Pakete.
 - **Datenänderung auf Produktion** (neue Items sichtbar für alle Tourismus-Azubis):
   Zeitpunkt abstimmen.
 
+## Implementation Notes (2026-10-09)
+- **Sprites:** `src/lib/hof-welt/resort-weich.ts` – 32 Sprites für alle bisherigen Tourismus-Icons (Flugzeug, Reisebus, Zug, Kreuzfahrtschiff, Mietwagen, Heißluftballon, Segelboot, Seilbahn, Hotel, Reisebüro, Palme, Leuchtturm, Flughafen-Tower, Sonnenschirm, Berghütte, Zelt, Koffer, Globus, Reiseführer, Rucksack, Kompass, Bordkarte, Fotokamera, Sonnenbrille und acht Abzeichen) + 9 neue Resort-Bauten (Pool, Spielplatz, Restaurant mit Café-Schild, Strandbar, Minigolf mit Windmühle, Rezeption, Sonnenliegen, Brunnen, Shuttlebus). Weicher Stil wie Spedition.
+- **Katalog:** `betrieb-sprites.ts` – `TOUR` ist befüllt; damit sind Link, Profil-Vorschau, Seite und Gating automatisch aktiv.
+- **Flaches Set:** `hof-icons-tour.tsx` – die neuen Schlüssel stehen auch im flachen Tourismus-Set (Bild aus dem Sprite), damit Server-Prüfung und Admin-Picker unverändert funktionieren.
+- **Welt-Motiv:** Sand-Promenade mit Muscheln statt Erdstraße vorne (`sandUrl` in `natur.ts`, Auswahl nach Fachbereich in `betrieb-welt.tsx`).
+- **Kategorienamen Tourismus:** Transfer · Gebäude & Freizeit · Ausstattung & Deko · Abzeichen & Trophäen („Ausstattung & Deko“ statt „Natur & Deko“, weil dort auch Koffer, Globus, Kamera liegen).
+- **Daten:** Migration `20261009_proj35_resort_katalog` (9 neue Items 50–220 Reisetaler, idempotent, mit Rollback; Bezeichnung „Resort“). **Noch nicht auf Produktion angewendet.**
+
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisiert + Sichtprüfung; Abnahme am Handy steht aus**
+- 885 Tests grün (zweimal in Folge), `tsc` ohne Fehler, Lint 0 Fehler. Neu: jedes flache Tourismus-Icon hat ein Sprite (kein gekauftes Item verliert sein Aussehen), plausible Größen und gültiges SVG für alle 41 Schlüssel, Tippfehler-Schutz gegen das flache Set, Sand-Motiv vs. Erdstraße, Tourismus-Items ohne Platzhalter.
+- Sichtprüfung (gerendert): Sprite-Übersicht `docs/vorschau/sprites-resort-serie.png`, Beispiel-Resort `docs/vorschau/resort-beispiel.png`. Dabei gefunden und behoben: abgeschnittenes Restaurant-Schild (jetzt „CAFÉ“).
+- **Nicht geprüft:** Handy-Gefühl wie bei PROJ-34; Lesbarkeit der kleinen Schilder („HOTEL“, „REISEN“, „CAFÉ“) auf dem Gerät.
+- **Hinweis:** Die flache Hof-Galerie aus PROJ-26/33 wird nur noch für unbekannte Fachbereiche gebraucht.
 
 ## Deployment
 _To be added by /deploy_

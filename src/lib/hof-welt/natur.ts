@@ -63,6 +63,23 @@ export function wegUrl(variante: number): string {
   return kachelSvg(s)
 }
 
+/** Sandstrand-Promenade (Tourismus): helle Sandfläche mit Muscheln und Wellenkante. */
+export function sandUrl(variante: number): string {
+  const z = zufall(variante + 23)
+  let s = `<rect width="${TILE_W}" height="${TILE_H + 1}" fill="#f1d9a0"/>`
+  for (let i = 0; i < 9; i++) {
+    const x = 6 + z() * (TILE_W - 12)
+    const y = 4 + z() * (TILE_H - 8)
+    s += `<ellipse cx="${r1(x)}" cy="${r1(y)}" rx="${r1(1 + z() * 1.6)}" ry="${r1(0.6 + z() * 0.8)}" fill="${z() > 0.5 ? '#e4c27a' : '#fff3d0'}" opacity="0.8"/>`
+  }
+  if (z() > 0.55) {
+    const x = 12 + z() * (TILE_W - 24)
+    const y = 8 + z() * (TILE_H - 16)
+    s += `<path d="M${r1(x - 2.4)} ${r1(y)} q2.4 -4 4.8 0 q-2.4 1.6 -4.8 0 z" fill="#ffd0c0" stroke="#d99a8a" stroke-width="0.5"/>`
+  }
+  return kachelSvg(s)
+}
+
 const BLUR = '<filter id="b" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.4"/></filter>'
 
 function weicherSchatten(cx: number, cy: number, rx: number): string {
