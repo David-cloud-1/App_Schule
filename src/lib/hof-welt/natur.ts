@@ -35,13 +35,13 @@ function kachelSvg(inhalt: string, defs = ''): string {
 export function wieseUrl(variante: number): string {
   const z = zufall(variante + 3)
   let s = `<rect width="${TILE_W}" height="${TILE_H + 1}" fill="#7fd24f"/>`
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 8; i++) {
     const x = 6 + z() * (TILE_W - 12)
     const y = 4 + z() * (TILE_H - 8)
     const h = 3 + z() * 3
     s += `<path d="M${r1(x)} ${r1(y)} q${r1(-0.8)} ${r1(-h * 0.6)} ${r1(0.4)} ${r1(-h)} M${r1(x + 1.4)} ${r1(y)} q${r1(0.9)} ${r1(-h * 0.5)} ${r1(0.2)} ${r1(-h * 0.9)}" fill="none" stroke="${z() > 0.5 ? '#a8ee6f' : '#62b83a'}" stroke-width="1" stroke-linecap="round"/>`
   }
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     const x = 10 + z() * (TILE_W - 20)
     const y = 8 + z() * (TILE_H - 16)
     const f = ['#ffffff', '#ffd23f', '#ff9ac0'][Math.floor(z() * 3)]!
