@@ -1,6 +1,6 @@
 # PROJ-32: Hof-Ausbau – Effekte für teure Items & mehr Grafiken
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P2
@@ -101,7 +101,99 @@ Käufen leer laufen.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+Zwei unabhängige Teile: **(1) mehr Grafiken** (reiner Inhalt im Code) und
+**(2) Seltenheitsstufen mit Effekt** (ein neues optionales Feld, eine zentrale
+Regel, ein wiederverwendbarer Rahmen). Beides wirkt in Shop *und* beiden
+Hof-Szenen, ohne Preis-, Kauf- oder XP-Logik anzufassen.
+
+### A) Bausteine (visueller Baum)
+
+```
+Zentrale Seltenheits-Regel                 (NEU, eine Stelle im Code)
++-- Schwellen: ab 100 = Selten, ab 250 = Episch  (Vorschlag, dort änderbar)
++-- "Wirksame Seltenheit" = Admin-Wahl, sonst aus aktuellem Preis abgeleitet
+
+Seltenheits-Rahmen um die Item-Grafik      (NEU, wiederverwendbar)
++-- Standard: wie bisher, unverändert
++-- Selten:   Glanz-Rahmen + kleines Textlabel "Selten"
++-- Episch:   kräftigerer Rahmen + Label "Episch" + einmaliger Schimmer
+
+Verwendet in:
++-- Shop-Kachel                            (bestehend)
++-- Hof-Item-Kachel für beide Szenen       (bestehend aus PROJ-31)
++-- Admin: Spalte "Seltenheit" in der Liste, Auswahl im Formular (bestehend, erweitert)
+
+Grafik-Bibliothek
++-- Spedition: 5/7/5/5  ->  mind. 8 je Kategorie  (+10 Grafiken)
++-- Tourismus: 6/6/6/6  ->  mind. 8 je Kategorie  (+8 Grafiken)
+```
+
+### B) Daten (Klartext)
+- **Ein neues, optionales Feld am Shop-Item: "Seltenheit manuell gesetzt"**
+  (leer = automatisch aus dem Preis, sonst Standard/Selten/Episch).
+- **Die wirksame Seltenheit wird nie gespeichert**, sondern bei Bedarf aus
+  Preis + optionalem Admin-Wert berechnet. Dadurch folgt sie automatisch dem
+  *aktuellen* Preis (Edge Case aus der Spec), und die Migration muss keine
+  Bestandsitems umschreiben: Jedes Item hat sofort eine Seltenheit, ohne dass
+  ein Wert eingetragen wird.
+- Der Kaufpreis eines gekauften Exemplars (eingefroren) bleibt unberührt und
+  hat mit der Seltenheit nichts zu tun.
+- Die Shop-Schnittstelle liefert die fertig berechnete Seltenheit je Item mit
+  (für Shop-Liste *und* "gekaufte Items"), damit Browser und Server nie
+  unterschiedlich rechnen können.
+
+### C) Technische Entscheidungen (Begründung)
+1. **Ableiten statt speichern.** Weniger Daten, keine Migration der Altwerte,
+   keine Inkonsistenz, wenn der Preis später geändert wird.
+2. **Manuelles Überschreiben als einziges neues Feld.** Deckt "Admin möchte
+   Seltenheit anpassen" ab, ohne die Preislogik zu berühren; die Auswahl ist
+   fest (drei Werte, per Datenbank-Check abgesichert, serverseitig validiert).
+3. **Eine zentrale Regel mit Schwellen im Code.** Eine Stelle zum Ändern; die
+   Schwellen sind dokumentiert (Akzeptanzkriterium). Die Preise der aktuellen
+   Kataloge (30 bis 300) ergeben damit eine sinnvolle Verteilung:
+   Standard ≈ die Hälfte, Selten ≈ ein Drittel, Episch nur die teuersten.
+4. **Effekt per CSS, nicht per Skript.** Läuft auf dem Grafikprozessor, kostet
+   keine zusätzlichen Netzwerkanfragen und lässt sich per
+   "Bewegung reduzieren" sauber abschalten.
+5. **Schimmer nur einmal beim Erscheinen**, keine Dauer-Animation: schont
+   Akku und Leistung, auch bei 20 epischen Items in einer Szene.
+6. **Nie nur Farbe:** Stufe zusätzlich als Textlabel und als Text in der
+   Screenreader-Liste ("... — Episch").
+7. **Ein Rahmen-Baustein für alle Stellen.** Shop und beide Szenen sehen
+   dadurch garantiert gleich aus; die in PROJ-31 vorbereitete Item-Kachel
+   nimmt ihn einfach auf.
+8. **Keine Änderung an Rechten, Login, Münzen, XP, Kauf-Ablauf.**
+
+### D) Was sich an Bestehendem ändert
+| Bereich | Änderung |
+|---------|----------|
+| Datenbank | 1 neues optionales Feld am Shop-Item mit Wertebegrenzung |
+| Shop-Schnittstelle (Liste, gekaufte Items) | liefert zusätzlich die berechnete Seltenheit |
+| Admin-Schnittstellen (anlegen/ändern) | nehmen die optionale manuelle Seltenheit an und prüfen sie |
+| Admin-Oberfläche | Spalte in der Liste, Auswahl "Automatisch / Standard / Selten / Episch" im Formular |
+| Shop-Kachel und Hof-Item-Kachel | nutzen den Seltenheits-Rahmen |
+| Screenreader-Liste der Galerie | hängt die Stufe an, wenn nicht "Standard" |
+| Grafik-Bibliothek | +10 Spedition, +8 Tourismus |
+
+### E) Reihenfolge der Umsetzung (Vorschlag)
+1. Zentrale Seltenheits-Regel mit Tests (Schwellen, Override, Ränder)
+2. Feld + Schnittstellen + Validierung mit Tests
+3. Rahmen-Baustein, Einbau in Shop und beide Szenen, Admin-Anzeige
+4. Neue Grafiken (Spedition +10, Tourismus +8) mit Tests
+5. Regressionstest: Standard-Items sehen aus und verhalten sich wie vorher
+
+### F) Abhängigkeiten (Pakete)
+Keine neuen Pakete.
+
+### G) Risiken & Hinweise
+- **Schwellen sind eine Produktentscheidung:** 100/250 ist ein Vorschlag; die
+  Lehrkraft kann einzelne Items per Override anpassen.
+- **Gestaltungsaufwand** für 18 weitere Grafiken ist der größte Posten.
+- **Visuelle Abnahme von Hand nötig** (kein Browser-Test auf diesem Rechner).
+- **Reihenfolge der Tabelle "Seltenheit" im Admin** darf bestehende Spalten
+  nicht verdrängen (Layout auf schmalen Bildschirmen prüfen).
 
 ## QA Test Results
 _To be added by /qa_
