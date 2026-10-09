@@ -1,6 +1,6 @@
 # PROJ-28: Leistungsnachweis – Druck & Klassenauswertung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 
@@ -238,4 +238,16 @@ Keine.
 
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-10-09
+**Production URL:** https://spedilern.vercel.app
+**Vercel Deployment:** `spedilern-14poz4k0v` (Production, Ready), ausgelöst per Push auf `main` (Commit 0fe1b04).
+
+**Datenbank:** keine Änderung, keine Migration.
+
+**Vor dem Deploy geprüft:** Im getrennten Checkout des committeten Stands (ohne die fremden, uncommitteten Arbeiten an Prüfungssets, PROJ-25 u. a.): 703/703 Tests, `tsc` ohne Fehler, `npm run build` fehlerfrei mit den drei neuen Routen. Dabei wurden drei alte Typfehler in `graded-assessments.test.ts` (Test-Fixtures) mitbehoben.
+
+**Nach dem Deploy geprüft:** Build Ready; die Reports-Route antwortet ohne Login mit 401, beide Druckseiten leiten auf den Login um (mit erhaltenem Zielpfad).
+
+**Mit dem Push veröffentlicht:** zwei reine Dokumentations-Commits zu PROJ-31/32 (Specs, Tech-Design), die lokal noch unveröffentlicht lagen. Kein Code.
+
+**Noch offen:** Einmal mit einem echten Nachweis die Druckvorschau öffnen (Einzel, Sammel, Klasse) und als PDF speichern — Seitenumbrüche, lange Fragetexte und der wiederholte Tabellenkopf bei vielen Teilnehmern konnten ohne Browser nicht visuell geprüft werden.
