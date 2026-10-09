@@ -608,6 +608,9 @@ manueller Test durch den Nutzer wird empfohlen, bevor deployed wird.
   für „Fahrzeuge"), damit beim ersten Produktiv-Einsatz wirklich alle vier
   Zonen etwas zeigen. BUG-2 kann unabhängig davon später behoben werden.
 
+### Nachtrag 2026-10-09
+Die hier verlangte „zusammenhängende, illustrierte Szene" war mit Karten je Kategorie nur unzureichend umgesetzt. Korrigiert durch **PROJ-33** (echte Hof-Illustration für beide Fachbereiche).
+
 ### Fix BUG-1 (2026-10-09)
 Migration `20261009_proj26_seed_katalog.sql` (+ `_down`) in der Produktions-DB
 angewendet: 5 neue Spedition-Items (Blauer Transporter 60, Europalette 30,

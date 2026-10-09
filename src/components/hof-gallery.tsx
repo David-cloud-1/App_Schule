@@ -4,21 +4,19 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Store } from 'lucide-react'
 import { useDepartment } from '@/components/department-provider'
-import type { OwnedHofItem } from '@/components/hof-item-tile'
-import { HofSceneDefault } from '@/components/hof-scene-default'
-import { HofSceneTourismus } from '@/components/hof-scene-tourismus'
+import { HofScene } from '@/components/hof-scene'
 import { hofCategoryLabel } from '@/lib/hof-icons'
 import { hofRarityLabel } from '@/lib/hof-rarity'
+import type { OwnedHofItem } from '@/lib/hof-scene-layout'
 
 interface ShopItemsResponse {
   owned_items: OwnedHofItem[]
 }
 
 /**
- * Hof-Szene (PROJ-26/PROJ-31): gruppiert gekaufte Items automatisch nach
- * Kategorie in feste Zonen — keine vom Nutzer gespeicherte Position. Welche
- * Szene gezeigt wird, hängt vom Fachbereich ab (Tourismus: eigene Szene,
- * sonst die Standard-Szene). Leere Zonen werden nicht gerendert.
+ * Hof-Szene (PROJ-26/PROJ-31/PROJ-33): gruppiert gekaufte Items automatisch nach
+ * Kategorie auf feste Plätze in einer Illustration (hof-scene.tsx) — keine
+ * vom Nutzer gespeicherte Position. Das Motiv hängt vom Fachbereich ab.
  *
  * Reuses GET /api/shop/items (PROJ-20), whose `owned_items` lists every
  * purchase — including items deactivated since, which the shop list itself
@@ -82,11 +80,7 @@ export function HofGallery() {
           </ul>
 
           <div aria-hidden="true">
-            {departmentCode === 'TOUR' ? (
-              <HofSceneTourismus items={items} departmentCode={departmentCode} />
-            ) : (
-              <HofSceneDefault items={items} departmentCode={departmentCode} />
-            )}
+            <HofScene items={items} departmentCode={departmentCode} />
           </div>
         </div>
       )}

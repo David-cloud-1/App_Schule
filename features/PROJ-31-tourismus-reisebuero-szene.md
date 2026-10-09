@@ -263,6 +263,9 @@ Lucide für den Platzhalter).
 - **Startkatalog:** Migration `20261009_proj31_tourismus_katalog.sql` (+ `_down`): 10 Items, 3/2/2/3 je Kategorie, Referenzitem Flugzeug zu 75, idempotent. **Noch nicht in der Produktions-DB angewendet.**
 - **Keine Änderung** an RLS, Auth, DB-Schema oder Server-Validierung (greift für `TOUR` automatisch).
 
+### Nachtrag 2026-10-09
+Die hier verlangte „zusammenhängende, illustrierte Szene" war mit Karten je Kategorie nur unzureichend umgesetzt. Korrigiert durch **PROJ-33** (echte Hof-Illustration für beide Fachbereiche).
+
 ## QA Test Results
 **Stand 2026-10-09 – automatisierte Prüfung, visuelle Abnahme steht aus**
 

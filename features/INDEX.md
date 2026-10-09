@@ -46,7 +46,8 @@
 | PROJ-30 | Fokus-Verlust-Protokoll bei Leistungsnachweisen | Deployed | [PROJ-30-fokus-verlust-protokoll.md](PROJ-30-fokus-verlust-protokoll.md) | 2026-10-08 |
 | PROJ-31 | Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene | Deployed | [PROJ-31-tourismus-reisebuero-szene.md](PROJ-31-tourismus-reisebuero-szene.md) | 2026-10-09 |
 | PROJ-32 | Hof-Ausbau – Effekte für teure Items & mehr Grafiken | Deployed | [PROJ-32-hof-ausbau-effekte-grafiken.md](PROJ-32-hof-ausbau-effekte-grafiken.md) | 2026-10-09 |
+| PROJ-33 | Echte Hof-Illustration (Spedition & Tourismus) | In Review | [PROJ-33-hof-illustration.md](PROJ-33-hof-illustration.md) | 2026-10-09 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-33
+## Next Available ID: PROJ-34

@@ -1,17 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { HofRarityFrame, HofRarityLabel } from './hof-rarity-frame'
-import { HofItemTile, type OwnedHofItem } from './hof-item-tile'
-import { HofSceneTourismus } from './hof-scene-tourismus'
-import { HofSceneDefault } from './hof-scene-default'
-
-const item = (over: Partial<OwnedHofItem> & { id: string }): OwnedHofItem => ({
-  name: 'Item',
-  description: '',
-  category: 'fahrzeuge',
-  icon_key: '',
-  ...over,
-})
 
 describe('HofRarityFrame (PROJ-32)', () => {
   it('leaves standard items completely unchanged (no extra classes)', () => {
@@ -44,29 +33,5 @@ describe('HofRarityFrame (PROJ-32)', () => {
     render(<HofRarityLabel rarity="episch" />)
     expect(screen.getByText('Selten')).toBeTruthy()
     expect(screen.getByText('Episch')).toBeTruthy()
-  })
-
-  it('the shared tile shows the label and frame for an epic owned item', () => {
-    const { container } = render(
-      <HofItemTile item={item({ id: '1', name: 'Pokal', rarity: 'episch', icon_key: 'pokal' })} departmentCode="SPED" />,
-    )
-    expect(container.querySelector('[data-rarity="episch"]')).not.toBeNull()
-    expect(screen.getByText('Episch')).toBeTruthy()
-  })
-
-  it('both scenes render the same rarity treatment', () => {
-    const items = [item({ id: '1', name: 'Rare', rarity: 'selten' })]
-    const a = render(<HofSceneTourismus departmentCode="TOUR" items={items} />)
-    expect(a.container.querySelector('[data-rarity="selten"]')).not.toBeNull()
-    a.unmount()
-    const b = render(<HofSceneDefault departmentCode="SPED" items={items} />)
-    expect(b.container.querySelector('[data-rarity="selten"]')).not.toBeNull()
-  })
-
-  it('an owned item without rarity (older API response) renders as standard', () => {
-    const { container } = render(<HofItemTile item={item({ id: '1', name: 'Alt' })} departmentCode="SPED" />)
-    expect(container.querySelector('[data-rarity="standard"]')).not.toBeNull()
-    expect(screen.queryByText('Selten')).toBeNull()
-    expect(screen.queryByText('Episch')).toBeNull()
   })
 })

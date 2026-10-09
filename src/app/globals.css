@@ -107,3 +107,20 @@
     display: none;
   }
 }
+
+/* PROJ-33: dasselbe einmalige Schimmern für epische Items in der Hof-Illustration (SVG). */
+@keyframes hof-svg-sweep {
+  from { transform: translateX(-30px) skewX(-18deg); }
+  to   { transform: translateX(110px) skewX(-18deg); }
+}
+
+.hof-shimmer-svg {
+  animation: hof-svg-sweep 1.1s ease-out 0.3s 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hof-shimmer-svg {
+    animation: none;
+    display: none;
+  }
+}
