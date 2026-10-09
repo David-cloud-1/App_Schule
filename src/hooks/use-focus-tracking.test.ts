@@ -225,4 +225,23 @@ describe('useFocusTracking', () => {
     await flush()
     expect(sessionStorage.getItem('focus-queue-sess-1')).toBeNull()
   })
+
+  it('reports an unsupported browser once and monitors nothing', async () => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => undefined })
+    Object.defineProperty(document, 'hasFocus', { configurable: true, value: undefined })
+    try {
+      setup()
+      await flush()
+      expect(sentBodies()).toEqual([{ action: 'unsupported' }])
+      fetchMock.mockClear()
+
+      window.dispatchEvent(new Event('blur'))
+      await advance(500)
+      document.dispatchEvent(new Event('visibilitychange'))
+      await advance(5_000)
+      expect(fetchMock).not.toHaveBeenCalled()
+    } finally {
+      delete (document as unknown as Record<string, unknown>).hasFocus
+    }
+  })
 })

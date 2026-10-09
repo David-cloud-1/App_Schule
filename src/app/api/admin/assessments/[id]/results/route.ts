@@ -48,7 +48,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     const [{ data: summaries }, { data: openEvents }] = await Promise.all([
       service
         .from('assessment_focus_summary')
-        .select('session_id, counted_switches, counted_seconds, short_count, auto_submitted')
+        .select('session_id, counted_switches, counted_seconds, short_count, auto_submitted, tracking_unavailable')
         .eq('assessment_id', id)
         .limit(2000),
       service

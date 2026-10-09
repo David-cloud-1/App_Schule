@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
-import { FOCUS_COUNT_FROM_SECONDS } from '@/lib/focus-tracking'
+import { FOCUS_COUNT_FROM_SECONDS, isFocusDetectionSupported } from '@/lib/focus-tracking'
 
 // Fokus-Wächter für den Prüfungs-Runner eines Leistungsnachweises (PROJ-30).
 // Erkennt Tab-/App-Wechsel, meldet sie an den Server (der Server stempelt die
@@ -9,7 +9,7 @@ import { FOCUS_COUNT_FROM_SECONDS } from '@/lib/focus-tracking'
 // für den Azubi. Der Dialog erscheint sofort — die Meldung läuft im
 // Hintergrund und wird bei Verbindungsproblemen nachgereicht.
 
-type FocusAction = 'leave' | 'return' | 'resume'
+type FocusAction = 'leave' | 'return' | 'resume' | 'unsupported'
 
 type FocusReport = {
   action: FocusAction
@@ -133,6 +133,13 @@ export function useFocusTracking({ sessionId, enabled, initialCount, currentQues
 
   useEffect(() => {
     if (!enabled) return
+    // Kann der Browser keine Wechsel erkennen, wird das einmal vermerkt und
+    // nichts weiter überwacht — der Nachweis bleibt ganz normal nutzbar.
+    if (!isFocusDetectionSupported(document)) {
+      void send({ action: 'unsupported' })
+      return
+    }
+
     queueRef.current = loadQueue(sessionId)
 
     // Beim (Wieder-)Öffnen: offene Einträge schließen und ggf. nachträglich warnen

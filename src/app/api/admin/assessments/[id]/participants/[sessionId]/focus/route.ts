@@ -46,7 +46,7 @@ export async function GET(
   const [{ data: summary }, { data: events }] = await Promise.all([
     service
       .from('assessment_focus_summary')
-      .select('counted_switches, counted_seconds, short_count, auto_submitted')
+      .select('counted_switches, counted_seconds, short_count, auto_submitted, tracking_unavailable')
       .eq('session_id', sessionId)
       .maybeSingle(),
     service
@@ -65,6 +65,7 @@ export async function GET(
       countedSeconds: summary?.counted_seconds ?? 0,
       shortCount: summary?.short_count ?? 0,
       autoSubmitted: summary?.auto_submitted ?? false,
+      trackingUnavailable: summary?.tracking_unavailable ?? false,
     },
     events: (events ?? []).map((e) => ({
       id: e.id,

@@ -123,7 +123,7 @@ describe('GET /api/admin/assessments/[id]/participants/[sessionId]/focus', () =>
     const body = await res.json()
     expect(body.focusTracking).toBe(true)
     expect(body.autoSubmitAfter).toBe(3)
-    expect(body.summary).toEqual({ countedSwitches: 1, countedSeconds: 42, shortCount: 1, autoSubmitted: false })
+    expect(body.summary).toEqual({ countedSwitches: 1, countedSeconds: 42, shortCount: 1, autoSubmitted: false, trackingUnavailable: false })
     expect(body.events).toHaveLength(2)
     expect(body.events[0]).toMatchObject({ questionNumber: 5, durationSeconds: 42, counted: true })
     expect(body.events[1]).toMatchObject({ questionNumber: 7, counted: false })

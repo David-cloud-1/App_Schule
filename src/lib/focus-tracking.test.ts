@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildParticipantFocus,
   countsAsSwitch,
+  isFocusDetectionSupported,
   formatFocusDuration,
   formatFocusSummary,
   validateFocusSettings,
@@ -82,3 +83,28 @@ describe('buildParticipantFocus', () => {
     expect(f).toMatchObject({ countedSwitches: 2, countedSeconds: 20 })
   })
 })
+
+describe('trackingUnavailable', () => {
+  it('is false by default and taken from the summary when set', () => {
+    expect(buildParticipantFocus(undefined, []).trackingUnavailable).toBe(false)
+    const f = buildParticipantFocus(
+      { counted_switches: 0, counted_seconds: 0, short_count: 0, auto_submitted: false, tracking_unavailable: true },
+      [],
+    )
+    expect(f.trackingUnavailable).toBe(true)
+    expect(f.conspicuous).toBe(false)
+  })
+})
+
+describe('isFocusDetectionSupported', () => {
+  it('is supported with visibility state or with hasFocus', () => {
+    expect(isFocusDetectionSupported({ visibilityState: 'visible', hasFocus: () => true })).toBe(true)
+    expect(isFocusDetectionSupported({ visibilityState: 'visible' } as never)).toBe(true)
+    expect(isFocusDetectionSupported({ hasFocus: () => true } as never)).toBe(true)
+  })
+  it('is unsupported with neither, or without a document', () => {
+    expect(isFocusDetectionSupported({} as never)).toBe(false)
+    expect(isFocusDetectionSupported(undefined)).toBe(false)
+  })
+})
+

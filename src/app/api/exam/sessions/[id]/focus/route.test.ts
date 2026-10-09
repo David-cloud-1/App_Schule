@@ -46,7 +46,9 @@ function setup(opts: Setup = {}) {
     })),
   }
   const summaryUpdate = vi.fn()
+  const summaryUpsert = vi.fn().mockResolvedValue({ error: null })
   const summaryBuilder = {
+    upsert: summaryUpsert,
     update: summaryUpdate.mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     select: vi.fn().mockResolvedValue({ data: opts.claimed ?? [{ session_id: 'sess-1' }] }),
@@ -68,7 +70,7 @@ function setup(opts: Setup = {}) {
   }
   vi.mocked(createClient).mockResolvedValue(userClient as never)
   vi.mocked(createServiceClient).mockReturnValue(serviceClient as never)
-  return { rpc, summaryUpdate }
+  return { rpc, summaryUpdate, summaryUpsert }
 }
 
 function post(body: unknown) {
@@ -201,5 +203,30 @@ describe('POST /api/exam/sessions/[id]/focus', () => {
     const res = await post({ action: 'return', eventId: EVENT_ID, seconds: 12 })
     expect(res.status).toBe(500)
     expect(summaryUpdate).toHaveBeenLastCalledWith({ auto_submitted: false })
+  })
+
+  it('records "no monitoring possible" for a browser that cannot detect switches', async () => {
+    const { rpc, summaryUpsert } = setup()
+    const res = await post({ action: 'unsupported' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ unavailable: true })
+    expect(summaryUpsert).toHaveBeenCalledWith(
+      { session_id: 'sess-1', assessment_id: 'as-1', tracking_unavailable: true },
+      { onConflict: 'session_id' },
+    )
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('ignores the unsupported flag when tracking is off for the assessment', async () => {
+    const { summaryUpsert } = setup({ assessment: { focus_tracking: false, focus_auto_submit_after: null } })
+    const res = await post({ action: 'unsupported' })
+    expect(await res.json()).toEqual({ tracking: false })
+    expect(summaryUpsert).not.toHaveBeenCalled()
+  })
+
+  it('answers 500 when the flag cannot be stored', async () => {
+    const { summaryUpsert } = setup()
+    summaryUpsert.mockResolvedValueOnce({ error: { message: 'boom' } })
+    expect((await post({ action: 'unsupported' })).status).toBe(500)
   })
 })

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, ChevronDown, ChevronUp, Eye, Loader2 } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,7 +30,13 @@ type FocusEventRow = {
 type FocusDetailResponse = {
   focusTracking: boolean
   autoSubmitAfter: number | null
-  summary: { countedSwitches: number; countedSeconds: number; shortCount: number; autoSubmitted: boolean }
+  summary: {
+    countedSwitches: number
+    countedSeconds: number
+    shortCount: number
+    autoSubmitted: boolean
+    trackingUnavailable: boolean
+  }
   events: FocusEventRow[]
   truncated: boolean
 }
@@ -55,6 +61,14 @@ export function FocusCell({
   onToggle: () => void
 }) {
   if (!focus) return <span className="text-[#6B7280]">—</span>
+  if (focus.trackingUnavailable && focus.countedSwitches === 0 && focus.shortCount === 0) {
+    return (
+      <Badge className="bg-[#374151] text-[#F9FAFB] border-0 gap-1 whitespace-normal text-left" title="Der Browser dieses Teilnehmers kann Wechsel nicht erkennen.">
+        <EyeOff size={12} aria-hidden="true" className="flex-shrink-0" />
+        Keine Überwachung möglich
+      </Badge>
+    )
+  }
   const hasDetail = focus.countedSwitches > 0 || focus.shortCount > 0 || focus.away
   return (
     <div className="flex flex-col items-start gap-1.5 min-w-40">
@@ -121,6 +135,13 @@ export function FocusDetailPanel({ assessmentId, sessionId }: { assessmentId: st
 
   return (
     <div className="space-y-3">
+      {data.summary.trackingUnavailable && (
+        <p className="flex items-start gap-2 rounded-xl border border-[#4B5563] bg-[#111827] p-3 text-sm text-[#F9FAFB]">
+          <EyeOff size={16} className="mt-0.5 flex-shrink-0 text-[#9CA3AF]" aria-hidden="true" />
+          Keine Überwachung möglich: Der Browser dieses Teilnehmers kann Wechsel nicht erkennen. Ein leeres Protokoll
+          bedeutet hier nicht, dass die Prüfung nicht verlassen wurde.
+        </p>
+      )}
       {data.events.length === 0 ? (
         <p className="text-sm text-[#9CA3AF]">Keine Einträge.</p>
       ) : (

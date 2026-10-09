@@ -15,13 +15,13 @@ import {
 
 const Schema = z
   .object({
-    action: z.enum(['leave', 'return', 'resume']),
+    action: z.enum(['leave', 'return', 'resume', 'unsupported']),
     eventId: z.string().uuid().optional(),
     questionId: z.string().uuid().nullish(),
     questionNumber: z.number().int().min(1).max(1000).nullish(),
     seconds: z.number().int().min(0).max(86_400).optional(),
   })
-  .refine((v) => v.action === 'resume' || v.eventId !== undefined, { message: 'eventId fehlt' })
+  .refine((v) => v.action === 'resume' || v.action === 'unsupported' || v.eventId !== undefined, { message: 'eventId fehlt' })
 
 type FocusResult = {
   countedSwitches: number
@@ -77,6 +77,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const now = Date.now()
   if (now > deadline) {
     return NextResponse.json({ error: 'Die Bearbeitungszeit ist abgelaufen.' }, { status: 409 })
+  }
+
+  // Der Browser kann keine Wechsel erkennen: einmal vermerken, damit die Lehrkraft
+  // „Keine Überwachung möglich" statt eines irreführenden „—" sieht.
+  if (action === 'unsupported') {
+    const { error: flagError } = await service
+      .from('assessment_focus_summary')
+      .upsert(
+        { session_id: session.id, assessment_id: session.assessment_id, tracking_unavailable: true },
+        { onConflict: 'session_id' },
+      )
+    if (flagError) {
+      console.error('[POST /api/exam/sessions/[id]/focus] unsupported', flagError)
+      return NextResponse.json({ error: 'Meldung fehlgeschlagen.' }, { status: 500 })
+    }
+    return NextResponse.json({ unavailable: true })
   }
 
   const { data, error } = await service.rpc('focus_report', {

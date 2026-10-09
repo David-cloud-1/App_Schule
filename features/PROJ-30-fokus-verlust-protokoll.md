@@ -249,7 +249,7 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 
 **Abweichungen von der Spec:**
 - Texte sagen „deiner **Lehrkraft**" statt „deinem Ausbilder" — passend zur neuen Wortwahl in der App (Tourismus-Bereich).
-- „Keine Überwachung möglich" für Browser ohne Sichtbarkeits-Ereignisse (Spec-Edge-Case) ist **nicht** umgesetzt: Es bräuchte ein weiteres Feld, und die Unterstützung ist in allen gängigen Browsern gegeben. Bei einem solchen Browser bleibt der Nachweis nutzbar, es entstehen nur keine Einträge.
+- „Keine Überwachung möglich" (Spec-Edge-Case) wurde in einem zweiten Schritt am 2026-10-09 nachgezogen (siehe BUG-3): Kennt der Browser weder Sichtbarkeits- noch Fokus-Ereignisse, meldet der Runner das einmal; die Lehrkraft sieht in der Teilnehmerliste und in der Detailansicht den Hinweis.
 - Die Admin-Lesepolicy der Einzel-Einträge läuft über `exam_sessions`; ein Bereichs-Admin kann sie dadurch **nicht direkt per Datenbank** lesen (sicher, weil strenger). Die App liest sie über die Server-Route mit Bereichsprüfung und Service-Client, daher keine Auswirkung auf die Funktion. Die Policy wurde am 2026-10-09 mit Freigabe korrigiert (siehe BUG-4).
 
 **Noch nicht möglich:** Prüfung an echten Geräten (Tab-/App-Wechsel, Bildschirmsperre und Anruf verhalten sich je nach Browser und Handy verschieden) — in dieser Umgebung steht kein Browser zur Verfügung und `npm run dev` ist auf der Maschine nicht nutzbar. Ein kurzer Test mit iPhone, Android und Desktop wird empfohlen.
@@ -317,7 +317,7 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 - [x] Manipulation: Dauer gedeckelt auf die Zeit seit dem letzten Kontakt, Server-Zeit, 200 Einträge, 60 Meldungen/Minute (SQL-Test)
 - [x] Aus der Wertung genommene Teilnehmer: Protokoll bleibt sichtbar, ohne Einfluss auf die Note
 - [x] Mehrere Nachweise parallel: Einträge hängen an der Teilnahme
-- [ ] „Keine Überwachung möglich" bei Browsern ohne Sichtbarkeits-Ereignisse — **nicht umgesetzt** (siehe BUG-3)
+- [x] „Keine Überwachung möglich" bei Browsern ohne Sichtbarkeits- und Fokus-Ereignisse (nachgezogen 2026-10-09, siehe BUG-3; Lib-, Route- und Hook-Tests)
 
 ### Security Audit Results
 - [x] Alle Routen verlangen Login; Admin-Route zusätzlich Rolle + Fachbereich
@@ -335,16 +335,17 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 #### BUG-2: Fehlgeschlagene „resume"-Meldung wurde später nachgesendet (behoben)
 - **Severity:** Low. Nachgesendet hätte sie einen Eintrag geschlossen, während der Azubi gerade wirklich weg ist (zu kurze Dauer). Wird jetzt nicht mehr in die Warteschlange gelegt; Test ergänzt.
 
-#### BUG-3: „Keine Überwachung möglich" nicht umgesetzt (offen)
-- **Severity:** Low. In allen gängigen Browsern vorhanden, bei fehlender Unterstützung entstehen nur keine Einträge. Nicht blockierend.
+#### BUG-3: „Keine Überwachung möglich" nicht umgesetzt (behoben 2026-10-09)
+- **Severity:** Low. Umgesetzt mit zusätzlicher Spalte `tracking_unavailable` an der Zusammenfassung (Migration `20261009_proj30_tracking_unavailable.sql`, additiv, Standard false). Der Runner prüft beim Start, ob der Browser Sichtbarkeits-Status oder Fokus-Abfrage kennt; fehlt beides, wird einmal `unsupported` gemeldet und nichts weiter überwacht. Die Teilnehmerliste zeigt dann das Badge „Keine Überwachung möglich" statt eines irreführenden „—", die Detailansicht erklärt, dass ein leeres Protokoll hier nichts beweist.
 
 #### BUG-4: Bereichs-Admin konnte Einzel-Einträge nicht direkt per Datenbank lesen (behoben 2026-10-09)
 - **Severity:** Low. Die Leserechte-Policy lief über `exam_sessions`, die ein Bereichs-Admin nicht lesen darf. Fail-closed, die App las über die Server-Route, daher keine Funktionsauswirkung. Mit Freigabe per `ALTER POLICY` auf den Weg über die Zusammenfassungs-Tabelle umgestellt (`20261009_proj30_focus_events_policy.sql`, in Produktion angewendet). An der Produktions-DB in zurückgerollter Transaktion geprüft: Azubi 0 Einträge, Super-Admin und Bereichs-Admin des eigenen Bereichs sehen sie. Ein Bereichs-Admin eines fremden Bereichs existiert derzeit nicht und konnte nicht getestet werden (die Bereichslogik ist die bestehende `can_admin_department`).
 
 ### Summary
-- **Acceptance Criteria:** alle bis auf einen Edge-Case-Punkt (BUG-3) erfüllt, soweit ohne Browser prüfbar
-- **Bugs Found:** 4 (3 behoben, 1 offen/Low: BUG-3)
+- **Acceptance Criteria:** alle erfüllt, soweit ohne Browser prüfbar
+- **Bugs Found:** 4 (alle behoben)
 - **Security:** keine offenen Lücken
+- **Tests:** 689/689 grün
 - **Production Ready:** YES — mit der Empfehlung eines kurzen Geräte-Tests (iPhone, Android, Desktop) nach dem Deploy. Wirksam ist die Funktion nur für **neu angelegte** Nachweise mit eingeschalteter Protokollierung; alles Bestehende bleibt unverändert.
 
 ## Deployment
@@ -360,4 +361,6 @@ Keine. Dialog, Badge, Schalter und Tabelle kommen aus den vorhandenen shadcn/ui-
 
 **Noch offen:**
 - Manueller Test an echten Geräten (iPhone, Android, Desktop): einen Nachweis mit eingeschalteter Protokollierung anlegen, öffnen, beitreten, Tab/App wechseln, Warnung und Teilnehmerliste prüfen — auch die automatische Abgabe mit kleiner Grenze (z. B. 1).
-- BUG-3 („Keine Überwachung möglich"), Low. (BUG-4, die Policy der Einzel-Einträge, wurde am 2026-10-09 behoben.)
+- Keine offenen Bugs. (BUG-3 „Keine Überwachung möglich" und BUG-4 Policy der Einzel-Einträge wurden am 2026-10-09 behoben, siehe unten.)
+
+**Nachtrag 2026-10-09:** Zweiter Deploy mit zwei Korrekturen — Lese-Policy der Einzel-Einträge für Bereichs-Admins (`20261009_proj30_focus_events_policy.sql`) und das Kennzeichen „Keine Überwachung möglich" (`20261009_proj30_tracking_unavailable.sql`). Beide Migrationen wurden vor dem Deploy in Produktion angewendet und sind rein additiv bzw. verändern nur eine Leserechte-Policy; Rollback über die jeweiligen `_down`-Dateien.

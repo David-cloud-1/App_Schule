@@ -59,6 +59,8 @@ export type FocusSummaryRow = {
   counted_seconds: number
   short_count: number
   auto_submitted: boolean
+  /** Browser kennt keine Sichtbarkeits-/Fokus-Ereignisse — es konnte nichts erfasst werden. */
+  tracking_unavailable?: boolean
 }
 
 export type FocusOpenEvent = { left_at: string }
@@ -72,6 +74,8 @@ export type ParticipantFocus = {
   away: boolean
   /** Mindestens ein zählender Wechsel (auch ein offener, der die Toleranz überschritten hat). */
   conspicuous: boolean
+  /** Bei diesem Azubi konnte der Browser nichts erfassen („Keine Überwachung möglich"). */
+  trackingUnavailable: boolean
 }
 
 /**
@@ -103,5 +107,17 @@ export function buildParticipantFocus(
     autoSubmitted: summary?.auto_submitted ?? false,
     away: openEvents.length > 0,
     conspicuous: countedSwitches > 0,
+    trackingUnavailable: summary?.tracking_unavailable ?? false,
   }
+}
+
+/**
+ * Kann der Browser Wechsel überhaupt erkennen? Nötig ist mindestens eines von
+ * beidem: Sichtbarkeits-Status der Seite oder die Abfrage, ob das Fenster den
+ * Fokus hat. Fehlt beides, bleibt der Nachweis nutzbar, es entstehen nur keine
+ * Einträge — die Lehrkraft sieht dann „Keine Überwachung möglich".
+ */
+export function isFocusDetectionSupported(doc: Pick<Document, 'visibilityState' | 'hasFocus'> | undefined): boolean {
+  if (!doc) return false
+  return typeof doc.visibilityState === 'string' || typeof doc.hasFocus === 'function'
 }
