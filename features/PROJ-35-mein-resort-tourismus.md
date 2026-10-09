@@ -1,6 +1,6 @@
 # PROJ-35: „Mein Resort" – Tourismus-Hotelkomplex (isometrisch)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -173,4 +173,8 @@ Keine neuen Pakete.
 - **Hinweis:** Die flache Hof-Galerie aus PROJ-26/33 wird nur noch für unbekannte Fachbereiche gebraucht.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://touristiklern.vercel.app (Seite `/betrieb`; Spedition unverändert)
+- **Deployed:** 2026-10-09 (Commit 56e51e5, Vercel-Deployment spedilern-emocm3xf0, Status Ready, keine Fehler-Logs)
+- **Reihenfolge eingehalten:** zuerst die Datenmigration auf Produktion (`proj35_resort_katalog`), danach Push. Verifiziert: Tourismus 19 aktive Items (vorher 10), Bezeichnung „Resort“, Spedition unverändert (9 Items, „Betrieb“).
+- Build, Lint (0 Fehler) und 884 Tests auf dem sauberen Commit grün; Login-Seiten 200; `/betrieb` ohne Anmeldung → 307, `/api/betrieb` → 401.
+- **Offen – Abnahme am Handy:** Resort-Welt mit Sand-Promenade, Lesbarkeit der Schilder („HOTEL“, „REISEN“, „CAFÉ“), Sprites in Shop/Admin, Gesten wie bei PROJ-34.
