@@ -39,7 +39,7 @@
 | PROJ-23 | Fachbereichs-Zuordnung für Azubis | Deployed | [PROJ-23-fachbereich-zuordnung-azubis.md](PROJ-23-fachbereich-zuordnung-azubis.md) | 2026-09-29 |
 | PROJ-24 | Fachbereichs-Admins & Rechtetrennung | Deployed | [PROJ-24-fachbereichs-admins-rechtetrennung.md](PROJ-24-fachbereichs-admins-rechtetrennung.md) | 2026-09-30 |
 | PROJ-25 | Onboarding Tourismus (Touristiklern-Grundgerüst) | Deployed | [PROJ-25-onboarding-tourismus.md](PROJ-25-onboarding-tourismus.md) | 2026-10-01 |
-| PROJ-26 | Visuelle Hof-Szene & kategorisierter Item-Katalog | In Review | [PROJ-26-hof-szene-visuelle-darstellung.md](PROJ-26-hof-szene-visuelle-darstellung.md) | 2026-10-05 |
+| PROJ-26 | Visuelle Hof-Szene & kategorisierter Item-Katalog | Deployed | [PROJ-26-hof-szene-visuelle-darstellung.md](PROJ-26-hof-szene-visuelle-darstellung.md) | 2026-10-05 |
 | PROJ-27 | Leistungsnachweis – eigene Fragen-Zusammenstellung | Deployed | [PROJ-27-nachweis-fragen-zusammenstellung.md](PROJ-27-nachweis-fragen-zusammenstellung.md) | 2026-10-07 |
 | PROJ-28 | Leistungsnachweis – Druck & Klassenauswertung | In Progress | [PROJ-28-nachweis-druck-klassenauswertung.md](PROJ-28-nachweis-druck-klassenauswertung.md) | 2026-10-07 |
 | PROJ-29 | Bereichs-Umschalter für den Super-Admin | Deployed | [PROJ-29-bereichs-umschalter-super-admin.md](PROJ-29-bereichs-umschalter-super-admin.md) | 2026-10-08 |

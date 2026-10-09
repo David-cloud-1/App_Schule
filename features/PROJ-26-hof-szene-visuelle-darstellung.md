@@ -1,8 +1,8 @@
 # PROJ-26: Visuelle Hof-Szene & kategorisierter Item-Katalog
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-05
-**Last Updated:** 2026-10-05
+**Last Updated:** 2026-10-09
 **Priorität:** P1
 
 ## Dependencies
@@ -617,4 +617,8 @@ sind befüllbar. Das 75-Münzen-Referenzitem bleibt unberührt. BUG-2 (Low) offe
 Unit-Tests (49) grün, `tsc` ohne Fehler in `src`. Nächster Schritt: `/deploy`.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://spedilern.vercel.app (Spedition), https://touristiklern.vercel.app
+- **Deployed:** 2026-10-09 (Commit ff6d675, Vercel-Deployment spedilern-3cmfueb2r, Status Ready)
+- Migrationen `20261005_proj26_hof_kategorien_icons` und `20261009_proj26_seed_katalog` bereits vorab in der Produktions-DB angewendet.
+- Build, Lint (0 Fehler) und 668 Tests auf dem reinen PROJ-26-Commit grün; keine neuen Umgebungsvariablen.
+- Offen: BUG-2 (Low, ARIA-Rolle), Touristik-Icon-Set und -Katalog (eigenes Feature).
