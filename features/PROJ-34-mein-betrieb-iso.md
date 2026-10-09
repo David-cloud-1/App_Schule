@@ -1,6 +1,6 @@
 # PROJ-34: „Mein Betrieb" – isometrische Ansicht & Selbst-Platzieren (Spedition)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -343,7 +343,29 @@ Keine neuen Pakete.
 - **Offen:** Schritt 8 (Prüfung) abschließen, Migrationen auf Produktion anwenden, Deploy, Abnahme am Handy (Gesten!).
 
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisierte Prüfung und Sichtprüfung per gerendertem Bild; Abnahme am Handy steht aus**
+
+**Automatisiert:** 879 Tests grün (4 volle Durchläufe stabil), `tsc` ohne Fehler, Lint 0 Fehler (37 Warnungen wie vorher), `npm run build` auf sauberem Commit erfolgreich (neue Routen `/betrieb`, `/api/betrieb`, `/api/betrieb/platzierung`). Neu getestet u. a.: Landregel (Beispiele, Monotonie, genug Kacheln, nie leer wirkend), Welt-Layout, Kamera (Zoom um Fixpunkt, Begrenzung, Bildschirm→Welt→Kachel), Treffererkennung, Sprite-Katalog (alle 31 flachen Icons abgedeckt, Tippfehler-Schutz), Welt-Komponente (Reihenfolge, einmalige Defs, Randfälle), Seite (Laden, Lager, Auswahl, Setzen per Liste, Rückfall bei Fehlern, Animationen, Wachstum), Schnittstellen (401/400/404/409/500, Nutzer-ID nur aus der Sitzung, Landgrenze).
+
+**Datenbank:** Migration gegen die echte Datenbank in einer zurückgerollten Transaktion geprüft (Fremdschlüssel, Policies, Rechte: `authenticated` nur SELECT, `anon` nichts).
+
+**Sicherheit:** Schreiben nur über Service-Rolle nach Prüfung von Anmeldung, Besitz und Landgrenze; Doppelbelegung und fremde Items verhindert die Datenbank selbst; keine Schreib-Policies; keine Fehlerdetails nach außen.
+
+**Sichtprüfung (statisch gerendert):** `docs/vorschau/` – Welt mit Startland, gewachsenem Land, Sprite-Serie (24 neue), Beispiel-Betrieb. Dabei erkannt und behoben: Land wuchs zu großzügig (leer wirkend) → neue Regel; Warnweste unklar; Gabelstapler-Fahrerhaus zu dunkel.
+
+**Nicht geprüft (kein Browser/Handy auf diesem Rechner):**
+- **Gesten** (Ein-Finger-Ziehen, Pinch-Zoom, Mausrad) und das Zusammenspiel Verschieben ↔ Antippen (Schwelle 6 px) – Logik ist getestet, das *Gefühl* nicht
+- Tippgenauigkeit auf kleinen Bildschirmen, Lesbarkeit der Beschriftungen, Schrift (Inter)
+- Verhalten der Animationen im echten Browser (Aufstell-Hüpfer, Schimmer, Land-Einblenden)
+- Performance mit 30+ Items auf einem Mittelklasse-Handy (SVG ca. 276 KB bei 32 Items)
+
+**Bekannte Einschränkungen:**
+- Lkw sind Tycoon-Fahrzeuge mit dünneren Konturen, noch nicht komplett im weichen Stil neu gezeichnet
+- Tippen aufs Dach eines Gebäudes wählt das Gebäude; ein freies Feld direkt dahinter ist nur über die Kachelmitte erreichbar
+- Ziehen eines Items direkt aus dem Lager auf die Welt (Drag & Drop) ist nicht umgesetzt; Weg ist Antippen (Spec: Antippen = Hauptweg)
+- Tourismus zeigt weiter die flache Hof-Galerie, bis PROJ-35 die Sprites liefert
+
+**Production Ready:** Ja für den Code; **vor dem Deploy zwingend:** Migrationen `20261009_proj34_betrieb_platzierungen` (Tabelle, sonst liefert die Seite Fehler) und `20261009_proj34_betrieb_name` auf Produktion anwenden.
 
 ## Deployment
 _To be added by /deploy_
