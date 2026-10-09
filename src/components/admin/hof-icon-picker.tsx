@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { getHofIconsByCategory, type HofCategory } from '@/lib/hof-icons'
+import { getBetriebSprite, hatBetriebSprite } from '@/lib/betrieb-sprites'
 
 interface Props {
   departmentCode: string
@@ -52,7 +53,12 @@ export function HofIconPicker({ departmentCode, category, value, onChange }: Pro
                 : 'border-[#4B5563] bg-[#111827] hover:border-[#9CA3AF]',
             )}
           >
-            <icon.Svg className="w-7 h-7" />
+            {hatBetriebSprite(departmentCode, icon.key) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={getBetriebSprite(departmentCode, icon.key).url} alt="" className="w-14 h-11 object-contain" draggable={false} />
+            ) : (
+              <icon.Svg className="w-7 h-7" />
+            )}
             <span className="text-[9px] leading-tight text-[#9CA3AF] text-center line-clamp-2">
               {icon.label}
             </span>

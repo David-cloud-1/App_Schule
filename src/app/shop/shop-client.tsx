@@ -105,7 +105,7 @@ export function ShopClient() {
             <Link href="/" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
               <ArrowLeft size={20} />
             </Link>
-            <span className="font-semibold text-[#F9FAFB]">{hofName}</span>
+            <span className="font-semibold text-[#F9FAFB]">{betriebSpriteSchluessel(departmentCode).length > 0 ? 'Shop' : hofName}</span>
           </div>
           <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">
             <Coins size={13} className="text-[#FFD700]" />
@@ -160,6 +160,7 @@ export function ShopClient() {
                       legacyIcon={item.icon}
                       name={item.name}
                       svgClassName="w-10 h-10"
+                      isoClassName="w-20 h-16"
                       emojiClassName="text-4xl"
                     />
                   </HofRarityFrame>
@@ -225,6 +226,7 @@ export function ShopClient() {
                     legacyIcon={justPurchased.icon}
                     name={justPurchased.name}
                     svgClassName="w-12 h-12"
+                    isoClassName="w-20 h-16"
                     emojiClassName="text-4xl"
                   />
                 </div>

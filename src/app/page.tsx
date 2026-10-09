@@ -184,7 +184,7 @@ export default async function HomePage() {
             <Link
               href="/shop"
               className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
-              aria-label={hofName}
+              aria-label={hatBetrieb ? 'Shop' : hofName}
             >
               <Store className="w-4 h-4" />
             </Link>

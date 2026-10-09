@@ -172,6 +172,7 @@ export default function AdminShopItemsPage() {
                           legacyIcon={item.icon}
                           name={item.name}
                           svgClassName="w-6 h-6"
+                          isoClassName="w-12 h-10"
                           emojiClassName="text-xl"
                         />
                         <div>
