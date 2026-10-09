@@ -1,6 +1,6 @@
 # PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -73,7 +73,50 @@ Sandburg.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Kurzfassung
+Reiner Inhalts-Ausbau, **keine neue Technik, keine Schema-Änderung.** Je Fachbereich
+kommen 20 Einträge in zwei Katalogen dazu: Sprites (Code) und Shop-Items (Daten).
+
+### A) Bausteine
+```
+Bestehend (unverändert)
++-- Sprite-Katalog "Schlüssel -> Sprite", Platzieren, Lager, Seltenheit, Land-Regel
++-- Flaches Icon-Set je Fachbereich (für Admin-Picker und Server-Prüfung)
+
+Neu
++-- Spedition-Deko-Sprites (20)  Datei neben spedition-weich
++-- Resort-Deko-Sprites (20)     Datei neben resort-weich
++-- Einträge im flachen Set (Bild aus dem Sprite, wie bei den Resort-Bauten)
++-- Daten-Migration: 20 + 20 Shop-Items mit Preisen
+```
+
+### B) Daten
+Keine neue Tabelle. Je Item: Name, Beschreibung, Kategorie (eine der vier), Preis,
+Icon-Schlüssel, Fachbereich. Die Wirkungen (Platzieren, Seltenheit, Land) folgen
+aus den bestehenden Regeln. Seltenheit leitet sich aus dem Preis ab: Deko bis 99
+ist „Standard“, teure Bauten (Wasserturm, Tennisplatz, Saunahaus) sind „Selten“
+oder „Episch“.
+
+### C) Entscheidungen
+1. **Gleiche Zeichenbausteine und Palette** wie PROJ-34/35: einheitlicher Look.
+2. **Pro Fachbereich eigene Schlüssel** (z. B. „hecke“ vs. „lebhecke“): keine
+   Doppelbelegung, damit die Fachbereichs-Trennung (Server-Prüfung, Picker) eindeutig bleibt.
+3. **Flaches Icon aus dem Sprite** statt zweiter Zeichnung: ein Bild pro Item.
+4. **Preis-Staffelung:** mindestens 8–10 Einstiegs-Items bis 60 Münzen, damit sich
+   früher Spielstand lohnt; Prestige-Bauten bis 200.
+5. **Migration idempotent** (kein Duplikat bei zweitem Lauf).
+
+### D) Änderungen am Bestehenden
+Nur Erweiterungen: Katalog-Karten, flaches Set, Daten. Keine Änderung an Seite,
+Schnittstellen oder Rechten.
+
+### E) Reihenfolge
+1. Spedition-Sprites + Übersichtsbild · 2. Resort-Sprites + Übersichtsbild ·
+3. Katalog und flache Sets · 4. Migration · 5. Tests, Sichtprüfung
+
+### F) Risiken
+Grafikaufwand (40 Sprites); Preis-/Balance-Gefühl muss der Nutzer prüfen.
 
 ## QA Test Results
 _To be added by /qa_
