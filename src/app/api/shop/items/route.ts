@@ -18,7 +18,7 @@ export async function GET() {
   const [itemsResult, ownedResult, profileResult] = await Promise.all([
     supabase
       .from('shop_items')
-      .select('id, name, description, icon, price')
+      .select('id, name, description, icon, category, icon_key, price')
       .eq('is_active', true)
       .eq('department_id', departmentId)
       .order('sort_order'),
@@ -51,13 +51,22 @@ export async function GET() {
   // client, strictly scoped to this user's own purchases.
   const { data: ownedRows } = await createServiceClient()
     .from('user_shop_items')
-    .select('purchased_at, shop_items(id, name, description, icon)')
+    .select('purchased_at, shop_items(id, name, description, icon, category, icon_key)')
     .eq('user_id', user.id)
     .order('purchased_at')
 
+  type OwnedShopItem = {
+    id: string
+    name: string
+    description: string
+    icon: string | null
+    category: string
+    icon_key: string
+  }
+
   const owned_items = (ownedRows ?? [])
-    .map((r) => r.shop_items as unknown as { id: string; name: string; description: string; icon: string } | null)
-    .filter((i): i is { id: string; name: string; description: string; icon: string } => i != null)
+    .map((r) => r.shop_items as unknown as OwnedShopItem | null)
+    .filter((i): i is OwnedShopItem => i != null)
 
   return NextResponse.json({
     items,

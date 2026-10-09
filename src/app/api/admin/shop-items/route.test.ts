@@ -19,9 +19,31 @@ function makeRequest(method: string, body?: unknown) {
 }
 
 const mockItems = [
-  { id: 'item-1', name: 'Sattelschlepper', description: 'desc', icon: '🚛', price: 75, is_active: true, sort_order: 1 },
-  { id: 'item-2', name: 'Ampel-Deko', description: 'desc', icon: '🚦', price: 40, is_active: true, sort_order: 2 },
+  {
+    id: 'item-1',
+    name: 'Sattelschlepper',
+    description: 'desc',
+    icon: '🚛',
+    category: 'fahrzeuge',
+    icon_key: 'sattelschlepper-rot',
+    price: 75,
+    is_active: true,
+    sort_order: 1,
+  },
+  {
+    id: 'item-2',
+    name: 'Ampel-Deko',
+    description: 'desc',
+    icon: '🚦',
+    category: 'gebaeude_deko',
+    icon_key: 'ampel',
+    price: 40,
+    is_active: true,
+    sort_order: 2,
+  },
 ]
+
+const VALID_BODY = { name: 'Test', description: 'd', category: 'fahrzeuge', icon_key: 'sattelschlepper-rot', price: 50 }
 
 interface Overrides {
   itemsData?: unknown
@@ -40,6 +62,7 @@ function makeAdminSupabase(overrides: Overrides = {}) {
       if (table === 'profiles') return { data: { role: overrides.role ?? 'admin', department_id: 'dept-sped' } }
       if (table === 'admin_audit_log') return {}
       if (table === 'user_shop_items') return { data: overrides.ownedRows ?? [] }
+      if (table === 'departments') return { data: { id: 'dept-sped', code: 'SPED', hof_name: 'Speditionshof' } }
       if (table === 'shop_items') {
         if (hasCall(calls, 'insert')) {
           return { data: overrides.insertData ?? { id: 'new-item-uuid' }, error: overrides.insertError ?? null }
@@ -105,13 +128,13 @@ describe('POST /api/admin/shop-items', () => {
 
   it('returns 401 when not authenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
-    const res = await POST(makeRequest('POST', { name: 'Test', description: 'd', icon: '🚛', price: 50 }))
+    const res = await POST(makeRequest('POST', VALID_BODY))
     expect(res.status).toBe(401)
   })
 
   it('returns 403 when not admin', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ role: 'student' }) as never)
-    const res = await POST(makeRequest('POST', { name: 'Test', description: 'd', icon: '🚛', price: 50 }))
+    const res = await POST(makeRequest('POST', VALID_BODY))
     expect(res.status).toBe(403)
   })
 
@@ -123,7 +146,20 @@ describe('POST /api/admin/shop-items', () => {
 
   it('returns 400 for a non-positive price', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
-    const res = await POST(makeRequest('POST', { name: 'Test', description: 'd', icon: '🚛', price: 0 }))
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, price: 0 }))
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for an invalid category', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'nicht-existent' }))
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 400 when the icon_key does not belong to the chosen category (PROJ-26)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    // 'hoftor' gehört zu 'gebaeude_deko', nicht zu 'fahrzeuge'.
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'hoftor' }))
     expect(res.status).toBe(400)
   })
 
@@ -131,7 +167,7 @@ describe('POST /api/admin/shop-items', () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ insertData: { id: 'new-item-uuid' } }) as never,
     )
-    const res = await POST(makeRequest('POST', { name: 'Test', description: 'd', icon: '🚛', price: 50 }))
+    const res = await POST(makeRequest('POST', VALID_BODY))
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.id).toBe('new-item-uuid')

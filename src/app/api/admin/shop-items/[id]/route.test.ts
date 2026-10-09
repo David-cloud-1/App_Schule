@@ -26,6 +26,8 @@ function makeAdminSupabase(opts: {
   role?: string
   departmentId?: string
   itemDepartmentId?: string | null
+  itemCategory?: string
+  itemIconKey?: string
   updateError?: unknown
 } = {}) {
   const { client } = chainMock((table, calls) => {
@@ -33,10 +35,20 @@ function makeAdminSupabase(opts: {
       return { data: { role: opts.role ?? 'admin', department_id: opts.departmentId ?? 'dept-sped' } }
     }
     if (table === 'admin_audit_log') return {}
+    if (table === 'departments') return { data: { id: 'dept-sped', code: 'SPED', hof_name: 'Speditionshof' } }
     if (table === 'shop_items') {
       if (hasCall(calls, 'update')) return { error: opts.updateError ?? null }
-      // existence/department check via .select('department_id').eq('id', id).maybeSingle()
-      return { data: opts.itemDepartmentId === null ? null : { department_id: opts.itemDepartmentId ?? 'dept-sped' } }
+      // existence/department check via .select('department_id, category, icon_key').eq('id', id).maybeSingle()
+      return {
+        data:
+          opts.itemDepartmentId === null
+            ? null
+            : {
+                department_id: opts.itemDepartmentId ?? 'dept-sped',
+                category: opts.itemCategory ?? 'fahrzeuge',
+                icon_key: opts.itemIconKey ?? 'sattelschlepper-rot',
+              },
+      }
     }
     return {}
   }, {
@@ -88,13 +100,28 @@ describe('PATCH /api/admin/shop-items/[id]', () => {
     expect(res.status).toBe(200)
   })
 
-  it('updates name/description/icon/price together', async () => {
+  it('updates name/description/price together', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await PATCH(
-      makeRequest({ name: 'Neu', description: 'Neue Beschreibung', icon: '🚚', price: 99 }),
+      makeRequest({ name: 'Neu', description: 'Neue Beschreibung', price: 99 }),
       makeCtx(),
     )
     expect(res.status).toBe(200)
+  })
+
+  it('updates category and icon_key together when they match (PROJ-26)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await PATCH(makeRequest({ category: 'gebaeude_deko', icon_key: 'hoftor' }), makeCtx())
+    expect(res.status).toBe(200)
+  })
+
+  it('returns 400 when a new icon_key does not match the existing category (PROJ-26)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ itemCategory: 'fahrzeuge', itemIconKey: 'sattelschlepper-rot' }) as never,
+    )
+    // Kategorie bleibt 'fahrzeuge' (nicht im Request), 'hoftor' gehört aber zu 'gebaeude_deko'.
+    const res = await PATCH(makeRequest({ icon_key: 'hoftor' }), makeCtx())
+    expect(res.status).toBe(400)
   })
 
   it('returns 500 when the update fails', async () => {

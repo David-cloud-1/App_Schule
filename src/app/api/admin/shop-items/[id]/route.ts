@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+import { getDepartmentById } from '@/lib/departments'
+import { HOF_CATEGORIES, iconKeyBelongsToCategory, type HofCategory } from '@/lib/hof-icons'
+
+const CATEGORY_VALUES = HOF_CATEGORIES.map((c) => c.value) as [HofCategory, ...HofCategory[]]
 
 const UpdateSchema = z
   .object({
     name:        z.string().min(1).max(60).optional(),
     description: z.string().min(1).max(200).optional(),
-    icon:        z.string().min(1).max(8).optional(),
+    category:    z.enum(CATEGORY_VALUES).optional(),
+    icon_key:    z.string().min(1).max(60).optional(),
     price:       z.number().int().min(1).optional(),
     is_active:   z.boolean().optional(),
   })
@@ -25,7 +30,11 @@ export async function PATCH(
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const { data: existing } = await supabase.from('shop_items').select('department_id').eq('id', id).maybeSingle()
+  const { data: existing } = await supabase
+    .from('shop_items')
+    .select('department_id, category, icon_key')
+    .eq('id', id)
+    .maybeSingle()
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
   if (forbidden) return forbidden
@@ -43,6 +52,23 @@ export async function PATCH(
       { error: 'Invalid payload', details: parsed.error.flatten() },
       { status: 400 },
     )
+  }
+
+  // Server-seitige Gegenprobe (PROJ-26), auch wenn nur eines der beiden
+  // Felder im Request steht — das jeweils andere kommt dann vom Bestand.
+  if (parsed.data.category !== undefined || parsed.data.icon_key !== undefined) {
+    const finalCategory = parsed.data.category ?? (existing.category as string)
+    const finalIconKey = parsed.data.icon_key ?? (existing.icon_key as string)
+    const department = await getDepartmentById(supabase, existing.department_id as string)
+    if (
+      !department ||
+      !iconKeyBelongsToCategory(department.code, finalCategory as HofCategory, finalIconKey)
+    ) {
+      return NextResponse.json(
+        { error: 'Illustration passt nicht zur Kategorie oder zum Fachbereich' },
+        { status: 400 },
+      )
+    }
   }
 
   // Note: a price change here only affects future purchases — past rows in

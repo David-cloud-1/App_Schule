@@ -15,13 +15,23 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { useDepartment } from '@/components/department-provider'
+import { HofIconPicker } from '@/components/admin/hof-icon-picker'
+import { HOF_CATEGORIES, type HofCategory } from '@/lib/hof-icons'
 
 export type AdminShopItemRow = {
   id: string
   name: string
   description: string
-  icon: string
+  category: HofCategory | ''
+  icon_key: string
   price: number
 }
 
@@ -35,14 +45,15 @@ interface Props {
 type FormState = {
   name: string
   description: string
-  icon: string
+  category: HofCategory | ''
+  icon_key: string
   price: string
 }
 
-const EMPTY: FormState = { name: '', description: '', icon: '🚛', price: '75' }
+const EMPTY: FormState = { name: '', description: '', category: '', icon_key: '', price: '75' }
 
 export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props) {
-  const { currencyName, hofName, hofShortName } = useDepartment()
+  const { currencyName, hofName, hofShortName, code: departmentCode } = useDepartment()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -55,7 +66,8 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
       setForm({
         name: item.name,
         description: item.description,
-        icon: item.icon,
+        category: item.category,
+        icon_key: item.icon_key,
         price: String(item.price),
       })
     } else {
@@ -70,7 +82,8 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
     if (form.name.length > 60) e.name = 'Max. 60 Zeichen.'
     if (!form.description.trim()) e.description = 'Beschreibung ist Pflicht.'
     if (form.description.length > 200) e.description = 'Max. 200 Zeichen.'
-    if (!form.icon.trim()) e.icon = 'Icon ist Pflicht.'
+    if (!form.category) e.category = 'Kategorie ist Pflicht.'
+    if (!form.icon_key) e.icon_key = 'Bitte eine Illustration auswählen.'
     const priceNum = Number(form.price)
     if (!Number.isInteger(priceNum) || priceNum < 1) e.price = 'Preis muss eine ganze Zahl ≥ 1 sein.'
     setErrors(e)
@@ -85,7 +98,8 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
       const payload = {
         name: form.name.trim(),
         description: form.description.trim(),
-        icon: form.icon.trim(),
+        category: form.category,
+        icon_key: form.icon_key,
         price: Number(form.price),
       }
 
@@ -125,29 +139,16 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-3">
-            <div className="space-y-2 w-20 flex-shrink-0">
-              <Label htmlFor="icon">Icon</Label>
-              <Input
-                id="icon"
-                value={form.icon}
-                onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-center text-2xl"
-                maxLength={4}
-              />
-              {errors.icon && <p className="text-xs text-[#FF4B4B]">{errors.icon}</p>}
-            </div>
-            <div className="space-y-2 flex-1">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
-                placeholder="z. B. Roter Sattelschlepper"
-              />
-              {errors.name && <p className="text-xs text-[#FF4B4B]">{errors.name}</p>}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              placeholder="z. B. Roter Sattelschlepper"
+            />
+            {errors.name && <p className="text-xs text-[#FF4B4B]">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
@@ -161,6 +162,37 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               maxLength={200}
             />
             {errors.description && <p className="text-xs text-[#FF4B4B]">{errors.description}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="category">Kategorie</Label>
+            <Select
+              value={form.category}
+              onValueChange={(v) => setForm({ ...form, category: v as HofCategory, icon_key: '' })}
+            >
+              <SelectTrigger id="category" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue placeholder="Kategorie wählen" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                {HOF_CATEGORIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && <p className="text-xs text-[#FF4B4B]">{errors.category}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Illustration</Label>
+            <HofIconPicker
+              departmentCode={departmentCode}
+              category={form.category}
+              value={form.icon_key}
+              onChange={(iconKey) => setForm({ ...form, icon_key: iconKey })}
+            />
+            {errors.icon_key && <p className="text-xs text-[#FF4B4B]">{errors.icon_key}</p>}
           </div>
 
           <div className="space-y-2">

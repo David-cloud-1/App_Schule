@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { getDepartmentById } from '@/lib/departments'
+import { HOF_CATEGORIES, iconKeyBelongsToCategory, type HofCategory } from '@/lib/hof-icons'
+
+const CATEGORY_VALUES = HOF_CATEGORIES.map((c) => c.value) as [HofCategory, ...HofCategory[]]
 
 const CreateSchema = z.object({
   name:        z.string().min(1).max(60),
   description: z.string().min(1).max(200),
-  icon:        z.string().min(1).max(8),
+  category:    z.enum(CATEGORY_VALUES),
+  icon_key:    z.string().min(1).max(60),
   price:       z.number().int().min(1),
 })
 
@@ -20,7 +25,7 @@ export async function GET() {
   const [itemsResult, ownedCountsResult] = await Promise.all([
     supabase
       .from('shop_items')
-      .select('id, name, description, icon, price, is_active, sort_order')
+      .select('id, name, description, icon, category, icon_key, price, is_active, sort_order')
       .eq('department_id', departmentId)
       .order('sort_order'),
     supabase.from('user_shop_items').select('item_id'),
@@ -61,6 +66,17 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Invalid payload', details: parsed.error.flatten() },
+      { status: 400 },
+    )
+  }
+
+  // Server-seitige Gegenprobe (PROJ-26): das Frontend schränkt die Icon-Auswahl
+  // zwar schon auf Fachbereich + Kategorie ein, ein direkter API-Aufruf könnte
+  // das aber umgehen — siehe security.md "Validate ALL user input server-side".
+  const department = await getDepartmentById(supabase, departmentId)
+  if (!department || !iconKeyBelongsToCategory(department.code, parsed.data.category, parsed.data.icon_key)) {
+    return NextResponse.json(
+      { error: 'Illustration passt nicht zur Kategorie oder zum Fachbereich' },
       { status: 400 },
     )
   }

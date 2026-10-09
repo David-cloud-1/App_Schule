@@ -25,19 +25,23 @@ import {
   type AdminShopItemRow,
 } from '@/components/admin/shop-item-form-modal'
 import { useDepartment } from '@/components/department-provider'
+import { HofItemIcon } from '@/components/hof-item-icon'
+import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
 
 type ShopItemListItem = {
   id: string
   name: string
   description: string
-  icon: string
+  category: HofCategory | ''
+  icon_key: string
+  icon?: string | null
   price: number
   is_active: boolean
   purchase_count: number
 }
 
 export default function AdminShopItemsPage() {
-  const { hofName, hofShortName } = useDepartment()
+  const { hofName, hofShortName, code: departmentCode } = useDepartment()
   const [items, setItems] = useState<ShopItemListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
@@ -111,6 +115,7 @@ export default function AdminShopItemsPage() {
           <TableHeader>
             <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
               <TableHead className="text-[#9CA3AF]">Item</TableHead>
+              <TableHead className="text-[#9CA3AF]">Kategorie</TableHead>
               <TableHead className="text-[#9CA3AF]">Preis</TableHead>
               <TableHead className="text-[#9CA3AF]">Käufe</TableHead>
               <TableHead className="text-[#9CA3AF]">Status</TableHead>
@@ -123,6 +128,9 @@ export default function AdminShopItemsPage() {
                 <TableRow key={`sk-${i}`} className="border-[#4B5563]">
                   <TableCell>
                     <Skeleton className="h-4 w-48" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24" />
                   </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-12" />
@@ -140,7 +148,7 @@ export default function AdminShopItemsPage() {
               ))
             ) : items.length === 0 ? (
               <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
+                <TableCell colSpan={6} className="text-center text-[#9CA3AF] py-10">
                   Noch keine {hofShortName}-Items angelegt.
                 </TableCell>
               </TableRow>
@@ -150,14 +158,22 @@ export default function AdminShopItemsPage() {
                   <TableRow key={item.id} className="border-[#4B5563] hover:bg-[#111827]/40">
                     <TableCell className="text-[#F9FAFB] font-medium">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl" role="img" aria-label={item.name}>
-                          {item.icon}
-                        </span>
+                        <HofItemIcon
+                          departmentCode={departmentCode}
+                          iconKey={item.icon_key}
+                          legacyIcon={item.icon}
+                          name={item.name}
+                          svgClassName="w-6 h-6"
+                          emojiClassName="text-xl"
+                        />
                         <div>
                           <p>{item.name}</p>
                           <p className="text-xs text-[#9CA3AF] font-normal">{item.description}</p>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-[#9CA3AF] text-sm">
+                      {item.category ? hofCategoryLabel(item.category) : '—'}
                     </TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.price}</TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.purchase_count}</TableCell>
@@ -181,7 +197,8 @@ export default function AdminShopItemsPage() {
                                     id: item.id,
                                     name: item.name,
                                     description: item.description,
-                                    icon: item.icon,
+                                    category: item.category,
+                                    icon_key: item.icon_key,
                                     price: item.price,
                                   })
                                   setFormOpen(true)

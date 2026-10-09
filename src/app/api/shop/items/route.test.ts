@@ -24,8 +24,24 @@ function makeServiceMock(ownedRows: unknown[] = []) {
   return { from: vi.fn(() => builder) }
 }
 
-const ITEM_1 = { id: 'item-1', name: 'Sattelschlepper', description: 'desc', icon: '🚛', price: 75 }
-const ITEM_2 = { id: 'item-2', name: 'Ampel-Deko', description: 'desc', icon: '🚦', price: 40 }
+const ITEM_1 = {
+  id: 'item-1',
+  name: 'Sattelschlepper',
+  description: 'desc',
+  icon: '🚛',
+  category: 'fahrzeuge',
+  icon_key: 'sattelschlepper-rot',
+  price: 75,
+}
+const ITEM_2 = {
+  id: 'item-2',
+  name: 'Ampel-Deko',
+  description: 'desc',
+  icon: '🚦',
+  category: 'gebaeude_deko',
+  icon_key: 'ampel',
+  price: 40,
+}
 
 interface MockOpts {
   items?: unknown
@@ -77,8 +93,11 @@ describe('GET /api/shop/items', () => {
     const body = await res.json()
     // ITEM_1 is no longer in the active catalogue …
     expect(body.items.map((i: { id: string }) => i.id)).toEqual(['item-2'])
-    // … but stays in the user's collection.
-    expect(body.owned_items.map((i: { id: string }) => i.id)).toEqual(['item-1'])
+    // … but stays in the user's collection — including category/icon_key, so
+    // the Hof-Szene (PROJ-26) can still place it in the right zone.
+    expect(body.owned_items).toEqual([
+      expect.objectContaining({ id: 'item-1', category: 'fahrzeuge', icon_key: 'sattelschlepper-rot' }),
+    ])
   })
 
   it('returns 401 when unauthenticated', async () => {

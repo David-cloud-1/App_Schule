@@ -4,12 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Store } from 'lucide-react'
 import { useDepartment } from '@/components/department-provider'
+import { HofItemIcon } from '@/components/hof-item-icon'
+import { HOF_CATEGORIES, type HofCategory } from '@/lib/hof-icons'
 
 interface OwnedItem {
   id: string
   name: string
   description: string
-  icon: string
+  category: HofCategory | ''
+  icon_key: string
+  icon?: string | null
 }
 
 interface ShopItemsResponse {
@@ -17,12 +21,16 @@ interface ShopItemsResponse {
 }
 
 /**
+ * Hof-Szene (PROJ-26): gruppiert gekaufte Items automatisch nach Kategorie
+ * in feste Zonen — keine vom Nutzer gespeicherte Position. Eine Zone ohne
+ * Items dieser Kategorie wird nicht gerendert, statt als Lücke zu wirken.
+ *
  * Reuses GET /api/shop/items (PROJ-20), whose `owned_items` lists every
  * purchase — including items deactivated since, which the shop list itself
  * no longer shows.
  */
 export function HofGallery() {
-  const { hofName, hofShortName } = useDepartment()
+  const { hofName, hofShortName, code: departmentCode } = useDepartment()
   const [items, setItems] = useState<OwnedItem[] | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -66,18 +74,57 @@ export function HofGallery() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#1F2937] border border-[#FFD700]/30 rounded-2xl p-3 flex flex-col items-center text-center gap-1.5"
-            >
-              <span className="text-3xl" role="img" aria-label={item.name}>
-                {item.icon}
-              </span>
-              <p className="text-xs font-semibold leading-tight text-[#F9FAFB]">{item.name}</p>
-            </div>
-          ))}
+        <div className="space-y-4">
+          {/* Versteckte Text-Alternative für Screen-Reader — dieselbe Information wie die Szene unten. */}
+          <ul className="sr-only">
+            {items.map((item) => (
+              <li key={item.id}>
+                {item.name}
+                {item.category && ` — ${HOF_CATEGORIES.find((c) => c.value === item.category)?.label}`}
+              </li>
+            ))}
+          </ul>
+
+          <div aria-hidden="true" className="space-y-4">
+            {HOF_CATEGORIES.map((cat) => {
+              const zoneItems = items.filter((i) => i.category === cat.value)
+              if (zoneItems.length === 0) return null
+
+              return (
+                <div
+                  key={cat.value}
+                  className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-3"
+                >
+                  <h3 className="text-[10px] font-semibold text-[#6B7280] uppercase tracking-wide mb-2">
+                    {cat.label}
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                    {zoneItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="w-16 flex flex-col items-center text-center gap-1"
+                        title={item.name}
+                      >
+                        <div className="w-14 h-14 rounded-xl bg-[#111827] border border-[#FFD700]/30 flex items-center justify-center">
+                          <HofItemIcon
+                            departmentCode={departmentCode}
+                            iconKey={item.icon_key}
+                            legacyIcon={item.icon}
+                            name={item.name}
+                            svgClassName="w-9 h-9"
+                            emojiClassName="text-2xl"
+                          />
+                        </div>
+                        <p className="text-[10px] font-semibold leading-tight text-[#F9FAFB] line-clamp-2">
+                          {item.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

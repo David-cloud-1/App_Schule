@@ -9,12 +9,16 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useDepartment } from '@/components/department-provider'
+import { HofItemIcon } from '@/components/hof-item-icon'
+import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
 
 interface ShopItem {
   id: string
   name: string
   description: string
-  icon: string
+  category: HofCategory | ''
+  icon_key: string
+  icon?: string | null
   price: number
   owned: boolean
 }
@@ -36,7 +40,7 @@ async function loadItems(): Promise<ItemsResponse | null> {
 }
 
 export function ShopClient() {
-  const { hofName, hofShortName } = useDepartment()
+  const { hofName, hofShortName, code: departmentCode } = useDepartment()
   const [items, setItems] = useState<ShopItem[] | null>(null)
   const [coinBalance, setCoinBalance] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -142,9 +146,19 @@ export function ShopClient() {
                     item.owned ? 'border-[#FFD700]/40' : 'border-[#4B5563]',
                   )}
                 >
-                  <span className="text-4xl" role="img" aria-label={item.name}>
-                    {item.icon}
-                  </span>
+                  <HofItemIcon
+                    departmentCode={departmentCode}
+                    iconKey={item.icon_key}
+                    legacyIcon={item.icon}
+                    name={item.name}
+                    svgClassName="w-10 h-10"
+                    emojiClassName="text-4xl"
+                  />
+                  {item.category && (
+                    <span className="text-[9px] uppercase tracking-wide font-semibold text-[#1CB0F6] bg-[#1CB0F6]/10 rounded-full px-2 py-0.5">
+                      {hofCategoryLabel(item.category)}
+                    </span>
+                  )}
                   <p className="text-sm font-bold text-[#F9FAFB] leading-tight">{item.name}</p>
                   <p className="text-xs text-[#9CA3AF] leading-snug line-clamp-2">{item.description}</p>
 
@@ -195,9 +209,14 @@ export function ShopClient() {
             <>
               <div className="flex justify-center mb-4">
                 <div className="w-24 h-24 rounded-full flex items-center justify-center bg-[#FFD700]/15 border-4 border-[#FFD700]/40">
-                  <span className="text-4xl" role="img" aria-label={justPurchased.name}>
-                    {justPurchased.icon}
-                  </span>
+                  <HofItemIcon
+                    departmentCode={departmentCode}
+                    iconKey={justPurchased.icon_key}
+                    legacyIcon={justPurchased.icon}
+                    name={justPurchased.name}
+                    svgClassName="w-12 h-12"
+                    emojiClassName="text-4xl"
+                  />
                 </div>
               </div>
               <div className="mb-1">
