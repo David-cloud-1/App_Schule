@@ -127,4 +127,29 @@ describe('BetriebWelt (PROJ-34)', () => {
     const ids = [...a.container.querySelectorAll('[id]'), ...b.container.querySelectorAll('[id]')].map((e) => e.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
+
+  it('uses a given view box (camera) instead of the whole world', () => {
+    const { container } = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} viewBox="10 20 300 200" />)
+    expect(container.querySelector('svg')!.getAttribute('viewBox')).toBe('10 20 300 200')
+  })
+
+  it('marks the given free tiles and the selected item', () => {
+    const { container } = render(
+      <BetriebWelt
+        departmentCode="SPED"
+        seite={4}
+        items={[item({ id: 'a', x: 1, y: 1 })]}
+        freieKacheln={[{ x: 0, y: 0 }, { x: 2, y: 2 }]}
+        ausgewaehltId="a"
+      />,
+    )
+    expect(container.querySelectorAll('[data-frei]').length).toBe(2)
+    expect(container.querySelectorAll('[data-ausgewaehlt]').length).toBe(1)
+  })
+
+  it('draws no markers by default', () => {
+    const { container } = render(<BetriebWelt departmentCode="SPED" seite={4} items={[item({ id: 'a' })]} />)
+    expect(container.querySelectorAll('[data-frei]').length).toBe(0)
+    expect(container.querySelectorAll('[data-ausgewaehlt]').length).toBe(0)
+  })
 })

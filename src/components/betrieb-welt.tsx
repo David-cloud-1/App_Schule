@@ -33,6 +33,13 @@ interface Props {
   items: PlatziertesItem[]
   className?: string
   ariaLabel?: string
+  /** Sichtbarer Ausschnitt (Kamera); ohne Angabe die ganze Welt. */
+  viewBox?: string
+  svgRef?: React.Ref<SVGSVGElement>
+  /** Kacheln, auf die das gewählte Item gesetzt werden kann (zart markiert). */
+  freieKacheln?: { x: number; y: number }[]
+  /** Gewähltes, bereits gesetztes Item (gestrichelter Ring um seine Kachel). */
+  ausgewaehltId?: string | null
 }
 
 const bodenCache = new Map<string, string>()
@@ -53,7 +60,11 @@ const RARITY_FARBE: Record<Exclude<HofRarity, 'standard'>, { stroke: string; fil
 
 const f1 = (n: number) => Math.round(n * 10) / 10
 
-export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel }: Props) {
+function rautePunkte(mx: number, my: number, inset: number): string {
+  return `${f1(mx)},${f1(my - TILE_H / 2 + inset)} ${f1(mx + TILE_W / 2 - inset * 2)},${f1(my)} ${f1(mx)},${f1(my + TILE_H / 2 - inset)} ${f1(mx - TILE_W / 2 + inset * 2)},${f1(my)}`
+}
+
+export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel, viewBox, svgRef, freieKacheln, ausgewaehltId }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const grenzen = weltGrenzen(seite)
   const kacheln = baueKacheln(seite)
@@ -108,6 +119,17 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
       node: (
         <g key={`i${i.id}`} data-item={i.id}>
           <title>{i.name}</title>
+          {ausgewaehltId === i.id && (
+            <polygon
+              data-ausgewaehlt=""
+              points={rautePunkte(m.x, m.y, 2)}
+              fill="rgba(255,255,255,0.18)"
+              stroke="#FFFFFF"
+              strokeWidth={2.5}
+              strokeDasharray="6 4"
+              strokeLinejoin="round"
+            />
+          )}
           {rarity && (
             <polygon
               data-rarity={rarity}
@@ -131,7 +153,8 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
 
   return (
     <svg
-      viewBox={`${f1(grenzen.minX)} ${f1(grenzen.minY)} ${f1(grenzen.breite)} ${f1(grenzen.hoehe)}`}
+      ref={svgRef}
+      viewBox={viewBox ?? `${f1(grenzen.minX)} ${f1(grenzen.minY)} ${f1(grenzen.breite)} ${f1(grenzen.hoehe)}`}
       className={className ?? 'block w-full h-auto'}
       role="img"
       aria-label={ariaLabel ?? `Isometrische Ansicht mit ${sichtbar.length} Gegenständen`}
@@ -159,6 +182,22 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
             x={f1(m.x - TILE_W / 2)}
             y={f1(m.y - TILE_H / 2)}
             data-kachel=""
+          />
+        )
+      })}
+      {freieKacheln?.map((k) => {
+        const m = grundMitte(k.x, k.y)
+        return (
+          <polygon
+            key={`f${k.x},${k.y}`}
+            data-frei=""
+            points={rautePunkte(m.x, m.y, 3)}
+            fill="rgba(255,255,255,0.2)"
+            stroke="#FFFFFF"
+            strokeOpacity={0.75}
+            strokeWidth={1.6}
+            strokeDasharray="5 4"
+            strokeLinejoin="round"
           />
         )
       })}
