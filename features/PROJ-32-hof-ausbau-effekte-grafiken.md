@@ -1,6 +1,6 @@
 # PROJ-32: Hof-Ausbau – Effekte für teure Items & mehr Grafiken
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P2
@@ -208,9 +208,13 @@ Keine neuen Pakete.
 **Stand 2026-10-09 – automatisierte Prüfung, visuelle Abnahme steht aus**
 
 - 743 Tests grün (neu: Regel inkl. Ränder/Override/Preisänderung, Schnittstellen inkl. „folgt aktuellem Preis" und „Rohwert nicht ausgeliefert", Admin-Validierung, Rahmen/Label/Kachel/beide Szenen, Mindestanzahl und Eindeutigkeit der Grafiken, Gültigkeit aller Alt-Schlüssel). `tsc` und Lint ohne Fehler.
-- Verteilung der aktuellen Kataloge: Spedition 30–250 Münzen, Tourismus 30–300 → 6 Standard / 4 Selten / 2 Episch (Spedition), 5 / 3 / 2 (Tourismus) bei automatischer Zuordnung.
+- Verteilung der aktuellen Kataloge: Spedition 30–250 Münzen, Tourismus 30–300 → bei automatischer Zuordnung Spedition 4 Standard / 4 Selten / 1 Episch, Tourismus 6 Standard / 2 Selten / 2 Episch (in der Produktions-DB nachgemessen; die Zahlen der ersten Fassung waren falsch geschätzt).
 - **Nicht geprüft (kein Browser):** Optik von Ring, Glanz und Schimmer, Lesbarkeit der Labels, 320-px-Layout inkl. Admin-Tabelle mit der neuen Spalte, die 18 neuen Grafiken.
 - Performance-AC „20 epische Items": Schimmer läuft nur einmal (1 Durchlauf) und nur per CSS; echte Messung am Gerät steht aus.
 
 ## Deployment
-_To be added by /deploy_
+- **Production URL:** https://spedilern.vercel.app, https://touristiklern.vercel.app
+- **Deployed:** 2026-10-09 (Commit 7dc04fd, Vercel-Deployment spedilern-20brug00u, Status Ready, keine Fehler-Logs)
+- Migration `20261009_proj32_seltenheit` vor dem Code-Deploy in der Produktions-DB angewendet (Spalte `rarity_override`, alle Werte leer = automatisch).
+- Build, Lint und 752 Tests auf dem sauberen, rebasierten Commit grün; beide Login-Seiten antworten mit HTTP 200.
+- **Offen – visuelle Abnahme von Hand:** Ring/Glanz/Schimmer und Labels in Shop, Mein Hof/Büro und Admin-Tabelle, 320-px-Layout, die 18 neuen Grafiken (kein Browser-Test möglich).
