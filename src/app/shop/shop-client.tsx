@@ -10,7 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useDepartment } from '@/components/department-provider'
 import { HofItemIcon } from '@/components/hof-item-icon'
+import { HofRarityFrame, HofRarityLabel } from '@/components/hof-rarity-frame'
 import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
+import type { HofRarity } from '@/lib/hof-rarity'
 
 interface ShopItem {
   id: string
@@ -20,6 +22,7 @@ interface ShopItem {
   icon_key: string
   icon?: string | null
   price: number
+  rarity?: HofRarity
   owned: boolean
 }
 
@@ -146,14 +149,20 @@ export function ShopClient() {
                     item.owned ? 'border-[#FFD700]/40' : 'border-[#4B5563]',
                   )}
                 >
-                  <HofItemIcon
-                    departmentCode={departmentCode}
-                    iconKey={item.icon_key}
-                    legacyIcon={item.icon}
-                    name={item.name}
-                    svgClassName="w-10 h-10"
-                    emojiClassName="text-4xl"
-                  />
+                  <HofRarityFrame
+                    rarity={item.rarity}
+                    className={cn('rounded-xl', item.rarity && item.rarity !== 'standard' && 'p-1.5')}
+                  >
+                    <HofItemIcon
+                      departmentCode={departmentCode}
+                      iconKey={item.icon_key}
+                      legacyIcon={item.icon}
+                      name={item.name}
+                      svgClassName="w-10 h-10"
+                      emojiClassName="text-4xl"
+                    />
+                  </HofRarityFrame>
+                  <HofRarityLabel rarity={item.rarity} />
                   {item.category && (
                     <span className="text-[9px] uppercase tracking-wide font-semibold text-[#1CB0F6] bg-[#1CB0F6]/10 rounded-full px-2 py-0.5">
                       {hofCategoryLabel(item.category, departmentCode)}

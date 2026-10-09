@@ -143,4 +143,30 @@ describe('GET /api/shop/items', () => {
     const itemsBuilder = mock.from.mock.results[mock.from.mock.calls.findIndex((c) => c[0] === 'shop_items')].value
     expect(itemsBuilder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
   })
+
+  it('computes the rarity from the current price and hides the raw admin value (PROJ-32)', async () => {
+    const cheap = { ...ITEM_1, id: 'a', price: 75, rarity_override: null }
+    const mid = { ...ITEM_1, id: 'b', price: 120, rarity_override: null }
+    const top = { ...ITEM_1, id: 'c', price: 300, rarity_override: null }
+    const forced = { ...ITEM_1, id: 'd', price: 40, rarity_override: 'episch' }
+    vi.mocked(createClient).mockResolvedValue(
+      makeSupabaseMock({ id: 'user-1' }, { items: [cheap, mid, top, forced] }) as never,
+    )
+    const body = await (await GET()).json()
+    expect(body.items.map((i: { rarity: string }) => i.rarity)).toEqual(['standard', 'selten', 'episch', 'episch'])
+    expect(body.items.every((i: Record<string, unknown>) => !('rarity_override' in i))).toBe(true)
+  })
+
+  it('owned items follow the current item price, not the price paid (PROJ-32)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ id: 'user-1' }, { items: [] }) as never)
+    vi.mocked(createServiceClient).mockReturnValue(
+      makeServiceMock([
+        { purchased_at: '2026-09-20T10:00:00Z', shop_items: { ...ITEM_1, price: 260, rarity_override: null } },
+        { purchased_at: '2026-09-21T10:00:00Z', shop_items: { ...ITEM_2, price: 40, rarity_override: 'selten' } },
+      ]) as never,
+    )
+    const body = await (await GET()).json()
+    expect(body.owned_items.map((i: { rarity: string }) => i.rarity)).toEqual(['episch', 'selten'])
+    expect(body.owned_items.every((i: Record<string, unknown>) => !('price' in i) && !('rarity_override' in i))).toBe(true)
+  })
 })

@@ -109,3 +109,39 @@ describe('hof-icons Tourismus-Set (PROJ-31)', () => {
     expect(getHofCategories('UNKNOWN')).toEqual(HOF_CATEGORIES)
   })
 })
+
+describe('hof-icons Erweiterung (PROJ-32)', () => {
+  it.each(['SPED', 'TOUR'])('%s has at least 8 illustrations per category', (code) => {
+    for (const cat of HOF_CATEGORIES) {
+      expect(getHofIconsByCategory(code, cat.value).length).toBeGreaterThanOrEqual(8)
+    }
+  })
+
+  it('all previously existing icon keys are still valid (items keep their icon)', () => {
+    for (const key of ['sattelschlepper-rot', 'ampel', 'hoftor', 'wachhund', 'transporter-blau', 'europalette', 'container', 'pokal', 'stern-abzeichen']) {
+      expect(resolveHofIcon('SPED', key)).not.toBeNull()
+    }
+    for (const key of ['flugzeug', 'reisebus', 'kreuzfahrtschiff', 'palme', 'hotel', 'koffer', 'globus', 'reisepass', 'weltreise-pokal', 'globetrotter-stern']) {
+      expect(resolveHofIcon('TOUR', key)).not.toBeNull()
+    }
+  })
+
+  it('keeps keys unique within each set and across both sets', () => {
+    const sped = getHofIconSet('SPED').map((i) => i.key)
+    const tour = getHofIconSet('TOUR').map((i) => i.key)
+    expect(new Set(sped).size).toBe(sped.length)
+    expect(new Set(tour).size).toBe(tour.length)
+    expect(tour.filter((k) => sped.includes(k))).toEqual([])
+  })
+
+  it('every icon renders a 48x48 svg', () => {
+    for (const code of ['SPED', 'TOUR']) {
+      for (const icon of getHofIconSet(code)) {
+        const el = icon.Svg({}) as { type: string; props: { viewBox?: string } }
+        expect(el.type).toBe('svg')
+        expect(el.props.viewBox).toBe('0 0 48 48')
+      }
+    }
+  })
+})
+

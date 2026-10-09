@@ -1,6 +1,6 @@
 # PROJ-32: Hof-Ausbau – Effekte für teure Items & mehr Grafiken
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P2
@@ -195,8 +195,22 @@ Keine neuen Pakete.
 - **Reihenfolge der Tabelle "Seltenheit" im Admin** darf bestehende Spalten
   nicht verdrängen (Layout auf schmalen Bildschirmen prüfen).
 
+## Implementation Notes (Frontend/Backend, 2026-10-09)
+- **Regel:** `src/lib/hof-rarity.ts` — Schwellen zentral (`RARITY_THRESHOLDS`: ab 100 Selten, ab 250 Episch), `getEffectiveRarity(price, override)`: Admin-Wert vor Preis. Die wirksame Stufe wird nie gespeichert.
+- **Datenbank:** Migration `20261009_proj32_seltenheit.sql` (+ `_down`): optionales Feld `shop_items.rarity_override` mit CHECK (standard/selten/episch). Bestehende Items brauchen keinen Wert (kein Backfill). **Noch nicht in der Produktions-DB angewendet** – muss VOR dem Code-Deploy laufen, weil die Schnittstellen die Spalte lesen.
+- **Schnittstellen:** `GET /api/shop/items` liefert `rarity` je Item und je gekauftem Item (aus dem *aktuellen* Preis, nicht dem Kaufpreis); Rohwert und Preis der gekauften Items gehen nicht raus. Admin-GET liefert `rarity` + `rarity_override`; POST/PATCH nehmen `rarity_override` (Enum oder `null` = automatisch) an und validieren serverseitig.
+- **Darstellung:** `hof-rarity-frame.tsx` (`HofRarityFrame`, `HofRarityLabel`) in Shop-Kachel und der gemeinsamen Hof-Item-Kachel (beide Szenen). Selten: Glanz-Ring + Label; Episch: kräftiger Ring + Label + einmaliger Schimmer (CSS in `globals.css`, entfällt bei `prefers-reduced-motion`). Standard unverändert. Screenreader-Liste ergänzt „— Selten/Episch".
+- **Admin:** Spalte „Seltenheit" (mit „(manuell)"-Hinweis) und Auswahl „Automatisch (…)/Standard/Selten/Episch" im Formular.
+- **Grafiken:** Spedition 21 → 31 (+10), Tourismus 24 → 32 (+8); jetzt mind. 8 je Kategorie in beiden Sets, alle bisherigen Schlüssel unverändert.
+- Keine Änderung an Münzen, XP, Kauf-Ablauf, Rechten oder Login.
+
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisierte Prüfung, visuelle Abnahme steht aus**
+
+- 743 Tests grün (neu: Regel inkl. Ränder/Override/Preisänderung, Schnittstellen inkl. „folgt aktuellem Preis" und „Rohwert nicht ausgeliefert", Admin-Validierung, Rahmen/Label/Kachel/beide Szenen, Mindestanzahl und Eindeutigkeit der Grafiken, Gültigkeit aller Alt-Schlüssel). `tsc` und Lint ohne Fehler.
+- Verteilung der aktuellen Kataloge: Spedition 30–250 Münzen, Tourismus 30–300 → 6 Standard / 4 Selten / 2 Episch (Spedition), 5 / 3 / 2 (Tourismus) bei automatischer Zuordnung.
+- **Nicht geprüft (kein Browser):** Optik von Ring, Glanz und Schimmer, Lesbarkeit der Labels, 320-px-Layout inkl. Admin-Tabelle mit der neuen Spalte, die 18 neuen Grafiken.
+- Performance-AC „20 epische Items": Schimmer läuft nur einmal (1 Durchlauf) und nur per CSS; echte Messung am Gerät steht aus.
 
 ## Deployment
 _To be added by /deploy_

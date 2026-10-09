@@ -192,4 +192,17 @@ describe('POST /api/admin/shop-items', () => {
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'flugzeug' }))
     expect(res.status).toBe(400)
   })
+
+  it('accepts a valid manual rarity and null for automatic (PROJ-32)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    expect((await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: 'episch' }))).status).toBe(201)
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    expect((await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: null }))).status).toBe(201)
+  })
+
+  it('rejects an unknown rarity value (PROJ-32)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: 'legendaer' }))
+    expect(res.status).toBe(400)
+  })
 })

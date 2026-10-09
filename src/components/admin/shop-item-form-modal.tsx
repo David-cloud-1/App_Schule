@@ -25,6 +25,7 @@ import {
 import { useDepartment } from '@/components/department-provider'
 import { HofIconPicker } from '@/components/admin/hof-icon-picker'
 import { getHofCategories, type HofCategory } from '@/lib/hof-icons'
+import { HOF_RARITIES, getEffectiveRarity, hofRarityLabel, isHofRarity, type HofRarity } from '@/lib/hof-rarity'
 
 export type AdminShopItemRow = {
   id: string
@@ -33,6 +34,8 @@ export type AdminShopItemRow = {
   category: HofCategory | ''
   icon_key: string
   price: number
+  /** null/fehlend = automatisch aus dem Preis (PROJ-32) */
+  rarity_override?: HofRarity | null
 }
 
 interface Props {
@@ -48,9 +51,11 @@ type FormState = {
   category: HofCategory | ''
   icon_key: string
   price: string
+  /** '' = automatisch */
+  rarity_override: HofRarity | ''
 }
 
-const EMPTY: FormState = { name: '', description: '', category: '', icon_key: '', price: '75' }
+const EMPTY: FormState = { name: '', description: '', category: '', icon_key: '', price: '75', rarity_override: '' }
 
 export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props) {
   const { currencyName, hofName, hofShortName, code: departmentCode } = useDepartment()
@@ -69,6 +74,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
         category: item.category,
         icon_key: item.icon_key,
         price: String(item.price),
+        rarity_override: isHofRarity(item.rarity_override) ? item.rarity_override : '',
       })
     } else {
       setForm(EMPTY)
@@ -101,6 +107,8 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
         category: form.category,
         icon_key: form.icon_key,
         price: Number(form.price),
+        // null = zurück auf automatisch (PROJ-32)
+        rarity_override: form.rarity_override || null,
       }
 
       const url = isEdit ? `/api/admin/shop-items/${item!.id}` : '/api/admin/shop-items'
@@ -207,6 +215,31 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
             />
             {errors.price && <p className="text-xs text-[#FF4B4B]">{errors.price}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rarity">Seltenheit</Label>
+            <Select
+              value={form.rarity_override || 'auto'}
+              onValueChange={(v) => setForm({ ...form, rarity_override: v === 'auto' ? '' : (v as HofRarity) })}
+            >
+              <SelectTrigger id="rarity" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectItem value="auto">
+                  Automatisch ({hofRarityLabel(getEffectiveRarity(Number(form.price) || 0))})
+                </SelectItem>
+                {HOF_RARITIES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-[#6B7280]">
+              Rein optisch (Rahmen und Glanz). Automatisch richtet sich nach dem Preis.
+            </p>
           </div>
 
           <DialogFooter className="gap-2 pt-2">

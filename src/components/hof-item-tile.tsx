@@ -1,5 +1,7 @@
 import { HofItemIcon } from '@/components/hof-item-icon'
+import { HofRarityFrame, HofRarityLabel } from '@/components/hof-rarity-frame'
 import type { HofCategory } from '@/lib/hof-icons'
+import type { HofRarity } from '@/lib/hof-rarity'
 
 export interface OwnedHofItem {
   id: string
@@ -8,6 +10,8 @@ export interface OwnedHofItem {
   category: HofCategory | ''
   icon_key: string
   icon?: string | null
+  /** Berechnet vom Server (PROJ-32); fehlt der Wert, gilt Standard. */
+  rarity?: HofRarity
 }
 
 /**
@@ -18,7 +22,10 @@ export interface OwnedHofItem {
 export function HofItemTile({ item, departmentCode }: { item: OwnedHofItem; departmentCode: string }) {
   return (
     <div className="w-16 flex flex-col items-center text-center gap-1" title={item.name}>
-      <div className="w-14 h-14 rounded-xl bg-[#111827] border border-[#FFD700]/30 flex items-center justify-center">
+      <HofRarityFrame
+        rarity={item.rarity}
+        className="w-14 h-14 rounded-xl bg-[#111827] border border-[#FFD700]/30 flex items-center justify-center"
+      >
         <HofItemIcon
           departmentCode={departmentCode}
           iconKey={item.icon_key}
@@ -27,8 +34,9 @@ export function HofItemTile({ item, departmentCode }: { item: OwnedHofItem; depa
           svgClassName="w-9 h-9"
           emojiClassName="text-2xl"
         />
-      </div>
+      </HofRarityFrame>
       <p className="text-[10px] font-semibold leading-tight text-[#F9FAFB] line-clamp-2">{item.name}</p>
+      <HofRarityLabel rarity={item.rarity} className="text-[8px] px-1.5 py-0" />
     </div>
   )
 }

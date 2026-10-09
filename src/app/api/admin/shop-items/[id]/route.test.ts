@@ -124,6 +124,20 @@ describe('PATCH /api/admin/shop-items/[id]', () => {
     expect(res.status).toBe(400)
   })
 
+  it('sets, changes and clears the manual rarity (null = automatic, PROJ-32)', async () => {
+    for (const rarity_override of ['selten', 'episch', 'standard', null]) {
+      vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+      const res = await PATCH(makeRequest({ rarity_override }), makeCtx())
+      expect(res.status).toBe(200)
+    }
+  })
+
+  it('returns 400 for an unknown rarity value (PROJ-32)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await PATCH(makeRequest({ rarity_override: 'legendaer' }), makeCtx())
+    expect(res.status).toBe(400)
+  })
+
   it('returns 500 when the update fails', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ updateError: { message: 'DB error' } }) as never,

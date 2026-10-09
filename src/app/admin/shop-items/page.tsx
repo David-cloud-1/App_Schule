@@ -26,7 +26,9 @@ import {
 } from '@/components/admin/shop-item-form-modal'
 import { useDepartment } from '@/components/department-provider'
 import { HofItemIcon } from '@/components/hof-item-icon'
+import { HofRarityLabel } from '@/components/hof-rarity-frame'
 import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
+import type { HofRarity } from '@/lib/hof-rarity'
 
 type ShopItemListItem = {
   id: string
@@ -36,6 +38,8 @@ type ShopItemListItem = {
   icon_key: string
   icon?: string | null
   price: number
+  rarity?: HofRarity
+  rarity_override?: HofRarity | null
   is_active: boolean
   purchase_count: number
 }
@@ -116,6 +120,7 @@ export default function AdminShopItemsPage() {
             <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
               <TableHead className="text-[#9CA3AF]">Item</TableHead>
               <TableHead className="text-[#9CA3AF]">Kategorie</TableHead>
+              <TableHead className="text-[#9CA3AF]">Seltenheit</TableHead>
               <TableHead className="text-[#9CA3AF]">Preis</TableHead>
               <TableHead className="text-[#9CA3AF]">Käufe</TableHead>
               <TableHead className="text-[#9CA3AF]">Status</TableHead>
@@ -133,6 +138,9 @@ export default function AdminShopItemsPage() {
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
                   <TableCell>
+                    <Skeleton className="h-4 w-14" />
+                  </TableCell>
+                  <TableCell>
                     <Skeleton className="h-4 w-12" />
                   </TableCell>
                   <TableCell>
@@ -148,7 +156,7 @@ export default function AdminShopItemsPage() {
               ))
             ) : items.length === 0 ? (
               <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={6} className="text-center text-[#9CA3AF] py-10">
+                <TableCell colSpan={7} className="text-center text-[#9CA3AF] py-10">
                   Noch keine {hofShortName}-Items angelegt.
                 </TableCell>
               </TableRow>
@@ -175,6 +183,18 @@ export default function AdminShopItemsPage() {
                     <TableCell className="text-[#9CA3AF] text-sm">
                       {item.category ? hofCategoryLabel(item.category, departmentCode) : '—'}
                     </TableCell>
+                    <TableCell className="text-sm">
+                      {item.rarity && item.rarity !== 'standard' ? (
+                        <HofRarityLabel rarity={item.rarity} />
+                      ) : (
+                        <span className="text-[#6B7280]">Standard</span>
+                      )}
+                      {item.rarity_override && (
+                        <span className="ml-1 text-[10px] text-[#6B7280]" title="Manuell gesetzt">
+                          (manuell)
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.price}</TableCell>
                     <TableCell className="text-[#F9FAFB]">{item.purchase_count}</TableCell>
                     <TableCell>
@@ -200,6 +220,7 @@ export default function AdminShopItemsPage() {
                                     category: item.category,
                                     icon_key: item.icon_key,
                                     price: item.price,
+                                    rarity_override: item.rarity_override ?? null,
                                   })
                                   setFormOpen(true)
                                 }}

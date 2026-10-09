@@ -3,8 +3,11 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
 import { getDepartmentById } from '@/lib/departments'
 import { HOF_CATEGORIES, iconKeyBelongsToCategory, type HofCategory } from '@/lib/hof-icons'
+import { HOF_RARITIES, type HofRarity } from '@/lib/hof-rarity'
 
 const CATEGORY_VALUES = HOF_CATEGORIES.map((c) => c.value) as [HofCategory, ...HofCategory[]]
+
+const RARITY_VALUES = HOF_RARITIES.map((r) => r.value) as [HofRarity, ...HofRarity[]]
 
 const UpdateSchema = z
   .object({
@@ -13,6 +16,8 @@ const UpdateSchema = z
     category:    z.enum(CATEGORY_VALUES).optional(),
     icon_key:    z.string().min(1).max(60).optional(),
     price:       z.number().int().min(1).optional(),
+    // null = zurück auf automatisch (PROJ-32)
+    rarity_override: z.enum(RARITY_VALUES).nullable().optional(),
     is_active:   z.boolean().optional(),
   })
   .refine((val) => Object.keys(val).length > 0, {

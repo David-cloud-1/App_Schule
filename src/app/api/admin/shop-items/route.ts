@@ -3,8 +3,11 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { getDepartmentById } from '@/lib/departments'
 import { HOF_CATEGORIES, iconKeyBelongsToCategory, type HofCategory } from '@/lib/hof-icons'
+import { HOF_RARITIES, getEffectiveRarity, type HofRarity } from '@/lib/hof-rarity'
 
 const CATEGORY_VALUES = HOF_CATEGORIES.map((c) => c.value) as [HofCategory, ...HofCategory[]]
+
+const RARITY_VALUES = HOF_RARITIES.map((r) => r.value) as [HofRarity, ...HofRarity[]]
 
 const CreateSchema = z.object({
   name:        z.string().min(1).max(60),
@@ -12,6 +15,8 @@ const CreateSchema = z.object({
   category:    z.enum(CATEGORY_VALUES),
   icon_key:    z.string().min(1).max(60),
   price:       z.number().int().min(1),
+  // null/fehlend = automatisch aus dem Preis (PROJ-32)
+  rarity_override: z.enum(RARITY_VALUES).nullable().optional(),
 })
 
 export async function GET() {
@@ -25,7 +30,7 @@ export async function GET() {
   const [itemsResult, ownedCountsResult] = await Promise.all([
     supabase
       .from('shop_items')
-      .select('id, name, description, icon, category, icon_key, price, is_active, sort_order')
+      .select('id, name, description, icon, category, icon_key, price, rarity_override, is_active, sort_order')
       .eq('department_id', departmentId)
       .order('sort_order'),
     supabase.from('user_shop_items').select('item_id'),
@@ -44,6 +49,7 @@ export async function GET() {
 
   const items = (itemsResult.data ?? []).map((item) => ({
     ...item,
+    rarity: getEffectiveRarity(item.price as number, item.rarity_override as string | null),
     purchase_count: purchaseCounts.get(item.id) ?? 0,
   }))
 

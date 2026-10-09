@@ -8,6 +8,7 @@ import type { OwnedHofItem } from '@/components/hof-item-tile'
 import { HofSceneDefault } from '@/components/hof-scene-default'
 import { HofSceneTourismus } from '@/components/hof-scene-tourismus'
 import { hofCategoryLabel } from '@/lib/hof-icons'
+import { hofRarityLabel } from '@/lib/hof-rarity'
 
 interface ShopItemsResponse {
   owned_items: OwnedHofItem[]
@@ -75,6 +76,7 @@ export function HofGallery() {
               <li key={item.id}>
                 {item.name}
                 {item.category && ` — ${hofCategoryLabel(item.category, departmentCode)}`}
+                {item.rarity && item.rarity !== 'standard' && ` — ${hofRarityLabel(item.rarity)}`}
               </li>
             ))}
           </ul>

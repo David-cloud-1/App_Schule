@@ -346,6 +346,113 @@ const IconUrkunde: IconComponent = (props) =>
     </>,
   )
 
+// ── PROJ-32: Erweiterung auf mind. 8 je Kategorie ───────────────────────────
+
+const IconSegelboot: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <polygon points="23,6 23,30 8,30" fill="#F9FAFB" />
+      <polygon points="26,12 26,30 38,30" fill="#1CB0F6" />
+      <rect x={22.5} y={5} width={1.8} height={27} fill="#9CA3AF" />
+      <path d="M6 32 H42 L37 40 H11 Z" fill="#FF4B4B" />
+      <path d="M2 44 Q8 41 14 44 T26 44 T38 44 T46 44" fill="none" stroke="#1CB0F6" strokeWidth={2} />
+    </>,
+  )
+
+const IconSeilbahn: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <line x1={2} y1={10} x2={46} y2={6} stroke="#9CA3AF" strokeWidth={1.6} />
+      <line x1={24} y1={8.3} x2={24} y2={18} stroke="#9CA3AF" strokeWidth={1.6} />
+      <rect x={13} y={18} width={22} height={17} rx={3} fill="#FF9600" />
+      <rect x={16} y={21} width={7} height={8} rx={1} fill="#1CB0F6" />
+      <rect x={25} y={21} width={7} height={8} rx={1} fill="#1CB0F6" />
+      <rect x={13} y={32} width={22} height={2.5} fill="#111827" opacity={0.3} />
+      <polygon points="4,44 20,36 30,44" fill="#4B5563" />
+      <polygon points="22,44 36,34 46,44" fill="#374151" />
+    </>,
+  )
+
+const IconBerghuette: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <polygon points="24,6 44,24 4,24" fill="#B45309" />
+      <rect x={9} y={24} width={30} height={17} fill="#8B5A2B" />
+      <rect x={20} y={29} width={8} height={12} rx={1} fill="#111827" />
+      <rect x={11} y={28} width={6} height={6} rx={1} fill="#FFD700" />
+      <rect x={31} y={28} width={6} height={6} rx={1} fill="#FFD700" />
+      <rect x={31} y={9} width={5} height={9} fill="#4B5563" />
+      <polygon points="14,15 24,6 34,15" fill="#F9FAFB" opacity={0.9} />
+    </>,
+  )
+
+const IconZelt: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <polygon points="24,8 44,40 4,40" fill="#58CC02" />
+      <polygon points="24,8 33,40 15,40" fill="#3E9A00" />
+      <polygon points="24,24 29,40 19,40" fill="#111827" />
+      <line x1={24} y1={8} x2={24} y2={4} stroke="#9CA3AF" strokeWidth={1.6} />
+      <polygon points="24,4 31,6 24,8" fill="#FF4B4B" />
+      <rect x={2} y={40} width={44} height={3} rx={1.5} fill="#8B5A2B" />
+    </>,
+  )
+
+const IconFotokamera: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={5} y={14} width={38} height={26} rx={5} fill="#374151" />
+      <rect x={15} y={9} width={12} height={6} rx={2} fill="#4B5563" />
+      <circle cx={24} cy={27} r={9} fill="#111827" />
+      <circle cx={24} cy={27} r={6} fill="#1CB0F6" />
+      <circle cx={21.5} cy={24.5} r={1.8} fill="#F9FAFB" opacity={0.8} />
+      <circle cx={37} cy={19} r={1.8} fill="#FF4B4B" />
+    </>,
+  )
+
+const IconSonnenbrille: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <path d="M5 20 H43" stroke="#111827" strokeWidth={3} strokeLinecap="round" />
+      <rect x={5} y={20} width={16} height={12} rx={5} fill="#111827" />
+      <rect x={27} y={20} width={16} height={12} rx={5} fill="#111827" />
+      <path d="M21 23 Q24 20 27 23" fill="none" stroke="#111827" strokeWidth={2.4} />
+      <path d="M8 23 L14 23 L10 29 Z" fill="#1CB0F6" opacity={0.5} />
+      <path d="M30 23 L36 23 L32 29 Z" fill="#1CB0F6" opacity={0.5} />
+      <path d="M5 21 L2 16 M43 21 L46 16" stroke="#111827" strokeWidth={2.4} strokeLinecap="round" />
+    </>,
+  )
+
+const IconSilberMedaille: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <polygon points="14,4 22,4 25,18 18,20" fill="#1CB0F6" />
+      <polygon points="34,4 26,4 23,18 30,20" fill="#F9FAFB" />
+      <circle cx={24} cy={30} r={12} fill="#D1D5DB" />
+      <circle cx={24} cy={30} r={8.5} fill="#9CA3AF" opacity={0.5} />
+      <path d="M20 26 H25 Q28 26 28 29 T25 32 H20 M20 32 V37" fill="none" stroke="#F9FAFB" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </>,
+  )
+
+const IconEhrenschleife: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <polygon points="15,26 9,44 17,40 22,44 24,28" fill="#FF4B4B" />
+      <polygon points="33,26 39,44 31,40 26,44 24,28" fill="#1CB0F6" />
+      <circle cx={24} cy={20} r={13} fill="#FFD700" />
+      <circle cx={24} cy={20} r={9} fill="#FF9600" />
+      <path d="M24 13 L26 18 L31 18.4 L27.2 21.6 L28.4 26.5 L24 23.8 L19.6 26.5 L20.8 21.6 L17 18.4 L22 18 Z" fill="#FFD700" />
+    </>,
+  )
+
 // ── Tourismus-Set ────────────────────────────────────────────────────────────
 
 export const TOUR_ICONS: HofIconDef[] = [
@@ -355,6 +462,8 @@ export const TOUR_ICONS: HofIconDef[] = [
   { key: 'kreuzfahrtschiff', label: 'Kreuzfahrtschiff', category: 'fahrzeuge', Svg: IconKreuzfahrtschiff },
   { key: 'mietwagen', label: 'Mietwagen', category: 'fahrzeuge', Svg: IconMietwagen },
   { key: 'heissluftballon', label: 'Heißluftballon', category: 'fahrzeuge', Svg: IconHeissluftballon },
+  { key: 'segelboot', label: 'Segelboot', category: 'fahrzeuge', Svg: IconSegelboot },
+  { key: 'seilbahn', label: 'Seilbahn', category: 'fahrzeuge', Svg: IconSeilbahn },
 
   { key: 'hotel', label: 'Strandhotel', category: 'gebaeude_deko', Svg: IconHotel },
   { key: 'reisebuero', label: 'Reisebüro', category: 'gebaeude_deko', Svg: IconReisebuero },
@@ -362,6 +471,8 @@ export const TOUR_ICONS: HofIconDef[] = [
   { key: 'leuchtturm', label: 'Leuchtturm', category: 'gebaeude_deko', Svg: IconLeuchtturm },
   { key: 'flughafen-tower', label: 'Flughafen-Tower', category: 'gebaeude_deko', Svg: IconFlughafenTower },
   { key: 'sonnenschirm', label: 'Sonnenschirm', category: 'gebaeude_deko', Svg: IconSonnenschirm },
+  { key: 'berghuette', label: 'Berghütte', category: 'gebaeude_deko', Svg: IconBerghuette },
+  { key: 'zelt', label: 'Zelt', category: 'gebaeude_deko', Svg: IconZelt },
 
   { key: 'koffer', label: 'Reisekoffer', category: 'ladung_ausstattung', Svg: IconKoffer },
   { key: 'globus', label: 'Globus', category: 'ladung_ausstattung', Svg: IconGlobus },
@@ -369,6 +480,8 @@ export const TOUR_ICONS: HofIconDef[] = [
   { key: 'rucksack', label: 'Rucksack', category: 'ladung_ausstattung', Svg: IconRucksack },
   { key: 'kompass', label: 'Kompass', category: 'ladung_ausstattung', Svg: IconKompass },
   { key: 'bordkarte', label: 'Bordkarte', category: 'ladung_ausstattung', Svg: IconBordkarte },
+  { key: 'fotokamera', label: 'Fotokamera', category: 'ladung_ausstattung', Svg: IconFotokamera },
+  { key: 'sonnenbrille', label: 'Sonnenbrille', category: 'ladung_ausstattung', Svg: IconSonnenbrille },
 
   { key: 'weltreise-pokal', label: 'Weltreise-Pokal', category: 'abzeichen_trophaeen', Svg: IconWeltreisePokal },
   { key: 'gold-medaille', label: 'Goldmedaille', category: 'abzeichen_trophaeen', Svg: IconGoldMedaille },
@@ -376,4 +489,6 @@ export const TOUR_ICONS: HofIconDef[] = [
   { key: 'globetrotter-stern', label: 'Globetrotter-Stern', category: 'abzeichen_trophaeen', Svg: IconGlobetrotterStern },
   { key: 'wimpel', label: 'Wimpel', category: 'abzeichen_trophaeen', Svg: IconWimpel },
   { key: 'urkunde', label: 'Urkunde', category: 'abzeichen_trophaeen', Svg: IconUrkunde },
+  { key: 'silber-medaille', label: 'Silbermedaille', category: 'abzeichen_trophaeen', Svg: IconSilberMedaille },
+  { key: 'ehrenschleife', label: 'Ehrenschleife', category: 'abzeichen_trophaeen', Svg: IconEhrenschleife },
 ]

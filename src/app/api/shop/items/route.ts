@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { getDepartmentOfUser } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
+import { getEffectiveRarity } from '@/lib/hof-rarity'
 
 export async function GET() {
   const supabase = await createClient()
@@ -18,7 +19,7 @@ export async function GET() {
   const [itemsResult, ownedResult, profileResult] = await Promise.all([
     supabase
       .from('shop_items')
-      .select('id, name, description, icon, category, icon_key, price')
+      .select('id, name, description, icon, category, icon_key, price, rarity_override')
       .eq('is_active', true)
       .eq('department_id', departmentId)
       .order('sort_order'),
@@ -40,8 +41,11 @@ export async function GET() {
 
   const ownedIds = new Set((ownedResult.data ?? []).map((r) => r.item_id as string))
 
-  const items = (itemsResult.data ?? []).map((item) => ({
+  // Seltenheit (PROJ-32) wird hier einmal berechnet, damit Shop und Hof-Szene
+  // nie unterschiedlich rechnen; der Admin-Wert selbst geht nicht raus.
+  const items = (itemsResult.data ?? []).map(({ rarity_override, ...item }) => ({
     ...item,
+    rarity: getEffectiveRarity(item.price as number, rarity_override as string | null),
     owned: ownedIds.has(item.id),
   }))
 
@@ -51,7 +55,7 @@ export async function GET() {
   // client, strictly scoped to this user's own purchases.
   const { data: ownedRows } = await createServiceClient()
     .from('user_shop_items')
-    .select('purchased_at, shop_items(id, name, description, icon, category, icon_key)')
+    .select('purchased_at, shop_items(id, name, description, icon, category, icon_key, price, rarity_override)')
     .eq('user_id', user.id)
     .order('purchased_at')
 
@@ -62,11 +66,19 @@ export async function GET() {
     icon: string | null
     category: string
     icon_key: string
+    price: number
+    rarity_override: string | null
   }
 
+  // Seltenheit folgt dem aktuellen Preis des Items, nicht dem eingefrorenen
+  // Kaufpreis (PROJ-32).
   const owned_items = (ownedRows ?? [])
     .map((r) => r.shop_items as unknown as OwnedShopItem | null)
     .filter((i): i is OwnedShopItem => i != null)
+    .map(({ price, rarity_override, ...item }) => ({
+      ...item,
+      rarity: getEffectiveRarity(price, rarity_override),
+    }))
 
   return NextResponse.json({
     items,

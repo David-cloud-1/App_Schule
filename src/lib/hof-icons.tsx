@@ -355,6 +355,140 @@ const IconKrone: IconComponent = (props) =>
     </>,
   )
 
+// ── PROJ-32: Erweiterung auf mind. 8 je Kategorie ───────────────────────────
+
+const IconKuehltransporter: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={3} y={14} width={26} height={19} rx={2} fill="#F9FAFB" />
+      <rect x={29} y={20} width={14} height={13} rx={2} fill="#1CB0F6" />
+      <rect x={32} y={23} width={7} height={5} rx={1} fill="#F9FAFB" />
+      <path d="M16 18 V29 M10.5 21 L21.5 26 M10.5 26 L21.5 21" stroke="#1CB0F6" strokeWidth={1.6} strokeLinecap="round" />
+      <circle cx={11} cy={35} r={4} fill="#111827" />
+      <circle cx={11} cy={35} r={1.6} fill="#9CA3AF" />
+      <circle cx={35} cy={35} r={4} fill="#111827" />
+      <circle cx={35} cy={35} r={1.6} fill="#9CA3AF" />
+    </>,
+  )
+
+const IconLieferwagenGelb: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <path d="M4 33 V16 Q4 13 7 13 H28 L40 24 V33 Z" fill="#FFD700" />
+      <path d="M30 16 L37 24 H30 Z" fill="#1CB0F6" />
+      <rect x={8} y={17} width={14} height={8} rx={1} fill="#111827" opacity={0.18} />
+      <rect x={4} y={29} width={36} height={2.5} fill="#B8860B" opacity={0.6} />
+      <circle cx={13} cy={35} r={4} fill="#111827" />
+      <circle cx={13} cy={35} r={1.6} fill="#9CA3AF" />
+      <circle cx={32} cy={35} r={4} fill="#111827" />
+      <circle cx={32} cy={35} r={1.6} fill="#9CA3AF" />
+    </>,
+  )
+
+const IconTieflader: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={4} y={22} width={12} height={12} rx={2} fill="#FF9600" />
+      <rect x={6} y={24} width={6} height={5} rx={1} fill="#1CB0F6" />
+      <rect x={16} y={30} width={28} height={4} rx={1} fill="#4B5563" />
+      <rect x={20} y={20} width={20} height={10} rx={1.5} fill="#58CC02" />
+      <rect x={24} y={14} width={10} height={6} rx={1} fill="#3E9A00" />
+      <circle cx={10} cy={36} r={3.5} fill="#111827" />
+      <circle cx={28} cy={37} r={3} fill="#111827" />
+      <circle cx={38} cy={37} r={3} fill="#111827" />
+    </>,
+  )
+
+const IconTankstelle: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={10} y={8} width={20} height={32} rx={3} fill="#FF4B4B" />
+      <rect x={14} y={12} width={12} height={9} rx={1.5} fill="#111827" />
+      <rect x={16} y={14} width={8} height={2.4} rx={1} fill="#58CC02" />
+      <path d="M30 16 H35 Q38 16 38 19 V32 Q38 35 41 35" fill="none" stroke="#9CA3AF" strokeWidth={2.2} strokeLinecap="round" />
+      <rect x={39} y={33} width={5} height={5} rx={1.5} fill="#374151" />
+      <rect x={6} y={40} width={28} height={3} rx={1} fill="#4B5563" />
+    </>,
+  )
+
+const IconFass: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <path d="M12 8 H36 Q40 24 36 40 H12 Q8 24 12 8 Z" fill="#B45309" />
+      <rect x={10} y={14} width={28} height={3.5} rx={1} fill="#9CA3AF" />
+      <rect x={10} y={30.5} width={28} height={3.5} rx={1} fill="#9CA3AF" />
+      <path d="M17 8 V40 M24 8 V40 M31 8 V40" stroke="#111827" strokeWidth={0.8} opacity={0.3} />
+      <ellipse cx={24} cy={8} rx={12} ry={3} fill="#D97706" />
+    </>,
+  )
+
+const IconGitterbox: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={7} y={10} width={34} height={28} rx={1.5} fill="none" stroke="#9CA3AF" strokeWidth={2.4} />
+      <path d="M7 19 H41 M7 28 H41 M16 10 V38 M24 10 V38 M32 10 V38" stroke="#9CA3AF" strokeWidth={1.2} />
+      <rect x={11} y={21} width={10} height={8} rx={1} fill="#FF9600" />
+      <rect x={24} y={24} width={12} height={9} rx={1} fill="#1CB0F6" />
+      <rect x={6} y={38} width={36} height={4} rx={1} fill="#8B5A2B" />
+    </>,
+  )
+
+const IconWarnweste: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <path d="M14 6 L20 6 L24 14 L28 6 L34 6 L40 14 L37 41 H11 L8 14 Z" fill="#FF9600" />
+      <path d="M20 6 L24 14 L28 6" fill="#111827" opacity={0.35} />
+      <rect x={10} y={26} width={28} height={4} fill="#F9FAFB" />
+      <rect x={9.5} y={33} width={29} height={4} fill="#F9FAFB" />
+      <path d="M17 14 V41 M31 14 V41" stroke="#F9FAFB" strokeWidth={3} />
+    </>,
+  )
+
+const IconLorbeerkranz: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <path d="M24 42 C10 38 6 24 11 12" fill="none" stroke="#58CC02" strokeWidth={3} strokeLinecap="round" />
+      <path d="M24 42 C38 38 42 24 37 12" fill="none" stroke="#58CC02" strokeWidth={3} strokeLinecap="round" />
+      <ellipse cx={9} cy={30} rx={4} ry={2.2} fill="#58CC02" transform="rotate(-50 9 30)" />
+      <ellipse cx={8} cy={21} rx={4} ry={2.2} fill="#58CC02" transform="rotate(-20 8 21)" />
+      <ellipse cx={39} cy={30} rx={4} ry={2.2} fill="#58CC02" transform="rotate(50 39 30)" />
+      <ellipse cx={40} cy={21} rx={4} ry={2.2} fill="#58CC02" transform="rotate(20 40 21)" />
+      <path d="M24 12 L27 20 L35 20.6 L29 25.6 L31 33.6 L24 29 L17 33.6 L19 25.6 L13 20.6 L21 20 Z" fill="#FFD700" />
+    </>,
+  )
+
+const IconUrkundeSped: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <rect x={6} y={8} width={36} height={26} rx={2} fill="#F9FAFB" />
+      <rect x={6} y={8} width={36} height={26} rx={2} fill="none" stroke="#FFD700" strokeWidth={2} />
+      <rect x={13} y={14} width={22} height={2.5} rx={1} fill="#374151" />
+      <rect x={16} y={19} width={16} height={2} rx={1} fill="#9CA3AF" />
+      <rect x={13} y={24} width={10} height={4} rx={1} fill="#4B5563" />
+      <circle cx={33} cy={34} r={5} fill="#58CC02" />
+      <polygon points="30,37 28,45 33,42 38,45 36,37" fill="#58CC02" />
+    </>,
+  )
+
+const IconBlitzAbzeichen: IconComponent = (props) =>
+  base(
+    props,
+    <>
+      <circle cx={24} cy={24} r={19} fill="#58CC02" />
+      <circle cx={24} cy={24} r={15} fill="#111827" opacity={0.25} />
+      <polygon points="27,6 14,26 22,26 19,42 34,20 25,20" fill="#FFD700" />
+    </>,
+  )
+
 // ── Icon-Sets je Fachbereichs-Code ───────────────────────────────────────────
 
 const SPED_ICONS: HofIconDef[] = [
@@ -363,6 +497,9 @@ const SPED_ICONS: HofIconDef[] = [
   { key: 'gabelstapler', label: 'Gabelstapler', category: 'fahrzeuge', Svg: IconGabelstapler },
   { key: 'anhaenger', label: 'Beladener Anhänger', category: 'fahrzeuge', Svg: IconAnhaenger },
   { key: 'kleinlaster-gruen', label: 'Grüner Kleinlaster', category: 'fahrzeuge', Svg: IconKleinlasterGruen },
+  { key: 'kuehltransporter', label: 'Kühltransporter', category: 'fahrzeuge', Svg: IconKuehltransporter },
+  { key: 'lieferwagen-gelb', label: 'Gelber Lieferwagen', category: 'fahrzeuge', Svg: IconLieferwagenGelb },
+  { key: 'tieflader', label: 'Tieflader', category: 'fahrzeuge', Svg: IconTieflader },
 
   { key: 'lagerhalle', label: 'Lagerhalle', category: 'gebaeude_deko', Svg: IconLagerhalle },
   { key: 'buerogebaeude', label: 'Bürogebäude', category: 'gebaeude_deko', Svg: IconBuerogebaeude },
@@ -371,18 +508,25 @@ const SPED_ICONS: HofIconDef[] = [
   { key: 'strassenlaterne', label: 'Straßenlaterne', category: 'gebaeude_deko', Svg: IconStrassenlaterne },
   { key: 'ampel', label: 'Ampel-Deko', category: 'gebaeude_deko', Svg: IconAmpel },
   { key: 'wachhund', label: 'Wachhund', category: 'gebaeude_deko', Svg: IconWachhund },
+  { key: 'tankstelle', label: 'Tankstelle', category: 'gebaeude_deko', Svg: IconTankstelle },
 
   { key: 'europalette', label: 'Europalette', category: 'ladung_ausstattung', Svg: IconEuropalette },
   { key: 'container', label: 'Container', category: 'ladung_ausstattung', Svg: IconContainer },
   { key: 'kiste', label: 'Holzkiste', category: 'ladung_ausstattung', Svg: IconKiste },
   { key: 'schutzhelm', label: 'Schutzhelm', category: 'ladung_ausstattung', Svg: IconSchutzhelm },
   { key: 'sackkarre', label: 'Sackkarre', category: 'ladung_ausstattung', Svg: IconSackkarre },
+  { key: 'fass', label: 'Fass', category: 'ladung_ausstattung', Svg: IconFass },
+  { key: 'gitterbox', label: 'Gitterbox', category: 'ladung_ausstattung', Svg: IconGitterbox },
+  { key: 'warnweste', label: 'Warnweste', category: 'ladung_ausstattung', Svg: IconWarnweste },
 
   { key: 'pokal', label: 'Pokal', category: 'abzeichen_trophaeen', Svg: IconPokal },
   { key: 'medaille', label: 'Medaille', category: 'abzeichen_trophaeen', Svg: IconMedaille },
   { key: 'schild-abzeichen', label: 'Schild-Abzeichen', category: 'abzeichen_trophaeen', Svg: IconSchildAbzeichen },
   { key: 'stern-abzeichen', label: 'Stern-Abzeichen', category: 'abzeichen_trophaeen', Svg: IconSternAbzeichen },
   { key: 'krone', label: 'Krone', category: 'abzeichen_trophaeen', Svg: IconKrone },
+  { key: 'lorbeerkranz', label: 'Lorbeerkranz', category: 'abzeichen_trophaeen', Svg: IconLorbeerkranz },
+  { key: 'urkunde-sped', label: 'Urkunde', category: 'abzeichen_trophaeen', Svg: IconUrkundeSped },
+  { key: 'blitz-abzeichen', label: 'Blitz-Abzeichen', category: 'abzeichen_trophaeen', Svg: IconBlitzAbzeichen },
 ]
 
 const ICON_SETS: Record<string, HofIconDef[]> = {
