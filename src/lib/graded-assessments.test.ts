@@ -14,6 +14,8 @@ import {
   applyGrading,
   snapshotQuestionIds,
   csvEscape,
+  buildStudentReports,
+  type SessionRow,
 } from './graded-assessments'
 
 describe('validateGradingScale', () => {
@@ -159,8 +161,8 @@ describe('buildParticipantRows', () => {
         id: 's1', participant_name: 'Max Muster', started_at: '2026-01-01T08:00:00Z', ended_at: '2026-01-01T08:30:00Z',
         status: 'completed', excluded_from_grading: false,
         results_json: { parts: { '1': { questions: [
-          { type: 'multiple_choice', is_correct: true },
-          { type: 'multiple_choice', is_correct: true },
+          { id: 'q1', type: 'multiple_choice', is_correct: true },
+          { id: 'q2', type: 'multiple_choice', is_correct: true },
         ] } } },
       },
     ], 1, scale)
@@ -187,7 +189,7 @@ describe('gradeSnapshot', () => {
     expect(scored).toMatchObject({ points: 1, totalPoints: 2, percent: 50, grade: 4 })
     expect(part.questions[0]).toMatchObject({ is_correct: true, correct_option_id: 'a', student_answer: 'a', explanation: 'weil A' })
     expect(part.questions[1]).toMatchObject({ is_correct: false, correct_option_id: 'd', student_answer: 'c' })
-    expect(part.questions[1].answer_options.find((o) => o.id === 'd')?.is_correct).toBe(true)
+    expect((part.questions[1].answer_options.find((o) => o.id === 'd') as { is_correct: boolean } | undefined)?.is_correct).toBe(true)
   })
 
   it('keeps the participant-specific order of the snapshot', () => {
@@ -247,5 +249,69 @@ describe('csvEscape', () => {
 
   it('leaves ordinary names untouched', () => {
     expect(csvEscape('Anna Müller')).toBe('Anna Müller')
+  })
+})
+
+describe('buildStudentReports', () => {
+  const snapshot = [
+    { id: 'q1', question_text: 'Frage 1', type: 'multiple_choice', difficulty: 'easy', part: 1,
+      answer_options: [{ id: 'a', option_text: 'A', display_order: 2 }, { id: 'b', option_text: 'B', display_order: 1 }] },
+    { id: 'q2', question_text: 'Frage 2', type: 'multiple_choice', difficulty: 'easy', part: 1,
+      answer_options: [{ id: 'c', option_text: 'C', display_order: 1 }, { id: 'd', option_text: 'D', display_order: 2 }] },
+  ]
+  const key = new Map([
+    ['q1', { explanation: 'weil B', sampleAnswer: null, options: new Map([['a', false], ['b', true]]) }],
+    ['q2', { explanation: null, sampleAnswer: null, options: new Map([['c', true], ['d', false]]) }],
+  ])
+  const row = (id: string, name: string, answers: Record<string, string>, extra: Partial<SessionRow> = {}): SessionRow => ({
+    id,
+    participant_name: name,
+    started_at: '2026-10-01T08:00:00Z',
+    ended_at: '2026-10-01T08:30:00Z',
+    status: 'completed',
+    excluded_from_grading: false,
+    results_json: { parts: { '1': snapshot }, submitted_answers: answers } as unknown as SessionRow['results_json'],
+    ...extra,
+  })
+  const build = (rows: SessionRow[]) =>
+    buildStudentReports(applyGrading(rows, 1, key, IHK_DEFAULT_SCALE), 1, IHK_DEFAULT_SCALE)
+
+  it('marks correct, wrong and unanswered questions and sorts options by display order', () => {
+    const [report] = build([row('s1', 'Anna', { q1: 'a' })])
+    expect(report.questions.map((q) => q.result)).toEqual(['wrong', 'unanswered'])
+    expect(report.questions[0].options.map((o) => o.id)).toEqual(['b', 'a'])
+    expect(report.questions[0].options.find((o) => o.id === 'a')?.selected).toBe(true)
+    expect(report.questions[0].options.find((o) => o.id === 'b')?.isCorrect).toBe(true)
+    expect(report.questions[0].explanation).toBe('weil B')
+    expect(report.points).toBe(0)
+    expect(report.totalPoints).toBe(2)
+    expect(report.grade).toBe(6)
+  })
+
+  it('uses the same points and grade as the participant list', () => {
+    const rows = applyGrading([row('s1', 'Anna', { q1: 'b', q2: 'c' })], 1, key, IHK_DEFAULT_SCALE)
+    const [report] = buildStudentReports(rows, 1, IHK_DEFAULT_SCALE)
+    const [participant] = buildParticipantRows(rows, 1, IHK_DEFAULT_SCALE)
+    expect(report.points).toBe(participant.points)
+    expect(report.grade).toBe(participant.grade)
+    expect(report.grade).toBe(1)
+  })
+
+  it('leaves out in-progress attempts', () => {
+    const reports = build([row('s1', 'Anna', {}, { status: 'in_progress', ended_at: null }), row('s2', 'Ben', { q1: 'b' })])
+    expect(reports.map((r) => r.name)).toEqual(['Ben'])
+  })
+
+  it('shows excluded participants without grade and answers', () => {
+    const [report] = build([row('s1', 'Anna', { q1: 'b', q2: 'c' }, { excluded_from_grading: true })])
+    expect(report.excluded).toBe(true)
+    expect(report.grade).toBeNull()
+    expect(report.points).toBeNull()
+    expect(report.questions).toEqual([])
+  })
+
+  it('sorts alphabetically with German collation', () => {
+    const reports = build([row('s1', 'Zoe', {}), row('s2', 'Änne', {}), row('s3', 'Bernd', {})])
+    expect(reports.map((r) => r.name)).toEqual(['Änne', 'Bernd', 'Zoe'])
   })
 })

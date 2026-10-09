@@ -1,6 +1,6 @@
 # PROJ-28: Leistungsnachweis – Druck & Klassenauswertung
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-07
 **Last Updated:** 2026-10-07
 
@@ -179,7 +179,63 @@ Keine.
 **Noch nicht möglich:** Prüfung der echten Druckvorschau im Browser (Seitenumbrüche, Zeilenumbrüche langer Fragetexte, PDF-Speichern). In dieser Umgebung steht kein Browser zur Verfügung und `npm run dev` ist auf der Maschine nicht nutzbar (bekannt). Ein kurzer manueller Test durch den Nutzer wird vor `/qa` empfohlen: Nachweis mit mehreren Abgaben öffnen, Einzel-, Sammel- und Klassendruck in die Vorschau/als PDF schicken.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-10-09
+**Tester:** QA (AI) — Code gegen jedes Akzeptanzkriterium geprüft, `npm test` (703/703 grün, davon 14 neue Komponenten-Tests für die Druckblätter), `tsc` ohne Fehler, `npm run build` fehlerfrei (im getrennten Checkout des committeten Stands).
+**Nicht getestet:** die **echte Druckvorschau im Browser** (Seitenumbrüche, Zeilenumbrüche langer Fragetexte, „Als PDF speichern"), Responsive (375/768/1440 px) und Cross-Browser. Dev-Server und Browser-Tests sind auf dieser Maschine ausgeschlossen. Layout-Regeln (A4, `break-after-page`, `break-inside-avoid`, wiederholter Tabellenkopf) sind im Code vorhanden und per Test auf ihr Vorhandensein geprüft, aber nicht visuell.
+
+### Acceptance Criteria Status
+
+#### Einzelauswertung
+- [x] „Drucken / Als PDF" je abgegebenem Teilnehmer (Symbol in der Teilnehmerliste, nur bei `completed`)
+- [x] Kopf: Titel, Teil, Datum, Klarname, Punkte, Prozent, Note, Notenschlüssel (Test)
+- [x] Jede Frage mit gegebener und richtiger Antwort, Markierung richtig/falsch/nicht beantwortet in **Text und Symbol**, nicht nur Farbe (Test)
+- [x] Erklärungen nur auf Wunsch (Schalter, Standard aus; Test)
+- [x] A4 (`@page`), helle Darstellung auch bei Dark Mode (weißes Blatt, Admin-Kopfleiste/Hintergrund per `print:`-Varianten entfernt)
+- [x] Laufende Teilnehmer nicht druckbar (kein Symbol; Route antwortet 409), Ausgeschlossene als „Von der Wertung ausgeschlossen" statt Note (Test)
+- [x] Druckdialog-Knopf mit Hinweis zu „Als PDF speichern" und zu In-App-Browsern
+- [x] „Alle Einzelauswertungen": eine Seite je Teilnehmer (`break-after-page`, letzte ohne), alphabetisch mit deutscher Sortierung (Lib- und Komponenten-Test)
+
+#### Klassenauswertung
+- [x] Aktion im Tab „Teilnehmer" und „Notenspiegel"
+- [x] Kopf: Titel, Datum, Teil, gewertet/ausgeschlossen, Notenschlüssel (Test)
+- [x] Notenliste alphabetisch, Ausgeschlossene getrennt am Ende (Test)
+- [x] Statistik: Notenspiegel als Tabelle + Balken, Ø-Note (Dezimalkomma), Bestanden-Quote, beste/schlechteste Note, Ø-Prozent (Test)
+- [x] Fragenanalyse: Lösungsquote, schwächste zuerst (Test)
+- [x] Tabellenkopf wiederholt sich auf Folgeseiten (`table-header-group`, Test)
+- [x] CSV-Export unverändert
+
+#### Zugriff und Zeitpunkt
+- [x] Nur Admins des Fachbereichs: Reports-Route prüft den Bereich **vor** dem Service-Client-Zugriff (fremder Bereich → 404; Route-Tests); die Klassenauswertung nutzt die bestehenden, per RLS bereichsgebundenen Routen
+- [x] Druck erst ab einer Abgabe möglich (Knöpfe deaktiviert, Druckseite zeigt „Noch keine Abgaben"); vor der Freigabe an die Klasse trotzdem druckbar
+- [x] Nur unter `/admin`, in keiner Azubi-Ansicht (Admin-Proxy + `requireAdmin`)
+
+### Edge Cases Status
+- [x] Keine Abgaben → Aktion deaktiviert
+- [x] Es schreiben noch Schüler → Hinweis „x schreiben noch und fehlen hier" im Sammeldruck, „Zwischenstand" in der Klassenauswertung (Test)
+- [x] Lange Namen/Fragetexte werden umgebrochen (kein `truncate`)
+- [x] Frage nach dem Nachweis gelöscht → entfällt wie in der Benotung (bewusste Abweichung, siehe Backend-Notizen)
+- [x] Nichts beantwortet → Note nach Schlüssel, Antworten als „nicht beantwortet" (Test)
+- [x] Klarnamen nur hinter dem Admin-Login, kein Link, der Daten an Dritte öffnet
+- [ ] Druck-Vorschau der Seitenumbrüche bei 40 Teilnehmern — nicht visuell geprüft (siehe oben)
+
+### Security Audit Results
+- [x] Alle Routen verlangen Login + Admin-Rolle; Zod/UUID-Prüfung der `sessionId` (400 bei ungültig)
+- [x] Fachbereichsprüfung vor jedem Service-Client-Zugriff; fremder Bereich → 404 ohne Zugriff (Route-Test)
+- [x] Der Antwortschlüssel kommt nur in der Admin-Antwort vor, nie an Azubis
+- [x] Keine neue Abhängigkeit, keine Datenbank-Änderung, keine neuen Umgebungsvariablen
+
+### Bugs Found
+
+#### BUG-1: Abgegebener Teilnehmer ohne Wertung verschwindet aus der Klassen-Notenliste (Low, nicht behoben)
+- Hat eine Abgabe keine bewertbaren Fragen (nur möglich, wenn alle Fragen des Nachweises nachträglich gelöscht wurden), hat sie keine Note und erscheint weder in der Notenliste noch unter „ausgeschlossen". Im Normalfall (mindestens 5 Fragen beim Beitritt) tritt das nicht auf; nicht blockierend.
+
+### Summary
+- **Acceptance Criteria:** alle erfüllt, soweit ohne Browser prüfbar
+- **Bugs Found:** 1 (Low, akzeptiert)
+- **Security:** keine offenen Lücken
+- **Production Ready:** YES — mit der Empfehlung, nach dem Deploy einmal mit einem echten Nachweis die Druckvorschau zu öffnen (Einzel, Sammel, Klasse) und als PDF zu speichern. Es sind reine Admin-Seiten ohne Daten- oder Rechte-Änderung; das Risiko beschränkt sich auf die optische Darstellung beim Drucken.
+
 
 ## Deployment
 _To be added by /deploy_

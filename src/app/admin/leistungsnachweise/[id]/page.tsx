@@ -14,6 +14,7 @@ import {
   Loader2,
   Lock,
   PlayCircle,
+  Printer,
   Trash2,
   Unlock,
   Users,
@@ -256,6 +257,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   }
 
   const activeParticipants = (results?.participants ?? []).filter((p) => !p.excluded)
+  const hasSubmissions = (results?.participants ?? []).some((p) => p.status === 'completed')
   const gradeCounts = results?.gradeDistribution.counts ?? {}
   const showFocus = Boolean(results?.focusTracking)
   const conspicuousCount = (results?.participants ?? []).filter((p) => p.focus?.conspicuous).length
@@ -412,7 +414,19 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsList>
 
         <TabsContent value="participants" className="mt-4">
-          <div className="flex justify-end mb-2">
+          <div className="flex flex-wrap justify-end gap-2 mb-2">
+            <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+                <Printer size={14} className="mr-1.5" />
+                Klassenauswertung drucken
+              </Button>
+            </Link>
+            <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`}>
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+                <Printer size={14} className="mr-1.5" />
+                Alle Einzelauswertungen
+              </Button>
+            </Link>
             <a href={`/api/admin/assessments/${id}/export`} download>
               <Button variant="outline" size="sm" className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
                 <Download size={14} className="mr-1.5" />
@@ -443,12 +457,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   <TableHead className="text-[#9CA3AF]">Abgegeben</TableHead>
                   {showFocus && <TableHead className="text-[#9CA3AF]">Fokus</TableHead>}
                   <TableHead className="text-[#9CA3AF]">Zählt</TableHead>
+                  <TableHead className="text-[#9CA3AF]"><span className="sr-only">Drucken</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!results || results.participants.length === 0 ? (
                   <TableRow className="border-[#4B5563]">
-                    <TableCell colSpan={showFocus ? 8 : 7} className="text-center text-[#9CA3AF] py-10 flex flex-col items-center gap-2">
+                    <TableCell colSpan={showFocus ? 9 : 8} className="text-center text-[#9CA3AF] py-10 flex flex-col items-center gap-2">
                       <Users size={28} className="text-[#374151]" />
                       Noch niemand beigetreten.
                     </TableCell>
@@ -481,10 +496,21 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                           aria-label="Zählt in der Wertung"
                         />
                       </TableCell>
+                      <TableCell>
+                        {p.status === 'completed' ? (
+                          <Link
+                            href={`/admin/leistungsnachweise/${id}/druck/einzeln?sessionId=${p.sessionId}`}
+                            aria-label={`Einzelauswertung von ${p.name} drucken`}
+                            className="inline-flex items-center justify-center size-9 rounded-lg text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151]"
+                          >
+                            <Printer size={16} />
+                          </Link>
+                        ) : null}
+                      </TableCell>
                     </TableRow>
                     {showFocus && expandedFocus === p.sessionId && (
                       <TableRow className="border-[#4B5563] bg-[#111827]/60 hover:bg-[#111827]/60">
-                        <TableCell colSpan={8} className="py-3">
+                        <TableCell colSpan={9} className="py-3">
                           <FocusDetailPanel assessmentId={id} sessionId={p.sessionId} />
                         </TableCell>
                       </TableRow>
@@ -498,6 +524,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsContent>
 
         <TabsContent value="grades" className="mt-4">
+          <div className="flex justify-end mb-2">
+            <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+                <Printer size={14} className="mr-1.5" />
+                Klassenauswertung drucken
+              </Button>
+            </Link>
+          </div>
           <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-4">
             {!results || activeParticipants.length === 0 ? (
               <p className="text-center text-[#9CA3AF] py-8">Noch keine gewerteten Teilnahmen.</p>

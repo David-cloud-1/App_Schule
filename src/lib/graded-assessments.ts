@@ -282,3 +282,86 @@ export function shuffle<T>(items: T[]): T[] {
   }
   return arr
 }
+
+export type StudentReportQuestion = {
+  id: string
+  text: string
+  result: 'correct' | 'wrong' | 'unanswered'
+  explanation: string | null
+  options: { id: string; text: string; isCorrect: boolean; selected: boolean }[]
+}
+
+export type StudentReport = {
+  sessionId: string
+  name: string
+  submittedAt: string | null
+  excluded: boolean
+  points: number | null
+  totalPoints: number | null
+  percent: number | null
+  grade: number | null
+  questions: StudentReportQuestion[]
+}
+
+/**
+ * Einzelauswertungen für die Druckansicht (PROJ-28). Erwartet bereits
+ * bewertete Zeilen (`applyGrading`), damit Note und Punkte exakt dieselben
+ * sind wie in Teilnehmerliste und CSV. Laufende Versuche fehlen (noch nichts
+ * zu drucken); ausgeschlossene Teilnehmer erscheinen ohne Note und Antworten.
+ * Sortiert nach Namen, damit der Sammeldruck alphabetisch läuft.
+ */
+export function buildStudentReports(
+  gradedRows: SessionRow[],
+  part: number,
+  scale: GradeBoundary[],
+): StudentReport[] {
+  const partKey = String(part)
+  const participants = buildParticipantRows(gradedRows, part, scale)
+  const reports: StudentReport[] = []
+
+  gradedRows.forEach((row, i) => {
+    if (row.status === 'in_progress') return
+    const p = participants[i]
+    if (row.excluded_from_grading) {
+      reports.push({
+        sessionId: row.id,
+        name: p.name,
+        submittedAt: p.submittedAt,
+        excluded: true,
+        points: null,
+        totalPoints: null,
+        percent: null,
+        grade: null,
+        questions: [],
+      })
+      return
+    }
+
+    const graded = (row.results_json?.parts?.[partKey]?.questions ?? []) as unknown as GradedQuestion[]
+    const questions: StudentReportQuestion[] = graded
+      .filter((q) => q.type === 'multiple_choice')
+      .map((q) => ({
+        id: q.id,
+        text: q.question_text,
+        result: q.student_answer == null ? 'unanswered' : q.is_correct ? 'correct' : 'wrong',
+        explanation: q.explanation ?? null,
+        options: [...q.answer_options]
+          .sort((a, b) => a.display_order - b.display_order)
+          .map((o) => ({ id: o.id, text: o.option_text, isCorrect: o.is_correct, selected: q.student_answer === o.id })),
+      }))
+
+    reports.push({
+      sessionId: row.id,
+      name: p.name,
+      submittedAt: p.submittedAt,
+      excluded: false,
+      points: p.points,
+      totalPoints: p.totalPoints,
+      percent: p.percent,
+      grade: p.grade,
+      questions,
+    })
+  })
+
+  return reports.sort((a, b) => a.name.localeCompare(b.name, 'de'))
+}

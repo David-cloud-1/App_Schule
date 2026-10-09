@@ -32,8 +32,8 @@ export default async function AdminLayout({
 
   return (
     <AdminRoleProvider value={{ role: profile.role, isSuperAdmin }}>
-      <div className="min-h-screen bg-[#111827]">
-        <header className="bg-[#1F2937] border-b border-[#4B5563] sticky top-0 z-20">
+      <div className="min-h-screen bg-[#111827] print:min-h-0 print:bg-white">
+        <header className="bg-[#1F2937] border-b border-[#4B5563] sticky top-0 z-20 print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <Link href="/" className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
@@ -58,7 +58,7 @@ export default async function AdminLayout({
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 print:max-w-none print:p-0">{children}</main>
 
         <Toaster />
       </div>
