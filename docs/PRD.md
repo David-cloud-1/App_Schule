@@ -65,6 +65,8 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-33: Echte Hof-Illustration (Spedition & Tourismus) | Planned |
 | P1 | PROJ-34: „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | Planned |
 | P1 | PROJ-35: „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Planned |
+| P1 | PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Planned |
+| P1 | PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
