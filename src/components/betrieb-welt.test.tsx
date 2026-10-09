@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { BetriebWelt, type PlatziertesItem } from './betrieb-welt'
+import { BetriebWelt, type FigurAnzeige, type PlatziertesItem } from './betrieb-welt'
 import { gitterGroesse, weltGrenzen } from '@/lib/betrieb-welt'
 
 const item = (over: Partial<PlatziertesItem> & { id: string }): PlatziertesItem => ({
@@ -186,5 +186,76 @@ describe('BetriebWelt (PROJ-34)', () => {
     expect(container.querySelectorAll('[data-item]').length).toBe(2)
     const sprites = [...container.querySelectorAll('defs image')].filter((i) => /s\d+$/.test(i.id))
     expect(sprites.length).toBe(2)
+  })
+
+  describe('Figuren (PROJ-37)', () => {
+    const fig = (over: Partial<FigurAnzeige> & { id: string }): FigurAnzeige => ({
+      art: 'hund',
+      x: 1,
+      y: 1,
+      blick: 'rechts',
+      phase: 0,
+      laeuft: false,
+      tier: true,
+      ...over,
+    })
+
+    it('draws no figures by default (preview stays still)', () => {
+      const { container } = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} />)
+      expect(container.querySelectorAll('[data-figur]').length).toBe(0)
+    })
+
+    it('draws each figure once and marks animals', () => {
+      const { container } = render(
+        <BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'a' }), fig({ id: 'b', art: 'arbeiter', tier: false, x: 2, y: 2 })]} />,
+      )
+      expect(container.querySelectorAll('[data-figur]').length).toBe(2)
+      expect(container.querySelectorAll('[data-tier]').length).toBe(1)
+    })
+
+    it('defines each figure picture only once, however many figures share it', () => {
+      const viele = Array.from({ length: 6 }, (_, i) => fig({ id: `h${i}`, x: i % 4, y: Math.floor(i / 4) }))
+      const { container } = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={viele} />)
+      expect(container.querySelectorAll('[data-figur] use').length).toBe(6)
+      const defs = [...container.querySelectorAll('defs image')].filter((i) => /f\d+$/.test(i.id))
+      expect(defs.length).toBe(1)
+    })
+
+    it('draws a figure behind a building that stands in front of it, and in front of one behind it', () => {
+      const { container } = render(
+        <BetriebWelt
+          departmentCode="SPED"
+          seite={5}
+          items={[item({ id: 'haus', iconKey: 'lagerhalle', x: 2, y: 2 })]}
+          figuren={[fig({ id: 'hinten', x: 1, y: 1 }), fig({ id: 'vorn', x: 3, y: 3 })]}
+        />,
+      )
+      const reihenfolge = [...container.querySelectorAll('svg > [data-item], svg > [data-figur]')].map((e) => e.getAttribute('data-item') ?? e.getAttribute('data-figur'))
+      expect(reihenfolge).toEqual(['hinten', 'haus', 'vorn'])
+    })
+
+    it('places a figure between two tiles by interpolating its position', () => {
+      const a = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'x', x: 1, y: 1 })]} />)
+      const b = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'x', x: 2, y: 1 })]} />)
+      const c = render(<BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'x', x: 1.5, y: 1 })]} />)
+      const tx = (el: HTMLElement) => Number(/translate\(([-\d.]+)px/.exec(el.querySelector<SVGGElement>('[data-figur]')!.getAttribute('style')!)![1])
+      expect(Math.abs(tx(c.container) - (tx(a.container) + tx(b.container)) / 2)).toBeLessThan(0.2)
+    })
+
+    it('shows a heart only for the figure that was just tapped', () => {
+      const { container } = render(
+        <BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'a', reaktion: true }), fig({ id: 'b', x: 2 })]} />,
+      )
+      expect(container.querySelectorAll('.betrieb-herz').length).toBe(1)
+    })
+
+    it('smooths walking with a short transition only while the figure walks', () => {
+      const { container } = render(
+        <BetriebWelt departmentCode="SPED" seite={4} items={[]} figuren={[fig({ id: 'geht', laeuft: true }), fig({ id: 'steht', x: 2 })]} />,
+      )
+      const style = (id: string) => container.querySelector(`[data-figur="${id}"]`)!.getAttribute('style')!
+      expect(style('geht')).toContain('transition')
+      expect(style('steht')).not.toContain('transition')
+    })
   })
 })

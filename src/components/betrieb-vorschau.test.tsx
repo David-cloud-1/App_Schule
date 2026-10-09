@@ -15,6 +15,7 @@ const item = (id: string, over: Partial<BetriebStand['items'][number]> = {}): Be
   rarity: 'standard',
   x: null,
   y: null,
+  lebewesen: false,
   ...over,
 })
 

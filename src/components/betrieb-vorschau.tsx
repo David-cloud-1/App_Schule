@@ -66,7 +66,7 @@ export function BetriebVorschau() {
           <ul className="sr-only">
             {stand.items.map((i) => (
               <li key={i.id}>
-                {i.name} – {i.x === null ? 'im Lager' : 'steht im Betrieb'}
+                {i.name} – {i.lebewesen ? 'läuft frei herum' : i.x === null ? 'im Lager' : 'steht im Betrieb'}
                 {i.rarity !== 'standard' && ` – ${hofRarityLabel(i.rarity)}`}
               </li>
             ))}
@@ -89,8 +89,8 @@ export function BetriebVorschau() {
             className="flex items-center justify-between min-h-[44px] rounded-xl bg-[#111827] border border-[#4B5563] px-4 text-sm font-semibold text-[#F9FAFB] hover:bg-[#374151] transition-colors"
           >
             <span>
-              {stand.items.filter((i) => i.x !== null).length} von {stand.items.length} gesetzt
-              {stand.items.some((i) => i.x === null) && ' – Items warten im Lager'}
+              {stand.items.filter((i) => i.x !== null).length} von {stand.items.filter((i) => !i.lebewesen).length} gesetzt
+              {stand.items.some((i) => i.x === null && !i.lebewesen) && ' – Items warten im Lager'}
             </span>
             <ChevronRight className="w-4 h-4 text-[#9CA3AF]" />
           </Link>

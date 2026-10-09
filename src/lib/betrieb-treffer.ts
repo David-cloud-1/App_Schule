@@ -1,4 +1,4 @@
-import { grundMitte, tiefe } from './betrieb-welt'
+import { grundMitte, kachelMitte, tiefe } from './betrieb-welt'
 import type { BetriebSprite } from './betrieb-sprites'
 
 /**
@@ -44,4 +44,30 @@ export function itemAnPunkt(items: TrefferItem[], wx: number, wy: number): strin
     // vorderstes zuerst
     .sort((a, b) => tiefe(b.x + 1, b.y + 1) - tiefe(a.x + 1, a.y + 1))
   return treffer[0]?.id ?? null
+}
+
+export interface FigurTreffer {
+  id: string
+  tier: boolean
+  /** Position in Kachelkoordinaten (Bruchteile während des Gehens). */
+  x: number
+  y: number
+}
+
+/** Radius um den Körper einer Figur, in dem ein Antippen sie trifft (Weltkoordinaten). */
+export const FIGUR_RADIUS = 30
+
+/**
+ * Welches Tier liegt unter dem Antipp-Punkt? (PROJ-37) Nur Tiere reagieren auf
+ * Antippen; Gäste und Personal lassen das Antippen durch auf Kachel und Item.
+ */
+export function tierAnPunkt(figuren: FigurTreffer[], wx: number, wy: number): string | null {
+  let best: { id: string; d: number } | null = null
+  for (const f of figuren) {
+    if (!f.tier) continue
+    const m = kachelMitte(f.x + 1, f.y + 1)
+    const d = Math.hypot(wx - m.x, wy - (m.y - 18))
+    if (d <= FIGUR_RADIUS && (!best || d < best.d)) best = { id: f.id, d }
+  }
+  return best?.id ?? null
 }

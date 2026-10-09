@@ -71,4 +71,14 @@ describe('Betriebs-Stand (PROJ-34)', () => {
     const viele = Array.from({ length: 60 }, (_, i) => kauf(`k${i}`))
     expect(baueBetriebStand(viele, []).bis_naechstes_land).toBeNull()
   })
+
+  it('marks animals as free-roaming: never stored, never placed, but they count for the land', () => {
+    const s = baueBetriebStand([kauf('a'), kauf('hund', { icon_key: 'hofhund' }), kauf('krebs', { icon_key: 'krebs' })], [{ item_id: 'hund', x: 1, y: 1 }])
+    const hund = s.items.find((i) => i.id === 'hund')!
+    expect(hund.lebewesen).toBe(true)
+    expect(hund.x).toBeNull() // auch ein (veralteter) Platzierungseintrag zählt nicht
+    expect(s.items.find((i) => i.id === 'krebs')!.lebewesen).toBe(true)
+    expect(s.items.find((i) => i.id === 'a')!.lebewesen).toBe(false)
+    expect(s.seite).toBe(landSeite(3))
+  })
 })

@@ -1,5 +1,6 @@
 import { itemsBisNaechstemLand, istImLand, landSeite } from './betrieb-land'
 import { getEffectiveRarity, type HofRarity } from './hof-rarity'
+import { istTierSchluessel } from './betrieb-figuren'
 
 /**
  * Stand von „Mein Betrieb" (PROJ-34): welche Items gehören dem Azubi, welche
@@ -36,9 +37,11 @@ export interface BetriebItem {
   icon_key: string
   icon: string | null
   rarity: HofRarity
-  /** null = liegt im Lager */
+  /** null = liegt im Lager (oder läuft frei, siehe `lebewesen`) */
   x: number | null
   y: number | null
+  /** Tiere werden nicht gesetzt: sie laufen frei im Gelände und liegen nie im Lager (PROJ-37). */
+  lebewesen: boolean
 }
 
 export interface BetriebStand {
@@ -58,7 +61,8 @@ export function baueBetriebStand(kaeufe: KaufZeile[], platzierungen: Platzierung
   const items = [...gueltig]
     .sort((a, b) => a.purchased_at.localeCompare(b.purchased_at))
     .map(({ shop_items: it }): BetriebItem => {
-      const p = platz.get(it.id)
+      const tier = istTierSchluessel(it.icon_key)
+      const p = tier ? undefined : platz.get(it.id)
       const steht = p != null && istImLand(p.x, p.y, seite)
       return {
         id: it.id,
@@ -70,6 +74,7 @@ export function baueBetriebStand(kaeufe: KaufZeile[], platzierungen: Platzierung
         rarity: getEffectiveRarity(it.price, it.rarity_override),
         x: steht ? p.x : null,
         y: steht ? p.y : null,
+        lebewesen: tier,
       }
     })
 

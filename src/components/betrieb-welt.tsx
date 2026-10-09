@@ -5,6 +5,8 @@ import { getBetriebSprite, type BetriebSprite } from '@/lib/betrieb-sprites'
 import { istImLand } from '@/lib/betrieb-land'
 import { baueKacheln, baueZaun, grundMitte, istNeueKachel, kachelMitte, tiefe, weltGrenzen, type BodenArt } from '@/lib/betrieb-welt'
 import type { HofRarity } from '@/lib/hof-rarity'
+import { figurBild, type Blick, type Phase } from '@/lib/hof-welt/figuren'
+import type { FigurArt } from '@/lib/betrieb-figuren'
 
 /**
  * „Mein Betrieb" als isometrische Welt (PROJ-34) — ein einziges SVG. Boden,
@@ -26,6 +28,21 @@ export interface PlatziertesItem {
   rarity?: HofRarity
 }
 
+/** Eine Figur in der Welt (PROJ-37): Tier, Gast oder Personal. */
+export interface FigurAnzeige {
+  id: string
+  art: FigurArt
+  /** Position in Kachelkoordinaten (Bruchteile während des Gehens). */
+  x: number
+  y: number
+  blick: Blick
+  phase: Phase
+  laeuft: boolean
+  tier: boolean
+  /** Zeigt kurz ein Herz (Tier wurde angetippt). */
+  reaktion?: boolean
+}
+
 interface Props {
   departmentCode: string
   /** Kantenlänge des Betriebsgrunds in Kacheln (siehe betrieb-land.ts). */
@@ -44,6 +61,8 @@ interface Props {
   frischId?: string | null
   /** Frühere Landgröße: das seither neue Land blendet sich ein. */
   wachstumVon?: number | null
+  /** Tiere, Gäste und Personal; ohne Angabe bleibt die Welt still. */
+  figuren?: FigurAnzeige[]
 }
 
 /** Motiv je Fachbereich: Spedition hat vorne eine Erdstraße, Tourismus eine Sand-Promenade. */
@@ -65,11 +84,14 @@ const RARITY_FARBE: Record<Exclude<HofRarity, 'standard'>, { stroke: string; fil
 
 const f1 = (n: number) => Math.round(n * 10) / 10
 
+/** Figuren sind etwas größer als ihre Zeichnung, damit sie auf dem Handy erkennbar bleiben. */
+const FIGUR_SKALA = 1.3
+
 function rautePunkte(mx: number, my: number, inset: number): string {
   return `${f1(mx)},${f1(my - TILE_H / 2 + inset)} ${f1(mx + TILE_W / 2 - inset * 2)},${f1(my)} ${f1(mx)},${f1(my + TILE_H / 2 - inset)} ${f1(mx - TILE_W / 2 + inset * 2)},${f1(my)}`
 }
 
-export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel, viewBox, svgRef, freieKacheln, ausgewaehltId, frischId, wachstumVon }: Props) {
+export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel, viewBox, svgRef, freieKacheln, ausgewaehltId, frischId, wachstumVon, figuren }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '')
   const grenzen = weltGrenzen(seite)
   const kacheln = baueKacheln(seite)
@@ -154,6 +176,34 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
       ),
     })
   }
+  // Figuren (PROJ-37): jedes Bild einmal in defs, Position per Transform (weiche Überblendung).
+  const figurIds = new Map<string, { id: string; bild: ReturnType<typeof figurBild> }>()
+  for (const f of figuren ?? []) {
+    const key = `${f.art}|${f.blick}|${f.phase}`
+    if (!figurIds.has(key)) figurIds.set(key, { id: `${uid}f${figurIds.size}`, bild: figurBild(f.art, f.blick, f.phase) })
+  }
+  for (const f of figuren ?? []) {
+    const eintrag = figurIds.get(`${f.art}|${f.blick}|${f.phase}`)!
+    const m = kachelMitte(f.x + 1, f.y + 1)
+    objekte.push({
+      z: tiefe(f.x + 1, f.y + 1) + 0.15,
+      node: (
+        <g
+          key={`g${f.id}`}
+          data-figur={f.id}
+          data-tier={f.tier ? '' : undefined}
+          style={{ transform: `translate(${f1(m.x)}px, ${f1(m.y)}px)`, transition: f.laeuft ? 'transform 150ms linear' : undefined }}
+        >
+          <use href={`#${eintrag.id}`} x={f1((-eintrag.bild.w * FIGUR_SKALA) / 2)} y={f1(-(eintrag.bild.h - eintrag.bild.fuss) * FIGUR_SKALA)} />
+          {f.reaktion && (
+            <text className="betrieb-herz" x={0} y={f1(-(eintrag.bild.h - eintrag.bild.fuss) * FIGUR_SKALA - 2)} textAnchor="middle" fontSize={16}>
+              ❤
+            </text>
+          )}
+        </g>
+      ),
+    })
+  }
   objekte.sort((a, b) => a.z - b.z)
 
   return (
@@ -172,6 +222,9 @@ export function BetriebWelt({ departmentCode, seite, items, className, ariaLabel
         })}
         <image id={`${uid}zx`} href={zaunWeissUrl('x')} width={TILE_W} height={TILE_H + 14} />
         <image id={`${uid}zy`} href={zaunWeissUrl('y')} width={TILE_W} height={TILE_H + 14} />
+        {[...figurIds.values()].map(({ id, bild }) => (
+          <image key={id} id={id} href={bild.url} width={f1(bild.w * FIGUR_SKALA)} height={f1(bild.h * FIGUR_SKALA)} />
+        ))}
         {[...spriteIds.entries()].map(([key, id]) => {
           const sp = sprites.get(key)!
           return <image key={id} id={id} href={sp.url} width={f1(sp.w * sp.skala)} height={f1(sp.h * sp.skala)} />

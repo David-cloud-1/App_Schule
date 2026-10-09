@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { istImLand, landSeite } from '@/lib/betrieb-land'
+import { istTierSchluessel } from '@/lib/betrieb-figuren'
 
 /**
  * Items in „Mein Betrieb" setzen, verschieben und zurücklegen (PROJ-34).
@@ -53,6 +54,12 @@ export async function PUT(request: NextRequest) {
   const gehoert = (kaeufe ?? []).some((k) => k.item_id === item_id)
   if (!gehoert) {
     return NextResponse.json({ error: 'Item nicht gefunden', code: 'not_owned' }, { status: 404 })
+  }
+
+  // Tiere laufen frei und werden nicht gesetzt (PROJ-37).
+  const { data: katalog } = await service.from('shop_items').select('icon_key').eq('id', item_id).maybeSingle()
+  if (istTierSchluessel((katalog as { icon_key?: string } | null)?.icon_key)) {
+    return NextResponse.json({ error: 'Tiere laufen frei und werden nicht gesetzt', code: 'not_placeable' }, { status: 400 })
   }
 
   const seite = landSeite((kaeufe ?? []).length)

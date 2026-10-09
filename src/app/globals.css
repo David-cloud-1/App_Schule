@@ -162,3 +162,21 @@
     animation: none;
   }
 }
+
+/* PROJ-37: Herz über einem angetippten Tier. Entfällt bei „Bewegung reduzieren“. */
+@keyframes betrieb-herz-auf {
+  0%   { transform: translateY(0) scale(0.6); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translateY(-16px) scale(1.15); opacity: 0; }
+}
+.betrieb-herz {
+  fill: #ff5a7a;
+  animation: betrieb-herz-auf 1.2s ease-out 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .betrieb-herz {
+    animation: none;
+    opacity: 0.9;
+  }
+}

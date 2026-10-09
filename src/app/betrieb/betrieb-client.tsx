@@ -7,7 +7,7 @@ import { ArrowLeft, LocateFixed, Store, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDepartment } from '@/components/department-provider'
-import { BetriebWelt, type PlatziertesItem } from '@/components/betrieb-welt'
+import { BetriebWelt, type FigurAnzeige, type PlatziertesItem } from '@/components/betrieb-welt'
 import { BetriebLager } from '@/components/betrieb-lager'
 import { betriebSpriteSchluessel, getBetriebSprite } from '@/lib/betrieb-sprites'
 import { istImLand } from '@/lib/betrieb-land'
@@ -22,10 +22,16 @@ import {
   zoomUm,
   type Kamera,
 } from '@/lib/betrieb-kamera'
-import { itemAnPunkt } from '@/lib/betrieb-treffer'
+import { itemAnPunkt, tierAnPunkt } from '@/lib/betrieb-treffer'
+import { planeFiguren } from '@/lib/betrieb-figuren'
+import { laeuft, schluessel, schritt, waehleStart, type Richtung, type Wanderer } from '@/lib/betrieb-wandern'
 import type { BetriebItem, BetriebStand } from '@/lib/betrieb-stand'
 
 const TIPP_SCHWELLE_PX = 6
+/** Takt der Figuren-Bewegung in ms (ca. 8 Aktualisierungen pro Sekunde, mit weicher Überblendung). */
+const FIGUREN_TAKT_MS = 125
+
+const blickVon = (r: Richtung): 'links' | 'rechts' => (r === 'se' || r === 'ne' ? 'rechts' : 'links')
 const ZOOM_SCHRITT = 1.35
 
 const FEHLER: Record<string, string> = {
@@ -68,6 +74,10 @@ export function BetriebClient() {
   const [frischId, setFrischId] = useState<string | null>(null)
   const [huepfId, setHuepfId] = useState<string | null>(null)
   const [wachstumVon, setWachstumVon] = useState<number | null>(null)
+  const [figuren, setFiguren] = useState<FigurAnzeige[]>([])
+  const [reaktionId, setReaktionId] = useState<string | null>(null)
+  const wanderer = useRef(new Map<string, Wanderer>())
+  const figurenSignatur = useRef('')
   const initialisiert = useRef(false)
 
   const fensterRef = useRef<HTMLDivElement>(null)
@@ -111,7 +121,7 @@ export function BetriebClient() {
       // Speicher nicht verfügbar (privater Modus): dann eben ohne Animation
     }
     const neu = new URLSearchParams(window.location.search).get('neu')
-    if (neu && stand.items.some((i) => i.id === neu && i.x === null)) {
+    if (neu && stand.items.some((i) => i.id === neu && i.x === null && !i.lebewesen)) {
       setAuswahl(neu)
       setHuepfId(neu)
     }
@@ -154,14 +164,20 @@ export function BetriebClient() {
   )
 
   // Aktueller Stand für die Gesten-Handler (vermeidet veraltete Closures).
-  const live = useRef({ ausschnitt, grenzen, stand, auswahl })
+  const live = useRef({ ausschnitt, grenzen, stand, auswahl, figuren })
   useEffect(() => {
-    live.current = { ausschnitt, grenzen, stand, auswahl }
+    live.current = { ausschnitt, grenzen, stand, auswahl, figuren }
   })
 
-  const items = stand?.items ?? []
-  const gesetzt = items.filter((i): i is BetriebItem & { x: number; y: number } => i.x !== null && i.y !== null)
-  const lager = items.filter((i) => i.x === null)
+  // Stabile Verweise: Schleife und Plan hängen davon ab und dürfen nicht bei jedem Rendern neu starten.
+  const items = useMemo(() => stand?.items ?? [], [stand])
+  const gesetzt = useMemo(
+    () => items.filter((i): i is BetriebItem & { x: number; y: number } => i.x !== null && i.y !== null),
+    [items],
+  )
+  // Tiere laufen frei: nie im Lager, nie gesetzt (PROJ-37)
+  const tiere = items.filter((i) => i.lebewesen)
+  const lager = items.filter((i) => i.x === null && !i.lebewesen)
   const gewaehlt = items.find((i) => i.id === auswahl) ?? null
 
   const freieKacheln = useMemo(() => {
@@ -180,6 +196,75 @@ export function BetriebClient() {
     y: i.y,
     rarity: i.rarity,
   }))
+
+  // ── Figuren: Tiere, Gäste, Personal laufen herum (PROJ-37) ────────────────────
+  const plan = useMemo(
+    () => planeFiguren(departmentCode, items.map((i) => ({ id: i.id, name: i.name, icon_key: i.icon_key, x: i.x, y: i.y }))),
+    [items, departmentCode],
+  )
+  const blockiert = useMemo(() => new Set(gesetzt.map((i) => schluessel(i.x, i.y))), [gesetzt])
+
+  useEffect(() => {
+    const reduziert = typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const aktiv = wanderer.current
+
+    // Neue Figuren einsetzen, nicht mehr gewünschte entfernen, Heimat nachführen.
+    const abgleich = () => {
+      const ids = new Set(plan.map((f) => f.id))
+      for (const id of [...aktiv.keys()]) if (!ids.has(id)) aktiv.delete(id)
+      for (const f of plan) {
+        const w = aktiv.get(f.id)
+        if (w) w.heimat = f.heimat
+        else {
+          const neu = waehleStart(f.id, f.seed, seite, blockiert, f.heimat)
+          if (neu) aktiv.set(f.id, neu)
+        }
+      }
+    }
+    const anzeige = (): FigurAnzeige[] =>
+      plan.flatMap((f) => {
+        const w = aktiv.get(f.id)
+        return w
+          ? [{ id: f.id, art: f.art, x: w.x, y: w.y, blick: blickVon(w.richtung), phase: w.phase, laeuft: laeuft(w), tier: f.tier }]
+          : []
+      })
+    const zeige = () => {
+      const liste = anzeige()
+      const sig = liste.map((f) => `${f.id}:${f.x.toFixed(2)},${f.y.toFixed(2)},${f.blick},${f.phase}`).join('|')
+      if (sig === figurenSignatur.current) return
+      figurenSignatur.current = sig
+      setFiguren(liste)
+    }
+
+    abgleich()
+    zeige()
+    if (reduziert || plan.length === 0) return
+
+    let letzte = performance.now()
+    const timer = setInterval(() => {
+      const jetzt = performance.now()
+      if (document.hidden) {
+        letzte = jetzt // kein Aufholen nach dem Zurückkehren
+        return
+      }
+      const dt = jetzt - letzte
+      letzte = jetzt
+      for (const f of plan) {
+        const w = aktiv.get(f.id)
+        if (w) schritt(w, dt, seite, blockiert)
+      }
+      zeige()
+    }, FIGUREN_TAKT_MS)
+    return () => clearInterval(timer)
+  }, [plan, blockiert, seite])
+
+  useEffect(() => {
+    if (!reaktionId) return
+    const t = setTimeout(() => setReaktionId(null), 1300)
+    return () => clearTimeout(t)
+  }, [reaktionId])
+
+  const figurenMitReaktion = reaktionId ? figuren.map((f) => (f.id === reaktionId ? { ...f, reaktion: true } : f)) : figuren
 
   // ── Setzen, Verschieben, Zurücklegen (optimistisch, mit Rückfall) ─────────────
   const setzeLokal = useCallback((id: string, x: number | null, y: number | null) => {
@@ -228,9 +313,12 @@ export function BetriebClient() {
   const beiTipp = useCallback(
     (clientX: number, clientY: number) => {
       const el = fensterRef.current
-      const { ausschnitt: a, stand: s, auswahl: sel } = live.current
+      const { ausschnitt: a, stand: s, auswahl: sel, figuren: fig } = live.current
       if (!el || !s) return
       const w = bildschirmZuWelt(clientX, clientY, el.getBoundingClientRect(), a)
+      // Ein Tier reagiert nur kurz (Herz) und ändert die Auswahl nicht.
+      const angetipptesTier = tierAnPunkt(fig, w.x, w.y)
+      if (angetipptesTier) return void setReaktionId(angetipptesTier)
       const k = weltZuGrundKachel(w.x, w.y)
       const imLand = istImLand(k.x, k.y, s.seite)
       const aufKachel = s.items.find((i) => i.x === k.x && i.y === k.y)
@@ -391,12 +479,13 @@ export function BetriebClient() {
                 seite={stand.seite}
                 items={platziertFuerWelt}
                 className="block w-full h-full"
-                ariaLabel={`${titel}: ${gesetzt.length} von ${items.length} Gegenständen gesetzt`}
+                ariaLabel={`${titel}: ${gesetzt.length} von ${items.length - tiere.length} Gegenständen gesetzt`}
                 viewBox={`${ausschnitt.x} ${ausschnitt.y} ${ausschnitt.w} ${ausschnitt.h}`}
                 freieKacheln={freieKacheln}
                 ausgewaehltId={gewaehlt && gewaehlt.x !== null ? gewaehlt.id : null}
                 frischId={frischId}
                 wachstumVon={wachstumVon}
+                figuren={figurenMitReaktion}
               />
               <div className="absolute top-2 right-2 flex flex-col gap-2">
                 {[
@@ -443,6 +532,7 @@ export function BetriebClient() {
               ) : (
                 <p className="text-[#9CA3AF]">
                   {lager.length > 0 ? 'Tippe ein Item im Lager, dann eine freie Kachel.' : 'Alles gesetzt. Tippe ein Item, um es zu verschieben.'}
+                  {tiere.length > 0 && ' Deine Tiere laufen frei herum – tipp sie an!'}
                 </p>
               )}
             </div>
@@ -493,7 +583,7 @@ export function BetriebClient() {
             <ul className="sr-only">
               {items.map((i) => (
                 <li key={i.id}>
-                  {i.name} – {i.x === null ? 'im Lager' : `steht auf Reihe ${i.y! + 1}, Spalte ${i.x + 1}`}
+                  {i.name} – {i.lebewesen ? 'läuft frei herum' : i.x === null ? 'im Lager' : `steht auf Reihe ${i.y! + 1}, Spalte ${i.x + 1}`}
                   {i.rarity !== 'standard' && ` – ${i.rarity === 'selten' ? 'Selten' : 'Episch'}`}
                 </li>
               ))}

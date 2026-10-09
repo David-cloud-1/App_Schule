@@ -1,6 +1,6 @@
 # PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum
 
-## Status: Architected
+## Status: In Review
 **Created:** 2026-10-09
 **Last Updated:** 2026-10-09
 **Priorität:** P1
@@ -166,8 +166,19 @@ Seite (Schleife, Reaktion, Reduced-Motion) · 6. Tests, Sichtprüfung
 - Performance mit 12 Figuren: Takt und Obergrenze sind die Gegenmaßnahmen.
 - Zeichenreihenfolge bei Figuren zwischen zwei Kacheln (Tiefe wird beim Überschreiten der Kachelgrenze umgesetzt).
 
+## Implementation Notes (2026-10-09)
+- **Wandern** (`betrieb-wandern.ts`): deterministische Rechnung (mulberry32), Schritte auf freien Nachbarkacheln, Pausen 0,7–3,2 s, ca. 0,42 Kacheln/s, Ausweichen bei plötzlich belegter Kachel (Breitensuche), Heimat-Radius für Gäste/Personal, Zeitsprünge auf 250 ms begrenzt.
+- **Figuren-Regeln** (`betrieb-figuren.ts`): Tiere (Spedition: Hofhund, Hofkatze, Hühner; Tourismus: Strandhund, Flamingo, Papagei, Krebs), automatische Gäste/Personal je Gebäude (Hotel→2 Gäste, Pool, Strandbar, Restaurant, Spielplatz→2 Kinder, Eisdiele … / Lagerhalle, Tankstelle, Gabelstapler, Lkw → Arbeiter/Fahrer), Obergrenze 12, Tiere zuerst, stabile IDs und Startwerte.
+- **Zeichnungen** (`hof-welt/figuren.ts`): 13 Figuren, je 2 Schritt-Posen, gespiegelt für die andere Blickrichtung; Standbilder der Tiere für Shop/Katalog.
+- **Tiere im System:** `BetriebItem.lebewesen`; nie im Lager, nie gesetzt; `PUT /api/betrieb/platzierung` lehnt sie mit `not_placeable` ab; zählen für das Land. Migration `20261009_proj37_tiere` (3 + 4 Items, 40–90 Münzen). **Noch nicht auf Produktion angewendet.**
+- **Welt/Seite:** Figuren-Ebene in `BetriebWelt` (Zeichenreihenfolge nach Tiefe, weiche Überblendung nur beim Gehen, 30 % größer), Schleife in `betrieb-client.tsx` (Takt 125 ms, Pause bei verstecktem Tab ohne Aufholen, Stopp beim Verlassen, **aus bei „Bewegung reduzieren“**), Tier antippen → Herz (Auswahl bleibt unberührt). Profil-Vorschau zeigt keine Figuren (bleibt still).
+
 ## QA Test Results
-_To be added by /qa_
+**Stand 2026-10-09 – automatisiert + Sichtprüfung; Gefühl der Bewegung steht aus**
+- 951 Tests grün (mehrere Durchläufe), `tsc` ohne Fehler, Lint 0 Fehler. Neu u. a.: Wandern (15 Tests: deterministisch, bleibt im Land, nie auf belegten Kacheln, Ausweichen, Heimat, kein Sprung nach Tab-Wechsel), Figuren-Regeln (12), Tier-Items inkl. Abgleich Migration ⇄ Sprites (5), Treffer (4), Welt-Ebene (7), Seite (9: Figuren erscheinen/verschwinden mit Gebäuden, laufen, bleiben von belegten Kacheln weg, pausieren im Hintergrund, still bei „Bewegung reduzieren“, deterministischer Start, **eine** Schleife statt Neustart je Takt, Aufräumen beim Verlassen), Server lehnt Tiere ab.
+- Migration gegen die echte Datenbank in zurückgerollter Transaktion geprüft.
+- Sichtprüfung: `docs/vorschau/figuren.png`, `resort-figuren.png`.
+- **Nicht geprüft:** Flüssigkeit der Bewegung am echten Handy, Akku-/Leistung bei 12 Figuren, Tippgenauigkeit auf Tiere.
 
 ## Deployment
 _To be added by /deploy_

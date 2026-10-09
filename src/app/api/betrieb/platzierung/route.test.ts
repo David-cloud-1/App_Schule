@@ -17,6 +17,7 @@ interface ServiceOpts {
   ownedError?: unknown
   upsertError?: { code?: string } | null
   deleteError?: unknown
+  iconKey?: string
 }
 
 function serviceClient(o: ServiceOpts = {}) {
@@ -37,7 +38,12 @@ function serviceClient(o: ServiceOpts = {}) {
       return calls.deleteEq.length % 2 === 0 ? Promise.resolve({ error: o.deleteError ?? null }) : platz
     }),
   }
-  return { client: { from: vi.fn((t: string) => (t === 'user_shop_items' ? kaeufe : platz)) }, calls }
+  const katalog = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: { icon_key: o.iconKey ?? 'pokal' }, error: null }),
+  }
+  return { client: { from: vi.fn((t: string) => (t === 'user_shop_items' ? kaeufe : t === 'shop_items' ? katalog : platz)) }, calls }
 }
 
 const put = (body: unknown) =>
@@ -99,6 +105,16 @@ describe('PUT /api/betrieb/platzierung (PROJ-34)', () => {
     const res = await PUT(put({ item_id: ITEM, x: 2, y: 3, user_id: 'angreifer' }))
     expect(res.status).toBe(200)
     expect(s.calls.upsert[0]).toEqual({ user_id: 'u1', item_id: ITEM, x: 2, y: 3 })
+  })
+
+  it('refuses to place an animal: animals walk freely (PROJ-37)', async () => {
+    vi.mocked(createClient).mockResolvedValue(authClient({ id: 'u1' }) as never)
+    const s = serviceClient({ iconKey: 'hofhund' })
+    vi.mocked(createServiceClient).mockReturnValue(s.client as never)
+    const res = await PUT(put({ item_id: ITEM, x: 1, y: 1 }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe('not_placeable')
+    expect(s.calls.upsert).toHaveLength(0)
   })
 
   it('answers 409 with a readable code when the tile is already taken', async () => {

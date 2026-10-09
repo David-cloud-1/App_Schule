@@ -18,6 +18,7 @@ const item = (id: string, over: Partial<BetriebStand['items'][number]> = {}): Be
   rarity: 'standard',
   x: null,
   y: null,
+  lebewesen: false,
   ...over,
 })
 
@@ -233,5 +234,132 @@ describe('Seite „Mein Betrieb" (PROJ-34)', () => {
     await waitFor(() => expect(localStorage.getItem('betrieb-land-SPED')).toBe('4'))
     expect(toast).not.toHaveBeenCalledWith('Dein Land ist gewachsen!')
     expect(document.querySelectorAll('.betrieb-wachse').length).toBe(0)
+  })
+
+  describe('Figuren (PROJ-37)', () => {
+    const MIT_HOTEL: BetriebStand = {
+      seite: 6,
+      bis_naechstes_land: 2,
+      items: [item('h', { name: 'Strandhotel', icon_key: 'hotel', x: 3, y: 3 }), item('f', { name: 'Flamingo', icon_key: 'flamingo', lebewesen: true })],
+    }
+    const positionen = () => [...document.querySelectorAll('[data-figur]')].map((g) => `${g.getAttribute('data-figur')}:${g.getAttribute('style')}`)
+
+    afterEach(() => {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+      Object.defineProperty(document, 'hidden', { value: false, configurable: true })
+    })
+
+    it('shows animals and guests: the flamingo plus the hotel guests, but no storage entry for the animal', async () => {
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3)) // Flamingo + 2 Hotelgäste
+      expect(document.querySelectorAll('[data-tier]').length).toBe(1)
+      expect(screen.queryByText(/Im Lager/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Flamingo aus dem Lager wählen' })).toBeNull()
+      expect(screen.getByText(/Flamingo – läuft frei herum/)).toBeTruthy()
+      expect(screen.getByText(/Deine Tiere laufen frei herum/)).toBeTruthy()
+    })
+
+    it('shows no guests when the hotel is in storage, and no storage slot for animals either', async () => {
+      antworten({ ...MIT_HOTEL, items: [item('h', { name: 'Strandhotel', icon_key: 'hotel' }), item('f', { name: 'Flamingo', icon_key: 'flamingo', lebewesen: true })] })
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(1))
+      expect(screen.getByText('Im Lager (1)')).toBeTruthy()
+    })
+
+    it('lets the figures walk over time (positions change)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3))
+      const vorher = positionen()
+      await vi.advanceTimersByTimeAsync(12000)
+      expect(positionen()).not.toEqual(vorher)
+      expect(document.querySelectorAll('[data-figur]').length).toBe(3)
+    })
+
+    it('keeps the figures off occupied tiles while walking', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      for (let i = 0; i < 40; i++) {
+        await vi.advanceTimersByTimeAsync(500)
+        for (const g of document.querySelectorAll('[data-figur]')) {
+          const m = /translate\(([-\d.]+)px, ([-\d.]+)px\)/.exec(g.getAttribute('style') ?? '')!
+          // Rückrechnung Welt -> Gitter: gx - gy = x/49.5, gx + gy = y/25
+          const a = Number(m[1]) / 49.5
+          const b = Number(m[2]) / 25
+          const gx = (a + b) / 2 - 1
+          const gy = (b - a) / 2 - 1
+          // das Hotel steht auf (3,3): keine Figur steht jemals darauf
+          expect(Math.round(gx) === 3 && Math.round(gy) === 3).toBe(false)
+        }
+      }
+    })
+
+    it('pauses while the tab is hidden and does not jump when it comes back', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3))
+      await vi.advanceTimersByTimeAsync(2000)
+      Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+      const versteckt = positionen()
+      await vi.advanceTimersByTimeAsync(20000)
+      expect(positionen()).toEqual(versteckt)
+    })
+
+    it('keeps everything still when the device asks to reduce motion, but still shows the figures', async () => {
+      vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('reduce'), media: q, addEventListener() {}, removeEventListener() {} }))
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3))
+      const vorher = positionen()
+      await vi.advanceTimersByTimeAsync(15000)
+      expect(positionen()).toEqual(vorher)
+    })
+
+    it('starts the figures at the same places on every load (deterministic seeds)', async () => {
+      antworten(MIT_HOTEL)
+      const a = renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3))
+      const erste = positionen().sort()
+      a.unmount()
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await waitFor(() => expect(document.querySelectorAll('[data-figur]').length).toBe(3))
+      expect(positionen().sort()).toEqual(erste)
+    })
+
+    it('does not restart its timer on every render (one loop, not one per tick)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      const spy = vi.spyOn(globalThis, 'setInterval')
+      antworten(MIT_HOTEL)
+      renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await vi.advanceTimersByTimeAsync(8000)
+      // Eine Schleife für die Figuren (plus ggf. Nachlade-Runden); nicht ~64 (ein Neustart je Takt)
+      expect(spy.mock.calls.length).toBeLessThanOrEqual(6)
+      spy.mockRestore()
+    })
+
+    it('stops the loop when the page is left (no timers keep running)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      antworten(MIT_HOTEL)
+      const { unmount } = renderClient('TOUR')
+      await screen.findByText(/Land 6 × 6/)
+      await vi.advanceTimersByTimeAsync(1000)
+      unmount()
+      expect(vi.getTimerCount()).toBe(0)
+    })
   })
 })

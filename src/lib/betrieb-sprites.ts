@@ -7,6 +7,7 @@ import { SPEDITION_WEICH } from './hof-welt/spedition-weich'
 import { RESORT_NEU, RESORT_TEIL_1 } from './hof-welt/resort-weich'
 import { SPEDITION_DEKO } from './hof-welt/spedition-deko'
 import { RESORT_DEKO } from './hof-welt/resort-deko'
+import { RESORT_TIERE, SPEDITION_TIERE, tierStandbild } from './hof-welt/figuren'
 
 /**
  * Sprite-Katalog für „Mein Betrieb" (PROJ-34): Icon-Schlüssel eines Shop-Items
@@ -71,6 +72,8 @@ const SPEDITION: Record<string, Baumeister> = {
   ...Object.fromEntries(Object.entries(SPEDITION_WEICH).map(([k, f]) => [k, () => aus(f())])),
   // Deko-Erweiterung (PROJ-36)
   ...Object.fromEntries(SPEDITION_DEKO.map((n) => [n.key, () => aus(n.bild())])),
+  // Tiere (PROJ-37): Standbild für Shop/Katalog; im Gelände laufen die Figuren herum
+  ...Object.fromEntries(SPEDITION_TIERE.map((t) => [t.key, () => aus(tierStandbild(t.art))])),
 }
 
 const KATALOG: Record<string, Record<string, Baumeister>> = {
@@ -81,6 +84,7 @@ const KATALOG: Record<string, Record<string, Baumeister>> = {
     ...Object.fromEntries(RESORT_NEU.map((n) => [n.key, () => aus(n.bild())])),
     // Deko-Erweiterung (PROJ-36)
     ...Object.fromEntries(RESORT_DEKO.map((n) => [n.key, () => aus(n.bild())])),
+    ...Object.fromEntries(RESORT_TIERE.map((t) => [t.key, () => aus(tierStandbild(t.art))])),
   },
 }
 

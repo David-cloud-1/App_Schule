@@ -2,6 +2,7 @@ import type { SVGProps } from 'react'
 import type { HofIconDef } from './hof-icons'
 import { RESORT_NEU } from './hof-welt/resort-weich'
 import { RESORT_DEKO } from './hof-welt/resort-deko'
+import { RESORT_TIERE } from './hof-welt/figuren'
 import { iconsAusSprites } from './hof-icons-sprite'
 
 /**
@@ -500,6 +501,6 @@ export const TOUR_ICONS: HofIconDef[] = [
  * Neue Resort-Bauten (PROJ-35) und Deko (PROJ-36): flache Icons aus den Sprites,
  * siehe hof-icons-sprite.tsx.
  */
-const RESORT_ICONS: HofIconDef[] = iconsAusSprites('TOUR', [...RESORT_NEU, ...RESORT_DEKO])
+const RESORT_ICONS: HofIconDef[] = iconsAusSprites('TOUR', [...RESORT_NEU, ...RESORT_DEKO, ...RESORT_TIERE])
 
 export const TOUR_ALLE_ICONS: HofIconDef[] = [...TOUR_ICONS, ...RESORT_ICONS]
