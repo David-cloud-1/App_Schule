@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Engagement-Snapshots: enthalten Nutzer-IDs verschwundener Azubis — bleiben lokal
 scripts/engagement/history/
+
+# Wegwerf-Skripte und Zwischenstände der Fragen-Sammelläufe — bleiben lokal
+scripts/scratch/
