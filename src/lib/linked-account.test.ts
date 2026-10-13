@@ -102,7 +102,7 @@ describe('ensureLinkedUser', () => {
         role: 'student',
         department_id: 'dept-tour',
         linked_main_user_id: 'main',
-        leaderboard_opt_out: true,
+        leaderboard_opt_out: false,
         pseudonym: 'Eisbär Pauschal',
       }),
     )

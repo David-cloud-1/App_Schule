@@ -104,7 +104,7 @@ export async function ensureLinkedUser(service: SupabaseClient, mainUserId: stri
       role: 'student',
       department_id: departmentId,
       linked_main_user_id: mainUserId,
-      leaderboard_opt_out: true,
+      leaderboard_opt_out: false,
       display_name: 'Tourismus-Testkonto',
       ...(typeof pseudonym === 'string' ? { pseudonym } : {}),
     })
