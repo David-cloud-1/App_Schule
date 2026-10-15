@@ -72,6 +72,7 @@ type TopicWithSubject = {
   id: string
   name: string
   subject_id: string
+  class_levels?: number[]
   subjects?: { id: string; code: string; name: string } | null
 }
 
@@ -131,6 +132,16 @@ export default function AdminQuestionsPage() {
   // Bulk state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [allTopics, setAllTopics] = useState<TopicWithSubject[]>([])
+  // Themenliste im Filter: folgt Fach- und Klassen-Auswahl
+  const filterTopics = allTopics.filter((t) => {
+    if (subjectFilter !== 'all' && t.subjects?.code !== subjectFilter) return false
+    if (classLevelFilter !== 'all' && !(t.class_levels ?? []).includes(Number(classLevelFilter))) return false
+    return true
+  })
+  useEffect(() => {
+    if (topicFilter === 'all' || topicFilter === 'none' || allTopics.length === 0) return
+    if (!filterTopics.some((t) => t.id === topicFilter)) setTopicFilter('all')
+  }, [filterTopics, topicFilter, allTopics.length])
   const [bulkTopicId, setBulkTopicId] = useState<string>('')
   const [bulkClassLevel, setBulkClassLevel] = useState<string>('')
   const [bulkSubjectId, setBulkSubjectId] = useState<string>('')
@@ -593,7 +604,7 @@ export default function AdminQuestionsPage() {
             <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
               <SelectItem value="all">Alle Themen</SelectItem>
               <SelectItem value="none">Ohne Thema</SelectItem>
-              {allTopics.map((t) => (
+              {filterTopics.map((t) => (
                 <SelectItem key={t.id} value={t.id}>
                   {t.subjects?.code ? `${t.subjects.code} – ` : ''}{t.name}
                 </SelectItem>

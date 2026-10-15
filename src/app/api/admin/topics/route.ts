@@ -42,7 +42,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to fetch topics' }, { status: 500 })
   }
 
-  return NextResponse.json({ topics: data ?? [] })
+  // Klassenstufen je Thema aus den Fragen ableiten (Themen haben selbst keine
+  // Klassenstufe) — damit der Fragen-Filter die Themenliste eingrenzen kann.
+  const topicIds = new Set((data ?? []).map((t) => t.id as string))
+  const levelsByTopic = new Map<string, Set<number>>()
+  const pageSize = 1000
+  for (let from = 0; ; from += pageSize) {
+    const { data: rows, error: qErr } = await supabase
+      .from('questions')
+      .select('topic_id, class_level')
+      .not('topic_id', 'is', null)
+      .not('class_level', 'is', null)
+      .order('id')
+      .range(from, from + pageSize - 1)
+    if (qErr) {
+      console.error('[GET /api/admin/topics] class levels', qErr)
+      break
+    }
+    for (const r of rows ?? []) {
+      if (!topicIds.has(r.topic_id as string)) continue
+      const set = levelsByTopic.get(r.topic_id as string) ?? new Set<number>()
+      set.add(r.class_level as number)
+      levelsByTopic.set(r.topic_id as string, set)
+    }
+    if (!rows || rows.length < pageSize) break
+  }
+
+  const topics = (data ?? []).map((t) => ({
+    ...t,
+    class_levels: Array.from(levelsByTopic.get(t.id as string) ?? []).sort(),
+  }))
+
+  return NextResponse.json({ topics })
 }
 
 export async function POST(request: NextRequest) {
