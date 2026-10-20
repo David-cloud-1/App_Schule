@@ -86,16 +86,25 @@ export async function attachAnswerKey<T extends WithOptions>(
  * Question ids of graded assessments that are currently being written —
  * open for joining, or with at least one attempt still in progress. Practice
  * flows leave these out so nobody can look up an exam question's answer in
- * the quiz while the exam is running.
+ * the quiz while the exam is running. Also includes questions flagged
+ * `assessment_only` (PROJ-38) unless `withAssessmentOnly` is false.
  */
-export async function getLockedQuestionIds(): Promise<Set<string>> {
+export async function getLockedQuestionIds(
+  options: { withAssessmentOnly?: boolean } = {},
+): Promise<Set<string>> {
+  const { withAssessmentOnly = true } = options
   const service = createServiceClient()
-  const [{ data: open }, { data: running }] = await Promise.all([
+  const [{ data: open }, { data: running }, { data: onlyForAssessments }] = await Promise.all([
     service.from('graded_assessments').select('id, question_ids_snapshot').eq('status', 'open'),
     service.from('exam_sessions').select('assessment_id').eq('status', 'in_progress').not('assessment_id', 'is', null),
+    // PROJ-38: per Nachweis-Import angelegte Fragen bleiben bis zur Freigabe aus der Übung.
+    // Der URL-basierte Weg (/api/questions) filtert stattdessen direkt in der Abfrage.
+    withAssessmentOnly
+      ? service.from('questions').select('id').eq('assessment_only', true)
+      : Promise.resolve({ data: [] as { id: string }[] }),
   ])
 
-  const locked = new Set<string>()
+  const locked = new Set<string>((onlyForAssessments ?? []).map((q) => q.id))
   const seen = new Set<string>()
   for (const a of open ?? []) {
     seen.add(a.id)

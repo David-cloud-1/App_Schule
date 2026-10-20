@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
 import { fetchExamParts } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
-import type { PickerQuestion } from '@/lib/assessment-questions'
+import { fetchSelectableQuestions, type PickerQuestion } from '@/lib/assessment-questions'
+import { getDepartmentById } from '@/lib/departments'
+import { assessQuestionQuality, duplicateKey, DIFFICULTIES } from '@/lib/assessment-import'
 
 const QuestionSchema = z.object({
   question_text: z.string().min(1).max(1000),
@@ -11,10 +13,16 @@ const QuestionSchema = z.object({
   // Für eine Note muss der Schlüssel feststehen: keine ungeprüften Fragen
   correct_index: z.number().int().min(0).max(4),
   fach_code: z.string().nullable().optional(),
+  // PROJ-38: Angaben aus dem Kopier-Prompt-Import
+  explanation: z.string().max(2000).nullable().optional(),
+  difficulty: z.enum(DIFFICULTIES).optional(),
+  class_level: z.number().int().min(1).max(20).nullable().optional(),
 }).refine((q) => q.correct_index < q.options.length, { message: 'correct_index außerhalb der Optionen', path: ['correct_index'] })
 
 const ImportSchema = z.object({
   questions: z.array(QuestionSchema).min(1).max(200),
+  // PROJ-38: true = Fragen sind bis zur Freigabe nur für Nachweise nutzbar
+  assessmentOnly: z.boolean().default(false),
 })
 
 /**
@@ -36,7 +44,38 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { questions } = parsed.data
+  const { assessmentOnly } = parsed.data
+  let questions = parsed.data.questions
+
+  // PROJ-38: Qualitätsprüfung und Duplikate serverseitig, dem Browser wird nicht vertraut
+  if (assessmentOnly) {
+    const blocked = questions.filter((q) => assessQuestionQuality({ ...q, explanation: q.explanation ?? null }).blockers.length > 0)
+    if (blocked.length > 0) {
+      return NextResponse.json(
+        { error: `${blocked.length} Fragen haben Qualitätsmängel (Torwächter) und können nicht importiert werden.` },
+        { status: 422 },
+      )
+    }
+    let known: Set<string>
+    try {
+      known = new Set((await fetchSelectableQuestions(supabase, departmentId)).map((q) => duplicateKey(q.question_text)))
+    } catch (err) {
+      console.error('[assessments/questions/import]', err)
+      return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
+    }
+    const seen = new Set<string>()
+    questions = questions.filter((q) => {
+      const key = duplicateKey(q.question_text)
+      if (known.has(key) || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    if (questions.length === 0) {
+      return NextResponse.json({ error: 'Alle Fragen existieren bereits im Fachbereich.' }, { status: 409 })
+    }
+  }
+  const department = assessmentOnly ? await getDepartmentById(supabase, departmentId) : null
+  const allowedClassLevels = new Set(department?.classLevels ?? [])
 
   let examParts
   let subjects
@@ -64,7 +103,10 @@ export async function POST(request: NextRequest) {
       question_text: q.question_text,
       is_active: true,
       type: 'multiple_choice',
-      difficulty: 'mittel',
+      difficulty: q.difficulty ?? 'mittel',
+      explanation: q.explanation?.trim() || null,
+      class_level: q.class_level != null && allowedClassLevels.has(q.class_level) ? q.class_level : null,
+      assessment_only: assessmentOnly,
     })))
     .select('id')
   if (qErr || !inserted || inserted.length !== questions.length) {
@@ -110,16 +152,16 @@ export async function POST(request: NextRequest) {
     action_type: 'import',
     object_type: 'question',
     object_label: `Nachweis-Import (${ids.length} Fragen)`,
-    details: { questions_imported: ids.length },
+    details: { questions_imported: ids.length, assessment_only: assessmentOnly },
   })
 
   const result: PickerQuestion[] = inserted.map((q, i) => ({
     id: q.id as string,
     question_text: questions[i].question_text,
-    difficulty: 'mittel',
-    class_level: null,
+    difficulty: questions[i].difficulty ?? 'mittel',
+    class_level: questions[i].class_level != null && allowedClassLevels.has(questions[i].class_level!) ? questions[i].class_level! : null,
     topic: null,
     subject_codes: [codeById.get(subjectIdFor(i)) ?? ''].filter(Boolean),
   }))
-  return NextResponse.json({ questions: result }, { status: 201 })
+  return NextResponse.json({ questions: result, skippedDuplicates: parsed.data.questions.length - questions.length }, { status: 201 })
 }

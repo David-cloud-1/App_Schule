@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
       .from('questions')
       .select('topic_id')
       .eq('is_active', true)
+      .eq('assessment_only', false)
       .in('topic_id', topicIds)
       .or(`class_level.eq.${classLevel},class_level.is.null`)
 

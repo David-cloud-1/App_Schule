@@ -578,6 +578,7 @@ export type Database = {
       }
       questions: {
         Row: {
+          assessment_only: boolean
           class_level: number | null
           created_at: string | null
           difficulty: string
@@ -590,6 +591,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          assessment_only?: boolean
           class_level?: number | null
           created_at?: string | null
           difficulty: string
@@ -602,6 +604,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          assessment_only?: boolean
           class_level?: number | null
           created_at?: string | null
           difficulty?: string

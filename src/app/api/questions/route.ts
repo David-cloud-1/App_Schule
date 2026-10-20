@@ -88,7 +88,9 @@ export async function GET(request: NextRequest) {
 
   // Questions of a graded assessment that's currently being written are
   // left out of practice, so their answers can't be looked up here (PROJ-21).
-  const locked = await getLockedQuestionIds()
+  // „Nur für Nachweise"-Fragen (PROJ-38) werden direkt gefiltert, damit die ID-Liste kurz bleibt.
+  query = query.eq('assessment_only', false)
+  const locked = await getLockedQuestionIds({ withAssessmentOnly: false })
   if (locked.size > 0) {
     query = query.not('id', 'in', `(${[...locked].join(',')})`)
   }

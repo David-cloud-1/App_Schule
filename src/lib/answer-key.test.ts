@@ -60,6 +60,9 @@ describe('getLockedQuestionIds', () => {
 
   it('locks questions of open assessments and of assessments with attempts still running', async () => {
     const from = vi.fn((table: string) => {
+      if (table === 'questions') {
+        return { select: () => ({ eq: () => Promise.resolve({ data: [{ id: 'only-1' }] }) }) }
+      }
       if (table === 'exam_sessions') {
         return { select: () => ({ eq: () => ({ not: () => Promise.resolve({ data: [{ assessment_id: 'closed-but-running' }, { assessment_id: 'open-1' }] }) }) }) }
       }
@@ -76,7 +79,9 @@ describe('getLockedQuestionIds', () => {
     })
     vi.mocked(createServiceClient).mockReturnValue({ from } as never)
 
-    expect([...(await getLockedQuestionIds())].sort()).toEqual(['q1', 'q2', 'q3'])
+    expect([...(await getLockedQuestionIds({ withAssessmentOnly: false }))].sort()).toEqual(['q1', 'q2', 'q3'])
+    // PROJ-38: „nur für Nachweise"-Fragen sind ebenfalls aus der Übung ausgeschlossen
+    expect([...(await getLockedQuestionIds())].sort()).toEqual(['only-1', 'q1', 'q2', 'q3'])
   })
 })
 

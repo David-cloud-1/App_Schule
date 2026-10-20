@@ -31,6 +31,8 @@ const UpdateSchema = z
     answers: z.array(AnswerSchema).length(5).optional(),
     subject_ids: z.array(z.string().uuid()).min(1).optional(),
     is_active: z.boolean().optional(),
+    // PROJ-38: false = für den Übungsbetrieb freigeben
+    assessment_only: z.boolean().optional(),
     class_level: z.union([z.literal(10), z.literal(11), z.literal(12), z.null()]).optional(),
     topic_id: z.string().uuid().nullable().optional(),
   })
@@ -89,6 +91,7 @@ export async function PATCH(
   if (payload.type !== undefined) questionUpdate.type = payload.type
   if (payload.sample_answer !== undefined) questionUpdate.sample_answer = payload.sample_answer
   if (payload.is_active !== undefined) questionUpdate.is_active = payload.is_active
+  if (payload.assessment_only !== undefined) questionUpdate.assessment_only = payload.assessment_only
   if (payload.class_level !== undefined) questionUpdate.class_level = payload.class_level
   if (payload.topic_id !== undefined) questionUpdate.topic_id = payload.topic_id
 

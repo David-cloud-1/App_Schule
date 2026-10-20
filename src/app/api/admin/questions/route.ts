@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
         class_level,
         topic_id,
         is_active,
+        assessment_only,
         created_at,
         answer_options ( id, option_text, display_order ),
         question_subjects ( subjects ( id, code, name ) ),

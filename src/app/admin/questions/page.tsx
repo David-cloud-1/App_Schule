@@ -271,6 +271,25 @@ export default function AdminQuestionsPage() {
     }
   }
 
+  async function releaseForPractice(q: QuestionWithTopic) {
+    try {
+      const res = await fetch(`/api/admin/questions/${q.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assessment_only: false }),
+      })
+      if (!res.ok) {
+        toast.error('Freigabe fehlgeschlagen.')
+        return
+      }
+      toast.success('Frage für den Übungsbetrieb freigegeben')
+      fetchQuestions()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    }
+  }
+
   async function handleDelete() {
     if (!deleteTarget) return
     setDeleting(true)
@@ -826,6 +845,11 @@ export default function AdminQuestionsPage() {
                           <span className="hover:text-[#58CC02] transition-colors line-clamp-3">
                             {q.question_text}
                           </span>
+                          {q.assessment_only && (
+                            <Badge variant="outline" className="mt-1 border-[#FF9600] text-[#FF9600]">
+                              Nur für Nachweise
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="hidden lg:table-cell">
                           {hasNoTopic ? (
@@ -872,6 +896,17 @@ export default function AdminQuestionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            {q.assessment_only && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => releaseForPractice(q)}
+                                className="min-h-11 border-[#58CC02] text-[#58CC02]"
+                                title="Frage auch im Quiz und in den Übungsmodi anzeigen"
+                              >
+                                Für Übung freigeben
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"

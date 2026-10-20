@@ -53,6 +53,8 @@ export type AdminQuestion = {
   type?: 'multiple_choice' | 'open'
   sample_answer?: string | null
   is_active: boolean
+  /** PROJ-38: nur in Leistungsnachweisen nutzbar, bis der Admin sie freigibt */
+  assessment_only?: boolean
   class_level?: number | null
   topic_id?: string | null
   answer_options: AdminAnswerOption[]
