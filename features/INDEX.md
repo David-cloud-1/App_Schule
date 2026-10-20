@@ -51,7 +51,7 @@
 | PROJ-35 | „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Deployed | [PROJ-35-mein-resort-tourismus.md](PROJ-35-mein-resort-tourismus.md) | 2026-10-09 |
 | PROJ-36 | Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Deployed | [PROJ-36-mehr-deko.md](PROJ-36-mehr-deko.md) | 2026-10-09 |
 | PROJ-37 | Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Deployed | [PROJ-37-belebte-welt.md](PROJ-37-belebte-welt.md) | 2026-10-09 |
-| PROJ-38 | Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | In Review | [PROJ-38-nachweis-import-kopier-prompt.md](PROJ-38-nachweis-import-kopier-prompt.md) | 2026-10-20 |
+| PROJ-38 | Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Deployed | [PROJ-38-nachweis-import-kopier-prompt.md](PROJ-38-nachweis-import-kopier-prompt.md) | 2026-10-20 |
 
 <!-- Add features above this line -->
 

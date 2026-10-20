@@ -1,6 +1,6 @@
 # PROJ-38: Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-20
 **Last Updated:** 2026-10-20
 
@@ -201,4 +201,5 @@ Keine neuen. Vorhandene Bausteine werden wiederverwendet (Textauslese für PDF/W
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-10-20: Migration an Produktions-DB angewendet, Push auf main (Commit c232515), Vercel-Production „Ready". Neue Routen ohne Login: 401.
+- Nicht im Browser getestet (kein Dev-Server, siehe Projekt-Regel): der Dialog ist nur durch Typprüfung, Lint, Build und Routen-Tests abgesichert — Sichtprüfung durch den Auftraggeber steht aus.
