@@ -122,6 +122,23 @@ describe('GET /api/admin/assessments', () => {
   })
 })
 
+describe('GET /api/admin/assessments – Ablage (PROJ-39)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('liefert Schuljahr, Klasse und Fach mit; Altnachweise ohne Zuordnung', async () => {
+    const row = { id: 'a1', title: 'LN', part: 1, status: 'closed', access_code: 'ABCD1234', created_at: '2026-10-01T00:00:00Z', exam_question_sets: null }
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({
+      listData: [
+        { ...row, school_year: '2026/27', class_name: 'SP11a', subject_id: 's1', subjects: { name: 'KSK', code: 'KSK' } },
+        { ...row, id: 'a2', school_year: '2025/26', class_name: null, subject_id: null, subjects: null },
+      ],
+    }) as never)
+    const body = await (await GET()).json()
+    expect(body.assessments[0]).toMatchObject({ schoolYear: '2026/27', className: 'SP11a', subjectId: 's1', subjectName: 'KSK' })
+    expect(body.assessments[1]).toMatchObject({ schoolYear: '2025/26', className: null, subjectId: null, subjectName: null })
+  })
+})
+
 describe('POST /api/admin/assessments', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -144,6 +161,12 @@ describe('POST /api/admin/assessments', () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { title: 'x' }))
     expect(res.status).toBe(400)
+  })
+
+  it('returns 400 for a class name over 30 characters or an invalid school year', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    expect((await POST(makeRequest('POST', { ...validBody, className: 'x'.repeat(31) }))).status).toBe(400)
+    expect((await POST(makeRequest('POST', { ...validBody, schoolYear: '2026/30' }))).status).toBe(400)
   })
 
   it('returns 400 when closesAt is not after opensAt', async () => {

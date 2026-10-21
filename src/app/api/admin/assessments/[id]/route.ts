@@ -77,6 +77,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     focusTracking: assessment.focus_tracking ?? false,
     focusAutoSubmitAfter: assessment.focus_auto_submit_after ?? null,
     resultsReleasedAt: assessment.results_released_at,
+    schoolYear: assessment.school_year as string,
+    className: assessment.class_name ?? null,
+    subjectId: assessment.subject_id ?? null,
     createdAt: assessment.created_at,
     questionCount: assessment.question_ids_snapshot?.length ?? assessment.draft_question_ids?.length ?? set?.question_ids?.length ?? 0,
     // Nur im Entwurf: Auswahl zum Bearbeiten (Altnachweise: Fragen des Sets)

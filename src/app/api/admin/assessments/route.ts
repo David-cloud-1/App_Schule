@@ -4,6 +4,7 @@ import { requireAdmin, writeAuditLog } from '../_lib/auth'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 import { validateFocusSettings } from '@/lib/focus-tracking'
+import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
 
 const CreateAssessmentSchema = z.object({
   questionIds: z.array(z.string().uuid()).min(1).max(500),
@@ -18,6 +19,10 @@ const CreateAssessmentSchema = z.object({
   // PROJ-30: Fokus-Verlust-Protokoll. Ohne Angabe aus (der Dialog schickt „an" ausdrücklich).
   focusTracking: z.boolean().default(false),
   focusAutoSubmitAfter: z.number().int().nullable().default(null),
+  // PROJ-39: Ablage, alles optional. Ohne Schuljahr gilt der DB-Standard (aus dem Erstelldatum).
+  className: z.string().max(MAX_CLASS_NAME_LENGTH).nullable().optional(),
+  subjectId: z.string().uuid().nullable().optional(),
+  schoolYear: z.string().optional(),
 })
 
 export async function GET() {
@@ -27,7 +32,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('graded_assessments')
-    .select('id, title, part, status, access_code, created_at, exam_set_id, exam_question_sets(name)')
+    .select('id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, exam_question_sets(name), subjects(name, code)')
     .eq('department_id', departmentId)
     .order('created_at', { ascending: false })
 
@@ -58,6 +63,11 @@ export async function GET() {
     participantCount: counts[a.id]?.participantCount ?? 0,
     submittedCount: counts[a.id]?.submittedCount ?? 0,
     createdAt: a.created_at,
+    schoolYear: a.school_year as string,
+    className: (a.class_name as string | null) ?? null,
+    subjectId: (a.subject_id as string | null) ?? null,
+    subjectName: (a.subjects as unknown as { name: string } | null)?.name ?? null,
+    subjectCode: (a.subjects as unknown as { code: string } | null)?.code ?? null,
   }))
 
   return NextResponse.json({ assessments })
@@ -78,7 +88,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale, focusTracking, focusAutoSubmitAfter } = parsed.data
+  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale, focusTracking, focusAutoSubmitAfter, className, subjectId, schoolYear } = parsed.data
 
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
@@ -97,6 +107,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
   }
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
+
+  // PROJ-39: Ablage prüfen (Fach gehört zum Bereich, Klasse vereinheitlichen)
+  const category = await resolveCategory(supabase, departmentId, { className, subjectId, schoolYear })
+  if (!category.ok) return NextResponse.json({ error: category.error }, { status: category.status })
 
   // Generate a unique code, retrying on collision (extremely unlikely given
   // ~887M combinations, but the spec calls out the edge case explicitly).
@@ -130,6 +144,7 @@ export async function POST(request: NextRequest) {
       grading_scale: gradingScale,
       focus_tracking: focusTracking,
       focus_auto_submit_after: focusAutoSubmitAfter,
+      ...category.columns,
       created_by: user.id,
     })
     .select('id')

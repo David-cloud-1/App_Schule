@@ -52,7 +52,8 @@
 | PROJ-36 | Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Deployed | [PROJ-36-mehr-deko.md](PROJ-36-mehr-deko.md) | 2026-10-09 |
 | PROJ-37 | Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Deployed | [PROJ-37-belebte-welt.md](PROJ-37-belebte-welt.md) | 2026-10-09 |
 | PROJ-38 | Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Deployed | [PROJ-38-nachweis-import-kopier-prompt.md](PROJ-38-nachweis-import-kopier-prompt.md) | 2026-10-20 |
+| PROJ-39 | Leistungsnachweis – Kategorisierung & Filter | In Progress | [PROJ-39-nachweis-kategorisierung.md](PROJ-39-nachweis-kategorisierung.md) | 2026-10-21 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-39
+## Next Available ID: PROJ-40
