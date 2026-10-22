@@ -1,6 +1,6 @@
 # PROJ-40: Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-22
 **Last Updated:** 2026-10-22
 
@@ -260,4 +260,8 @@ Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Da
 - Erneut geprüft: Vitest 96 Dateien / 1056 Tests grün, ESLint und `tsc` (unter `src/`) ohne Fehler.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-10-22 · **Produktion:** https://spedilern.vercel.app (Commit 2b82381, Vercel „Ready“, Build 50 s)
+- Keine Migration und keine neuen Umgebungsvariablen nötig (reines Frontend-Feature).
+- Vor dem Deploy: Lint 0 Fehler, Vitest 1056 Tests grün, `npm run build` erfolgreich (mit ausgelagertem `scripts/scratch/`).
+- Nach dem Deploy (ohne Login geprüft): `/admin` und `/admin/questions` leiten auf `/login` um (307), `/login` 200, `/api/admin/departments` 401.
+- **Noch offen:** optische Abnahme im eingeloggten Zustand (Handy 375 px mit Super-Admin, Tablet, Desktop, Druckvorschau der Leistungsnachweise).
