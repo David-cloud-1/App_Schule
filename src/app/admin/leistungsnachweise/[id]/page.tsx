@@ -42,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { AssessmentCategoryCard } from '@/components/admin/assessment-category-card'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
@@ -66,6 +67,10 @@ type AssessmentDetail = {
   focusTracking: boolean
   focusAutoSubmitAfter: number | null
   createdAt: string
+  /** PROJ-39 */
+  schoolYear: string
+  className: string | null
+  subjectId: string | null
   questionCount: number
   /** Entwurfs-Fragenliste (nur im Status Entwurf) */
   draftQuestionIds?: string[]
@@ -374,6 +379,16 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       </div>
+
+      {/* PROJ-39: Ablage — in jedem Status änderbar */}
+      <AssessmentCategoryCard
+        key={`${detail.schoolYear}|${detail.className}|${detail.subjectId}`}
+        assessmentId={id}
+        schoolYear={detail.schoolYear}
+        schoolClass={detail.className}
+        subjectId={detail.subjectId}
+        onSaved={load}
+      />
 
       {/* PROJ-30: Fokus-Verlust-Protokoll — im Entwurf einstellbar, danach nur als Hinweis */}
       {detail.status === 'draft' ? (

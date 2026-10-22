@@ -18,6 +18,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
 import { useExamPartLabel } from '@/components/department-provider'
 import { AssessmentQuestionSelector } from './assessment-question-selector'
+import { AssessmentCategoryFields, type CategoryValue, type SubjectOption } from './assessment-category-fields'
+import { schoolYearFor } from '@/lib/assessment-category'
+import { schoolYearChoices } from '@/lib/assessment-filter'
 import type { PickerQuestion } from './question-picker'
 import {
   DEFAULT_FOCUS_FORM,
@@ -39,6 +42,10 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   sets: ExamSetOption[]
+  /** PROJ-39: Auswahl für die Ablage */
+  subjects: SubjectOption[]
+  classSuggestions: string[]
+  usedSchoolYears: string[]
   preselectedSetId?: string | null
   onSuccess: (assessmentId: string) => void
 }
@@ -57,7 +64,7 @@ function defaultWindow() {
 const NO_START = 'none'
 const MIN_QUESTIONS = 5
 
-export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSetId, onSuccess }: Props) {
+export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, classSuggestions, usedSchoolYears, preselectedSetId, onSuccess }: Props) {
   const partLabel = useExamPartLabel()
   const [startSetId, setStartSetId] = useState<string>(NO_START)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -68,6 +75,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
   const [durationMinutes, setDurationMinutes] = useState('90')
   const [scale, setScale] = useState<GradeBoundary[]>(IHK_DEFAULT_SCALE)
   const [focus, setFocus] = useState<FocusFormValue>(DEFAULT_FOCUS_FORM)
+  const [category, setCategory] = useState<CategoryValue>({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -118,6 +126,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
     setClosesAt(closesAt)
     setScale(IHK_DEFAULT_SCALE)
     setFocus(DEFAULT_FOCUS_FORM)
+    setCategory({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
     setErrors({})
   }, [open, preselectedSetId, sets])
 
@@ -170,6 +179,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
           durationMinutes: Number(durationMinutes),
           gradingScale: scale,
           ...focusFormToPayload(focus),
+          schoolYear: category.schoolYear,
+          className: category.className.trim() || null,
+          subjectId: category.subjectId,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -243,6 +255,19 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, preselectedSet
               maxLength={100}
             />
             {errors.title && <p className="text-xs text-[#FF4B4B]">{errors.title}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Ablage <span className="font-normal text-[#6B7280]">— nur zum Sortieren, ändert nichts am Zugang</span></Label>
+            <AssessmentCategoryFields
+              idPrefix="neu"
+              value={category}
+              onChange={setCategory}
+              subjects={subjects}
+              classSuggestions={classSuggestions}
+              schoolYears={schoolYearChoices(usedSchoolYears, schoolYearFor(new Date()))}
+              disabled={submitting}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

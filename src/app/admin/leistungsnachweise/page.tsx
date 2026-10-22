@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,20 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
+import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
+import { useAssessmentSubjects } from '@/components/admin/assessment-category-fields'
+import { schoolYearFor } from '@/lib/assessment-category'
+import {
+  FILTER_ALL,
+  classOptions,
+  defaultFilters,
+  filterAssessments,
+  filtersFromParams,
+  filtersToParams,
+  schoolYearOptions,
+  subjectOptions,
+  type AssessmentFilters,
+} from '@/lib/assessment-filter'
 import { cn } from '@/lib/utils'
 
 type AssessmentListItem = {
@@ -29,6 +43,11 @@ type AssessmentListItem = {
   participantCount: number
   submittedCount: number
   createdAt: string
+  /** PROJ-39: Ablage */
+  schoolYear: string
+  className: string | null
+  subjectId: string | null
+  subjectName: string | null
 }
 
 type ExamSetOption = {
@@ -53,7 +72,16 @@ const STATUS_STYLES: Record<AssessmentListItem['status'], string> = {
 
 function AssessmentsPageContent() {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
+  const subjectChoices = useAssessmentSubjects()
+  const currentSchoolYear = useMemo(() => schoolYearFor(new Date()), [])
+  // Filter stehen in der Adresszeile (bleiben beim Wechsel in die Detailansicht erhalten); die Suche bleibt lokal
+  const [query, setQuery] = useState('')
+  const filters = useMemo<AssessmentFilters>(
+    () => ({ ...filtersFromParams(new URLSearchParams(searchParams.toString()), currentSchoolYear), query }),
+    [searchParams, currentSchoolYear, query],
+  )
   const [assessments, setAssessments] = useState<AssessmentListItem[]>([])
   const [sets, setSets] = useState<ExamSetOption[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,6 +118,25 @@ function AssessmentsPageContent() {
     load()
   }, [load])
 
+  function changeFilters(next: AssessmentFilters) {
+    setQuery(next.query)
+    const params = filtersToParams(next, currentSchoolYear, new URLSearchParams(searchParams.toString()))
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
+
+  const visible = useMemo(() => filterAssessments(assessments, filters), [assessments, filters])
+  const filterOptions = useMemo(
+    () => ({
+      schoolYears: schoolYearOptions(assessments.map((a) => a.schoolYear), currentSchoolYear),
+      classes: classOptions(assessments),
+      subjects: subjectOptions(assessments),
+      hasUnassignedClass: assessments.some((a) => a.className === null),
+      hasUnassignedSubject: assessments.some((a) => a.subjectId === null),
+    }),
+    [assessments, currentSchoolYear],
+  )
+
   useEffect(() => {
     const fromSet = searchParams.get('createFromSet')
     if (fromSet) {
@@ -104,7 +151,7 @@ function AssessmentsPageContent() {
         <div>
           <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Leistungsnachweise</h1>
           <p className="text-sm text-[#9CA3AF] mt-1">
-            Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code, keine Klassenzuordnung.
+            Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code — Klasse und Fach dienen nur der Ablage.
           </p>
         </div>
         <Button
@@ -118,6 +165,18 @@ function AssessmentsPageContent() {
           Neu erstellen
         </Button>
       </div>
+
+      {!failed && assessments.length > 0 && (
+        <AssessmentFilterBar
+          filters={filters}
+          onChange={changeFilters}
+          schoolYears={filterOptions.schoolYears}
+          classes={filterOptions.classes}
+          subjects={filterOptions.subjects}
+          hasUnassignedClass={filterOptions.hasUnassignedClass}
+          hasUnassignedSubject={filterOptions.hasUnassignedSubject}
+        />
+      )}
 
       {failed ? (
         <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
@@ -156,13 +215,52 @@ function AssessmentsPageContent() {
                     Noch keine Leistungsnachweise angelegt.
                   </TableCell>
                 </TableRow>
+              ) : visible.length === 0 ? (
+                <TableRow className="border-[#4B5563]">
+                  <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
+                    <GraduationCap size={32} className="mx-auto mb-2 text-[#374151]" />
+                    <p>
+                      {filters.schoolYear !== FILTER_ALL && filters.className === FILTER_ALL && filters.subjectId === FILTER_ALL && filters.status === FILTER_ALL && !filters.query
+                        ? `Im Schuljahr ${filters.schoolYear} gibt es noch keine Leistungsnachweise.`
+                        : 'Keine Leistungsnachweise passen zu diesen Filtern.'}
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      {filters.schoolYear !== FILTER_ALL && (
+                        <Button
+                          variant="outline"
+                          onClick={() => changeFilters({ ...filters, schoolYear: FILTER_ALL })}
+                          className="h-11 rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+                        >
+                          Alle Schuljahre anzeigen
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        onClick={() => changeFilters(defaultFilters(currentSchoolYear))}
+                        className="h-11 rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+                      >
+                        Filter zurücksetzen
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : (
-                assessments.map((a) => (
+                visible.map((a) => (
                   <TableRow key={a.id} className="border-[#4B5563] hover:bg-[#111827]/40">
                     <TableCell className="text-[#F9FAFB] font-medium">
                       <Link href={`/admin/leistungsnachweise/${a.id}`} className="hover:underline">
                         {a.title}
                       </Link>
+                      {(a.className || a.subjectName) && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {a.className && (
+                            <Badge className="text-xs border-0 bg-[#1CB0F6]/15 text-[#1CB0F6]">{a.className}</Badge>
+                          )}
+                          {a.subjectName && (
+                            <Badge className="text-xs border-0 bg-[#374151] text-[#F9FAFB]">{a.subjectName}</Badge>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge className={cn('text-xs border-0', STATUS_STYLES[a.status])}>
@@ -188,6 +286,9 @@ function AssessmentsPageContent() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         sets={sets}
+        subjects={subjectChoices}
+        classSuggestions={filterOptions.classes}
+        usedSchoolYears={assessments.map((a) => a.schoolYear)}
         preselectedSetId={preselectedSetId}
         onSuccess={(id) => router.push(`/admin/leistungsnachweise/${id}`)}
       />

@@ -144,6 +144,21 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 - Die Fach-Auswahl lädt das Frontend über das vorhandene `GET /api/admin/subjects` (Bereichs-gefiltert).
 - Die Detailseite hat heute keine Titel-Bearbeitung außerhalb des Entwurfs; die neue Ablage-Karte muss deshalb unabhängig vom Status bearbeitbar sein.
 
+## Implementation Notes – Frontend (2026-10-22)
+
+**Gebaut:**
+- **Listenseite** (`src/app/admin/leistungsnachweise/page.tsx`): Filterleiste über der Tabelle (Suche, Schuljahr, Klasse, Fach, Status-Chips), Standard = aktuelles Schuljahr, neueste zuerst. Klasse und Fach erscheinen als Badges unter dem Titel. Leerzustände: „Im Schuljahr … gibt es noch keine Nachweise“ (mit „Alle Schuljahre anzeigen“) bzw. „Keine Nachweise passen zu diesen Filtern“ (mit „Filter zurücksetzen“). Die Filterleiste erscheint erst, wenn es mindestens einen Nachweis gibt. „Neu erstellen“ ist unverändert platziert.
+- **Filter in der Adresszeile** (`sj`, `klasse`, `fach`, `status`; nur Abweichungen vom Standard). Die Suche bleibt bewusst lokal. Die Dropdowns bieten nur vorkommende Werte; „Ohne Klasse“/„Ohne Fach“ nur, wenn es solche Nachweise gibt.
+- **Dialog „Neu erstellen“**: neuer Abschnitt „Ablage“ (Schuljahr vorbelegt, Klasse mit Vorschlägen als Eingabe, Fach-Auswahl), alles änderbar und leer erlaubt.
+- **Detailseite**: neue Karte „Ablage“ mit Speichern-Knopf, in jedem Status bearbeitbar (nutzt den neuen Endpunkt `/category`).
+- **Neue Dateien:** `src/lib/assessment-filter.ts` (+ Test, 11 Tests), `assessment-filter-bar.tsx`, `assessment-category-fields.tsx`, `assessment-category-card.tsx` (alle in `src/components/admin/`). Es wurden nur vorhandene shadcn-Bausteine verwendet.
+
+**Abweichungen/Hinweise:**
+- Klassen-Vorschläge nutzen das native `<datalist>` des Browsers (gut auf dem Handy, keine Zusatzbibliothek).
+- Die Fach-Auswahl zeigt alle Fächer des Bereichs (auch inaktive), damit ein bereits gesetztes Fach immer wählbar bleibt.
+- Die Beschreibung unter der Überschrift lautet jetzt „Zugang per Code — Klasse und Fach dienen nur der Ablage.“
+- **Nicht im Browser getestet** (kein Dev-Server auf diesem Rechner, siehe Projektregel). Geprüft: `tsc`, `eslint` (keine neuen Warnungen), 90 Testdateien / 1022 Tests grün, `npm run build` erfolgreich (dafür wurde `scripts/scratch/fragen-pipeline` vorübergehend ausgelagert, weil der Ordner den Build bricht; wiederhergestellt).
+
 ## QA Test Results
 _To be added by /qa_
 
