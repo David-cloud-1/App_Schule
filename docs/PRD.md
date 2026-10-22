@@ -72,7 +72,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-40: Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Deployed |
 | P1 | PROJ-41: Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Deployed |
 | P1 | PROJ-42: „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed |
-| P1 | PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Planned |
+| P1 | PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

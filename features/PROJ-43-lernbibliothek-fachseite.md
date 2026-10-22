@@ -1,6 +1,6 @@
 # PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-22
 **Last Updated:** 2026-10-22
 
@@ -269,4 +269,7 @@ Die verwendeten Spalten existieren (`questions.class_level/topic_id/assessment_o
 **Produktionsreif: JA.** Keine kritischen oder hohen Fehler.
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-10-22
+- **URL:** https://spedilern.vercel.app
+- **Migration:** keine (keine Datenbank-Änderung)
+- **Neu:** Paket `@radix-ui/react-toggle-group` (shadcn `toggle-group`)
