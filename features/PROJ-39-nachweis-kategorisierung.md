@@ -1,8 +1,8 @@
 # PROJ-39: Leistungsnachweis – Kategorisierung & Filter
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-21
-**Last Updated:** 2026-10-21
+**Last Updated:** 2026-10-22
 
 ## Beschreibung
 Die Admin-Liste der Leistungsnachweise wird mit Schuljahr, Klasse und Fach kategorisiert und durchsuchbar gemacht, damit sie bei vielen Nachweisen übersichtlich bleibt. Die Zuordnung dient nur der Ablage und ändert nichts am Code-Zugang oder an den Teilnehmern (keine Klassenzuordnung der Teilnehmer, siehe PROJ-15/PROJ-21).
@@ -249,4 +249,10 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 - **Production-Ready:** keine offenen Critical/High/Medium/Low-Fehler. **Noch offen vor dem Deploy:** Browser-Sicht (Layout 375/768/1440 px, Safari/Firefox) und die Datenbank-Gegenprobe (Prüfregeln, echte RLS, Fach löschen) wurden nicht ausgeführt. Status bleibt bis zu deiner Freigabe **In Review**.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployt:** 2026-10-22, Produktion https://spedilern.vercel.app (Deployment `spedilern-o0lu6m6y3`, Status Ready)
+- **Reihenfolge:** erst Migration `proj39_assessment_category` auf der Produktions-DB (Projekt `riqafwijurbxvywzlipx`), danach Push auf `main` (`88c3823`).
+- **Nach der Migration geprüft:** Spalten `school_year` (NOT NULL, Standard `current_school_year()`), `class_name`, `subject_id` vorhanden; beide Prüfregeln und beide Indizes vorhanden; die 4 Bestandsnachweise haben Schuljahr „2026/27“, Klasse und Fach leer.
+- **Nach dem Deploy geprüft (ohne Login):** `GET/POST /api/admin/assessments`, `GET /api/admin/assessments/[id]` und `PATCH …/category` liefern 401; `/admin/leistungsnachweise` leitet auf den Login um; `/login` liefert 200.
+- **Freigabe:** Der Nutzer hat `/deploy` gestartet, obwohl der Status noch In Review stand und die Datenbank-Gegenprobe sowie die Browser-Sicht (375/768/1440 px, Safari/Firefox) offen waren. Das wurde ausdrücklich so entschieden; die Browser-Sicht kann jetzt direkt in Produktion angesehen werden.
+- **Rückweg:** `supabase/migrations/20261021_proj39_assessment_category_down.sql` (entfernt die drei Spalten, Prüfregeln, Indizes und die Funktion). Code-Rollback über „Promote“ des vorherigen Deployments; der alte Code läuft auch mit der neuen DB.
