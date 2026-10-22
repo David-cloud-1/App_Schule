@@ -12,14 +12,19 @@ function mockFetch(categoryResponse: { ok: boolean; body?: unknown } = { ok: tru
   const calls: FetchCall[] = []
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init })
-    if (url === '/api/admin/subjects') return { ok: true, json: async () => ({ subjects: [{ id: 's1', name: 'KSK', code: 'KSK' }] }) }
-    if (url === '/api/admin/assessments') return { ok: true, json: async () => ({ assessments: [{ className: 'SP11a', schoolYear: '2025/26' }] }) }
     return { ok: categoryResponse.ok, json: async () => categoryResponse.body ?? {} }
   }))
   return calls
 }
 
-const props = { assessmentId: 'a1', schoolYear: '2026/27', schoolClass: null, subjectId: null }
+const props = {
+  assessmentId: 'a1',
+  schoolYear: '2026/27',
+  schoolClass: null,
+  subjectId: null,
+  subjects: [{ id: 's1', name: 'KSK', code: 'KSK' }],
+  classSuggestions: ['SP11a'],
+}
 
 describe('AssessmentCategoryCard', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -29,7 +34,7 @@ describe('AssessmentCategoryCard', () => {
     mockFetch()
     render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
     expect(screen.getByRole('button', { name: /Ablage speichern/ })).toBeDisabled()
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it('schickt nur die Ablage-Felder an den Category-Endpunkt und lädt danach neu', async () => {
@@ -73,9 +78,22 @@ describe('AssessmentCategoryCard', () => {
     expect(onSaved).not.toHaveBeenCalled()
   })
 
-  it('bietet bereits verwendete Klassen als Vorschlag an', async () => {
+  it('bietet die vom Server gelieferten Klassen als Vorschlag an (ohne eigene Abfrage)', () => {
     mockFetch()
     const { container } = render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
-    await waitFor(() => expect(container.querySelector('datalist option[value="SP11a"]')).not.toBeNull())
+    expect(container.querySelector('datalist option[value="SP11a"]')).not.toBeNull()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('ruht nach dem Speichern, auch wenn der Server die Klasse anders schreibt (BUG-4)', async () => {
+    mockFetch({ ok: true, body: { success: true, className: 'SP11a', subjectId: null, schoolYear: '2026/27' } })
+    render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
+
+    const input = screen.getByLabelText(/Klasse/) as HTMLInputElement
+    fireEvent.change(input, { target: { value: 'sp11a' } })
+    fireEvent.click(screen.getByRole('button', { name: /Ablage speichern/ }))
+
+    await waitFor(() => expect(input.value).toBe('SP11a'))
+    expect(screen.getByRole('button', { name: /Ablage speichern/ })).toBeDisabled()
   })
 })

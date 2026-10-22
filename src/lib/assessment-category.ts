@@ -63,7 +63,9 @@ export type CategoryResult =
 export async function resolveCategory(
   supabase: SupabaseClient,
   departmentId: string,
-  input: CategoryInput
+  input: CategoryInput,
+  /** Beim Ändern eines Nachweises: dessen eigene Klasse zählt nicht als „schon verwendet“ */
+  excludeAssessmentId?: string
 ): Promise<CategoryResult> {
   const columns: ResolvedCategory['columns'] = {}
 
@@ -91,7 +93,7 @@ export async function resolveCategory(
   }
 
   if (input.className !== undefined) {
-    const existing = await fetchUsedClassNames(supabase, departmentId)
+    const existing = await fetchUsedClassNames(supabase, departmentId, excludeAssessmentId)
     if (existing === null) return { ok: false, status: 500, error: 'Klassen konnten nicht geprüft werden.' }
     columns.class_name = normalizeClassName(input.className, existing)
   }
@@ -100,12 +102,14 @@ export async function resolveCategory(
 }
 
 /** Alle im Fachbereich bereits verwendeten Klassen (ohne Duplikate), null bei Fehler */
-export async function fetchUsedClassNames(supabase: SupabaseClient, departmentId: string): Promise<string[] | null> {
-  const { data, error } = await supabase
-    .from('graded_assessments')
-    .select('class_name')
-    .eq('department_id', departmentId)
-    .not('class_name', 'is', null)
+export async function fetchUsedClassNames(
+  supabase: SupabaseClient,
+  departmentId: string,
+  excludeAssessmentId?: string
+): Promise<string[] | null> {
+  let query = supabase.from('graded_assessments').select('class_name').eq('department_id', departmentId)
+  if (excludeAssessmentId) query = query.neq('id', excludeAssessmentId)
+  const { data, error } = await query.not('class_name', 'is', null)
   if (error) return null
   return Array.from(new Set((data ?? []).map((r) => r.class_name as string)))
 }

@@ -12,6 +12,7 @@ import {
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { fetchAnswerKey } from '@/lib/answer-key'
 import { validateFocusSettings } from '@/lib/focus-tracking'
+import { fetchUsedClassNames } from '@/lib/assessment-category'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
@@ -61,6 +62,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const set = assessment.exam_question_sets as unknown as { name: string; question_ids: string[] } | null
 
+  // PROJ-39: Auswahl für die Ablage gehört zum Bereich des Nachweises (nicht zum Arbeitsbereich
+  // des Umschalters). Fehler hier blockieren die Seite nicht — die Ablage bleibt dann frei tippbar.
+  const { data: subjectRows } = await supabase
+    .from('subjects')
+    .select('id, name, code')
+    .eq('department_id', assessment.department_id)
+    .order('code')
+  const classSuggestions = (await fetchUsedClassNames(supabase, assessment.department_id)) ?? []
+
   return NextResponse.json({
     id: assessment.id,
     title: assessment.title,
@@ -80,6 +90,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     schoolYear: assessment.school_year as string,
     className: assessment.class_name ?? null,
     subjectId: assessment.subject_id ?? null,
+    categoryOptions: { subjects: subjectRows ?? [], classes: classSuggestions },
     createdAt: assessment.created_at,
     questionCount: assessment.question_ids_snapshot?.length ?? assessment.draft_question_ids?.length ?? set?.question_ids?.length ?? 0,
     // Nur im Entwurf: Auswahl zum Bearbeiten (Altnachweise: Fragen des Sets)

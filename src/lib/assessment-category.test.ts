@@ -57,6 +57,7 @@ function makeSupabase(opts: { subjectFound?: boolean; classes?: string[] }) {
   const assessments = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
     not: vi.fn().mockResolvedValue({ data: (opts.classes ?? []).map((c) => ({ class_name: c })), error: null }),
   }
   const from = vi.fn((table: string) => {
@@ -64,7 +65,7 @@ function makeSupabase(opts: { subjectFound?: boolean; classes?: string[] }) {
     if (table === 'graded_assessments') return assessments
     throw new Error(`Unexpected table: ${table}`)
   })
-  return { supabase: { from } as never, from, subjects }
+  return { supabase: { from } as never, from, subjects, assessments }
 }
 
 describe('resolveCategory', () => {
@@ -99,6 +100,19 @@ describe('resolveCategory', () => {
     const { supabase } = makeSupabase({ classes: ['SP11a'] })
     const res = await resolveCategory(supabase, 'dept', { className: ' sp11A ', schoolYear: '2026/27' })
     expect(res).toEqual({ ok: true, columns: { class_name: 'SP11a', school_year: '2026/27' } })
+  })
+
+  it('schließt beim Ändern den eigenen Nachweis aus, damit die Schreibweise korrigierbar bleibt (BUG-4)', async () => {
+    const { supabase, assessments } = makeSupabase({ classes: [] })
+    const res = await resolveCategory(supabase, 'dept', { className: 'sp11a' }, 'a1')
+    expect(assessments.neq).toHaveBeenCalledWith('id', 'a1')
+    expect(res).toEqual({ ok: true, columns: { class_name: 'sp11a' } })
+  })
+
+  it('fragt beim Anlegen ohne Ausschluss nicht nach neq', async () => {
+    const { supabase, assessments } = makeSupabase({ classes: [] })
+    await resolveCategory(supabase, 'dept', { className: 'SP11a' })
+    expect(assessments.neq).not.toHaveBeenCalled()
   })
 
   it('leert die Klasse bei leerer Eingabe', async () => {

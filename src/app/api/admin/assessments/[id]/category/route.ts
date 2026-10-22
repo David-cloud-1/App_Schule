@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .maybeSingle()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
 
-  const category = await resolveCategory(supabase, assessment.department_id, parsed.data)
+  const category = await resolveCategory(supabase, assessment.department_id, parsed.data, id)
   if (!category.ok) return NextResponse.json({ error: category.error }, { status: category.status })
 
   const { error } = await supabase.from('graded_assessments').update(category.columns).eq('id', id)

@@ -20,6 +20,7 @@ import { CreateAssessmentModal } from '@/components/admin/create-assessment-moda
 import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
 import { useAssessmentSubjects } from '@/components/admin/assessment-category-fields'
 import { schoolYearFor } from '@/lib/assessment-category'
+import { saveListQuery } from '@/lib/assessment-list-memory'
 import {
   FILTER_ALL,
   classOptions,
@@ -122,8 +123,15 @@ function AssessmentsPageContent() {
     setQuery(next.query)
     const params = filtersToParams(next, currentSchoolYear, new URLSearchParams(searchParams.toString()))
     const qs = params.toString()
+    // Die Suche bleibt lokal: ohne geänderte Adress-Parameter keine Navigation (sonst eine Server-Anfrage pro Tastendruck)
+    if (qs === searchParams.toString()) return
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
+
+  // Filterzustand für den Zurück-Pfeil der Detailseite merken
+  useEffect(() => {
+    saveListQuery(filtersToParams(filters, currentSchoolYear, new URLSearchParams()).toString())
+  }, [filters, currentSchoolYear])
 
   const visible = useMemo(() => filterAssessments(assessments, filters), [assessments, filters])
   const filterOptions = useMemo(

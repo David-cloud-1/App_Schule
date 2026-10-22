@@ -1,51 +1,37 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { schoolYearFor } from '@/lib/assessment-category'
-import { classOptions, schoolYearChoices } from '@/lib/assessment-filter'
-import { AssessmentCategoryFields, useAssessmentSubjects, type CategoryValue } from './assessment-category-fields'
+import { schoolYearChoices } from '@/lib/assessment-filter'
+import { AssessmentCategoryFields, type CategoryValue, type SubjectOption } from './assessment-category-fields'
 
 interface Props {
   assessmentId: string
   schoolYear: string
   schoolClass: string | null
   subjectId: string | null
+  /** Fächer und vorhandene Klassen des Bereichs, zu dem der Nachweis gehört */
+  subjects: SubjectOption[]
+  classSuggestions: string[]
   onSaved: () => void
 }
 
 /** PROJ-39: Ablage eines Nachweises ändern — in jedem Status, ohne Wirkung auf die Prüfung */
-export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, subjectId, onSaved }: Props) {
+export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, subjectId, subjects, classSuggestions, onSaved }: Props) {
   const initial: CategoryValue = { schoolYear, className: schoolClass ?? '', subjectId }
   const [value, setValue] = useState<CategoryValue>(initial)
+  // Zuletzt gespeicherter Stand: Vergleichsbasis für „geändert?“, damit der Knopf nach dem
+  // Speichern auch dann ruht, wenn der Server die Schreibweise der Klasse vereinheitlicht hat
+  const [base, setBase] = useState<CategoryValue>(initial)
   const [saving, setSaving] = useState(false)
-  const [classSuggestions, setClassSuggestions] = useState<string[]>([])
-  const [usedYears, setUsedYears] = useState<string[]>([])
-  const subjects = useAssessmentSubjects()
-
-  // Vorschläge aus den vorhandenen Nachweisen des Bereichs; ohne sie bleibt die freie Eingabe möglich
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/admin/assessments')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (cancelled || !json) return
-        const list = (json.assessments ?? []) as { className: string | null; schoolYear: string }[]
-        setClassSuggestions(classOptions(list))
-        setUsedYears(list.map((a) => a.schoolYear))
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const dirty =
-    value.schoolYear !== initial.schoolYear ||
-    value.className.trim() !== initial.className ||
-    value.subjectId !== initial.subjectId
+    value.schoolYear !== base.schoolYear ||
+    value.className.trim() !== base.className ||
+    value.subjectId !== base.subjectId
 
   async function save() {
     setSaving(true)
@@ -64,6 +50,13 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
         toast.error(data?.error ?? 'Speichern fehlgeschlagen')
         return
       }
+      const saved: CategoryValue = {
+        schoolYear: data?.schoolYear ?? value.schoolYear,
+        className: data?.className !== undefined ? (data.className ?? '') : value.className.trim(),
+        subjectId: data?.subjectId !== undefined ? data.subjectId : value.subjectId,
+      }
+      setBase(saved)
+      setValue(saved)
       toast.success('Ablage gespeichert')
       onSaved()
     } catch (err) {
@@ -86,7 +79,7 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
         onChange={setValue}
         subjects={subjects}
         classSuggestions={classSuggestions}
-        schoolYears={schoolYearChoices(usedYears, schoolYearFor(new Date()))}
+        schoolYears={schoolYearChoices([], schoolYearFor(new Date()))}
         disabled={saving}
       />
       <div className="flex justify-end">

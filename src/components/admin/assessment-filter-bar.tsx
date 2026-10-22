@@ -4,7 +4,7 @@ import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { FILTER_ALL, FILTER_NONE, type AssessmentFilters } from '@/lib/assessment-filter'
+import { FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, type AssessmentFilters } from '@/lib/assessment-filter'
 import { cn } from '@/lib/utils'
 
 const STATUS_CHIPS: { value: string; label: string }[] = [
@@ -30,7 +30,8 @@ export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, s
   const contentClass = 'bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]'
   // Ein Wert aus der Adresszeile, den es nicht (mehr) gibt, bleibt sichtbar und wählbar
   const years = filters.schoolYear === FILTER_ALL || schoolYears.includes(filters.schoolYear) ? schoolYears : [filters.schoolYear, ...schoolYears]
-  const classList = [FILTER_ALL, FILTER_NONE].includes(filters.className) || classes.includes(filters.className) ? classes : [filters.className, ...classes]
+  const selectedClass = classFromFilter(filters.className)
+  const classList = [FILTER_ALL, FILTER_NONE].includes(filters.className) || classes.includes(selectedClass) ? classes : [selectedClass, ...classes]
 
   return (
     <div className="space-y-3">
@@ -67,7 +68,7 @@ export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, s
             <SelectItem value={FILTER_ALL}>Alle Klassen</SelectItem>
             {hasUnassignedClass && <SelectItem value={FILTER_NONE}>Ohne Klasse</SelectItem>}
             {classList.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+              <SelectItem key={c} value={classFilterValue(c)}>{c}</SelectItem>
             ))}
           </SelectContent>
         </Select>

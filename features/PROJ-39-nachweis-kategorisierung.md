@@ -191,7 +191,7 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 - [x] Fach gelöscht: `ON DELETE SET NULL` (nur in der Migration gelesen, **nicht live getestet**)
 - [x] Offene/geschlossene Nachweise: Ablage bleibt änderbar, getrennt vom Entwurf-Only-PATCH
 - [x] Gleichzeitige Änderung: letzte Speicherung gewinnt, keine Beschädigung
-- [ ] BUG-1: Filterzustand geht über den Zurück-Pfeil der Detailseite verloren (siehe unten)
+- [x] ~~BUG-1: Filterzustand geht über den Zurück-Pfeil der Detailseite verloren~~ – behoben, siehe unten
 - [x] Viele Nachweise: Filterung im Browser, keine Schleifen über die Datenbank
 
 ### Security Audit Results
@@ -214,25 +214,30 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 - **Erwartet (Spec, Edge Case „Filterzustand“):** gleiche Filter wie vorher. **Tatsächlich:** der Pfeil verlinkt auf `/admin/leistungsnachweise` ohne Parameter → Standardfilter (aktuelles Schuljahr). Der Browser-Zurück-Knopf funktioniert, ebenso `router.push` nach dem Löschen (ebenfalls ohne Filter).
 - **Ort:** `src/app/admin/leistungsnachweise/[id]/page.tsx` Zeilen 208 und 274
 - **Priorität:** vor dem Deploy beheben (kleine Änderung)
+- **✅ Behoben (2026-10-22):** Die Liste merkt sich ihren Filterzustand pro Browser-Tab (`src/lib/assessment-list-memory.ts`, nur die vier bekannten Parameter); Zurück-Pfeil und Weiterleitung nach dem Löschen führen dorthin zurück. Tests in `assessment-list-memory.test.ts`.
 
 #### BUG-2: Jeder Tastendruck in der Suche löst eine Navigation aus
 - **Severity:** Medium (Leistung, funktioniert aber)
 - **Ursache:** `changeFilters` ruft für **jede** Änderung, auch für die lokale Suche, `router.replace` mit unveränderter Adresse auf. Bei dynamischen Next-Seiten kann das pro Tastendruck eine Server-Anfrage auslösen.
 - **Priorität:** vor dem Deploy beheben (Suche nur lokal setzen, `router.replace` nur bei Änderung der Adress-Parameter)
+- **✅ Behoben (2026-10-22):** `changeFilters` navigiert nur noch, wenn sich die Adress-Parameter wirklich ändern; die Suche bleibt rein lokal. (Nur per Code-Review geprüft, nicht im Browser.)
 
 #### BUG-3: Klassen namens „alle“ oder „none“ kollidieren mit den Filter-Platzhaltern
 - **Severity:** Low – eine Klasse „alle“/„none“ würde „Alle Klassen“ bzw. „Ohne Klasse“ auslösen. Unwahrscheinlich bei Namen wie „SP11a“.
 - **Priorität:** Nice to have
 
-#### BUG-4: Klassenschreibweise lässt sich nachträglich nicht mehr auf eine andere Groß-/Kleinschreibung ändern; der Speichern-Knopf bleibt danach aktiv
+#### BUG-4- **✅ Behoben (2026-10-22):** Echte Klassen tragen im Filter ein Präfix (`k:`), „Alle“/„Ohne Klasse“ bleiben eigene Werte; ältere Links ohne Präfix gelten weiter. Tests mit Klassen „alle“ und „none“.
+: Klassenschreibweise lässt sich nachträglich nicht mehr auf eine andere Groß-/Kleinschreibung ändern; der Speichern-Knopf bleibt danach aktiv
 - **Severity:** Low – „sp11a“ wird immer zu einer vorhandenen „SP11a“ vereinheitlicht (gewollt). Wer die Schreibweise der einzigen Klasse korrigieren will, kann es nicht; der Knopf bleibt nach dem Speichern aktiv, weil der Vergleich Groß-/Kleinschreibung beachtet.
 - **Priorität:** Nice to have
 
-#### BUG-5: Bei Super-Admin im Bereichs-Umschalter kann die Fach-Auswahl zum falschen Bereich gehören
+#### BUG-5- **✅ Behoben (2026-10-22):** Beim Ändern eines Nachweises zählt dessen eigene Klasse nicht als „schon verwendet“, die Schreibweise lässt sich also korrigieren, solange keine andere Prüfung die Klasse nutzt. Der Speichern-Knopf vergleicht gegen den zuletzt gespeicherten (vom Server vereinheitlichten) Stand und ruht danach.
+: Bei Super-Admin im Bereichs-Umschalter kann die Fach-Auswahl zum falschen Bereich gehören
 - **Severity:** Low – Detailseite eines Nachweises aus einem anderen als dem eingestellten Bereich zeigt Fächer des eingestellten Bereichs; der Server lehnt falsche Fächer mit 400 ab, das gesetzte Fach erscheint aber leer.
 - **Priorität:** Nice to have
 
-#### Hinweise (kein Fehler)
+#### Hinweise- **✅ Behoben (2026-10-22):** Der Detail-Endpunkt liefert `categoryOptions` (Fächer und Klassen des Bereichs **des Nachweises**); die Ablage-Karte nutzt diese statt eigener Abfragen im Arbeitsbereich des Umschalters.
+ (kein Fehler)
 - Der Anlegen-Dialog sendet immer `className`, dadurch läuft pro Anlegen eine zusätzliche Abfrage der vorhandenen Klassen, auch bei leerer Klasse (kleine Einsparung möglich).
 - Die Abfrage der vorhandenen Klassen hat kein eigenes Limit (PostgREST-Standard 1000 Zeilen) – für diese App irrelevant.
 - `src/lib/database.types.ts` wurde nicht neu generiert (der Code nutzt einen ungetypten Client).
@@ -240,7 +245,8 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 ### Summary
 - Anforderungen: 13 von 14 voll erfüllt, 1 mit bewusster Abweichung (AC-11, Schuljahr).
 - Fehler: 0 Critical, 0 High, 2 Medium, 3 Low.
-- **Production-Ready:** noch nicht freigegeben. Es gibt keine Critical/High-Fehler, aber BUG-1 und BUG-2 sollten vor dem Deploy behoben werden, und die Datenbank-Gegenprobe (Prüfregeln, RLS, Fach löschen) steht noch aus. Status bleibt **In Review**.
+- **Nachbesserung 2026-10-22:** Alle fünf Fehler (BUG-1 bis BUG-5) sind behoben. Danach: 93 Testdateien / 1041 Tests grün, `tsc` und `eslint` ohne neue Meldungen, `npm run build` erfolgreich. Neu: `assessment-list-memory`-Tests, Tests für Klassen „alle“/„none“, Ausschluss der eigenen Klasse, Ablage-Karte ruht nach dem Speichern.
+- **Production-Ready:** keine offenen Critical/High/Medium/Low-Fehler. **Noch offen vor dem Deploy:** Browser-Sicht (Layout 375/768/1440 px, Safari/Firefox) und die Datenbank-Gegenprobe (Prüfregeln, echte RLS, Fach löschen) wurden nicht ausgeführt. Status bleibt bis zu deiner Freigabe **In Review**.
 
 ## Deployment
 _To be added by /deploy_

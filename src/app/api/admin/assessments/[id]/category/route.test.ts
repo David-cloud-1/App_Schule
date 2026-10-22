@@ -33,6 +33,7 @@ function setup(opts: { status?: string; found?: boolean; subjectFound?: boolean;
           update,
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          neq: vi.fn().mockReturnThis(),
           // Nachweis laden (.maybeSingle) bzw. verwendete Klassen (.not als Abschluss)
           maybeSingle: vi.fn().mockResolvedValue({
             data: opts.found === false ? null : { id: 'a1', title: 'LN', status: opts.status ?? 'closed', department_id: 'dept' },

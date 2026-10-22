@@ -3,6 +3,21 @@
 export const FILTER_ALL = 'alle'
 export const FILTER_NONE = 'none'
 
+/**
+ * Eine echte Klasse trägt im Filter ein Präfix, damit sie nie mit FILTER_ALL/FILTER_NONE
+ * verwechselt wird, auch wenn jemand eine Klasse „alle“ oder „none“ nennt.
+ */
+const CLASS_PREFIX = 'k:'
+
+export function classFilterValue(name: string): string {
+  return CLASS_PREFIX + name
+}
+
+/** Klassenname hinter einem Filterwert; ältere Links ohne Präfix gelten weiter */
+export function classFromFilter(value: string): string {
+  return value.startsWith(CLASS_PREFIX) ? value.slice(CLASS_PREFIX.length) : value
+}
+
 export type CategorizedAssessment = {
   title: string
   accessCode: string
@@ -66,7 +81,7 @@ export function filterAssessments<T extends CategorizedAssessment>(items: T[], f
   return items
     .filter((a) => {
       if (filters.schoolYear !== FILTER_ALL && a.schoolYear !== filters.schoolYear) return false
-      if (filters.className === FILTER_NONE ? a.className !== null : filters.className !== FILTER_ALL && a.className !== filters.className) return false
+      if (filters.className === FILTER_NONE ? a.className !== null : filters.className !== FILTER_ALL && a.className !== classFromFilter(filters.className)) return false
       if (filters.subjectId === FILTER_NONE ? a.subjectId !== null : filters.subjectId !== FILTER_ALL && a.subjectId !== filters.subjectId) return false
       if (filters.status !== FILTER_ALL && a.status !== filters.status) return false
       if (query && !normalizeSearch(a.title).includes(query) && !normalizeSearch(a.accessCode).includes(query)) return false

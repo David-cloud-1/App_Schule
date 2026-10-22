@@ -42,6 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { listHref } from '@/lib/assessment-list-memory'
 import { AssessmentCategoryCard } from '@/components/admin/assessment-category-card'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
@@ -71,6 +72,8 @@ type AssessmentDetail = {
   schoolYear: string
   className: string | null
   subjectId: string | null
+  /** Auswahl für die Ablage, aus dem Bereich des Nachweises */
+  categoryOptions: { subjects: { id: string; name: string; code: string }[]; classes: string[] }
   questionCount: number
   /** Entwurfs-Fragenliste (nur im Status Entwurf) */
   draftQuestionIds?: string[]
@@ -205,7 +208,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         return
       }
       toast.success('Leistungsnachweis gelöscht')
-      router.push('/admin/leistungsnachweise')
+      router.push(listHref())
     } catch (err) {
       console.error(err)
       toast.error('Netzwerkfehler')
@@ -271,7 +274,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/admin/leistungsnachweise" className="text-[#9CA3AF] hover:text-[#F9FAFB]">
+        <Link href={listHref()} className="text-[#9CA3AF] hover:text-[#F9FAFB]">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1">
@@ -387,6 +390,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         schoolYear={detail.schoolYear}
         schoolClass={detail.className}
         subjectId={detail.subjectId}
+        subjects={detail.categoryOptions?.subjects ?? []}
+        classSuggestions={detail.categoryOptions?.classes ?? []}
         onSaved={load}
       />
 

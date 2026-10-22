@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  FILTER_ALL, FILTER_NONE, classOptions, defaultFilters, filterAssessments, filtersFromParams,
+  FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, classOptions, defaultFilters, filterAssessments, filtersFromParams,
   filtersToParams, schoolYearChoices, schoolYearOptions, subjectOptions, type CategorizedAssessment,
 } from './assessment-filter'
 
@@ -28,7 +28,7 @@ describe('filterAssessments', () => {
   })
 
   it('kombiniert Filter (UND)', () => {
-    const f = { ...defaultFilters('2026/27'), className: 'SP11b', subjectId: 's2', status: 'open' }
+    const f = { ...defaultFilters('2026/27'), className: classFilterValue('SP11b'), subjectId: 's2', status: 'open' }
     expect(filterAssessments(items, f).map((a) => a.title)).toEqual(['Luftfracht'])
     expect(filterAssessments(items, { ...f, status: 'closed' })).toEqual([])
   })
@@ -48,11 +48,35 @@ describe('filterAssessments', () => {
   })
 })
 
+describe('Klassen namens „alle“ oder „none“ (BUG-3)', () => {
+  const odd = [
+    make({ title: 'Klasse alle', className: 'alle' }),
+    make({ title: 'Klasse none', className: 'none' }),
+    make({ title: 'Ohne Klasse', className: null }),
+  ]
+
+  it('filtert die echte Klasse „alle“ statt alle Klassen zu zeigen', () => {
+    const f = { ...defaultFilters('2026/27'), className: classFilterValue('alle') }
+    expect(filterAssessments(odd, f).map((a) => a.title)).toEqual(['Klasse alle'])
+  })
+
+  it('filtert die echte Klasse „none“ statt „Ohne Klasse“ zu zeigen', () => {
+    const f = { ...defaultFilters('2026/27'), className: classFilterValue('none') }
+    expect(filterAssessments(odd, f).map((a) => a.title)).toEqual(['Klasse none'])
+    expect(filterAssessments(odd, { ...f, className: FILTER_NONE }).map((a) => a.title)).toEqual(['Ohne Klasse'])
+  })
+
+  it('liest ältere Links ohne Präfix weiter', () => {
+    expect(classFromFilter('SP11a')).toBe('SP11a')
+    expect(classFromFilter(classFilterValue('SP11a'))).toBe('SP11a')
+  })
+})
+
 describe('URL-Parameter', () => {
   it('schreibt nur Abweichungen vom Standard und liest sie wieder', () => {
-    const f = { ...defaultFilters('2026/27'), schoolYear: '2025/26', className: 'SP11a', status: 'open' }
+    const f = { ...defaultFilters('2026/27'), schoolYear: '2025/26', className: classFilterValue('SP11a'), status: 'open' }
     const params = filtersToParams(f, '2026/27', new URLSearchParams('createFromSet=x'))
-    expect(params.toString()).toBe('createFromSet=x&sj=2025%2F26&klasse=SP11a&status=open')
+    expect(params.toString()).toBe('createFromSet=x&sj=2025%2F26&klasse=k%3ASP11a&status=open')
     expect(filtersFromParams(params, '2026/27')).toEqual(f)
   })
 
