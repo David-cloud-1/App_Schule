@@ -54,9 +54,10 @@
 | PROJ-38 | Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Deployed | [PROJ-38-nachweis-import-kopier-prompt.md](PROJ-38-nachweis-import-kopier-prompt.md) | 2026-10-20 |
 | PROJ-39 | Leistungsnachweis – Kategorisierung & Filter | Deployed | [PROJ-39-nachweis-kategorisierung.md](PROJ-39-nachweis-kategorisierung.md) | 2026-10-21 |
 | PROJ-40 | Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Deployed | [PROJ-40-lehrer-bereich-uebersicht.md](PROJ-40-lehrer-bereich-uebersicht.md) | 2026-10-22 |
-| PROJ-41 | Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Approved | [PROJ-41-bottom-navigation.md](PROJ-41-bottom-navigation.md) | 2026-10-22 |
-| PROJ-42 | „Heute“-Screen – aufgeräumte Spieler-Startseite | Approved | [PROJ-42-heute-screen.md](PROJ-42-heute-screen.md) | 2026-10-22 |
+| PROJ-41 | Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Deployed | [PROJ-41-bottom-navigation.md](PROJ-41-bottom-navigation.md) | 2026-10-22 |
+| PROJ-42 | „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed | [PROJ-42-heute-screen.md](PROJ-42-heute-screen.md) | 2026-10-22 |
+| PROJ-43 | Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Planned | [PROJ-43-lernbibliothek-fachseite.md](PROJ-43-lernbibliothek-fachseite.md) | 2026-10-22 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-43
+## Next Available ID: PROJ-44

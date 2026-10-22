@@ -1,8 +1,8 @@
 # PROJ-41: Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-22
-**Last Updated:** 2026-10-22
+**Last Updated:** 2026-10-22 (deployed)
 
 ## Dependencies
 - PROJ-1 (User Authentication): Navigation nur für eingeloggte Spieler
@@ -131,4 +131,7 @@ Keine neuen.
 **Entscheidung:** READY
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app, deployed am 2026-10-22 (Commit `c4c160a`, Vercel „Ready“)
+- Keine Datenbank-Migration nötig.
+- Smoke-Test: geschützte Routen (`/`, `/subjects`, `/profile`, `/betrieb`) leiten ohne Login auf `/login` um, `/login` liefert 200.
+- **Offen:** Sichtprüfung am Handy durch den Nutzer (Layout bei 375 px, Leiste bei offener Tastatur, Weiterlernen-Einstieg).
