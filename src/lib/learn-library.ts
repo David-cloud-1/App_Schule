@@ -156,6 +156,15 @@ export function quizHref(opts: { subjectId?: string; classLevel?: number | null;
   return query ? `/quiz?${query}` : '/quiz'
 }
 
+/** Kürzel aus der Adresse; kaputte Prozent-Kodierung (`%`) ergibt null statt eines Fehlers */
+export function decodeSubjectCode(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return null
+  }
+}
+
 /** Adresse der Fachseite: Kürzel klein geschrieben */
 export function subjectPageHref(code: string): string {
   return `/subjects/${encodeURIComponent(code.toLowerCase())}`

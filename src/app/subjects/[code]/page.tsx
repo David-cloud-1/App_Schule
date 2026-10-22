@@ -6,7 +6,7 @@ import { fetchLearnQuestions } from '@/lib/subject-questions'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { getCurrentDepartment } from '@/lib/departments-server'
 import { normalizeSubjectCode } from '@/lib/subjects'
-import { buildTopicPath, matchesClassLevel, quizHref, subjectProgress } from '@/lib/learn-library'
+import { buildTopicPath, decodeSubjectCode, matchesClassLevel, quizHref, subjectProgress } from '@/lib/learn-library'
 import { getSelectedClassLevel } from '@/lib/learn-library-server'
 import { ClassLevelSwitch } from '@/components/class-level-switch'
 import { TopicPath } from '@/components/topic-path'
@@ -22,7 +22,8 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { code } = await params
+  const code = decodeSubjectCode((await params).code)
+  if (!code) redirect('/subjects')
   const department = await getCurrentDepartment()
   if (!department) redirect('/subjects')
 
@@ -31,7 +32,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
     .from('subjects')
     .select('id, code, name, color, icon_name')
     .eq('department_id', department.id)
-    .eq('code', normalizeSubjectCode(decodeURIComponent(code)))
+    .eq('code', normalizeSubjectCode(code))
     .maybeSingle()
   if (!subject) redirect('/subjects')
 

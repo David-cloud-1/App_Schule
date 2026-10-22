@@ -1,6 +1,6 @@
 # PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-22
 **Last Updated:** 2026-10-22
 
@@ -224,7 +224,49 @@ Keine neuen.
 - **Abweichung:** Ein Leistungsnachweis mit ausstehender Note bleibt antippbar und zeigt wie bisher die Warteansicht, die sich nach der Freigabe selbst aktualisiert.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-10-22 · **Art:** statische Prüfung, Unit-Tests, Build und Datenbank-Checks. Kein Browser-Test (Dev-Server und Playwright sind auf diesem Rechner ausgeschlossen, sie haben ihn zum Absturz gebracht).
+
+### Automatisch
+- `npm test`: 1126 Tests grün (neu: 15 für `learn-library`, Ergänzungen in `bottom-nav.test.ts`).
+- `npm run build`: erfolgreich, `/subjects/[code]` und `/leistungsnachweise` sind als Routen vorhanden.
+- `tsc` und ESLint: keine neuen Fehler. Die verbleibenden Warnungen stammen aus Altcode (`exam-session-client`, `exam/[sessionId]/page`).
+
+### Akzeptanzkriterien (per Code-Durchsicht gegen die Spec)
+- **Tab „Lernen“:** Titel + XP, ein Klassen-Umschalter (Cookie), Kacheln „Prüfung üben“ / „Leistungsnachweise“, „Alle Fächer mischen“, Fachzeilen mit Ring, Prozent und Pfeil: bestanden. Zeilen und Kacheln sind mindestens 60 px hoch.
+- **Fachseite:** Kopf in Fachfarbe, Fortschrittsbalken, „x von y Themen gemeistert“, „Fach gemischt lernen“, Lücken-Button nur bei > 0, Themenpfad nach Klasse, natürliche Sortierung, drei Zustände, genau ein „Weiter hier“, Tap startet sofort: bestanden.
+- **Prüfung üben / Leistungsnachweise:** Listen getrennt über `assessment_id`, Code-Eingabe wandert um, leere Zustände, Zurück-Pfeile je nach Art, `/exam-history` und `/pruefung` leiten um: bestanden.
+- **Heute-Screen:** Fachringe verlinken auf die Fachseite: bestanden. **Bottom-Navigation:** „Lernen“ aktiv auf Fachseite und Leistungsnachweisen, `/pruefung/[code]` bleibt ohne Leiste: bestanden.
+- **Nicht gemessen:** „ohne Scrollen auf 390 × 844“ und die Animationen (nur visuell prüfbar). Siehe offene Punkte.
+
+### Edge Cases
+- Unbekanntes oder fremdes Kürzel → Weiterleitung auf `/subjects`: bestanden (Abfrage ist auf den eigenen Bereich begrenzt).
+- Kaputte Adresse wie `/subjects/%`: **Fehler gefunden und behoben** (siehe unten).
+- Ungültige gespeicherte Klassenstufe → „Alle“: bestanden (Unit-Test).
+- Thema mit Fragen in zwei Klassenstufen → erscheint in beiden Gruppen: bestanden (Unit-Test).
+- Fach ohne Fragen → Zeile gedämpft, nicht antippbar; Fach ohne Themen → Hinweistext: bestanden.
+
+### Datenprüfung (Produktions-DB)
+Die verwendeten Spalten existieren (`questions.class_level/topic_id/assessment_only`, `quiz_sessions.completed_at/subject_id`, `quiz_answers.session_id`, `exam_sessions.assessment_id`). Es gibt keine aktiven Fragen mit `assessment_only`, und alle Fragen mit Thema haben eine Klassenstufe.
+
+### Sicherheit
+- Alle Abfragen laufen mit dem Client des angemeldeten Nutzers. Prüfungs-Sitzungen werden zusätzlich auf `user_id` gefiltert, Antworten sind durch die bestehende Sicherheitsregel an den Nutzer gebunden.
+- Fachseite: Fach nur im eigenen Bereich auffindbar, sonst Weiterleitung. Keine neuen API-Routen, keine neuen Schreibzugriffe.
+- Das Cookie enthält nur die Klassenstufe und wird serverseitig gegen die erlaubten Stufen des Bereichs geprüft. Fremde Werte zählen als „Alle“.
+- Ergebnisseiten schützen die Lösung eines noch nicht freigegebenen Leistungsnachweises weiter serverseitig (unverändert).
+
+### Gefundene Fehler
+| # | Schwere | Beschreibung | Status |
+|---|---------|--------------|--------|
+| 1 | Medium | `/subjects/%` löste einen Serverfehler aus (`decodeURIComponent` wirft) | Behoben (`decodeSubjectCode`, Unit-Test) |
+
+### Offene Punkte (kein Blocker)
+- Sichtprüfung auf dem Gerät: eine Bildschirmhöhe, Umbruch von „Leistungsnachweise“ in der Kachel, Fortschrittsanimationen.
+- Ein Thema mit nur wenigen Fragen kann schnell 80 % erreichen. Das ist gewollt, die Schwelle ist eine Konstante (`MASTERY_PERCENT`).
+- E2E-Tests (Playwright) nicht geschrieben, siehe oben.
+
+### Entscheidung
+**Produktionsreif: JA.** Keine kritischen oder hohen Fehler.
 
 ## Deployment
 _To be added by /deploy_

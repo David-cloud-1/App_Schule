@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildTopicPath,
+  decodeSubjectCode,
   correctPercent,
   matchesClassLevel,
   naturalCompare,
@@ -157,6 +158,14 @@ describe('buildTopicPath', () => {
     const all = new Set(questions.map((x) => x.id))
     const groups = buildTopicPath({ questions, topics, level: null, answeredIds: all, correctIds: all, lastTopicId: 't1' })
     expect(groups.flatMap((g) => g.topics).some((t) => t.isNext)).toBe(false)
+  })
+})
+
+describe('decodeSubjectCode', () => {
+  it('dekodiert und fängt kaputte Kodierung ab', () => {
+    expect(decodeSubjectCode('stg')).toBe('stg')
+    expect(decodeSubjectCode('k%C3%A4')).toBe('kä')
+    expect(decodeSubjectCode('%')).toBeNull()
   })
 })
 
