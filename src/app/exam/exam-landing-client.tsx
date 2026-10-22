@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { AlertCircle, Lock, Check, GraduationCap, ChevronRight } from 'lucide-react'
+import { AlertCircle, Lock, Check } from 'lucide-react'
 import { useExamParts } from '@/components/department-provider'
 import { resolveIcon } from '@/components/department-icon'
 import { examPartSubjectCodes } from '@/lib/exam-parts'
@@ -74,20 +73,6 @@ export function ExamLandingClient({ setsByPart }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Link
-        href="/pruefung"
-        className="w-full rounded-2xl border-2 border-[#FF9600]/40 bg-[#FF9600]/5 p-4 flex items-center gap-3 hover:bg-[#FF9600]/10 transition-colors duration-200"
-      >
-        <div className="w-10 h-10 rounded-xl bg-[#FF9600]/20 flex items-center justify-center flex-shrink-0">
-          <GraduationCap size={20} className="text-[#FF9600]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#F9FAFB]">Ich habe einen Code</p>
-          <p className="text-xs text-[#9CA3AF]">Für einen benoteten Leistungsnachweis deines Ausbilders</p>
-        </div>
-        <ChevronRight size={18} className="text-[#9CA3AF] flex-shrink-0" />
-      </Link>
-
       <p className="text-sm font-semibold text-[#F9FAFB]">Prüfung auswählen</p>
 
       {PARTS.map((part) => {

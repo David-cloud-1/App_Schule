@@ -88,7 +88,11 @@ export default async function ExamResultsPage({
     <div className="min-h-screen bg-[#111827] flex flex-col">
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <Link href="/exam-history" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
+          <Link
+            href={session.assessment_id ? '/leistungsnachweise' : '/exam'}
+            aria-label={session.assessment_id ? 'Zurück zu Leistungsnachweise' : 'Zurück zu Prüfung üben'}
+            className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
+          >
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2">

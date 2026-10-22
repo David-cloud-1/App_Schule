@@ -291,9 +291,9 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
           </div>
         )}
         <div className="flex flex-col gap-3 pt-2">
-          <Link href="/exam-history">
+          <Link href="/leistungsnachweise">
             <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
-              Prüfungsverlauf
+              Meine Leistungsnachweise
             </Button>
           </Link>
           <Link href="/">
@@ -368,9 +368,9 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
             </Button>
           </Link>
         )}
-        <Link href="/exam-history">
+        <Link href={assessment ? '/leistungsnachweise' : '/exam#simulationen'}>
           <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
-            Prüfungsverlauf
+            {assessment ? 'Meine Leistungsnachweise' : 'Meine Simulationen'}
           </Button>
         </Link>
         <Link href="/">

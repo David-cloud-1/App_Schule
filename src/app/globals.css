@@ -180,3 +180,24 @@
     opacity: 0.9;
   }
 }
+
+/* PROJ-43: Fortschrittsringe und -balken der Lernbibliothek füllen sich einmal beim Erscheinen. */
+@keyframes lern-ring-fill {
+  from { stroke-dashoffset: var(--ring-empty); }
+}
+.lern-ring-fill {
+  animation: lern-ring-fill 0.7s ease-out 1 both;
+}
+@keyframes lern-bar-fill {
+  from { transform: scaleX(0); }
+}
+.lern-bar-fill {
+  transform-origin: left;
+  animation: lern-bar-fill 0.5s ease-out 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lern-ring-fill,
+  .lern-bar-fill {
+    animation: none;
+  }
+}

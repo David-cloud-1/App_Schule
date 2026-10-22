@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ClipboardList } from 'lucide-react'
+import { ArrowLeft, History, Timer } from 'lucide-react'
 import { createClient } from '@/lib/supabase-server'
+import { fetchExamHistory } from '@/lib/exam-history'
+import { ExamSessionList } from '@/components/exam-session-list'
 import { ExamLandingClient } from './exam-landing-client'
 import { getCurrentDepartment, getCurrentExamParts } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
@@ -16,6 +18,7 @@ export default async function ExamPage() {
   // A part is available to students only when the teacher has activated at
   // least one exam set for it. Multiple sets can be active per part (e.g. a
   // different exam per class); students pick the specific one they were told.
+  const simulationsPromise = fetchExamHistory(supabase, user.id, 'simulation')
   const { data: activeSets } = await supabase
     .from('exam_question_sets')
     .select('id, name, part, question_ids')
@@ -36,6 +39,8 @@ export default async function ExamPage() {
     })
   }
 
+  const simulations = await simulationsPromise
+
   return (
     <div className="min-h-screen bg-[#111827] flex flex-col">
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
@@ -44,8 +49,8 @@ export default async function ExamPage() {
             <ArrowLeft size={20} />
           </Link>
           <div className="flex items-center gap-2">
-            <ClipboardList size={20} className="text-[#1CB0F6]" />
-            <span className="font-bold text-[#F9FAFB]">Prüfungssimulation</span>
+            <Timer size={20} className="text-[#1CB0F6]" />
+            <h1 className="font-bold text-[#F9FAFB]">Prüfung üben</h1>
           </div>
         </div>
       </header>
@@ -59,6 +64,21 @@ export default async function ExamPage() {
         </div>
 
         <ExamLandingClient setsByPart={setsByPart} />
+
+        {/* Meine Simulationen (PROJ-43, vorher Prüfungsverlauf) */}
+        <section id="simulationen" aria-labelledby="simulationen-titel" className="mt-8 scroll-mt-20">
+          <h2 id="simulationen-titel" className="mb-3 text-sm font-semibold text-[#F9FAFB]">
+            Meine Simulationen
+          </h2>
+          {simulations.length > 0 ? (
+            <ExamSessionList sessions={simulations} />
+          ) : (
+            <div className="rounded-2xl border border-[#374151] bg-[#1F2937] p-5 text-center">
+              <History size={28} className="mx-auto mb-2 text-[#4B5563]" />
+              <p className="text-sm text-[#9CA3AF]">Noch keine Simulation absolviert.</p>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   )

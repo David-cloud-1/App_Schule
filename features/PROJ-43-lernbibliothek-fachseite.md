@@ -1,6 +1,6 @@
 # PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-22
 **Last Updated:** 2026-10-22
 
@@ -207,6 +207,21 @@ Keine neuen Tabellen oder Felder, keine Migration. Neu ist nur ein Cookie auf de
 
 ### Pakete
 Keine neuen.
+
+## Implementation Notes (Frontend)
+- **Rechenlogik:** `src/lib/learn-library.ts` (Fortschritt, Zustand, Gruppierung, „Weiter hier“, natürliche Sortierung, Adressen) mit 14 Unit-Tests. Das Cookie liest `src/lib/learn-library-server.ts`.
+- **Daten:** `fetchLearnQuestions` in `src/lib/subject-questions.ts` lädt aktive Lernfragen (ohne `assessment_only`) mit Thema und Klassenstufe, nur für die Fächer des eigenen Bereichs. Das sind weniger Zeilen als vorher, als alle Bereiche geladen wurden.
+- **Tab „Lernen“** (`src/app/subjects/page.tsx`): Titel + XP, `ClassLevelSwitch` (shadcn `toggle-group`, neu installiert), Kacheln „Prüfung üben“ / „Leistungsnachweise“, Fachliste mit `ProgressRing`.
+- **Fachseite** (`src/app/subjects/[code]/page.tsx` + `src/components/topic-path.tsx`): Kopf in Fachfarbe, „Fach gemischt lernen“, Lücken-Button mit Anzahl, Themenpfad.
+- **Prüfung üben** (`/exam`): Liste „Meine Simulationen“ (Anker `#simulationen`). Der Code-Einstieg entfällt dort.
+- **Leistungsnachweise** (`src/app/leistungsnachweise/page.tsx`): bestehende Code-Eingabe (`JoinAssessmentClient`) und „Meine Leistungsnachweise“.
+- **Gemeinsamer Listeneintrag:** `src/components/exam-session-list.tsx` und `src/lib/exam-history.ts` (Trennung über `assessment_id`). Datum und Uhrzeit werden jetzt ausdrücklich in deutscher Zeit angezeigt.
+- **Weiterleitungen:** `/exam-history` → `/exam#simulationen`, `/pruefung` → `/leistungsnachweise`.
+- **Ergebnisseite:** Zurück-Pfeil und Button führen je nach Art zu „Prüfung üben“ bzw. „Leistungsnachweise“.
+- **Heute-Screen:** `SubjectRings` verlinkt auf die Fachseite. Der Ring ist als `ProgressRing` ausgelagert und füllt sich animiert (CSS `lern-ring-fill`, entfällt bei „Bewegung reduzieren“).
+- **Bottom-Navigation:** „Lernen“ ist auch auf `/subjects/{code}` und `/leistungsnachweise` aktiv (Tests ergänzt).
+- **Entfernt:** `SubjectsGrid`, `SubjectCard`, `SubjectSessionSheet`, `ClassLevelFilter`.
+- **Abweichung:** Ein Leistungsnachweis mit ausstehender Note bleibt antippbar und zeigt wie bisher die Warteansicht, die sich nach der Freigabe selbst aktualisiert.
 
 ## QA Test Results
 _To be added by /qa_
