@@ -1,6 +1,6 @@
 # PROJ-39: Leistungsnachweis – Kategorisierung & Filter
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-21
 **Last Updated:** 2026-10-21
 
@@ -160,7 +160,87 @@ Eigene Klassenverwaltung, Mehrfach-Fächer, Zuordnung von Teilnehmern zu Klassen
 - **Nicht im Browser getestet** (kein Dev-Server auf diesem Rechner, siehe Projektregel). Geprüft: `tsc`, `eslint` (keine neuen Warnungen), 90 Testdateien / 1022 Tests grün, `npm run build` erfolgreich (dafür wurde `scripts/scratch/fragen-pipeline` vorübergehend ausgelagert, weil der Ordner den Build bricht; wiederhergestellt).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-10-22
+**Methode:** Code-Review gegen jede Anforderung, automatische Tests, Sicherheits-Review. **Nicht** im Browser getestet und **keine** Playwright-/E2E-Tests (auf diesem Rechner nicht erlaubt, siehe Projektregel „Kein Dev-Server“). Die Datenbank-Gegenprobe (Prüfregeln, Fach löschen, alter Insert gegen die Produktions-DB im Rollback) wurde **nicht ausgeführt** (vom Nutzer abgelehnt) – die Migration ist weiterhin nicht auf der Produktions-DB angewendet.
+**Automatisch:** 92 Testdateien / 1030 Tests grün (neu: 3 Dateien für Filterlogik, Filterleiste, Ablage-Karte, Category-Endpunkt, Kategorie-Lib), `tsc` ohne neue Fehler, `eslint` ohne neue Warnungen, `npm run build` erfolgreich.
+
+### Acceptance Criteria Status
+
+- [x] AC-1 Felder Klasse (≤ 30), Fach (genau eines) und Schuljahr je Nachweis – Migration + Zod + DB-Prüfregel (nur gelesen, nicht live geprüft)
+- [x] AC-2 Schuljahr vorbelegt (1.9.–31.8., Berliner Zeit), im Dialog und in der Detailansicht änderbar – Unit-Tests inkl. Grenzfall 31.8. 22:30 UTC
+- [x] AC-3 Dialog enthält Fach-Auswahl und Klassen-Eingabe, beides optional; Button unverändert
+- [x] AC-4 Klassenvorschläge aus dem eigenen Bereich; Vereinheitlichung beim Speichern (Ränder, Mehrfach-Leerzeichen, Schreibweise der vorhandenen Klasse) – Tests
+- [x] AC-5 Dropdowns Schuljahr/Klasse/Fach + Suche (Titel/Code, tolerant bei Trennzeichen), UND-Verknüpfung – Tests
+- [x] AC-6 „Alle“ in jedem Dropdown; „Ohne Zuordnung“ bei Klasse und Fach (hier als „Ohne Klasse“/„Ohne Fach“, nur wenn solche Nachweise existieren)
+- [x] AC-7 Standard: aktuelles Schuljahr, neueste zuerst
+- [x] AC-8 Status-Schnellfilter (Alle/Entwurf/Offen/Geschlossen)
+- [x] AC-9 Badges für Klasse und Fach in der Tabelle, kein Schuljahr-Spalte
+- [x] AC-10 Leerzustand mit „Filter zurücksetzen“ (zusätzlich „Alle Schuljahre anzeigen“)
+- [~] AC-11 Dropdowns zeigen nur vorkommende Werte – Klasse/Fach ja; beim Schuljahr steht das **aktuelle** Schuljahr immer in der Liste, auch ohne Nachweise (bewusst, damit der Standardfilter wählbar bleibt)
+- [x] AC-12 Bestand bleibt funktionsfähig: Schuljahr aus Erstelldatum, Klasse/Fach leer (nur per Code-Review und Migrationsdatei, nicht live)
+- [x] AC-13 Keine Wirkung auf Code, Teilnehmer, Auswertung, Druck: die neuen Felder werden nirgends in Teilnehmer-Pfaden gelesen; Test stellt sicher, dass der Category-Endpunkt nur die drei Ablage-Spalten schreibt
+- [x] AC-14 Rechtetrennung: Endpunkt lädt den Nachweis über die Row-Level-Security des Bereichs (`can_admin_department`), Fach wird gegen den Bereich des Nachweises geprüft; fremder Nachweis → 404, fremdes Fach → 400 (nur mit Mocks getestet, nicht gegen echte RLS)
+
+### Edge Cases Status
+
+- [x] Bestand ohne Klasse/Fach landet unter „Ohne …“, nie unsichtbar durch den Standardfilter (Schuljahr wird nachgetragen)
+- [x] Nachweis für das alte Schuljahr kurz nach dem 1.9.: Schuljahr überschreibbar, erscheint dann dort
+- [x] Aktuelles Schuljahr leer, ältere vorhanden: Hinweis mit Knopf „Alle Schuljahre anzeigen“
+- [x] Klasse mit Sonderzeichen/zu lang: 30 Zeichen begrenzt (Eingabe + Server), React maskiert HTML
+- [x] Fach gelöscht: `ON DELETE SET NULL` (nur in der Migration gelesen, **nicht live getestet**)
+- [x] Offene/geschlossene Nachweise: Ablage bleibt änderbar, getrennt vom Entwurf-Only-PATCH
+- [x] Gleichzeitige Änderung: letzte Speicherung gewinnt, keine Beschädigung
+- [ ] BUG-1: Filterzustand geht über den Zurück-Pfeil der Detailseite verloren (siehe unten)
+- [x] Viele Nachweise: Filterung im Browser, keine Schleifen über die Datenbank
+
+### Security Audit Results
+- [x] Authentifizierung: Category-Endpunkt, Liste, Anlegen verlangen Admin (401/403, Test)
+- [x] Autorisierung: Zugriff nur über Bereichs-RLS; Fach nur aus dem Bereich des Nachweises; Audit-Log mit Bereich des Nachweises
+- [x] Mass Assignment: zusätzliche Felder (Titel, Zeiten) im Category-Body ändern nichts (Test)
+- [x] Eingabe: Zod-Validierung (UUID, Länge, Schuljahr-Format), Ausgabe per React maskiert, `datalist`-Werte als Text
+- [x] Keine Geheimnisse, keine neuen Umgebungsvariablen, keine neuen Pakete
+- [ ] Nicht geprüft: echte RLS gegen die Datenbank (Gegenprobe abgelehnt/ausgelassen)
+
+### Regression
+- [x] Gesamte Testsuite grün; bestehende Nachweis-Routen (Anlegen, Bearbeiten, Auswertung, Druck, Beitritt) unverändert getestet
+- [ ] Nicht im Browser geprüft: Layout bei 375/768/1440 px, Safari/Firefox (Filterleiste bricht per Grid um; Touch-Ziele h-11 = 44 px laut Code)
+
+### Bugs Found
+
+#### BUG-1: Zurück-Pfeil der Detailseite verliert die Filter
+- **Severity:** Medium
+- **Steps:** Liste auf „Schuljahr 2025/26, Klasse SP11a“ filtern → Nachweis öffnen → oben links den Pfeil „←“ klicken.
+- **Erwartet (Spec, Edge Case „Filterzustand“):** gleiche Filter wie vorher. **Tatsächlich:** der Pfeil verlinkt auf `/admin/leistungsnachweise` ohne Parameter → Standardfilter (aktuelles Schuljahr). Der Browser-Zurück-Knopf funktioniert, ebenso `router.push` nach dem Löschen (ebenfalls ohne Filter).
+- **Ort:** `src/app/admin/leistungsnachweise/[id]/page.tsx` Zeilen 208 und 274
+- **Priorität:** vor dem Deploy beheben (kleine Änderung)
+
+#### BUG-2: Jeder Tastendruck in der Suche löst eine Navigation aus
+- **Severity:** Medium (Leistung, funktioniert aber)
+- **Ursache:** `changeFilters` ruft für **jede** Änderung, auch für die lokale Suche, `router.replace` mit unveränderter Adresse auf. Bei dynamischen Next-Seiten kann das pro Tastendruck eine Server-Anfrage auslösen.
+- **Priorität:** vor dem Deploy beheben (Suche nur lokal setzen, `router.replace` nur bei Änderung der Adress-Parameter)
+
+#### BUG-3: Klassen namens „alle“ oder „none“ kollidieren mit den Filter-Platzhaltern
+- **Severity:** Low – eine Klasse „alle“/„none“ würde „Alle Klassen“ bzw. „Ohne Klasse“ auslösen. Unwahrscheinlich bei Namen wie „SP11a“.
+- **Priorität:** Nice to have
+
+#### BUG-4: Klassenschreibweise lässt sich nachträglich nicht mehr auf eine andere Groß-/Kleinschreibung ändern; der Speichern-Knopf bleibt danach aktiv
+- **Severity:** Low – „sp11a“ wird immer zu einer vorhandenen „SP11a“ vereinheitlicht (gewollt). Wer die Schreibweise der einzigen Klasse korrigieren will, kann es nicht; der Knopf bleibt nach dem Speichern aktiv, weil der Vergleich Groß-/Kleinschreibung beachtet.
+- **Priorität:** Nice to have
+
+#### BUG-5: Bei Super-Admin im Bereichs-Umschalter kann die Fach-Auswahl zum falschen Bereich gehören
+- **Severity:** Low – Detailseite eines Nachweises aus einem anderen als dem eingestellten Bereich zeigt Fächer des eingestellten Bereichs; der Server lehnt falsche Fächer mit 400 ab, das gesetzte Fach erscheint aber leer.
+- **Priorität:** Nice to have
+
+#### Hinweise (kein Fehler)
+- Der Anlegen-Dialog sendet immer `className`, dadurch läuft pro Anlegen eine zusätzliche Abfrage der vorhandenen Klassen, auch bei leerer Klasse (kleine Einsparung möglich).
+- Die Abfrage der vorhandenen Klassen hat kein eigenes Limit (PostgREST-Standard 1000 Zeilen) – für diese App irrelevant.
+- `src/lib/database.types.ts` wurde nicht neu generiert (der Code nutzt einen ungetypten Client).
+
+### Summary
+- Anforderungen: 13 von 14 voll erfüllt, 1 mit bewusster Abweichung (AC-11, Schuljahr).
+- Fehler: 0 Critical, 0 High, 2 Medium, 3 Low.
+- **Production-Ready:** noch nicht freigegeben. Es gibt keine Critical/High-Fehler, aber BUG-1 und BUG-2 sollten vor dem Deploy behoben werden, und die Datenbank-Gegenprobe (Prüfregeln, RLS, Fach löschen) steht noch aus. Status bleibt **In Review**.
 
 ## Deployment
 _To be added by /deploy_
