@@ -70,6 +70,8 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-38: Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Planned |
 | P1 | PROJ-39: Leistungsnachweis – Kategorisierung & Filter | Planned |
 | P1 | PROJ-40: Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Deployed |
+| P1 | PROJ-41: Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Planned |
+| P1 | PROJ-42: „Heute“-Screen – aufgeräumte Spieler-Startseite | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
