@@ -2,28 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Zap, Clock } from 'lucide-react'
+import { Zap } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface BlitzStatus {
   available: boolean
   next_available_at: string | null
 }
 
-function formatCountdown(nextAvailableAt: string): string {
-  const diffMs = new Date(nextAvailableAt).getTime() - Date.now()
-  if (diffMs <= 0) return 'gleich wieder da'
-  const hours = Math.floor(diffMs / 3_600_000)
-  const minutes = Math.floor((diffMs % 3_600_000) / 60_000)
-  if (hours > 0) return `wieder verfügbar in ${hours} Std ${minutes} Min`
-  return `wieder verfügbar in ${minutes} Min`
-}
-
 /**
- * Reads availability from GET /api/quiz/blitz/status (PROJ-19, not yet built
- * by /backend). Fails soft: on error or 404, shows a neutral "not available
- * right now" state instead of crashing the home page.
+ * Kompakte Blitzrunden-Kachel auf dem „Heute“-Screen (PROJ-19, PROJ-42).
+ * Liest GET /api/quiz/blitz/status; nach dem Spielen gedämpft mit „Morgen
+ * wieder“. Bei Fehlern verschwindet sie, statt die Startseite zu stören.
  */
-export function BlitzRoundCard() {
+export function BlitzRoundTile() {
   const [status, setStatus] = useState<BlitzStatus | null>(null)
   const [failed, setFailed] = useState(false)
 
@@ -38,7 +30,7 @@ export function BlitzRoundCard() {
         if (!cancelled) setStatus(data)
       })
       .catch((err) => {
-        console.error('[BlitzRoundCard]', err)
+        console.error('[BlitzRoundTile]', err)
         if (!cancelled) setFailed(true)
       })
     return () => {
@@ -49,39 +41,41 @@ export function BlitzRoundCard() {
   if (failed) return null
 
   const available = status?.available ?? false
+  const content = (
+    <>
+      <span
+        className={cn(
+          'flex size-10 shrink-0 items-center justify-center rounded-full',
+          available ? 'bg-[#FFD700]/20' : 'bg-[#374151]',
+        )}
+      >
+        <Zap className={cn('size-5', available ? 'text-[#FFD700]' : 'text-[#6B7280]')} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold text-[#F9FAFB]">Blitzrunde</span>
+        <span className="block truncate text-xs text-[#9CA3AF]">
+          {status === null ? 'Lädt…' : available ? '60 s · 3× Münzen' : 'Morgen wieder'}
+        </span>
+      </span>
+    </>
+  )
+
+  const base = 'flex min-h-[68px] items-center gap-3 rounded-2xl border px-3 py-3 transition-all duration-200'
+
+  if (available) {
+    return (
+      <Link
+        href="/blitzrunde"
+        className={cn(base, 'border-[#FFD700]/40 bg-[#FFD700]/10 hover:bg-[#FFD700]/15 active:scale-95')}
+      >
+        {content}
+      </Link>
+    )
+  }
 
   return (
-    <div className="bg-gradient-to-br from-[#FFD700]/15 to-[#1F2937] border border-[#FFD700]/40 rounded-2xl p-4 flex items-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-[#FFD700]/20 border-2 border-[#FFD700]/50 flex items-center justify-center flex-shrink-0">
-        <Zap size={22} className="text-[#FFD700]" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-[#F9FAFB] text-sm">Blitzrunde</p>
-        {status === null ? (
-          <p className="text-xs text-[#9CA3AF] mt-0.5">Lädt…</p>
-        ) : available ? (
-          <p className="text-xs text-[#9CA3AF] mt-0.5">60 Sekunden, dreifache Münzen — einmal am Tag</p>
-        ) : (
-          <p className="text-xs text-[#9CA3AF] mt-0.5 flex items-center gap-1">
-            <Clock size={12} />
-            Heute erledigt — {status.next_available_at ? formatCountdown(status.next_available_at) : 'morgen wieder da'}
-          </p>
-        )}
-      </div>
-
-      {available && status !== null ? (
-        <Link
-          href="/blitzrunde"
-          className="flex-shrink-0 bg-[#FFD700] hover:bg-[#e6c200] text-[#111827] font-bold text-sm rounded-2xl px-4 py-2.5 transition-all duration-200 active:scale-95"
-        >
-          Start
-        </Link>
-      ) : (
-        <div className="flex-shrink-0 bg-[#374151] text-[#6B7280] font-bold text-sm rounded-2xl px-4 py-2.5">
-          ✓
-        </div>
-      )}
+    <div aria-disabled className={cn(base, 'border-[#374151] bg-[#1F2937]/50 opacity-70')}>
+      {content}
     </div>
   )
 }

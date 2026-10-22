@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, User } from 'lucide-react'
+import { User } from 'lucide-react'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
@@ -12,6 +11,10 @@ import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle
 import { PseudonymSettings } from '@/components/pseudonym-settings'
 import { AreaSwitcher } from '@/components/area-switcher'
 import { getLinkContext, LINKED_DEPARTMENT_CODE } from '@/lib/linked-account'
+import { OverallStatsRow } from '@/components/overall-stats-row'
+import { WeekActivityDots } from '@/components/week-activity-dots'
+import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { buildLast7Days, toBerlinDateStr } from '@/lib/home-today'
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -34,6 +37,23 @@ export default async function ProfilePage() {
   const totalXp = (profile?.total_xp as number | null) ?? 0
   const currentStreak = (profile?.current_streak as number | null) ?? 0
   const leaderboardOptOut = (profile?.leaderboard_opt_out as boolean | null) ?? false
+
+  // Gesamtstatistik und Wochenaktivität (PROJ-41, vorher auf der Startseite)
+  const now = new Date()
+  const weekStart = new Date(now.getTime() - 7 * 86_400_000)
+  const [{ rows: answers }, sessionsResult, blitzResult] = await Promise.all([
+    fetchAllUserAnswers(supabase, user.id),
+    supabase.from('quiz_sessions').select('completed_at').eq('user_id', user.id).gte('completed_at', weekStart.toISOString()),
+    supabase.from('blitz_rounds').select('calendar_day').eq('user_id', user.id).gte('calendar_day', toBerlinDateStr(weekStart)),
+  ])
+  const totalCorrect = answers.filter((a) => a.is_correct).length
+  const totalWrong = answers.length - totalCorrect
+  const accuracy = answers.length > 0 ? Math.round((totalCorrect / answers.length) * 100) : 0
+  const learnedDates = new Set([
+    ...(sessionsResult.data ?? []).map((r) => toBerlinDateStr(new Date(r.completed_at as string))),
+    ...(blitzResult.data ?? []).map((r) => r.calendar_day as string),
+  ])
+  const weekActivity = buildLast7Days(now, learnedDates)
 
   // Fetch unlocked badges
   const { data: userBadgeRows } = await supabase
@@ -84,9 +104,6 @@ export default async function ProfilePage() {
       {/* Header */}
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <Link href="/" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-            <ArrowLeft size={20} />
-          </Link>
           <span className="font-semibold text-[#F9FAFB]">Profil</span>
         </div>
       </header>
@@ -124,6 +141,12 @@ export default async function ProfilePage() {
             <XpProgressBar totalXp={totalXp} />
           </div>
         </div>
+
+        {answers.length > 0 && (
+          <OverallStatsRow totalCorrect={totalCorrect} totalWrong={totalWrong} accuracyPercent={accuracy} />
+        )}
+
+        <WeekActivityDots weekActivity={weekActivity} />
 
         {/* Badge gallery */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">

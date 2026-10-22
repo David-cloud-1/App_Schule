@@ -5,6 +5,8 @@ import { DepartmentProvider, type DepartmentContextValue } from "@/components/de
 import { getCurrentDepartment, getDepartmentContextValue } from "@/lib/departments-server";
 import { NEUTRAL_BRANDING } from "@/lib/departments";
 import { WrongAddressBanner } from "@/components/wrong-address-banner";
+import { BottomNav } from "@/components/bottom-nav";
+import { betriebSpriteSchluessel } from "@/lib/betrieb-sprites";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,12 +28,17 @@ export default async function RootLayout({
   const value: DepartmentContextValue =
     (await getDepartmentContextValue()) ?? { department: NEUTRAL_BRANDING, examParts: [] };
 
+  const { department } = value;
+  // „Mein Betrieb“ gibt es nur für Bereiche mit isometrischen Sprites (PROJ-34)
+  const hatBetrieb = betriebSpriteSchluessel(department.code).length > 0;
+
   return (
     <html lang="de" className="dark">
       <body className={`${inter.className} antialiased`}>
         <DepartmentProvider value={value}>
           <WrongAddressBanner />
           {children}
+          <BottomNav hatBetrieb={hatBetrieb} betriebLabel={hatBetrieb ? department.hofShortName : "Shop"} />
         </DepartmentProvider>
       </body>
     </html>

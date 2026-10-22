@@ -5,35 +5,25 @@ import { getCurrentDepartment } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
+import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { PlayerMenu } from '@/components/player-menu'
-import { SubjectProgressCard } from '@/components/subject-progress-card'
-import { WeekActivityDots } from '@/components/week-activity-dots'
-import { OverallStatsRow } from '@/components/overall-stats-row'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { CoinBalance } from '@/components/coin-balance'
-import { BlitzRoundCard } from '@/components/blitz-round-card'
+import { BlitzRoundTile } from '@/components/blitz-round-card'
 import { StarterCoinsBanner } from '@/components/starter-coins-banner'
-import { Button } from '@/components/ui/button'
+import { TodayWeekDots } from '@/components/today-week-dots'
+import { TodayHeroCard } from '@/components/today-hero-card'
+import { SubjectRings, type SubjectRing } from '@/components/subject-rings'
 import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent, MAX_LEVEL } from '@/lib/xp-utils'
 import {
-  Zap,
-  Flame,
-  BookOpen,
-  Package,
-  Trophy,
-  Store,
-  Warehouse,
-  ClipboardList,
-  CheckCircle2,
-} from 'lucide-react'
-import { BrandIcon, BrandName } from '@/components/app-brand'
-import { resolveIcon } from '@/components/department-icon'
-import { betriebSpriteSchluessel } from '@/lib/betrieb-sprites'
-
-/** Format a Date as YYYY-MM-DD in Europe/Berlin timezone */
-function toBerlinDateStr(date: Date): string {
-  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Berlin' }).format(date)
-}
+  buildCurrentWeek,
+  continueHref,
+  countAnsweredToday,
+  pickContinueTarget,
+  toBerlinDateStr,
+} from '@/lib/home-today'
+import { cn } from '@/lib/utils'
+import { Zap, Flame, Target } from 'lucide-react'
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -44,19 +34,14 @@ export default async function HomePage() {
   if (!user) redirect('/login')
 
   const department = await getCurrentDepartment()
-  const hofName = department?.hofName ?? 'Shop'
-  // „Mein Betrieb“ (PROJ-34) gibt es nur für Bereiche mit isometrischen Sprites.
-  const hatBetrieb = betriebSpriteSchluessel(department?.code ?? '').length > 0
-  const betriebName = `Mein ${department?.hofShortName ?? 'Betrieb'}`
 
-  // Date range for 7-day activity window
   const now = new Date()
-  const sixDaysAgo = new Date(now)
-  sixDaysAgo.setDate(sixDaysAgo.getDate() - 6)
-  sixDaysAgo.setHours(0, 0, 0, 0)
+  const today = toBerlinDateStr(now)
+  const week = buildCurrentWeek(now, new Set())
+  const weekStart = week[0].dateStr
 
   // ── Parallel data fetching ────────────────────────────────────────────────
-  const [profileResult, subjectsResult, questionSubjects, { rows: answers }, sessionsResult] =
+  const [profileResult, subjectsResult, questionSubjects, { rows: answers }, sessionsResult, blitzResult, lastSessionResult] =
     await Promise.all([
       supabase
         .from('profiles')
@@ -71,260 +56,222 @@ export default async function HomePage() {
 
       fetchAllUserAnswers(supabase, user.id),
 
+      // Lerntage der laufenden Woche (ein Tag Puffer wegen der Zeitzone)
       supabase
         .from('quiz_sessions')
         .select('completed_at')
         .eq('user_id', user.id)
-        .gte('completed_at', sixDaysAgo.toISOString()),
+        .gte('completed_at', new Date(Date.parse(`${weekStart}T00:00:00Z`) - 86_400_000).toISOString()),
+
+      supabase
+        .from('blitz_rounds')
+        .select('calendar_day, correct_count')
+        .eq('user_id', user.id)
+        .gte('calendar_day', weekStart),
+
+      // Letzte Runde mit Fach — Ziel für „Weiterlernen“
+      supabase
+        .from('quiz_sessions')
+        .select('id, subject_id')
+        .eq('user_id', user.id)
+        .not('subject_id', 'is', null)
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ])
 
-  // ── Extract profile data ──────────────────────────────────────────────────
+  // ── Profile ───────────────────────────────────────────────────────────────
   const profile = profileResult.data
   const totalXp = (profile?.total_xp as number) ?? 0
   const currentStreak = (profile?.current_streak as number) ?? 0
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
   const isAdmin = profile?.role === 'admin' || profile?.role === 'department_admin'
+  const hasSessions = answers.length > 0
 
-  // ── Aggregate answer data ─────────────────────────────────────────────────
-  const seenQuestionIds = new Set(answers.map((a) => a.question_id))
-  const correctQuestionIds = new Set(
-    answers.filter((a) => a.is_correct).map((a) => a.question_id),
-  )
-
-  const totalAnswered = answers.length
-  const totalCorrect = answers.filter((a) => a.is_correct).length
-  const totalWrong = totalAnswered - totalCorrect
-  const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0
-
-  const hasSessions = totalAnswered > 0
-
-  // ── Level computations for hero ──────────────────────────────────────────
   const level = getLevelFromXp(totalXp)
   const levelPercent = getProgressPercent(totalXp)
   const xpToNextLevel = getXpCostOfLevel(level) - getXpWithinLevel(totalXp)
 
-  // ── Per-subject progress ─────────────────────────────────────────────────
+  // ── Woche & Tagesziel ─────────────────────────────────────────────────────
+  const blitzRows = (blitzResult.data ?? []) as { calendar_day: string; correct_count: number }[]
+  const learnedDates = new Set([
+    ...(sessionsResult.data ?? []).map((s) => toBerlinDateStr(new Date(s.completed_at as string))),
+    ...blitzRows.map((r) => r.calendar_day),
+  ])
+  const weekDays = buildCurrentWeek(now, learnedDates)
+  const learnedToday = learnedDates.has(today)
+  // Die Blitzrunde speichert keine Einzelantworten — sie zählt mit ihren richtigen
+  const blitzToday = blitzRows.find((r) => r.calendar_day === today)?.correct_count ?? 0
+  const answeredToday = countAnsweredToday(answers, now) + blitzToday
+
+  // ── Fächer ────────────────────────────────────────────────────────────────
+  const subjectRows = subjectsResult.data ?? []
   const activeIdsBySubject = groupQuestionIdsBySubject(questionSubjects)
+  const correctIds = new Set(answers.filter((a) => a.is_correct).map((a) => a.question_id))
 
-  const subjects = (subjectsResult.data ?? []).map((s) => {
+  const rings: SubjectRing[] = subjectRows.map((s) => {
     const activeIds = activeIdsBySubject.get(s.id) ?? []
-
-    const total = activeIds.length
-    const seenCount = activeIds.filter((id) => seenQuestionIds.has(id)).length
-    const correctCount = activeIds.filter((id) => correctQuestionIds.has(id)).length
-
+    const correct = activeIds.filter((id) => correctIds.has(id)).length
     return {
       id: s.id,
       code: s.code,
       name: s.name,
       color: s.color,
       iconName: s.icon_name as string | null,
-      totalQuestions: total,
-      seenCount,
-      correctCount,
-      seenPercent: total > 0 ? Math.round((seenCount / total) * 100) : 0,
-      correctPercent: total > 0 ? Math.round((correctCount / total) * 100) : 0,
+      correctPercent: activeIds.length > 0 ? Math.round((correct / activeIds.length) * 100) : 0,
+      hasQuestions: activeIds.length > 0,
     }
   })
 
-  // ── 7-day activity dots ──────────────────────────────────────────────────
-  const recentSessions = sessionsResult.data ?? []
-  const sessionDates = new Set(
-    recentSessions.map((s) => toBerlinDateStr(new Date(s.completed_at))),
-  )
+  const weakCount = computeWeakQuestionIds(answers).length
 
-  const weekActivity = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(now)
-    d.setDate(d.getDate() - (6 - i))
-    const dateStr = toBerlinDateStr(d)
-    return {
-      date: d,
-      dateStr,
-      learned: sessionDates.has(dateStr),
-      isToday: i === 6,
+  // ── Weiterlernen ──────────────────────────────────────────────────────────
+  let continueTarget: { href: string; label: string } | null = null
+  const lastSession = lastSessionResult.data as { id: string; subject_id: string | null } | null
+  if (lastSession?.subject_id) {
+    const { data: sessionAnswers } = await supabase
+      .from('quiz_answers')
+      .select('questions(topic_id)')
+      .eq('session_id', lastSession.id)
+    const topicIds = ((sessionAnswers ?? []) as unknown as { questions: { topic_id: string | null } | null }[]).map(
+      (r) => r.questions?.topic_id ?? null,
+    )
+    const target = pickContinueTarget(lastSession.subject_id, topicIds, subjectRows)
+
+    if (target) {
+      // Gibt es heute noch unbeantwortete Fragen? (Das Quiz blendet ab UTC-Mitternacht aus.)
+      const todayUtc = new Date(now)
+      todayUtc.setUTCHours(0, 0, 0, 0)
+      const answeredTodayIds = new Set(
+        answers.filter((a) => new Date(a.answered_at) >= todayUtc).map((a) => a.question_id),
+      )
+      let pool = activeIdsBySubject.get(target.subjectId) ?? []
+      let label = subjectRows.find((s) => s.id === target.subjectId)?.name ?? ''
+
+      if (target.topicId) {
+        const [{ data: topicQuestions }, { data: topic }] = await Promise.all([
+          supabase.from('questions').select('id').eq('topic_id', target.topicId).eq('is_active', true),
+          supabase.from('topics').select('name').eq('id', target.topicId).maybeSingle(),
+        ])
+        const inTopic = new Set((topicQuestions ?? []).map((q) => q.id as string))
+        pool = pool.filter((id) => inTopic.has(id))
+        label = (topic?.name as string | undefined) ?? label
+      }
+
+      if (pool.some((id) => !answeredTodayIds.has(id))) {
+        continueTarget = { href: continueHref(target), label: `${target.subjectCode} · ${label}` }
+      }
     }
-  })
-
-  // ── Schnellzugriff ───────────────────────────────────────────────────────
-  const quickLinks = [
-    ...(hatBetrieb ? [{ href: '/betrieb', label: betriebName, icon: Warehouse, color: 'text-[#58CC02]' }] : []),
-    { href: '/shop', label: hatBetrieb ? 'Shop' : hofName, icon: Store, color: 'text-[#FFD700]' },
-    { href: '/leaderboard', label: 'Rangliste', icon: Trophy, color: 'text-[#1CB0F6]' },
-  ]
+  }
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#111827]">
-      {/* Header */}
-      <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-2 sticky top-0 z-10">
+      {/* Statusleiste */}
+      <header className="sticky top-0 z-10 bg-[#111827]/90 backdrop-blur px-4 py-2">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <BrandIcon className="w-5 h-5 text-[#58CC02]" />
-            <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
+            <span
+              className="flex items-center gap-1 rounded-full bg-[#1F2937] px-3 py-1.5"
+              aria-label={`Streak: ${currentStreak} Tage`}
+            >
+              <Flame size={14} className={currentStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
+              <span className="text-xs font-bold text-[#F9FAFB] tabular-nums">{currentStreak}</span>
+            </span>
+            <span className="flex items-center gap-1 rounded-full bg-[#1F2937] px-3 py-1.5" aria-label={`${totalXp} XP`}>
+              <Zap size={14} className="text-[#58CC02]" />
+              <span className="text-xs font-bold text-[#F9FAFB] tabular-nums">{totalXp.toLocaleString('de-DE')}</span>
+            </span>
+            <CoinBalance variant="pill" className="bg-[#1F2937] border-transparent" />
           </div>
-          <div className="flex items-center gap-2">
-            <CoinBalance variant="pill" />
-            <PlayerMenu displayName={displayName} isAdmin={isAdmin} />
-          </div>
+          <PlayerMenu displayName={displayName} isAdmin={isAdmin} />
         </div>
       </header>
 
-      {/* Main */}
-      <main className="max-w-md mx-auto px-4 py-6 space-y-4 pb-8">
+      <main className="max-w-md mx-auto px-4 pt-3 pb-6 space-y-6">
+        {/* Begrüßung & Woche */}
+        <section className="space-y-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-[#F9FAFB] truncate">Hallo, {displayName} 👋</h1>
+            {!learnedToday && currentStreak > 0 && (
+              <p className="mt-1 text-sm text-[#FF9600]">
+                Lerne heute, um deine {currentStreak}-Tage-Streak zu halten
+              </p>
+            )}
+          </div>
+          <TodayWeekDots days={weekDays} />
+        </section>
+
         {/* Onboarding card — only for new users */}
         {!hasSessions && <OnboardingCard displayName={displayName} />}
 
         {/* Starter-coins hint (PROJ-19) — shown once per account */}
         <StarterCoinsBanner />
 
-        {/* ── Section 1: Gamification Hero ── */}
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 relative overflow-hidden">
-          {/* Decorative glow */}
-          <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#58CC02]/10 rounded-full blur-2xl pointer-events-none" />
+        <TodayHeroCard
+          answeredToday={answeredToday}
+          level={level}
+          levelPercent={levelPercent}
+          xpToNextLevel={xpToNextLevel}
+          isMaxLevel={level >= MAX_LEVEL}
+          continueTarget={continueTarget}
+        />
 
-          <div className="flex items-center gap-4 mb-5">
-            {/* Level circle */}
-            <div className="w-16 h-16 rounded-full bg-[#58CC02]/15 border-2 border-[#58CC02]/50 flex flex-col items-center justify-center flex-shrink-0 shadow-lg shadow-green-900/20">
-              <span className="text-[9px] font-bold text-[#58CC02] uppercase tracking-widest leading-none">LVL</span>
-              <span className="text-3xl font-bold text-[#58CC02] leading-none">{level}</span>
-            </div>
-
-            {/* XP + greeting */}
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-[#9CA3AF] mb-1">
-                {hasSessions ? `Weiter so, ${displayName}!` : `Hallo, ${displayName}!`}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Zap size={18} className="text-[#58CC02] flex-shrink-0" />
-                <span className="text-2xl font-bold text-[#F9FAFB] leading-none tabular-nums">
-                  {totalXp.toLocaleString('de-DE')}
-                </span>
-                <span className="text-sm text-[#9CA3AF] font-medium">XP</span>
-              </div>
-            </div>
-
-            {/* Streak */}
-            <div className="flex flex-col items-center flex-shrink-0 bg-[#111827] rounded-2xl px-3 py-2 border border-[#4B5563]">
-              <Flame size={24} className={currentStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
-              <span className="text-xl font-bold text-[#F9FAFB] leading-none tabular-nums">{currentStreak}</span>
-              <span className="text-[10px] text-[#9CA3AF] mt-0.5">Streak</span>
-            </div>
-          </div>
-
-          {/* XP Progress bar */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-[#9CA3AF]">Level {level}</span>
-              <span className="text-xs font-semibold text-[#58CC02]">
-                {level >= MAX_LEVEL ? '🏆 Max Level!' : `noch ${xpToNextLevel} XP → Lvl ${level + 1}`}
-              </span>
-            </div>
-            <div className="h-4 bg-[#374151] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#58CC02] rounded-full transition-all duration-700 relative"
-                style={{ width: `${levelPercent}%` }}
-              >
-                <div className="absolute inset-0 bg-white/10 rounded-full" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Blitzrunde CTA (PROJ-19) ── */}
-        <BlitzRoundCard />
-
-        {/* ── Today's status banner ── */}
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border transition-colors ${
-          weekActivity[6].learned
-            ? 'bg-[#58CC02]/10 border-[#58CC02]/30'
-            : 'bg-[#1F2937] border-[#4B5563]'
-        }`}>
-          {weekActivity[6].learned ? (
-            <>
-              <div className="w-9 h-9 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#F9FAFB]">Heute gelernt! 🎉</p>
-                <p className="text-xs text-[#9CA3AF]">Dein Streak bleibt erhalten</p>
-              </div>
-            </>
+        {/* Nebenaktionen */}
+        <div className="grid grid-cols-2 gap-3">
+          <BlitzRoundTile />
+          {weakCount > 0 ? (
+            <Link
+              href="/quiz?mode=weak"
+              className="flex min-h-[68px] items-center gap-3 rounded-2xl border border-[#FF9600]/40 bg-[#FF9600]/10 px-3 py-3 transition-all duration-200 hover:bg-[#FF9600]/15 active:scale-95"
+            >
+              <GapsContent weakCount={weakCount} />
+            </Link>
           ) : (
-            <>
-              <div className="w-9 h-9 rounded-full bg-[#374151] flex items-center justify-center flex-shrink-0">
-                <Flame size={18} className="text-[#FF9600]" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-[#F9FAFB]">Heute noch nicht gelernt</p>
-                <p className="text-xs text-[#9CA3AF]">Streak endet um Mitternacht</p>
-              </div>
-            </>
+            <div
+              aria-disabled
+              className="flex min-h-[68px] items-center gap-3 rounded-2xl border border-[#374151] bg-[#1F2937]/50 px-3 py-3 opacity-70"
+            >
+              <GapsContent weakCount={0} />
+            </div>
           )}
         </div>
 
-        {/* ── CTA Button ── */}
-        <Link href="/subjects" className="block mt-2">
-          <Button className="w-full rounded-2xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-bold text-base py-6 transition-all duration-200 active:scale-95 shadow-lg shadow-green-900/30">
-            <BookOpen className="mr-2" size={20} />
-            Jetzt lernen
-          </Button>
-        </Link>
-
-        {/* ── Schnellzugriff: Betrieb, Shop, Rangliste ── */}
-        <nav aria-label="Schnellzugriff" className={`grid gap-3 ${hatBetrieb ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          {quickLinks.map(({ href, label, icon: Icon, color }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center justify-center gap-2 min-h-[84px] bg-[#1F2937] border border-[#4B5563] rounded-2xl px-2 py-3 hover:bg-[#374151] transition-all duration-200 active:scale-95"
-            >
-              <Icon className={`w-6 h-6 ${color}`} />
-              <span className="text-xs font-semibold text-[#F9FAFB] text-center leading-tight">{label}</span>
-            </Link>
-          ))}
-        </nav>
-
-        {/* ── Section 2: Overall Stats (only if sessions exist) ── */}
-        {hasSessions && (
-          <OverallStatsRow
-            totalCorrect={totalCorrect}
-            totalWrong={totalWrong}
-            accuracyPercent={accuracy}
-          />
+        {/* Fächer */}
+        {rings.length > 0 && (
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-base font-bold text-[#F9FAFB]">Deine Fächer</h2>
+              <Link href="/subjects" className="text-xs font-semibold text-[#1CB0F6]">
+                Alle anzeigen
+              </Link>
+            </div>
+            <SubjectRings subjects={rings} />
+          </section>
         )}
-
-        {/* ── Section 3: 7-Day Activity ── */}
-        <WeekActivityDots weekActivity={weekActivity} />
-
-        {/* ── Section 4: Subject Progress ── */}
-        <div>
-          <h2 className="text-xs font-semibold text-[#9CA3AF] uppercase tracking-wide mb-3">
-            Fach-Fortschritt
-          </h2>
-          <div className="space-y-3">
-            {subjects.map(({ iconName, ...subject }) => (
-              <SubjectProgressCard
-                key={subject.id}
-                icon={resolveIcon(iconName, Package)}
-                {...subject}
-              />
-            ))}
-          </div>
-        </div>
-
-        <Link href="/exam" className="block mt-2">
-          <Button variant="outline" className="w-full rounded-2xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-bold text-base py-6 transition-all duration-200 active:scale-95">
-            <ClipboardList className="mr-2" size={20} />
-            Prüfungssimulation
-          </Button>
-        </Link>
-
-        <p className="text-center text-[#6B7280] text-xs">
-          <Link href="/exam-history" className="text-[#9CA3AF] underline underline-offset-2">
-            Prüfungsverlauf
-          </Link>
-        </p>
       </main>
     </div>
+  )
+}
+
+function GapsContent({ weakCount }: { weakCount: number }) {
+  const active = weakCount > 0
+  return (
+    <>
+      <span
+        className={cn(
+          'flex size-10 shrink-0 items-center justify-center rounded-full',
+          active ? 'bg-[#FF9600]/20' : 'bg-[#374151]',
+        )}
+      >
+        <Target className={cn('size-5', active ? 'text-[#FF9600]' : 'text-[#6B7280]')} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-bold text-[#F9FAFB] truncate">Lücken</span>
+        <span className="block truncate text-xs text-[#9CA3AF]">
+          {active ? `${weakCount} offen` : 'Keine Lücken 💪'}
+        </span>
+      </span>
+    </>
   )
 }

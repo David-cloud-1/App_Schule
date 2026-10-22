@@ -6,7 +6,7 @@ import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { SubjectsGrid } from '@/components/subjects-grid'
 import { PlayerMenu } from '@/components/player-menu'
-import { Zap, Target, ChevronRight } from 'lucide-react'
+import { Zap, Target, ChevronRight, ClipboardList, History } from 'lucide-react'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
 import { BrandIcon, BrandName } from '@/components/app-brand'
@@ -80,6 +80,25 @@ export default async function SubjectsPage() {
             Wähle ein Fach und starte deine Lerneinheit.
           </p>
         </div>
+
+        {/* Prüfungs-Einstiege (PROJ-41, vorher auf der Startseite) */}
+        <nav aria-label="Prüfung" className="flex gap-3 mb-5">
+          <Link
+            href="/exam"
+            className="flex-1 flex items-center gap-2.5 min-h-[52px] rounded-2xl border border-[#1CB0F6]/40 bg-[#1CB0F6]/10 px-4 py-3 text-sm font-bold text-[#1CB0F6] hover:bg-[#1CB0F6]/15 transition-all duration-200 active:scale-95"
+          >
+            <ClipboardList size={18} className="shrink-0" />
+            Prüfungssimulation
+          </Link>
+          <Link
+            href="/exam-history"
+            aria-label="Prüfungsverlauf"
+            className="flex items-center gap-2.5 min-h-[52px] rounded-2xl border border-[#4B5563] bg-[#1F2937] px-4 py-3 text-sm font-semibold text-[#F9FAFB] hover:bg-[#374151] transition-all duration-200 active:scale-95"
+          >
+            <History size={18} className="shrink-0 text-[#9CA3AF]" />
+            Verlauf
+          </Link>
+        </nav>
 
         {weakCount > 0 && (
           <Link href="/quiz?mode=weak" className="block mb-5">

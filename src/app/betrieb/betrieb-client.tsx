@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, LocateFixed, Store, X, ZoomIn, ZoomOut } from 'lucide-react'
+import { LocateFixed, Store, X, ZoomIn, ZoomOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDepartment } from '@/components/department-provider'
@@ -419,9 +419,6 @@ export function BetriebClient() {
     <div className="min-h-screen bg-[#111827] text-[#F9FAFB]">
       <header className="sticky top-0 z-20 bg-[#1F2937] border-b border-[#4B5563]">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
-          <Link href="/" aria-label="Zurück" className="p-1 -ml-1 text-[#9CA3AF] hover:text-[#F9FAFB]">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
           <h1 className="text-xl font-bold tracking-tight">{titel}</h1>
           <Link
             href="/shop"

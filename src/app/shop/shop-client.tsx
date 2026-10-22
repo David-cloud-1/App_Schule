@@ -102,9 +102,11 @@ export function ShopClient() {
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-              <ArrowLeft size={20} />
-            </Link>
+            {betriebSpriteSchluessel(departmentCode).length > 0 && (
+              <Link href="/betrieb" aria-label={`Zurück zu Mein ${hofShortName}`} className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
+                <ArrowLeft size={20} />
+              </Link>
+            )}
             <span className="font-semibold text-[#F9FAFB]">{betriebSpriteSchluessel(departmentCode).length > 0 ? 'Shop' : hofName}</span>
           </div>
           <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">
