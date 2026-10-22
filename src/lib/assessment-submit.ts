@@ -138,3 +138,29 @@ export async function finishAssessmentAttempt(params: {
 
   return { ok: true }
 }
+
+/**
+ * Schließt Teilnahmen ab, deren Frist (Dauer + Kulanz) abgelaufen ist, die aber
+ * nie abgegeben wurden — etwa weil der Browser zu war. Ohne das bliebe so eine
+ * Sitzung ewig „schreibt noch" und fehlte in Auswertung und Druck. Es zählt nur,
+ * was rechtzeitig automatisch gespeichert wurde. Gibt die Zahl der abgeschlossenen
+ * Teilnahmen zurück.
+ */
+export async function finalizeOverdueAttempts(assessmentId: string): Promise<number> {
+  const service = createServiceClient()
+  const { data: sessions } = await service
+    .from('exam_sessions')
+    .select('id, started_at, assessment_id, results_json')
+    .eq('assessment_id', assessmentId)
+    .eq('status', 'in_progress')
+
+  let finalized = 0
+  for (const session of (sessions ?? []) as AssessmentSession[]) {
+    const durationMinutes = (session.results_json as AssessmentResultsJson).durationMinutes ?? 0
+    if (Date.now() <= assessmentDeadlineMs(session.started_at, durationMinutes)) continue
+    const outcome = await finishAssessmentAttempt({ client: service, session, action: 'submit', answers: {} })
+    if (outcome.ok) finalized += 1
+    else console.error('[finalizeOverdueAttempts]', session.id, outcome.error)
+  }
+  return finalized
+}

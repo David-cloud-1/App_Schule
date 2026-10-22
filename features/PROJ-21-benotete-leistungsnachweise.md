@@ -612,3 +612,8 @@ Gemeinsam deployt: PROJ-19, PROJ-20, PROJ-21.
 **Nach dem Deploy geprüft:** Neuer Code live (`/pruefung/<code>` leitet mit `?redirect=` zum Login). An der DB mit simulierter Schüler-Rolle (zurückgerollt): Lösungsschlüssel nicht lesbar ✅, Optionen ohne Lösung weiter lesbar ✅, Münzen/XP/Rolle nicht selbst setzbar ✅, eigene Einstellungen weiter änderbar ✅. Postgres-Logs seit dem Deploy: keine Rechte-Fehler (bei noch wenig Verkehr).
 
 **Noch offen:** Ein erster manueller Durchlauf im Browser durch den Nutzer (Quiz, Blitzrunde, Shop, Leistungsnachweis). Browser-Tests waren in dieser Umgebung nicht möglich.
+
+## Fix 2026-10-22: Nie abgegebene Teilnahmen
+**Problem:** Wer den Browser schloss, ohne abzugeben, blieb dauerhaft „in_progress". Die Druckansicht meldete „1 schreibt noch und fehlt hier", obwohl der Nachweis geschlossen und freigegeben war.
+**Lösung:** `finalizeOverdueAttempts` (`src/lib/assessment-submit.ts`) schließt Teilnahmen nach Fristende (Dauer + 60 s Kulanz) serverseitig ab; bewertet wird nur der rechtzeitig gespeicherte Autosave. Aufruf bei „Schließen" und vor „Ergebnisse freigeben". Tests in `assessment-submit.test.ts`.
+**Offen:** Die schon hängende Teilnahme im Test „Test Ex" (Doris) muss einmalig mit der Funktion abgeschlossen werden. Der Lauf gegen die Produktions-DB wurde blockiert.

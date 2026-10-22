@@ -11,6 +11,7 @@ import {
 } from '@/lib/graded-assessments'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { fetchAnswerKey } from '@/lib/answer-key'
+import { finalizeOverdueAttempts } from '@/lib/assessment-submit'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { fetchUsedClassNames } from '@/lib/assessment-category'
 
@@ -179,6 +180,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
       const { error } = await supabase.from('graded_assessments').update({ status: 'closed' }).eq('id', id)
       if (error) return NextResponse.json({ error: 'Schließen fehlgeschlagen.' }, { status: 500 })
+      await finalizeOverdueAttempts(id)
       await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.close', object_type: 'graded_assessment', object_id: id, object_label: assessment.title })
       return NextResponse.json({ success: true })
     }
@@ -193,6 +195,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     // Both "completed" (timer / Abgeben) and "aborted" (Beenden) count as a
     // submitted attempt — both must be released.
+    await finalizeOverdueAttempts(id)
     const service = createServiceClient()
     const { data: sessions } = await service
       .from('exam_sessions')
