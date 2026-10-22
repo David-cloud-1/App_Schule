@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { SubjectsGrid } from '@/components/subjects-grid'
-import { LogoutButton } from '@/components/logout-button'
+import { PlayerMenu } from '@/components/player-menu'
 import { Zap, Target, ChevronRight } from 'lucide-react'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import type { SubjectWithCount } from '@/app/api/subjects/route'
@@ -24,7 +24,7 @@ export default async function SubjectsPage() {
   }
 
   const [profileResult, subjectsResult, questionSubjects, { rows: answers }] = await Promise.all([
-    supabase.from('profiles').select('display_name, total_xp').eq('id', user.id).single(),
+    supabase.from('profiles').select('display_name, role, total_xp').eq('id', user.id).single(),
     // Nur Fächer des eigenen Bereichs (PROJ-23)
     supabase.from('subjects').select('id, code, name, color, icon_name, description').eq('department_id', (await getCurrentDepartment())?.id ?? NO_DEPARTMENT_ID).order('code'),
     fetchActiveQuestionSubjects(supabase),
@@ -34,6 +34,7 @@ export default async function SubjectsPage() {
   const displayName =
     profileResult.data?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
   const totalXp = profileResult.data?.total_xp ?? 0
+  const isAdmin = profileResult.data?.role === 'admin' || profileResult.data?.role === 'department_admin'
 
   // ── Compute weak question count ─────────────────────────────────────────
   const weakCount = computeWeakQuestionIds(answers).length
@@ -53,7 +54,7 @@ export default async function SubjectsPage() {
   return (
     <div className="min-h-screen bg-[#111827]">
       {/* Header */}
-      <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
+      <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-2 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <BrandIcon className="w-5 h-5 text-[#58CC02]" />
@@ -64,7 +65,7 @@ export default async function SubjectsPage() {
               <Zap size={13} className="text-[#58CC02]" />
               <span className="text-xs font-bold text-[#F9FAFB]">{totalXp.toLocaleString('de-DE')} XP</span>
             </div>
-            <LogoutButton />
+            <PlayerMenu displayName={displayName} isAdmin={isAdmin} />
           </div>
         </div>
       </header>

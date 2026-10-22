@@ -5,8 +5,7 @@ import { getCurrentDepartment } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
-import { LogoutButton } from '@/components/logout-button'
-import { StreakBadge } from '@/components/streak-badge'
+import { PlayerMenu } from '@/components/player-menu'
 import { SubjectProgressCard } from '@/components/subject-progress-card'
 import { WeekActivityDots } from '@/components/week-activity-dots'
 import { OverallStatsRow } from '@/components/overall-stats-row'
@@ -19,10 +18,8 @@ import { getLevelFromXp, getXpWithinLevel, getXpCostOfLevel, getProgressPercent,
 import {
   Zap,
   Flame,
-  Shield,
   BookOpen,
   Package,
-  User,
   Trophy,
   Store,
   Warehouse,
@@ -148,72 +145,26 @@ export default async function HomePage() {
     }
   })
 
+  // ── Schnellzugriff ───────────────────────────────────────────────────────
+  const quickLinks = [
+    ...(hatBetrieb ? [{ href: '/betrieb', label: betriebName, icon: Warehouse, color: 'text-[#58CC02]' }] : []),
+    { href: '/shop', label: hatBetrieb ? 'Shop' : hofName, icon: Store, color: 'text-[#FFD700]' },
+    { href: '/leaderboard', label: 'Rangliste', icon: Trophy, color: 'text-[#1CB0F6]' },
+  ]
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#111827]">
       {/* Header */}
-      <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
+      <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-2 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BrandIcon className="w-5 h-5 text-[#58CC02]" />
             <span className="font-bold text-[#F9FAFB]"><BrandName /></span>
           </div>
           <div className="flex items-center gap-2">
-            {/* XP pill */}
-            <div className="flex items-center gap-1 bg-[#111827] rounded-full px-3 py-1.5 border border-[#4B5563]">
-              <Zap size={13} className="text-[#58CC02]" />
-              <span className="text-xs font-bold text-[#F9FAFB]">
-                {totalXp.toLocaleString('de-DE')} XP
-              </span>
-            </div>
-            {/* Streak pill */}
-            <StreakBadge streak={currentStreak} variant="pill" />
-            {/* Coin pill */}
             <CoinBalance variant="pill" />
-            {/* Mein Betrieb (PROJ-34) */}
-            {hatBetrieb && (
-              <Link
-                href="/betrieb"
-                className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#58CC02] hover:text-[#58CC02]/80"
-                aria-label={betriebName}
-              >
-                <Warehouse className="w-4 h-4" />
-              </Link>
-            )}
-            {/* Hof link */}
-            <Link
-              href="/shop"
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
-              aria-label={hatBetrieb ? 'Shop' : hofName}
-            >
-              <Store className="w-4 h-4" />
-            </Link>
-            {/* Leaderboard link */}
-            <Link
-              href="/leaderboard"
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#FFD700] hover:text-[#FFD700]/80"
-              aria-label="Rangliste"
-            >
-              <Trophy className="w-4 h-4" />
-            </Link>
-            {/* Profile link */}
-            <Link
-              href="/profile"
-              className="flex items-center justify-center w-7 h-7 rounded-full bg-[#374151] hover:bg-[#4B5563] transition-colors text-[#9CA3AF] hover:text-[#F9FAFB]"
-              aria-label="Profil"
-            >
-              <User className="w-4 h-4" />
-            </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-1 text-xs bg-[#374151] hover:bg-[#4B5563] rounded-lg px-3 py-1.5 transition-colors text-[#9CA3AF]"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Admin
-              </Link>
-            )}
-            <LogoutButton />
+            <PlayerMenu displayName={displayName} isAdmin={isAdmin} />
           </div>
         </div>
       </header>
@@ -318,6 +269,20 @@ export default async function HomePage() {
             Jetzt lernen
           </Button>
         </Link>
+
+        {/* ── Schnellzugriff: Betrieb, Shop, Rangliste ── */}
+        <nav aria-label="Schnellzugriff" className={`grid gap-3 ${hatBetrieb ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {quickLinks.map(({ href, label, icon: Icon, color }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex flex-col items-center justify-center gap-2 min-h-[84px] bg-[#1F2937] border border-[#4B5563] rounded-2xl px-2 py-3 hover:bg-[#374151] transition-all duration-200 active:scale-95"
+            >
+              <Icon className={`w-6 h-6 ${color}`} />
+              <span className="text-xs font-semibold text-[#F9FAFB] text-center leading-tight">{label}</span>
+            </Link>
+          ))}
+        </nav>
 
         {/* ── Section 2: Overall Stats (only if sessions exist) ── */}
         {hasSessions && (
