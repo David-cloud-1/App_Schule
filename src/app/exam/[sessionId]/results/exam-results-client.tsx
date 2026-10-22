@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { CheckCircle2, XCircle, ChevronDown, ChevronUp, RotateCcw, Trophy, Clock3, GraduationCap, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import { Slider } from '@/components/ui/slider'
 import { cn } from '@/lib/utils'
 import type { ExamResultsJson, QuestionResult, PartResult, AssessmentResultInfo } from './page'
 import { useExamPartLabel } from '@/components/department-provider'
+import { useAutoRefresh } from '@/hooks/use-auto-refresh'
 
 interface Props {
   sessionId: string
@@ -245,6 +247,10 @@ function OpenResultCard({
 
 export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment, autoSubmittedByFocus = false }: Props) {
   const partLabel = useExamPartLabel()
+  const router = useRouter()
+  const refresh = useCallback(() => router.refresh(), [router])
+  // Warteansicht: sobald der Ausbilder freigibt, erscheint das Ergebnis ohne Neuladen
+  useAutoRefresh(!!assessment && !assessment.released, refresh)
   const partEntries = partsSelected
     .map((p) => [p, results?.parts?.[String(p)]] as [number, PartResult | undefined])
     .filter(([, part]) => part != null) as [number, PartResult][]

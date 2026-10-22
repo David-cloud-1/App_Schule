@@ -617,3 +617,6 @@ Gemeinsam deployt: PROJ-19, PROJ-20, PROJ-21.
 **Problem:** Wer den Browser schloss, ohne abzugeben, blieb dauerhaft „in_progress". Die Druckansicht meldete „1 schreibt noch und fehlt hier", obwohl der Nachweis geschlossen und freigegeben war.
 **Lösung:** `finalizeOverdueAttempts` (`src/lib/assessment-submit.ts`) schließt Teilnahmen nach Fristende (Dauer + 60 s Kulanz) serverseitig ab; bewertet wird nur der rechtzeitig gespeicherte Autosave. Aufruf bei „Schließen" und vor „Ergebnisse freigeben". Tests in `assessment-submit.test.ts`.
 **Offen:** Die schon hängende Teilnahme im Test „Test Ex" (Doris) muss einmalig mit der Funktion abgeschlossen werden. Der Lauf gegen die Produktions-DB wurde blockiert.
+
+## Änderung 2026-10-22: Ergebnis erscheint ohne Neuladen
+Die Warteansicht „Abgegeben – Ergebnis wird freigegeben" lädt die Serverdaten alle 12 s neu (`useAutoRefresh`, `src/hooks/use-auto-refresh.ts`), solange der Tab sichtbar ist und das Ergebnis nicht freigegeben ist. Beim Zurückkehren in den Tab wird sofort geprüft. Keine DB-Änderung; die Sperre der Ergebnisse bleibt serverseitig.
