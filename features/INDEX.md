@@ -56,7 +56,7 @@
 | PROJ-40 | Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Deployed | [PROJ-40-lehrer-bereich-uebersicht.md](PROJ-40-lehrer-bereich-uebersicht.md) | 2026-10-22 |
 | PROJ-41 | Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Deployed | [PROJ-41-bottom-navigation.md](PROJ-41-bottom-navigation.md) | 2026-10-22 |
 | PROJ-42 | „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed | [PROJ-42-heute-screen.md](PROJ-42-heute-screen.md) | 2026-10-22 |
-| PROJ-43 | Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Planned | [PROJ-43-lernbibliothek-fachseite.md](PROJ-43-lernbibliothek-fachseite.md) | 2026-10-22 |
+| PROJ-43 | Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Architected | [PROJ-43-lernbibliothek-fachseite.md](PROJ-43-lernbibliothek-fachseite.md) | 2026-10-22 |
 
 <!-- Add features above this line -->
 
