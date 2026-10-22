@@ -213,7 +213,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
         <form onSubmit={handleSubmit} className="space-y-4">
           {sets.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="startSet">Startauswahl aus Prüfungsset <span className="font-normal text-[#6B7280]">— optional</span></Label>
+              <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-[#6B7280]">— optional</span></Label>
               <Select value={startSetId} onValueChange={handleStartSetChange}>
                 <SelectTrigger id="startSet" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
                   <SelectValue />

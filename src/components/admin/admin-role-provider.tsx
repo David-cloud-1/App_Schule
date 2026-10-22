@@ -10,6 +10,8 @@ import { createContext, useContext } from 'react'
 export interface AdminRoleContextValue {
   role: 'admin' | 'department_admin'
   isSuperAdmin: boolean
+  /** Anzeigename bzw. E-Mail für die Begrüßung auf der Startseite (PROJ-40) */
+  displayName?: string
 }
 
 const AdminRoleContext = createContext<AdminRoleContextValue | null>(null)

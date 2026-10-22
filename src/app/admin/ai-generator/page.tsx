@@ -650,7 +650,7 @@ export default function AiGeneratorPage() {
       <div>
         <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight flex items-center gap-2">
           <Bot className="w-6 h-6 text-[#1CB0F6]" />
-          KI-Generator
+          Fragen aus Material
         </h1>
         <p className="text-sm text-[#9CA3AF] mt-1">
           Lernmaterial in Claude.ai einfügen und Fragen automatisch generieren lassen.

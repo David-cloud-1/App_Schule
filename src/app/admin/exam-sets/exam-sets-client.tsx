@@ -399,7 +399,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
     <div>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-[#F9FAFB]">Prüfungssets</h2>
+          <h2 className="text-xl font-bold text-[#F9FAFB]">Prüfungssimulation</h2>
           <p className="text-sm text-[#9CA3AF] mt-1">
             Erstelle kuratierte Fragensets für die Prüfungssimulation. Pro Teil können mehrere Sets gleichzeitig aktiv sein — z.B. verschiedene Prüfungen für verschiedene Klassen.
           </p>
@@ -426,7 +426,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       {sets.length === 0 ? (
         <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
           <Shield size={48} className="text-[#374151] mx-auto mb-4" />
-          <p className="text-[#9CA3AF]">Noch keine Prüfungssets erstellt.</p>
+          <p className="text-[#9CA3AF]">Noch keine Prüfungssimulationen erstellt.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -485,7 +485,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     size="sm"
                     variant="outline"
                     onClick={() => openEdit(set)}
-                    aria-label="Prüfungsset bearbeiten"
+                    aria-label="Prüfungssimulation bearbeiten"
                     className="rounded-lg border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151] px-2"
                   >
                     <Pencil size={14} />
@@ -526,7 +526,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       <AlertDialog open={confirmDeleteId !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}>
         <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Prüfungsset löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Prüfungssimulation löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-[#9CA3AF]">
               Dieser Vorgang kann nicht rückgängig gemacht werden. Das Set wird dauerhaft gelöscht.
             </AlertDialogDescription>
@@ -547,7 +547,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Prüfungsset bearbeiten' : 'Neues Prüfungsset erstellen'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Prüfungssimulation bearbeiten' : 'Neue Prüfungssimulation erstellen'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">

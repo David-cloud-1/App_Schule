@@ -1,0 +1,155 @@
+import {
+  Bot,
+  Building2,
+  ClipboardList,
+  FileText,
+  FolderKanban,
+  GraduationCap,
+  ScrollText,
+  Settings,
+  Store,
+  Tag,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+
+/**
+ * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
+ * Mobil-Menü und Startseiten-Kacheln. Ein neuer Bereich = ein neuer Eintrag.
+ *
+ * Rollenfilter dienen nur der Anzeige; die Rechteprüfung der Seiten und
+ * API-Routen bleibt serverseitig.
+ */
+export interface AdminNavItem {
+  href: string
+  label: string
+  /** Ein Satz für die Kachel auf der Startseite */
+  description: string
+  icon: LucideIcon
+  /** Nur für Super-Admins sichtbar */
+  superAdminOnly?: boolean
+  /** Titel kommt aus dem Fachbereich (z. B. „Hof-Items“) statt aus `label` */
+  usesHofName?: boolean
+  /** Erscheint als große Kachel auf der Startseite */
+  tile?: boolean
+}
+
+export interface AdminNavGroup {
+  id: 'unterricht' | 'inhalte' | 'einstellungen'
+  label: string
+  items: AdminNavItem[]
+}
+
+export const ADMIN_HOME_HREF = '/admin'
+
+export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
+  {
+    id: 'unterricht',
+    label: 'Unterricht',
+    items: [
+      {
+        href: '/admin/leistungsnachweise',
+        label: 'Leistungsnachweise',
+        description: 'Tests erstellen, auswerten und drucken',
+        icon: GraduationCap,
+        tile: true,
+      },
+      {
+        href: '/admin/questions',
+        label: 'Fragen',
+        description: 'Fragen ansehen, bearbeiten und importieren',
+        icon: FileText,
+        tile: true,
+      },
+      {
+        href: '/admin/users',
+        label: 'Nutzer',
+        description: 'Azubis und Rollen verwalten',
+        icon: Users,
+        tile: true,
+      },
+    ],
+  },
+  {
+    id: 'inhalte',
+    label: 'Inhalte',
+    items: [
+      {
+        href: '/admin/subjects',
+        label: 'Fächer',
+        description: 'Fächer anlegen und ordnen',
+        icon: FolderKanban,
+      },
+      {
+        href: '/admin/topics',
+        label: 'Themen',
+        description: 'Themen und Klassenstufen pflegen',
+        icon: Tag,
+      },
+      {
+        href: '/admin/exam-sets',
+        label: 'Prüfungssimulation',
+        description: 'Fragenzusammenstellungen für die Prüfungssimulation',
+        icon: ClipboardList,
+      },
+      {
+        href: '/admin/ai-generator',
+        label: 'Fragen aus Material',
+        description: 'Aus Lernmaterial neue Fragen erstellen lassen',
+        icon: Bot,
+        tile: true,
+      },
+    ],
+  },
+  {
+    id: 'einstellungen',
+    label: 'Einstellungen',
+    items: [
+      {
+        href: '/admin/department-settings',
+        label: 'Fachbereich',
+        description: 'Einstellungen des Fachbereichs',
+        icon: Settings,
+      },
+      {
+        href: '/admin/shop-items',
+        label: 'Items',
+        description: 'Shop-Items des Hofs pflegen',
+        icon: Store,
+        usesHofName: true,
+      },
+      {
+        href: '/admin/audit-log',
+        label: 'Änderungsprotokoll',
+        description: 'Wer hat wann was geändert',
+        icon: ScrollText,
+      },
+      {
+        href: '/admin/departments',
+        label: 'Fachbereiche',
+        description: 'Alle Fachbereiche verwalten',
+        icon: Building2,
+        superAdminOnly: true,
+      },
+    ],
+  },
+]
+
+/** Gruppen für eine Rolle; leere Gruppen entfallen */
+export function adminNavGroupsFor(isSuperAdmin: boolean): AdminNavGroup[] {
+  return ADMIN_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isSuperAdmin || !item.superAdminOnly),
+  })).filter((group) => group.items.length > 0)
+}
+
+/** Anzeigename eines Eintrags (Items-Eintrag trägt den Namen des Fachbereichs) */
+export function adminNavLabel(item: AdminNavItem, hofShortName: string): string {
+  return item.usesHofName ? `${hofShortName}-Items` : item.label
+}
+
+/** Unterseiten zählen mit: /admin/leistungsnachweise/123 → Leistungsnachweise */
+export function isAdminNavActive(pathname: string, href: string): boolean {
+  if (href === ADMIN_HOME_HREF) return pathname === ADMIN_HOME_HREF
+  return pathname === href || pathname.startsWith(href + '/')
+}

@@ -53,7 +53,8 @@
 | PROJ-37 | Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Deployed | [PROJ-37-belebte-welt.md](PROJ-37-belebte-welt.md) | 2026-10-09 |
 | PROJ-38 | Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Deployed | [PROJ-38-nachweis-import-kopier-prompt.md](PROJ-38-nachweis-import-kopier-prompt.md) | 2026-10-20 |
 | PROJ-39 | Leistungsnachweis – Kategorisierung & Filter | Deployed | [PROJ-39-nachweis-kategorisierung.md](PROJ-39-nachweis-kategorisierung.md) | 2026-10-21 |
+| PROJ-40 | Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | In Review | [PROJ-40-lehrer-bereich-uebersicht.md](PROJ-40-lehrer-bereich-uebersicht.md) | 2026-10-22 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-40
+## Next Available ID: PROJ-41

@@ -69,6 +69,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Planned |
 | P1 | PROJ-38: Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Planned |
 | P1 | PROJ-39: Leistungsnachweis – Kategorisierung & Filter | Planned |
+| P1 | PROJ-40: Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

@@ -85,7 +85,7 @@ export default function AdminAuditLogPage() {
 
       const res = await fetch(`/api/admin/audit-log?${params.toString()}`)
       if (!res.ok) {
-        toast.error('Audit-Log konnte nicht geladen werden.')
+        toast.error('Änderungsprotokoll konnte nicht geladen werden.')
         return
       }
       const json = (await res.json()) as AuditResponse
@@ -120,7 +120,7 @@ export default function AdminAuditLogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Audit-Log</h1>
+        <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Änderungsprotokoll</h1>
         <p className="text-sm text-[#9CA3AF] mt-1">
           {total} {total === 1 ? 'Eintrag' : 'Einträge'}
         </p>
@@ -178,7 +178,7 @@ export default function AdminAuditLogPage() {
                 <TableCell colSpan={5} className="py-10">
                   <div className="flex flex-col items-center gap-2 text-[#9CA3AF] text-sm">
                     <Info className="w-5 h-5" />
-                    Audit-Log wird nach erster Admin-Aktion befüllt.
+                    Das Änderungsprotokoll füllt sich nach der ersten Admin-Aktion.
                   </div>
                 </TableCell>
               </TableRow>

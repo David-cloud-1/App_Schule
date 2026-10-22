@@ -89,7 +89,7 @@ export function DepartmentSwitcher() {
 
   return (
     <Select value={current ?? undefined} onValueChange={handleChange} disabled={switching}>
-      <SelectTrigger className="h-9 w-[180px] bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-sm">
+      <SelectTrigger className="h-9 w-36 sm:w-[180px] bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-sm">
         <div className="flex items-center gap-2 truncate">
           {switching ? (
             <Loader2 className="w-4 h-4 shrink-0 animate-spin text-[#9CA3AF]" />
