@@ -63,7 +63,7 @@ describe('AdminNav (PROJ-40)', () => {
 })
 
 describe('AdminHome (PROJ-40)', () => {
-  it('begrüßt mit Namen und zeigt die vier Haupt-Kacheln', () => {
+  it('begrüßt mit Namen und zeigt die fünf Haupt-Kacheln', () => {
     wrap(<AdminHome />, false)
     expect(screen.getByRole('heading', { name: 'Hallo, Frau Muster' })).toBeInTheDocument()
     const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
@@ -71,7 +71,15 @@ describe('AdminHome (PROJ-40)', () => {
       '/admin/leistungsnachweise',
       '/admin/questions',
       '/admin/users',
+      'https://divadl-werkzeugkiste.hf.space',
       '/admin/ai-generator',
     ])
+  })
+
+  it('öffnet die Werkzeugkiste in neuem Tab', () => {
+    wrap(<AdminHome />, false)
+    const link = screen.getByRole('link', { name: /Werkzeugkiste/ })
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })

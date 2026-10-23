@@ -5,6 +5,7 @@ import {
   adminNavGroupsFor,
   adminNavLabel,
   isAdminNavActive,
+  WERKZEUGKISTE_URL,
 } from './admin-nav'
 
 describe('Admin-Navigation (PROJ-40)', () => {
@@ -13,9 +14,20 @@ describe('Admin-Navigation (PROJ-40)', () => {
   })
 
   it('hat für jeden Eintrag eine eindeutige Adresse unter /admin', () => {
-    const hrefs = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href))
+    const items = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
+    const hrefs = items.map((i) => i.href)
     expect(new Set(hrefs).size).toBe(hrefs.length)
-    expect(hrefs.every((h) => h.startsWith('/admin/'))).toBe(true)
+    expect(items.filter((i) => !i.external).every((i) => i.href.startsWith('/admin/'))).toBe(true)
+  })
+
+  it('verlinkt die Werkzeugkiste als externen Eintrag für alle Admins', () => {
+    for (const isSuper of [true, false]) {
+      const item = adminNavGroupsFor(isSuper)
+        .flatMap((g) => g.items)
+        .find((i) => i.label === 'Werkzeugkiste')!
+      expect(item.href).toBe(WERKZEUGKISTE_URL)
+      expect(item.external).toBe(true)
+    }
   })
 
   it('zeigt Super-Admins „Fachbereiche“, Fachbereichs-Admins nicht', () => {

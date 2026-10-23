@@ -10,6 +10,7 @@ import {
   Store,
   Tag,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -32,6 +33,8 @@ export interface AdminNavItem {
   usesHofName?: boolean
   /** Erscheint als große Kachel auf der Startseite */
   tile?: boolean
+  /** Externe Adresse: öffnet in neuem Tab, nie als „aktiv“ markiert */
+  external?: boolean
 }
 
 export interface AdminNavGroup {
@@ -41,6 +44,8 @@ export interface AdminNavGroup {
 }
 
 export const ADMIN_HOME_HREF = '/admin'
+
+export const WERKZEUGKISTE_URL = 'https://divadl-werkzeugkiste.hf.space'
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
@@ -67,6 +72,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Azubis und Rollen verwalten',
         icon: Users,
         tile: true,
+      },
+      {
+        href: WERKZEUGKISTE_URL,
+        label: 'Werkzeugkiste',
+        description: 'KI-Werkzeuge für Arbeitsblätter, Klassenarbeiten und mehr',
+        icon: Wrench,
+        tile: true,
+        external: true,
       },
     ],
   },

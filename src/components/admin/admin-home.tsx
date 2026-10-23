@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight, ExternalLink } from 'lucide-react'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useDepartment } from '@/components/department-provider'
 import { adminNavGroupsFor, adminNavLabel } from '@/lib/admin-nav'
@@ -27,8 +27,9 @@ export function AdminHome() {
       <ul className="grid gap-4 sm:grid-cols-2">
         {tiles.map((item) => (
           <li key={item.href}>
-            <Link
+            <TileLink
               href={item.href}
+              external={item.external}
               className="group flex min-h-24 items-center gap-4 rounded-2xl border border-[#4B5563] bg-[#1F2937] p-5 shadow-lg transition-all duration-200 hover:border-[#58CC02] hover:bg-[#374151] active:scale-95"
             >
               <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[#58CC02]/15 text-[#58CC02]">
@@ -40,11 +41,40 @@ export function AdminHome() {
                 </span>
                 <span className="block text-sm text-[#9CA3AF]">{item.description}</span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-[#9CA3AF] transition-transform duration-200 group-hover:translate-x-1" />
-            </Link>
+              {item.external ? (
+                <ExternalLink className="size-5 shrink-0 text-[#9CA3AF]" aria-label="öffnet in neuem Tab" />
+              ) : (
+                <ChevronRight className="size-5 shrink-0 text-[#9CA3AF] transition-transform duration-200 group-hover:translate-x-1" />
+              )}
+            </TileLink>
           </li>
         ))}
       </ul>
     </div>
+  )
+}
+
+function TileLink({
+  href,
+  external,
+  className,
+  children,
+}: {
+  href: string
+  external?: boolean
+  className: string
+  children: React.ReactNode
+}) {
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
   )
 }
