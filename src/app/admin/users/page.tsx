@@ -248,7 +248,7 @@ export default function AdminUsersPage() {
       {loadFailed ? (
         <AdminErrorState message="Die Nutzer konnten gerade nicht geladen werden." onRetry={load} />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
@@ -324,7 +324,7 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell>
                         {u.banned ? (
-                          <Badge className="bg-ws-red/20 text-ws-red border-ws-red/30 hover:bg-ws-red/20">
+                          <Badge className="bg-ws-red/15 text-ws-red border-ws-red/30 hover:bg-ws-red/15">
                             Gesperrt
                           </Badge>
                         ) : (

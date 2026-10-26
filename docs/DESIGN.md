@@ -130,17 +130,17 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 | `ws-raised` | Hover, erhöhte Flächen | #374151 | #EBEDF0 |
 | `ws-line` | Rahmen, Trennlinien | #4B5563 | #D1D5DB |
 | `ws-text` | Haupttext | #F9FAFB | #111827 |
-| `ws-muted` | Nebentext, Labels | #9CA3AF | #4B5563 |
+| `ws-muted` | Nebentext, Labels | #A6ACB7 | #4B5563 |
 | `ws-faint` | Hinweise, Gruppentitel | #8B93A1 | #5F6673 |
-| `ws-green` / `-hover` | Hauptaktion, Erfolg, aktiv | #58CC02 / #4CAD02 | #337500 / #2B6400 |
-| `ws-blue` / `-hover` | Info, Links | #1CB0F6 / #18A0E0 | #0A6FA8 / #085E8F |
-| `ws-red` / `-hover` | Fehler, Löschen | #FF5C5C / #FF4B4B | #C62828 / #A61F1F |
-| `ws-orange` | Warnung, „läuft noch“ | #FF9600 | #A65400 |
-| `ws-gold` | Auszeichnungen, „episch“ | #FFD700 | #8A6D00 |
+| `ws-green` / `-hover` | Hauptaktion, Erfolg, aktiv | #58CC02 / #4CAD02 | #2D6800 / #245400 |
+| `ws-blue` / `-hover` | Info, Links | #3EBCF7 / #1CB0F6 | #095F90 / #074E77 |
+| `ws-red` / `-hover` | Fehler, Löschen | #FF7B7B / #FF5C5C | #AA2222 / #8E1C1C |
+| `ws-orange` | Warnung, „läuft noch“ | #FF9600 | #8D4700 |
+| `ws-gold` | Auszeichnungen, „episch“ | #FFD700 | #715900 |
 | `ws-on-accent` | Schrift auf gefüllten Farbflächen | #111827 | #FFFFFF |
 
 - **Gefüllte Buttons:** `bg-ws-green hover:bg-ws-green-hover text-ws-on-accent`. Im dunklen Modus ist die Schrift darauf fast schwarz, im hellen weiß. So erreichen beide Modi WCAG AA (Entscheidung 2026-10-26).
-- **Getönte Pills/Hinweise:** `bg-ws-<farbe>/15 text-ws-<farbe> border-ws-<farbe>/30`.
+- **Getönte Pills/Hinweise:** `bg-ws-<farbe>/15 text-ws-<farbe> border-ws-<farbe>/30`. Die Tönung hinter gleichfarbigem Text beträgt **höchstens /20, bei Rot höchstens /15**. Sonst reicht der Kontrast nicht, und der Test schlägt fehl.
 - **Ausnahmen:** Papier-Ansichten (Druckbögen, QR-Code-Hintergrund) bleiben bewusst `bg-white text-black`.
 - Neue Tokens immer in **beiden** Modi (und im Block „Wie System“) anlegen. Der Test `src/lib/workspace-theme.test.ts` prüft die Kontraste (Text ≥ 4,5 : 1).
 
@@ -154,8 +154,10 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - **Kopfzeile:** Desktop mit Brotkrumen und Suchfeld (⌘K), Handy mit Menü, Seitentitel, Suche und Konto.
 - **Seitenkopf:** Jede Seite beginnt mit `AdminPageHeader` (Titel, ein Satz Beschreibung, rechts die Aktionen). Es gibt **höchstens eine** grüne Hauptaktion, weitere Aktionen sind `variant="outline"`. Detailseiten übergeben `breadcrumb={titel}`.
 - **Breite:** Inhalt bis `max-w-screen-2xl`, Tabellen und Listen nutzen die Breite. Formulare und Lesetexte bleiben schmal (`max-w-xl` bis `max-w-3xl`, Beschreibungen `max-w-prose`).
-- **Tabellen:** Der Container trägt `ws-table-scroll`. Die Tabelle scrollt dann in ihrem Rahmen, die erste Spalte bleibt stehen, und die Seite scrollt nie seitlich.
-- **Bedienelemente** mindestens 44 × 44 px (`min-h-11`, `size-11`).
+- **Tabellen:** Der Container trägt `ws-table-scroll`, dann scrollt die Tabelle in ihrem Rahmen und die Seite nie seitlich. Zusätzlich `ws-table-sticky`, wenn die erste Spalte die Zeile benennt (Titel, Name): Dann bleibt sie beim Scrollen stehen. Bei einer Checkbox-Spalte vorne weglassen. Aufgeklappte Zeilen mit `colSpan` bleiben nie stehen.
+- **Bedienelemente** mindestens 44 × 44 px (`min-h-11`, `size-11`). Auf Touch-Geräten vergrößert `globals.css` alle Buttons im Bereich automatisch auf 44 px; Checkboxen und Schalter sind ausgenommen und bekommen ihre Fläche über das Label.
+- **Hauptaktion:** Im Seitenkopf rechts, auch auf Detailseiten (Status-Aktionen). Bei leerer Liste steht sie nur im Leerzustand, nicht zusätzlich im Kopf.
+- **Tastenkürzel** über `useIsApplePlatform()` anzeigen: ⌘ auf Apple-Geräten, sonst Strg.
 
 ### Zustände (`src/components/admin/admin-states.tsx`)
 - **Laden:** `AdminLoadingState` (`table`, `list`, `cards`, `form`) oder Skeleton-Zeilen in Tabellenform. Kein Drehkreis über die ganze Seite.

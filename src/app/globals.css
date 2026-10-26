@@ -100,14 +100,14 @@
     --ws-raised: 55 65 81; /* #374151 */
     --ws-line: 75 85 99; /* #4B5563 */
     --ws-faint: 139 147 161; /* #8B93A1 */
-    --ws-muted: 156 163 175; /* #9CA3AF */
+    --ws-muted: 166 172 183; /* #A6ACB7 */
     --ws-text: 249 250 251; /* #F9FAFB */
     --ws-green: 88 204 2; /* #58CC02 */
     --ws-green-hover: 76 173 2; /* #4CAD02 */
-    --ws-blue: 28 176 246; /* #1CB0F6 */
-    --ws-blue-hover: 24 160 224; /* #18A0E0 */
-    --ws-red: 255 92 92; /* #FF5C5C */
-    --ws-red-hover: 255 75 75; /* #FF4B4B */
+    --ws-blue: 62 188 247; /* #3EBCF7 */
+    --ws-blue-hover: 28 176 246; /* #1CB0F6 */
+    --ws-red: 255 123 123; /* #FF7B7B */
+    --ws-red-hover: 255 92 92; /* #FF5C5C */
     --ws-orange: 255 150 0; /* #FF9600 */
     --ws-gold: 255 215 0; /* #FFD700 */
     --ws-on-accent: 17 24 39; /* #111827 */
@@ -127,10 +127,10 @@
     --secondary: 216.9 19.1% 26.7%;
     --secondary-foreground: 210 20% 98%;
     --muted: 216.9 19.1% 26.7%;
-    --muted-foreground: 217.9 10.6% 64.9%;
+    --muted-foreground: 218.8 10.6% 68.4%;
     --accent: 216.9 19.1% 26.7%;
     --accent-foreground: 210 20% 98%;
-    --destructive: 0 100% 68%;
+    --destructive: 0 100% 74.1%;
     --destructive-foreground: 220.9 39.3% 11%;
     --border: 215 13.8% 34.1%;
     --input: 215 13.8% 34.1%;
@@ -146,14 +146,14 @@
     --ws-faint: 95 102 115; /* #5F6673 */
     --ws-muted: 75 85 99; /* #4B5563 */
     --ws-text: 17 24 39; /* #111827 */
-    --ws-green: 51 117 0; /* #337500 */
-    --ws-green-hover: 43 100 0; /* #2B6400 */
-    --ws-blue: 10 111 168; /* #0A6FA8 */
-    --ws-blue-hover: 8 94 143; /* #085E8F */
-    --ws-red: 198 40 40; /* #C62828 */
-    --ws-red-hover: 166 31 31; /* #A61F1F */
-    --ws-orange: 166 84 0; /* #A65400 */
-    --ws-gold: 138 109 0; /* #8A6D00 */
+    --ws-green: 45 104 0; /* #2D6800 */
+    --ws-green-hover: 36 84 0; /* #245400 */
+    --ws-blue: 9 95 144; /* #095F90 */
+    --ws-blue-hover: 7 78 119; /* #074E77 */
+    --ws-red: 170 34 34; /* #AA2222 */
+    --ws-red-hover: 142 28 28; /* #8E1C1C */
+    --ws-orange: 141 71 0; /* #8D4700 */
+    --ws-gold: 113 89 0; /* #715900 */
     --ws-on-accent: 255 255 255; /* #FFFFFF */
     --background: 220 15.8% 96.3%;
     --foreground: 220.9 39.3% 11%;
@@ -161,7 +161,7 @@
     --card-foreground: 220.9 39.3% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 220.9 39.3% 11%;
-    --primary: 93.8 100% 22.9%;
+    --primary: 94 100% 20.4%;
     --primary-foreground: 0 0% 100%;
     --secondary: 216 14.3% 93.1%;
     --secondary-foreground: 220.9 39.3% 11%;
@@ -169,11 +169,11 @@
     --muted-foreground: 215 13.8% 34.1%;
     --accent: 216 14.3% 93.1%;
     --accent-foreground: 220.9 39.3% 11%;
-    --destructive: 0 66.4% 46.7%;
+    --destructive: 0 66.7% 40%;
     --destructive-foreground: 0 0% 100%;
     --border: 216 12.2% 83.9%;
     --input: 216 12.2% 83.9%;
-    --ring: 93.8 100% 22.9%;
+    --ring: 94 100% 20.4%;
   }
 
   @media (prefers-color-scheme: light) {
@@ -186,14 +186,14 @@
       --ws-faint: 95 102 115; /* #5F6673 */
       --ws-muted: 75 85 99; /* #4B5563 */
       --ws-text: 17 24 39; /* #111827 */
-      --ws-green: 51 117 0; /* #337500 */
-      --ws-green-hover: 43 100 0; /* #2B6400 */
-      --ws-blue: 10 111 168; /* #0A6FA8 */
-      --ws-blue-hover: 8 94 143; /* #085E8F */
-      --ws-red: 198 40 40; /* #C62828 */
-      --ws-red-hover: 166 31 31; /* #A61F1F */
-      --ws-orange: 166 84 0; /* #A65400 */
-      --ws-gold: 138 109 0; /* #8A6D00 */
+      --ws-green: 45 104 0; /* #2D6800 */
+      --ws-green-hover: 36 84 0; /* #245400 */
+      --ws-blue: 9 95 144; /* #095F90 */
+      --ws-blue-hover: 7 78 119; /* #074E77 */
+      --ws-red: 170 34 34; /* #AA2222 */
+      --ws-red-hover: 142 28 28; /* #8E1C1C */
+      --ws-orange: 141 71 0; /* #8D4700 */
+      --ws-gold: 113 89 0; /* #715900 */
       --ws-on-accent: 255 255 255; /* #FFFFFF */
       --background: 220 15.8% 96.3%;
       --foreground: 220.9 39.3% 11%;
@@ -201,7 +201,7 @@
       --card-foreground: 220.9 39.3% 11%;
       --popover: 0 0% 100%;
       --popover-foreground: 220.9 39.3% 11%;
-      --primary: 93.8 100% 22.9%;
+      --primary: 94 100% 20.4%;
       --primary-foreground: 0 0% 100%;
       --secondary: 216 14.3% 93.1%;
       --secondary-foreground: 220.9 39.3% 11%;
@@ -209,11 +209,11 @@
       --muted-foreground: 215 13.8% 34.1%;
       --accent: 216 14.3% 93.1%;
       --accent-foreground: 220.9 39.3% 11%;
-      --destructive: 0 66.4% 46.7%;
+      --destructive: 0 66.7% 40%;
       --destructive-foreground: 0 0% 100%;
       --border: 216 12.2% 83.9%;
       --input: 216 12.2% 83.9%;
-      --ring: 93.8 100% 22.9%;
+      --ring: 94 100% 20.4%;
     }
   }
 
@@ -228,14 +228,14 @@
       --ws-faint: 95 102 115; /* #5F6673 */
       --ws-muted: 75 85 99; /* #4B5563 */
       --ws-text: 17 24 39; /* #111827 */
-      --ws-green: 51 117 0; /* #337500 */
-      --ws-green-hover: 43 100 0; /* #2B6400 */
-      --ws-blue: 10 111 168; /* #0A6FA8 */
-      --ws-blue-hover: 8 94 143; /* #085E8F */
-      --ws-red: 198 40 40; /* #C62828 */
-      --ws-red-hover: 166 31 31; /* #A61F1F */
-      --ws-orange: 166 84 0; /* #A65400 */
-      --ws-gold: 138 109 0; /* #8A6D00 */
+      --ws-green: 45 104 0; /* #2D6800 */
+      --ws-green-hover: 36 84 0; /* #245400 */
+      --ws-blue: 9 95 144; /* #095F90 */
+      --ws-blue-hover: 7 78 119; /* #074E77 */
+      --ws-red: 170 34 34; /* #AA2222 */
+      --ws-red-hover: 142 28 28; /* #8E1C1C */
+      --ws-orange: 141 71 0; /* #8D4700 */
+      --ws-gold: 113 89 0; /* #715900 */
       --ws-on-accent: 255 255 255; /* #FFFFFF */
       --background: 220 15.8% 96.3%;
       --foreground: 220.9 39.3% 11%;
@@ -243,7 +243,7 @@
       --card-foreground: 220.9 39.3% 11%;
       --popover: 0 0% 100%;
       --popover-foreground: 220.9 39.3% 11%;
-      --primary: 93.8 100% 22.9%;
+      --primary: 94 100% 20.4%;
       --primary-foreground: 0 0% 100%;
       --secondary: 216 14.3% 93.1%;
       --secondary-foreground: 220.9 39.3% 11%;
@@ -251,11 +251,11 @@
       --muted-foreground: 215 13.8% 34.1%;
       --accent: 216 14.3% 93.1%;
       --accent-foreground: 220.9 39.3% 11%;
-      --destructive: 0 66.4% 46.7%;
+      --destructive: 0 66.7% 40%;
       --destructive-foreground: 0 0% 100%;
       --border: 216 12.2% 83.9%;
       --input: 216 12.2% 83.9%;
-      --ring: 93.8 100% 22.9%;
+      --ring: 94 100% 20.4%;
       --ws-bg: 255 255 255;
       --background: 0 0% 100%;
     }
@@ -275,27 +275,47 @@
 }
 
 /* PROJ-45: Breite Tabellen im Lehrkräfte-Bereich scrollen in ihrem eigenen Rahmen
-   (die Seite selbst nie seitlich); die erste Spalte bleibt dabei stehen. */
+   (die Seite selbst nie seitlich). Mit `ws-table-sticky` bleibt zusätzlich die
+   erste Spalte stehen — nur dort, wo sie die Zeile benennt (Titel, Name). */
 @layer components {
   .ws-table-scroll table {
     min-width: 40rem;
   }
-  .ws-table-scroll :is(th, td):first-child {
+  .ws-table-sticky :is(th, td):first-child:not([colspan]) {
     position: sticky;
     left: 0;
     z-index: 1;
     background-color: rgb(var(--ws-surface));
   }
-  .ws-table-scroll thead :is(th, td):first-child {
+  .ws-table-sticky thead :is(th, td):first-child:not([colspan]) {
     background-color: rgb(var(--ws-bg));
+  }
+  /* Zeilen-Hover (hover:bg-ws-bg/40) auch in der stehenden Spalte zeigen */
+  .ws-table-sticky tbody tr:hover > td:first-child:not([colspan]) {
+    background-color: color-mix(in srgb, rgb(var(--ws-bg)) 40%, rgb(var(--ws-surface)));
   }
   @media print {
     .ws-table-scroll table {
       min-width: 0;
     }
-    .ws-table-scroll :is(th, td):first-child {
+    .ws-table-sticky :is(th, td):first-child {
       position: static;
     }
+  }
+}
+
+/* PROJ-45: Auf Touch-Geräten sind Buttons im Lehrkräfte-Bereich mindestens 44 × 44 px.
+   Checkboxen, Schalter und Radios bekommen ihre Fläche über das Label. */
+@media (pointer: coarse) {
+  html:has(.ws-root) button:not([role="checkbox"]):not([role="switch"]):not([role="radio"]):not([data-sidebar="rail"]) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+  /* Schließen-Kreuze in Dialogen sitzen absolut — Icon in der vergrößerten Fläche mittig halten */
+  html:has(.ws-root) button.absolute {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 

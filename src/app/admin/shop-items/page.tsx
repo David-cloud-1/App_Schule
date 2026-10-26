@@ -97,28 +97,33 @@ export default function AdminShopItemsPage() {
     }
   }
 
+  // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
+  const showEmpty = !loadFailed && !loading && items.length === 0
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title={<>{hofShortName}-Items</>}
         description={<>{items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog</>}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neues Item
-          </Button>
+          showEmpty ? undefined : (
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neues Item
+            </Button>
+          )
         }
       />
 
       {loadFailed ? (
         <AdminErrorState message="Die Items konnten gerade nicht geladen werden." onRetry={load} />
-      ) : !loading && items.length === 0 ? (
+      ) : showEmpty ? (
         <AdminEmptyState
           icon={Store}
           title={`Noch keine ${hofShortName}-Items`}
@@ -137,7 +142,7 @@ export default function AdminShopItemsPage() {
           }
         />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

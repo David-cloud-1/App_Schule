@@ -10,6 +10,7 @@ import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
 import { DepartmentSwitcher } from '@/components/admin/department-switcher'
 import { useDepartment } from '@/components/department-provider'
 import { useSidebar } from '@/components/ui/sidebar'
+import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -49,6 +50,8 @@ export function AdminTopbar() {
   const { hofShortName } = useDepartment()
   const { detailCrumb, setCommandOpen } = useWorkspace()
   const { toggleSidebar, isMobile } = useSidebar()
+  const isApple = useIsApplePlatform()
+  const mod = isApple ? '⌘' : 'Strg+'
   const crumbs = adminCrumbs(pathname, hofShortName, detailCrumb)
   const pageTitle = crumbs[crumbs.length - 1].label
 
@@ -58,7 +61,7 @@ export function AdminTopbar() {
         type="button"
         onClick={toggleSidebar}
         aria-label={isMobile ? 'Menü öffnen' : 'Seitenleiste ein- oder ausklappen'}
-        title={isMobile ? undefined : 'Seitenleiste ein- oder ausklappen (⌘B / Strg+B)'}
+        title={isMobile ? undefined : `Seitenleiste ein- oder ausklappen (${mod}B)`}
         className={iconButton}
       >
         <Menu className="size-6 lg:hidden" />
@@ -112,7 +115,7 @@ export function AdminTopbar() {
         <Search className="size-4" />
         <span className="flex-1 text-left">Suchen …</span>
         <kbd className="rounded-md border border-ws-line bg-ws-raised px-1.5 py-0.5 text-[11px] font-semibold text-ws-muted">
-          ⌘K
+          {isApple ? '⌘K' : 'Strg K'}
         </kbd>
       </button>
 

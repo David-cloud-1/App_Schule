@@ -153,7 +153,7 @@ export default function AdminAuditLogPage() {
       {loadFailed ? (
         <AdminErrorState message="Das Änderungsprotokoll konnte gerade nicht geladen werden." onRetry={load} />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

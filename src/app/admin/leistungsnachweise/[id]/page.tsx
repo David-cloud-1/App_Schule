@@ -280,15 +280,77 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           title={detail.title}
           breadcrumb={detail.title}
           description={`${detail.examSetName ? `${detail.examSetName} · ` : ''}${detail.questionCount} Fragen · ${detail.durationMinutes} Min.`}
+          actions={
+            <>
+              {detail.status === 'draft' && (
+                <>
+                  <Button
+                    onClick={() => runAction('open')}
+                    disabled={actionPending}
+                    className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
+                  >
+                    <Unlock size={14} className="mr-1.5" />
+                    Öffnen
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setEditQuestionsOpen(true)}
+                    disabled={actionPending}
+                    className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+                  >
+                    <ListChecks size={14} className="mr-1.5" />
+                    Fragen bearbeiten
+                  </Button>
+                </>
+              )}
+              {detail.status === 'open' && (
+                <Button
+                  variant="outline"
+                  onClick={() => runAction('close')}
+                  disabled={actionPending}
+                  className="rounded-xl border-ws-orange/50 text-ws-orange hover:bg-ws-orange/10"
+                >
+                  <Lock size={14} className="mr-1.5" />
+                  Beitritt schließen
+                </Button>
+              )}
+              {detail.status === 'closed' && !detail.resultsReleasedAt && (
+                <Button
+                  onClick={() => setConfirmRelease(true)}
+                  disabled={actionPending || activeParticipants.length === 0}
+                  className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
+                >
+                  <PlayCircle size={14} className="mr-1.5" />
+                  Ergebnisse freigeben
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                onClick={() => setConfirmDelete(true)}
+                disabled={actionPending}
+                className="rounded-xl border-ws-red/30 text-ws-red hover:bg-ws-red/10"
+              >
+                <Trash2 size={14} className="mr-1.5" />
+                Löschen
+              </Button>
+            </>
+          }
         >
-          <Badge className={cn(
-            'text-xs border-0',
-            detail.status === 'draft' && 'bg-ws-line/40 text-ws-muted',
-            detail.status === 'open' && 'bg-ws-green/20 text-ws-green',
-            detail.status === 'closed' && 'bg-ws-orange/20 text-ws-orange',
-          )}>
-            {STATUS_LABELS[detail.status]}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={cn(
+              'text-xs border-0',
+              detail.status === 'draft' && 'bg-ws-line/40 text-ws-muted',
+              detail.status === 'open' && 'bg-ws-green/20 text-ws-green',
+              detail.status === 'closed' && 'bg-ws-orange/20 text-ws-orange',
+            )}>
+              {STATUS_LABELS[detail.status]}
+            </Badge>
+            {detail.resultsReleasedAt && (
+              <Badge className="bg-ws-green/20 text-ws-green border-0">
+                Ergebnisse freigegeben · {new Date(detail.resultsReleasedAt).toLocaleString('de-DE')}
+              </Badge>
+            )}
+          </div>
         </AdminPageHeader>
       </div>
 
@@ -307,80 +369,19 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {/* Status-Steuerung + Live-Kachel */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex flex-wrap items-center gap-2">
-          {detail.status === 'draft' && (
-            <>
-              <Button
-                onClick={() => runAction('open')}
-                disabled={actionPending}
-                className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
-              >
-                <Unlock size={14} className="mr-1.5" />
-                Öffnen
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setEditQuestionsOpen(true)}
-                disabled={actionPending}
-                className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-              >
-                <ListChecks size={14} className="mr-1.5" />
-                Fragen bearbeiten
-              </Button>
-            </>
-          )}
-          {detail.status === 'open' && (
-            <Button
-              variant="outline"
-              onClick={() => runAction('close')}
-              disabled={actionPending}
-              className="rounded-xl border-ws-orange/50 text-ws-orange hover:bg-ws-orange/10"
-            >
-              <Lock size={14} className="mr-1.5" />
-              Beitritt schließen
-            </Button>
-          )}
-          {detail.status === 'closed' && !detail.resultsReleasedAt && (
-            <Button
-              onClick={() => setConfirmRelease(true)}
-              disabled={actionPending || activeParticipants.length === 0}
-              className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
-            >
-              <PlayCircle size={14} className="mr-1.5" />
-              Ergebnisse freigeben
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            onClick={() => setConfirmDelete(true)}
-            disabled={actionPending}
-            className="rounded-xl border-ws-red/30 text-ws-red hover:bg-ws-red/10"
-          >
-            <Trash2 size={14} className="mr-1.5" />
-            Löschen
-          </Button>
-          {detail.resultsReleasedAt && (
-            <Badge className="bg-ws-green/20 text-ws-green border-0">
-              Ergebnisse freigegeben · {new Date(detail.resultsReleasedAt).toLocaleString('de-DE')}
-            </Badge>
-          )}
+      {/* Live-Kachel */}
+      <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex items-center justify-around text-center">
+        <div>
+          <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
+          <p className="text-xs text-ws-muted">Beigetreten</p>
         </div>
-
-        <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex items-center justify-around text-center">
-          <div>
-            <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
-            <p className="text-xs text-ws-muted">Beigetreten</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
-            <p className="text-xs text-ws-muted">Schreiben</p>
-          </div>
-          <div>
-            <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
-            <p className="text-xs text-ws-muted">Abgegeben</p>
-          </div>
+        <div>
+          <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
+          <p className="text-xs text-ws-muted">Schreiben</p>
+        </div>
+        <div>
+          <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
+          <p className="text-xs text-ws-muted">Abgegeben</p>
         </div>
       </div>
 
@@ -466,7 +467,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </p>
             </div>
           )}
-          <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface overflow-x-auto">
+          <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

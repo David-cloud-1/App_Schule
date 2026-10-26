@@ -88,7 +88,7 @@ export function FocusCell({
         </Badge>
       )}
       {focus.autoSubmitted && (
-        <Badge className="bg-ws-red/20 text-ws-red border-0">
+        <Badge className="bg-ws-red/15 text-ws-red border-0">
           Automatisch abgegeben (Fokus-Grenze)
         </Badge>
       )}

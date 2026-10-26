@@ -51,28 +51,33 @@ export default function AdminDepartmentsPage() {
     load()
   }, [load])
 
+  // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
+  const showEmpty = !loadFailed && !loading && departments.length === 0
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Fachbereiche"
         description={<>{departments.length} {departments.length === 1 ? 'Fachbereich' : 'Fachbereiche'}</>}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neuer Fachbereich
-          </Button>
+          showEmpty ? undefined : (
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neuer Fachbereich
+            </Button>
+          )
         }
       />
 
       {loadFailed ? (
         <AdminErrorState message="Die Fachbereiche konnten gerade nicht geladen werden." onRetry={load} />
-      ) : !loading && departments.length === 0 ? (
+      ) : showEmpty ? (
         <AdminEmptyState
           icon={Building2}
           title="Noch keine Fachbereiche"
@@ -91,7 +96,7 @@ export default function AdminDepartmentsPage() {
           }
         />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

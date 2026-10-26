@@ -164,22 +164,27 @@ function AssessmentsPageContent() {
     }
   }, [searchParams, router, pathname])
 
+  // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
+  const showEmpty = !failed && !loading && assessments.length === 0
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Leistungsnachweise"
         description="Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code — Klasse und Fach dienen nur der Ablage."
         actions={
-          <Button
-            onClick={() => {
-              setPreselectedSetId(null)
-              setCreateOpen(true)
-            }}
-            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neu erstellen
-          </Button>
+          showEmpty ? undefined : (
+            <Button
+              onClick={() => {
+                setPreselectedSetId(null)
+                setCreateOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neu erstellen
+            </Button>
+          )
         }
       />
 
@@ -197,7 +202,7 @@ function AssessmentsPageContent() {
 
       {failed ? (
         <AdminErrorState message="Die Leistungsnachweise konnten gerade nicht geladen werden." onRetry={load} />
-      ) : !loading && assessments.length === 0 ? (
+      ) : showEmpty ? (
         <AdminEmptyState
           icon={GraduationCap}
           title="Noch keine Leistungsnachweise"
@@ -216,7 +221,7 @@ function AssessmentsPageContent() {
           }
         />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

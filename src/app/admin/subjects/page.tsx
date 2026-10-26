@@ -88,28 +88,33 @@ export default function AdminSubjectsPage() {
     }
   }
 
+  // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
+  const showEmpty = !loadFailed && !loading && subjects.length === 0
+
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title="Fächer"
         description={<>{subjects.length} {subjects.length === 1 ? 'Fach' : 'Fächer'}</>}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neues Fach
-          </Button>
+          showEmpty ? undefined : (
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neues Fach
+            </Button>
+          )
         }
       />
 
       {loadFailed ? (
         <AdminErrorState message="Die Fächer konnten gerade nicht geladen werden." onRetry={load} />
-      ) : !loading && subjects.length === 0 ? (
+      ) : showEmpty ? (
         <AdminEmptyState
           icon={FolderKanban}
           title="Noch keine Fächer"
@@ -128,7 +133,7 @@ export default function AdminSubjectsPage() {
           }
         />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">

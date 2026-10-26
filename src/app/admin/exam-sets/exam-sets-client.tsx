@@ -425,13 +425,15 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 <FileUp size={16} className="mr-2" />
                 Aus Datei importieren
               </Button>
-              <Button
-                onClick={openCreate}
-                className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
-              >
-                <Plus size={16} className="mr-2" />
-                Neues Set
-              </Button>
+              {sets.length > 0 && (
+                <Button
+                  onClick={openCreate}
+                  className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
+                >
+                  <Plus size={16} className="mr-2" />
+                  Neues Set
+                </Button>
+              )}
             </>
           }
         />

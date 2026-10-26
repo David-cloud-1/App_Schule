@@ -407,5 +407,22 @@ Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Da
 - **Security:** Pass, keine neuen Angriffsflächen.
 - **Production Ready:** YES nach Regel (keine Critical/High). **Empfehlung:** BUG-1 und BUG-2 vor dem Deploy beheben, danach Sichtprüfung im Browser (beide Modi, Handy, Beamer, Druck).
 
+### Bugfixes nach QA (2026-10-26, alle 7 auf Wunsch des Nutzers)
+- **BUG-1 behoben:** Palette nachjustiert.
+  - hell: Grün #2D6800, Blau #095F90, Rot #AA2222, Orange #8D4700, Gold #715900 (Hover-Töne dunkler)
+  - dunkel: Blau #3EBCF7, Rot #FF7B7B
+  - Rote Tönungen hinter rotem Text höchstens /15 (2 Stellen von /20 gesenkt).
+  - Der Kontrasttest prüft jetzt auch getönte Pills bei der stärksten erlaubten Tönung und scannt alle Lehrkräfte-Dateien auf zu starke Tönungen.
+- **BUG-2 behoben:** Auf Touch-Geräten (`pointer: coarse`) sind alle Buttons im Lehrkräfte-Bereich, auch in Dialogen, mindestens 44 × 44 px. Checkboxen, Schalter und Radios sind ausgenommen; absolut sitzende Schließen-Kreuze bleiben mittig.
+- **BUG-3 behoben:**
+  - Feste Spalte nur noch per `ws-table-sticky` auf Tabellen, deren erste Spalte die Zeile benennt. Die Fragen-Tabelle (Checkbox vorne) scrollt nur.
+  - Zellen mit `colSpan` (aufgeklappte Details, Fokus-Protokoll) bleiben nie stehen.
+  - Zeilen-Hover gilt auch in der stehenden Spalte.
+- **BUG-4 behoben:** `ws-muted` dunkel #A6ACB7, damit 4,5 : 1 auch auf Hover-Flächen; per Test abgesichert.
+- **BUG-5 behoben:** `useIsApplePlatform()` (`src/hooks/use-is-apple-platform.ts`, getestet): Hinweis und Tooltip zeigen ⌘ auf Apple-Geräten, sonst „Strg K“ bzw. „Strg+B“. Ohne Hydrations-Sprung, weil der Server ⌘ annimmt.
+- **BUG-6 behoben:** Bei leerer Liste entfällt die Hauptaktion im Seitenkopf. Sie steht nur noch im Leerzustand (Fächer, Fachbereiche, Items, Leistungsnachweise, Prüfungssimulation). „Aus Datei importieren“ bleibt sichtbar.
+- **BUG-7 behoben:** Nachweis-Detail: Status-Aktionen (Öffnen, Fragen bearbeiten, Beitritt schließen, Ergebnisse freigeben, Löschen) stehen im Seitenkopf, der Freigabe-Hinweis neben dem Status-Badge. Die Live-Kachel steht allein.
+- **Danach geprüft:** Vitest 111 Dateien / 1.294 Tests grün, Build erfolgreich, ESLint 0 Fehler (Warnungen 24 → 22). Vorschaubilder mit der neuen Palette neu gerendert.
+
 ## Deployment
 _To be added by /deploy_

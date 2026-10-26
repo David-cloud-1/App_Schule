@@ -7,6 +7,7 @@ import { useDepartment } from '@/components/department-provider'
 import { adminNavGroupsFor, adminNavLabel } from '@/lib/admin-nav'
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 
 /**
  * Startseite des Lehrkräfte-Bereichs (PROJ-40/44): große Kacheln für die
@@ -16,13 +17,14 @@ import { AdminPageHeader } from '@/components/admin/admin-page-header'
 export function AdminHome() {
   const { role, displayName, showTeacherWelcome } = useAdminRole()
   const { hofShortName } = useDepartment()
+  const isApple = useIsApplePlatform()
   const tiles = adminNavGroupsFor(role).flatMap((group) => group.items.filter((item) => item.tile))
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         title={displayName ? `Hallo, ${displayName}` : 'Hallo'}
-        description="Was möchtest du heute tun? Mit ⌘K bzw. Strg+K findest du jede Seite."
+        description={`Was möchtest du heute tun? Mit ${isApple ? '⌘K' : 'Strg+K'} findest du jede Seite.`}
       />
 
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
