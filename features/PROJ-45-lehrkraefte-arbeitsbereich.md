@@ -1,6 +1,6 @@
 # PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -267,7 +267,145 @@ Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Da
 - Ladezeit (LCP < 2,5 s) nicht messbar ohne Browser. Die Startseite lädt weiterhin keine Daten, und die Schnellsuche wird nachgeladen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-10-26 · **Tester:** QA Engineer (AI) · **Methode:** Code-Review gegen jedes Kriterium, Kontrast-Nachrechnung (WCAG-Formel), Vitest, Build, Abgleich mit dem gebauten CSS.
+**Nicht möglich:** Browser-, Cross-Browser- und Responsive-Test sowie Playwright. Laut Projektabsprache laufen hier kein Dev-Server und kein Playwright (Absturzgefahr). Alles Optische ist aus Code und Vorschau-Skizzen abgeleitet und **noch im Browser abzunehmen**. Neue E2E-Specs wurden deshalb nicht geschrieben, weil sie hier nicht lauffähig geprüft werden können. Die bestehenden E2E-Tests prüfen für `/admin` nur den Login-Redirect, und der ist unverändert.
+
+### Automatisierte Tests
+- Vitest gesamt: 110 Dateien, 1.267 Tests grün. Neu für PROJ-45: Kontraste aus `globals.css` (55), Shell (16), Topbar/Seitenkopf/Zustände (10), Navigation (+4).
+- `npm run build` erfolgreich. ESLint: 0 Fehler, keine neuen Warnungen. Im gebauten CSS sind `html:has(.ws-root…)`, der System- und der Druck-Block, `ws-table-scroll` und die `ws-*`-Klassen vorhanden.
+
+### Acceptance Criteria Status
+
+#### Grundgerüst
+- [x] Alle 12 Seiten nutzen den gemeinsamen Rahmen und `AdminPageHeader`. Ausnahme sind die Druckseiten mit eigener Druck-Werkzeugleiste (gewollt, PROJ-28).
+- [x] Seitenkopf mit Titel, Beschreibung und Aktionen rechts. Höchstens eine gefüllte Hauptaktion im Kopf (Fragen: 2 × outline + 1 × grün; Prüfungssimulation: outline + grün).
+- [ ] Teilweise: Auf der Nachweis-Detailseite steht die Hauptaktion („Öffnen“) im Inhalt, nicht im Kopf → BUG-7 (Low).
+- [x] Brotkrumen auf Unterseiten, jedes Glied außer der aktuellen Seite klickbar (getestet).
+- [x] Breite: Inhalt bis `max-w-screen-2xl`, Formulare schmal (`max-w-xl`), Beschreibungen `max-w-prose`.
+- [x] Alle URLs unter `/admin/...` unverändert, keine Routen verschoben.
+
+#### Navigation Desktop
+- [x] Seitenleiste ab 1024 px mit den PROJ-40-Gruppen, gefiltert nach Rolle (getestet für Lehrkraft, Bereichs-Admin, Super-Admin).
+- [x] Einklappbar auf Icon-Leiste. Namen als Tooltip bei Hover **und** Fokus (Radix Tooltip).
+- [x] Zustand im Cookie `sidebar_state` (1 Jahr). Der Server liest ihn, deshalb startet die Leiste ohne Springen (getestet).
+- [x] Oben der Bereichsname, unten das Konto-Menü.
+- [x] Aktiver Eintrag auch auf Unterseiten hervorgehoben, mit `aria-current="page"` (getestet).
+
+#### Navigation Handy
+- [x] Unter 1024 px keine Seitenleiste. Kopfzeile mit Menü, Seitentitel, Suche und Konto.
+- [x] Schublade mit denselben Einträgen; schließt nach Auswahl, beim Tippen daneben (Radix) und per Wischgeste (getestet).
+- [ ] Teilweise: Rahmen-Bedienelemente haben 44 px, viele Buttons im Seiteninhalt aber nur 36–40 px → BUG-2 (Medium).
+- [x] Tabellen scrollen in ihrem Rahmen mit fester erster Spalte; der Inhaltsbereich hat `overflow-x-clip`. Schwächen → BUG-3 (Low).
+
+#### Darstellung hell/dunkel
+- [x] Wahl im Konto-Menü und in der Schnellsuche: Dunkel (Standard), Hell, Wie System.
+- [x] Wirkt sofort und wird gemerkt (getestet). Kein Aufblitzen, weil der Server den Cookie liest.
+- [ ] Teilweise: Text auf festen Flächen erfüllt AA in beiden Modi (automatisch getestet). Getönte Status-Pills verfehlen 4,5 : 1 → BUG-1 (Medium). Text auf Hover-Flächen im dunklen Modus → BUG-4 (Low).
+- [x] Markenfarben bleiben erkennbar, im hellen Modus abgedunkelt.
+- [x] Die Schülerseite bleibt dunkel: Kein `.ws-root` heißt, es greifen keine Overrides. `use-mobile` und die `sidebar`-Farben werden nur von der Sidebar genutzt.
+- [x] Druck immer hell (`@media print`-Block), Navigation, Kopfzeile und Leiste ausgeblendet.
+
+#### Schnellsuche
+- [x] ⌘K, Strg+K und Such-Symbol öffnen sie (getestet). Hinweis-Text → BUG-5 (Low).
+- [x] Findet alle erlaubten Seiten und die vier geforderten Aktionen.
+- [x] Pfeiltasten, Enter und Esc funktionieren (cmdk + Radix Dialog; Enter getestet).
+- [x] Zeigt nie Einträge ohne Rechte: derselbe Filter wie die Navigation, Aktionen an Seiten gekoppelt (getestet für Lehrkraft).
+- [x] Durchsucht keine Inhalte.
+
+#### Konto-Menü
+- [x] Name, E-Mail und Rolle in Klartext („Lehrkraft“, „Bereichs-Admin Spedition“, „Super-Admin“, getestet).
+- [x] Profil, Darstellung, Zur Lern-App, Abmelden.
+
+#### Zustände & Rückmeldungen
+- [x] Laden in Form des Inhalts (Skeleton-Zeilen bzw. `AdminLoadingState`). Kein Drehkreis über die ganze Seite mehr.
+- [x] Leerzustände mit Satz und Hauptaktion (Fächer, Fachbereiche, Items, Leistungsnachweise, Prüfungssimulation, Themen). Doppelte Aktion → BUG-6 (Low).
+- [x] Ladefehler mit verständlichem Satz und „Erneut versuchen“ auf allen Listen- und Detailseiten.
+- [x] Toasts bei Erfolg (Prüfungssimulation nachgerüstet). Alle Löschaktionen mit Bestätigungsdialog.
+
+#### Barrierefreiheit & Qualität
+- [x] Skip-Link, sichtbarer Fokus-Ring (`--ring` = Grün), Icon-Buttons mit `aria-label`.
+- [x] Animationen ≤ 200 ms; bei „Bewegung reduzieren“ global aus.
+- [ ] Nicht prüfbar: LCP < 2,5 s ohne Browser. Strukturell gut: Startseite ohne Datenabfrage, Schnellsuche nachgeladen.
+- [x] `docs/DESIGN.md`-Abschnitt „Lehrkräfte-Bereich“ vorhanden.
+
+### Edge Cases Status
+- [x] **Lange Namen:** Gekürzt mit `title`-Tooltip in Brotkrumen, Kopfzeile, Konto-Menü und Leiste (getestet). Der Seitenkopf bricht den Titel stattdessen um, das ist gewollt.
+- [x] **1280 px mit breiter Tabelle:** Die Tabelle scrollt im Rahmen, die Leiste ist einklappbar.
+- [x] **„Wie System“ bei Schemawechsel:** Reine CSS-Media-Query, folgt sofort. Toasts folgen über `theme="system"`.
+- [x] **Speicher gesperrt:** Standards gelten (dunkel, ausgeklappt). Schreiben ist abgesichert bzw. scheitert still.
+- [x] **Lehrkraft mit zwei Einträgen:** Leere Gruppen ausgeblendet (getestet).
+- [x] **Druck aus dem dunklen Modus:** hell, ohne Rahmen.
+- [x] **Tablet hochkant:** Unter 1024 px gilt das Handy-Layout (CSS `lg:` und `useIsMobile` stimmen überein).
+- [x] **Zusatz – Wechsel zur Lern-App per Client-Navigation:** `.ws-root` verschwindet, die Lern-App ist sofort wieder dunkel.
+- [x] **Zusatz – `?neu=1` für Lehrkraft ohne Rechte:** Die Middleware leitet `/admin/leistungsnachweise` weiter, die Aktion erscheint für Lehrkräfte auch nicht in der Suche.
+
+### Security Audit Results
+- [x] **Authentifizierung/Autorisierung:** Unverändert. Das Layout prüft Login und Lehrer-Rolle, die Middleware die erlaubten Pfade, die APIs `requireAdmin()`. Ausblenden in Navigation und Suche ist nur Anzeige.
+- [x] **Cookie-Eingaben:** `ws_theme` und `sidebar_state` laufen über Whitelist-Parser. Unbekannte Werte führen zum Standard, keine Injektion in Attribute möglich.
+- [x] **XSS:** Brotkrumen und Titel aus Nachweis-Titeln werden als Text bzw. `title`-Attribut gerendert (React-Escaping). Kein `dangerouslySetInnerHTML`.
+- [x] **Datenpreisgabe:** Das Konto-Menü zeigt nur die eigene E-Mail. Keine neuen API-Routen, keine neuen Daten im Client.
+- [x] **Rate-Limiting:** Nicht betroffen, keine neuen Endpunkte.
+
+### Bugs Found
+
+#### BUG-1: Getönte Status-Pills verfehlen den Mindestkontrast
+- **Severity:** Medium
+- **Steps:** Status-Badges im Muster `bg-ws-<farbe>/20 text-ws-<farbe>` (z. B. „Offen“, „Beendet“, Fehlerhinweise) nachrechnen.
+- **Expected:** mindestens 4,5 : 1 (kleine Schrift).
+- **Actual:**
+  - hell: Grün/20 4,27; Orange/20 4,07; Rot/20 4,07; Blau/15 4,39; Gold/10 4,32
+  - dunkel: Rot/20 3,75; Rot/10 4,32
+- Der Kontrasttest prüft nur feste Flächen.
+- **Priority:** Fix before deployment (AC verlangt AA in beiden Modi)
+
+#### BUG-2: Bedienelemente im Seiteninhalt unter 44 px
+- **Severity:** Medium
+- **Steps:** Lehrkräfte-Seiten am Handy, z. B. „Neu erstellen“, „Erneut versuchen“ auf den Druckseiten, Zeilen-Aktionen.
+- **Expected:** mindestens 44 × 44 px.
+- **Actual:** shadcn-Standard 40 px, `size="sm"` 36 px, `size="icon"` 40 px. 44 Stellen mit `sm`/`icon` in `src/app/admin` und `src/components/admin`. Der Rahmen selbst erfüllt die Vorgabe.
+- **Priority:** Fix before deployment oder bewusst als Folgearbeit festhalten
+
+#### BUG-3: Feste erste Tabellenspalte mit Schwächen
+- **Severity:** Low
+- **Steps:**
+  - Fragen-Tabelle am Handy waagerecht scrollen.
+  - Eine Frage aufklappen, eine Zeile auswählen oder überfahren.
+- **Expected:**
+  - Die feste Spalte zeigt, um welche Zeile es geht.
+  - Hervorhebungen gelten für die ganze Zeile.
+- **Actual:**
+  - Fest steht nur die Checkbox-Spalte.
+  - Die erste Zelle hat eine deckende `ws-surface`-Farbe und überdeckt Hover, Auswahl (`bg-ws-surface/80`) und Aufklapp-Tönung (`bg-ws-bg/60`).
+  - Aufgeklappte Detailzeilen (`colSpan`) sind als Ganzes „sticky“.
+  - Gleiches beim Fokus-Protokoll auf der Nachweis-Detailseite.
+- **Priority:** Fix in next sprint
+
+#### BUG-4: Gedämpfter Text auf Hover-Flächen im dunklen Modus
+- **Severity:** Low
+- **Actual:** `ws-muted` auf `ws-raised` = 4,06 : 1, `ws-faint` auf `ws-raised` = 3,33 : 1. Betrifft den ⌘K-Hinweis und Texte in überfahrenen Zeilen.
+- **Priority:** Nice to have
+
+#### BUG-5: Tastatur-Hinweis zeigt immer „⌘K“
+- **Severity:** Low
+- **Actual:** Auf Windows/Linux steht im Suchfeld „⌘K“ statt „Strg K“. Die Taste selbst funktioniert.
+- **Priority:** Nice to have
+
+#### BUG-6: Hauptaktion doppelt bei leerer Liste
+- **Severity:** Low
+- **Actual:** Bei leerer Liste zeigen Seitenkopf **und** Leerzustand denselben grünen Button (z. B. „Neues Fach“). Zwei hervorgehobene Hauptaktionen gleichzeitig.
+- **Priority:** Nice to have
+
+#### BUG-7: Nachweis-Detail ohne Hauptaktion im Seitenkopf
+- **Severity:** Low
+- **Actual:** „Öffnen“/„Schließen“ stehen im Inhaltsblock, der Seitenkopf hat keine Aktion.
+- **Priority:** Nice to have
+
+### Summary
+- **Acceptance Criteria:** 34 erfüllt, 3 teilweise (Kontrast der Pills, 44 px im Inhalt, Hauptaktion Detailseite), 1 nicht prüfbar (LCP).
+- **Bugs Found:** 7 (0 Critical, 0 High, 2 Medium, 5 Low).
+- **Security:** Pass, keine neuen Angriffsflächen.
+- **Production Ready:** YES nach Regel (keine Critical/High). **Empfehlung:** BUG-1 und BUG-2 vor dem Deploy beheben, danach Sichtprüfung im Browser (beide Modi, Handy, Beamer, Druck).
 
 ## Deployment
 _To be added by /deploy_
