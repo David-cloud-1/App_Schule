@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Edit, Plus } from 'lucide-react'
+import { Edit, Plus, FolderKanban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -25,6 +25,8 @@ import {
   SubjectFormModal,
   type AdminSubjectRow,
 } from '@/components/admin/subject-form-modal'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
 
 type SubjectListItem = {
   id: string
@@ -39,22 +41,24 @@ type SubjectListItem = {
 export default function AdminSubjectsPage() {
   const [subjects, setSubjects] = useState<SubjectListItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AdminSubjectRow | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadFailed(false)
     try {
       const res = await fetch('/api/admin/subjects')
       if (!res.ok) {
-        toast.error('Fächer konnten nicht geladen werden.')
+        setLoadFailed(true)
         return
       }
       const json = await res.json()
       setSubjects(json.subjects ?? [])
     } catch (err) {
       console.error(err)
-      toast.error('Netzwerkfehler')
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -86,120 +90,140 @@ export default function AdminSubjectsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Fächer</h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
-            {subjects.length} {subjects.length === 1 ? 'Fach' : 'Fächer'}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setFormOpen(true)
-          }}
-          className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Neues Fach
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Fächer"
+        description={<>{subjects.length} {subjects.length === 1 ? 'Fach' : 'Fächer'}</>}
+        actions={
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setFormOpen(true)
+            }}
+            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Neues Fach
+          </Button>
+        }
+      />
 
-      <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-              <TableHead className="text-[#9CA3AF]">Name</TableHead>
-              <TableHead className="text-[#9CA3AF]">Code</TableHead>
-              <TableHead className="text-[#9CA3AF]">Aktive Fragen</TableHead>
-              <TableHead className="text-[#9CA3AF]">Status</TableHead>
-              <TableHead className="text-right text-[#9CA3AF]">Aktionen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-10" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-6 w-10" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-8 w-10 ml-auto" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : subjects.length === 0 ? (
-              <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
-                  Keine Fächer angelegt.
-                </TableCell>
+      {loadFailed ? (
+        <AdminErrorState message="Die Fächer konnten gerade nicht geladen werden." onRetry={load} />
+      ) : !loading && subjects.length === 0 ? (
+        <AdminEmptyState
+          icon={FolderKanban}
+          title="Noch keine Fächer"
+          description="Lege das erste Fach an, damit du Fragen und Themen zuordnen kannst."
+          action={
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neues Fach
+            </Button>
+          }
+        />
+      ) : (
+        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                <TableHead className="text-ws-muted">Name</TableHead>
+                <TableHead className="text-ws-muted">Code</TableHead>
+                <TableHead className="text-ws-muted">Aktive Fragen</TableHead>
+                <TableHead className="text-ws-muted">Status</TableHead>
+                <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
               </TableRow>
-            ) : (
-              subjects.map((s) => {
-                const blockDeactivate = s.is_active && s.active_question_count > 0
-                return (
-                  <TableRow key={s.id} className="border-[#4B5563] hover:bg-[#111827]/40">
-                    <TableCell className="text-[#F9FAFB] font-medium">{s.name}</TableCell>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={`sk-${i}`} className="border-ws-line">
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="border-[#4B5563] text-[#58CC02] font-mono"
-                      >
-                        {s.code}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-[#F9FAFB]">
-                      {s.active_question_count}
+                      <Skeleton className="h-4 w-48" />
                     </TableCell>
                     <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Switch
-                                checked={s.is_active}
-                                disabled={blockDeactivate}
-                                onCheckedChange={(v) => toggleActive(s, v)}
-                                aria-label="Aktiv/Inaktiv"
-                              />
-                            </span>
-                          </TooltipTrigger>
-                          {blockDeactivate && (
-                            <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                              Deaktivieren nicht möglich: Fach hat aktive Fragen.
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Skeleton className="h-4 w-12" />
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditing({ id: s.id, name: s.name, code: s.code })
-                          setFormOpen(true)
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
+                    <TableCell>
+                      <Skeleton className="h-4 w-10" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-6 w-10" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-8 w-10 ml-auto" />
                     </TableCell>
                   </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                ))
+              ) : subjects.length === 0 ? (
+                <TableRow className="border-ws-line">
+                  <TableCell colSpan={5} className="text-center text-ws-muted py-10">
+                    Keine Fächer angelegt.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                subjects.map((s) => {
+                  const blockDeactivate = s.is_active && s.active_question_count > 0
+                  return (
+                    <TableRow key={s.id} className="border-ws-line hover:bg-ws-bg/40">
+                      <TableCell className="text-ws-text font-medium">{s.name}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="border-ws-line text-ws-green font-mono"
+                        >
+                          {s.code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-ws-text">
+                        {s.active_question_count}
+                      </TableCell>
+                      <TableCell>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span>
+                                <Switch
+                                  checked={s.is_active}
+                                  disabled={blockDeactivate}
+                                  onCheckedChange={(v) => toggleActive(s, v)}
+                                  aria-label="Aktiv/Inaktiv"
+                                />
+                              </span>
+                            </TooltipTrigger>
+                            {blockDeactivate && (
+                              <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
+                                Deaktivieren nicht möglich: Fach hat aktive Fragen.
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditing({ id: s.id, name: s.name, code: s.code })
+                            setFormOpen(true)
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <SubjectFormModal
         open={formOpen}

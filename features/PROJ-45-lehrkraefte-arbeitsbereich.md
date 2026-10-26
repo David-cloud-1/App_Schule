@@ -1,6 +1,6 @@
 # PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -227,6 +227,44 @@ Das Feature ist groß. Damit es jederzeit lauffähig bleibt, wird in drei Schrit
 
 ### H) Aufteilung der Arbeit
 Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Datenbank geändert wird.
+
+## Implementation Notes (Frontend, 2026-10-26)
+
+**Entscheidung während der Umsetzung (Nutzer, 2026-10-26):** Weiße Schrift auf den leuchtenden Markenfarben erreicht nur ca. 2 : 1. Gefüllte Buttons bekommen deshalb im dunklen Modus fast schwarze Schrift (#111827 auf #58CC02 = 8,5 : 1), im hellen Modus dunkleres Grün mit weißer Schrift. Token `ws-on-accent`.
+
+**Gebaut (Schritt 1 – Fundament):**
+- Farb-Schicht `--ws-*` in `src/app/globals.css` (dunkel als Standard, hell, „Wie System“ per `prefers-color-scheme`, Druck immer hell) und `ws-*`-Farben in `tailwind.config.ts`. Über `html:has(.ws-root…)` erreichen die Werte auch Portale (Dialoge, Menüs, Toasts). Die shadcn-Variablen (`--background`, `--popover` …) werden im Lehrkräfte-Bereich auf die Palette abgebildet, die `sidebar`-Farben zeigen auf die ws-Tokens.
+- Gegenüber `docs/DESIGN.md` leicht angepasst, damit die Kontraste reichen: dunkles Rot #FF5C5C (statt #FF4B4B für Text), Hinweistext #8B93A1 (statt #6B7280).
+- `src/lib/workspace-theme.ts`: Cookie `ws_theme` (1 Jahr), Standards, Parser. Das Layout liest `ws_theme` und `sidebar_state` auf dem Server, deshalb gibt es kein Aufblitzen.
+- Neuer Rahmen `admin-shell.tsx` auf Basis der shadcn-`Sidebar` (`collapsible="icon"`, Tooltips im eingeklappten Zustand, ⌘B, Rail). Umschaltpunkt in `use-mobile.tsx` auf 1024 px angehoben (wird nur von der Sidebar genutzt), `md:` → `lg:` in `ui/sidebar.tsx`. Dort zusätzlich: Wischgeste schließt die Handy-Schublade, deutsche Beschriftungen, `print:hidden`, Cookie 1 Jahr.
+- `admin-topbar.tsx`: Handy mit Menü, Seitentitel, Suche und Konto; Desktop mit Einklappen, Brotkrumen (`adminCrumbs`), Suchfeld ⌘K und Bereichs-Umschalter (Super-Admin; auf dem Handy in der Schublade).
+- `admin-account-menu.tsx`: Name, E-Mail, Rolle in Klartext (`teacherRoleLabel`), Profil (→ `/profile` der Lern-App), Darstellung (3 Optionen), Zur Lern-App, Abmelden.
+- `admin-command-palette.tsx` (wird erst beim ersten Öffnen per `next/dynamic` geladen): Seiten und Aktionen mit demselben Rollenfilter wie die Navigation (`adminNavItemsFor`, `adminCommandActionsFor`). „Neuer Leistungsnachweis“ öffnet `/admin/leistungsnachweise?neu=1`; die Liste öffnet dann den Anlage-Dialog und entfernt den Parameter.
+- `workspace-provider.tsx`: Darstellung, Brotkrumen-Zusatz der Detailseiten, Schnellsuche.
+- Link „Zum Inhalt springen“, `prefers-reduced-motion` schaltet im ganzen Bereich Übergänge ab. Toaster liegt jetzt im Rahmen und folgt der Darstellung.
+
+**Gebaut (Schritt 2 – Seiten umstellen):**
+- Einmal-Skript: 1.663 feste Farbwerte in 40 Dateien → ws-Tokens, 50× `text-white` auf gefüllten Flächen → `text-ws-on-accent`. Danach keine `#xxxxxx`-Werte mehr unter `src/app/admin` und `src/components/admin`. Bewusst unverändert: Papier-Bögen (`assessment-print`) und der weiße QR-Code-Hintergrund.
+- `DifficultyBadge` (nur im Lehrkräfte-Bereich genutzt) auf Tokens; das Seltenheits-Label der Shop-Items bekommt im Lehrkräfte-Bereich Token-Farben (in der Lern-App unverändert).
+- `AdminPageHeader` auf allen Seiten (Übersicht, Leistungsnachweise + Detail, Fragen, Nutzer, Fächer, Themen, Prüfungssimulation, Fragen aus Material, Fachbereich, Items, Änderungsprotokoll, Fachbereiche). Themen hatte bisher keine Überschrift. Die Nachweis-Detailseite liefert ihren Titel für die Brotkrumen und zeigt auf dem Handy zusätzlich „‹ Leistungsnachweise“.
+- Tabellen-Container mit `ws-table-scroll`: scrollen in ihrem Rahmen (min. 40rem), die erste Spalte bleibt stehen. Der Inhaltsbereich hat `overflow-x-clip`.
+
+**Gebaut (Schritt 3 – Feinschliff):**
+- `admin-states.tsx`: `AdminLoadingState` (table/list/cards/form), `AdminEmptyState`, `AdminErrorState`.
+- Fehlerzustand mit „Erneut versuchen“ statt Toast + irreführend leerer Liste: Fächer, Fachbereiche, Items, Nutzer, Änderungsprotokoll, Fragen, Themen, Fachbereich-Einstellungen (vorher endloser Skeleton bei Fehler), Leistungsnachweise + Detail + beide Druckseiten.
+- Leerzustände mit Hauptaktion: Fächer, Fachbereiche, Items, Leistungsnachweise („Noch keine Leistungsnachweise“ + „Neu erstellen“), Prüfungssimulation, Themen.
+- Prüfungssimulation bestätigt Anlegen, Speichern, Importieren, (De-)Aktivieren und Löschen jetzt per Toast. Alle Löschaktionen hatten schon einen Bestätigungsdialog.
+- `docs/DESIGN.md`: neuer Abschnitt „Lehrkräfte-Bereich“ (Tokens hell/dunkel, Layout-, Komponenten- und Zustandsregeln).
+
+**Tests:** `workspace-theme.test.ts` (Kontraste beider Modi aus der echten CSS-Datei, Parser), `admin-shell.test.tsx` (16: Cookies, Einklappen, Schublade inkl. Wischen, Konto-Menü, Darstellungswechsel, Schnellsuche per ⌘K/Strg+K/Symbol, Rollenfilter, Enter-Navigation), `admin-topbar.test.tsx` (Brotkrumen, Kürzen, Seitenkopf, Zustände), `admin-nav.test.ts` (+4). Gemeinsamer Helfer `workspace-test-utils.tsx`.
+
+**Geprüft:** Vitest komplett grün (110 Dateien, 1.267 Tests). `npm run build` erfolgreich. ESLint: keine Fehler, keine neuen Warnungen. Im gebauten CSS sind die Token-Blöcke und `html:has(...)` vorhanden.
+**Sichtprüfung:** Skizzen mit den echten Token-Werten in `docs/vorschau/lehrkraefte-desktop.png` und `docs/vorschau/lehrkraefte-handy.png`. Echte Seiten konnten ohne Browser nicht gerendert werden (kein Dev-Server). Die Abnahme im Browser (beide Modi, Handy, Beamer, Druck) steht aus.
+
+**Offen / bewusst nicht gemacht:**
+- „Profil“ führt auf die Profilseite der Lern-App (immer dunkel), weil eine eigene Lehrkräfte-Profilseite eine neue Seite wäre.
+- Brotkrumen-Link „Leistungsnachweise“ verwirft gesetzte Filter. Der „‹“-Link auf dem Handy behält sie.
+- Ladezeit (LCP < 2,5 s) nicht messbar ohne Browser. Die Startseite lädt weiterhin keine Daten, und die Schnellsuche wird nachgeladen.
 
 ## QA Test Results
 _To be added by /qa_

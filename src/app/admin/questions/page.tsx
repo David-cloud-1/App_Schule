@@ -64,6 +64,8 @@ import {
 } from '@/components/admin/question-form-modal'
 import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
 import { useClassLevelOptions } from '@/components/department-provider'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminErrorState } from '@/components/admin/admin-states'
 
 type SortColumn = 'created_at' | 'difficulty' | 'question_text'
 type SortDir = 'asc' | 'desc'
@@ -100,8 +102,8 @@ function useDebounced<T>(value: T, delay: number): T {
 function SortIcon({ col, current, dir }: { col: SortColumn; current: SortColumn; dir: SortDir }) {
   if (col !== current) return <ChevronsUpDown className="w-3 h-3 opacity-40 inline ml-1" />
   return dir === 'asc'
-    ? <ChevronUp className="w-3 h-3 inline ml-1 text-[#58CC02]" />
-    : <ChevronDown className="w-3 h-3 inline ml-1 text-[#58CC02]" />
+    ? <ChevronUp className="w-3 h-3 inline ml-1 text-ws-green" />
+    : <ChevronDown className="w-3 h-3 inline ml-1 text-ws-green" />
 }
 
 export default function AdminQuestionsPage() {
@@ -118,6 +120,7 @@ export default function AdminQuestionsPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<QuestionsResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [subjects, setSubjects] = useState<AdminSubject[]>([])
   const [formOpen, setFormOpen] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<QuestionWithTopic | null>(null)
@@ -207,6 +210,7 @@ export default function AdminQuestionsPage() {
 
   const fetchQuestions = useCallback(async () => {
     setLoading(true)
+    setLoadFailed(false)
     try {
       const params = new URLSearchParams()
       if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim())
@@ -222,13 +226,13 @@ export default function AdminQuestionsPage() {
 
       const res = await fetch(`/api/admin/questions?${params.toString()}`)
       if (!res.ok) {
-        toast.error('Fragen konnten nicht geladen werden.')
+        setLoadFailed(true)
         return
       }
       setData((await res.json()) as QuestionsResponse)
     } catch (err) {
       console.error(err)
-      toast.error('Netzwerkfehler')
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -512,66 +516,63 @@ export default function AdminQuestionsPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Fragen</h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
-            {total} {total === 1 ? 'Frage' : 'Fragen'} insgesamt
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={handleExport}
-            disabled={exporting}
-            className="rounded-xl"
-          >
-            {exporting ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4 mr-2" />
-            )}
-            CSV Export
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="rounded-xl"
-          >
-            <FileUp className="w-4 h-4 mr-2" />
-            CSV Import
-          </Button>
-          <Button
-            onClick={() => {
-              setEditingQuestion(null)
-              setFormOpen(true)
-            }}
-            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Neue Frage
-          </Button>
-        </div>
-      </div>
+      <AdminPageHeader
+        title="Fragen"
+        description={`${total} ${total === 1 ? 'Frage' : 'Fragen'} insgesamt`}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={exporting}
+              className="rounded-xl"
+            >
+              {exporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 mr-2" />
+              )}
+              CSV Export
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="rounded-xl"
+            >
+              <FileUp className="w-4 h-4 mr-2" />
+              CSV Import
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingQuestion(null)
+                setFormOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neue Frage
+            </Button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ws-muted" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Nach Fragetext suchen…"
-            className="pl-9 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
+            className="pl-9 bg-ws-surface border-ws-line text-ws-text"
           />
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-            <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Fach" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Fächer</SelectItem>
               {subjects.map((s) => (
                 <SelectItem key={s.id} value={s.code}>
@@ -584,10 +585,10 @@ export default function AdminQuestionsPage() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
           >
-            <SelectTrigger className="w-[130px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[130px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Status</SelectItem>
               <SelectItem value="active">Aktiv</SelectItem>
               <SelectItem value="inactive">Inaktiv</SelectItem>
@@ -597,10 +598,10 @@ export default function AdminQuestionsPage() {
             value={difficultyFilter}
             onValueChange={(v) => setDifficultyFilter(v as typeof difficultyFilter)}
           >
-            <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Schwierigkeit" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Schwierigkeiten</SelectItem>
               <SelectItem value="leicht">Leicht</SelectItem>
               <SelectItem value="mittel">Mittel</SelectItem>
@@ -608,19 +609,19 @@ export default function AdminQuestionsPage() {
             </SelectContent>
           </Select>
           <Select value={classLevelFilter} onValueChange={setClassLevelFilter}>
-            <SelectTrigger className="w-[140px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[140px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Klasse" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Klassen</SelectItem>
               {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={topicFilter} onValueChange={setTopicFilter}>
-            <SelectTrigger className="w-[180px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="w-[180px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Thema" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Themen</SelectItem>
               <SelectItem value="none">Ohne Thema</SelectItem>
               {filterTopics.map((t) => (
@@ -635,16 +636,16 @@ export default function AdminQuestionsPage() {
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex flex-col gap-3 px-4 py-3 bg-[#374151] border border-[#4B5563] rounded-xl">
+        <div className="flex flex-col gap-3 px-4 py-3 bg-ws-raised border border-ws-line rounded-xl">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-[#F9FAFB]">
+            <span className="text-sm font-medium text-ws-text">
               {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} ausgewählt
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSelectedIds(new Set())}
-              className="text-[#9CA3AF]"
+              className="text-ws-muted"
             >
               <X className="w-4 h-4 mr-1" />
               Aufheben
@@ -652,10 +653,10 @@ export default function AdminQuestionsPage() {
           </div>
           <div className="flex flex-wrap gap-2 items-center">
             <Select value={bulkSubjectId} onValueChange={setBulkSubjectId}>
-              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Fach…" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.code} – {s.name}
@@ -664,29 +665,29 @@ export default function AdminQuestionsPage() {
               </SelectContent>
             </Select>
             <Select value={bulkClassLevel} onValueChange={setBulkClassLevel}>
-              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Jahrgangsstufe…" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="_all">Alle Klassen</SelectItem>
                 {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={bulkDifficulty} onValueChange={setBulkDifficulty}>
-              <SelectTrigger className="w-[150px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Schwierigkeit…" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="leicht">Leicht</SelectItem>
                 <SelectItem value="mittel">Mittel</SelectItem>
                 <SelectItem value="schwer">Schwer</SelectItem>
               </SelectContent>
             </Select>
             <Select value={bulkTopicId} onValueChange={setBulkTopicId}>
-              <SelectTrigger className="w-[200px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[200px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Thema…" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="_none">Kein Thema (entfernen)</SelectItem>
                 {allTopics.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
@@ -700,19 +701,19 @@ export default function AdminQuestionsPage() {
               onClick={handleBulkApply}
               disabled={bulkSubmitting || (!bulkTopicId && !bulkClassLevel && !bulkSubjectId && !bulkDifficulty)}
               size="sm"
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Anwenden
             </Button>
           </div>
-          <div className="flex flex-wrap gap-2 border-t border-[#4B5563] pt-2">
+          <div className="flex flex-wrap gap-2 border-t border-ws-line pt-2">
             <Button
               size="sm"
               variant="outline"
               disabled={bulkSubmitting}
               onClick={() => setBulkStatusConfirm(true)}
-              className="rounded-xl border-[#4B5563] text-[#F9FAFB] hover:bg-[#1F2937]"
+              className="rounded-xl border-ws-line text-ws-text hover:bg-ws-surface"
             >
               Alle aktivieren
             </Button>
@@ -721,7 +722,7 @@ export default function AdminQuestionsPage() {
               variant="outline"
               disabled={bulkSubmitting}
               onClick={() => setBulkStatusConfirm(false)}
-              className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#1F2937]"
+              className="rounded-xl border-ws-line text-ws-muted hover:bg-ws-surface"
             >
               Alle deaktivieren
             </Button>
@@ -730,7 +731,7 @@ export default function AdminQuestionsPage() {
               variant="outline"
               disabled={bulkSubmitting || bulkDeleting}
               onClick={() => setBulkDeleteOpen(true)}
-              className="rounded-xl border-[#FF4B4B]/40 text-[#FF4B4B] hover:bg-[#FF4B4B]/10 ml-auto"
+              className="rounded-xl border-ws-red/40 text-ws-red hover:bg-ws-red/10 ml-auto"
             >
               <Trash2 className="w-3 h-3 mr-1" />
               {selectedIds.size} löschen
@@ -740,277 +741,281 @@ export default function AdminQuestionsPage() {
       )}
 
       {/* Table */}
-      <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-              <TableHead className="w-10 pl-4">
-                <Checkbox
-                  checked={allOnPageSelected}
-                  data-state={someOnPageSelected && !allOnPageSelected ? 'indeterminate' : undefined}
-                  onCheckedChange={toggleSelectAll}
-                  aria-label="Alle auswählen"
-                  className="border-[#4B5563]"
-                />
-              </TableHead>
-              <TableHead className="text-[#9CA3AF]">
-                <button
-                  onClick={() => handleSort('question_text')}
-                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
-                >
-                  Fragetext
-                  <SortIcon col="question_text" current={sortCol} dir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead className="text-[#9CA3AF] hidden lg:table-cell">Thema</TableHead>
-              <TableHead className="text-[#9CA3AF]">Fach</TableHead>
-              <TableHead className="text-[#9CA3AF] hidden md:table-cell">Klasse</TableHead>
-              <TableHead className="text-[#9CA3AF] hidden sm:table-cell">
-                <button
-                  onClick={() => handleSort('difficulty')}
-                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
-                >
-                  Schwierigkeit
-                  <SortIcon col="difficulty" current={sortCol} dir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead className="text-[#9CA3AF]">Status</TableHead>
-              <TableHead className="text-[#9CA3AF] hidden md:table-cell">
-                <button
-                  onClick={() => handleSort('created_at')}
-                  className="flex items-center hover:text-[#F9FAFB] transition-colors"
-                >
-                  Erstellt
-                  <SortIcon col="created_at" current={sortCol} dir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead className="text-right text-[#9CA3AF]">Aktionen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                    <TableCell className="pl-4"><Skeleton className="h-4 w-4" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-64" /></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-10" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+      {loadFailed ? (
+        <AdminErrorState message="Die Fragen konnten gerade nicht geladen werden." onRetry={fetchQuestions} />
+      ) : (
+        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                <TableHead className="w-10 pl-4">
+                  <Checkbox
+                    checked={allOnPageSelected}
+                    data-state={someOnPageSelected && !allOnPageSelected ? 'indeterminate' : undefined}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Alle auswählen"
+                    className="border-ws-line"
+                  />
+                </TableHead>
+                <TableHead className="text-ws-muted">
+                  <button
+                    onClick={() => handleSort('question_text')}
+                    className="flex items-center hover:text-ws-text transition-colors"
+                  >
+                    Fragetext
+                    <SortIcon col="question_text" current={sortCol} dir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-ws-muted hidden lg:table-cell">Thema</TableHead>
+                <TableHead className="text-ws-muted">Fach</TableHead>
+                <TableHead className="text-ws-muted hidden md:table-cell">Klasse</TableHead>
+                <TableHead className="text-ws-muted hidden sm:table-cell">
+                  <button
+                    onClick={() => handleSort('difficulty')}
+                    className="flex items-center hover:text-ws-text transition-colors"
+                  >
+                    Schwierigkeit
+                    <SortIcon col="difficulty" current={sortCol} dir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-ws-muted">Status</TableHead>
+                <TableHead className="text-ws-muted hidden md:table-cell">
+                  <button
+                    onClick={() => handleSort('created_at')}
+                    className="flex items-center hover:text-ws-text transition-colors"
+                  >
+                    Erstellt
+                    <SortIcon col="created_at" current={sortCol} dir={sortDir} />
+                  </button>
+                </TableHead>
+                <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={`sk-${i}`} className="border-ws-line">
+                      <TableCell className="pl-4"><Skeleton className="h-4 w-4" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-64" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-10" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                : rows.length === 0
+                ? (
+                  <TableRow className="border-ws-line">
+                    <TableCell colSpan={9} className="text-center text-ws-muted py-10">
+                      Keine Fragen gefunden.
+                    </TableCell>
                   </TableRow>
-                ))
-              : rows.length === 0
-              ? (
-                <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={9} className="text-center text-[#9CA3AF] py-10">
-                    Keine Fragen gefunden.
-                  </TableCell>
-                </TableRow>
-              )
-              : rows.map((q) => {
-                  const codes = q.question_subjects
-                    .map((qs) => qs.subjects?.code)
-                    .filter(Boolean) as string[]
-                  const isSelected = selectedIds.has(q.id)
-                  const isExpanded = expandedId === q.id
-                  const hasNoTopic = !q.topics
+                )
+                : rows.map((q) => {
+                    const codes = q.question_subjects
+                      .map((qs) => qs.subjects?.code)
+                      .filter(Boolean) as string[]
+                    const isSelected = selectedIds.has(q.id)
+                    const isExpanded = expandedId === q.id
+                    const hasNoTopic = !q.topics
 
-                  return (
-                    <Fragment key={q.id}>
-                      <TableRow
-                        className={`border-[#4B5563] hover:bg-[#111827]/40 transition-colors ${
-                          isSelected ? 'bg-[#1F2937]/80 border-l-2 border-l-[#58CC02]' : ''
-                        } ${isExpanded ? 'bg-[#111827]/30' : ''}`}
-                      >
-                        <TableCell className="pl-4">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleSelectOne(q.id)}
-                            aria-label="Frage auswählen"
-                            className="border-[#4B5563]"
-                          />
-                        </TableCell>
-                        <TableCell
-                          className="text-[#F9FAFB] max-w-[280px] cursor-pointer select-none"
-                          onClick={() => {
-                            const nextId = isExpanded ? null : q.id
-                            setExpandedId(nextId)
-                            if (nextId) fetchStats(nextId)
-                          }}
-                          title="Klicken für Vorschau"
+                    return (
+                      <Fragment key={q.id}>
+                        <TableRow
+                          className={`border-ws-line hover:bg-ws-bg/40 transition-colors ${
+                            isSelected ? 'bg-ws-surface/80 border-l-2 border-l-ws-green' : ''
+                          } ${isExpanded ? 'bg-ws-bg/30' : ''}`}
                         >
-                          <span className="hover:text-[#58CC02] transition-colors line-clamp-3">
-                            {q.question_text}
-                          </span>
-                          {q.assessment_only && (
-                            <Badge variant="outline" className="mt-1 border-[#FF9600] text-[#FF9600]">
-                              Nur für Nachweise
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          {hasNoTopic ? (
-                            <span className="flex items-center gap-1 text-xs text-[#FF9600] italic">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              Kein Thema
-                            </span>
-                          ) : (
-                            <span className="text-sm text-[#9CA3AF]">{q.topics!.name}</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="flex flex-wrap gap-1">
-                          {codes.map((c) => (
-                            <Badge
-                              key={c}
-                              variant="outline"
-                              className="border-[#4B5563] text-[#9CA3AF]"
-                            >
-                              {c}
-                            </Badge>
-                          ))}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
-                          {q.class_level != null ? (
-                            <span>Kl. {q.class_level}</span>
-                          ) : (
-                            <span className="text-[#4B5563]">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <DifficultyBadge
-                            difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Switch
-                            checked={q.is_active}
-                            onCheckedChange={(v) => toggleActive(q, v)}
-                            aria-label="Aktiv/Inaktiv"
-                          />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-xs text-[#9CA3AF]">
-                          {formatCreatedAt(q)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {q.assessment_only && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => releaseForPractice(q)}
-                                className="min-h-11 border-[#58CC02] text-[#58CC02]"
-                                title="Frage auch im Quiz und in den Übungsmodi anzeigen"
-                              >
-                                Für Übung freigeben
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingQuestion(q)
-                                setFormOpen(true)
-                              }}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDeleteTarget(q)}
-                              className="text-[#FF4B4B] hover:text-[#FF4B4B]"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {isExpanded && (
-                        <TableRow className="border-[#4B5563] bg-[#111827]/60">
-                          <TableCell colSpan={9} className="p-4">
-                            {/* Vollständiger Fragetext */}
-                            <p className="mb-3 max-w-2xl text-base font-medium text-[#F9FAFB] whitespace-pre-line">
+                          <TableCell className="pl-4">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleSelectOne(q.id)}
+                              aria-label="Frage auswählen"
+                              className="border-ws-line"
+                            />
+                          </TableCell>
+                          <TableCell
+                            className="text-ws-text max-w-[280px] cursor-pointer select-none"
+                            onClick={() => {
+                              const nextId = isExpanded ? null : q.id
+                              setExpandedId(nextId)
+                              if (nextId) fetchStats(nextId)
+                            }}
+                            title="Klicken für Vorschau"
+                          >
+                            <span className="hover:text-ws-green transition-colors line-clamp-3">
                               {q.question_text}
-                            </p>
-                            {/* Lernstatistiken */}
-                            <div className="mb-3 flex items-center gap-3 text-xs text-[#9CA3AF]">
-                              <Users className="w-3.5 h-3.5 shrink-0" />
-                              {loadingStatsId === q.id ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : statsMap[q.id] ? (
-                                <>
-                                  <span>{statsMap[q.id].total} {statsMap[q.id].total === 1 ? 'Antwort' : 'Antworten'}</span>
-                                  {statsMap[q.id].correctRate !== null && (
-                                    <>
-                                      <span className="text-[#4B5563]">·</span>
-                                      <span className={
-                                        statsMap[q.id].correctRate! >= 70
-                                          ? 'text-[#58CC02]'
-                                          : statsMap[q.id].correctRate! >= 40
-                                          ? 'text-[#FF9600]'
-                                          : 'text-[#FF4B4B]'
-                                      }>
-                                        {statsMap[q.id].correctRate}% richtig
-                                      </span>
-                                    </>
-                                  )}
-                                  {statsMap[q.id].total === 0 && (
-                                    <span className="italic">Noch nicht beantwortet</span>
-                                  )}
-                                </>
-                              ) : null}
-                            </div>
-
-                          {q.answer_options.length > 0 ? (
-                              <div className="space-y-2 max-w-2xl">
-                                {q.answer_options.map((a, idx) => (
-                                  <div
-                                    key={a.id ?? idx}
-                                    className={`flex items-start gap-3 p-2 rounded-lg ${
-                                      a.is_correct
-                                        ? 'bg-[#58CC02]/10 border border-[#58CC02]/30'
-                                        : 'bg-[#1F2937]'
-                                    }`}
-                                  >
-                                    <span className="text-xs font-bold text-[#9CA3AF] w-4 shrink-0 mt-0.5">
-                                      {String.fromCharCode(65 + idx)}
-                                    </span>
-                                    <span
-                                      className={`text-sm flex-1 ${
-                                        a.is_correct ? 'text-[#58CC02]' : 'text-[#F9FAFB]'
-                                      }`}
-                                    >
-                                      {a.option_text}
-                                    </span>
-                                    {a.is_correct && (
-                                      <Badge className="bg-[#58CC02]/20 text-[#58CC02] text-xs border-0 shrink-0">
-                                        Richtig
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ))}
-                                {q.explanation && (
-                                  <div className="mt-3 p-3 bg-[#374151] rounded-lg">
-                                    <p className="text-xs text-[#9CA3AF] font-medium mb-1">Erklärung</p>
-                                    <p className="text-sm text-[#F9FAFB]">{q.explanation}</p>
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-[#9CA3AF] italic">Keine Antwortoptionen.</p>
+                            </span>
+                            {q.assessment_only && (
+                              <Badge variant="outline" className="mt-1 border-ws-orange text-ws-orange">
+                                Nur für Nachweise
+                              </Badge>
                             )}
                           </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            {hasNoTopic ? (
+                              <span className="flex items-center gap-1 text-xs text-ws-orange italic">
+                                <AlertCircle className="w-3 h-3 shrink-0" />
+                                Kein Thema
+                              </span>
+                            ) : (
+                              <span className="text-sm text-ws-muted">{q.topics!.name}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="flex flex-wrap gap-1">
+                            {codes.map((c) => (
+                              <Badge
+                                key={c}
+                                variant="outline"
+                                className="border-ws-line text-ws-muted"
+                              >
+                                {c}
+                              </Badge>
+                            ))}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-ws-muted">
+                            {q.class_level != null ? (
+                              <span>Kl. {q.class_level}</span>
+                            ) : (
+                              <span className="text-ws-line">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <DifficultyBadge
+                              difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Switch
+                              checked={q.is_active}
+                              onCheckedChange={(v) => toggleActive(q, v)}
+                              aria-label="Aktiv/Inaktiv"
+                            />
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-xs text-ws-muted">
+                            {formatCreatedAt(q)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              {q.assessment_only && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => releaseForPractice(q)}
+                                  className="min-h-11 border-ws-green text-ws-green"
+                                  title="Frage auch im Quiz und in den Übungsmodi anzeigen"
+                                >
+                                  Für Übung freigeben
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingQuestion(q)
+                                  setFormOpen(true)
+                                }}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleteTarget(q)}
+                                className="text-ws-red hover:text-ws-red"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
-                      )}
-                    </Fragment>
-                  )
-                })}
-          </TableBody>
-        </Table>
-      </div>
+                        {isExpanded && (
+                          <TableRow className="border-ws-line bg-ws-bg/60">
+                            <TableCell colSpan={9} className="p-4">
+                              {/* Vollständiger Fragetext */}
+                              <p className="mb-3 max-w-2xl text-base font-medium text-ws-text whitespace-pre-line">
+                                {q.question_text}
+                              </p>
+                              {/* Lernstatistiken */}
+                              <div className="mb-3 flex items-center gap-3 text-xs text-ws-muted">
+                                <Users className="w-3.5 h-3.5 shrink-0" />
+                                {loadingStatsId === q.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : statsMap[q.id] ? (
+                                  <>
+                                    <span>{statsMap[q.id].total} {statsMap[q.id].total === 1 ? 'Antwort' : 'Antworten'}</span>
+                                    {statsMap[q.id].correctRate !== null && (
+                                      <>
+                                        <span className="text-ws-line">·</span>
+                                        <span className={
+                                          statsMap[q.id].correctRate! >= 70
+                                            ? 'text-ws-green'
+                                            : statsMap[q.id].correctRate! >= 40
+                                            ? 'text-ws-orange'
+                                            : 'text-ws-red'
+                                        }>
+                                          {statsMap[q.id].correctRate}% richtig
+                                        </span>
+                                      </>
+                                    )}
+                                    {statsMap[q.id].total === 0 && (
+                                      <span className="italic">Noch nicht beantwortet</span>
+                                    )}
+                                  </>
+                                ) : null}
+                              </div>
+
+                            {q.answer_options.length > 0 ? (
+                                <div className="space-y-2 max-w-2xl">
+                                  {q.answer_options.map((a, idx) => (
+                                    <div
+                                      key={a.id ?? idx}
+                                      className={`flex items-start gap-3 p-2 rounded-lg ${
+                                        a.is_correct
+                                          ? 'bg-ws-green/10 border border-ws-green/30'
+                                          : 'bg-ws-surface'
+                                      }`}
+                                    >
+                                      <span className="text-xs font-bold text-ws-muted w-4 shrink-0 mt-0.5">
+                                        {String.fromCharCode(65 + idx)}
+                                      </span>
+                                      <span
+                                        className={`text-sm flex-1 ${
+                                          a.is_correct ? 'text-ws-green' : 'text-ws-text'
+                                        }`}
+                                      >
+                                        {a.option_text}
+                                      </span>
+                                      {a.is_correct && (
+                                        <Badge className="bg-ws-green/20 text-ws-green text-xs border-0 shrink-0">
+                                          Richtig
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  ))}
+                                  {q.explanation && (
+                                    <div className="mt-3 p-3 bg-ws-raised rounded-lg">
+                                      <p className="text-xs text-ws-muted font-medium mb-1">Erklärung</p>
+                                      <p className="text-sm text-ws-text">{q.explanation}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-ws-muted italic">Keine Antwortoptionen.</p>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    )
+                  })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -1076,10 +1081,10 @@ export default function AdminQuestionsPage() {
           if (!v) setDeleteTarget(null)
         }}
       >
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Frage löschen?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               Diese Aktion kann nicht rückgängig gemacht werden. Die Frage und alle ihre
               Antworten werden unwiderruflich entfernt.
             </AlertDialogDescription>
@@ -1092,7 +1097,7 @@ export default function AdminQuestionsPage() {
                 handleDelete()
               }}
               disabled={deleting}
-              className="bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white"
+              className="bg-ws-red hover:bg-ws-red-hover text-ws-on-accent"
             >
               {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Löschen
@@ -1106,13 +1111,13 @@ export default function AdminQuestionsPage() {
         open={bulkStatusConfirm !== null}
         onOpenChange={(v) => { if (!v) setBulkStatusConfirm(null) }}
       >
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'}{' '}
               {bulkStatusConfirm ? 'aktivieren' : 'deaktivieren'}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               Der Status aller ausgewählten Fragen wird geändert.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1127,7 +1132,7 @@ export default function AdminQuestionsPage() {
                 }
               }}
               disabled={bulkSubmitting}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
             >
               {bulkSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {bulkStatusConfirm ? 'Aktivieren' : 'Deaktivieren'}
@@ -1138,12 +1143,12 @@ export default function AdminQuestionsPage() {
 
       {/* Bulk delete dialog */}
       <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} löschen?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               Diese Aktion kann nicht rückgängig gemacht werden. Alle ausgewählten Fragen
               werden unwiderruflich gelöscht.
             </AlertDialogDescription>
@@ -1156,7 +1161,7 @@ export default function AdminQuestionsPage() {
                 handleBulkDelete()
               }}
               disabled={bulkDeleting}
-              className="bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white"
+              className="bg-ws-red hover:bg-ws-red-hover text-ws-on-accent"
             >
               {bulkDeleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} löschen

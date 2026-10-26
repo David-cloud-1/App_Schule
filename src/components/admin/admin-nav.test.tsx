@@ -1,30 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { AdminNav } from './admin-nav'
 import { AdminHome } from './admin-home'
-import { AdminRoleProvider } from './admin-role-provider'
 import { resetTeacherWelcomeForTests } from './teacher-welcome-dialog'
-import { DepartmentProvider } from '@/components/department-provider'
-import type { DepartmentBranding } from '@/lib/departments'
+import { mockViewport, renderInWorkspace } from './workspace-test-utils'
 import type { TeacherRole } from '@/lib/roles'
 
 let mockPath = '/admin'
 vi.mock('next/navigation', () => ({ usePathname: () => mockPath }))
 
-const department = { hofShortName: 'Hof' } as DepartmentBranding
+beforeEach(() => mockViewport(1280))
 
 function wrap(ui: ReactNode, isSuperAdmin: boolean, extra: { role?: TeacherRole; showTeacherWelcome?: boolean } = {}) {
   const role = extra.role ?? (isSuperAdmin ? 'admin' : 'department_admin')
-  return render(
-    <DepartmentProvider value={{ department, examParts: [] }}>
-      <AdminRoleProvider
-        value={{ role, isSuperAdmin, displayName: 'Frau Muster', showTeacherWelcome: extra.showTeacherWelcome }}
-      >
-        {ui}
-      </AdminRoleProvider>
-    </DepartmentProvider>,
-  )
+  return renderInWorkspace(ui, { role, showTeacherWelcome: extra.showTeacherWelcome })
 }
 
 describe('AdminNav (PROJ-40)', () => {

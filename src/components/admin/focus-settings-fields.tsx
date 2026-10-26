@@ -53,14 +53,14 @@ interface Props {
 
 export function FocusSettingsFields({ value, onChange, error, disabled }: Props) {
   return (
-    <div className="space-y-3 rounded-xl border border-[#4B5563] bg-[#111827] p-4">
+    <div className="space-y-3 rounded-xl border border-ws-line bg-ws-bg p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <Label htmlFor="focus-tracking" className="flex items-center gap-2 text-[#F9FAFB]">
-            <Eye size={16} className="text-[#FF9600]" />
+          <Label htmlFor="focus-tracking" className="flex items-center gap-2 text-ws-text">
+            <Eye size={16} className="text-ws-orange" />
             Verlassen der Prüfung protokollieren
           </Label>
-          <p className="text-xs text-[#9CA3AF]">
+          <p className="text-xs text-ws-muted">
             Tab- und App-Wechsel (ab {FOCUS_COUNT_FROM_SECONDS} Sekunden) werden erfasst und dir bei der Auswertung
             angezeigt. Die Azubis werden vor dem Start darauf hingewiesen.
           </p>
@@ -74,10 +74,10 @@ export function FocusSettingsFields({ value, onChange, error, disabled }: Props)
         />
       </div>
 
-      <div className="flex items-start justify-between gap-4 border-t border-[#374151] pt-3">
+      <div className="flex items-start justify-between gap-4 border-t border-ws-raised pt-3">
         <div className="space-y-1">
-          <Label htmlFor="focus-auto" className="text-[#F9FAFB]">Automatisch abgeben ab N Wechseln</Label>
-          <p className="text-xs text-[#9CA3AF]">
+          <Label htmlFor="focus-auto" className="text-ws-text">Automatisch abgeben ab N Wechseln</Label>
+          <p className="text-xs text-ws-muted">
             Standardmäßig aus: dann wird nur markiert, und du entscheidest über die Wertung.
           </p>
           {value.tracking && value.autoEnabled && (
@@ -91,9 +91,9 @@ export function FocusSettingsFields({ value, onChange, error, disabled }: Props)
                 disabled={disabled}
                 onChange={(e) => onChange({ ...value, autoAfter: e.target.value })}
                 aria-label="Zahl der Wechsel bis zur automatischen Abgabe"
-                className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] w-24"
+                className="bg-ws-surface border-ws-line text-ws-text w-24"
               />
-              <span className="text-xs text-[#9CA3AF]">Wechsel ({FOCUS_AUTO_SUBMIT_MIN}–{FOCUS_AUTO_SUBMIT_MAX})</span>
+              <span className="text-xs text-ws-muted">Wechsel ({FOCUS_AUTO_SUBMIT_MIN}–{FOCUS_AUTO_SUBMIT_MAX})</span>
             </div>
           )}
         </div>
@@ -106,10 +106,10 @@ export function FocusSettingsFields({ value, onChange, error, disabled }: Props)
         />
       </div>
 
-      <p className="text-xs text-[#6B7280]">
+      <p className="text-xs text-ws-faint">
         Ein zweites Gerät oder Split-Screen wird nicht erkannt — das ersetzt keine Aufsicht.
       </p>
-      {error && <p className="text-xs text-[#FF4B4B]">{error}</p>}
+      {error && <p className="text-xs text-ws-red">{error}</p>}
     </div>
   )
 }

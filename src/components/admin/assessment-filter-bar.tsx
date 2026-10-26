@@ -26,8 +26,8 @@ interface Props {
 
 /** PROJ-39: Filterleiste über der Nachweis-Tabelle */
 export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, subjects, hasUnassignedClass, hasUnassignedSubject }: Props) {
-  const triggerClass = 'h-11 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] w-full'
-  const contentClass = 'bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]'
+  const triggerClass = 'h-11 bg-ws-surface border-ws-line text-ws-text w-full'
+  const contentClass = 'bg-ws-surface border-ws-line text-ws-text'
   // Ein Wert aus der Adresszeile, den es nicht (mehr) gibt, bleibt sichtbar und wählbar
   const years = filters.schoolYear === FILTER_ALL || schoolYears.includes(filters.schoolYear) ? schoolYears : [filters.schoolYear, ...schoolYears]
   const selectedClass = classFromFilter(filters.className)
@@ -37,14 +37,14 @@ export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, s
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#9CA3AF]" aria-hidden />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ws-muted" aria-hidden />
           <Input
             type="search"
             value={filters.query}
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
             placeholder="Titel oder Code suchen"
             aria-label="Nachweise nach Titel oder Code suchen"
-            className="h-11 pl-9 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
+            className="h-11 pl-9 bg-ws-surface border-ws-line text-ws-text"
           />
         </div>
 
@@ -99,8 +99,8 @@ export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, s
               aria-pressed={active}
               onClick={() => onChange({ ...filters, status: chip.value })}
               className={cn(
-                'h-11 rounded-full px-4 border-[#4B5563] transition-all duration-200',
-                active ? 'bg-[#58CC02]/20 border-[#58CC02] text-[#58CC02] hover:bg-[#58CC02]/20 hover:text-[#58CC02]' : 'bg-transparent text-[#9CA3AF] hover:text-[#F9FAFB]',
+                'h-11 rounded-full px-4 border-ws-line transition-all duration-200',
+                active ? 'bg-ws-green/20 border-ws-green text-ws-green hover:bg-ws-green/20 hover:text-ws-green' : 'bg-transparent text-ws-muted hover:text-ws-text',
               )}
             >
               {chip.label}

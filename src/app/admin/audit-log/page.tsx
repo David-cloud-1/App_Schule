@@ -28,6 +28,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminErrorState } from '@/components/admin/admin-states'
 
 type AuditEntry = {
   id: string
@@ -70,6 +72,7 @@ export default function AdminAuditLogPage() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState<AuditResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   useEffect(() => {
     setPage(1)
@@ -77,6 +80,7 @@ export default function AdminAuditLogPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadFailed(false)
     try {
       const params = new URLSearchParams()
       params.set('period', period)
@@ -85,14 +89,14 @@ export default function AdminAuditLogPage() {
 
       const res = await fetch(`/api/admin/audit-log?${params.toString()}`)
       if (!res.ok) {
-        toast.error('Änderungsprotokoll konnte nicht geladen werden.')
+        setLoadFailed(true)
         return
       }
       const json = (await res.json()) as AuditResponse
       setData(json)
     } catch (err) {
       console.error(err)
-      toast.error('Netzwerkfehler')
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -119,29 +123,24 @@ export default function AdminAuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Änderungsprotokoll</h1>
-        <p className="text-sm text-[#9CA3AF] mt-1">
-          {total} {total === 1 ? 'Eintrag' : 'Einträge'}
-        </p>
-      </div>
+      <AdminPageHeader title="Änderungsprotokoll" description={`${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
 
       <div className="flex flex-wrap gap-3">
         <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
-          <SelectTrigger className="w-[180px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectTrigger className="w-[180px] bg-ws-surface border-ws-line text-ws-text">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             <SelectItem value="7d">Letzte 7 Tage</SelectItem>
             <SelectItem value="30d">Letzte 30 Tage</SelectItem>
             <SelectItem value="all">Alle Zeiträume</SelectItem>
           </SelectContent>
         </Select>
         <Select value={actionType} onValueChange={setActionType}>
-          <SelectTrigger className="w-[220px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectTrigger className="w-[220px] bg-ws-surface border-ws-line text-ws-text">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             {ACTION_TYPES.map((a) => (
               <SelectItem key={a.value} value={a.value}>
                 {a.label}
@@ -151,64 +150,68 @@ export default function AdminAuditLogPage() {
         </Select>
       </div>
 
-      <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-              <TableHead className="text-[#9CA3AF]">Zeitstempel</TableHead>
-              <TableHead className="text-[#9CA3AF]">Admin</TableHead>
-              <TableHead className="text-[#9CA3AF]">Aktion</TableHead>
-              <TableHead className="text-[#9CA3AF]">Objekt-Typ</TableHead>
-              <TableHead className="text-[#9CA3AF]">Objekt</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                  {Array.from({ length: 5 }).map((__, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : entries.length === 0 ? (
-              <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={5} className="py-10">
-                  <div className="flex flex-col items-center gap-2 text-[#9CA3AF] text-sm">
-                    <Info className="w-5 h-5" />
-                    Das Änderungsprotokoll füllt sich nach der ersten Admin-Aktion.
-                  </div>
-                </TableCell>
+      {loadFailed ? (
+        <AdminErrorState message="Das Änderungsprotokoll konnte gerade nicht geladen werden." onRetry={load} />
+      ) : (
+        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                <TableHead className="text-ws-muted">Zeitstempel</TableHead>
+                <TableHead className="text-ws-muted">Admin</TableHead>
+                <TableHead className="text-ws-muted">Aktion</TableHead>
+                <TableHead className="text-ws-muted">Objekt-Typ</TableHead>
+                <TableHead className="text-ws-muted">Objekt</TableHead>
               </TableRow>
-            ) : (
-              entries.map((e) => (
-                <TableRow key={e.id} className="border-[#4B5563] hover:bg-[#111827]/40">
-                  <TableCell className="text-xs text-[#9CA3AF]">
-                    {formatDateTime(e.created_at)}
-                  </TableCell>
-                  <TableCell className="text-[#F9FAFB] text-sm">
-                    {e.admin_name ?? e.admin_id.slice(0, 8)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="border-[#4B5563] text-[#58CC02] font-mono text-xs"
-                    >
-                      {e.action_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-[#9CA3AF] text-sm">{e.object_type}</TableCell>
-                  <TableCell className="text-[#F9FAFB] text-sm max-w-[280px] truncate">
-                    {e.object_label ?? e.object_id ?? '—'}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={`sk-${i}`} className="border-ws-line">
+                    {Array.from({ length: 5 }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : entries.length === 0 ? (
+                <TableRow className="border-ws-line">
+                  <TableCell colSpan={5} className="py-10">
+                    <div className="flex flex-col items-center gap-2 text-ws-muted text-sm">
+                      <Info className="w-5 h-5" />
+                      Das Änderungsprotokoll füllt sich nach der ersten Admin-Aktion.
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                entries.map((e) => (
+                  <TableRow key={e.id} className="border-ws-line hover:bg-ws-bg/40">
+                    <TableCell className="text-xs text-ws-muted">
+                      {formatDateTime(e.created_at)}
+                    </TableCell>
+                    <TableCell className="text-ws-text text-sm">
+                      {e.admin_name ?? e.admin_id.slice(0, 8)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className="border-ws-line text-ws-green font-mono text-xs"
+                      >
+                        {e.action_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-ws-muted text-sm">{e.object_type}</TableCell>
+                    <TableCell className="text-ws-text text-sm max-w-[280px] truncate">
+                      {e.object_label ?? e.object_id ?? '—'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <Pagination>

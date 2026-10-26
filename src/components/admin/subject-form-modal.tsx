@@ -100,10 +100,10 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-md">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Fach bearbeiten' : 'Neues Fach'}</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             {isEdit
               ? 'Fach-Details anpassen.'
               : 'Lege ein neues Lernfach mit eindeutigem Code an.'}
@@ -117,10 +117,10 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
               id="name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               placeholder="z. B. Kaufmännische Steuerung"
             />
-            {errors.name && <p className="text-xs text-[#FF4B4B]">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-ws-red">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
@@ -129,11 +129,11 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
               id="code"
               value={form.code}
               onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] font-mono uppercase"
+              className="bg-ws-bg border-ws-line text-ws-text font-mono uppercase"
               placeholder="z. B. ABC"
               maxLength={5}
             />
-            {errors.code && <p className="text-xs text-[#FF4B4B]">{errors.code}</p>}
+            {errors.code && <p className="text-xs text-ws-red">{errors.code}</p>}
           </div>
 
           <div className="space-y-2">
@@ -143,7 +143,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={500}
             />
           </div>
@@ -160,7 +160,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEdit ? 'Speichern' : 'Erstellen'}

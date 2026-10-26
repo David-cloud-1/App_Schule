@@ -172,10 +172,10 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Fachbereich bearbeiten' : 'Neuen Fachbereich anlegen'}</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             {isEdit
               ? 'Branding, Prompt-Grundlage und Gamification-Namen anpassen.'
               : 'Kürzel und Slug lassen sich später nicht mehr ändern.'}
@@ -191,11 +191,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                   id="code"
                   value={form.code}
                   onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] font-mono uppercase"
+                  className="bg-ws-bg border-ws-line text-ws-text font-mono uppercase"
                   placeholder="TOUR"
                   maxLength={10}
                 />
-                {errors.code && <p className="text-xs text-[#FF4B4B]">{errors.code}</p>}
+                {errors.code && <p className="text-xs text-ws-red">{errors.code}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="slug">Slug</Label>
@@ -203,11 +203,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                   id="slug"
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })}
-                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] font-mono"
+                  className="bg-ws-bg border-ws-line text-ws-text font-mono"
                   placeholder="tourismus"
                   maxLength={30}
                 />
-                {errors.slug && <p className="text-xs text-[#FF4B4B]">{errors.slug}</p>}
+                {errors.slug && <p className="text-xs text-ws-red">{errors.slug}</p>}
               </div>
             </div>
           )}
@@ -218,10 +218,10 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
               id="name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={100}
             />
-            {errors.name && <p className="text-xs text-[#FF4B4B]">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-ws-red">{errors.name}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -231,11 +231,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                 id="appName"
                 value={form.appName}
                 onChange={(e) => setForm({ ...form, appName: e.target.value })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
                 placeholder="TouristikLern"
                 maxLength={60}
               />
-              {errors.appName && <p className="text-xs text-[#FF4B4B]">{errors.appName}</p>}
+              {errors.appName && <p className="text-xs text-ws-red">{errors.appName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="domain">Adresse (optional)</Label>
@@ -243,7 +243,7 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                 id="domain"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value.toLowerCase() })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
                 placeholder="touristiklern.vercel.app"
               />
             </div>
@@ -255,10 +255,10 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
               id="metaTitle"
               value={form.metaTitle}
               onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={120}
             />
-            {errors.metaTitle && <p className="text-xs text-[#FF4B4B]">{errors.metaTitle}</p>}
+            {errors.metaTitle && <p className="text-xs text-ws-red">{errors.metaTitle}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -268,11 +268,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                 id="currencyName"
                 value={form.currencyName}
                 onChange={(e) => setForm({ ...form, currencyName: e.target.value })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
                 placeholder="Reisetaler"
                 maxLength={40}
               />
-              {errors.currencyName && <p className="text-xs text-[#FF4B4B]">{errors.currencyName}</p>}
+              {errors.currencyName && <p className="text-xs text-ws-red">{errors.currencyName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="hofName">Name des Hofs</Label>
@@ -280,11 +280,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
                 id="hofName"
                 value={form.hofName}
                 onChange={(e) => setForm({ ...form, hofName: e.target.value })}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
                 placeholder="Reisebüro"
                 maxLength={40}
               />
-              {errors.hofName && <p className="text-xs text-[#FF4B4B]">{errors.hofName}</p>}
+              {errors.hofName && <p className="text-xs text-ws-red">{errors.hofName}</p>}
             </div>
           </div>
 
@@ -296,10 +296,10 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
               value={form.promptRole}
               onChange={(e) => setForm({ ...form, promptRole: e.target.value })}
               placeholder="Experte für Prüfungsfragen im Bereich Tourismus (IHK Bayern)"
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={500}
             />
-            {errors.promptRole && <p className="text-xs text-[#FF4B4B]">{errors.promptRole}</p>}
+            {errors.promptRole && <p className="text-xs text-ws-red">{errors.promptRole}</p>}
           </div>
 
           <div className="space-y-2">
@@ -308,11 +308,11 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
               id="targetGroup"
               value={form.targetGroup}
               onChange={(e) => setForm({ ...form, targetGroup: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               placeholder="angehende Tourismuskaufleute"
               maxLength={200}
             />
-            {errors.targetGroup && <p className="text-xs text-[#FF4B4B]">{errors.targetGroup}</p>}
+            {errors.targetGroup && <p className="text-xs text-ws-red">{errors.targetGroup}</p>}
           </div>
 
           <DialogFooter className="gap-2 pt-2">
@@ -322,7 +322,7 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEdit ? 'Speichern' : 'Anlegen'}

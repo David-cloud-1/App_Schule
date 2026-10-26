@@ -99,10 +99,10 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
 
   return (
     <Dialog open={draft !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#F9FAFB]">Entwurf bearbeiten</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogTitle className="text-ws-text">Entwurf bearbeiten</DialogTitle>
+          <DialogDescription className="text-ws-muted">
             {isReviewRequired
               ? 'Überprüfung erforderlich: Bitte markiere die korrekte Antwort manuell.'
               : 'Bearbeite die KI-generierte Frage bevor du sie akzeptierst.'}
@@ -118,7 +118,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
               rows={3}
               value={form.question_text}
               onChange={(e) => setForm({ ...form, question_text: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               required
             />
           </div>
@@ -127,7 +127,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
           <div className="space-y-3">
             <Label>
               Antworten{' '}
-              <span className="text-[#9CA3AF] font-normal">(korrekte per Radio auswählen)</span>
+              <span className="text-ws-muted font-normal">(korrekte per Radio auswählen)</span>
             </Label>
             <RadioGroup
               value={form.correct_index}
@@ -139,11 +139,11 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                   <RadioGroupItem
                     value={String(i)}
                     id={`opt-${i}`}
-                    className="border-[#4B5563]"
+                    className="border-ws-line"
                   />
                   <Label
                     htmlFor={`opt-${i}`}
-                    className="w-6 text-center text-sm font-semibold text-[#58CC02]"
+                    className="w-6 text-center text-sm font-semibold text-ws-green"
                   >
                     {String.fromCharCode(65 + i)}
                   </Label>
@@ -151,7 +151,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                     value={form[key]}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                     placeholder={`Antwort ${String.fromCharCode(65 + i)}`}
-                    className="flex-1 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                    className="flex-1 bg-ws-bg border-ws-line text-ws-text"
                     required
                   />
                 </div>
@@ -167,7 +167,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
               rows={2}
               value={form.explanation}
               onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
             />
           </div>
 
@@ -179,10 +179,10 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 value={form.subject_code}
                 onValueChange={(v) => setForm({ ...form, subject_code: v })}
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue placeholder="Fach wählen" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="_none">Kein Fach</SelectItem>
                   {subjectCodes.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
@@ -197,10 +197,10 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 value={form.difficulty}
                 onValueChange={(v) => setForm({ ...form, difficulty: v })}
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="leicht">Leicht</SelectItem>
                   <SelectItem value="mittel">Mittel</SelectItem>
                   <SelectItem value="schwer">Schwer</SelectItem>
@@ -214,10 +214,10 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 value={form.class_level}
                 onValueChange={(v) => setForm({ ...form, class_level: v })}
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="_all">Alle</SelectItem>
                   {classLevelOptions.map((o) => (
                     <SelectItem key={o.value} value={o.value}>Kl. {o.value}</SelectItem>
@@ -234,7 +234,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
             <Button
               type="submit"
               disabled={saving}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Speichern

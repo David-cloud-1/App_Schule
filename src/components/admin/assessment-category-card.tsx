@@ -68,10 +68,10 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
   }
 
   return (
-    <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 space-y-3">
+    <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 space-y-3">
       <div>
-        <h2 className="text-base font-semibold text-[#F9FAFB]">Ablage</h2>
-        <p className="text-xs text-[#9CA3AF]">Nur zum Sortieren und Wiederfinden — ändert nichts am Zugang oder an der Prüfung.</p>
+        <h2 className="text-base font-semibold text-ws-text">Ablage</h2>
+        <p className="text-xs text-ws-muted">Nur zum Sortieren und Wiederfinden — ändert nichts am Zugang oder an der Prüfung.</p>
       </div>
       <AssessmentCategoryFields
         idPrefix="ablage"
@@ -86,7 +86,7 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
         <Button
           onClick={save}
           disabled={!dirty || saving}
-          className="h-11 rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white"
+          className="h-11 rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
         >
           {saving && <Loader2 className="size-4 mr-2 animate-spin" />}
           Ablage speichern

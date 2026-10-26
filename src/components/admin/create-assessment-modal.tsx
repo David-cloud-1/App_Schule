@@ -202,10 +202,10 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Neuer Leistungsnachweis</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             Ein einmaliger, benoteter Durchlauf mit selbst zusammengestellten Fragen — mit eigenem Beitrittscode.
           </DialogDescription>
         </DialogHeader>
@@ -213,12 +213,12 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
         <form onSubmit={handleSubmit} className="space-y-4">
           {sets.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-[#6B7280]">— optional</span></Label>
+              <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
               <Select value={startSetId} onValueChange={handleStartSetChange}>
-                <SelectTrigger id="startSet" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value={NO_START}>Ohne Startauswahl</SelectItem>
                   {sets.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
@@ -227,11 +227,11 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-[#6B7280]">
+              <p className="text-xs text-ws-faint">
                 Die Fragen werden kopiert und sind danach unabhängig vom Set.
               </p>
               {skippedFromSet > 0 && (
-                <p className="text-xs text-[#FF9600]">
+                <p className="text-xs text-ws-orange">
                   {skippedFromSet} Fragen aus dem Set wurden übersprungen (offene oder deaktivierte Fragen).
                 </p>
               )}
@@ -241,7 +241,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
           <div className="space-y-2">
             <Label>Fragen</Label>
             <AssessmentQuestionSelector selectedIds={selectedIds} onChange={setSelectedIds} onLoaded={handleLoaded} />
-            {errors.questions && <p className="text-xs text-[#FF4B4B]">{errors.questions}</p>}
+            {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
           </div>
 
           <div className="space-y-2">
@@ -250,15 +250,15 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               placeholder="z. B. LN 2 – Verkehrsträger Straße"
               maxLength={100}
             />
-            {errors.title && <p className="text-xs text-[#FF4B4B]">{errors.title}</p>}
+            {errors.title && <p className="text-xs text-ws-red">{errors.title}</p>}
           </div>
 
           <div className="space-y-2">
-            <Label>Ablage <span className="font-normal text-[#6B7280]">— nur zum Sortieren, ändert nichts am Zugang</span></Label>
+            <Label>Ablage <span className="font-normal text-ws-faint">— nur zum Sortieren, ändert nichts am Zugang</span></Label>
             <AssessmentCategoryFields
               idPrefix="neu"
               value={category}
@@ -278,9 +278,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
                 type="datetime-local"
                 value={opensAt}
                 onChange={(e) => setOpensAt(e.target.value)}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
               />
-              {errors.opensAt && <p className="text-xs text-[#FF4B4B]">{errors.opensAt}</p>}
+              {errors.opensAt && <p className="text-xs text-ws-red">{errors.opensAt}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="closesAt">Beitritt bis</Label>
@@ -289,9 +289,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
                 type="datetime-local"
                 value={closesAt}
                 onChange={(e) => setClosesAt(e.target.value)}
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
               />
-              {errors.closesAt && <p className="text-xs text-[#FF4B4B]">{errors.closesAt}</p>}
+              {errors.closesAt && <p className="text-xs text-ws-red">{errors.closesAt}</p>}
             </div>
           </div>
 
@@ -304,10 +304,10 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
               max={600}
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(e.target.value)}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-32"
+              className="bg-ws-bg border-ws-line text-ws-text w-32"
             />
-            {errors.durationMinutes && <p className="text-xs text-[#FF4B4B]">{errors.durationMinutes}</p>}
-            <p className="text-xs text-[#6B7280]">
+            {errors.durationMinutes && <p className="text-xs text-ws-red">{errors.durationMinutes}</p>}
+            <p className="text-xs text-ws-faint">
               Zählt ab dem individuellen Start — ein späterer Beitritt verkürzt die Zeit nicht.
             </p>
           </div>
@@ -323,7 +323,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Als Entwurf anlegen

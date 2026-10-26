@@ -113,3 +113,57 @@ Small: text-sm text-muted
 - Kein serifenloses Design mit zu vielen verschiedenen Farben
 - Keine langen Textwände — kurze Lerneinheiten, kurze Texte
 - Kein Desktop-first Layout
+
+---
+
+## Lehrkräfte-Bereich (PROJ-45)
+
+> Die Schülerseite bleibt wie oben beschrieben (Mobile-First, immer dunkel). Der Lehrkräfte-Bereich unter `/admin` ist ein ruhiges Arbeitswerkzeug für Laptop, Beamer und Handy (Vorbilder: Linear, Notion, Vercel).
+
+### Farben nur über Tokens
+Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-white`, `green-500` …). Jede Farbe kommt aus der Farb-Schicht in `src/app/globals.css` und heißt in Tailwind `ws-*` (Deckkraft geht: `bg-ws-green/15`).
+
+| Token | Zweck | Dunkel (Standard) | Hell |
+|---|---|---|---|
+| `ws-bg` | Seitenhintergrund | #111827 | #F4F5F7 |
+| `ws-surface` | Karten, Tabellen, Dialoge, Seitenleiste | #1F2937 | #FFFFFF |
+| `ws-raised` | Hover, erhöhte Flächen | #374151 | #EBEDF0 |
+| `ws-line` | Rahmen, Trennlinien | #4B5563 | #D1D5DB |
+| `ws-text` | Haupttext | #F9FAFB | #111827 |
+| `ws-muted` | Nebentext, Labels | #9CA3AF | #4B5563 |
+| `ws-faint` | Hinweise, Gruppentitel | #8B93A1 | #5F6673 |
+| `ws-green` / `-hover` | Hauptaktion, Erfolg, aktiv | #58CC02 / #4CAD02 | #337500 / #2B6400 |
+| `ws-blue` / `-hover` | Info, Links | #1CB0F6 / #18A0E0 | #0A6FA8 / #085E8F |
+| `ws-red` / `-hover` | Fehler, Löschen | #FF5C5C / #FF4B4B | #C62828 / #A61F1F |
+| `ws-orange` | Warnung, „läuft noch“ | #FF9600 | #A65400 |
+| `ws-gold` | Auszeichnungen, „episch“ | #FFD700 | #8A6D00 |
+| `ws-on-accent` | Schrift auf gefüllten Farbflächen | #111827 | #FFFFFF |
+
+- **Gefüllte Buttons:** `bg-ws-green hover:bg-ws-green-hover text-ws-on-accent`. Im dunklen Modus ist die Schrift darauf fast schwarz, im hellen weiß. So erreichen beide Modi WCAG AA (Entscheidung 2026-10-26).
+- **Getönte Pills/Hinweise:** `bg-ws-<farbe>/15 text-ws-<farbe> border-ws-<farbe>/30`.
+- **Ausnahmen:** Papier-Ansichten (Druckbögen, QR-Code-Hintergrund) bleiben bewusst `bg-white text-black`.
+- Neue Tokens immer in **beiden** Modi (und im Block „Wie System“) anlegen. Der Test `src/lib/workspace-theme.test.ts` prüft die Kontraste (Text ≥ 4,5 : 1).
+
+### Darstellung
+- Wählbar im Konto-Menü und in der Schnellsuche: **Dunkel** (Standard), **Hell**, **Wie System**. Gemerkt als Cookie `ws_theme`, deshalb erscheint die Seite ohne Aufblitzen.
+- Der Rahmen setzt `data-ws-theme` an `.ws-root`. Über `html:has(.ws-root…)` gelten die Werte auch für Dialoge, Menüs und Toasts.
+- Druck ist immer hell auf weiß, ohne Navigation und Kopfzeile.
+
+### Layout
+- **Rahmen:** shadcn-`Sidebar` (einklappbar auf Icons, Zustand im Cookie `sidebar_state`, ⌘B / Strg+B) ab 1024 px. Darunter (Handy, Tablet hochkant) eine Schublade, die nach Auswahl, beim Tippen daneben und per Wischen schließt.
+- **Kopfzeile:** Desktop mit Brotkrumen und Suchfeld (⌘K), Handy mit Menü, Seitentitel, Suche und Konto.
+- **Seitenkopf:** Jede Seite beginnt mit `AdminPageHeader` (Titel, ein Satz Beschreibung, rechts die Aktionen). Es gibt **höchstens eine** grüne Hauptaktion, weitere Aktionen sind `variant="outline"`. Detailseiten übergeben `breadcrumb={titel}`.
+- **Breite:** Inhalt bis `max-w-screen-2xl`, Tabellen und Listen nutzen die Breite. Formulare und Lesetexte bleiben schmal (`max-w-xl` bis `max-w-3xl`, Beschreibungen `max-w-prose`).
+- **Tabellen:** Der Container trägt `ws-table-scroll`. Die Tabelle scrollt dann in ihrem Rahmen, die erste Spalte bleibt stehen, und die Seite scrollt nie seitlich.
+- **Bedienelemente** mindestens 44 × 44 px (`min-h-11`, `size-11`).
+
+### Zustände (`src/components/admin/admin-states.tsx`)
+- **Laden:** `AdminLoadingState` (`table`, `list`, `cards`, `form`) oder Skeleton-Zeilen in Tabellenform. Kein Drehkreis über die ganze Seite.
+- **Leer:** `AdminEmptyState`: Icon, ein Satz, die passende Hauptaktion.
+- **Fehler:** `AdminErrorState`: verständlicher Satz und „Erneut versuchen“, keine technischen Texte.
+- **Erfolg:** kurzer Toast (`toast.success`). Löschen immer erst nach `AlertDialog`.
+
+### Barrierefreiheit
+- Link „Zum Inhalt springen“, sichtbarer Fokus (`focus-visible:ring-ws-green`), Icons ohne Text mit `aria-label`.
+- Animationen höchstens 200 ms. Bei „Bewegung reduzieren“ entfallen sie im ganzen Bereich.
+- Lange Namen werden mit „…“ gekürzt, der volle Text steht im `title`.

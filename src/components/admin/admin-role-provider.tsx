@@ -13,6 +13,8 @@ export interface AdminRoleContextValue {
   isSuperAdmin: boolean
   /** Anzeigename bzw. E-Mail für die Begrüßung auf der Startseite (PROJ-40) */
   displayName?: string
+  /** E-Mail fürs Konto-Menü (PROJ-45) */
+  email?: string
   /** Einmaliger Willkommens-Hinweis für frisch freigeschaltete Lehrkräfte (PROJ-44) */
   showTeacherWelcome?: boolean
 }

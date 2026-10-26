@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ADMIN_COMMAND_ACTIONS,
   ADMIN_HOME_HREF,
   ADMIN_NAV_GROUPS,
+  adminCommandActionsFor,
+  adminNavMatch,
+  teacherRoleLabel,
   adminNavGroupsFor,
   adminNavLabel,
   isAdminNavActive,
@@ -68,5 +72,32 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(isAdminNavActive('/admin/questions', '/admin/leistungsnachweise')).toBe(false)
     expect(isAdminNavActive('/admin', ADMIN_HOME_HREF)).toBe(true)
     expect(isAdminNavActive('/admin/questions', ADMIN_HOME_HREF)).toBe(false)
+  })
+})
+
+describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
+  it('findet den Eintrag zur Seite, auch auf Unterseiten', () => {
+    expect(adminNavMatch('/admin/leistungsnachweise/abc')?.item.label).toBe('Leistungsnachweise')
+    expect(adminNavMatch('/admin/audit-log')?.group.label).toBe('Einstellungen')
+    expect(adminNavMatch('/admin')).toBeNull()
+  })
+
+  it('nennt die Rolle in Klartext', () => {
+    expect(teacherRoleLabel('teacher', 'Spedition')).toBe('Lehrkraft')
+    expect(teacherRoleLabel('department_admin', 'Spedition')).toBe('Bereichs-Admin Spedition')
+    expect(teacherRoleLabel('admin', 'Spedition')).toBe('Super-Admin')
+  })
+
+  it('zeigt in der Schnellsuche nur Aktionen, deren Seite die Rolle sehen darf', () => {
+    const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'lern-app', 'darstellung'])
+    expect(ids('teacher')).toEqual(['werkzeugkiste', 'lern-app', 'darstellung'])
+  })
+
+  it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {
+    const hrefs = new Set(ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)))
+    for (const action of ADMIN_COMMAND_ACTIONS) {
+      if (action.kind === 'link' && action.requiresHref) expect(hrefs.has(action.requiresHref)).toBe(true)
+    }
   })
 })

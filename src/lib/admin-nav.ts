@@ -181,3 +181,65 @@ export function isAdminNavActive(pathname: string, href: string): boolean {
   if (href === ADMIN_HOME_HREF) return pathname === ADMIN_HOME_HREF
   return pathname === href || pathname.startsWith(href + '/')
 }
+
+/** Alle Einträge, die eine Rolle sehen darf, in Reihenfolge der Navigation */
+export function adminNavItemsFor(role: TeacherRole): AdminNavItem[] {
+  return adminNavGroupsFor(role).flatMap((group) => group.items)
+}
+
+/**
+ * Eintrag und Gruppe zur aktuellen Seite (PROJ-45) — Grundlage für den
+ * Seitentitel in der Handy-Kopfzeile und die Brotkrumen. Die Übersicht und
+ * unbekannte Pfade liefern `null`.
+ */
+export function adminNavMatch(pathname: string): { group: AdminNavGroup; item: AdminNavItem } | null {
+  for (const group of ADMIN_NAV_GROUPS) {
+    for (const item of group.items) {
+      if (!item.external && isAdminNavActive(pathname, item.href)) return { group, item }
+    }
+  }
+  return null
+}
+
+/** Rolle in Klartext fürs Konto-Menü: „Lehrkraft“, „Bereichs-Admin Spedition“, „Super-Admin“ */
+export function teacherRoleLabel(role: TeacherRole, departmentName: string): string {
+  if (role === 'department_admin') return departmentName ? `Bereichs-Admin ${departmentName}` : 'Bereichs-Admin'
+  return role === 'admin' ? 'Super-Admin' : 'Lehrkraft'
+}
+
+/**
+ * Aktionen der Schnellsuche (PROJ-45). Eine Aktion mit `requiresHref` erscheint
+ * nur, wenn die Rolle diese Seite sehen darf — so zeigt die Suche nie mehr als
+ * die Navigation.
+ */
+export type AdminCommandAction =
+  | { id: string; label: string; keywords: string[]; kind: 'link'; href: string; external?: boolean; requiresHref?: string }
+  | { id: string; label: string; keywords: string[]; kind: 'theme' }
+
+export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
+  {
+    id: 'neuer-nachweis',
+    label: 'Neuer Leistungsnachweis',
+    keywords: ['test', 'klassenarbeit', 'anlegen', 'erstellen'],
+    kind: 'link',
+    href: '/admin/leistungsnachweise?neu=1',
+    requiresHref: '/admin/leistungsnachweise',
+  },
+  {
+    id: 'werkzeugkiste',
+    label: 'Werkzeugkiste öffnen',
+    keywords: ['ki', 'arbeitsblatt', 'werkzeug'],
+    kind: 'link',
+    href: WERKZEUGKISTE_URL,
+    external: true,
+  },
+  { id: 'lern-app', label: 'Zur Lern-App', keywords: ['schüler', 'quiz', 'spielen'], kind: 'link', href: '/' },
+  { id: 'darstellung', label: 'Darstellung wechseln', keywords: ['hell', 'dunkel', 'beamer', 'farbe', 'theme'], kind: 'theme' },
+]
+
+export function adminCommandActionsFor(role: TeacherRole): AdminCommandAction[] {
+  const visible = new Set(adminNavItemsFor(role).map((item) => item.href))
+  return ADMIN_COMMAND_ACTIONS.filter(
+    (action) => action.kind !== 'link' || !action.requiresHref || visible.has(action.requiresHref),
+  )
+}

@@ -60,10 +60,10 @@ export function FocusCell({
   expanded: boolean
   onToggle: () => void
 }) {
-  if (!focus) return <span className="text-[#6B7280]">—</span>
+  if (!focus) return <span className="text-ws-faint">—</span>
   if (focus.trackingUnavailable && focus.countedSwitches === 0 && focus.shortCount === 0) {
     return (
-      <Badge className="bg-[#374151] text-[#F9FAFB] border-0 gap-1 whitespace-normal text-left" title="Der Browser dieses Teilnehmers kann Wechsel nicht erkennen.">
+      <Badge className="bg-ws-raised text-ws-text border-0 gap-1 whitespace-normal text-left" title="Der Browser dieses Teilnehmers kann Wechsel nicht erkennen.">
         <EyeOff size={12} aria-hidden="true" className="flex-shrink-0" />
         Keine Überwachung möglich
       </Badge>
@@ -72,23 +72,23 @@ export function FocusCell({
   const hasDetail = focus.countedSwitches > 0 || focus.shortCount > 0 || focus.away
   return (
     <div className="flex flex-col items-start gap-1.5 min-w-40">
-      <span className={cn('text-sm', focus.conspicuous ? 'text-[#F9FAFB] font-medium' : 'text-[#9CA3AF]')}>
+      <span className={cn('text-sm', focus.conspicuous ? 'text-ws-text font-medium' : 'text-ws-muted')}>
         {formatFocusSummary(focus.countedSwitches, focus.countedSeconds)}
       </span>
       {focus.conspicuous && (
-        <Badge className="bg-[#FF9600]/20 text-[#FF9600] border-0 gap-1">
+        <Badge className="bg-ws-orange/20 text-ws-orange border-0 gap-1">
           <AlertTriangle size={12} aria-hidden="true" />
           Auffällig
         </Badge>
       )}
       {focus.away && (
-        <Badge className="bg-[#1CB0F6]/20 text-[#1CB0F6] border-0 gap-1">
+        <Badge className="bg-ws-blue/20 text-ws-blue border-0 gap-1">
           <Eye size={12} aria-hidden="true" />
           Gerade nicht in der Prüfung
         </Badge>
       )}
       {focus.autoSubmitted && (
-        <Badge className="bg-[#FF4B4B]/20 text-[#FF4B4B] border-0">
+        <Badge className="bg-ws-red/20 text-ws-red border-0">
           Automatisch abgegeben (Fokus-Grenze)
         </Badge>
       )}
@@ -98,7 +98,7 @@ export function FocusCell({
           size="sm"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="h-8 px-2 text-xs text-[#9CA3AF] hover:text-[#F9FAFB]"
+          className="h-8 px-2 text-xs text-ws-muted hover:text-ws-text"
         >
           {expanded ? <ChevronUp size={14} className="mr-1" /> : <ChevronDown size={14} className="mr-1" />}
           Details
@@ -130,46 +130,46 @@ export function FocusDetailPanel({ assessmentId, sessionId }: { assessmentId: st
     }
   }, [assessmentId, sessionId])
 
-  if (failed) return <p className="text-sm text-[#FF4B4B]">Das Protokoll konnte nicht geladen werden.</p>
+  if (failed) return <p className="text-sm text-ws-red">Das Protokoll konnte nicht geladen werden.</p>
   if (!data) return <Skeleton className="h-16 w-full rounded-xl" />
 
   return (
     <div className="space-y-3">
       {data.summary.trackingUnavailable && (
-        <p className="flex items-start gap-2 rounded-xl border border-[#4B5563] bg-[#111827] p-3 text-sm text-[#F9FAFB]">
-          <EyeOff size={16} className="mt-0.5 flex-shrink-0 text-[#9CA3AF]" aria-hidden="true" />
+        <p className="flex items-start gap-2 rounded-xl border border-ws-line bg-ws-bg p-3 text-sm text-ws-text">
+          <EyeOff size={16} className="mt-0.5 flex-shrink-0 text-ws-muted" aria-hidden="true" />
           Keine Überwachung möglich: Der Browser dieses Teilnehmers kann Wechsel nicht erkennen. Ein leeres Protokoll
           bedeutet hier nicht, dass die Prüfung nicht verlassen wurde.
         </p>
       )}
       {data.events.length === 0 ? (
-        <p className="text-sm text-[#9CA3AF]">Keine Einträge.</p>
+        <p className="text-sm text-ws-muted">Keine Einträge.</p>
       ) : (
-        <ul className="divide-y divide-[#374151] rounded-xl border border-[#374151] bg-[#111827]">
+        <ul className="divide-y divide-ws-raised rounded-xl border border-ws-raised bg-ws-bg">
           {data.events.map((e) => (
             <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 text-sm">
-              <span className="text-[#9CA3AF] tabular-nums">
+              <span className="text-ws-muted tabular-nums">
                 {new Date(e.leftAt).toLocaleString('de-DE', TIME_FORMAT)}
               </span>
-              <span className={cn('tabular-nums', e.counted ? 'text-[#F9FAFB] font-medium' : 'text-[#6B7280]')}>
+              <span className={cn('tabular-nums', e.counted ? 'text-ws-text font-medium' : 'text-ws-faint')}>
                 {e.durationSeconds != null ? formatFocusDuration(e.durationSeconds) : 'noch weg'}
               </span>
-              <span className="text-[#9CA3AF]">
+              <span className="text-ws-muted">
                 {e.questionNumber != null ? `bei Frage ${e.questionNumber}` : 'Frage unbekannt'}
               </span>
               {!e.counted && e.returnedAt && (
-                <Badge className="bg-[#374151] text-[#9CA3AF] border-0">kurz</Badge>
+                <Badge className="bg-ws-raised text-ws-muted border-0">kurz</Badge>
               )}
             </li>
           ))}
         </ul>
       )}
       {data.truncated && (
-        <p className="text-xs text-[#FF9600]">
+        <p className="text-xs text-ws-orange">
           Es werden die ersten {data.events.length} Einträge gezeigt. Die Zähler enthalten alle Wechsel.
         </p>
       )}
-      <p className="text-xs text-[#6B7280]">
+      <p className="text-xs text-ws-faint">
         Ein Eintrag beweist kein Nachschlagen. Benachrichtigungen, Anrufe oder ein Gerätewechsel können ebenfalls
         einen Eintrag erzeugen. Abwesenheiten unter 3 Sekunden sind als „kurz" markiert und zählen nicht.
       </p>
@@ -225,7 +225,7 @@ export function FocusDraftSettings({
     <div className="space-y-3">
       <FocusSettingsFields value={value} onChange={setValue} error={error} />
       <div className="flex justify-end">
-        <Button onClick={save} disabled={saving} size="sm" className="rounded-xl bg-[#1CB0F6] hover:bg-[#18a0e0] text-white">
+        <Button onClick={save} disabled={saving} size="sm" className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent">
           {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
           Einstellungen speichern
         </Button>

@@ -20,43 +20,43 @@ export function AiGeneratorJobCard({ job, onRetry }: Props) {
     uploading: {
       label: 'Wird hochgeladen',
       badgeLabel: 'Hochladen',
-      color: 'text-[#1CB0F6]',
-      icon: <Loader2 className="w-5 h-5 animate-spin text-[#1CB0F6] flex-shrink-0" />,
+      color: 'text-ws-blue',
+      icon: <Loader2 className="w-5 h-5 animate-spin text-ws-blue flex-shrink-0" />,
     },
     processing: {
       label: 'KI verarbeitet Dokument…',
       badgeLabel: 'Verarbeitung',
-      color: 'text-[#FF9600]',
-      icon: <Loader2 className="w-5 h-5 animate-spin text-[#FF9600] flex-shrink-0" />,
+      color: 'text-ws-orange',
+      icon: <Loader2 className="w-5 h-5 animate-spin text-ws-orange flex-shrink-0" />,
     },
     completed: {
       label: `${job.questions_generated ?? 0} Fragen generiert`,
       badgeLabel: 'Abgeschlossen',
-      color: 'text-[#58CC02]',
-      icon: <CheckCircle2 className="w-5 h-5 text-[#58CC02] flex-shrink-0" />,
+      color: 'text-ws-green',
+      icon: <CheckCircle2 className="w-5 h-5 text-ws-green flex-shrink-0" />,
     },
     error: {
       label: job.error_message ?? 'Verarbeitung fehlgeschlagen',
       badgeLabel: 'Fehler',
-      color: 'text-[#FF4B4B]',
-      icon: <AlertCircle className="w-5 h-5 text-[#FF4B4B] flex-shrink-0" />,
+      color: 'text-ws-red',
+      icon: <AlertCircle className="w-5 h-5 text-ws-red flex-shrink-0" />,
     },
   }[job.status]
 
   return (
     <div
-      className={`flex items-center gap-4 p-4 rounded-2xl border bg-[#1F2937] ${
-        job.status === 'error' ? 'border-[#FF4B4B]/40' : 'border-[#4B5563]'
+      className={`flex items-center gap-4 p-4 rounded-2xl border bg-ws-surface ${
+        job.status === 'error' ? 'border-ws-red/40' : 'border-ws-line'
       }`}
     >
       {config.icon}
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#F9FAFB] truncate">{job.filename}</p>
+        <p className="text-sm font-medium text-ws-text truncate">{job.filename}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className={`text-xs ${config.color}`}>{config.label}</span>
-          <span className="text-xs text-[#4B5563]">·</span>
-          <span className="text-xs text-[#9CA3AF]">{formatSize(job.file_size)}</span>
+          <span className="text-xs text-ws-line">·</span>
+          <span className="text-xs text-ws-muted">{formatSize(job.file_size)}</span>
         </div>
       </div>
 
@@ -66,7 +66,7 @@ export function AiGeneratorJobCard({ job, onRetry }: Props) {
             variant="outline"
             size="sm"
             onClick={() => onRetry(job.id)}
-            className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+            className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
             Wiederholen

@@ -33,6 +33,8 @@ import {
   type AssessmentFilters,
 } from '@/lib/assessment-filter'
 import { cn } from '@/lib/utils'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminEmptyState, AdminErrorState } from '@/components/admin/admin-states'
 
 type AssessmentListItem = {
   id: string
@@ -66,9 +68,9 @@ const STATUS_LABELS: Record<AssessmentListItem['status'], string> = {
 }
 
 const STATUS_STYLES: Record<AssessmentListItem['status'], string> = {
-  draft: 'bg-[#4B5563]/40 text-[#9CA3AF]',
-  open: 'bg-[#58CC02]/20 text-[#58CC02]',
-  closed: 'bg-[#FF9600]/20 text-[#FF9600]',
+  draft: 'bg-ws-line/40 text-ws-muted',
+  open: 'bg-ws-green/20 text-ws-green',
+  closed: 'bg-ws-orange/20 text-ws-orange',
 }
 
 function AssessmentsPageContent() {
@@ -151,28 +153,35 @@ function AssessmentsPageContent() {
       setPreselectedSetId(fromSet)
       setCreateOpen(true)
     }
-  }, [searchParams])
+    // „Neuer Leistungsnachweis“ aus der Schnellsuche (PROJ-45): Dialog öffnen, Parameter wieder entfernen
+    if (searchParams.get('neu') === '1') {
+      setPreselectedSetId(null)
+      setCreateOpen(true)
+      const params = new URLSearchParams(searchParams.toString())
+      params.delete('neu')
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    }
+  }, [searchParams, router, pathname])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Leistungsnachweise</h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
-            Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code — Klasse und Fach dienen nur der Ablage.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setPreselectedSetId(null)
-            setCreateOpen(true)
-          }}
-          className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Neu erstellen
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Leistungsnachweise"
+        description="Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code — Klasse und Fach dienen nur der Ablage."
+        actions={
+          <Button
+            onClick={() => {
+              setPreselectedSetId(null)
+              setCreateOpen(true)
+            }}
+            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Neu erstellen
+          </Button>
+        }
+      />
 
       {!failed && assessments.length > 0 && (
         <AssessmentFilterBar
@@ -187,28 +196,41 @@ function AssessmentsPageContent() {
       )}
 
       {failed ? (
-        <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
-          <p className="text-[#9CA3AF]">Leistungsnachweise konnten nicht geladen werden.</p>
-          <Button variant="outline" size="sm" onClick={load} className="mt-4 rounded-xl border-[#4B5563] text-[#9CA3AF]">
-            Erneut versuchen
-          </Button>
-        </div>
+        <AdminErrorState message="Die Leistungsnachweise konnten gerade nicht geladen werden." onRetry={load} />
+      ) : !loading && assessments.length === 0 ? (
+        <AdminEmptyState
+          icon={GraduationCap}
+          title="Noch keine Leistungsnachweise"
+          description="Lege deinen ersten an — die Klasse tritt danach per Code bei."
+          action={
+            <Button
+              onClick={() => {
+                setPreselectedSetId(null)
+                setCreateOpen(true)
+              }}
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neu erstellen
+            </Button>
+          }
+        />
       ) : (
-        <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
+        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-                <TableHead className="text-[#9CA3AF]">Titel</TableHead>
-                <TableHead className="text-[#9CA3AF]">Status</TableHead>
-                <TableHead className="text-[#9CA3AF]">Code</TableHead>
-                <TableHead className="text-[#9CA3AF]">Teilnehmer</TableHead>
-                <TableHead className="text-[#9CA3AF]">Erstellt</TableHead>
+              <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                <TableHead className="text-ws-muted">Titel</TableHead>
+                <TableHead className="text-ws-muted">Status</TableHead>
+                <TableHead className="text-ws-muted">Code</TableHead>
+                <TableHead className="text-ws-muted">Teilnehmer</TableHead>
+                <TableHead className="text-ws-muted">Erstellt</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={`sk-${i}`} className="border-[#4B5563]">
+                  <TableRow key={`sk-${i}`} className="border-ws-line">
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -216,17 +238,10 @@ function AssessmentsPageContent() {
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                   </TableRow>
                 ))
-              ) : assessments.length === 0 ? (
-                <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
-                    <GraduationCap size={32} className="mx-auto mb-2 text-[#374151]" />
-                    Noch keine Leistungsnachweise angelegt.
-                  </TableCell>
-                </TableRow>
               ) : visible.length === 0 ? (
-                <TableRow className="border-[#4B5563]">
-                  <TableCell colSpan={5} className="text-center text-[#9CA3AF] py-10">
-                    <GraduationCap size={32} className="mx-auto mb-2 text-[#374151]" />
+                <TableRow className="border-ws-line">
+                  <TableCell colSpan={5} className="text-center text-ws-muted py-10">
+                    <GraduationCap size={32} className="mx-auto mb-2 text-ws-raised" />
                     <p>
                       {filters.schoolYear !== FILTER_ALL && filters.className === FILTER_ALL && filters.subjectId === FILTER_ALL && filters.status === FILTER_ALL && !filters.query
                         ? `Im Schuljahr ${filters.schoolYear} gibt es noch keine Leistungsnachweise.`
@@ -237,7 +252,7 @@ function AssessmentsPageContent() {
                         <Button
                           variant="outline"
                           onClick={() => changeFilters({ ...filters, schoolYear: FILTER_ALL })}
-                          className="h-11 rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+                          className="h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
                         >
                           Alle Schuljahre anzeigen
                         </Button>
@@ -245,7 +260,7 @@ function AssessmentsPageContent() {
                       <Button
                         variant="outline"
                         onClick={() => changeFilters(defaultFilters(currentSchoolYear))}
-                        className="h-11 rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+                        className="h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
                       >
                         Filter zurücksetzen
                       </Button>
@@ -254,18 +269,18 @@ function AssessmentsPageContent() {
                 </TableRow>
               ) : (
                 visible.map((a) => (
-                  <TableRow key={a.id} className="border-[#4B5563] hover:bg-[#111827]/40">
-                    <TableCell className="text-[#F9FAFB] font-medium">
+                  <TableRow key={a.id} className="border-ws-line hover:bg-ws-bg/40">
+                    <TableCell className="text-ws-text font-medium">
                       <Link href={`/admin/leistungsnachweise/${a.id}`} className="hover:underline">
                         {a.title}
                       </Link>
                       {(a.className || a.subjectName) && (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {a.className && (
-                            <Badge className="text-xs border-0 bg-[#1CB0F6]/15 text-[#1CB0F6]">{a.className}</Badge>
+                            <Badge className="text-xs border-0 bg-ws-blue/15 text-ws-blue">{a.className}</Badge>
                           )}
                           {a.subjectName && (
-                            <Badge className="text-xs border-0 bg-[#374151] text-[#F9FAFB]">{a.subjectName}</Badge>
+                            <Badge className="text-xs border-0 bg-ws-raised text-ws-text">{a.subjectName}</Badge>
                           )}
                         </div>
                       )}
@@ -275,11 +290,11 @@ function AssessmentsPageContent() {
                         {STATUS_LABELS[a.status]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-[#F9FAFB] font-mono text-sm">{a.accessCode}</TableCell>
-                    <TableCell className="text-[#F9FAFB] text-sm">
+                    <TableCell className="text-ws-text font-mono text-sm">{a.accessCode}</TableCell>
+                    <TableCell className="text-ws-text text-sm">
                       {a.submittedCount}/{a.participantCount}
                     </TableCell>
-                    <TableCell className="text-[#9CA3AF] text-sm">
+                    <TableCell className="text-ws-muted text-sm">
                       {new Date(a.createdAt).toLocaleDateString('de-DE')}
                     </TableCell>
                   </TableRow>

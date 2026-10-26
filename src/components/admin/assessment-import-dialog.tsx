@@ -279,13 +279,13 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
 
   return (
     <Dialog open={open} onOpenChange={(o) => !locked && onOpenChange(o)}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-[#4B5563] bg-[#1F2937] text-[#F9FAFB]">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto border-ws-line bg-ws-surface text-ws-text">
         <DialogHeader>
           <DialogTitle>Fragen aus Aufgabenblatt erzeugen</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             Kostenlos mit einem KI-Chat deiner Wahl (z. B. ChatGPT, Gemini, Claude). Die Fragen sind danach nur für Nachweise
             nutzbar, bis du sie in der Fragenverwaltung für den Übungsbetrieb freigibst.
-            {step !== 'importing' && <span className="mt-1 block font-medium text-[#1CB0F6]">{STEP_LABEL[step]}</span>}
+            {step !== 'importing' && <span className="mt-1 block font-medium text-ws-blue">{STEP_LABEL[step]}</span>}
           </DialogDescription>
         </DialogHeader>
 
@@ -298,7 +298,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
               const ref = isTask ? taskFileRef : solutionFileRef
               return (
                 <div key={kind} className="space-y-2">
-                  <Label className="text-sm font-semibold text-[#F9FAFB]">
+                  <Label className="text-sm font-semibold text-ws-text">
                     {isTask ? 'Aufgabenblatt' : 'Lösungsblatt (optional, empfohlen)'}
                   </Label>
                   <input
@@ -317,7 +317,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                     variant="outline"
                     disabled={reading !== null}
                     onClick={() => ref.current?.click()}
-                    className="min-h-11 w-full justify-start rounded-xl border-[#4B5563] text-[#F9FAFB]"
+                    className="min-h-11 w-full justify-start rounded-xl border-ws-line text-ws-text"
                   >
                     {reading === kind ? <Loader2 size={16} className="mr-2 animate-spin" /> : <FileUp size={16} className="mr-2 shrink-0" />}
                     {reading === kind ? 'Wird gelesen…' : 'PDF oder Word wählen (max. 4 MB)'}
@@ -327,7 +327,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                     onChange={(e) => setValue(e.target.value)}
                     rows={isTask ? 7 : 5}
                     placeholder="…oder Text hier einfügen. Erkannter Text kann vor dem nächsten Schritt korrigiert werden."
-                    className="rounded-xl border-[#4B5563] bg-[#111827] text-sm text-[#F9FAFB]"
+                    className="rounded-xl border-ws-line bg-ws-bg text-sm text-ws-text"
                   />
                 </div>
               )
@@ -337,25 +337,25 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
 
         {step === 'prompt' && (
           <div className="space-y-3">
-            <ol className="list-decimal space-y-1 pl-5 text-sm text-[#9CA3AF]">
+            <ol className="list-decimal space-y-1 pl-5 text-sm text-ws-muted">
               <li>Prompt kopieren.</li>
               <li>In einen KI-Chat einfügen und abschicken.</li>
               <li>Die Antwort der KI (das JSON) kopieren und im nächsten Schritt einfügen.</li>
             </ol>
             {tooLong && (
-              <Alert className="border-[#FF9600]/50 bg-[#FF9600]/10">
-                <AlertTriangle className="size-4 text-[#FF9600]" />
-                <AlertDescription className="text-[#FF9600]">
+              <Alert className="border-ws-orange/50 bg-ws-orange/10">
+                <AlertTriangle className="size-4 text-ws-orange" />
+                <AlertDescription className="text-ws-orange">
                   Der Prompt ist sehr lang und passt vielleicht nicht in einen kostenlosen Chat. Besser das Material in Teilen importieren
                   (z. B. nur einige Aufgaben je Durchgang).
                 </AlertDescription>
               </Alert>
             )}
-            <Textarea readOnly value={prompt} rows={8} className="rounded-xl border-[#4B5563] bg-[#111827] font-mono text-xs text-[#F9FAFB]" />
+            <Textarea readOnly value={prompt} rows={8} className="rounded-xl border-ws-line bg-ws-bg font-mono text-xs text-ws-text" />
             <Button
               type="button"
               onClick={() => copy(prompt)}
-              className="min-h-11 w-full rounded-xl bg-[#58CC02] text-white hover:bg-[#4CAD02]"
+              className="min-h-11 w-full rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
             >
               {copied ? <Check size={16} className="mr-2" /> : <ClipboardCopy size={16} className="mr-2" />}
               {copied ? 'Kopiert' : 'Prompt kopieren'}
@@ -372,43 +372,43 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
               onChange={(e) => setAnswer(e.target.value)}
               rows={12}
               placeholder='{ "rows": [ … ] } – Text vor/nach dem JSON oder ```-Blöcke sind okay.'
-              className="rounded-xl border-[#4B5563] bg-[#111827] font-mono text-xs text-[#F9FAFB]"
+              className="rounded-xl border-ws-line bg-ws-bg font-mono text-xs text-ws-text"
             />
           </div>
         )}
 
         {(step === 'preview' || step === 'importing') && (
           <div className="space-y-3">
-            <p className="text-sm text-[#9CA3AF]">
+            <p className="text-sm text-ws-muted">
               {items.length} Fragen erkannt, {selected.length} importierbar ausgewählt.
             </p>
             {skipped.length > 0 && (
-              <Alert className="border-[#1CB0F6]/40 bg-[#1CB0F6]/10">
-                <AlertDescription className="text-[#1CB0F6]">
+              <Alert className="border-ws-blue/40 bg-ws-blue/10">
+                <AlertDescription className="text-ws-blue">
                   Nicht umgewandelt: {skipped.join(' · ')}
                 </AlertDescription>
               </Alert>
             )}
             {blockedCount > 0 && (
-              <Alert className="border-[#FF9600]/50 bg-[#FF9600]/10">
-                <AlertTriangle className="size-4 text-[#FF9600]" />
-                <AlertDescription className="flex flex-col gap-2 text-[#FF9600]">
+              <Alert className="border-ws-orange/50 bg-ws-orange/10">
+                <AlertTriangle className="size-4 text-ws-orange" />
+                <AlertDescription className="flex flex-col gap-2 text-ws-orange">
                   {blockedCount} Fragen haben Qualitätsmängel und lassen sich so nicht importieren. Du kannst die KI bitten, sie zu überarbeiten.
-                  <Button type="button" size="sm" variant="outline" onClick={() => copy(fixPrompt())} className="min-h-11 w-fit rounded-xl border-[#FF9600] text-[#FF9600]">
+                  <Button type="button" size="sm" variant="outline" onClick={() => copy(fixPrompt())} className="min-h-11 w-fit rounded-xl border-ws-orange text-ws-orange">
                     <ClipboardCopy size={14} className="mr-1.5" />
                     Korrektur-Prompt kopieren
                   </Button>
                 </AlertDescription>
               </Alert>
             )}
-            <div className="max-h-96 space-y-3 overflow-y-auto rounded-xl bg-[#111827] p-3">
+            <div className="max-h-96 space-y-3 overflow-y-auto rounded-xl bg-ws-bg p-3">
               {items.map((q, i) => {
                 const blockers = quality[i].blockers
                 const warnings = quality[i].warnings
                 const unsure = q.needs_review && !confirmed.has(i)
                 const canInclude = q.errors.length === 0 && !q.duplicate
                 return (
-                  <div key={i} className="space-y-2 border-b border-[#374151] pb-3 last:border-0 last:pb-0">
+                  <div key={i} className="space-y-2 border-b border-ws-raised pb-3 last:border-0 last:pb-0">
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={included.has(i) && importable(i)}
@@ -418,21 +418,21 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                         className="mt-1 size-5"
                       />
                       <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="text-sm leading-snug text-[#F9FAFB]">{q.question_text || '(kein Fragetext)'}</p>
+                        <p className="text-sm leading-snug text-ws-text">{q.question_text || '(kein Fragetext)'}</p>
                         <div className="flex flex-wrap gap-1.5">
-                          <Badge variant="outline" className="border-[#4B5563] text-[#9CA3AF]">
+                          <Badge variant="outline" className="border-ws-line text-ws-muted">
                             {q.fach_code}{q.fach_defaulted ? ' (Standardfach)' : ''}
                           </Badge>
-                          {q.duplicate && <Badge variant="outline" className="border-[#FF9600] text-[#FF9600]">Duplikat</Badge>}
-                          {unsure && <Badge variant="outline" className="border-[#FF9600] text-[#FF9600]">Antwort ungeprüft</Badge>}
+                          {q.duplicate && <Badge variant="outline" className="border-ws-orange text-ws-orange">Duplikat</Badge>}
+                          {unsure && <Badge variant="outline" className="border-ws-orange text-ws-orange">Antwort ungeprüft</Badge>}
                           {q.errors.map((e) => (
-                            <Badge key={e} variant="outline" className="border-[#FF4B4B] text-[#FF4B4B]">{e}</Badge>
+                            <Badge key={e} variant="outline" className="border-ws-red text-ws-red">{e}</Badge>
                           ))}
                           {blockers.map((b) => (
-                            <Badge key={b.code} variant="outline" className="border-[#FF4B4B] text-[#FF4B4B]">{b.message}</Badge>
+                            <Badge key={b.code} variant="outline" className="border-ws-red text-ws-red">{b.message}</Badge>
                           ))}
                           {warnings.map((w) => (
-                            <Badge key={w.code} variant="outline" className="border-[#4B5563] text-[#9CA3AF]">{w.message}</Badge>
+                            <Badge key={w.code} variant="outline" className="border-ws-line text-ws-muted">{w.message}</Badge>
                           ))}
                         </div>
                         {canInclude && q.options.length >= 2 && (
@@ -443,11 +443,11 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                             >
                               <SelectTrigger
                                 aria-label={`Richtige Antwort für Frage ${i + 1}`}
-                                className={`min-h-11 rounded-xl bg-[#1F2937] text-[#F9FAFB] ${unsure ? 'border-[#FF9600]' : 'border-[#4B5563]'}`}
+                                className={`min-h-11 rounded-xl bg-ws-surface text-ws-text ${unsure ? 'border-ws-orange' : 'border-ws-line'}`}
                               >
                                 <SelectValue placeholder="Richtige Antwort wählen…" />
                               </SelectTrigger>
-                              <SelectContent className="border-[#4B5563] bg-[#1F2937] text-[#F9FAFB]">
+                              <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
                                 {q.options.map((o, j) => (
                                   <SelectItem key={j} value={String(j)}>
                                     {LETTERS[j]}: {o.slice(0, 90)}
@@ -461,7 +461,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setCorrect(i, q.correct_index!)}
-                                className="min-h-11 shrink-0 rounded-xl border-[#58CC02] text-[#58CC02]"
+                                className="min-h-11 shrink-0 rounded-xl border-ws-green text-ws-green"
                               >
                                 <Check size={14} className="mr-1" /> Bestätigen
                               </Button>
@@ -477,7 +477,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
           </div>
         )}
 
-        {error && <p className="text-sm text-[#FF4B4B]">{error}</p>}
+        {error && <p className="text-sm text-ws-red">{error}</p>}
 
         <DialogFooter className="gap-2">
           {step === 'material' && (
@@ -487,7 +487,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                 type="button"
                 onClick={buildPrompt}
                 disabled={busy || reading !== null || !taskReady}
-                className="min-h-11 rounded-xl bg-[#58CC02] text-white hover:bg-[#4CAD02]"
+                className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
               >
                 {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Prompt erstellen
@@ -497,7 +497,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
           {step === 'prompt' && (
             <>
               <Button type="button" variant="ghost" onClick={() => setStep('material')}><ArrowLeft size={16} className="mr-1" />Zurück</Button>
-              <Button type="button" onClick={() => setStep('answer')} className="min-h-11 rounded-xl bg-[#58CC02] text-white hover:bg-[#4CAD02]">
+              <Button type="button" onClick={() => setStep('answer')} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
                 Weiter: Antwort einfügen
               </Button>
             </>
@@ -509,7 +509,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                 type="button"
                 onClick={checkAnswer}
                 disabled={busy || answer.trim().length < 2}
-                className="min-h-11 rounded-xl bg-[#58CC02] text-white hover:bg-[#4CAD02]"
+                className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
               >
                 {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Prüfen
@@ -523,7 +523,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
                 type="button"
                 onClick={importSelected}
                 disabled={step === 'importing' || selected.length === 0}
-                className="min-h-11 rounded-xl bg-[#58CC02] text-white hover:bg-[#4CAD02]"
+                className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
               >
                 {step === 'importing' && <Loader2 className="mr-2 size-4 animate-spin" />}
                 {selected.length} Fragen importieren

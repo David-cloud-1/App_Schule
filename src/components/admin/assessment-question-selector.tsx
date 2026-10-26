@@ -81,9 +81,9 @@ export function AssessmentQuestionSelector({ selectedIds, onChange, onLoaded }: 
 
   if (failed) {
     return (
-      <div className="rounded-xl border border-[#4B5563] bg-[#111827] p-4 text-center">
-        <p className="text-sm text-[#9CA3AF]">Fragen konnten nicht geladen werden.</p>
-        <Button type="button" variant="outline" size="sm" onClick={load} className="mt-3 rounded-xl border-[#4B5563] text-[#9CA3AF]">
+      <div className="rounded-xl border border-ws-line bg-ws-bg p-4 text-center">
+        <p className="text-sm text-ws-muted">Fragen konnten nicht geladen werden.</p>
+        <Button type="button" variant="outline" size="sm" onClick={load} className="mt-3 rounded-xl border-ws-line text-ws-muted">
           Erneut versuchen
         </Button>
       </div>
@@ -98,7 +98,7 @@ export function AssessmentQuestionSelector({ selectedIds, onChange, onLoaded }: 
         variant="outline"
         size="sm"
         onClick={() => setImportOpen(true)}
-        className="min-h-11 rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+        className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
       >
         <FileUp size={14} className="mr-1.5" />
         Fragen aus Aufgabenblatt erzeugen

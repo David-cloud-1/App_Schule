@@ -37,29 +37,29 @@ export function GradingScaleEditor({ scale, onChange, error }: Props) {
       <Label>Notenschlüssel (ab wie viel % gilt die Note)</Label>
       <div className="grid grid-cols-3 gap-2">
         {scale.map((b) => (
-          <div key={b.grade} className="flex items-center gap-2 bg-[#111827] border border-[#4B5563] rounded-xl px-3 py-2">
-            <span className="text-sm font-bold text-[#F9FAFB] w-4">{b.grade}</span>
+          <div key={b.grade} className="flex items-center gap-2 bg-ws-bg border border-ws-line rounded-xl px-3 py-2">
+            <span className="text-sm font-bold text-ws-text w-4">{b.grade}</span>
             {b.grade === 6 ? (
-              <span className="text-sm text-[#6B7280]">ab 0 %</span>
+              <span className="text-sm text-ws-faint">ab 0 %</span>
             ) : (
               <div className="flex items-center gap-1">
-                <span className="text-xs text-[#6B7280]">ab</span>
+                <span className="text-xs text-ws-faint">ab</span>
                 <Input
                   type="number"
                   min={0}
                   max={100}
                   value={b.minPercent}
                   onChange={(e) => setBoundary(b.grade, e.target.value)}
-                  className="h-7 w-14 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] text-sm px-2"
+                  className="h-7 w-14 bg-ws-surface border-ws-line text-ws-text text-sm px-2"
                 />
-                <span className="text-xs text-[#6B7280]">%</span>
+                <span className="text-xs text-ws-faint">%</span>
               </div>
             )}
           </div>
         ))}
       </div>
-      {error && <p className="text-xs text-[#FF4B4B]">{error}</p>}
-      <p className="text-xs text-[#6B7280]">Vorbelegt mit dem IHK-Schlüssel — bei Bedarf anpassbar.</p>
+      {error && <p className="text-xs text-ws-red">{error}</p>}
+      <p className="text-xs text-ws-faint">Vorbelegt mit dem IHK-Schlüssel — bei Bedarf anpassbar.</p>
     </div>
   )
 }

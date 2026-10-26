@@ -49,7 +49,7 @@ interface Props {
 }
 
 export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, classSuggestions, schoolYears, disabled }: Props) {
-  const triggerClass = 'h-11 bg-[#111827] border-[#4B5563] text-[#F9FAFB]'
+  const triggerClass = 'h-11 bg-ws-bg border-ws-line text-ws-text'
   const listId = `${idPrefix}-klassen`
   // Das gespeicherte Schuljahr muss immer wählbar sein
   const years = schoolYears.includes(value.schoolYear) ? schoolYears : [value.schoolYear, ...schoolYears]
@@ -62,7 +62,7 @@ export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, 
           <SelectTrigger id={`${idPrefix}-schuljahr`} className={triggerClass}>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             {years.map((y) => (
               <SelectItem key={y} value={y}>{y}</SelectItem>
             ))}
@@ -71,7 +71,7 @@ export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-klasse`}>Klasse <span className="font-normal text-[#6B7280]">— optional</span></Label>
+        <Label htmlFor={`${idPrefix}-klasse`}>Klasse <span className="font-normal text-ws-faint">— optional</span></Label>
         <Input
           id={`${idPrefix}-klasse`}
           list={listId}
@@ -81,7 +81,7 @@ export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, 
           placeholder="z. B. SP11a"
           autoComplete="off"
           disabled={disabled}
-          className="h-11 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+          className="h-11 bg-ws-bg border-ws-line text-ws-text"
         />
         <datalist id={listId}>
           {classSuggestions.map((c) => (
@@ -91,7 +91,7 @@ export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, 
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-fach`}>Fach <span className="font-normal text-[#6B7280]">— optional</span></Label>
+        <Label htmlFor={`${idPrefix}-fach`}>Fach <span className="font-normal text-ws-faint">— optional</span></Label>
         <Select
           value={value.subjectId ?? NO_SUBJECT}
           onValueChange={(v) => onChange({ ...value, subjectId: v === NO_SUBJECT ? null : v })}
@@ -100,7 +100,7 @@ export function AssessmentCategoryFields({ idPrefix, value, onChange, subjects, 
           <SelectTrigger id={`${idPrefix}-fach`} className={triggerClass}>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             <SelectItem value={NO_SUBJECT}>Ohne Fach</SelectItem>
             {subjects.map((s) => (
               <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>

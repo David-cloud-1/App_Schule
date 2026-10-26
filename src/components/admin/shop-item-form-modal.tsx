@@ -136,10 +136,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-md">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-md">
         <DialogHeader>
           <DialogTitle>{isEdit ? `${hofShortName}-Item bearbeiten` : `Neues ${hofShortName}-Item`}</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             {isEdit
               ? 'Item-Details anpassen. Wirkt nur auf künftige Käufe.'
               : `Neues Sammelstück für den ${hofName} anlegen.`}
@@ -153,10 +153,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               id="name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               placeholder="z. B. Roter Sattelschlepper"
             />
-            {errors.name && <p className="text-xs text-[#FF4B4B]">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-ws-red">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
@@ -166,10 +166,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={200}
             />
-            {errors.description && <p className="text-xs text-[#FF4B4B]">{errors.description}</p>}
+            {errors.description && <p className="text-xs text-ws-red">{errors.description}</p>}
           </div>
 
           <div className="space-y-2">
@@ -178,10 +178,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               value={form.category}
               onValueChange={(v) => setForm({ ...form, category: v as HofCategory, icon_key: '' })}
             >
-              <SelectTrigger id="category" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger id="category" className="bg-ws-bg border-ws-line text-ws-text">
                 <SelectValue placeholder="Kategorie wählen" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 {getHofCategories(departmentCode).map((c) => (
                   <SelectItem key={c.value} value={c.value}>
                     {c.label}
@@ -189,7 +189,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
                 ))}
               </SelectContent>
             </Select>
-            {errors.category && <p className="text-xs text-[#FF4B4B]">{errors.category}</p>}
+            {errors.category && <p className="text-xs text-ws-red">{errors.category}</p>}
           </div>
 
           <div className="space-y-2">
@@ -200,7 +200,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               value={form.icon_key}
               onChange={(iconKey) => setForm({ ...form, icon_key: iconKey })}
             />
-            {errors.icon_key && <p className="text-xs text-[#FF4B4B]">{errors.icon_key}</p>}
+            {errors.icon_key && <p className="text-xs text-ws-red">{errors.icon_key}</p>}
           </div>
 
           <div className="space-y-2">
@@ -212,9 +212,9 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               step={1}
               value={form.price}
               onChange={(e) => setForm({ ...form, price: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
             />
-            {errors.price && <p className="text-xs text-[#FF4B4B]">{errors.price}</p>}
+            {errors.price && <p className="text-xs text-ws-red">{errors.price}</p>}
           </div>
 
           <div className="space-y-2">
@@ -223,10 +223,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
               value={form.rarity_override || 'auto'}
               onValueChange={(v) => setForm({ ...form, rarity_override: v === 'auto' ? '' : (v as HofRarity) })}
             >
-              <SelectTrigger id="rarity" className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger id="rarity" className="bg-ws-bg border-ws-line text-ws-text">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="auto">
                   Automatisch ({hofRarityLabel(getEffectiveRarity(Number(form.price) || 0))})
                 </SelectItem>
@@ -237,7 +237,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-[#6B7280]">
+            <p className="text-xs text-ws-faint">
               Rein optisch (Rahmen und Glanz). Automatisch richtet sich nach dem Preis.
             </p>
           </div>
@@ -254,7 +254,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEdit ? 'Speichern' : 'Erstellen'}

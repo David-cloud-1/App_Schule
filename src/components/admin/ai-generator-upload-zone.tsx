@@ -134,12 +134,12 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Klassenstufe */}
         <div className="space-y-1.5">
-          <Label className="text-[#F9FAFB] text-sm">Klassenstufe</Label>
+          <Label className="text-ws-text text-sm">Klassenstufe</Label>
           <Select value={classLevel} onValueChange={setClassLevel}>
-            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Klassenstufen</SelectItem>
               {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
@@ -148,12 +148,12 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
 
         {/* Fach */}
         <div className="space-y-1.5">
-          <Label className="text-[#F9FAFB] text-sm">Fach</Label>
+          <Label className="text-ws-text text-sm">Fach</Label>
           <Select value={subjectCode} onValueChange={setSubjectCode}>
-            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+            <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
               <SelectValue placeholder="Fach wählen…" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Fächer</SelectItem>
               {subjects.map((s) => (
                 <SelectItem key={s.id} value={s.code}>{s.code} – {s.name}</SelectItem>
@@ -164,10 +164,10 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
 
         {/* Thema */}
         <div className="space-y-1.5">
-          <Label className="text-[#F9FAFB] text-sm">
+          <Label className="text-ws-text text-sm">
             Thema
             {subjectCode !== 'all' && loadingTopics && (
-              <Loader2 className="inline w-3 h-3 ml-1 animate-spin text-[#9CA3AF]" />
+              <Loader2 className="inline w-3 h-3 ml-1 animate-spin text-ws-muted" />
             )}
           </Label>
           <Select
@@ -175,10 +175,10 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
             onValueChange={setTopicId}
             disabled={subjectCode === 'all' || loadingTopics}
           >
-            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] disabled:opacity-50">
+            <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text disabled:opacity-50">
               <SelectValue placeholder={subjectCode === 'all' ? 'Erst Fach wählen' : 'Thema wählen…'} />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Kein Thema</SelectItem>
               {topics.map((t) => (
                 <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -190,17 +190,17 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
 
       {/* Context hint */}
       {(subjectCode !== 'all' || topicId !== 'all') && (
-        <p className="text-xs text-[#9CA3AF]">
+        <p className="text-xs text-ws-muted">
           Claude generiert Fragen gezielt für{' '}
-          {selectedSubject ? <span className="text-[#1CB0F6]">{selectedSubject.code}</span> : null}
+          {selectedSubject ? <span className="text-ws-blue">{selectedSubject.code}</span> : null}
           {topicId !== 'all' && topics.length > 0 && (
-            <> · <span className="text-[#1CB0F6]">{topics.find((t) => t.id === topicId)?.name}</span></>
+            <> · <span className="text-ws-blue">{topics.find((t) => t.id === topicId)?.name}</span></>
           )}
           {' '}— alle Entwürfe kommen direkt mit diesen Werten importiert.
         </p>
       )}
       {subjectCode === 'all' && (
-        <p className="text-xs text-[#9CA3AF]">
+        <p className="text-xs text-ws-muted">
           Fach und Thema werden auf alle generierten Entwürfe angewendet — im Entwurfs-Editor nachträglich änderbar.
         </p>
       )}
@@ -209,8 +209,8 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
       <div
         className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer select-none ${
           dragOver
-            ? 'border-[#58CC02] bg-[#58CC02]/5'
-            : 'border-[#4B5563] hover:border-[#9CA3AF] bg-[#1F2937]'
+            ? 'border-ws-green bg-ws-green/5'
+            : 'border-ws-line hover:border-ws-muted bg-ws-surface'
         }`}
         onDrop={onDrop}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
@@ -219,9 +219,9 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
         role="button"
         aria-label="Datei hochladen"
       >
-        <Upload className="w-10 h-10 text-[#9CA3AF] mx-auto mb-3" />
-        <p className="text-[#F9FAFB] font-semibold">PDF oder DOCX hier ablegen</p>
-        <p className="text-sm text-[#9CA3AF] mt-1">
+        <Upload className="w-10 h-10 text-ws-muted mx-auto mb-3" />
+        <p className="text-ws-text font-semibold">PDF oder DOCX hier ablegen</p>
+        <p className="text-sm text-ws-muted mt-1">
           oder klicken zum Auswählen · mehrere Dateien möglich · max. 50 MB pro Datei
         </p>
         <input
@@ -240,23 +240,23 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
             <div
               key={file.name}
               className={`flex items-center gap-3 p-3 rounded-xl border ${
-                error ? 'border-[#FF4B4B] bg-[#FF4B4B]/5' : 'border-[#4B5563] bg-[#1F2937]'
+                error ? 'border-ws-red bg-ws-red/5' : 'border-ws-line bg-ws-surface'
               }`}
             >
-              <FileText className={`w-5 h-5 flex-shrink-0 ${error ? 'text-[#FF4B4B]' : 'text-[#1CB0F6]'}`} />
+              <FileText className={`w-5 h-5 flex-shrink-0 ${error ? 'text-ws-red' : 'text-ws-blue'}`} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#F9FAFB] truncate">{file.name}</p>
+                <p className="text-sm text-ws-text truncate">{file.name}</p>
                 {error ? (
-                  <p className="text-xs text-[#FF4B4B]">{error}</p>
+                  <p className="text-xs text-ws-red">{error}</p>
                 ) : (
-                  <p className="text-xs text-[#9CA3AF]">{formatSize(file.size)}</p>
+                  <p className="text-xs text-ws-muted">{formatSize(file.size)}</p>
                 )}
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={(e) => { e.stopPropagation(); setPending((p) => p.filter((x) => x.file.name !== file.name)) }}
-                className="text-[#9CA3AF] hover:text-[#FF4B4B] flex-shrink-0"
+                className="text-ws-muted hover:text-ws-red flex-shrink-0"
               >
                 <X className="w-4 h-4" />
               </Button>
@@ -267,7 +267,7 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
             <Button
               onClick={handleUpload}
               disabled={uploading || pending.every((p) => p.error)}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {uploading ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Wird hochgeladen…</>

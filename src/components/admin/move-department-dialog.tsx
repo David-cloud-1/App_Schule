@@ -85,25 +85,25 @@ export function MoveDepartmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-sm">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-sm">
         <DialogHeader>
           <DialogTitle>In anderen Fachbereich verschieben</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             {userLabel} wechselt sofort in den gewählten Fachbereich — passend für falsch registrierte Konten.
             {isManager && ' Die Verwaltungsrechte gelten danach für den neuen Fachbereich.'}
           </DialogDescription>
         </DialogHeader>
 
         <Select value={target} onValueChange={setTarget}>
-          <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+          <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
             <SelectValue placeholder="Zielbereich wählen…" />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             {otherDepartments.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-[#9CA3AF]">Kein anderer Fachbereich vorhanden</div>
+              <div className="px-2 py-1.5 text-sm text-ws-muted">Kein anderer Fachbereich vorhanden</div>
             ) : (
               otherDepartments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="focus:bg-[#111827] focus:text-[#F9FAFB]">
+                <SelectItem key={d.id} value={d.id} className="focus:bg-ws-bg focus:text-ws-text">
                   {d.name}
                 </SelectItem>
               ))
@@ -118,7 +118,7 @@ export function MoveDepartmentDialog({
           <Button
             onClick={handleConfirm}
             disabled={submitting || !target}
-            className="bg-[#1CB0F6] hover:bg-[#17a0e0] text-white rounded-xl"
+            className="bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent rounded-xl"
           >
             {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Verschieben

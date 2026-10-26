@@ -20,7 +20,7 @@ interface Props {
 export function HofIconPicker({ departmentCode, category, value, onChange }: Props) {
   if (!category) {
     return (
-      <p className="text-xs text-[#6B7280] py-2">Zuerst eine Kategorie auswählen.</p>
+      <p className="text-xs text-ws-faint py-2">Zuerst eine Kategorie auswählen.</p>
     )
   }
 
@@ -28,7 +28,7 @@ export function HofIconPicker({ departmentCode, category, value, onChange }: Pro
 
   if (icons.length === 0) {
     return (
-      <p className="text-xs text-[#6B7280] py-2">
+      <p className="text-xs text-ws-faint py-2">
         Für deinen Fachbereich sind für diese Kategorie noch keine Illustrationen hinterlegt.
       </p>
     )
@@ -49,8 +49,8 @@ export function HofIconPicker({ departmentCode, category, value, onChange }: Pro
             className={cn(
               'flex flex-col items-center justify-center gap-1 rounded-xl border p-2 min-h-[44px] transition-all duration-200 active:scale-95',
               selected
-                ? 'border-[#FFD700] bg-[#FFD700]/10'
-                : 'border-[#4B5563] bg-[#111827] hover:border-[#9CA3AF]',
+                ? 'border-ws-gold bg-ws-gold/10'
+                : 'border-ws-line bg-ws-bg hover:border-ws-muted',
             )}
           >
             {hatBetriebSprite(departmentCode, icon.key) ? (
@@ -59,7 +59,7 @@ export function HofIconPicker({ departmentCode, category, value, onChange }: Pro
             ) : (
               <icon.Svg className="w-7 h-7" />
             )}
-            <span className="text-[9px] leading-tight text-[#9CA3AF] text-center line-clamp-2">
+            <span className="text-[9px] leading-tight text-ws-muted text-center line-clamp-2">
               {icon.label}
             </span>
           </button>

@@ -20,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 
 type Subject = { id: string; code: string; name: string }
 type Topic = { id: string; name: string; subject_id: string }
@@ -30,6 +32,7 @@ export default function TopicsPage() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const [newName, setNewName] = useState('')
   const [newSubjectId, setNewSubjectId] = useState<string>('')
@@ -63,16 +66,21 @@ export default function TopicsPage() {
 
   async function loadTopics() {
     setLoading(true)
+    setLoadFailed(false)
     const url =
       selectedSubjectId === 'all'
         ? '/api/admin/topics'
         : `/api/admin/topics?subject_id=${selectedSubjectId}`
-    const res = await fetch(url)
-    if (res.ok) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('load failed')
       const data = await res.json()
       setTopics(data.topics ?? [])
+    } catch {
+      setLoadFailed(true)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function handleCreate(e: React.FormEvent) {
@@ -150,18 +158,20 @@ export default function TopicsPage() {
 
   return (
     <div className="space-y-6">
+      <AdminPageHeader title="Themen" description="Themen und Klassenstufen pflegen." />
+
       {/* Create new topic */}
-      <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
-        <h2 className="text-base font-semibold text-[#F9FAFB] mb-4 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-[#58CC02]" />
+      <div className="bg-ws-surface border border-ws-line rounded-2xl p-5">
+        <h2 className="text-base font-semibold text-ws-text mb-4 flex items-center gap-2">
+          <Plus className="w-4 h-4 text-ws-green" />
           Neues Thema anlegen
         </h2>
         <form onSubmit={handleCreate} className="flex flex-wrap gap-3">
           <Select value={newSubjectId} onValueChange={setNewSubjectId}>
-            <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-36">
+            <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text w-36">
               <SelectValue placeholder="Fach" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               {subjects.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.code} — {s.name}
@@ -174,12 +184,12 @@ export default function TopicsPage() {
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Thema-Name (z.B. Volkswirtschaft)"
             maxLength={100}
-            className="flex-1 min-w-48 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+            className="flex-1 min-w-48 bg-ws-bg border-ws-line text-ws-text"
           />
           <Button
             type="submit"
             disabled={creating || !newName.trim() || !newSubjectId}
-            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
           >
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             Erstellen
@@ -190,38 +200,38 @@ export default function TopicsPage() {
       {/* Filter + list */}
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h2 className="text-base font-semibold text-[#F9FAFB] flex items-center gap-2">
-            <Tag className="w-4 h-4 text-[#1CB0F6]" />
+          <h2 className="text-base font-semibold text-ws-text flex items-center gap-2">
+            <Tag className="w-4 h-4 text-ws-blue" />
             Alle Themen
             {!loading && (
-              <span className="text-xs text-[#9CA3AF] font-normal">
+              <span className="text-xs text-ws-muted font-normal">
                 ({filteredTopics.length})
               </span>
             )}
           </h2>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ws-muted" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Thema suchen…"
-                className="pl-8 h-9 w-48 bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-sm"
+                className="pl-8 h-9 w-48 bg-ws-bg border-ws-line text-ws-text text-sm"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9CA3AF] hover:text-[#F9FAFB]"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ws-muted hover:text-ws-text"
                 >
                   <X className="w-3 h-3" />
                 </button>
               )}
             </div>
             <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-              <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] w-44">
+              <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text w-44">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="all">Alle Fächer</SelectItem>
                 {subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
@@ -233,32 +243,38 @@ export default function TopicsPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-[#9CA3AF]" />
-          </div>
+        {loadFailed ? (
+          <AdminErrorState message="Die Themen konnten gerade nicht geladen werden." onRetry={loadTopics} />
+        ) : loading ? (
+          <AdminLoadingState variant="list" rows={4} label="Themen werden geladen …" />
         ) : filteredTopics.length === 0 ? (
-          <div className="text-center py-12 text-[#9CA3AF] text-sm">
-            {searchQuery
-              ? `Kein Thema gefunden für „${searchQuery}".`
-              : 'Noch keine Themen vorhanden. Lege ein neues Thema an.'}
-          </div>
+          searchQuery ? (
+            <div className="text-center py-12 text-ws-muted text-sm">
+              {`Kein Thema gefunden für „${searchQuery}".`}
+            </div>
+          ) : (
+            <AdminEmptyState
+              icon={Tag}
+              title="Noch keine Themen"
+              description="Lege oben das erste Thema an und ordne es einem Fach zu."
+            />
+          )
         ) : (
           <div className="space-y-4">
             {Object.entries(groupedTopics).map(([subjectId, subTopics]) => (
-              <div key={subjectId} className="bg-[#1F2937] border border-[#4B5563] rounded-2xl overflow-hidden">
-                <div className="px-4 py-2.5 bg-[#374151] border-b border-[#4B5563]">
-                  <span className="text-sm font-semibold text-[#F9FAFB]">
+              <div key={subjectId} className="bg-ws-surface border border-ws-line rounded-2xl overflow-hidden">
+                <div className="px-4 py-2.5 bg-ws-raised border-b border-ws-line">
+                  <span className="text-sm font-semibold text-ws-text">
                     {subjectCode(subjectId)}
                   </span>
-                  <span className="text-xs text-[#9CA3AF] ml-1.5">
+                  <span className="text-xs text-ws-muted ml-1.5">
                     — {subjects.find((s) => s.id === subjectId)?.name}
                   </span>
-                  <span className="text-xs text-[#9CA3AF] ml-2">
+                  <span className="text-xs text-ws-muted ml-2">
                     · {subTopics.length} {subTopics.length === 1 ? 'Thema' : 'Themen'}
                   </span>
                 </div>
-                <ul className="divide-y divide-[#374151]">
+                <ul className="divide-y divide-ws-raised">
                   {subTopics.map((topic) => (
                     <li key={topic.id} className="flex items-center gap-3 px-4 py-3">
                       {editingId === topic.id ? (
@@ -268,7 +284,7 @@ export default function TopicsPage() {
                             onChange={(e) => setEditName(e.target.value)}
                             autoFocus
                             maxLength={100}
-                            className="flex-1 bg-[#111827] border-[#4B5563] text-[#F9FAFB] h-8 text-sm"
+                            className="flex-1 bg-ws-bg border-ws-line text-ws-text h-8 text-sm"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleSave(topic.id)
                               if (e.key === 'Escape') setEditingId(null)
@@ -278,7 +294,7 @@ export default function TopicsPage() {
                             size="sm"
                             onClick={() => handleSave(topic.id)}
                             disabled={saving}
-                            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white h-8 px-2"
+                            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent h-8 px-2"
                           >
                             {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                           </Button>
@@ -286,19 +302,19 @@ export default function TopicsPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => setEditingId(null)}
-                            className="text-[#9CA3AF] hover:text-[#F9FAFB] h-8 px-2"
+                            className="text-ws-muted hover:text-ws-text h-8 px-2"
                           >
                             <X className="w-3.5 h-3.5" />
                           </Button>
                         </>
                       ) : (
                         <>
-                          <span className="flex-1 text-sm text-[#F9FAFB]">{topic.name}</span>
+                          <span className="flex-1 text-sm text-ws-text">{topic.name}</span>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => startEdit(topic)}
-                            className="text-[#9CA3AF] hover:text-[#F9FAFB] h-7 w-7 p-0"
+                            className="text-ws-muted hover:text-ws-text h-7 w-7 p-0"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
@@ -307,7 +323,7 @@ export default function TopicsPage() {
                             variant="ghost"
                             onClick={() => setDeleteTarget(topic)}
                             disabled={deletingId === topic.id}
-                            className="text-[#9CA3AF] hover:text-[#FF4B4B] h-7 w-7 p-0"
+                            className="text-ws-muted hover:text-ws-red h-7 w-7 p-0"
                           >
                             {deletingId === topic.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -328,14 +344,14 @@ export default function TopicsPage() {
 
       {/* Delete confirmation dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <DialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-[#FF4B4B]" />
+              <AlertTriangle className="w-5 h-5 text-ws-red" />
               Thema löschen?
             </DialogTitle>
-            <DialogDescription className="text-[#9CA3AF]">
-              Das Thema <span className="font-semibold text-[#F9FAFB]">„{deleteTarget?.name}"</span> wird
+            <DialogDescription className="text-ws-muted">
+              Das Thema <span className="font-semibold text-ws-text">„{deleteTarget?.name}"</span> wird
               unwiderruflich gelöscht. Fragen, die diesem Thema zugewiesen sind, verlieren ihre Zuordnung.
             </DialogDescription>
           </DialogHeader>
@@ -343,13 +359,13 @@ export default function TopicsPage() {
             <Button
               variant="ghost"
               onClick={() => setDeleteTarget(null)}
-              className="text-[#9CA3AF] hover:text-[#F9FAFB]"
+              className="text-ws-muted hover:text-ws-text"
             >
               Abbrechen
             </Button>
             <Button
               onClick={handleDeleteConfirmed}
-              className="bg-[#FF4B4B] hover:bg-[#e04444] text-white"
+              className="bg-ws-red hover:bg-ws-red-hover text-ws-on-accent"
             >
               Löschen
             </Button>

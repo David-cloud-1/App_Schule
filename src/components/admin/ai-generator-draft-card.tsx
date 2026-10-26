@@ -23,40 +23,40 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
 
   return (
     <div
-      className={`p-5 rounded-2xl border bg-[#1F2937] space-y-4 ${
+      className={`p-5 rounded-2xl border bg-ws-surface space-y-4 ${
         needsReview
-          ? 'border-[#FF9600]/50'
+          ? 'border-ws-orange/50'
           : draft.status === 'accepted'
-          ? 'border-[#58CC02]/40'
+          ? 'border-ws-green/40'
           : draft.status === 'rejected'
-          ? 'border-[#4B5563] opacity-60'
-          : 'border-[#4B5563]'
+          ? 'border-ws-line opacity-60'
+          : 'border-ws-line'
       }`}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <p className="text-[#F9FAFB] font-medium leading-relaxed flex-1">
+        <p className="text-ws-text font-medium leading-relaxed flex-1">
           {draft.question_text}
         </p>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           {needsReview && (
-            <Badge className="bg-[#FF9600]/20 text-[#FF9600] border border-[#FF9600]/50 text-xs whitespace-nowrap">
+            <Badge className="bg-ws-orange/20 text-ws-orange border border-ws-orange/50 text-xs whitespace-nowrap">
               <AlertTriangle className="w-3 h-3 mr-1" />
               Überprüfung nötig
             </Badge>
           )}
           {draft.status === 'accepted' && (
-            <Badge className="bg-[#58CC02]/20 text-[#58CC02] border border-[#58CC02]/50 text-xs">
+            <Badge className="bg-ws-green/20 text-ws-green border border-ws-green/50 text-xs">
               Akzeptiert
             </Badge>
           )}
           {draft.status === 'rejected' && (
-            <Badge className="bg-[#374151] text-[#9CA3AF] border border-[#4B5563] text-xs">
+            <Badge className="bg-ws-raised text-ws-muted border border-ws-line text-xs">
               Abgelehnt
             </Badge>
           )}
           {!isDone && daysLeft <= 2 && (
-            <span className="text-xs text-[#FF4B4B]">Läuft in {daysLeft}T ab</span>
+            <span className="text-xs text-ws-red">Läuft in {daysLeft}T ab</span>
           )}
         </div>
       </div>
@@ -68,13 +68,13 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
             key={i}
             className={`flex items-start gap-2 p-3 rounded-xl text-sm border ${
               i === draft.correct_index
-                ? 'bg-[#58CC02]/10 border-[#58CC02]/40 text-[#58CC02]'
-                : 'bg-[#111827] border-[#374151] text-[#9CA3AF]'
+                ? 'bg-ws-green/10 border-ws-green/40 text-ws-green'
+                : 'bg-ws-bg border-ws-raised text-ws-muted'
             }`}
           >
             <span
               className={`font-bold flex-shrink-0 w-5 ${
-                i === draft.correct_index ? 'text-[#58CC02]' : 'text-[#6B7280]'
+                i === draft.correct_index ? 'text-ws-green' : 'text-ws-faint'
               }`}
             >
               {String.fromCharCode(65 + i)}.
@@ -86,8 +86,8 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
 
       {/* Explanation */}
       {draft.explanation && (
-        <div className="text-sm text-[#9CA3AF] bg-[#111827] rounded-xl p-3">
-          <span className="text-[#6B7280] font-medium">Erklärung: </span>
+        <div className="text-sm text-ws-muted bg-ws-bg rounded-xl p-3">
+          <span className="text-ws-faint font-medium">Erklärung: </span>
           {draft.explanation}
         </div>
       )}
@@ -96,17 +96,17 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {draft.subject_code && (
-            <Badge variant="outline" className="border-[#4B5563] text-[#9CA3AF] text-xs">
+            <Badge variant="outline" className="border-ws-line text-ws-muted text-xs">
               {draft.subject_code}
             </Badge>
           )}
           {draft.difficulty && (
-            <Badge variant="outline" className="border-[#4B5563] text-[#9CA3AF] text-xs capitalize">
+            <Badge variant="outline" className="border-ws-line text-ws-muted text-xs capitalize">
               {draft.difficulty}
             </Badge>
           )}
           {!draft.subject_code && !isDone && (
-            <span className="text-xs text-[#FF9600]">Kein Fach gesetzt</span>
+            <span className="text-xs text-ws-orange">Kein Fach gesetzt</span>
           )}
         </div>
 
@@ -116,7 +116,7 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
               variant="ghost"
               size="sm"
               onClick={() => onEdit(draft)}
-              className="text-[#9CA3AF] hover:text-[#F9FAFB] rounded-xl"
+              className="text-ws-muted hover:text-ws-text rounded-xl"
             >
               <Edit2 className="w-4 h-4 mr-1.5" />
               Bearbeiten
@@ -125,7 +125,7 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
               variant="outline"
               size="sm"
               onClick={() => onReject(draft.id)}
-              className="border-[#FF4B4B] text-[#FF4B4B] hover:bg-[#FF4B4B]/10 rounded-xl"
+              className="border-ws-red text-ws-red hover:bg-ws-red/10 rounded-xl"
             >
               <X className="w-4 h-4 mr-1" />
               Ablehnen
@@ -141,7 +141,7 @@ export function AiGeneratorDraftCard({ draft, onAccept, onReject, onEdit }: Prop
                   ? 'Fach und Schwierigkeitsgrad müssen gesetzt sein'
                   : undefined
               }
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Check className="w-4 h-4 mr-1" />
               Akzeptieren

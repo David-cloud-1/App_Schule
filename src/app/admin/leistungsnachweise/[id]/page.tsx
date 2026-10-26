@@ -48,6 +48,8 @@ import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessmen
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminErrorState } from '@/components/admin/admin-states'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
 
@@ -254,14 +256,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (failed || !detail) {
-    return (
-      <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
-        <p className="text-[#9CA3AF]">Leistungsnachweis konnte nicht geladen werden.</p>
-        <Button variant="outline" size="sm" onClick={load} className="mt-4 rounded-xl border-[#4B5563] text-[#9CA3AF]">
-          Erneut versuchen
-        </Button>
-      </div>
-    )
+    return <AdminErrorState message="Der Leistungsnachweis konnte gerade nicht geladen werden." onRetry={load} />
   }
 
   const activeParticipants = (results?.participants ?? []).filter((p) => !p.excluded)
@@ -273,33 +268,39 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href={listHref()} className="text-[#9CA3AF] hover:text-[#F9FAFB]">
-          <ArrowLeft size={18} />
+      <div className="space-y-2">
+        <Link
+          href={listHref()}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-ws-muted hover:text-ws-text lg:hidden"
+        >
+          <ArrowLeft size={16} />
+          Leistungsnachweise
         </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-[#F9FAFB]">{detail.title}</h1>
-          <p className="text-sm text-[#9CA3AF]">{detail.examSetName ? `${detail.examSetName} · ` : ''}{detail.questionCount} Fragen · {detail.durationMinutes} Min.</p>
-        </div>
-        <Badge className={cn(
-          'text-xs border-0',
-          detail.status === 'draft' && 'bg-[#4B5563]/40 text-[#9CA3AF]',
-          detail.status === 'open' && 'bg-[#58CC02]/20 text-[#58CC02]',
-          detail.status === 'closed' && 'bg-[#FF9600]/20 text-[#FF9600]',
-        )}>
-          {STATUS_LABELS[detail.status]}
-        </Badge>
+        <AdminPageHeader
+          title={detail.title}
+          breadcrumb={detail.title}
+          description={`${detail.examSetName ? `${detail.examSetName} · ` : ''}${detail.questionCount} Fragen · ${detail.durationMinutes} Min.`}
+        >
+          <Badge className={cn(
+            'text-xs border-0',
+            detail.status === 'draft' && 'bg-ws-line/40 text-ws-muted',
+            detail.status === 'open' && 'bg-ws-green/20 text-ws-green',
+            detail.status === 'closed' && 'bg-ws-orange/20 text-ws-orange',
+          )}>
+            {STATUS_LABELS[detail.status]}
+          </Badge>
+        </AdminPageHeader>
       </div>
 
       {/* Code / Link / QR */}
-      <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
+      <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
         <div className="bg-white p-2 rounded-xl flex-shrink-0">
           <QRCodeSVG value={detail.joinUrl} size={112} />
         </div>
         <div className="flex-1 text-center sm:text-left space-y-2">
-          <p className="text-xs text-[#9CA3AF] uppercase tracking-wide">Beitrittscode</p>
-          <p className="text-3xl font-mono font-bold text-[#F9FAFB] tracking-widest">{detail.accessCode}</p>
-          <Button variant="outline" size="sm" onClick={copyLink} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+          <p className="text-xs text-ws-muted uppercase tracking-wide">Beitrittscode</p>
+          <p className="text-3xl font-mono font-bold text-ws-text tracking-widest">{detail.accessCode}</p>
+          <Button variant="outline" size="sm" onClick={copyLink} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
             <Copy size={14} className="mr-1.5" />
             Link kopieren
           </Button>
@@ -308,13 +309,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
 
       {/* Status-Steuerung + Live-Kachel */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 flex flex-wrap items-center gap-2">
+        <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex flex-wrap items-center gap-2">
           {detail.status === 'draft' && (
             <>
               <Button
                 onClick={() => runAction('open')}
                 disabled={actionPending}
-                className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white"
+                className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
               >
                 <Unlock size={14} className="mr-1.5" />
                 Öffnen
@@ -323,7 +324,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 variant="outline"
                 onClick={() => setEditQuestionsOpen(true)}
                 disabled={actionPending}
-                className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]"
+                className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
               >
                 <ListChecks size={14} className="mr-1.5" />
                 Fragen bearbeiten
@@ -335,7 +336,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               variant="outline"
               onClick={() => runAction('close')}
               disabled={actionPending}
-              className="rounded-xl border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10"
+              className="rounded-xl border-ws-orange/50 text-ws-orange hover:bg-ws-orange/10"
             >
               <Lock size={14} className="mr-1.5" />
               Beitritt schließen
@@ -345,7 +346,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             <Button
               onClick={() => setConfirmRelease(true)}
               disabled={actionPending || activeParticipants.length === 0}
-              className="rounded-xl bg-[#1CB0F6] hover:bg-[#18a0e0] text-white"
+              className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
             >
               <PlayCircle size={14} className="mr-1.5" />
               Ergebnisse freigeben
@@ -355,30 +356,30 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             variant="outline"
             onClick={() => setConfirmDelete(true)}
             disabled={actionPending}
-            className="rounded-xl border-[#FF4B4B]/30 text-[#FF4B4B] hover:bg-[#FF4B4B]/10"
+            className="rounded-xl border-ws-red/30 text-ws-red hover:bg-ws-red/10"
           >
             <Trash2 size={14} className="mr-1.5" />
             Löschen
           </Button>
           {detail.resultsReleasedAt && (
-            <Badge className="bg-[#58CC02]/20 text-[#58CC02] border-0">
+            <Badge className="bg-ws-green/20 text-ws-green border-0">
               Ergebnisse freigegeben · {new Date(detail.resultsReleasedAt).toLocaleString('de-DE')}
             </Badge>
           )}
         </div>
 
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 flex items-center justify-around text-center">
+        <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex items-center justify-around text-center">
           <div>
-            <p className="text-xl font-bold text-[#F9FAFB]">{detail.live.joined}</p>
-            <p className="text-xs text-[#9CA3AF]">Beigetreten</p>
+            <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
+            <p className="text-xs text-ws-muted">Beigetreten</p>
           </div>
           <div>
-            <p className="text-xl font-bold text-[#1CB0F6]">{detail.live.inProgress}</p>
-            <p className="text-xs text-[#9CA3AF]">Schreiben</p>
+            <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
+            <p className="text-xs text-ws-muted">Schreiben</p>
           </div>
           <div>
-            <p className="text-xl font-bold text-[#58CC02]">{detail.live.submitted}</p>
-            <p className="text-xs text-[#9CA3AF]">Abgegeben</p>
+            <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
+            <p className="text-xs text-ws-muted">Abgegeben</p>
           </div>
         </div>
       </div>
@@ -397,7 +398,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
 
       {/* PROJ-30: Fokus-Verlust-Protokoll — im Entwurf einstellbar, danach nur als Hinweis */}
       {detail.status === 'draft' ? (
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4">
+        <div className="bg-ws-surface border border-ws-line rounded-2xl p-4">
           <FocusDraftSettings
             key={`${detail.focusTracking}-${detail.focusAutoSubmitAfter}`}
             assessmentId={id}
@@ -407,9 +408,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           />
         </div>
       ) : (
-        <p className="text-xs text-[#9CA3AF]">
+        <p className="text-xs text-ws-muted">
           Verlassen der Prüfung:{' '}
-          <span className="text-[#F9FAFB]">
+          <span className="text-ws-text">
             {detail.focusTracking
               ? detail.focusAutoSubmitAfter != null
                 ? `wird protokolliert, automatische Abgabe ab ${detail.focusAutoSubmitAfter} Wechseln`
@@ -421,14 +422,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
 
       {/* Auswertung */}
       <Tabs defaultValue="participants">
-        <TabsList className="bg-[#1F2937] border border-[#4B5563]">
-          <TabsTrigger value="participants" className="data-[state=active]:bg-[#374151] data-[state=active]:text-[#F9FAFB] text-[#9CA3AF]">
+        <TabsList className="bg-ws-surface border border-ws-line">
+          <TabsTrigger value="participants" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
             Teilnehmer
           </TabsTrigger>
-          <TabsTrigger value="grades" className="data-[state=active]:bg-[#374151] data-[state=active]:text-[#F9FAFB] text-[#9CA3AF]">
+          <TabsTrigger value="grades" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
             Notenspiegel
           </TabsTrigger>
-          <TabsTrigger value="questions" className="data-[state=active]:bg-[#374151] data-[state=active]:text-[#F9FAFB] text-[#9CA3AF]">
+          <TabsTrigger value="questions" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
             Fragenanalyse
           </TabsTrigger>
         </TabsList>
@@ -436,68 +437,68 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <TabsContent value="participants" className="mt-4">
           <div className="flex flex-wrap justify-end gap-2 mb-2">
             <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
                 <Printer size={14} className="mr-1.5" />
                 Klassenauswertung drucken
               </Button>
             </Link>
             <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
                 <Printer size={14} className="mr-1.5" />
                 Alle Einzelauswertungen
               </Button>
             </Link>
             <a href={`/api/admin/assessments/${id}/export`} download>
-              <Button variant="outline" size="sm" className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+              <Button variant="outline" size="sm" className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
                 <Download size={14} className="mr-1.5" />
                 CSV-Export
               </Button>
             </a>
           </div>
           {showFocus && conspicuousCount > 0 && (
-            <div role="status" className="mb-3 flex items-start gap-3 rounded-2xl border border-[#FF9600]/30 bg-[#FF9600]/5 p-4">
-              <AlertTriangle size={18} className="text-[#FF9600] flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <p className="text-sm text-[#F9FAFB]">
+            <div role="status" className="mb-3 flex items-start gap-3 rounded-2xl border border-ws-orange/30 bg-ws-orange/5 p-4">
+              <AlertTriangle size={18} className="text-ws-orange flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-sm text-ws-text">
                 {conspicuousCount === 1
                   ? '1 Teilnehmer hat die Prüfung verlassen.'
                   : `${conspicuousCount} Teilnehmer haben die Prüfung verlassen.`}{' '}
-                <span className="text-[#9CA3AF]">Details in der Spalte „Fokus". Ein Eintrag beweist kein Nachschlagen.</span>
+                <span className="text-ws-muted">Details in der Spalte „Fokus". Ein Eintrag beweist kein Nachschlagen.</span>
               </p>
             </div>
           )}
-          <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937] overflow-x-auto">
+          <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-                  <TableHead className="text-[#9CA3AF]">Name</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Punkte</TableHead>
-                  <TableHead className="text-[#9CA3AF]">%</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Note</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Dauer</TableHead>
-                  <TableHead className="text-[#9CA3AF]">Abgegeben</TableHead>
-                  {showFocus && <TableHead className="text-[#9CA3AF]">Fokus</TableHead>}
-                  <TableHead className="text-[#9CA3AF]">Zählt</TableHead>
-                  <TableHead className="text-[#9CA3AF]"><span className="sr-only">Drucken</span></TableHead>
+                <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                  <TableHead className="text-ws-muted">Name</TableHead>
+                  <TableHead className="text-ws-muted">Punkte</TableHead>
+                  <TableHead className="text-ws-muted">%</TableHead>
+                  <TableHead className="text-ws-muted">Note</TableHead>
+                  <TableHead className="text-ws-muted">Dauer</TableHead>
+                  <TableHead className="text-ws-muted">Abgegeben</TableHead>
+                  {showFocus && <TableHead className="text-ws-muted">Fokus</TableHead>}
+                  <TableHead className="text-ws-muted">Zählt</TableHead>
+                  <TableHead className="text-ws-muted"><span className="sr-only">Drucken</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!results || results.participants.length === 0 ? (
-                  <TableRow className="border-[#4B5563]">
-                    <TableCell colSpan={showFocus ? 9 : 8} className="text-center text-[#9CA3AF] py-10 flex flex-col items-center gap-2">
-                      <Users size={28} className="text-[#374151]" />
+                  <TableRow className="border-ws-line">
+                    <TableCell colSpan={showFocus ? 9 : 8} className="text-center text-ws-muted py-10 flex flex-col items-center gap-2">
+                      <Users size={28} className="text-ws-raised" />
                       Noch niemand beigetreten.
                     </TableCell>
                   </TableRow>
                 ) : (
                   results.participants.map((p) => (
                     <Fragment key={p.sessionId}>
-                    <TableRow className={cn('border-[#4B5563]', p.excluded && 'opacity-50')}>
-                      <TableCell className="text-[#F9FAFB] font-medium">{p.name}</TableCell>
-                      <TableCell className="text-[#F9FAFB]">{p.points}/{p.totalPoints}</TableCell>
-                      <TableCell className="text-[#F9FAFB]">{p.percent}%</TableCell>
-                      <TableCell className="text-[#F9FAFB] font-bold">{p.grade ?? '—'}</TableCell>
-                      <TableCell className="text-[#9CA3AF]">{p.durationMinutes != null ? `${p.durationMinutes} Min.` : '—'}</TableCell>
-                      <TableCell className="text-[#9CA3AF] text-xs">
+                    <TableRow className={cn('border-ws-line', p.excluded && 'opacity-50')}>
+                      <TableCell className="text-ws-text font-medium">{p.name}</TableCell>
+                      <TableCell className="text-ws-text">{p.points}/{p.totalPoints}</TableCell>
+                      <TableCell className="text-ws-text">{p.percent}%</TableCell>
+                      <TableCell className="text-ws-text font-bold">{p.grade ?? '—'}</TableCell>
+                      <TableCell className="text-ws-muted">{p.durationMinutes != null ? `${p.durationMinutes} Min.` : '—'}</TableCell>
+                      <TableCell className="text-ws-muted text-xs">
                         {p.submittedAt ? new Date(p.submittedAt).toLocaleString('de-DE') : 'Schreibt noch'}
                       </TableCell>
                       {showFocus && (
@@ -521,7 +522,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                           <Link
                             href={`/admin/leistungsnachweise/${id}/druck/einzeln?sessionId=${p.sessionId}`}
                             aria-label={`Einzelauswertung von ${p.name} drucken`}
-                            className="inline-flex items-center justify-center size-9 rounded-lg text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151]"
+                            className="inline-flex items-center justify-center size-9 rounded-lg text-ws-muted hover:text-ws-text hover:bg-ws-raised"
                           >
                             <Printer size={16} />
                           </Link>
@@ -529,7 +530,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                       </TableCell>
                     </TableRow>
                     {showFocus && expandedFocus === p.sessionId && (
-                      <TableRow className="border-[#4B5563] bg-[#111827]/60 hover:bg-[#111827]/60">
+                      <TableRow className="border-ws-line bg-ws-bg/60 hover:bg-ws-bg/60">
                         <TableCell colSpan={9} className="py-3">
                           <FocusDetailPanel assessmentId={id} sessionId={p.sessionId} />
                         </TableCell>
@@ -546,27 +547,27 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <TabsContent value="grades" className="mt-4">
           <div className="flex justify-end mb-2">
             <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]">
+              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
                 <Printer size={14} className="mr-1.5" />
                 Klassenauswertung drucken
               </Button>
             </Link>
           </div>
-          <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-4">
+          <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 space-y-4">
             {!results || activeParticipants.length === 0 ? (
-              <p className="text-center text-[#9CA3AF] py-8">Noch keine gewerteten Teilnahmen.</p>
+              <p className="text-center text-ws-muted py-8">Noch keine gewerteten Teilnahmen.</p>
             ) : (
               <>
-                <div className="flex items-center justify-around text-center pb-2 border-b border-[#4B5563]">
+                <div className="flex items-center justify-around text-center pb-2 border-b border-ws-line">
                   <div>
-                    <p className="text-2xl font-bold text-[#F9FAFB]">{results.gradeDistribution.average?.toFixed(1) ?? '—'}</p>
-                    <p className="text-xs text-[#9CA3AF]">Ø-Note</p>
+                    <p className="text-2xl font-bold text-ws-text">{results.gradeDistribution.average?.toFixed(1) ?? '—'}</p>
+                    <p className="text-xs text-ws-muted">Ø-Note</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-[#58CC02]">
+                    <p className="text-2xl font-bold text-ws-green">
                       {results.gradeDistribution.passRate != null ? `${Math.round(results.gradeDistribution.passRate)}%` : '—'}
                     </p>
-                    <p className="text-xs text-[#9CA3AF]">Bestehensquote</p>
+                    <p className="text-xs text-ws-muted">Bestehensquote</p>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -574,14 +575,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                     const count = Number(gradeCounts[String(grade)] ?? 0)
                     return (
                       <div key={grade} className="flex items-center gap-3">
-                        <span className="w-4 text-sm font-bold text-[#F9FAFB]">{grade}</span>
-                        <div className="flex-1 h-5 bg-[#111827] rounded-full overflow-hidden">
+                        <span className="w-4 text-sm font-bold text-ws-text">{grade}</span>
+                        <div className="flex-1 h-5 bg-ws-bg rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#1CB0F6] rounded-full transition-all duration-300"
+                            className="h-full bg-ws-blue rounded-full transition-all duration-300"
                             style={{ width: `${(count / maxGradeCount) * 100}%` }}
                           />
                         </div>
-                        <span className="w-6 text-xs text-[#9CA3AF] text-right">{count}</span>
+                        <span className="w-6 text-xs text-ws-muted text-right">{count}</span>
                       </div>
                     )
                   })}
@@ -594,7 +595,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <TabsContent value="questions" className="mt-4">
           <div className="space-y-3">
             {!results || results.questions.length === 0 ? (
-              <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-8 text-center text-[#9CA3AF]">
+              <div className="bg-ws-surface border border-ws-line rounded-2xl p-8 text-center text-ws-muted">
                 Noch keine Abgaben zur Auswertung.
               </div>
             ) : (
@@ -603,12 +604,12 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 .map((q) => {
                   const pct = q.totalCount > 0 ? Math.round((q.correctCount / q.totalCount) * 100) : 0
                   return (
-                    <div key={q.id} className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4">
+                    <div key={q.id} className="bg-ws-surface border border-ws-line rounded-2xl p-4">
                       <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm text-[#F9FAFB] leading-snug flex-1">{q.text}</p>
+                        <p className="text-sm text-ws-text leading-snug flex-1">{q.text}</p>
                         <span className={cn(
                           'text-sm font-bold flex-shrink-0',
-                          pct >= 70 ? 'text-[#58CC02]' : pct >= 40 ? 'text-[#FF9600]' : 'text-[#FF4B4B]',
+                          pct >= 70 ? 'text-ws-green' : pct >= 40 ? 'text-ws-orange' : 'text-ws-red',
                         )}>
                           {pct}%
                         </span>
@@ -616,10 +617,10 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                       <div className="space-y-1">
                         {q.options.map((opt) => (
                           <div key={opt.id} className="flex items-center gap-2 text-xs">
-                            <span className={cn('flex-1', opt.isCorrect ? 'text-[#58CC02]' : 'text-[#9CA3AF]')}>
+                            <span className={cn('flex-1', opt.isCorrect ? 'text-ws-green' : 'text-ws-muted')}>
                               {opt.isCorrect ? '✓ ' : '  '}{opt.text}
                             </span>
-                            <span className="text-[#6B7280]">{opt.selectedCount}×</span>
+                            <span className="text-ws-faint">{opt.selectedCount}×</span>
                           </div>
                         ))}
                       </div>
@@ -642,20 +643,20 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Leistungsnachweis löschen?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               {detail.live.joined > 0
                 ? `Der Leistungsnachweis wird endgültig gelöscht – samt ${detail.live.joined} Teilnehmer-Versuch${detail.live.joined === 1 ? '' : 'en'} und allen Ergebnissen. Das lässt sich nicht rückgängig machen.`
                 : 'Der Leistungsnachweis wird endgültig gelöscht.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-[#374151] border-[#4B5563] text-[#F9FAFB] hover:bg-[#4B5563]">
+            <AlertDialogCancel className="bg-ws-raised border-ws-line text-ws-text hover:bg-ws-line">
               Abbrechen
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-[#FF4B4B] hover:bg-[#e04040] text-white">
+            <AlertDialogAction onClick={handleDelete} className="bg-ws-red hover:bg-ws-red-hover text-ws-on-accent">
               {actionPending ? <Loader2 size={14} className="animate-spin" /> : 'Löschen'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -663,21 +664,21 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       </AlertDialog>
 
       <AlertDialog open={confirmRelease} onOpenChange={setConfirmRelease}>
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Ergebnisse freigeben?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               Alle {activeParticipants.length} Teilnehmer sehen ab sofort ihre Note und die Auflösung. Das gilt für alle
               gemeinsam und lässt sich nicht zurücknehmen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-[#374151] border-[#4B5563] text-[#F9FAFB] hover:bg-[#4B5563]">
+            <AlertDialogCancel className="bg-ws-raised border-ws-line text-ws-text hover:bg-ws-line">
               Abbrechen
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => runAction('release_results')}
-              className="bg-[#1CB0F6] hover:bg-[#18a0e0] text-white"
+              className="bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
             >
               Jetzt freigeben
             </AlertDialogAction>

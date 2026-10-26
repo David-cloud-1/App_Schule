@@ -89,19 +89,19 @@ export function DepartmentSwitcher() {
 
   return (
     <Select value={current ?? undefined} onValueChange={handleChange} disabled={switching}>
-      <SelectTrigger className="h-9 w-36 sm:w-[180px] bg-[#111827] border-[#4B5563] text-[#F9FAFB] text-sm">
+      <SelectTrigger className="h-9 w-36 sm:w-[180px] bg-ws-bg border-ws-line text-ws-text text-sm">
         <div className="flex items-center gap-2 truncate">
           {switching ? (
-            <Loader2 className="w-4 h-4 shrink-0 animate-spin text-[#9CA3AF]" />
+            <Loader2 className="w-4 h-4 shrink-0 animate-spin text-ws-muted" />
           ) : (
-            <Building2 className="w-4 h-4 shrink-0 text-[#9CA3AF]" />
+            <Building2 className="w-4 h-4 shrink-0 text-ws-muted" />
           )}
           <SelectValue placeholder="Fachbereich" />
         </div>
       </SelectTrigger>
-      <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+      <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
         {departments.map((d) => (
-          <SelectItem key={d.id} value={d.id} className="focus:bg-[#111827] focus:text-[#F9FAFB]">
+          <SelectItem key={d.id} value={d.id} className="focus:bg-ws-bg focus:text-ws-text">
             {d.name}
           </SelectItem>
         ))}

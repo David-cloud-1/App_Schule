@@ -266,12 +266,12 @@ export function QuestionFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#F9FAFB]">
+          <DialogTitle className="text-ws-text">
             {isEdit ? 'Frage bearbeiten' : 'Neue Frage erstellen'}
           </DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             {isEdit
               ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
               : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
@@ -290,8 +290,8 @@ export function QuestionFormModal({
                   onClick={() => setForm((f) => ({ ...f, type: t }))}
                   className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-colors ${
                     form.type === t
-                      ? 'bg-[#58CC02]/20 border-[#58CC02] text-[#58CC02]'
-                      : 'border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]'
+                      ? 'bg-ws-green/20 border-ws-green text-ws-green'
+                      : 'border-ws-line text-ws-muted hover:text-ws-text'
                   }`}
                 >
                   {t === 'multiple_choice' ? 'Multiple Choice' : 'Freitext (Offen)'}
@@ -305,7 +305,7 @@ export function QuestionFormModal({
               <Label htmlFor="question_text">Fragetext</Label>
               <span
                 className={`text-xs ${
-                  remaining < 0 ? 'text-[#FF4B4B]' : 'text-[#9CA3AF]'
+                  remaining < 0 ? 'text-ws-red' : 'text-ws-muted'
                 }`}
               >
                 {remaining} Zeichen übrig
@@ -316,11 +316,11 @@ export function QuestionFormModal({
               rows={3}
               value={form.question_text}
               onChange={(e) => setForm({ ...form, question_text: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={1000}
             />
             {errors.question_text && (
-              <p className="text-xs text-[#FF4B4B]">{errors.question_text}</p>
+              <p className="text-xs text-ws-red">{errors.question_text}</p>
             )}
           </div>
 
@@ -348,11 +348,11 @@ export function QuestionFormModal({
                         <RadioGroupItem
                           value={letter}
                           id={`ans-${letter}`}
-                          className="border-[#4B5563]"
+                          className="border-ws-line"
                         />
                         <Label
                           htmlFor={`ans-${letter}`}
-                          className="w-6 text-center text-sm font-semibold text-[#58CC02]"
+                          className="w-6 text-center text-sm font-semibold text-ws-green"
                         >
                           {letter}
                         </Label>
@@ -360,11 +360,11 @@ export function QuestionFormModal({
                           value={form[key]}
                           onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                           placeholder={`Antwort ${letter}`}
-                          className="flex-1 bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                          className="flex-1 bg-ws-bg border-ws-line text-ws-text"
                         />
                       </div>
                       {errors[errorKey] && (
-                        <p className="text-xs text-[#FF4B4B] pl-12">{errors[errorKey]}</p>
+                        <p className="text-xs text-ws-red pl-12">{errors[errorKey]}</p>
                       )}
                     </div>
                   )
@@ -382,7 +382,7 @@ export function QuestionFormModal({
                 value={form.sample_answer}
                 onChange={(e) => setForm({ ...form, sample_answer: e.target.value })}
                 placeholder="Erwartete Antwort — wird dem Azubi nach der Prüfung gezeigt"
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+                className="bg-ws-bg border-ws-line text-ws-text"
                 maxLength={2000}
               />
             </div>
@@ -395,7 +395,7 @@ export function QuestionFormModal({
               rows={2}
               value={form.explanation}
               onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-              className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]"
+              className="bg-ws-bg border-ws-line text-ws-text"
               maxLength={2000}
             />
           </div>
@@ -409,10 +409,10 @@ export function QuestionFormModal({
                   setForm({ ...form, difficulty: v as 'leicht' | 'mittel' | 'schwer' })
                 }
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="leicht">Leicht</SelectItem>
                   <SelectItem value="mittel">Mittel</SelectItem>
                   <SelectItem value="schwer">Schwer</SelectItem>
@@ -422,7 +422,7 @@ export function QuestionFormModal({
 
             <div className="space-y-2">
               <Label>
-                Klassenstufe <span className="text-[#FF4B4B]">*</span>
+                Klassenstufe <span className="text-ws-red">*</span>
               </Label>
               <Select
                 value={form.class_level}
@@ -430,10 +430,10 @@ export function QuestionFormModal({
                   setForm({ ...form, class_level: v as FormState['class_level'] })
                 }
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="_all">Alle Klassen</SelectItem>
                   {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
@@ -444,9 +444,9 @@ export function QuestionFormModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fächer</Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-[#111827] border border-[#4B5563] rounded-xl">
+              <div className="flex flex-wrap gap-2 p-3 bg-ws-bg border border-ws-line rounded-xl">
                 {subjects.length === 0 ? (
-                  <span className="text-xs text-[#9CA3AF]">Keine Fächer verfügbar.</span>
+                  <span className="text-xs text-ws-muted">Keine Fächer verfügbar.</span>
                 ) : (
                   subjects.map((s) => {
                     const checked = form.subject_ids.includes(s.id)
@@ -455,14 +455,14 @@ export function QuestionFormModal({
                         key={s.id}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer text-sm transition-colors ${
                           checked
-                            ? 'bg-[#58CC02]/20 border-[#58CC02] text-[#F9FAFB]'
-                            : 'border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB]'
+                            ? 'bg-ws-green/20 border-ws-green text-ws-text'
+                            : 'border-ws-line text-ws-muted hover:text-ws-text'
                         }`}
                       >
                         <Checkbox
                           checked={checked}
                           onCheckedChange={(c) => toggleSubject(s.id, c === true)}
-                          className="border-[#4B5563]"
+                          className="border-ws-line"
                         />
                         <span className="font-semibold">{s.code}</span>
                       </label>
@@ -471,7 +471,7 @@ export function QuestionFormModal({
                 )}
               </div>
               {errors.subject_ids && (
-                <p className="text-xs text-[#FF4B4B]">{errors.subject_ids}</p>
+                <p className="text-xs text-ws-red">{errors.subject_ids}</p>
               )}
             </div>
 
@@ -482,14 +482,14 @@ export function QuestionFormModal({
                 onValueChange={(v) => setForm({ ...form, topic_id: v })}
                 disabled={form.subject_ids.length === 0}
               >
-                <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
                   {loadingTopics ? (
-                    <span className="text-[#9CA3AF] text-sm">Laden…</span>
+                    <span className="text-ws-muted text-sm">Laden…</span>
                   ) : (
                     <SelectValue placeholder="Kein Thema" />
                   )}
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="_none">Kein Thema</SelectItem>
                   {topics.map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
@@ -497,7 +497,7 @@ export function QuestionFormModal({
                 </SelectContent>
               </Select>
               {form.subject_ids.length === 0 && (
-                <p className="text-xs text-[#9CA3AF]">Erst ein Fach auswählen.</p>
+                <p className="text-xs text-ws-muted">Erst ein Fach auswählen.</p>
               )}
             </div>
           </div>
@@ -517,7 +517,7 @@ export function QuestionFormModal({
                 disabled={submitting}
                 variant="outline"
                 onClick={() => { saveAndNewRef.current = true }}
-                className="rounded-xl border-[#4B5563] text-[#F9FAFB] hover:bg-[#374151]"
+                className="rounded-xl border-ws-line text-ws-text hover:bg-ws-raised"
               >
                 {submitting && saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Speichern & Neue
@@ -527,7 +527,7 @@ export function QuestionFormModal({
               type="submit"
               disabled={submitting}
               onClick={() => { saveAndNewRef.current = false }}
-              className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               {submitting && !saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEdit ? 'Speichern' : 'Erstellen'}

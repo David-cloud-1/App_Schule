@@ -255,10 +255,10 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Fragen per CSV importieren</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             Mehrere Fragen auf einmal hochladen — einfach Vorlage ausfüllen und hochladen.
           </DialogDescription>
         </DialogHeader>
@@ -267,28 +267,28 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
           {/* Schritt 1 — Vorlage & Datei */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#F9FAFB]">
+            <p className="text-sm font-semibold text-ws-text">
               Schritt 1 — Vorlage herunterladen und ausfüllen
             </p>
 
-            <Alert className="bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
-              <Info className="h-4 w-4 text-[#1CB0F6] flex-shrink-0" />
-              <AlertDescription className="text-sm text-[#9CA3AF] space-y-1">
+            <Alert className="bg-ws-bg border-ws-line text-ws-text">
+              <Info className="h-4 w-4 text-ws-blue flex-shrink-0" />
+              <AlertDescription className="text-sm text-ws-muted space-y-1">
                 <p>Jede Zeile = eine Frage. Pflichtfelder:</p>
                 <ul className="list-disc list-inside mt-1 space-y-0.5">
-                  <li><span className="text-[#F9FAFB] font-medium">question_text</span> — Die Frage</li>
-                  <li><span className="text-[#F9FAFB] font-medium">antwort_a bis antwort_e</span> — 5 Antwortmöglichkeiten (als Text)</li>
+                  <li><span className="text-ws-text font-medium">question_text</span> — Die Frage</li>
+                  <li><span className="text-ws-text font-medium">antwort_a bis antwort_e</span> — 5 Antwortmöglichkeiten (als Text)</li>
                   <li>
-                    <span className="text-[#F9FAFB] font-medium">korrekte_antwort</span> — Nur ein Buchstabe:{' '}
-                    <code className="bg-[#374151] px-1 rounded text-[#58CC02]">A</code>,{' '}
-                    <code className="bg-[#374151] px-1 rounded text-[#58CC02]">B</code>,{' '}
-                    <code className="bg-[#374151] px-1 rounded text-[#58CC02]">C</code>,{' '}
-                    <code className="bg-[#374151] px-1 rounded text-[#58CC02]">D</code> oder{' '}
-                    <code className="bg-[#374151] px-1 rounded text-[#58CC02]">E</code>
-                    <span className="text-[#FF4B4B]"> — NICHT den Antworttext!</span>
+                    <span className="text-ws-text font-medium">korrekte_antwort</span> — Nur ein Buchstabe:{' '}
+                    <code className="bg-ws-raised px-1 rounded text-ws-green">A</code>,{' '}
+                    <code className="bg-ws-raised px-1 rounded text-ws-green">B</code>,{' '}
+                    <code className="bg-ws-raised px-1 rounded text-ws-green">C</code>,{' '}
+                    <code className="bg-ws-raised px-1 rounded text-ws-green">D</code> oder{' '}
+                    <code className="bg-ws-raised px-1 rounded text-ws-green">E</code>
+                    <span className="text-ws-red"> — NICHT den Antworttext!</span>
                   </li>
-                  <li><span className="text-[#F9FAFB] font-medium">fach_code</span> — Kürzel: <code className="bg-[#374151] px-1 rounded text-[#58CC02]">{[...subjectCodes].join(', ') || 'BGP, STG, …'}</code></li>
-                  <li><span className="text-[#F9FAFB] font-medium">schwierigkeit</span> — <code className="bg-[#374151] px-1 rounded text-[#58CC02]">leicht</code>, <code className="bg-[#374151] px-1 rounded text-[#58CC02]">mittel</code> oder <code className="bg-[#374151] px-1 rounded text-[#58CC02]">schwer</code></li>
+                  <li><span className="text-ws-text font-medium">fach_code</span> — Kürzel: <code className="bg-ws-raised px-1 rounded text-ws-green">{[...subjectCodes].join(', ') || 'BGP, STG, …'}</code></li>
+                  <li><span className="text-ws-text font-medium">schwierigkeit</span> — <code className="bg-ws-raised px-1 rounded text-ws-green">leicht</code>, <code className="bg-ws-raised px-1 rounded text-ws-green">mittel</code> oder <code className="bg-ws-raised px-1 rounded text-ws-green">schwer</code></li>
                 </ul>
               </AlertDescription>
             </Alert>
@@ -298,7 +298,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
                 type="button"
                 variant="outline"
                 onClick={downloadTemplate}
-                className="rounded-xl border-[#1CB0F6] text-[#1CB0F6] hover:bg-[#1CB0F6]/10"
+                className="rounded-xl border-ws-blue text-ws-blue hover:bg-ws-blue/10"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Vorlage herunterladen (.csv)
@@ -308,21 +308,21 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
           {/* Schritt 2 — Datei hochladen */}
           <div className="space-y-3">
-            <p className="text-sm font-semibold text-[#F9FAFB]">
+            <p className="text-sm font-semibold text-ws-text">
               Schritt 2 — Ausgefüllte CSV-Datei hochladen
             </p>
 
             <label className={`flex items-center gap-3 px-4 py-4 rounded-xl border-2 cursor-pointer transition-colors ${
               file
-                ? 'border-[#58CC02] bg-[#58CC02]/5'
-                : 'border-dashed border-[#4B5563] hover:border-[#9CA3AF] bg-[#111827]'
+                ? 'border-ws-green bg-ws-green/5'
+                : 'border-dashed border-ws-line hover:border-ws-muted bg-ws-bg'
             }`}>
-              <FileUp className={`w-6 h-6 flex-shrink-0 ${file ? 'text-[#58CC02]' : 'text-[#9CA3AF]'}`} />
+              <FileUp className={`w-6 h-6 flex-shrink-0 ${file ? 'text-ws-green' : 'text-ws-muted'}`} />
               <div className="flex-1">
-                <p className="text-sm font-medium text-[#F9FAFB]">
+                <p className="text-sm font-medium text-ws-text">
                   {file ? file.name : 'CSV-Datei auswählen'}
                 </p>
-                <p className="text-xs text-[#9CA3AF] mt-0.5">
+                <p className="text-xs text-ws-muted mt-0.5">
                   {file ? `${(file.size / 1024).toFixed(0)} KB` : 'Nur .csv-Dateien · max. 500 KB'}
                 </p>
               </div>
@@ -332,7 +332,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
                   variant="ghost"
                   size="sm"
                   onClick={(e) => { e.preventDefault(); reset() }}
-                  className="text-[#9CA3AF] hover:text-[#FF4B4B] rounded-lg"
+                  className="text-ws-muted hover:text-ws-red rounded-lg"
                 >
                   Zurücksetzen
                 </Button>
@@ -349,7 +349,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
           {/* Ladeindikator */}
           {parsing && (
-            <div className="flex items-center gap-2 text-sm text-[#9CA3AF]">
+            <div className="flex items-center gap-2 text-sm text-ws-muted">
               <Loader2 className="w-4 h-4 animate-spin" />
               Datei wird geprüft…
             </div>
@@ -358,22 +358,22 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
           {/* Ergebnis-Vorschau */}
           {!parsing && rows.length > 0 && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-[#F9FAFB]">
+              <p className="text-sm font-semibold text-ws-text">
                 Schritt 3 — Ergebnis prüfen und importieren
               </p>
 
               {/* Zusammenfassung */}
               <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#58CC02]/10 border border-[#58CC02]/30">
-                  <CheckCircle2 className="w-4 h-4 text-[#58CC02]" />
-                  <span className="text-sm font-medium text-[#58CC02]">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-ws-green/10 border border-ws-green/30">
+                  <CheckCircle2 className="w-4 h-4 text-ws-green" />
+                  <span className="text-sm font-medium text-ws-green">
                     {validRows.length} {validRows.length === 1 ? 'Frage bereit' : 'Fragen bereit'}
                   </span>
                 </div>
                 {invalidRows.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#FF4B4B]/10 border border-[#FF4B4B]/30">
-                    <XCircle className="w-4 h-4 text-[#FF4B4B]" />
-                    <span className="text-sm font-medium text-[#FF4B4B]">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-ws-red/10 border border-ws-red/30">
+                    <XCircle className="w-4 h-4 text-ws-red" />
+                    <span className="text-sm font-medium text-ws-red">
                       {invalidRows.length} {invalidRows.length === 1 ? 'Fehler' : 'Fehler'} — werden übersprungen
                     </span>
                   </div>
@@ -382,14 +382,14 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
               {/* Fehlerdetails zuerst */}
               {invalidRows.length > 0 && (
-                <Alert className="bg-[#FF4B4B]/5 border-[#FF4B4B]/30">
-                  <AlertCircle className="h-4 w-4 text-[#FF4B4B]" />
-                  <AlertDescription className="text-sm text-[#F9FAFB]">
+                <Alert className="bg-ws-red/5 border-ws-red/30">
+                  <AlertCircle className="h-4 w-4 text-ws-red" />
+                  <AlertDescription className="text-sm text-ws-text">
                     <p className="font-medium mb-1">Zeilen mit Fehlern (werden nicht importiert):</p>
                     <ul className="space-y-1">
                       {invalidRows.map((r) => (
-                        <li key={r.index} className="text-xs text-[#9CA3AF]">
-                          <span className="text-[#FF4B4B] font-medium">Zeile {r.index + 2}:</span>{' '}
+                        <li key={r.index} className="text-xs text-ws-muted">
+                          <span className="text-ws-red font-medium">Zeile {r.index + 2}:</span>{' '}
                           {r.errors.join(' · ')}
                         </li>
                       ))}
@@ -400,29 +400,29 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
 
               {/* Vorschau gültige Zeilen */}
               {validRows.length > 0 && (
-                <div className="border border-[#4B5563] rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
+                <div className="ws-table-scroll border border-ws-line rounded-xl overflow-hidden max-h-[280px] overflow-y-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-                        <TableHead className="w-10 text-[#9CA3AF]">#</TableHead>
-                        <TableHead className="text-[#9CA3AF]">Frage</TableHead>
-                        <TableHead className="w-20 text-[#9CA3AF]">Fach</TableHead>
-                        <TableHead className="w-24 text-[#9CA3AF]">Schwierigkeit</TableHead>
+                      <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                        <TableHead className="w-10 text-ws-muted">#</TableHead>
+                        <TableHead className="text-ws-muted">Frage</TableHead>
+                        <TableHead className="w-20 text-ws-muted">Fach</TableHead>
+                        <TableHead className="w-24 text-ws-muted">Schwierigkeit</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {validRows.map((r) => (
-                        <TableRow key={r.index} className="border-[#4B5563]">
-                          <TableCell className="text-[#9CA3AF] text-xs">{r.index + 2}</TableCell>
-                          <TableCell className="max-w-[300px] truncate text-[#F9FAFB] text-sm">
+                        <TableRow key={r.index} className="border-ws-line">
+                          <TableCell className="text-ws-muted text-xs">{r.index + 2}</TableCell>
+                          <TableCell className="max-w-[300px] truncate text-ws-text text-sm">
                             {r.raw.question_text ?? '—'}
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline" className="border-[#4B5563] text-[#9CA3AF] text-xs">
+                            <Badge variant="outline" className="border-ws-line text-ws-muted text-xs">
                               {r.raw.fach_code ?? '—'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-[#9CA3AF]">
+                          <TableCell className="text-xs text-ws-muted">
                             {r.normalized?.schwierigkeit
                               ? DIFFICULTY_LABEL[r.normalized.schwierigkeit]
                               : '—'}
@@ -444,7 +444,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
           <Button
             onClick={handleImport}
             disabled={submitting || validRows.length === 0 || step < 2}
-            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
           >
             {submitting ? (
               <>

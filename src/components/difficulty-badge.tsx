@@ -6,18 +6,19 @@ interface DifficultyBadgeProps {
   difficulty: Difficulty
 }
 
+// Nur im Lehrkräfte-Bereich genutzt — Farben aus dessen Palette (PROJ-45, hell/dunkel)
 const config: Record<Difficulty, { label: string; className: string }> = {
   leicht: {
     label: 'Leicht',
-    className: 'bg-green-500/20 text-green-400 border-green-500/30 hover:bg-green-500/20',
+    className: 'bg-ws-green/15 text-ws-green border-ws-green/30 hover:bg-ws-green/15',
   },
   mittel: {
     label: 'Mittel',
-    className: 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/20',
+    className: 'bg-ws-orange/15 text-ws-orange border-ws-orange/30 hover:bg-ws-orange/15',
   },
   schwer: {
     label: 'Schwer',
-    className: 'bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/20',
+    className: 'bg-ws-red/15 text-ws-red border-ws-red/30 hover:bg-ws-red/15',
   },
 }
 

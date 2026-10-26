@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  Bot,
   CheckCheck,
   CheckCircle2,
   RefreshCw,
@@ -40,6 +39,7 @@ import { createClient } from '@/lib/supabase-browser'
 import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } from '@/lib/question-import'
 import type { QuestionPromptResponse } from '@/app/api/admin/question-prompt/route'
 import { useAdminSubjectCodes } from '@/hooks/use-admin-subject-codes'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
 
 export type DraftQuestion = {
   id: string
@@ -221,18 +221,18 @@ function ManualImportSection() {
   }
 
   return (
-    <div className="rounded-2xl border border-[#4B5563] bg-[#1F2937] p-5 space-y-5">
+    <div className="rounded-2xl border border-ws-line bg-ws-surface p-5 space-y-5">
       {/* Step 1 */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">1</span>
-          <p className="text-sm font-semibold text-[#F9FAFB]">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">1</span>
+          <p className="text-sm font-semibold text-ws-text">
             Prompt kopieren und in{' '}
             <a
               href="https://claude.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[#1CB0F6] hover:underline"
+              className="text-ws-blue hover:underline"
             >
               claude.ai
             </a>{' '}
@@ -241,41 +241,41 @@ function ManualImportSection() {
         </div>
         <div className="relative">
           {promptInfo ? (
-            <pre className="text-xs text-[#9CA3AF] bg-[#111827] rounded-xl p-4 overflow-auto max-h-48 leading-relaxed whitespace-pre-wrap">
+            <pre className="text-xs text-ws-muted bg-ws-bg rounded-xl p-4 overflow-auto max-h-48 leading-relaxed whitespace-pre-wrap">
               {promptInfo.prompt}
             </pre>
           ) : promptError ? (
-            <p className="text-sm text-[#FF4B4B] bg-[#111827] rounded-xl p-4">
+            <p className="text-sm text-ws-red bg-ws-bg rounded-xl p-4">
               Der Prompt konnte nicht geladen werden. Bitte Seite neu laden.
             </p>
           ) : (
-            <Skeleton className="h-48 w-full rounded-xl bg-[#111827]" />
+            <Skeleton className="h-48 w-full rounded-xl bg-ws-bg" />
           )}
           <Button
             size="sm"
             variant="ghost"
             onClick={copyPrompt}
             disabled={!promptInfo}
-            className="absolute top-2 right-2 text-[#9CA3AF] hover:text-[#F9FAFB] bg-[#1F2937]/80"
+            className="absolute top-2 right-2 text-ws-muted hover:text-ws-text bg-ws-surface/80"
           >
             {copied ? (
-              <Check className="w-4 h-4 text-[#58CC02]" />
+              <Check className="w-4 h-4 text-ws-green" />
             ) : (
               <Copy className="w-4 h-4" />
             )}
             <span className="ml-1 text-xs">{copied ? 'Kopiert!' : 'Kopieren'}</span>
           </Button>
         </div>
-        <p className="text-xs text-[#9CA3AF]">
-          💡 Ersetze <code className="bg-[#111827] px-1 rounded">[Hier deinen Text einfügen]</code> mit dem Inhalt deines Dokuments (copy-paste aus PDF/Word reicht).
+        <p className="text-xs text-ws-muted">
+          💡 Ersetze <code className="bg-ws-bg px-1 rounded">[Hier deinen Text einfügen]</code> mit dem Inhalt deines Dokuments (copy-paste aus PDF/Word reicht).
         </p>
       </div>
 
       {/* Step 2 */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">2</span>
-          <p className="text-sm font-semibold text-[#F9FAFB]">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">2</span>
+          <p className="text-sm font-semibold text-ws-text">
             Vollständige Antwort von Claude.ai hier einfügen
           </p>
         </div>
@@ -283,36 +283,36 @@ function ManualImportSection() {
           value={jsonInput}
           onChange={(e) => handleJsonChange(e.target.value)}
           placeholder={'Die komplette Antwort von Claude.ai einfügen — Begleittext und ```json ... ``` werden automatisch ignoriert.\n\nBeispiel:\n{\n  "rows": [\n    { "question_text": "Was ist...", "antwort_a": "...", ... }\n  ]\n}'}
-          className="font-mono text-xs bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl min-h-[140px] placeholder:text-[#4B5563]"
+          className="font-mono text-xs bg-ws-bg border-ws-line text-ws-text rounded-xl min-h-[140px] placeholder:text-ws-line"
         />
 
         {/* Zustandsanzeige */}
         {parseState.status === 'ready' && (
           <div className="space-y-2">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#58CC02]/10 border border-[#58CC02]/30">
-              <CheckCircle2 className="w-4 h-4 text-[#58CC02] shrink-0" />
-              <p className="text-xs text-[#58CC02] font-medium">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-ws-green/10 border border-ws-green/30">
+              <CheckCircle2 className="w-4 h-4 text-ws-green shrink-0" />
+              <p className="text-xs text-ws-green font-medium">
                 {parseState.check.clean} von {parseState.count}{' '}
                 {parseState.count === 1 ? 'Frage' : 'Fragen'} sauber — bereit zum Import
               </p>
             </div>
 
             {parseState.check.flagged.length > 0 && (
-              <div className="rounded-xl bg-[#FF9600]/10 border border-[#FF9600]/30 overflow-hidden">
+              <div className="rounded-xl bg-ws-orange/10 border border-ws-orange/30 overflow-hidden">
                 <button
                   onClick={() => setShowFlagged((v) => !v)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#FF9600]/5 transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-ws-orange/5 transition-colors"
                 >
-                  <AlertTriangle className="w-4 h-4 text-[#FF9600] shrink-0" />
-                  <p className="text-xs text-[#FF9600] font-medium flex-1">
+                  <AlertTriangle className="w-4 h-4 text-ws-orange shrink-0" />
+                  <p className="text-xs text-ws-orange font-medium flex-1">
                     {parseState.check.flagged.length}{' '}
                     {parseState.check.flagged.length === 1 ? 'Frage ist' : 'Fragen sind'} durch
                     Raten lösbar — wird nicht importiert
                   </p>
                   {showFlagged ? (
-                    <ChevronUp className="w-4 h-4 text-[#FF9600] shrink-0" />
+                    <ChevronUp className="w-4 h-4 text-ws-orange shrink-0" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-[#FF9600] shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-ws-orange shrink-0" />
                   )}
                 </button>
 
@@ -320,12 +320,12 @@ function ManualImportSection() {
                   <div className="px-3 pb-3 space-y-3 max-h-64 overflow-auto">
                     {parseState.check.flagged.map((f) => (
                       <div key={f.index} className="space-y-1">
-                        <p className="text-xs text-[#F9FAFB] font-medium">
+                        <p className="text-xs text-ws-text font-medium">
                           {f.index + 1}. {f.row.question_text}
                         </p>
                         <ul className="space-y-0.5">
                           {f.blockers.map((b) => (
-                            <li key={b.code} className="text-xs text-[#9CA3AF] leading-relaxed">
+                            <li key={b.code} className="text-xs text-ws-muted leading-relaxed">
                               · {b.message}
                             </li>
                           ))}
@@ -339,9 +339,9 @@ function ManualImportSection() {
           </div>
         )}
         {(parseState.status === 'invalid' || parseState.status === 'no_rows') && (
-          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-[#FF4B4B]/10 border border-[#FF4B4B]/30">
-            <XCircle className="w-4 h-4 text-[#FF4B4B] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#FF4B4B]">{parseState.reason}</p>
+          <div className="flex items-start gap-2 px-3 py-2 rounded-xl bg-ws-red/10 border border-ws-red/30">
+            <XCircle className="w-4 h-4 text-ws-red shrink-0 mt-0.5" />
+            <p className="text-xs text-ws-red">{parseState.reason}</p>
           </div>
         )}
       </div>
@@ -349,11 +349,11 @@ function ManualImportSection() {
       {/* Step 3 */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#1CB0F6] text-white text-xs font-bold shrink-0">3</span>
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">3</span>
           <Button
             onClick={() => handleImport(false)}
             disabled={importing || parseState.status !== 'ready' || parseState.check.clean === 0}
-            className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+            className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
           >
             {importing ? (
               <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -369,7 +369,7 @@ function ManualImportSection() {
             <Button
               variant="outline"
               onClick={copyFixPrompt}
-              className="rounded-xl border-[#FF9600]/50 bg-transparent text-[#FF9600] hover:bg-[#FF9600]/10 hover:text-[#FF9600]"
+              className="rounded-xl border-ws-orange/50 bg-transparent text-ws-orange hover:bg-ws-orange/10 hover:text-ws-orange"
             >
               {fixCopied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
               Korrekturauftrag für {parseState.check.flagged.length} kopieren
@@ -378,19 +378,19 @@ function ManualImportSection() {
         </div>
 
         {parseState.status === 'ready' && parseState.check.flagged.length > 0 ? (
-          <p className="text-xs text-[#9CA3AF] leading-relaxed">
+          <p className="text-xs text-ws-muted leading-relaxed">
             Korrekturauftrag kopieren, in claude.ai einfügen und die verbesserten Fragen erneut
             hier einsetzen — das kostet nichts.{' '}
             <button
               onClick={() => handleImport(true)}
               disabled={importing}
-              className="text-[#9CA3AF] underline hover:text-[#F9FAFB] disabled:opacity-50"
+              className="text-ws-muted underline hover:text-ws-text disabled:opacity-50"
             >
               Alle {parseState.count} trotzdem importieren
             </button>
           </p>
         ) : (
-          <p className="text-xs text-[#9CA3AF]">Fragen werden sofort aktiv im Quiz sichtbar.</p>
+          <p className="text-xs text-ws-muted">Fragen werden sofort aktiv im Quiz sichtbar.</p>
         )}
       </div>
     </div>
@@ -412,54 +412,54 @@ function AutoGenerationSection({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="rounded-2xl border border-[#4B5563] bg-[#1F2937] overflow-hidden">
+    <div className="rounded-2xl border border-ws-line bg-ws-surface overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-[#374151] transition-colors"
+        className="w-full flex items-center justify-between p-5 text-left hover:bg-ws-raised transition-colors"
       >
         <div className="flex items-center gap-3">
-          <Zap className="w-5 h-5 text-[#FF9600]" />
+          <Zap className="w-5 h-5 text-ws-orange" />
           <div>
-            <p className="text-sm font-semibold text-[#F9FAFB]">
+            <p className="text-sm font-semibold text-ws-text">
               Automatische Generierung{' '}
-              <Badge className="ml-2 bg-[#FF9600]/20 text-[#FF9600] border-[#FF9600]/30 text-xs">
+              <Badge className="ml-2 bg-ws-orange/20 text-ws-orange border-ws-orange/30 text-xs">
                 Kostenpflichtig
               </Badge>
             </p>
-            <p className="text-xs text-[#9CA3AF] mt-0.5">
+            <p className="text-xs text-ws-muted mt-0.5">
               PDF/DOCX hochladen → KI generiert Fragen vollautomatisch. Verbraucht API-Guthaben — der Weg über den kopierten Prompt oben ist kostenlos.
             </p>
           </div>
         </div>
         {open ? (
-          <ChevronUp className="w-4 h-4 text-[#9CA3AF] shrink-0" />
+          <ChevronUp className="w-4 h-4 text-ws-muted shrink-0" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-[#9CA3AF] shrink-0" />
+          <ChevronDown className="w-4 h-4 text-ws-muted shrink-0" />
         )}
       </button>
 
       {open && (
-        <div className="px-5 pb-5 space-y-5 border-t border-[#4B5563]">
+        <div className="px-5 pb-5 space-y-5 border-t border-ws-line">
           {/* API Key hint */}
-          <div className="flex gap-3 p-4 rounded-xl bg-[#FF9600]/10 border border-[#FF9600]/30 mt-4">
-            <Info className="w-4 h-4 text-[#FF9600] shrink-0 mt-0.5" />
-            <div className="text-xs text-[#F9FAFB] space-y-1">
-              <p className="font-semibold text-[#FF9600]">ANTHROPIC_API_KEY erforderlich</p>
+          <div className="flex gap-3 p-4 rounded-xl bg-ws-orange/10 border border-ws-orange/30 mt-4">
+            <Info className="w-4 h-4 text-ws-orange shrink-0 mt-0.5" />
+            <div className="text-xs text-ws-text space-y-1">
+              <p className="font-semibold text-ws-orange">ANTHROPIC_API_KEY erforderlich</p>
               <p>
                 Diese Funktion benötigt einen eigenen API-Key von{' '}
                 <a
                   href="https://console.anthropic.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="underline text-[#1CB0F6]"
+                  className="underline text-ws-blue"
                 >
                   console.anthropic.com
                 </a>
                 . Einmalig ~€5 aufladen reicht für alle Dokumente deiner gesamten Ausbildung (~30–40 Dokumente).
               </p>
               <p>
-                Key in <code className="bg-[#111827] px-1 rounded">.env.local</code> eintragen:{' '}
-                <code className="bg-[#111827] px-1 rounded">ANTHROPIC_API_KEY=sk-ant-...</code>
+                Key in <code className="bg-ws-bg px-1 rounded">.env.local</code> eintragen:{' '}
+                <code className="bg-ws-bg px-1 rounded">ANTHROPIC_API_KEY=sk-ant-...</code>
               </p>
             </div>
           </div>
@@ -467,13 +467,13 @@ function AutoGenerationSection({
           <AiGeneratorUploadZone onUploadComplete={onUploadComplete} />
 
           <section>
-            <h3 className="text-base font-semibold text-[#F9FAFB] mb-3">Verarbeitungs-Jobs</h3>
+            <h3 className="text-base font-semibold text-ws-text mb-3">Verarbeitungs-Jobs</h3>
             {jobsLoading ? (
               <div className="space-y-3">
                 {[1, 2].map((i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
               </div>
             ) : jobs.length === 0 ? (
-              <p className="text-sm text-[#9CA3AF] py-4 text-center">
+              <p className="text-sm text-ws-muted py-4 text-center">
                 Noch keine Dokumente hochgeladen.
               </p>
             ) : (
@@ -646,25 +646,19 @@ export default function AiGeneratorPage() {
 
   return (
     <div className="space-y-8">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight flex items-center gap-2">
-          <Bot className="w-6 h-6 text-[#1CB0F6]" />
-          Fragen aus Material
-        </h1>
-        <p className="text-sm text-[#9CA3AF] mt-1">
-          Lernmaterial in Claude.ai einfügen und Fragen automatisch generieren lassen.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="Fragen aus Material"
+        description="Lernmaterial in Claude.ai einfügen und Fragen automatisch generieren lassen."
+      />
 
       {/* ── Workflow 1: Manual (Claude.ai) ── */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <FileJson className="w-5 h-5 text-[#58CC02]" />
-          <h2 className="text-base font-semibold text-[#F9FAFB]">
+          <FileJson className="w-5 h-5 text-ws-green" />
+          <h2 className="text-base font-semibold text-ws-text">
             Methode 1: Claude.ai (kostenlos, empfohlen)
           </h2>
-          <Badge className="bg-[#58CC02]/20 text-[#58CC02] border-[#58CC02]/30 text-xs">
+          <Badge className="bg-ws-green/20 text-ws-green border-ws-green/30 text-xs">
             Kein API-Key nötig
           </Badge>
         </div>
@@ -685,10 +679,10 @@ export default function AiGeneratorPage() {
       {(completedJobs.length > 0 || drafts.length > 0) && (
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#F9FAFB]">
+            <h2 className="text-lg font-semibold text-ws-text">
               Entwurfs-Fragen prüfen
               {pendingDraftCount > 0 && (
-                <span className="ml-2 text-sm font-normal text-[#FF9600]">
+                <span className="ml-2 text-sm font-normal text-ws-orange">
                   ({pendingDraftCount} ausstehend)
                 </span>
               )}
@@ -698,7 +692,7 @@ export default function AiGeneratorPage() {
               size="sm"
               onClick={fetchDrafts}
               disabled={draftsLoading}
-              className="text-[#9CA3AF] hover:text-[#F9FAFB]"
+              className="text-ws-muted hover:text-ws-text"
             >
               <RefreshCw className={`w-4 h-4 ${draftsLoading ? 'animate-spin' : ''}`} />
             </Button>
@@ -706,10 +700,10 @@ export default function AiGeneratorPage() {
 
           <div className="flex flex-wrap gap-3 mb-4">
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as DraftStatusFilter)}>
-              <SelectTrigger className="w-[190px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[190px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="all">Alle Status</SelectItem>
                 <SelectItem value="pending">Ausstehend</SelectItem>
                 <SelectItem value="review_required">Überprüfung nötig</SelectItem>
@@ -719,20 +713,20 @@ export default function AiGeneratorPage() {
             </Select>
 
             <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-              <SelectTrigger className="w-[160px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[160px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Fach" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="all">Alle Fächer</SelectItem>
                 {subjectCodes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
 
             <Select value={jobFilter} onValueChange={setJobFilter}>
-              <SelectTrigger className="w-[210px] bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[210px] bg-ws-surface border-ws-line text-ws-text">
                 <SelectValue placeholder="Datei / Job" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="all">Alle Dateien</SelectItem>
                 {completedJobs.map((j) => (
                   <SelectItem key={j.id} value={j.id}>
@@ -743,25 +737,25 @@ export default function AiGeneratorPage() {
             </Select>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 p-4 bg-[#1F2937] border border-[#4B5563] rounded-2xl mb-5">
-            <span className="text-sm font-semibold text-[#9CA3AF] whitespace-nowrap">
+          <div className="flex flex-wrap items-center gap-3 p-4 bg-ws-surface border border-ws-line rounded-2xl mb-5">
+            <span className="text-sm font-semibold text-ws-muted whitespace-nowrap">
               Massenaktionen:
             </span>
             <Select value={bulkSubject} onValueChange={setBulkSubject}>
-              <SelectTrigger className="w-[145px] bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[145px] bg-ws-bg border-ws-line text-ws-text">
                 <SelectValue placeholder="Fach setzen" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="_none">Kein Fach</SelectItem>
                 {subjectCodes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
 
             <Select value={bulkDifficulty} onValueChange={setBulkDifficulty}>
-              <SelectTrigger className="w-[155px] bg-[#111827] border-[#4B5563] text-[#F9FAFB]">
+              <SelectTrigger className="w-[155px] bg-ws-bg border-ws-line text-ws-text">
                 <SelectValue placeholder="Schwierigkeit" />
               </SelectTrigger>
-              <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                 <SelectItem value="_none">Keine</SelectItem>
                 {DIFFICULTIES.map((d) => (
                   <SelectItem key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</SelectItem>
@@ -774,7 +768,7 @@ export default function AiGeneratorPage() {
                 variant="outline"
                 onClick={handleBulkReject}
                 disabled={bulkLoading !== null}
-                className="rounded-xl border-[#FF4B4B] text-[#FF4B4B] hover:bg-[#FF4B4B]/10"
+                className="rounded-xl border-ws-red text-ws-red hover:bg-ws-red/10"
               >
                 {bulkLoading === 'reject' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
                 Alle ablehnen
@@ -782,7 +776,7 @@ export default function AiGeneratorPage() {
               <Button
                 onClick={handleBulkAccept}
                 disabled={bulkLoading !== null}
-                className="bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl"
+                className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
               >
                 {bulkLoading === 'accept' ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCheck className="w-4 h-4 mr-2" />}
                 Alle akzeptieren
@@ -795,7 +789,7 @@ export default function AiGeneratorPage() {
               {[1, 2, 3].map((i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
             </div>
           ) : drafts.length === 0 ? (
-            <div className="text-center py-14 text-[#9CA3AF]">
+            <div className="text-center py-14 text-ws-muted">
               Keine Entwürfe für den gewählten Filter.
             </div>
           ) : (

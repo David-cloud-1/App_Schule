@@ -29,8 +29,8 @@ const SORT_LABELS: Record<PickerSort, string> = {
 }
 const DIFFICULTY_ORDER: Record<string, number> = { leicht: 0, mittel: 1, schwer: 2 }
 
-const TRIGGER = 'bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl'
-const CONTENT = 'bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]'
+const TRIGGER = 'bg-ws-bg border-ws-line text-ws-text rounded-xl'
+const CONTENT = 'bg-ws-surface border-ws-line text-ws-text'
 
 interface Props {
   /** Alle zur Auswahl stehenden Fragen in Serverreihenfolge (neueste zuerst) */
@@ -105,9 +105,9 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
 
   return (
     <div className="space-y-2">
-      <div className="sticky top-0 z-10 flex items-center justify-between rounded-xl bg-[#111827] px-3 py-2 text-sm">
-        <span className="text-[#9CA3AF]">Gewählte Fragen</span>
-        <span className={enough ? 'font-semibold text-[#58CC02]' : 'font-semibold text-[#FF9600]'}>
+      <div className="sticky top-0 z-10 flex items-center justify-between rounded-xl bg-ws-bg px-3 py-2 text-sm">
+        <span className="text-ws-muted">Gewählte Fragen</span>
+        <span className={enough ? 'font-semibold text-ws-green' : 'font-semibold text-ws-orange'}>
           {selectedIds.size} (min. {minSelection})
         </span>
       </div>
@@ -138,13 +138,13 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ws-muted" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Stichwort in Frage oder Thema…"
             aria-label="Fragen durchsuchen"
-            className="pl-9 bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+            className="pl-9 bg-ws-bg border-ws-line text-ws-text rounded-xl"
           />
         </div>
         <Select value={sort} onValueChange={(v) => setSort(v as PickerSort)}>
@@ -157,16 +157,16 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
         </Select>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+      <div className="flex items-center justify-between text-xs text-ws-muted">
         <span>{visible.length} von {questions.length} Fragen</span>
-        <button type="button" className="min-h-11 px-2 text-[#1CB0F6] hover:underline" onClick={toggleVisible}>
+        <button type="button" className="min-h-11 px-2 text-ws-blue hover:underline" onClick={toggleVisible}>
           {allVisibleSelected ? 'Angezeigte abwählen' : 'Alle angezeigten wählen'}
         </button>
       </div>
 
-      <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-[#111827] p-3">
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3">
         {visible.length === 0 ? (
-          <p className="py-6 text-center text-sm text-[#9CA3AF]">
+          <p className="py-6 text-center text-sm text-ws-muted">
             {questions.length === 0 ? 'Keine passenden Fragen vorhanden.' : 'Keine Frage passt zu den Filtern.'}
           </p>
         ) : (
@@ -175,13 +175,13 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
               <Checkbox
                 checked={selectedIds.has(q.id)}
                 onCheckedChange={(checked) => toggleOne(q.id, checked === true)}
-                className="mt-0.5 border-[#4B5563] data-[state=checked]:border-[#58CC02] data-[state=checked]:bg-[#58CC02]"
+                className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
               />
               <div className="min-w-0 flex-1">
-                <p className="text-xs leading-snug text-[#F9FAFB]">
+                <p className="text-xs leading-snug text-ws-text">
                   {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
                 </p>
-                <span className="text-xs text-[#1CB0F6]">
+                <span className="text-xs text-ws-blue">
                   {q.difficulty}
                   {q.class_level != null && ` · Kl. ${q.class_level}`}
                   {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}

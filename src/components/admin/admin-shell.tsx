@@ -1,97 +1,139 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Gamepad2, Menu, Shield } from 'lucide-react'
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
+import { useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import { Shield } from 'lucide-react'
+import { Toaster } from '@/components/ui/sonner'
 import { AdminNav } from '@/components/admin/admin-nav'
+import { AdminTopbar } from '@/components/admin/admin-topbar'
+import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
 import { DepartmentSwitcher } from '@/components/admin/department-switcher'
-import { BrandIcon, BrandName } from '@/components/app-brand'
+import { WorkspaceProvider, useWorkspace } from '@/components/admin/workspace-provider'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useDepartment } from '@/components/department-provider'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  useSidebar,
+} from '@/components/ui/sidebar'
+import type { WorkspaceTheme } from '@/lib/workspace-theme'
+
+// Schnellsuche erst beim ersten Öffnen laden — die Startseite bleibt schlank
+const AdminCommandPalette = dynamic(() => import('@/components/admin/admin-command-palette'), { ssr: false })
 
 /**
- * Rahmen des Lehrkräfte-Bereichs (PROJ-40/44): Kopfzeile, Seitenleiste ab 1024 px,
- * darunter ein Menü, das von links einfährt. Im Druck entfällt alles außer dem Inhalt.
+ * Rahmen des Lehrkräfte-Bereichs (PROJ-40/44/45): Seitenleiste ab 1024 px
+ * (einklappbar, Zustand per Cookie), darunter Schublade; Kopfzeile mit
+ * Brotkrumen und Schnellsuche (⌘K / Strg+K); Darstellung hell/dunkel/System.
+ * Im Druck bleibt nur der Inhalt, immer hell.
  */
 export function AdminShell({
-  displayName,
-  isSuperAdmin,
+  initialTheme,
+  sidebarOpen,
   children,
 }: {
-  displayName: string
-  isSuperAdmin: boolean
+  initialTheme: WorkspaceTheme
+  sidebarOpen: boolean
   children: React.ReactNode
 }) {
-  const [menuOpen, setMenuOpen] = useState(false)
+  return (
+    <WorkspaceProvider initialTheme={initialTheme}>
+      <WorkspaceFrame sidebarOpen={sidebarOpen}>{children}</WorkspaceFrame>
+    </WorkspaceProvider>
+  )
+}
 
-  // Ab 1024 px übernimmt die Seitenleiste — ein offenes Menü darf dann nicht stehen bleiben
+function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; children: React.ReactNode }) {
+  const { theme, commandOpen, setCommandOpen, commandLoaded } = useWorkspace()
+
+  // ⌘K / Strg+K öffnet bzw. schließt die Schnellsuche
   useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)')
-    const closeOnDesktop = (e: MediaQueryListEvent) => {
-      if (e.matches) setMenuOpen(false)
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        setCommandOpen(!commandOpen)
+      }
     }
-    query.addEventListener('change', closeOnDesktop)
-    return () => query.removeEventListener('change', closeOnDesktop)
-  }, [])
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [commandOpen, setCommandOpen])
 
   return (
-    <div className="min-h-screen bg-[#111827] print:min-h-0 print:bg-white">
-      <header className="sticky top-0 z-20 h-16 bg-[#1F2937] border-b border-[#4B5563] print:hidden">
-        <div className="max-w-7xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="Menü öffnen"
-              className="lg:hidden flex size-11 shrink-0 items-center justify-center rounded-xl text-[#F9FAFB] transition-all duration-200 hover:bg-[#374151] active:scale-95"
-            >
-              <Menu className="size-6" />
-            </button>
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
-            >
-              <BrandIcon className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold hidden sm:inline"><BrandName /></span>
-            </Link>
-            <span className="text-[#4B5563] hidden sm:inline">/</span>
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold text-[#F9FAFB]">Lehrkräfte</span>
-            </div>
+    <div
+      data-ws-theme={theme}
+      className="ws-root min-h-svh bg-ws-bg text-ws-text print:min-h-0 print:bg-white print:text-black"
+    >
+      <a
+        href="#ws-main"
+        className="sr-only z-50 rounded-xl bg-ws-green px-4 py-3 font-semibold text-ws-on-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Zum Inhalt springen
+      </a>
+      <SidebarProvider defaultOpen={sidebarOpen} className="min-h-svh print:block print:min-h-0">
+        <AdminSidebar />
+        <SidebarInset className="min-w-0 bg-ws-bg print:bg-white">
+          <AdminTopbar />
+          <div
+            id="ws-main"
+            tabIndex={-1}
+            className="mx-auto w-full min-w-0 max-w-screen-2xl flex-1 overflow-x-clip px-4 py-6 outline-none sm:px-6 lg:px-8 print:max-w-none print:overflow-visible print:p-0"
+          >
+            {children}
           </div>
-          <div className="flex min-w-0 items-center gap-3">
-            {isSuperAdmin && <DepartmentSwitcher />}
-            <Link
-              href="/"
-              className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#4B5563] px-3 text-sm font-semibold text-[#F9FAFB] transition-all duration-200 hover:border-[#58CC02] hover:bg-[#374151] active:scale-95"
-            >
-              <Gamepad2 className="size-5 text-[#58CC02]" />
-              <span className="sr-only sm:not-sr-only">Zur Lern-App</span>
-            </Link>
-            <div className="hidden sm:block text-sm text-[#9CA3AF] truncate max-w-[200px]">
-              {displayName}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent
-          side="left"
-          className="w-72 max-w-[85vw] overflow-y-auto border-[#4B5563] bg-[#1F2937] p-4 text-[#F9FAFB]"
-        >
-          <SheetTitle className="mb-4 text-[#F9FAFB]">Menü</SheetTitle>
-          <SheetDescription className="sr-only">Bereiche des Lehrkräfte-Bereichs</SheetDescription>
-          <AdminNav onNavigate={() => setMenuOpen(false)} />
-        </SheetContent>
-      </Sheet>
-
-      <div className="max-w-7xl mx-auto lg:flex print:mx-0 print:block print:max-w-none">
-        <aside className="hidden lg:block sticky top-16 h-[calc(100vh-4rem)] w-60 shrink-0 self-start overflow-y-auto border-r border-[#4B5563] px-3 py-6 print:hidden">
-          <AdminNav />
-        </aside>
-        <main className="min-w-0 flex-1 px-4 sm:px-6 py-6 print:max-w-none print:p-0">{children}</main>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
+      {commandLoaded && <AdminCommandPalette />}
+      {/* Toasts folgen der gewählten Darstellung */}
+      <Toaster theme={theme} />
     </div>
+  )
+}
+
+function AdminSidebar() {
+  const { name: departmentName } = useDepartment()
+  const { isSuperAdmin } = useAdminRole()
+  const { isMobile } = useSidebar()
+
+  return (
+    <Sidebar collapsible="icon" className="border-ws-line">
+      <SidebarHeader className="border-b border-ws-line px-3 py-3">
+        <div className="flex h-10 min-w-0 items-center gap-3 px-1">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-ws-green/15 text-ws-green">
+            <Shield className="size-5" aria-hidden />
+          </span>
+          <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-sm font-bold text-ws-text">Lehrkräfte</span>
+            {departmentName && (
+              <span className="truncate text-xs text-ws-muted" title={departmentName}>
+                {departmentName}
+              </span>
+            )}
+          </span>
+        </div>
+        {isSuperAdmin && isMobile && (
+          <div className="pt-2 sm:hidden">
+            <DepartmentSwitcher />
+          </div>
+        )}
+      </SidebarHeader>
+      <SidebarContent>
+        <AdminNav />
+      </SidebarContent>
+      <SidebarFooter className="border-t border-ws-line">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <AdminAccountMenu variant="sidebar" />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   )
 }

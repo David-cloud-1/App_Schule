@@ -11,6 +11,7 @@ import { useExamParts } from '@/components/department-provider'
 import { examPartLabel, findExamPart } from '@/lib/exam-parts'
 import type { GradeBoundary, StudentReport } from '@/lib/graded-assessments'
 import { PrintToolbar, StudentReportSheet, formatDate } from '@/components/admin/assessment-print'
+import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 
 type ReportsResponse = {
   assessment: { title: string; part: number; opensAt: string; gradingScale: GradeBoundary[] }
@@ -43,23 +44,13 @@ function SingleOrAllPrint({ id }: { id: string }) {
   }, [id, sessionId])
 
   if (state === 'loading') {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="animate-spin text-[#9CA3AF]" />
-      </div>
-    )
+    return <AdminLoadingState variant="cards" rows={2} label="Auswertung wird geladen …" />
   }
 
   if (state === 'failed' || !data) {
-    return (
-      <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
-        <p className="text-[#9CA3AF]">Die Auswertung konnte nicht geladen werden.</p>
-        <Button variant="outline" size="sm" onClick={load} className="mt-4 rounded-xl border-[#4B5563] text-[#9CA3AF]">
-          Erneut versuchen
-        </Button>
-      </div>
-    )
+    return <AdminErrorState message="Die Auswertung konnte gerade nicht geladen werden." onRetry={load} />
   }
+
 
   const { assessment, reports, stillWriting } = data
   const partLabel = examPartLabel(findExamPart(examParts, assessment.part), assessment.part)
@@ -69,22 +60,22 @@ function SingleOrAllPrint({ id }: { id: string }) {
       <PrintToolbar backHref={`/admin/leistungsnachweise/${id}`} printDisabled={reports.length === 0}>
         <div className="flex items-center gap-2">
           <Switch id="explanations" checked={showExplanations} onCheckedChange={setShowExplanations} />
-          <Label htmlFor="explanations" className="text-sm text-[#F9FAFB]">Erklärungen mitdrucken</Label>
+          <Label htmlFor="explanations" className="text-sm text-ws-text">Erklärungen mitdrucken</Label>
         </div>
         {sessionId ? (
-          <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`} className="text-sm text-[#1CB0F6] hover:underline">
+          <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`} className="text-sm text-ws-blue hover:underline">
             Alle Einzelauswertungen
           </Link>
         ) : (
-          <span className="text-sm text-[#9CA3AF]">{reports.length} Einzelauswertungen, je Schüler eine Seite</span>
+          <span className="text-sm text-ws-muted">{reports.length} Einzelauswertungen, je Schüler eine Seite</span>
         )}
         {!sessionId && stillWriting > 0 && (
-          <span className="text-sm text-[#FF9600]">{stillWriting} schreiben noch und fehlen hier</span>
+          <span className="text-sm text-ws-orange">{stillWriting} schreiben noch und fehlen hier</span>
         )}
       </PrintToolbar>
 
       {reports.length === 0 ? (
-        <p className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563] text-[#9CA3AF]">
+        <p className="text-center py-16 bg-ws-surface rounded-2xl border border-ws-line text-ws-muted">
           Noch keine Abgaben.
         </p>
       ) : (
@@ -109,11 +100,7 @@ export default function SingleOrAllPrintPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   return (
     <Suspense
-      fallback={
-        <div className="flex justify-center py-16">
-          <Loader2 className="animate-spin text-[#9CA3AF]" />
-        </div>
-      }
+      fallback={<AdminLoadingState variant="cards" rows={2} label="Auswertung wird geladen …" />}
     >
       <SingleOrAllPrint id={id} />
     </Suspense>

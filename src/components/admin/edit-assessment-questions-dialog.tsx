@@ -64,10 +64,10 @@ export function EditAssessmentQuestionsDialog({ open, onOpenChange, assessmentId
 
   return (
     <Dialog open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Fragen bearbeiten</DialogTitle>
-          <DialogDescription className="text-[#9CA3AF]">
+          <DialogDescription className="text-ws-muted">
             Solange der Nachweis ein Entwurf ist, kannst du die Fragen ändern. Beim Öffnen werden sie festgeschrieben.
           </DialogDescription>
         </DialogHeader>
@@ -80,7 +80,7 @@ export function EditAssessmentQuestionsDialog({ open, onOpenChange, assessmentId
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white"
+            className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
           >
             {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
             Speichern

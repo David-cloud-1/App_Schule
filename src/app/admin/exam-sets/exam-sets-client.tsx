@@ -29,6 +29,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useClassLevelOptions, useExamParts } from '@/components/department-provider'
 import { examPartLabel, examPartSubjectCodes, findExamPart } from '@/lib/exam-parts'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { toast } from 'sonner'
+import { AdminEmptyState } from '@/components/admin/admin-states'
 
 type ExamSet = {
   id: string
@@ -195,6 +198,9 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       if (res.ok) {
         // Multiple sets can be active per part — only flip the toggled one.
         setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, is_active: !set.is_active } : s)))
+        toast.success(set.is_active ? 'Set deaktiviert' : 'Set aktiviert')
+      } else {
+        toast.error('Der Status konnte nicht geändert werden.')
       }
     } finally {
       setTogglingId(null)
@@ -205,7 +211,12 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
     setDeletingId(id)
     try {
       const res = await fetch(`/api/admin/exam-sets/${id}`, { method: 'DELETE' })
-      if (res.ok) setSets((prev) => prev.filter((s) => s.id !== id))
+      if (res.ok) {
+        setSets((prev) => prev.filter((s) => s.id !== id))
+        toast.success('Set gelöscht')
+      } else {
+        toast.error('Das Set konnte nicht gelöscht werden.')
+      }
     } finally {
       setDeletingId(null)
     }
@@ -260,6 +271,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       }
       const { set } = await res.json()
       setSets((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...set } : s)))
+      toast.success('Set gespeichert')
       setShowCreateModal(false)
       setEditingId(null)
     } catch {
@@ -296,6 +308,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       }
       const { set } = await res.json()
       setSets((prev) => [set, ...prev])
+      toast.success('Set erstellt')
       setShowCreateModal(false)
       setNewName('')
       setNewPart(null)
@@ -373,6 +386,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
         return
       }
       setSets((prev) => [data.set, ...prev])
+      toast.success('Set importiert')
       setShowImportDialog(false)
       resetImportDialog()
     } catch {
@@ -397,41 +411,51 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-[#F9FAFB]">Prüfungssimulation</h2>
-          <p className="text-sm text-[#9CA3AF] mt-1">
-            Erstelle kuratierte Fragensets für die Prüfungssimulation. Pro Teil können mehrere Sets gleichzeitig aktiv sein — z.B. verschiedene Prüfungen für verschiedene Klassen.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={() => { resetImportDialog(); setShowImportDialog(true) }}
-            variant="outline"
-            className="rounded-xl border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10 font-semibold"
-          >
-            <FileUp size={16} className="mr-2" />
-            Aus Datei importieren
-          </Button>
-          <Button
-            onClick={openCreate}
-            className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
-          >
-            <Plus size={16} className="mr-2" />
-            Neues Set
-          </Button>
-        </div>
+      <div className="mb-6">
+        <AdminPageHeader
+          title="Prüfungssimulation"
+          description="Erstelle kuratierte Fragensets für die Prüfungssimulation. Pro Teil können mehrere Sets gleichzeitig aktiv sein — z.B. verschiedene Prüfungen für verschiedene Klassen."
+          actions={
+            <>
+              <Button
+                onClick={() => { resetImportDialog(); setShowImportDialog(true) }}
+                variant="outline"
+                className="rounded-xl border-ws-blue/50 text-ws-blue hover:bg-ws-blue/10 font-semibold"
+              >
+                <FileUp size={16} className="mr-2" />
+                Aus Datei importieren
+              </Button>
+              <Button
+                onClick={openCreate}
+                className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
+              >
+                <Plus size={16} className="mr-2" />
+                Neues Set
+              </Button>
+            </>
+          }
+        />
       </div>
 
       {sets.length === 0 ? (
-        <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
-          <Shield size={48} className="text-[#374151] mx-auto mb-4" />
-          <p className="text-[#9CA3AF]">Noch keine Prüfungssimulationen erstellt.</p>
-        </div>
+        <AdminEmptyState
+          icon={Shield}
+          title="Noch keine Prüfungssimulationen"
+          description="Stelle ein Fragenset zusammen, das die Azubis als Prüfungssimulation spielen können."
+          action={
+            <Button
+              onClick={openCreate}
+              className="min-h-11 rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
+            >
+              <Plus size={16} className="mr-2" />
+              Neues Set
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {sets.map((set) => (
-            <div key={set.id} className="bg-[#1F2937] border border-[#4B5563] rounded-2xl overflow-hidden">
+            <div key={set.id} className="bg-ws-surface border border-ws-line rounded-2xl overflow-hidden">
               <div className="px-4 py-3 flex items-center justify-between gap-3">
                 <button
                   className="flex-1 text-left flex items-center gap-3"
@@ -439,20 +463,20 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 >
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[#F9FAFB] text-sm">{set.name}</span>
+                      <span className="font-semibold text-ws-text text-sm">{set.name}</span>
                       {set.is_active && (
-                        <Badge className="text-xs bg-[#58CC02]/20 text-[#58CC02] border-0">Aktiv</Badge>
+                        <Badge className="text-xs bg-ws-green/20 text-ws-green border-0">Aktiv</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-[#9CA3AF]">{partLabel(set.part)}</span>
-                      <span className="text-xs text-[#6B7280]">· {set.question_ids.length} Fragen</span>
+                      <span className="text-xs text-ws-muted">{partLabel(set.part)}</span>
+                      <span className="text-xs text-ws-faint">· {set.question_ids.length} Fragen</span>
                       {set.duration_minutes != null && (
-                        <span className="text-xs text-[#1CB0F6]">· {set.duration_minutes} Min.</span>
+                        <span className="text-xs text-ws-blue">· {set.duration_minutes} Min.</span>
                       )}
                     </div>
                   </div>
-                  {expandedSet === set.id ? <ChevronUp size={16} className="text-[#9CA3AF] ml-auto" /> : <ChevronDown size={16} className="text-[#9CA3AF] ml-auto" />}
+                  {expandedSet === set.id ? <ChevronUp size={16} className="text-ws-muted ml-auto" /> : <ChevronDown size={16} className="text-ws-muted ml-auto" />}
                 </button>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -460,7 +484,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="rounded-lg text-xs px-3 border-[#1CB0F6]/50 text-[#1CB0F6] hover:bg-[#1CB0F6]/10"
+                      className="rounded-lg text-xs px-3 border-ws-blue/50 text-ws-blue hover:bg-ws-blue/10"
                     >
                       <GraduationCap size={14} className="mr-1" />
                       Leistungsnachweis
@@ -474,8 +498,8 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     className={cn(
                       'rounded-lg text-xs px-3',
                       set.is_active
-                        ? 'border-[#FF9600]/50 text-[#FF9600] hover:bg-[#FF9600]/10'
-                        : 'border-[#58CC02]/50 text-[#58CC02] hover:bg-[#58CC02]/10',
+                        ? 'border-ws-orange/50 text-ws-orange hover:bg-ws-orange/10'
+                        : 'border-ws-green/50 text-ws-green hover:bg-ws-green/10',
                     )}
                   >
                     {set.is_active ? <ShieldOff size={14} className="mr-1" /> : <Shield size={14} className="mr-1" />}
@@ -486,7 +510,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     variant="outline"
                     onClick={() => openEdit(set)}
                     aria-label="Prüfungssimulation bearbeiten"
-                    className="rounded-lg border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151] px-2"
+                    className="rounded-lg border-ws-line text-ws-muted hover:bg-ws-raised px-2"
                   >
                     <Pencil size={14} />
                   </Button>
@@ -495,7 +519,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     variant="outline"
                     onClick={() => setConfirmDeleteId(set.id)}
                     disabled={deletingId === set.id}
-                    className="rounded-lg border-[#FF4B4B]/30 text-[#FF4B4B] hover:bg-[#FF4B4B]/10 px-2"
+                    className="rounded-lg border-ws-red/30 text-ws-red hover:bg-ws-red/10 px-2"
                   >
                     <Trash2 size={14} />
                   </Button>
@@ -503,13 +527,13 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
               </div>
 
               {expandedSet === set.id && (
-                <div className="border-t border-[#4B5563] px-4 py-3">
-                  <p className="text-xs font-semibold text-[#9CA3AF] mb-2">Enthaltene Fragen ({set.question_ids.length})</p>
+                <div className="border-t border-ws-line px-4 py-3">
+                  <p className="text-xs font-semibold text-ws-muted mb-2">Enthaltene Fragen ({set.question_ids.length})</p>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {set.question_ids.map((qid) => {
                       const q = questions.find((q) => q.id === qid)
                       return (
-                        <div key={qid} className="text-xs text-[#9CA3AF] py-1 border-b border-[#374151] last:border-0">
+                        <div key={qid} className="text-xs text-ws-muted py-1 border-b border-ws-raised last:border-0">
                           {q ? q.question_text.slice(0, 80) + (q.question_text.length > 80 ? '…' : '') : qid}
                         </div>
                       )
@@ -524,17 +548,17 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
 
       {/* Delete Confirmation */}
       <AlertDialog open={confirmDeleteId !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}>
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Prüfungssimulation löschen?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               Dieser Vorgang kann nicht rückgängig gemacht werden. Das Set wird dauerhaft gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]">Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel className="border-ws-line text-ws-muted hover:bg-ws-raised">Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#FF4B4B] hover:bg-[#e04040] text-white"
+              className="bg-ws-red hover:bg-ws-red-hover text-ws-on-accent"
               onClick={() => { if (confirmDeleteId) { handleDelete(confirmDeleteId); setConfirmDeleteId(null) } }}
             >
               Löschen
@@ -545,29 +569,29 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
 
       {/* Create Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Prüfungssimulation bearbeiten' : 'Neue Prüfungssimulation erstellen'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-[#9CA3AF]">Name</Label>
+              <Label className="text-ws-muted">Name</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="z.B. Prüfung Sommer 2025"
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                className="bg-ws-bg border-ws-line text-ws-text rounded-xl"
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[#9CA3AF]">{editingId ? 'Prüfungsteil' : 'Prüfung / Fach'}</Label>
+              <Label className="text-ws-muted">{editingId ? 'Prüfungsteil' : 'Prüfung / Fach'}</Label>
               {editingId ? (
                 <Input
                   value={newPart ? partLabel(newPart) : ''}
                   disabled
-                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                  className="bg-ws-bg border-ws-line text-ws-text rounded-xl"
                 />
               ) : (
                 <>
@@ -586,12 +610,12 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                       if (kind === 'subject') setPickerSubject(key)
                     }}
                   >
-                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
+                    <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl">
                       <SelectValue placeholder="Prüfung oder Fach auswählen…" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                       <SelectGroup>
-                        <SelectLabel className="text-[#9CA3AF]">Abschlussprüfung (Simulation)</SelectLabel>
+                        <SelectLabel className="text-ws-muted">Abschlussprüfung (Simulation)</SelectLabel>
                         {examParts.map((p) => (
                           <SelectItem key={p.id} value={`part:${p.partNumber}`}>
                             {p.shortLabel} — Teil {p.partNumber}
@@ -600,21 +624,21 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                       </SelectGroup>
                       <SelectSeparator />
                       <SelectGroup>
-                        <SelectLabel className="text-[#9CA3AF]">Einzelnes Fach</SelectLabel>
+                        <SelectLabel className="text-ws-muted">Einzelnes Fach</SelectLabel>
                         {[...new Set(examParts.flatMap((p) => p.subjects.map((sub) => sub.code)))].map((code) => (
                           <SelectItem key={code} value={`subject:${code}`}>{code}</SelectItem>
                         ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  {newPart && <p className="text-xs text-[#6B7280]">Gehört zu {partLabel(newPart)}</p>}
+                  {newPart && <p className="text-xs text-ws-faint">Gehört zu {partLabel(newPart)}</p>}
                 </>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[#9CA3AF]">
-                Zeitlimit (Minuten) <span className="text-[#6B7280] font-normal">— optional</span>
+              <Label className="text-ws-muted">
+                Zeitlimit (Minuten) <span className="text-ws-faint font-normal">— optional</span>
               </Label>
               <Input
                 type="number"
@@ -623,58 +647,58 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 value={newDuration}
                 onChange={(e) => setNewDuration(e.target.value)}
                 placeholder="z.B. 90 — leer lassen für Standard"
-                className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                className="bg-ws-bg border-ws-line text-ws-text rounded-xl"
               />
             </div>
 
             {newPart && (
               <div className="space-y-2">
-                <Label className="text-[#9CA3AF]">
+                <Label className="text-ws-muted">
                   Fragen auswählen ({selectedQuestionIds.size} ausgewählt)
                 </Label>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF]" />
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ws-muted" />
                   <Input
                     value={pickerSearch}
                     onChange={(e) => setPickerSearch(e.target.value)}
                     placeholder="Stichwort in Frage oder Thema…"
-                    className="pl-9 bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                    className="pl-9 bg-ws-bg border-ws-line text-ws-text rounded-xl"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <Select value={pickerClass} onValueChange={(v) => { setPickerClass(v); setPickerTopic('all') }}>
-                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                    <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                       <SelectItem value="all">Alle Klassen</SelectItem>
                       {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={pickerSubject} onValueChange={(v) => { setPickerSubject(v); setPickerTopic('all') }}>
-                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                    <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                       <SelectItem value="all">Alle Fächer</SelectItem>
                       {(findExamPart(examParts, newPart)?.subjects ?? []).map((s) => <SelectItem key={s.id} value={s.code}>{s.code}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={pickerTopic} onValueChange={setPickerTopic}>
-                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-h-72">
+                    <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text max-h-72">
                       <SelectItem value="all">Alle Themen</SelectItem>
                       {getTopicOptions(newPart).map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={pickerSort} onValueChange={(v) => setPickerSort(v as PickerSort)}>
-                    <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                    <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                       {(Object.keys(PICKER_SORT_LABELS) as PickerSort[]).map((k) => <SelectItem key={k} value={k}>Sortieren: {PICKER_SORT_LABELS[k]}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center justify-between text-xs text-[#9CA3AF]">
+                <div className="flex items-center justify-between text-xs text-ws-muted">
                   <span>{getPickerQuestions(newPart).length} von {getQuestionsForPart(newPart).length} Fragen</span>
                   <button
                     type="button"
-                    className="text-[#1CB0F6] hover:underline"
+                    className="text-ws-blue hover:underline"
                     onClick={() => setSelectedQuestionIds((prev) => {
                       const next = new Set(prev)
                       const visible = getPickerQuestions(newPart)
@@ -686,7 +710,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     Alle angezeigten an-/abwählen
                   </button>
                 </div>
-                <div className="max-h-64 overflow-y-auto space-y-1 bg-[#111827] rounded-xl p-3">
+                <div className="max-h-64 overflow-y-auto space-y-1 bg-ws-bg rounded-xl p-3">
                   {getPickerQuestions(newPart).map((q) => (
                     <label key={q.id} className="flex items-start gap-3 py-1.5 cursor-pointer group">
                       <Checkbox
@@ -699,15 +723,15 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                             return next
                           })
                         }}
-                        className="border-[#4B5563] data-[state=checked]:bg-[#58CC02] data-[state=checked]:border-[#58CC02] mt-0.5"
+                        className="border-ws-line data-[state=checked]:bg-ws-green data-[state=checked]:border-ws-green mt-0.5"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-[#F9FAFB] leading-snug group-hover:text-white">
+                        <p className="text-xs text-ws-text leading-snug">
                           {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
                         </p>
                         <span className={cn(
                           'text-xs',
-                          q.type === 'open' ? 'text-[#FF9600]' : 'text-[#1CB0F6]',
+                          q.type === 'open' ? 'text-ws-orange' : 'text-ws-blue',
                         )}>
                           {q.type === 'open' ? 'Offen' : 'MC'} · {q.difficulty}
                           {q.class_level != null && ` · Kl. ${q.class_level}`}
@@ -721,21 +745,21 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
               </div>
             )}
 
-            {createError && <p className="text-[#FF4B4B] text-sm">{createError}</p>}
+            {createError && <p className="text-ws-red text-sm">{createError}</p>}
           </div>
 
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setShowCreateModal(false)}
-              className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]"
+              className="rounded-xl border-ws-line text-ws-muted hover:bg-ws-raised"
             >
               Abbrechen
             </Button>
             <Button
               onClick={handleSave}
               disabled={isCreating}
-              className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
+              className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
             >
               {editingId ? (isCreating ? 'Wird gespeichert…' : 'Speichern') : (isCreating ? 'Wird erstellt…' : 'Set erstellen')}
             </Button>
@@ -753,10 +777,10 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           }
         }}
       >
-        <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileUp size={18} className="text-[#1CB0F6]" />
+              <FileUp size={18} className="text-ws-blue" />
               Aus Prüfungsaufgabe importieren
             </DialogTitle>
           </DialogHeader>
@@ -765,22 +789,22 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           {importStep === 'configure' && (
             <div className="space-y-4 py-2 overflow-y-auto flex-1">
               <div className="space-y-2">
-                <Label className="text-[#9CA3AF]">Name des Sets</Label>
+                <Label className="text-ws-muted">Name des Sets</Label>
                 <Input
                   value={importName}
                   onChange={(e) => setImportName(e.target.value)}
                   placeholder="z.B. IHK Prüfung Sommer 2025 – Teil 1"
-                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                  className="bg-ws-bg border-ws-line text-ws-text rounded-xl"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[#9CA3AF]">Prüfungsteil</Label>
+                <Label className="text-ws-muted">Prüfungsteil</Label>
                 <Select onValueChange={(v) => setImportPart(Number(v))}>
-                  <SelectTrigger className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl">
+                  <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl">
                     <SelectValue placeholder="Teil auswählen…" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+                  <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                     {partNumbers.map((p) => (
                       <SelectItem key={p} value={String(p)}>{partLabel(p)}</SelectItem>
                     ))}
@@ -789,8 +813,8 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[#9CA3AF]">
-                  Zeitlimit (Minuten) <span className="text-[#6B7280] font-normal">— optional</span>
+                <Label className="text-ws-muted">
+                  Zeitlimit (Minuten) <span className="text-ws-faint font-normal">— optional</span>
                 </Label>
                 <Input
                   type="number"
@@ -799,18 +823,18 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                   value={importDuration}
                   onChange={(e) => setImportDuration(e.target.value)}
                   placeholder="z.B. 90 — leer lassen für Standard"
-                  className="bg-[#111827] border-[#4B5563] text-[#F9FAFB] rounded-xl"
+                  className="bg-ws-bg border-ws-line text-ws-text rounded-xl"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[#9CA3AF]">Prüfungsaufgabe (PDF oder Word)</Label>
+                <Label className="text-ws-muted">Prüfungsaufgabe (PDF oder Word)</Label>
                 <label
                   className={cn(
                     'flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors',
                     importFile
-                      ? 'border-[#1CB0F6]/60 bg-[#1CB0F6]/5'
-                      : 'border-[#4B5563] hover:border-[#6B7280]',
+                      ? 'border-ws-blue/60 bg-ws-blue/5'
+                      : 'border-ws-line hover:border-ws-faint',
                   )}
                 >
                   <input
@@ -820,31 +844,31 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     className="hidden"
                     onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
                   />
-                  <FileUp size={28} className={importFile ? 'text-[#1CB0F6]' : 'text-[#6B7280]'} />
+                  <FileUp size={28} className={importFile ? 'text-ws-blue' : 'text-ws-faint'} />
                   {importFile ? (
                     <div className="text-center">
-                      <p className="text-sm font-medium text-[#F9FAFB]">{importFile.name}</p>
-                      <p className="text-xs text-[#9CA3AF]">{(importFile.size / 1024).toFixed(0)} KB</p>
+                      <p className="text-sm font-medium text-ws-text">{importFile.name}</p>
+                      <p className="text-xs text-ws-muted">{(importFile.size / 1024).toFixed(0)} KB</p>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <p className="text-sm text-[#9CA3AF]">PDF oder DOCX hier ablegen oder klicken</p>
-                      <p className="text-xs text-[#6B7280] mt-1">max. 50 MB</p>
+                      <p className="text-sm text-ws-muted">PDF oder DOCX hier ablegen oder klicken</p>
+                      <p className="text-xs text-ws-faint mt-1">max. 50 MB</p>
                     </div>
                   )}
                 </label>
               </div>
 
-              <div className="rounded-xl bg-[#111827] border border-[#374151] p-4 text-xs text-[#9CA3AF] space-y-1">
-                <p className="font-semibold text-[#F9FAFB] mb-2">So funktioniert der Import:</p>
+              <div className="rounded-xl bg-ws-bg border border-ws-raised p-4 text-xs text-ws-muted space-y-1">
+                <p className="font-semibold text-ws-text mb-2">So funktioniert der Import:</p>
                 <p>1. Lade eine Prüfungsaufgabe als PDF oder Word-Datei hoch.</p>
-                <p>2. Die KI extrahiert alle Multiple-Choice-Fragen <span className="text-[#F9FAFB]">exakt wie sie im Dokument stehen</span>.</p>
+                <p>2. Die KI extrahiert alle Multiple-Choice-Fragen <span className="text-ws-text">exakt wie sie im Dokument stehen</span>.</p>
                 <p>3. Du siehst eine Vorschau und kannst Fragen prüfen oder entfernen.</p>
                 <p>4. Beim Bestätigen werden die Fragen gespeichert und das Set erstellt.</p>
               </div>
 
               {importError && (
-                <p className="text-[#FF4B4B] text-sm flex items-center gap-2">
+                <p className="text-ws-red text-sm flex items-center gap-2">
                   <AlertTriangle size={14} /> {importError}
                 </p>
               )}
@@ -853,14 +877,14 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 <Button
                   variant="outline"
                   onClick={() => { setShowImportDialog(false); resetImportDialog() }}
-                  className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]"
+                  className="rounded-xl border-ws-line text-ws-muted hover:bg-ws-raised"
                 >
                   Abbrechen
                 </Button>
                 <Button
                   onClick={handleExtract}
                   disabled={!importFile || !importPart || !importName.trim()}
-                  className="rounded-xl bg-[#1CB0F6] hover:bg-[#19a0e0] text-white font-semibold"
+                  className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent font-semibold"
                 >
                   Fragen extrahieren
                 </Button>
@@ -871,13 +895,13 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           {/* Step: extracting / importing */}
           {(importStep === 'extracting' || importStep === 'importing') && (
             <div className="flex flex-col items-center justify-center py-16 gap-4 flex-1">
-              <Loader2 size={36} className="animate-spin text-[#1CB0F6]" />
-              <p className="text-[#9CA3AF] text-sm">
+              <Loader2 size={36} className="animate-spin text-ws-blue" />
+              <p className="text-ws-muted text-sm">
                 {importStep === 'extracting'
                   ? 'Fragen werden aus dem Dokument extrahiert…'
                   : 'Set wird erstellt und Fragen werden gespeichert…'}
               </p>
-              <p className="text-xs text-[#6B7280]">Das kann einen Moment dauern.</p>
+              <p className="text-xs text-ws-faint">Das kann einen Moment dauern.</p>
             </div>
           )}
 
@@ -886,11 +910,11 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
             <div className="flex flex-col flex-1 min-h-0">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div>
-                  <p className="text-sm font-semibold text-[#F9FAFB]">
+                  <p className="text-sm font-semibold text-ws-text">
                     {previewQuestions.length} Fragen extrahiert
                   </p>
                   {needsReviewCount > 0 && (
-                    <p className="text-xs text-[#FF9600] flex items-center gap-1 mt-0.5">
+                    <p className="text-xs text-ws-orange flex items-center gap-1 mt-0.5">
                       <AlertTriangle size={12} />
                       {needsReviewCount} {needsReviewCount === 1 ? 'Frage' : 'Fragen'} ohne erkannte Antwort — bitte markieren
                     </p>
@@ -900,7 +924,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                   size="sm"
                   variant="ghost"
                   onClick={() => setImportStep('configure')}
-                  className="text-[#9CA3AF] hover:text-[#F9FAFB] text-xs"
+                  className="text-ws-muted hover:text-ws-text text-xs"
                 >
                   ← Zurück
                 </Button>
@@ -913,29 +937,29 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                     className={cn(
                       'rounded-xl border p-4',
                       q.needs_review
-                        ? 'border-[#FF9600]/40 bg-[#FF9600]/5'
-                        : 'border-[#4B5563] bg-[#111827]',
+                        ? 'border-ws-orange/40 bg-ws-orange/5'
+                        : 'border-ws-line bg-ws-bg',
                     )}
                   >
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex items-start gap-2 flex-1">
-                        <span className="text-xs font-bold text-[#6B7280] mt-0.5 shrink-0">#{idx + 1}</span>
-                        <p className="text-sm text-[#F9FAFB] leading-snug">{q.question_text}</p>
+                        <span className="text-xs font-bold text-ws-faint mt-0.5 shrink-0">#{idx + 1}</span>
+                        <p className="text-sm text-ws-text leading-snug">{q.question_text}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {q.fach_code && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#374151] text-[#9CA3AF]">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-ws-raised text-ws-muted">
                             {q.fach_code}
                           </span>
                         )}
                         {q.needs_review && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#FF9600]/20 text-[#FF9600]">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-ws-orange/20 text-ws-orange">
                             Antwort wählen
                           </span>
                         )}
                         <button
                           onClick={() => removePreviewQuestion(q._key)}
-                          className="text-[#6B7280] hover:text-[#FF4B4B] transition-colors"
+                          className="text-ws-faint hover:text-ws-red transition-colors"
                           title="Frage entfernen"
                         >
                           <X size={14} />
@@ -953,18 +977,18 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                             className={cn(
                               'w-full text-left flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors',
                               isCorrect
-                                ? 'bg-[#58CC02]/15 border border-[#58CC02]/50 text-[#F9FAFB]'
-                                : 'bg-[#1F2937] border border-[#374151] text-[#9CA3AF] hover:border-[#4B5563] hover:text-[#F9FAFB]',
+                                ? 'bg-ws-green/15 border border-ws-green/50 text-ws-text'
+                                : 'bg-ws-surface border border-ws-raised text-ws-muted hover:border-ws-line hover:text-ws-text',
                             )}
                           >
                             <span className={cn(
                               'font-bold shrink-0',
-                              isCorrect ? 'text-[#58CC02]' : 'text-[#6B7280]',
+                              isCorrect ? 'text-ws-green' : 'text-ws-faint',
                             )}>
                               {OPTION_LETTERS[j]}
                             </span>
                             <span className="flex-1">{opt}</span>
-                            {isCorrect && <Check size={12} className="text-[#58CC02] shrink-0" />}
+                            {isCorrect && <Check size={12} className="text-ws-green shrink-0" />}
                           </button>
                         )
                       })}
@@ -974,7 +998,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
               </div>
 
               {importError && (
-                <p className="text-[#FF4B4B] text-sm flex items-center gap-2 mt-3 flex-shrink-0">
+                <p className="text-ws-red text-sm flex items-center gap-2 mt-3 flex-shrink-0">
                   <AlertTriangle size={14} /> {importError}
                 </p>
               )}
@@ -983,14 +1007,14 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                 <Button
                   variant="outline"
                   onClick={() => { setShowImportDialog(false); resetImportDialog() }}
-                  className="rounded-xl border-[#4B5563] text-[#9CA3AF] hover:bg-[#374151]"
+                  className="rounded-xl border-ws-line text-ws-muted hover:bg-ws-raised"
                 >
                   Abbrechen
                 </Button>
                 <Button
                   onClick={handleImportConfirm}
                   disabled={previewQuestions.length === 0}
-                  className="rounded-xl bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold"
+                  className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
                 >
                   {previewQuestions.length} Fragen importieren & Set erstellen
                 </Button>

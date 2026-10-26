@@ -46,7 +46,7 @@ export function PrintToolbar({
     <PageSetup />
     <div className="print:hidden mb-4 space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href={backHref} className="text-[#9CA3AF] hover:text-[#F9FAFB]" aria-label="Zurück zum Leistungsnachweis">
+        <Link href={backHref} className="text-ws-muted hover:text-ws-text" aria-label="Zurück zum Leistungsnachweis">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 flex flex-wrap items-center gap-4">{children}</div>
@@ -59,13 +59,13 @@ export function PrintToolbar({
             }
           }}
           disabled={printDisabled}
-          className="rounded-2xl bg-[#58CC02] hover:bg-[#4CAF00] text-white min-h-11"
+          className="rounded-2xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent min-h-11"
         >
           <Printer size={16} className="mr-2" />
           Drucken / Als PDF sichern
         </Button>
       </div>
-      <p className="text-xs text-[#9CA3AF]">
+      <p className="text-xs text-ws-muted">
         Im Druckdialog wählst du den Drucker oder „Als PDF speichern“. Das klappt am besten im normalen Browser am
         Computer; in eingebetteten App-Browsern am Smartphone kann der Druck fehlen.
       </p>

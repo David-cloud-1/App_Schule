@@ -13,6 +13,7 @@ import {
   type ClassParticipant,
   type ClassQuestionStat,
 } from '@/components/admin/assessment-print'
+import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 
 type Detail = { title: string; part: number; opensAt: string; gradingScale: GradeBoundary[] }
 type Results = {
@@ -47,23 +48,13 @@ export default function ClassPrintPage({ params }: { params: Promise<{ id: strin
   const back = `/admin/leistungsnachweise/${id}`
 
   if (state === 'loading') {
-    return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="animate-spin text-[#9CA3AF]" />
-      </div>
-    )
+    return <AdminLoadingState variant="cards" rows={2} label="Auswertung wird geladen …" />
   }
 
   if (state === 'failed' || !data) {
-    return (
-      <div className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563]">
-        <p className="text-[#9CA3AF]">Die Klassenauswertung konnte nicht geladen werden.</p>
-        <Button variant="outline" size="sm" onClick={load} className="mt-4 rounded-xl border-[#4B5563] text-[#9CA3AF]">
-          Erneut versuchen
-        </Button>
-      </div>
-    )
+    return <AdminErrorState message="Die Klassenauswertung konnte gerade nicht geladen werden." onRetry={load} />
   }
+
 
   const { detail, results } = data
   const hasSubmissions = results.participants.some((p) => p.status === 'completed')
@@ -82,7 +73,7 @@ export default function ClassPrintPage({ params }: { params: Promise<{ id: strin
           questions={results.questions}
         />
       ) : (
-        <p className="text-center py-16 bg-[#1F2937] rounded-2xl border border-[#4B5563] text-[#9CA3AF]">
+        <p className="text-center py-16 bg-ws-surface rounded-2xl border border-ws-line text-ws-muted">
           Noch keine Abgaben.
         </p>
       )}

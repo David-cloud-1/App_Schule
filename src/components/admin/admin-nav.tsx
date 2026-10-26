@@ -3,9 +3,18 @@
 import { useId } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ExternalLink, LayoutDashboard } from 'lucide-react'
+import { ExternalLink, LayoutDashboard, type LucideIcon } from 'lucide-react'
 import { useDepartment } from '@/components/department-provider'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from '@/components/ui/sidebar'
 import {
   ADMIN_HOME_HREF,
   adminNavGroupsFor,
@@ -14,55 +23,63 @@ import {
 } from '@/lib/admin-nav'
 
 /**
- * Gruppierte Navigation des Admin-Bereichs (PROJ-40) — dieselbe Liste in der
- * Seitenleiste (Desktop) und im Menü (Handy). `onNavigate` schließt das Menü.
+ * Gruppierte Navigation des Lehrkräfte-Bereichs (PROJ-40/45) — dieselbe Liste
+ * in der Seitenleiste (Desktop, einklappbar) und in der Schublade (Handy).
+ * Eingeklappt zeigt jedes Icon seinen Namen als Tooltip.
  */
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const { hofShortName } = useDepartment()
   const { role } = useAdminRole()
+  const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
   const idPrefix = useId()
   const groups = adminNavGroupsFor(role)
 
+  function handleNavigate() {
+    if (isMobile) setOpenMobile(false)
+    onNavigate?.()
+  }
+
   return (
-    <nav aria-label="Lehrkräfte-Bereich" className="space-y-6">
-      <ul>
-        <li>
-          <NavLink
-            href={ADMIN_HOME_HREF}
-            active={isAdminNavActive(pathname, ADMIN_HOME_HREF)}
-            onNavigate={onNavigate}
-          >
-            <LayoutDashboard className="size-5 shrink-0" />
-            Übersicht
-          </NavLink>
-        </li>
-      </ul>
+    <nav aria-label="Lehrkräfte-Bereich">
+      <SidebarGroup>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <NavLink
+              href={ADMIN_HOME_HREF}
+              label="Übersicht"
+              icon={LayoutDashboard}
+              active={isAdminNavActive(pathname, ADMIN_HOME_HREF)}
+              onNavigate={handleNavigate}
+            />
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarGroup>
       {groups.map((group) => (
-        <div key={group.id}>
-          <p
+        <SidebarGroup key={group.id}>
+          <SidebarGroupLabel
             id={`${idPrefix}-${group.id}`}
-            className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-[#9CA3AF]"
+            className="text-xs font-semibold uppercase tracking-wider text-ws-faint"
           >
             {group.label}
-          </p>
-          <ul className="space-y-1" aria-labelledby={`${idPrefix}-${group.id}`}>
-            {group.items.map((item) => (
-              <li key={item.href}>
-                <NavLink
-                  href={item.href}
-                  external={item.external}
-                  active={!item.external && isAdminNavActive(pathname, item.href)}
-                  onNavigate={onNavigate}
-                >
-                  <item.icon className="size-5 shrink-0" />
-                  {adminNavLabel(item, hofShortName)}
-                  {item.external && <ExternalLink className="size-4 shrink-0 ml-auto" aria-label="öffnet in neuem Tab" />}
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu aria-labelledby={`${idPrefix}-${group.id}`}>
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <NavLink
+                    href={item.href}
+                    label={adminNavLabel(item, hofShortName)}
+                    icon={item.icon}
+                    external={item.external}
+                    active={!item.external && isAdminNavActive(pathname, item.href)}
+                    onNavigate={handleNavigate}
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       ))}
     </nav>
   )
@@ -70,37 +87,48 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
 
 function NavLink({
   href,
+  label,
+  icon: Icon,
   active,
   external,
   onNavigate,
-  children,
 }: {
   href: string
+  label: string
+  icon: LucideIcon
   active: boolean
   external?: boolean
-  onNavigate?: () => void
-  children: React.ReactNode
+  onNavigate: () => void
 }) {
-  const className = `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-all duration-200 ${
-    active
-      ? 'bg-[#58CC02]/15 text-[#58CC02]'
-      : 'text-[#9CA3AF] hover:bg-[#374151] hover:text-[#F9FAFB]'
-  }`
-  if (external) {
-    return (
-      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onNavigate} className={className}>
-        {children}
-      </a>
-    )
-  }
+  const content = (
+    <>
+      <Icon className="!size-5" />
+      <span>{label}</span>
+      {external && (
+        <ExternalLink
+          className="!size-4 ml-auto group-data-[collapsible=icon]:hidden"
+          aria-label="öffnet in neuem Tab"
+        />
+      )}
+    </>
+  )
+
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      aria-current={active ? 'page' : undefined}
-      className={className}
+    <SidebarMenuButton
+      asChild
+      isActive={active}
+      tooltip={label}
+      className="h-11 gap-3 rounded-xl px-3 font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green data-[active=true]:bg-ws-green/15 data-[active=true]:text-ws-green lg:h-9"
     >
-      {children}
-    </Link>
+      {external ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onNavigate}>
+          {content}
+        </a>
+      ) : (
+        <Link href={href} onClick={onNavigate} aria-current={active ? 'page' : undefined}>
+          {content}
+        </Link>
+      )}
+    </SidebarMenuButton>
   )
 }

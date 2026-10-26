@@ -51,6 +51,8 @@ import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
 import { roleChangeDescription } from '@/components/admin/role-change-text'
 import { isTeacherRole, ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
+import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminErrorState } from '@/components/admin/admin-states'
 
 type Role = UserRole
 type RoleFilter = 'all' | Role
@@ -83,6 +85,7 @@ export default function AdminUsersPage() {
   const { isSuperAdmin } = useAdminRole()
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   // Super-Admin: bereichsübergreifend suchen, z. B. um eine Lehrkraft freizuschalten,
@@ -97,17 +100,18 @@ export default function AdminUsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setLoadFailed(false)
     try {
       const res = await fetch(showAllDepartments ? '/api/admin/users?scope=all' : '/api/admin/users')
       if (!res.ok) {
-        toast.error('Nutzer konnten nicht geladen werden.')
+        setLoadFailed(true)
         return
       }
       const json = await res.json()
       setUsers(json.users ?? [])
     } catch (err) {
       console.error(err)
-      toast.error('Netzwerkfehler')
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -198,240 +202,237 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[#F9FAFB] tracking-tight">Nutzer</h1>
-          <p className="text-sm text-[#9CA3AF] mt-1">
-            {filtered.length} von {users.length}
-          </p>
-        </div>
-      </div>
+      <AdminPageHeader title="Nutzer" description={`${filtered.length} von ${users.length}`} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ws-muted" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Name oder E-Mail suchen…"
             aria-label="Name oder E-Mail suchen"
-            className="pl-9 min-h-11 rounded-xl bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
+            className="pl-9 min-h-11 rounded-xl bg-ws-surface border-ws-line text-ws-text"
           />
         </div>
         <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
           <SelectTrigger
             aria-label="Nach Rolle filtern"
-            className="min-h-11 w-full rounded-xl bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] sm:w-48"
+            className="min-h-11 w-full rounded-xl bg-ws-surface border-ws-line text-ws-text sm:w-48"
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             {(['all', ...USER_ROLES] as RoleFilter[]).map((r) => (
-              <SelectItem key={r} value={r} className="focus:bg-[#374151] focus:text-[#F9FAFB]">
+              <SelectItem key={r} value={r} className="focus:bg-ws-raised focus:text-ws-text">
                 {ROLE_FILTER_LABEL[r]}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {isSuperAdmin && (
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[#4B5563] bg-[#1F2937] px-3">
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-ws-line bg-ws-surface px-3">
             <Switch
               id="users-all-departments"
               checked={allDepartments}
               onCheckedChange={setAllDepartments}
-              className="data-[state=checked]:bg-[#58CC02]"
+              className="data-[state=checked]:bg-ws-green"
             />
-            <Label htmlFor="users-all-departments" className="cursor-pointer whitespace-nowrap text-sm text-[#F9FAFB]">
+            <Label htmlFor="users-all-departments" className="cursor-pointer whitespace-nowrap text-sm text-ws-text">
               Alle Bereiche
             </Label>
           </div>
         )}
       </div>
 
-      <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
-              <TableHead className="text-[#9CA3AF]">Name</TableHead>
-              <TableHead className="text-[#9CA3AF]">E-Mail</TableHead>
-              {showAllDepartments && <TableHead className="text-[#9CA3AF]">Bereich</TableHead>}
-              <TableHead className="text-[#9CA3AF]">XP</TableHead>
-              <TableHead className="text-[#9CA3AF]">Streak</TableHead>
-              <TableHead className="text-[#9CA3AF]">Letzte Session</TableHead>
-              <TableHead className="text-[#9CA3AF]">Letzter Login</TableHead>
-              <TableHead className="text-[#9CA3AF]">Status</TableHead>
-              <TableHead className="text-right text-[#9CA3AF]">Aktion</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                  {Array.from({ length: columnCount }).map((__, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : filtered.length === 0 ? (
-              <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={columnCount} className="text-center text-[#9CA3AF] py-10">
-                  Keine Nutzer gefunden.
-                </TableCell>
+      {loadFailed ? (
+        <AdminErrorState message="Die Nutzer konnten gerade nicht geladen werden." onRetry={load} />
+      ) : (
+        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                <TableHead className="text-ws-muted">Name</TableHead>
+                <TableHead className="text-ws-muted">E-Mail</TableHead>
+                {showAllDepartments && <TableHead className="text-ws-muted">Bereich</TableHead>}
+                <TableHead className="text-ws-muted">XP</TableHead>
+                <TableHead className="text-ws-muted">Streak</TableHead>
+                <TableHead className="text-ws-muted">Letzte Session</TableHead>
+                <TableHead className="text-ws-muted">Letzter Login</TableHead>
+                <TableHead className="text-ws-muted">Status</TableHead>
+                <TableHead className="text-right text-ws-muted">Aktion</TableHead>
               </TableRow>
-            ) : (
-              filtered.map((u) => {
-                const isSelf = ownId === u.id
-                // Bereichs-Admins dürfen nur Azubis sperren/verschieben, der Super-Admin jedes Konto
-                // außer Super-Admins (Schnittstelle: PATCH /api/admin/users/[id])
-                const canModerate = isSuperAdmin || u.role === 'student'
-                const canMove =
-                  !isSelf &&
-                  (u.role === 'student' ||
-                    (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
-                return (
-                  <TableRow key={u.id} className="border-[#4B5563] hover:bg-[#111827]/40">
-                    <TableCell className="text-[#F9FAFB] font-medium">
-                      <div className="flex items-center gap-2">
-                        {u.display_name ?? '—'}
-                        {u.role !== 'student' && (
-                          <Badge
-                            variant="outline"
-                            className="border-[#58CC02]/50 text-[#58CC02] bg-[#58CC02]/10"
-                          >
-                            <ShieldCheck className="w-3 h-3 mr-1" />
-                            {ROLE_LABEL[u.role]}
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={`sk-${i}`} className="border-ws-line">
+                    {Array.from({ length: columnCount }).map((__, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-4 w-20" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : filtered.length === 0 ? (
+                <TableRow className="border-ws-line">
+                  <TableCell colSpan={columnCount} className="text-center text-ws-muted py-10">
+                    Keine Nutzer gefunden.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((u) => {
+                  const isSelf = ownId === u.id
+                  // Bereichs-Admins dürfen nur Azubis sperren/verschieben, der Super-Admin jedes Konto
+                  // außer Super-Admins (Schnittstelle: PATCH /api/admin/users/[id])
+                  const canModerate = isSuperAdmin || u.role === 'student'
+                  const canMove =
+                    !isSelf &&
+                    (u.role === 'student' ||
+                      (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
+                  return (
+                    <TableRow key={u.id} className="border-ws-line hover:bg-ws-bg/40">
+                      <TableCell className="text-ws-text font-medium">
+                        <div className="flex items-center gap-2">
+                          {u.display_name ?? '—'}
+                          {u.role !== 'student' && (
+                            <Badge
+                              variant="outline"
+                              className="border-ws-green/50 text-ws-green bg-ws-green/10"
+                            >
+                              <ShieldCheck className="w-3 h-3 mr-1" />
+                              {ROLE_LABEL[u.role]}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-ws-muted text-sm">
+                        {u.email ?? '—'}
+                      </TableCell>
+                      {showAllDepartments && (
+                        <TableCell className="text-ws-muted text-sm">{u.department_name ?? '—'}</TableCell>
+                      )}
+                      <TableCell className="text-ws-text">{u.total_xp}</TableCell>
+                      <TableCell className="text-ws-text">
+                        {u.current_streak}
+                      </TableCell>
+                      <TableCell className="text-xs text-ws-muted">
+                        {formatDate(u.last_session_date)}
+                      </TableCell>
+                      <TableCell className="text-xs text-ws-muted">
+                        {isTeacherRole(u.role) ? formatDate(u.last_sign_in_at ?? null) : '—'}
+                      </TableCell>
+                      <TableCell>
+                        {u.banned ? (
+                          <Badge className="bg-ws-red/20 text-ws-red border-ws-red/30 hover:bg-ws-red/20">
+                            Gesperrt
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-ws-green/20 text-ws-green border-ws-green/30 hover:bg-ws-green/20">
+                            Aktiv
                           </Badge>
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-[#9CA3AF] text-sm">
-                      {u.email ?? '—'}
-                    </TableCell>
-                    {showAllDepartments && (
-                      <TableCell className="text-[#9CA3AF] text-sm">{u.department_name ?? '—'}</TableCell>
-                    )}
-                    <TableCell className="text-[#F9FAFB]">{u.total_xp}</TableCell>
-                    <TableCell className="text-[#F9FAFB]">
-                      {u.current_streak}
-                    </TableCell>
-                    <TableCell className="text-xs text-[#9CA3AF]">
-                      {formatDate(u.last_session_date)}
-                    </TableCell>
-                    <TableCell className="text-xs text-[#9CA3AF]">
-                      {isTeacherRole(u.role) ? formatDate(u.last_sign_in_at ?? null) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {u.banned ? (
-                        <Badge className="bg-[#FF4B4B]/20 text-[#FF4B4B] border-[#FF4B4B]/30 hover:bg-[#FF4B4B]/20">
-                          Gesperrt
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-[#58CC02]/20 text-[#58CC02] border-[#58CC02]/30 hover:bg-[#58CC02]/20">
-                          Aktiv
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Rollen vergeben — nur Super-Admin (AC-7) */}
-                        {isSuperAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={isSelf}
-                                className="text-[#1CB0F6] hover:text-[#1CB0F6]"
-                              >
-                                <ShieldCheck className="w-4 h-4 mr-1" />
-                                Rolle
-                                <ChevronDown className="w-3 h-3 ml-1" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                              {USER_ROLES
-                                .filter((r) => r !== u.role)
-                                .map((r) => (
-                                  <DropdownMenuItem
-                                    key={r}
-                                    onClick={() => setRoleChange({ user: u, newRole: r })}
-                                    className="focus:bg-[#111827] focus:text-[#F9FAFB]"
-                                  >
-                                    {ROLE_LABEL[r]}
-                                  </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {/* Rollen vergeben — nur Super-Admin (AC-7) */}
+                          {isSuperAdmin && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isSelf}
+                                  className="text-ws-blue hover:text-ws-blue"
+                                >
+                                  <ShieldCheck className="w-4 h-4 mr-1" />
+                                  Rolle
+                                  <ChevronDown className="w-3 h-3 ml-1" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-ws-surface border-ws-line text-ws-text">
+                                {USER_ROLES
+                                  .filter((r) => r !== u.role)
+                                  .map((r) => (
+                                    <DropdownMenuItem
+                                      key={r}
+                                      onClick={() => setRoleChange({ user: u, newRole: r })}
+                                      className="focus:bg-ws-bg focus:text-ws-text"
+                                    >
+                                      {ROLE_LABEL[r]}
+                                    </DropdownMenuItem>
+                                  ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
 
-                        {/* Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin */}
-                        {canMove && (
+                          {/* Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin */}
+                          {canMove && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setMoveTarget(u)}
+                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} in anderen Fachbereich verschieben`}
+                                    className="text-ws-muted hover:text-ws-text"
+                                  >
+                                    <MapPinned className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
+                                  In anderen Fachbereich verschieben
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setMoveTarget(u)}
-                                  aria-label={`${u.display_name ?? u.email ?? 'Konto'} in anderen Fachbereich verschieben`}
-                                  className="text-[#9CA3AF] hover:text-[#F9FAFB]"
-                                >
-                                  <MapPinned className="w-4 h-4" />
-                                </Button>
+                                <span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={isSelf || !canModerate}
+                                    onClick={() => setTarget(u)}
+                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} ${u.banned ? 'entsperren' : 'sperren'}`}
+                                    className={
+                                      u.banned
+                                        ? 'text-ws-green hover:text-ws-green'
+                                        : 'text-ws-red hover:text-ws-red'
+                                    }
+                                  >
+                                    {u.banned ? (
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    ) : (
+                                      <Ban className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </span>
                               </TooltipTrigger>
-                              <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                                In anderen Fachbereich verschieben
+                              <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
+                                {isSelf
+                                  ? 'Du kannst dich nicht selbst sperren.'
+                                  : !canModerate
+                                    ? 'Nur der Super-Admin kann dieses Konto sperren.'
+                                    : u.banned
+                                    ? 'Entsperren'
+                                    : 'Sperren'}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                        )}
-
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={isSelf || !canModerate}
-                                  onClick={() => setTarget(u)}
-                                  aria-label={`${u.display_name ?? u.email ?? 'Konto'} ${u.banned ? 'entsperren' : 'sperren'}`}
-                                  className={
-                                    u.banned
-                                      ? 'text-[#58CC02] hover:text-[#58CC02]'
-                                      : 'text-[#FF4B4B] hover:text-[#FF4B4B]'
-                                  }
-                                >
-                                  {u.banned ? (
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  ) : (
-                                    <Ban className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
-                              {isSelf
-                                ? 'Du kannst dich nicht selbst sperren.'
-                                : !canModerate
-                                  ? 'Nur der Super-Admin kann dieses Konto sperren.'
-                                  : u.banned
-                                  ? 'Entsperren'
-                                  : 'Sperren'}
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <AlertDialog
         open={roleChange !== null}
@@ -439,10 +440,10 @@ export default function AdminUsersPage() {
           if (!v) setRoleChange(null)
         }}
       >
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Rolle ändern?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               {roleChange && roleChangeDescription(roleChange.user, roleChange.newRole)}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -454,7 +455,7 @@ export default function AdminUsersPage() {
                 handleRoleConfirm()
               }}
               disabled={submitting}
-              className="bg-[#1CB0F6] hover:bg-[#17a0e0] text-white"
+              className="bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Ändern
@@ -469,12 +470,12 @@ export default function AdminUsersPage() {
           if (!v) setTarget(null)
         }}
       >
-        <AlertDialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+        <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {target?.banned ? 'Nutzer entsperren?' : 'Nutzer sperren?'}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#9CA3AF]">
+            <AlertDialogDescription className="text-ws-muted">
               {target?.banned
                 ? `Der Nutzer ${target?.display_name ?? target?.email} kann sich danach wieder einloggen.`
                 : `Der Nutzer ${target?.display_name ?? target?.email} wird daran gehindert, sich einzuloggen.`}
@@ -490,8 +491,8 @@ export default function AdminUsersPage() {
               disabled={submitting}
               className={
                 target?.banned
-                  ? 'bg-[#58CC02] hover:bg-[#4CAD02] text-white'
-                  : 'bg-[#FF4B4B] hover:bg-[#ee3b3b] text-white'
+                  ? 'bg-ws-green hover:bg-ws-green-hover text-ws-on-accent'
+                  : 'bg-ws-red hover:bg-ws-red-hover text-ws-on-accent'
               }
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

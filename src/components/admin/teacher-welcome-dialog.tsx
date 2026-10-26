@@ -45,15 +45,15 @@ export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) 
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : dismiss())}>
-      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] rounded-2xl">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text rounded-2xl">
         <DialogHeader>
-          <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-[#58CC02]/15 text-[#58CC02]">
+          <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-ws-green/15 text-ws-green">
             <Wrench className="size-6" />
           </span>
           <DialogTitle className="text-center text-xl font-bold tracking-tight">
             Willkommen im Lehrkräfte-Bereich
           </DialogTitle>
-          <DialogDescription className="text-center text-base leading-relaxed text-[#9CA3AF]">
+          <DialogDescription className="text-center text-base leading-relaxed text-ws-muted">
             Du bist jetzt als Lehrkraft freigeschaltet. Hier findest du die Werkzeugkiste für Arbeitsblätter,
             Klassenarbeiten und mehr. Über „Zur Lern-App“ siehst du jederzeit, was deine Schüler sehen.
           </DialogDescription>
@@ -61,7 +61,7 @@ export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) 
         <DialogFooter className="sm:justify-center">
           <Button
             onClick={dismiss}
-            className="min-h-11 w-full rounded-2xl bg-[#58CC02] font-bold text-white shadow-lg transition-all duration-200 hover:bg-[#4CAD02] active:scale-95 sm:w-auto sm:px-8"
+            className="min-h-11 w-full rounded-2xl bg-ws-green font-bold text-ws-on-accent shadow-lg transition-all duration-200 hover:bg-ws-green-hover active:scale-95 sm:w-auto sm:px-8"
           >
             Los geht’s
           </Button>
