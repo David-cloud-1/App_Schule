@@ -1,6 +1,6 @@
 # PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -107,7 +107,126 @@ PROJ-40 hat bereits Startseite, Seitenleiste (Desktop) und Menü (Handy) eingef�
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Ergebnis in einem Satz:** Reines Oberflächen-Feature ohne Datenbank und ohne neue API-Routen. Es entsteht ein neuer gemeinsamer Rahmen (Seitenleiste, Kopfzeile, Seitenkopf, Schnellsuche, Konto-Menü), eine Farb-Schicht für hell/dunkel, und alle bestehenden Lehrkräfte-Seiten werden auf diese Schicht umgestellt.
+
+### Ausgangslage (geprüft am 2026-10-26)
+- Rahmen aus PROJ-40: eigene Seitenleiste (`aside`) ab 1024 px, darunter `Sheet`-Menü. Nicht einklappbar, kein Konto-Menü, keine Schnellsuche.
+- **Farben sind fest eingetragen:** 1.691 Farbwerte in 42 Dateien (12 Seiten, ca. 30 Bausteine). Es sind aber nur rund 20 verschiedene Werte, 6 davon machen über 80 % aus. Deshalb lässt sich die Umstellung weitgehend automatisch erledigen.
+- Bereits installiert und bisher ungenutzt: shadcn-Bausteine `Sidebar`, `Command` (Schnellsuche), `Breadcrumb`, `Skeleton`, `DropdownMenu`, `Tooltip`. `AlertDialog` und `Sonner` sind schon im Einsatz.
+- Neun Seiten zeigen beim Laden einen Drehkreis; vier Seiten fragen beim Löschen schon über einen Dialog nach.
+
+### A) Aufbau der Oberfläche
+
+```
+Lehrkräfte-Rahmen (gemeinsames Layout, alle /admin-Seiten)
++-- Link „Zum Inhalt springen“ (nur bei Tastaturfokus sichtbar)
+|
++-- Seitenleiste (ab 1024 px, einklappbar auf Icon-Leiste)
+|   +-- Kopf: Bereichsname (z. B. „Lehrkräfte · Spedition“)
+|   +-- Übersicht
+|   +-- Gruppen Unterricht / Inhalte / Einstellungen (nach Rolle gefiltert,
+|   |   leere Gruppen ausgeblendet)
+|   +-- Fuß: Konto-Menü
+|
++-- Kopfzeile (fest oben)
+|   +-- Handy: Menü-Button · Seitentitel · Such-Symbol · Konto-Avatar
+|   +-- Desktop: Einklapp-Button · Brotkrumen · Such-Feld (⌘K) ·
+|       Bereichs-Umschalter (nur Super-Admin)
+|
++-- Mobil-Menü (unter 1024 px: Schublade von links, gleiche Einträge)
+|
++-- Inhaltsbereich
+|   +-- Seitenkopf: Titel · ein Satz Beschreibung · eine Hauptaktion
+|   +-- Seiteninhalt: „breit“ (Tabellen, Listen) oder „schmal“ (Formulare, Texte)
+|
++-- Schnellsuche (Fenster über allem, ⌘K / Strg+K)
+|   +-- Gruppe „Seiten“ (aus der Navigations-Liste, nach Rolle gefiltert)
+|   +-- Gruppe „Aktionen“ (Neuer Leistungsnachweis, Werkzeugkiste öffnen,
+|       Zur Lern-App, Darstellung: Hell / Dunkel / Wie System)
+|
++-- Konto-Menü (aufklappend)
+    +-- Name · E-Mail · Rolle in Klartext
+    +-- Profil · Darstellung (3 Optionen) · Zur Lern-App · Abmelden
+
+Wiederverwendbare Zustands-Bausteine (für alle Seiten)
++-- Lade-Platzhalter in Form von Tabelle, Kartenliste oder Formular
++-- Leerzustand (Icon, ein Satz, passende Hauptaktion)
++-- Fehlerzustand (verständlicher Satz + „Erneut versuchen“)
++-- Responsive Tabelle (Handy: waagerecht scrollbar mit fester erster Spalte,
+    oder Kartenansicht, je nach Seite)
+```
+
+**Eine Liste als Wahrheitsquelle bleibt:** Seitenleiste, Mobil-Menü, Startseiten-Kacheln, Brotkrumen und Schnellsuche lesen alle aus der vorhandenen Navigations-Liste aus PROJ-40. Neu kommt dort nur eine kleine Aktionsliste für die Schnellsuche dazu. Der Rollenfilter ist derselbe wie für die Seitenleiste. So kann die Schnellsuche nie Einträge zeigen, die die Seitenleiste verbirgt.
+
+### B) Datenmodell
+Es werden **keine Daten in der Datenbank gespeichert**. Im Browser werden zwei kleine Einstellungen gemerkt, beide als Cookie:
+
+| Einstellung | Werte | Standard, wenn nichts gemerkt ist |
+|---|---|---|
+| Darstellung | dunkel · hell · wie System | dunkel |
+| Seitenleiste | ausgeklappt · eingeklappt | ausgeklappt |
+
+Warum Cookie statt reinem Browserspeicher: Der Server kann die Seite gleich in der richtigen Farbe und mit der richtigen Leistenbreite ausliefern. Dadurch gibt es **kein Aufblitzen** der falschen Farbe. Ist der Speicher gesperrt (privates Fenster), gelten die Standards.
+
+Für das Konto-Menü werden nur Daten genutzt, die das Layout schon lädt: Anzeigename, E-Mail, Rolle, Fachbereich.
+
+### C) Technische Entscheidungen (und warum)
+
+| Entscheidung | Begründung |
+|---|---|
+| **shadcn-`Sidebar` statt eigener Leiste** | Ist installiert und bringt alles mit, was die Spec verlangt: Einklappen auf Icon-Leiste, Namen per Tooltip, Merken per Cookie, Handy-Schublade, Tastaturkürzel. In PROJ-40 wurde sie wegen fehlender Farbvariablen noch zurückgestellt; die kommen jetzt ohnehin. |
+| **Umschaltpunkt Handy/Desktop auf 1024 px** | Die Spec zählt Tablet hochkant als Handy. Der Umschaltpunkt der Sidebar liegt heute bei 768 px und wird angehoben. Dieser Wert wird nur von der Sidebar genutzt, die Schülerseite ist nicht betroffen. |
+| **Farb-Schicht aus Design-Tokens** | Statt fester Werte wie `#111827` gibt es benannte Rollen wie „Hintergrund“, „Fläche“, „Rand“, „Text“, „Text gedämpft“, „Marke Grün“ usw., jeweils mit hellem und dunklem Wert. Eine Seite sagt nur noch „Fläche“, und der Modus entscheidet die Farbe. |
+| **Farben gelten nur im Lehrkräfte-Bereich** | Die Schülerseite bleibt fest dunkel. Die Farb-Schicht hängt am Lehrkräfte-Rahmen. Wichtig: Dialoge, Menüs und Toasts werden technisch außerhalb des Rahmens gezeichnet. Die Farben werden deshalb so an der Seite verankert, dass auch diese Fenster sie übernehmen. Verlässt man den Bereich, fällt alles automatisch auf die Schülerfarben zurück. |
+| **„Wie System“ rein über das Stylesheet** | Der Browser kennt das Systemschema selbst. Wechselt der Mac abends auf dunkel, folgt der Bereich sofort, ohne Neuladen und ohne Skript. |
+| **Kein `next-themes` für den Lehrkräfte-Bereich** | Das Paket schaltet die ganze Seite um und würde auch die Schülerseite erfassen. Eine kleine eigene Lösung mit Cookie ist hier einfacher und vermeidet das Aufblitzen. `next-themes` bleibt nur dort, wo es heute schon steckt (Toast-Baustein). |
+| **Umstellung der Farben per Skript** | Die rund 20 Farbwerte werden einmalig den Tokens zugeordnet (z. B. `#111827` → Hintergrund, `#4B5563` → Rand). Ein Skript ersetzt alle 1.691 Stellen, danach wird jede Datei kurz gegengelesen. Seltene Sonderfarben (Hover-Töne wie `#4CAD02`) bekommen eigene Hover-Tokens. Das ist deutlich sicherer als Handarbeit. |
+| **Markenfarben im hellen Modus abgedunkelt** | Grün, Blau, Orange, Rot und Gold erfüllen auf Weiß die Kontrastwerte nicht. Für den hellen Modus gibt es dunklere Varianten derselben Farbtöne. Die Marke bleibt erkennbar. |
+| **Kontraste werden automatisch geprüft** | Ein Test berechnet für jedes Text/Hintergrund-Paar beider Modi das Kontrastverhältnis (mindestens 4,5 : 1 bzw. 3 : 1). Fällt eine Farbe später durch, schlägt der Test fehl. |
+| **Druck immer hell** | Im Druck werden die hellen Werte erzwungen und Navigation, Kopfzeile und Seitenkopf-Aktionen ausgeblendet. Die Druckseiten aus PROJ-28 bleiben inhaltlich unverändert. |
+| **Schnellsuche mit `Command`** | Installierter shadcn-Baustein mit Pfeiltasten, Enter, Esc und Filtern eingebaut. Er wird erst beim ersten Öffnen nachgeladen, damit die Startseite schnell bleibt. |
+| **Brotkrumen aus der Navigations-Liste** | Der erste Teil („Leistungsnachweise“) kommt aus der Liste. Nur auf Detailseiten liefert die Seite den letzten Teil selbst (z. B. den Titel des Nachweises). |
+| **Konto-Menü mit `DropdownMenu`** | Installiert und tastaturbedienbar. „Profil“ führt auf die vorhandene Profilseite der Lern-App, weil es keine eigene Lehrkräfte-Profilseite gibt (neue Seiten sind laut Abgrenzung nicht Teil dieses Features). Der Bereichs-Umschalter für den Super-Admin bleibt in der Kopfzeile. |
+| **Startseite ohne Datenabfrage** | Bleibt wie in PROJ-40. Zusammen mit dem Nachladen der Schnellsuche ist das die Grundlage für das Ziel „unter 2,5 s“. |
+| **Animationen entfallen bei „Bewegung reduzieren“** | Gilt für Schublade, Einklappen, Schnellsuche und Toasts. Alle anderen Übergänge bleiben bei höchstens 200 ms. |
+| **Alle URLs bleiben** | Keine Weiterleitungen, Lesezeichen bleiben gültig. |
+
+### D) Betroffene Dateien
+
+**Neu:**
+- Farb-Schicht (Tokens hell und dunkel, Druckregeln) im globalen Stylesheet und in der Tailwind-Konfiguration
+- Darstellungs-Baustein (Wahl lesen und speichern, Umschalten ohne Neuladen)
+- Rahmen-Bausteine: Seitenkopf, Brotkrumen, Konto-Menü, Schnellsuche
+- Zustands-Bausteine: Lade-Platzhalter, Leerzustand, Fehlerzustand, responsive Tabelle
+- Einmal-Skript zur Farbumstellung (wird nach dem Lauf nicht mehr gebraucht)
+- Tests: Rollenfilter der Schnellsuche, Darstellungswahl, Brotkrumen, Kontrastprüfung
+
+**Geändert:**
+- Lehrkräfte-Rahmen (Layout + Shell): auf `Sidebar` umgebaut, Cookies werden beim Ausliefern gelesen
+- Navigations-Liste: zusätzlich Aktionsliste für die Schnellsuche
+- Alle 12 Lehrkräfte-Seiten und ihre Bausteine: Farben auf Tokens, eigener Seitenkopf statt eigener Überschriften, Lade-, Leer- und Fehlerzustände vereinheitlicht, breite Tabellen auf dem Handy umgestellt
+- `docs/DESIGN.md`: neuer Abschnitt „Lehrkräfte-Bereich“
+
+**Nicht betroffen:** Datenbank, API-Routen, Rechteprüfung (Middleware), Schülerseite, Inhalt der Druckseiten.
+
+### E) Reihenfolge der Umsetzung
+Das Feature ist groß. Damit es jederzeit lauffähig bleibt, wird in drei Schritten gebaut, jeweils mit Build und Tests:
+1. **Fundament:** Farb-Schicht, Darstellungswahl, neuer Rahmen mit Sidebar, Konto-Menü, Schnellsuche, Seitenkopf und Brotkrumen. Die Seiten sehen danach im dunklen Modus aus wie vorher.
+2. **Seiten umstellen:** Farbskript über alle Dateien, Seitenköpfe einsetzen, Tabellen fürs Handy. Erst danach wird der helle Modus im Konto-Menü freigeschaltet, damit nie halb helle Seiten zu sehen sind.
+3. **Feinschliff:** Lade-, Leer- und Fehlerzustände, Toasts und Lösch-Bestätigungen überall, Barrierefreiheit, Abschnitt in `docs/DESIGN.md`.
+
+### F) Zu beachten
+- **Größtes Risiko ist Schritt 2:** Ein falsch zugeordneter Farbwert fällt nur im hellen Modus auf. Deshalb Kontrasttest plus statische Vorschaubilder in `docs/vorschau/` für die drei meistgenutzten Seiten (Leistungsnachweise, Nachweis-Detail, Fragen) in beiden Modi.
+- **Kein Dev-Server, kein Playwright** (Projekt-Memory). Optik und Responsive werden über Komponententests, Build und Vorschaubilder geprüft. Die endgültige Sichtprüfung im Browser macht der Nutzer nach dem Deploy.
+- **Rollenfilter bleibt nur Anzeige.** Die echte Rechteprüfung bleibt serverseitig, wie in PROJ-40/44.
+- **Schülerseite:** Nach der Umstellung wird geprüft, dass keine Lern-App-Seite die neuen Tokens verwendet und sie fest dunkel bleibt.
+
+### G) Pakete
+**Keine neuen.** `Sidebar`, `Command` (cmdk), `Breadcrumb`, `Skeleton`, `DropdownMenu`, `Tooltip`, `Sheet`, `AlertDialog`, `Sonner` und Lucide-Icons sind bereits installiert.
+
+### H) Aufteilung der Arbeit
+Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Datenbank geändert wird.
 
 ## QA Test Results
 _To be added by /qa_
