@@ -261,10 +261,14 @@ Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Baustein
 
 **Abweichung von der Spec:** Das Datum „Letzter Login“ zeigt die Oberfläche nur für Lehrer-Rollen an; die Schnittstelle liefert es für alle (geringe Zusatzinfo, kein Extra-Aufruf).
 
-**Rollout (Reihenfolge, wie in der Spec):**
-1. Migration an der Produktions-DB anwenden (additiv).
-2. Code pushen.
-3. Testkonto zur Lehrkraft machen, prüfen, erst dann die Kolleginnen und Kollegen freischalten.
+**Datenbank-Prüfung vor dem Anwenden** (Transaktion mit Rollback, gegen die Produktions-DB): Derselbe Nutzer sieht als Lehrkraft in 15 Tabellen (`profiles`, `questions`, `answer_options`, `graded_assessments`, `admin_audit_log`, `questions_draft`, `generation_jobs`, `shop_items`, `user_shop_items`, `quality_fix_progress`, `exam_sessions`, `exam_question_sets`, `topics`, `subjects`, `departments`) exakt dieselben Zeilen wie als Azubi. `is_admin()`, `is_department_admin()` und `can_admin_department()` liefern `false`. Eigene Zeile: nur `teacher_welcome_seen` setzbar; `role` und `department_id` selbst ändern wird mit „permission denied“ abgelehnt; fremde Profile, `questions`, `graded_assessments`, `subjects`, `shop_items` ändern: 0 Zeilen.
+
+**Rollout:**
+1. ✅ Migration `proj44_teacher_role` am 2026-10-26 auf die Produktion angewendet und nachgeprüft (Constraint erweitert, Spalte + Grant vorhanden, `role` weiterhin nicht schreibbar, 0 Konten mit Rolle `teacher`). Der bisher ausgelieferte Code läuft unverändert weiter.
+2. ⏳ Code pushen (Commit `8c3ee41` und `27bc1a5`, noch nicht gepusht).
+3. ⏳ Testkonto zur Lehrkraft machen, prüfen, erst dann die Kolleginnen und Kollegen freischalten.
+
+**Hinweis:** Die Produktion hat inzwischen 17 Bereichs-Admins (PROJ-24 ging von 11 aus), 1 Super-Admin und 132 Azubis.
 
 ## QA Test Results
 _To be added by /qa_
