@@ -1,6 +1,6 @@
 # PROJ-44: Lehrkraft-Rolle & Freischaltung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -353,4 +353,12 @@ Alle bestehenden Tests grün (1.173), darunter Admin-Routen, Leistungsnachweise,
 **BEREIT für den Push.** Es sind keine Critical- oder High-Fehler offen, alle 30 Akzeptanzkriterien sind erfüllt, alle fünf gefundenen Fehler sind behoben und per Test abgesichert. Empfehlung nach dem Deployment: mit einem Testkonto einmal in Weiche, Willkommens-Hinweis, Rangliste (als Azubi und als Lehrkraft) und dem Hinweis „kein Zugang“ im Browser nachsehen.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktion:** https://spedilern.vercel.app
+- **Deployt:** 2026-10-26 (Push auf `main`, Commit `399d5fb`, Vercel-Build „Ready“ nach ca. 1 Minute)
+- **Datenbank:** Migration `proj44_teacher_role` war bereits vorher angewendet (siehe Implementation Notes); Rückweg: `20261026_proj44_teacher_role_down.sql`
+- **Vor dem Push:** committeter Stand in getrenntem Arbeitsverzeichnis geprüft (`tsc` sauber, 1.187 Tests, Build grün)
+- **Prüfung der Produktion ohne Login (curl):** `/` und `/start` leiten zum Login (mit Ziel `/start`), `/admin` leitet zum Login, `/api/admin/users`, `/api/admin/users?scope=all`, `POST /api/profile/teacher-welcome` und `/api/leaderboard` antworten 401, Login-Seite 200, Sicherheits-Header gesetzt.
+- **Nicht geprüft (braucht ein Konto bzw. einen Browser):** Weiche nach dem Login, Willkommens-Hinweis, Rangliste mit Lehrkraft-Konto, Hinweis „kein Zugang“, Aussehen und Handy-Ansicht.
+- **Jetzt zu tun (Nutzer):** Ein Testkonto in der Nutzerverwaltung zur Lehrkraft machen und die Punkte oben einmal im Browser durchgehen. Danach die Kolleginnen und Kollegen freischalten.
+- **Tag:** `v1.44.0-PROJ-44`
