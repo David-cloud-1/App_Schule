@@ -481,6 +481,7 @@ export type Database = {
           show_real_name: boolean
           starter_coins: number | null
           starter_coins_seen: boolean
+          teacher_welcome_seen: boolean
           total_xp: number
         }
         Insert: {
@@ -497,6 +498,7 @@ export type Database = {
           show_real_name?: boolean
           starter_coins?: number | null
           starter_coins_seen?: boolean
+          teacher_welcome_seen?: boolean
           total_xp?: number
         }
         Update: {
@@ -513,6 +515,7 @@ export type Database = {
           show_real_name?: boolean
           starter_coins?: number | null
           starter_coins_seen?: boolean
+          teacher_welcome_seen?: boolean
           total_xp?: number
         }
         Relationships: []

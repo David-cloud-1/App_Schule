@@ -60,6 +60,15 @@ describe('requireAdmin', () => {
     expect(auth.error?.status).toBe(403)
   })
 
+  it('returns 403 for a teacher without management rights, even with a department (PROJ-44)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'teacher', department_id: 'dept-a' }) as never)
+    const auth = await requireAdmin()
+    expect(auth.error?.status).toBe(403)
+    const withoutDepartment = makeSupabase({ role: 'teacher', department_id: null })
+    vi.mocked(createClient).mockResolvedValue(withoutDepartment as never)
+    expect((await requireAdmin()).error?.status).toBe(403)
+  })
+
   it('returns 403 for a profile with no role at all', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase(null) as never)
     const auth = await requireAdmin()

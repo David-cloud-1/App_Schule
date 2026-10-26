@@ -242,15 +242,29 @@ Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Baustein
 - **Nutzerverwaltung:** Rollen-Filter (Alle · Azubis · Lehrkräfte · Bereichs-Admins · Super-Admin), Schalter „Alle Bereiche“ (nur Super-Admin, lädt `?scope=all`, zeigt dann die Spalte „Bereich“), Spalte „Letzter Login“ für Lehrer-Rollen, Rolle „Lehrkraft“ im Rollen-Menü, Bestätigungstext mit Name **und** E-Mail sowie dem Hinweis „Erstellte Inhalte bleiben erhalten …“ beim Entziehen (`role-change-text.ts` + Tests).
 - `tsconfig.json`: `scripts/scratch` (git-ignorierte lokale Wegwerf-Skripte mit Syntaxfehlern) von der Typprüfung ausgenommen, weil sie den lokalen `npm run build` blockierten. Auf Vercel waren sie nie vorhanden.
 
-**Vertrag für /backend (noch offen):**
-1. Migration + Rückweg: `profiles.role` erlaubt `teacher`. Neue Spalte `teacher_welcome_seen boolean not null default false`, für die eigene Zeile selbst schreibbar (Spalten-Grant wie `starter_coins_seen`).
-2. `src/app/admin/layout.tsx`: `teacher_welcome_seen` mitlesen und `showTeacherWelcome: role === 'teacher' && !teacher_welcome_seen` in den Rollen-Kontext geben.
-3. `POST /api/profile/teacher-welcome`: setzt `teacher_welcome_seen = true` für die eigene Zeile.
-4. `src/proxy.ts`: `/admin`-Seiten für alle Lehrer-Rollen öffnen. Lehrkraft per `mayOpenAdminPath` nur auf freigegebene Seiten, sonst Umleitung auf `/admin`. `/api/admin/**` bleibt nur für Verwaltungs-Rollen (403 für Lehrkraft). Eingeloggte auf `/login`/`/register` → `/start`.
-5. `GET /api/admin/users?scope=all` (nur Super-Admin, sonst 403): ohne Bereichsfilter, zusätzlich `department_name`. Für alle Antworten zusätzlich `last_sign_in_at` aus den Login-Konten.
-6. `PATCH /api/admin/users/[id]`: Rollenwert `teacher` zulassen (weiterhin nur Super-Admin). Beim Wechsel zu `teacher` bleibt `department_id` unverändert.
-7. `GET /api/leaderboard`: Für Lehrer-Rollen immer `pseudonym`, `show_real_name` ignorieren (Liste und eigene Zeile).
-8. `src/lib/database.types.ts` neu erzeugen.
+## Implementation Notes (Backend Developer)
+
+**Stand 2026-10-26.** Code fertig, getestet (1.173 Tests grün, `tsc` sauber). Datenbank-Migration geschrieben; Anwendung auf die Produktion siehe „Rollout“ unten.
+
+**Migration** `20261026_proj44_teacher_role.sql` (+ `_down`): `profiles_role_check` erlaubt zusätzlich `teacher`; neue Spalte `profiles.teacher_welcome_seen boolean not null default false` mit Spalten-Grant für `authenticated` (wie `starter_coins_seen`). `role` und `department_id` bleiben nicht selbst schreibbar. **Keine Policy geändert** (alle Policies und Hilfsfunktionen fragen gezielt nach `admin`/`department_admin`, am 2026-10-26 gegen die Live-DB geprüft). Rein additiv, der bisherige Code läuft unverändert weiter.
+
+**Code:**
+- `src/proxy.ts`: `/admin` öffnet für alle Lehrer-Rollen. Eine reine Lehrkraft darf nur auf die Übersicht, andere Seiten leiten auf `/admin` um. `/api/admin/**` bleibt für die Lehrkraft 403. Fehlende/unbekannte Rolle → gesperrt (fail closed). Eingeloggte auf `/login`/`/register` → `/start`. Neuer Test `src/proxy.test.ts` (9 Fälle).
+- `requireAdmin()` unverändert: lässt nur `admin`/`department_admin` durch, die Lehrkraft prallt an jeder Verwaltungs-Schnittstelle mit 403 ab (neuer Test, auch ohne Bereich).
+- `src/app/admin/layout.tsx`: liest `teacher_welcome_seen`, setzt `showTeacherWelcome` nur für `teacher`.
+- `POST /api/profile/teacher-welcome`: setzt das Feld in der eigenen Zeile (401 ohne Login).
+- `GET /api/admin/users`: neues `?scope=all` (nur Super-Admin, sonst 403; ohne Bereichsfilter, liefert `department_name`). Alle Antworten enthalten `last_sign_in_at`.
+- `PATCH /api/admin/users/[id]`: Rollenwert `teacher` (weiterhin nur Super-Admin, Bereichs-Admin → 403). `department_id` bleibt unberührt. Beim Zuweisen einer Lehrer-Rolle wird ein fehlendes Pseudonym nachgetragen (`src/lib/pseudonym-server.ts`). Rollenwechsel stehen wie bisher als `user.role_change` im Änderungsprotokoll.
+- `GET /api/leaderboard`: Lehrer-Rollen immer mit Pseudonym (auch bei „Klarname an“, in Liste und eigener Zeile, Woche/Monat/Gesamt). Ohne Pseudonym erscheint „Unbekannt“, nie der Klarname.
+- **Nebenbei gefunden und behoben:** Die Rangliste reichte per `...r` alle ausgewählten Felder an den Browser durch (u. a. `pseudonym`, `show_real_name`, `leaderboard_opt_out`). Mit der Rolle hätte das die Lehrer-Rolle für Azubis sichtbar gemacht. Die Antwort enthält jetzt nur noch `id`, `display_name`, `total_xp`, `rank`, `level`, `is_current_user` (Test prüft, dass weder Rolle noch Klarname noch Einstellungen auftauchen). Die Oberfläche nutzt die übrigen Felder nicht.
+- `src/lib/database.types.ts`: `teacher_welcome_seen` ergänzt.
+
+**Abweichung von der Spec:** Das Datum „Letzter Login“ zeigt die Oberfläche nur für Lehrer-Rollen an; die Schnittstelle liefert es für alle (geringe Zusatzinfo, kein Extra-Aufruf).
+
+**Rollout (Reihenfolge, wie in der Spec):**
+1. Migration an der Produktions-DB anwenden (additiv).
+2. Code pushen.
+3. Testkonto zur Lehrkraft machen, prüfen, erst dann die Kolleginnen und Kollegen freischalten.
 
 ## QA Test Results
 _To be added by /qa_

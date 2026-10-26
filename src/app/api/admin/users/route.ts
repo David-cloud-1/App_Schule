@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 
@@ -12,20 +12,29 @@ type ProfileRow = {
   department_id: string | null
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { departmentId } = auth
+  const { departmentId, isSuperAdmin } = auth
+
+  // Bereichsübergreifende Suche (PROJ-44): nur der Super-Admin darf alle Konten
+  // sehen, z. B. um eine Lehrkraft freizuschalten, die sich über die Adresse
+  // eines anderen Bereichs registriert hat. Bereichs-Admins bleiben im eigenen Bereich.
+  const allDepartments = request.nextUrl.searchParams.get('scope') === 'all'
+  if (allDepartments && !isSuperAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   // Service-Role-Route (umgeht RLS) — gefiltert wird immer auf den aktuell
   // gewählten Arbeits-Fachbereich (Bereichs-Admin: eigener Bereich fest,
   // Super-Admin: der im Bereichs-Umschalter gewählte Bereich, PROJ-24).
   const service = createServiceClient()
 
-  const { data: profiles, error: pErr } = await service
+  let profilesQuery = service
     .from('profiles')
     .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id')
-    .eq('department_id', departmentId)
+  if (!allDepartments) profilesQuery = profilesQuery.eq('department_id', departmentId)
+  const { data: profiles, error: pErr } = await profilesQuery
     // Verknüpftes Zweitkonto des Super-Admins (PROJ-29) ist kein echter Azubi
     .is('linked_main_user_id', null)
     .order('total_xp', { ascending: false })
@@ -39,7 +48,7 @@ export async function GET() {
   // supports paging; loop until we've collected every account (1000/page).
   const authUsersById = new Map<
     string,
-    { email: string | undefined; banned_until: string | null }
+    { email: string | undefined; banned_until: string | null; last_sign_in_at: string | null }
   >()
   try {
     let page = 1
@@ -55,13 +64,24 @@ export async function GET() {
       for (const u of users) {
         const bannedUntil =
           (u as unknown as { banned_until?: string | null }).banned_until ?? null
-        authUsersById.set(u.id, { email: u.email, banned_until: bannedUntil })
+        authUsersById.set(u.id, {
+          email: u.email,
+          banned_until: bannedUntil,
+          last_sign_in_at: u.last_sign_in_at ?? null,
+        })
       }
       if (users.length < perPage) break
       page++
     }
   } catch (err) {
     console.error('[GET /api/admin/users] listUsers threw', err)
+  }
+
+  // Bereichsnamen nur für die bereichsübergreifende Ansicht
+  const departmentNames = new Map<string, string>()
+  if (allDepartments) {
+    const { data: departments } = await service.from('departments').select('id, name')
+    for (const d of (departments ?? []) as { id: string; name: string }[]) departmentNames.set(d.id, d.name)
   }
 
   const now = Date.now()
@@ -74,9 +94,11 @@ export async function GET() {
       email: au?.email ?? null,
       role: p.role,
       department_id: p.department_id,
+      department_name: p.department_id ? (departmentNames.get(p.department_id) ?? null) : null,
       total_xp: p.total_xp,
       current_streak: p.current_streak,
       last_session_date: p.last_session_date,
+      last_sign_in_at: au?.last_sign_in_at ?? null,
       banned,
     }
   })

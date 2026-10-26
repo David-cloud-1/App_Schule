@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isManagerRole, isTeacherRole, mayOpenAdminPath, START_PATH, TEACHER_HOME_PATH } from '@/lib/roles'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -52,14 +53,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages — über die Start-Weiche,
+  // die nach Rolle verteilt (PROJ-44)
   if (user && (pathname === '/login' || pathname === '/register')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = START_PATH
     return NextResponse.redirect(url)
   }
 
-  // Protect /admin routes — must be authenticated + have admin role
+  // Lehrkräfte-Bereich (PROJ-44): alle Lehrer-Rollen dürfen hinein, eine reine
+  // Lehrkraft aber nur auf die freigegebenen Seiten; die Verwaltungs-Schnittstellen
+  // (/api/admin) bleiben Bereichs-Admin und Super-Admin vorbehalten (zusätzlich
+  // prüft jede Route requireAdmin()).
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     if (!user) {
       if (pathname.startsWith('/api/')) {
@@ -74,13 +79,25 @@ export async function proxy(request: NextRequest) {
       .select('role')
       .eq('id', user.id)
       .single()
-    if (!profile || (profile.role !== 'admin' && profile.role !== 'department_admin')) {
+    const role = profile?.role
+    if (!isTeacherRole(role)) {
       if (pathname.startsWith('/api/')) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)
+    }
+    if (!isManagerRole(role)) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+      if (!mayOpenAdminPath(role, pathname)) {
+        const url = request.nextUrl.clone()
+        url.pathname = TEACHER_HOME_PATH
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
     }
   }
 

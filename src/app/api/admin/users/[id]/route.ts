@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { USER_ROLES } from '@/lib/roles'
+import { ensurePseudonym } from '@/lib/pseudonym-server'
 
 const BanSchema = z.object({ banned: z.boolean() })
 
-// Rollen vergeben/entziehen ist Super-Admin-only (PROJ-24, E9); department_id
+// Rollen vergeben/entziehen ist Super-Admin-only (PROJ-24, E9, PROJ-44); department_id
 // ist bei department_admin Pflicht — eine Bereichs-Admin-Rolle ohne Bereich
 // wäre fail-closed nutzlos, aber besser, das schon hier abzulehnen.
 const RoleSchema = z
   .object({
-    role: z.enum(['student', 'department_admin', 'admin']),
+    role: z.enum(USER_ROLES as [string, ...string[]]),
     department_id: z.string().uuid().nullable().optional(),
   })
   .refine((v) => v.role !== 'department_admin' || !!v.department_id, {
@@ -102,6 +104,11 @@ export async function PATCH(
     if (error) {
       console.error('[PATCH /api/admin/users/:id] role', error)
       return NextResponse.json({ error: 'Failed to update role' }, { status: 500 })
+    }
+    // Lehrer-Rollen erscheinen in der Rangliste nur unter Pseudonym (PROJ-44):
+    // ein fehlendes Pseudonym wird beim Rollenwechsel nachgetragen.
+    if (parsed.data.role !== 'student') {
+      await ensurePseudonym(service, id)
     }
     await writeAuditLog(supabase, {
       admin_id: user.id,

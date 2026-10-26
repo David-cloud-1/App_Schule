@@ -19,7 +19,7 @@ export default async function AdminLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, display_name')
+    .select('role, display_name, teacher_welcome_seen')
     .eq('id', user.id)
     .single()
 
@@ -30,10 +30,12 @@ export default async function AdminLayout({
   const role = profile.role
 
   const isSuperAdmin = role === 'admin'
+  // Einmaliger Willkommens-Hinweis nach der Freischaltung als Lehrkraft; gemerkt am Konto
+  const showTeacherWelcome = role === 'teacher' && !profile.teacher_welcome_seen
   const displayName = profile.display_name ?? user.email ?? ''
 
   return (
-    <AdminRoleProvider value={{ role, isSuperAdmin, displayName }}>
+    <AdminRoleProvider value={{ role, isSuperAdmin, displayName, showTeacherWelcome }}>
       <AdminShell displayName={displayName} isSuperAdmin={isSuperAdmin}>
         {children}
       </AdminShell>

@@ -313,4 +313,65 @@ describe('GET /api/leaderboard', () => {
       expect(eqValue(q.calls, 'department_id')).toBe('dept-sped')
     })
   })
+
+  describe('Lehrer-Rollen erscheinen nur unter Pseudonym (PROJ-44)', () => {
+    const TEACHER_ID = 'dddddddd-eeee-ffff-0000-111111111111'
+    const PROFILES = [
+      { id: USER_ID, display_name: 'Alice Azubi', pseudonym: 'Flinker Pionier', show_real_name: true, role: 'student', total_xp: 200, leaderboard_opt_out: false },
+      // „Mit Klarnamen erscheinen“ ist an – für Lehrer-Rollen darf das nie wirken
+      { id: TEACHER_ID, display_name: 'Petra Schweiger', pseudonym: 'Weiser Kompass', show_real_name: true, role: 'teacher', total_xp: 150, leaderboard_opt_out: false },
+    ]
+
+    it('zeigt eine Lehrkraft trotz „Klarname an“ mit Pseudonym, einen Azubi mit Klarname', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: USER_ID }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(makeServiceClientAllTime(PROFILES) as never)
+
+      const body = await (await GET(makeRequest('all'))).json()
+      const names = body.entries.map((e: { display_name: string }) => e.display_name)
+      expect(names).toEqual(['Alice Azubi', 'Weiser Kompass'])
+      expect(JSON.stringify(body)).not.toContain('Petra Schweiger')
+    })
+
+    it('gilt für alle Lehrer-Rollen und für die eigene Zeile', async () => {
+      const all = PROFILES.map((p) => ({ ...p, role: 'department_admin' }))
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: TEACHER_ID }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(makeServiceClientAllTime(all) as never)
+
+      const body = await (await GET(makeRequest('all'))).json()
+      expect(body.entries.every((e: { display_name: string }) => !/Alice|Petra/.test(e.display_name))).toBe(true)
+    })
+
+    it('verrät die Rolle nicht: keine Rolle, kein Klarname, keine Einstellungen in der Antwort', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: USER_ID }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(makeServiceClientAllTime(PROFILES) as never)
+
+      const body = await (await GET(makeRequest('all'))).json()
+      for (const entry of body.entries) {
+        expect(Object.keys(entry).sort()).toEqual(['display_name', 'id', 'is_current_user', 'level', 'rank', 'total_xp'])
+      }
+      expect(JSON.stringify(body)).not.toMatch(/teacher|role|show_real_name|pseudonym/)
+    })
+
+    it('zeigt eine Lehrkraft ohne Pseudonym neutral statt mit Klarname', async () => {
+      const noPseudonym = [{ ...PROFILES[1], pseudonym: null }]
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: USER_ID }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(makeServiceClientAllTime([PROFILES[0], ...noPseudonym]) as never)
+
+      const body = await (await GET(makeRequest('all'))).json()
+      expect(body.entries[1].display_name).toBe('Unbekannt')
+    })
+
+    it('gilt auch für Woche/Monat', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAuthClient({ id: USER_ID }) as never)
+      vi.mocked(createServiceClient).mockReturnValue(
+        makeServiceClientPeriod(
+          [{ user_id: USER_ID, xp_earned: 50 }, { user_id: TEACHER_ID, xp_earned: 80 }],
+          PROFILES as never,
+        ) as never,
+      )
+
+      const body = await (await GET(makeRequest('week'))).json()
+      expect(body.entries.map((e: { display_name: string }) => e.display_name)).toEqual(['Weiser Kompass', 'Alice Azubi'])
+    })
+  })
 })

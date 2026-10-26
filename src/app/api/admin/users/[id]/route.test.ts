@@ -8,7 +8,10 @@ vi.mock('@/lib/supabase-server', () => ({
   createServiceClient: vi.fn(),
 }))
 
+vi.mock('@/lib/pseudonym-server', () => ({ ensurePseudonym: vi.fn(async () => {}) }))
+
 import { createClient, createServiceClient } from '@/lib/supabase-server'
+import { ensurePseudonym } from '@/lib/pseudonym-server'
 
 const TARGET_USER_ID = '550e8400-e29b-41d4-a716-446655440099'
 const ADMIN_ID = 'admin-uuid-0000-0000-0000-000000000001'
@@ -187,5 +190,66 @@ describe('PATCH /api/admin/users/[id]', () => {
     )
     const res = await PATCH(makeRequest({ banned: true }), makeCtx())
     expect(res.status).toBe(404)
+  })
+
+  describe('Rolle „Lehrkraft“ (PROJ-44)', () => {
+    function serviceWithWrites(target: unknown) {
+      const mock = chainMock((table) => (table === 'profiles' ? { data: target } : {}))
+      ;(mock.client as unknown as { auth: unknown }).auth = { admin: { updateUserById: vi.fn() } }
+      return mock
+    }
+
+    it('lässt den Super-Admin einen Azubi zur Lehrkraft machen – ohne den Bereich anzufassen', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
+      const service = serviceWithWrites({ role: 'student', department_id: DEPT_TOUR })
+      vi.mocked(createServiceClient).mockReturnValue(service.client as never)
+
+      const res = await PATCH(makeRequest({ role: 'teacher' }), makeCtx())
+      expect(res.status).toBe(200)
+      expect(service.writes).toContainEqual({ table: 'profiles', method: 'update', payload: { role: 'teacher' } })
+      // Lehrer-Rollen erscheinen in der Rangliste nur unter Pseudonym
+      expect(ensurePseudonym).toHaveBeenCalledWith(service.client, TARGET_USER_ID)
+    })
+
+    it('protokolliert den Wechsel mit alter und neuer Rolle', async () => {
+      const admin = chainMock(
+        (table) => (table === 'profiles' ? { data: { role: 'admin', department_id: DEPT_SPED } } : {}),
+        { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: ADMIN_ID, email: 'a@a.com' } } }) } },
+      )
+      vi.mocked(createClient).mockResolvedValue(admin.client as never)
+      vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'student', department_id: DEPT_SPED }).client as never)
+
+      await PATCH(makeRequest({ role: 'teacher' }), makeCtx())
+      const log = admin.writes.find((w) => w.table === 'admin_audit_log')!.payload as Record<string, unknown>
+      expect(log.action_type).toBe('user.role_change')
+      expect(log.details).toEqual({ from: 'student', to: 'teacher' })
+    })
+
+    it('verweigert einem Bereichs-Admin die Vergabe mit 403', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+      const service = serviceWithWrites({ role: 'student', department_id: DEPT_SPED })
+      vi.mocked(createServiceClient).mockReturnValue(service.client as never)
+
+      const res = await PATCH(makeRequest({ role: 'teacher' }), makeCtx())
+      expect(res.status).toBe(403)
+      expect(service.writes).toEqual([])
+    })
+
+    it('legt beim Entziehen der Rolle kein Pseudonym an', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
+      vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'teacher', department_id: DEPT_SPED }).client as never)
+
+      const res = await PATCH(makeRequest({ role: 'student' }), makeCtx())
+      expect(res.status).toBe(200)
+      expect(ensurePseudonym).not.toHaveBeenCalled()
+    })
+
+    it('lehnt unbekannte Rollen mit 400 ab', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
+      vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'student', department_id: DEPT_SPED }).client as never)
+
+      const res = await PATCH(makeRequest({ role: 'superuser' }), makeCtx())
+      expect(res.status).toBe(400)
+    })
   })
 })

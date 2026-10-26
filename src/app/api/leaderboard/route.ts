@@ -4,6 +4,25 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { getLevelFromXp } from '@/lib/xp-utils'
 import { getDepartmentOfUser } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
+import { isTeacherRole } from '@/lib/roles'
+
+type NameFields = {
+  display_name: string | null
+  pseudonym: string | null
+  show_real_name: boolean | null
+  role: string | null
+}
+
+/**
+ * Angezeigter Name in der Rangliste. Lehrer-Rollen erscheinen IMMER unter
+ * Pseudonym (PROJ-44), unabhängig von „Mit Klarnamen erscheinen“ — und nie
+ * mit dem Klarnamen, auch nicht als Rückfall. Passiert hier auf dem Server,
+ * damit der Klarname gar nicht erst im Browser ankommt.
+ */
+function shownName(p: NameFields): string | null {
+  if (isTeacherRole(p.role)) return p.pseudonym?.trim() ? p.pseudonym : 'Unbekannt'
+  return p.show_real_name ? p.display_name : (p.pseudonym ?? p.display_name)
+}
 
 type Period = 'week' | 'month' | 'all'
 
@@ -46,7 +65,7 @@ export async function GET(request: NextRequest) {
     // All-time: use total_xp from profiles
     const { data: rows, error } = await service
       .from('profiles')
-      .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
+      .select('id, display_name, pseudonym, show_real_name, role, total_xp, leaderboard_opt_out')
       .eq('department_id', departmentId)
       .order('total_xp', { ascending: false })
       .order('display_name', { ascending: true })
@@ -69,9 +88,7 @@ export async function GET(request: NextRequest) {
       const myRankInAll = rankedPublic.findIndex((r) => r.id === user.id)
       currentUserEntry = {
         id: currentUserRow.id,
-        display_name: currentUserRow.leaderboard_opt_out ? null
-          : currentUserRow.show_real_name ? currentUserRow.display_name
-          : (currentUserRow.pseudonym ?? currentUserRow.display_name),
+        display_name: currentUserRow.leaderboard_opt_out ? null : shownName(currentUserRow),
         total_xp: currentUserRow.total_xp,
         level: getLevelFromXp(currentUserRow.total_xp ?? 0),
         rank: myRankInAll >= 0 ? myRankInAll + 1 : allRows.filter((r) => r.total_xp > (currentUserRow.total_xp ?? 0)).length + 1,
@@ -80,9 +97,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Nur die Felder, die die Rangliste braucht — keine Rolle, kein Klarname, keine Einstellungen
     const top10 = rankedPublic.slice(0, 10).map((r) => ({
-      ...r,
-      display_name: r.show_real_name ? r.display_name : (r.pseudonym ?? r.display_name),
+      id: r.id,
+      display_name: shownName(r),
+      total_xp: r.total_xp,
+      rank: r.rank,
       level: getLevelFromXp(r.total_xp ?? 0),
       is_current_user: r.id === user.id,
     }))
@@ -111,7 +131,7 @@ export async function GET(request: NextRequest) {
   // Fetch all profiles to get display names, opt-out, and total_xp (for level)
   const { data: profileRows, error: profileError } = await service
     .from('profiles')
-    .select('id, display_name, pseudonym, show_real_name, total_xp, leaderboard_opt_out')
+    .select('id, display_name, pseudonym, show_real_name, role, total_xp, leaderboard_opt_out')
     .eq('department_id', departmentId)
 
   if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 })
@@ -124,12 +144,9 @@ export async function GET(request: NextRequest) {
   const userIds = new Set([...[...xpMap.keys()].filter((uid) => profileMap.has(uid)), user.id])
   const allEntries = Array.from(userIds).map((uid) => {
     const profile = profileMap.get(uid)
-    const shownName = profile?.show_real_name
-      ? profile.display_name
-      : (profile?.pseudonym ?? profile?.display_name ?? null)
     return {
       id: uid,
-      display_name: shownName,
+      display_name: profile ? shownName(profile) : null,
       xp: xpMap.get(uid) ?? 0,
       leaderboard_opt_out: profile?.leaderboard_opt_out ?? false,
     }
@@ -161,9 +178,7 @@ export async function GET(request: NextRequest) {
 
   const currentUserEntry = {
     id: user.id,
-    display_name: currentUserProfile?.leaderboard_opt_out ? null
-      : currentUserProfile?.show_real_name ? currentUserProfile.display_name
-      : (currentUserProfile?.pseudonym ?? currentUserProfile?.display_name ?? null),
+    display_name: !currentUserProfile || currentUserProfile.leaderboard_opt_out ? null : shownName(currentUserProfile),
     total_xp: currentUserXp,
     level: getLevelFromXp(currentUserProfile?.total_xp ?? 0),
     rank: currentUserRank >= 0 ? currentUserRank + 1 : allEntries.filter((e) => !e.leaderboard_opt_out && e.xp > currentUserXp).length + 1,
