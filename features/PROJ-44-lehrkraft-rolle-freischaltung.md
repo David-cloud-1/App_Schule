@@ -1,6 +1,6 @@
 # PROJ-44: Lehrkraft-Rolle & Freischaltung
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -271,7 +271,72 @@ Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Baustein
 **Hinweis:** Die Produktion hat inzwischen 17 Bereichs-Admins (PROJ-24 ging von 11 aus), 1 Super-Admin und 132 Azubis.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-10-26
+**Umgebung:** kein Dev-Server und kein Playwright (Projekt-Memory „Kein Dev-Server“: beides bringt den MacBook zum Absturz). Stattdessen wie bei PROJ-24: Vitest, TypeScript, Lint, `npm run build` und transaktionale Prüfungen direkt gegen die Produktions-DB (alles per `RAISE EXCEPTION` zurückgerollt, keine Daten verändert). Nach der Migration war die DB-Prüfung nur lesend.
+**Tester:** QA Engineer (AI)
+
+**Nicht geprüft (braucht einen Browser):** Browser-übergreifend (Chrome/Firefox/Safari), Responsive-Ansicht (375/768/1440 px), Tastatur- und Screenreader-Bedienung, Aussehen der Oberfläche. Die Logik hinter allen Oberflächen ist per Komponenten- und Routen-Tests abgedeckt, das Aussehen **nicht**. E2E-Tests (`tests/PROJ-44-*.spec.ts`) wurden aus demselben Grund nicht geschrieben.
+
+### Automatik
+- `npm test`: **1.173 bestanden**, 1 erwarteter Fehlschlag (dokumentiert BUG-1), 0 Regressionen.
+- `tsc --noEmit`: sauber. `npm run lint`: 0 Fehler (die 32 Warnungen sind alt, in den PROJ-44-Dateien keine). `npm run build`: grün, `/start` ist enthalten.
+- 27 neue Tests aus Frontend/Backend plus 1 Regressionstest aus dieser QA.
+
+### Datenbank (Produktion, zurückgerollt)
+- Lehrkraft sieht in 15 Tabellen exakt dieselben Zeilen wie derselbe Nutzer als Azubi; `is_admin()`, `is_department_admin()`, `can_admin_department()` = false.
+- Rolle und Bereich selbst ändern: „permission denied“. Eigenes Feld `teacher_welcome_seen`: setzbar. Fremde Profile, `questions`, `graded_assessments`, `subjects`, `shop_items`: 0 Zeilen änderbar.
+- Letzter Super-Admin → Lehrkraft: vom Schutz-Trigger abgelehnt. Unbekannte Rolle: `check_violation`. Neue Konten starten als `student`. `generate_unique_pseudonym(NULL)` liefert einen Namen (Bereich nicht nötig).
+
+### Akzeptanzkriterien: 30 von 30 bestanden
+| Gruppe | Ergebnis | Beleg |
+|---|---|---|
+| Rolle (6) | ✅ 6/6 | DB-Prüfung, `requireAdmin`-Test, Rollen-Test, Registrierung unverändert (Code) |
+| Nutzerverwaltung (6) | ✅ 6/6 | Routen-Tests (`scope=all`, Rolle `teacher`, Protokoll `from→to`), Textbaustein-Test. *Hinweis:* Die bereichsübergreifende Suche ist ein Schalter „Alle Bereiche“ (Standard: aus), wie im bestätigten Design. Die Spec-Formulierung „unabhängig vom Umschalter“ gilt erst mit eingeschaltetem Schalter. |
+| Rolle entziehen (3) | ✅ 3/3 | Middleware-Test (Seite → `/`, API → 403), Dialogtext-Test; „Inhalte bleiben“ trivial erfüllt (der Rollenwechsel ändert nur `role`), echte Inhalte gibt es erst mit PROJ-46 |
+| Lehrkräfte-Bereich (5) | ✅ 5/5 | Middleware- (9) und Navigations-Tests, Nav zeigt nur Übersicht + Werkzeugkiste |
+| Willkommen (3) | ✅ 3/3 | Dialog- und Route-Test, am Konto gespeichert, keine E-Mail |
+| Lern-App (7) | ✅ 7/7 | Ranglisten-Tests (Pseudonym, Antwortfelder), Profil, DB; „Klassen-Statistiken“: nur das Fun-Audit filtert auf Azubis (`role = student`), andere Auswertungen rechnen keine Rollen. Der Wechsel zurück sitzt im Spieler-Menü der Startseite („Lehrkräfte-Bereich“). |
+
+### Edge Cases
+✅ Schüler tarnt sich (Dialog nennt E-Mail) · ✅ falsches Konto freigeschaltet (zurückstufbar, beide Wechsel im Protokoll) · ✅ doppeltes Konto (Suche mit E-Mail) · ✅ OAuth (Callback → `/start`, Test) · ✅ letzter Super-Admin · ✅ Bereichs-Admin → Lehrkraft (`department_id` bleibt, Test prüft, dass nur `role` geschrieben wird) · ✅ Lehrkraft mit Fachbereich · ✅ Zweitkonto PROJ-29 (Code unberührt, Tests grün) · ⚠️ Rolle während laufender Sitzung entzogen: Umleitung und 403 funktionieren, aber ohne Hinweis (BUG-4) · ➖ Konto gelöscht: erst mit PROJ-46 prüfbar.
+
+### Bugs
+
+**BUG-1 – Umleitung auf fremde Seiten nach dem Login ist umgehbar (High, Sicherheit)**
+`safeRedirectTarget()` ([src/lib/roles.ts](src/lib/roles.ts)) erkennt `//` und `/\` am Anfang, aber nicht Tab, Zeilenumbruch oder Wagenrücklauf. Der Browser entfernt diese Zeichen aus Adressen, aus `/\t/evil.example` wird `//evil.example`.
+- *Schritte:* Link `…/login?redirect=%2F%09%2Fevil.example` öffnen, einloggen. Die Login- und Registrierungsseite setzen `window.location.href = redirectTarget`, der Browser landet auf `evil.example`. In Node nachgestellt: `new URL('/\t/evil.example', 'https://spedilern.vercel.app')` ergibt `https://evil.example/`; dasselbe mit `\n` und `\r`.
+- *Auswirkung:* Phishing: Ein präparierter Link schickt Kolleginnen und Azubis nach dem echten Login auf eine fremde Seite. Vor PROJ-44 war das Ziel gar nicht geprüft; der Schutz ist also besser als vorher, aber lückenhaft, und die Frontend-Notizen („abgesichert“) stimmen so nicht.
+- *Nicht betroffen:* Der serverseitige Callback (`next`) hängt das Ziel an die eigene Adresse an und bleibt auf derselben Domain.
+- *Absicherung:* `it.fails`-Test in [src/lib/roles.test.ts](src/lib/roles.test.ts). Nach dem Fix schlägt er an, dann `.fails` entfernen.
+- *Empfehlung (für /backend bzw. /frontend):* Steuerzeichen vor der Prüfung entfernen oder ablehnen und das Ergebnis über `new URL(…, origin)` auf dieselbe Herkunft prüfen.
+
+**BUG-2 – Willkommens-Hinweis kann in derselben Sitzung wieder auftauchen (Low, nicht im Browser geprüft)**
+Der Layout-Wert `showTeacherWelcome` wird einmal serverseitig berechnet und bleibt bei App-Navigation im Lehrkräfte-Bereich stehen. Kommt die Lehrkraft per „Zurück“ (Browser-Verlauf) oder, sobald PROJ-46 weitere Seiten bringt, per Klick zurück auf die Übersicht, kann der Hinweis erneut erscheinen, obwohl er in der DB als gesehen gilt. Heute nur über „Zurück“ erreichbar. *Empfehlung:* Schließen auch im Rollen-Kontext (Client) merken. Bitte im Browser bestätigen.
+
+**BUG-3 – Super-Admin kann eine Lehrkraft nicht in einen anderen Bereich verschieben (Low)**
+„Bereich verschieben“ erscheint in der Nutzerverwaltung nur bei Azubis ([src/app/admin/users/page.tsx](src/app/admin/users/page.tsx)), obwohl die Schnittstelle es für den Super-Admin bei jeder Rolle erlaubt. Hat sich eine Lehrkraft über die Adresse des falschen Bereichs registriert, sieht sie dauerhaft dessen Lern-App. *Empfehlung:* Aktion für Super-Admin auch bei Lehrer-Rollen zeigen.
+
+**BUG-4 – Kein erklärender Hinweis, wenn die Rolle entzogen wurde (Low)**
+Die Spec verlangt bei entzogener Rolle in laufender Sitzung „einen verständlichen Hinweis“. Heute leitet die Middleware stumm auf `/` um, API-Aufrufe zeigen das allgemeine „Aktion fehlgeschlagen“. *Empfehlung:* Kurzer Hinweis auf der Zielseite oder eine verständliche 403-Meldung im Lehrkräfte-Bereich.
+
+**BUG-5 – Kleinigkeiten in der Nutzerverwaltung (Low)**
+(a) Ein Bereichs-Admin sieht den Sperren-Knopf auch bei Lehrer-Konten und Admins seines Bereichs, bekommt beim Klick aber „Not found“ (die Schnittstelle erlaubt ihm nur Azubis; das Muster gab es für Admin-Zeilen schon vorher). (b) Wird eine Lehrkraft ohne Bereich zum Bereichs-Admin gemacht, erscheint nur „Invalid payload“ statt „Bereichs-Admin braucht einen Fachbereich“. (c) Der Profil-Hinweis „Als Lehrkraft erscheinst du …“ steht auch bei Bereichs-Admins und Super-Admin.
+
+### Sicherheitsprüfung (Red Team)
+- ✅ Rollen-Eskalation: Weder per Datenbank (Spalten-Grant) noch per API kann sich jemand `teacher` oder höher selbst geben; `teacher-welcome` schreibt nur ein einzelnes Feld der eigenen Zeile.
+- ✅ Autorisierung: Lehrkraft prallt an jeder `/api/admin/**`-Route (Middleware **und** `requireAdmin`) mit 403 ab, auch ohne Bereich. Verwaltungsseiten leiten um. Bereichs-Admin kann weder `teacher` vergeben noch `scope=all` nutzen (403).
+- ✅ Fail closed: fehlende oder unbekannte Rolle sperrt den Bereich.
+- ✅ Datenschutz Rangliste: Klarname und Rolle verlassen den Server nicht. Die Antwort enthält nur noch 6 Felder (vorher wurden u. a. `pseudonym`, `show_real_name` mit durchgereicht). Sonst gibt keine Azubi-Seite Namen anderer aus.
+- ✅ Keine Geheimnisse in den geänderten Dateien; keine neuen Umgebungsvariablen.
+- ❌ Offene Umleitung (BUG-1).
+- ⚠️ Nicht geprüft: Ratenbegrenzung der neuen Schnittstellen (`teacher-welcome` ist harmlos, `users?scope=all` nur für den Super-Admin).
+
+### Regression
+Alle bestehenden Tests grün (1.173), darunter Admin-Routen, Leistungsnachweise, Rangliste, Login-Callback, PROJ-29-Sitzungswechsel. Die Produktions-DB nach der Migration: 1 Super-Admin, 17 Bereichs-Admins, 132 Azubis, 0 Lehrkräfte, `role` weiterhin nicht schreibbar.
+
+### Entscheidung
+**NICHT BEREIT für den Push**, solange BUG-1 offen ist (High, Sicherheit). BUG-2 bis BUG-5 sind Low und blockieren nichts. Alle anderen Kriterien sind erfüllt. Mit dem Fix von BUG-1 ist die Funktion produktionsreif.
 
 ## Deployment
 _To be added by /deploy_

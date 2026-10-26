@@ -66,4 +66,14 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(safeRedirectTarget('//evil.example')).toBe(START_PATH)
     expect(safeRedirectTarget('/\\evil.example')).toBe(START_PATH)
   })
+
+  // BEKANNTER FEHLER (QA PROJ-44, BUG-1): Der Browser entfernt Tab und Zeilenumbruch aus
+  // Adressen, `/\t/evil.example` wird so zu `//evil.example` (fremde Domain). Der Test
+  // ist `.fails`, solange der Fehler besteht. Nach dem Fix schlägt er an: dann `.fails`
+  // entfernen, damit er dauerhaft absichert.
+  it.fails('weist Pfade mit Tab/Zeilenumbruch ab, die der Browser zu //fremde-domain macht (BUG-1)', () => {
+    for (const raw of ['/\t/evil.example', '/\n/evil.example', '/\r/evil.example']) {
+      expect(safeRedirectTarget(raw)).toBe(START_PATH)
+    }
+  })
 })
