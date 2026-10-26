@@ -1,6 +1,6 @@
 # PROJ-44: Lehrkraft-Rolle & Freischaltung
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -67,7 +67,7 @@ Gesamtplan (Reihenfolge mit dem Nutzer am 2026-10-26 abgestimmt):
 - [ ] Wird die Lehrkraft später erneut freigeschaltet, sieht sie ihre früheren Inhalte wieder.
 
 ### Lehrkräfte-Bereich für die Rolle „Lehrkraft“
-- [ ] Nach dem Login landet eine Lehrkraft im Lehrkräfte-Bereich, nicht auf der Spieler-Startseite. Ein `?redirect=` aus einem Link (z. B. Druckansicht) hat Vorrang.
+- [ ] Nach dem Login landen alle Lehrer-Rollen (Lehrkraft, Bereichs-Admin, Super-Admin) im Lehrkräfte-Bereich, nicht auf der Spieler-Startseite (Nutzer-Entscheidung 2026-10-26). Ein `?redirect=` aus einem Link (z. B. Druckansicht) hat Vorrang.
 - [ ] Navigation und Startseite zeigen der Lehrkraft nur ihre Einträge: Übersicht, Leistungsnachweise (sobald PROJ-46 live ist) und Werkzeugkiste. Fragen, Nutzer, Fächer, Themen, Prüfungssimulation, Fragen aus Material, Fachbereich-Einstellungen, Hof-Items, Änderungsprotokoll und Fachbereiche sind ausgeblendet.
 - [ ] Alle Bereichs-Verwaltungsseiten und ihre API-Routen lehnen eine Lehrkraft serverseitig ab (Seite: Umleitung zur Übersicht, API: 403). Ausblenden allein reicht nicht.
 - [ ] Bis PROJ-46 live ist, zeigt die Startseite der Lehrkraft statt der Leistungsnachweis-Kachel nichts Kaputtes: entweder gar keine Kachel oder eine klar als „bald verfügbar“ markierte.
@@ -119,7 +119,111 @@ Gesamtplan (Reihenfolge mit dem Nutzer am 2026-10-26 abgestimmt):
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Ausgangslage (geprüft am 2026-10-26)
+- **Datenbank ist schon „fail closed“:** Ein Abgleich mit der Live-Datenbank zeigt, dass alle Zugriffsregeln (RLS) und Hilfsfunktionen gezielt nach `admin` oder `department_admin` fragen. Keine Regel behandelt „alles außer Azubi“ als Admin. Eine neue Rolle hat also von sich aus **keinerlei** zusätzliche Datenbank-Rechte. Für PROJ-44 muss deshalb **keine einzige Zugriffsregel geändert** werden.
+- **Rollenprüfungen im Code sind verstreut:** An rund acht Stellen steht sinngemäß „ist admin oder department_admin“ (Middleware `proxy.ts`, Admin-Layout, Spieler-Startseite, Spieler-Menü, `requireAdmin()`, Navigation, Nutzerverwaltung). Genau dort entscheidet sich, ob eine Lehrkraft hineinkommt.
+- **Pseudonyme gibt es für alle:** Jedes Konto bekommt beim Anlegen automatisch ein Pseudonym (seit PROJ-22). Die Rangliste zeigt heute den Klarnamen, wenn „Echten Namen zeigen“ an ist.
+- **Fun-Audit zählt schon nur Azubis:** Das Auswertungsskript filtert bereits auf `student` und schließt Zweitkonten aus. Lehrkräfte fallen dort automatisch heraus.
+- **Letzter Login ist vorhanden:** Die Nutzerverwaltung lädt die Login-Konten ohnehin. Das Datum des letzten Logins steht dort mit drin und muss nur angezeigt werden.
+
+### A) Aufbau (Komponenten-Baum)
+
+```
+Nach dem Login
+└── Start-Weiche (NEU, unsichtbar)
+    → alle Lehrer-Rollen (Lehrkraft, Bereichs-Admin, Super-Admin) → Lehrkräfte-Bereich (Übersicht)
+    → Azubis → Spieler-Startseite (wie heute)
+    → ein ?redirect= aus einem Link hat immer Vorrang
+
+Lehrkräfte-Bereich (bestehendes Grundgerüst aus PROJ-40)
+├── Seitenleiste / Menü (bestehend, Rollenfilter erweitert)
+│   ├── Lehrkraft sieht: Übersicht · Werkzeugkiste
+│   │   (Leistungsnachweise kommen mit PROJ-46 dazu)
+│   ├── Bereichs-Admin sieht: wie heute
+│   └── Super-Admin sieht: wie heute
+├── Übersicht / Startseite (bestehend)
+│   ├── Kacheln nach Rolle gefiltert (Lehrkraft: Werkzeugkiste)
+│   └── Willkommens-Hinweis (NEU, einmalig für frisch freigeschaltete Lehrkräfte)
+│       → 3 Sätze + „Los geht’s“
+├── „Zur Lern-App“ (bestehend als „Zurück zur App“, bleibt)
+└── Nutzerverwaltung (bestehend, nur Super-Admin-Teile erweitert)
+    ├── Suchfeld Name/E-Mail (NEU)
+    ├── Umschalter „Nur dieser Bereich / Alle Bereiche“ (NEU, nur Super-Admin)
+    ├── Rollen-Filter: Alle · Azubis · Lehrkräfte · Bereichs-Admins · Super-Admin (NEU)
+    ├── Spalte „Letzter Login“ für Lehrer-Rollen (NEU)
+    └── Rollen-Menü je Konto: + „Lehrkraft“ (erweitert)
+        └── Bestätigungsdialog mit Name UND E-Mail (erweitert)
+            → beim Entziehen: Hinweis „Erstellte Inhalte bleiben erhalten …“
+
+Lern-App (Spielerseite)
+├── Spieler-Menü: Eintrag heißt „Lehrkräfte-Bereich“, sichtbar für alle Lehrer-Rollen
+├── Rangliste: Lehrer-Rollen immer unter Pseudonym, kein Hinweis auf die Rolle
+└── Profil → „Echten Namen zeigen“: für Lehrer-Rollen ausgeblendet,
+    stattdessen ein Satz: „Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Pseudonym.“
+```
+
+### B) Datenmodell (in einfachen Worten)
+
+- **Rolle:** Jedes Profil hat weiterhin genau **eine** Rolle. Zu Azubi, Bereichs-Admin und Super-Admin kommt **„Lehrkraft“** dazu (technischer Name `teacher`). Die erlaubten Werte stehen in einer Datenbank-Regel. Diese wird um den neuen Wert erweitert.
+- **„Lehrer-Rollen“ als Begriff:** Lehrkraft, Bereichs-Admin und Super-Admin gelten gemeinsam als Lehrer-Rollen. Das bestimmt, wer in den Lehrkräfte-Bereich darf und wer in der Rangliste nur unter Pseudonym erscheint. Die Verwaltungsrechte haben weiterhin nur Bereichs-Admin und Super-Admin.
+- **Willkommen gesehen (NEU):** Ein Ja/Nein-Feld am Profil, Standard „nein“. Die Lehrkraft darf es selbst auf „ja“ setzen, so wie heute schon „Startmünzen gesehen“. Weil es am Konto hängt und nicht im Browser, erscheint der Hinweis auf keinem Gerät ein zweites Mal.
+- **Fachbereich einer Lehrkraft:** bleibt so, wie er bei der Registrierung gesetzt wurde. Er bestimmt nur, welche Lern-App sie sieht, und gibt keine Rechte.
+- **Unverändert:** XP, Münzen, Streak, Hof und Pseudonym. Beim Rollenwechsel wird nichts gelöscht.
+- **Änderungsprotokoll:** Rollenwechsel werden schon heute als `user.role_change` mit alter und neuer Rolle gespeichert. Das gilt automatisch auch für „Lehrkraft“.
+- Gespeichert wird alles in der bestehenden Supabase-Datenbank. Es gibt keinen neuen Dienst und keinen E-Mail-Versand.
+
+### C) Technische Entscheidungen (Begründung)
+
+1. **Neue eigene Rolle statt „Bereichs-Admin ohne Bereich“:** Ein Bereichs-Admin ohne Bereich ist heute absichtlich komplett gesperrt (Sicherheitsregel aus PROJ-24). Diese Regel aufzuweichen wäre riskanter als eine klar benannte neue Rolle, die von Anfang an nichts darf außer dem, was wir ihr ausdrücklich erlauben.
+
+2. **Eine zentrale Stelle für „Wer darf was“:** Statt an acht Stellen einzeln „admin oder department_admin“ zu prüfen, gibt es künftig **eine** gemeinsame Rollen-Übersicht im Code: welche Rollen Lehrer-Rollen sind und welche verwalten dürfen. Alle bisherigen Stellen fragen dort nach. Das verhindert, dass eine Stelle vergessen wird, und erleichtert PROJ-46 und PROJ-48, die dort nur noch neue Rechte ergänzen.
+
+3. **Zwei Tore statt einem:**
+   - **Tor 1, Lehrkräfte-Bereich:** Hier kommen alle Lehrer-Rollen hinein (Seiten unter `/admin`).
+   - **Tor 2, Verwaltung:** Die bestehende Prüfung `requireAdmin()` bleibt für alle Verwaltungsschnittstellen **unverändert** und lässt nur Bereichs-Admins und den Super-Admin durch. Eine Lehrkraft prallt dort automatisch mit 403 ab, auch wenn wir eine Seite vergessen würden.
+
+   Zusätzlich lässt die Middleware eine Lehrkraft nur auf die für sie freigegebenen Seiten (vorerst nur die Übersicht). Jede andere Verwaltungsseite leitet sie zur Übersicht um. So gibt es doppelte Absicherung, wie in der Spec gefordert.
+
+4. **Start-Weiche statt Zwangsumleitung:** Würde die Spieler-Startseite jede Lehrkraft sofort in den Lehrkräfte-Bereich schicken, käme sie nie mehr in die Lern-App. Deshalb landet ein Login (auch über Google/Apple) zuerst bei einer kleinen unsichtbaren Weiche, die nach Rolle verteilt. Wer danach bewusst „Zur Lern-App“ klickt, bleibt dort. Die Weiche gilt für **alle Lehrer-Rollen**, also Lehrkraft, Bereichs-Admin und Super-Admin (Nutzer-Entscheidung 2026-10-26). Azubis landen wie heute auf der Spieler-Startseite.
+
+5. **Rolle bei jeder Anfrage frisch aus der Datenbank:** Das ist bereits heute so (PROJ-24) und bleibt so. Ein Entzug der Rolle wirkt also bei der nächsten Aktion, ohne Abmelden.
+
+6. **Rangliste: Pseudonym erzwingen statt ausblenden:** Lehrkräfte spielen mit (Entscheidung E3). Die Rangliste ignoriert für Lehrer-Rollen den Schalter „Echten Namen zeigen“ und nimmt immer das Pseudonym. Weil das serverseitig in der Ranglisten-Schnittstelle passiert, kann der Klarname nicht durch einen Trick im Browser sichtbar werden. Andere Merkmale (Abzeichen, Farbe) gibt es für Rollen in der Rangliste ohnehin nicht. Das bleibt so.
+
+7. **Bereichsübergreifende Suche nur für den Super-Admin:** Die Nutzerliste ist heute immer auf einen Bereich gefiltert. Für das Freischalten braucht der Super-Admin aber alle Konten, weil sich eine Kollegin auch über die Tourismus-Adresse registriert haben kann. Der neue Schalter „Alle Bereiche“ gibt es deshalb nur für den Super-Admin. Für Bereichs-Admins bleibt die Liste wie heute auf den eigenen Bereich begrenzt.
+
+8. **Keine Änderung an Zugriffsregeln der Datenbank:** Weil die neue Rolle dort von Haus aus nichts darf (siehe Ausgangslage), gibt es in PROJ-44 nur zwei kleine Datenbank-Änderungen: den neuen Rollenwert erlauben und das Feld „Willkommen gesehen“ anlegen (selbst setzbar). Beides kommt mit Rückweg-Skript. Echte neue Rechte (Leistungsnachweise, Fächer) kommen erst mit PROJ-46 und PROJ-48.
+
+### D) Was sich wo ändert (Überblick)
+
+| Bereich | Änderung |
+|---|---|
+| Datenbank | Rollenwert „Lehrkraft“ erlauben, Feld „Willkommen gesehen“ (+ Rückweg) |
+| Gemeinsame Rollen-Übersicht | NEU: Lehrer-Rollen / Verwaltungs-Rollen an einer Stelle |
+| Middleware | Lehrer-Rollen in den Lehrkräfte-Bereich, Lehrkraft nur auf freigegebene Seiten, Verwaltungs-Schnittstellen unverändert |
+| Login & OAuth-Rückkehr | Standardziel ist die Start-Weiche statt `/` |
+| Admin-Layout & Navigation | Rollenfilter: Lehrkraft / Bereichs-Admin / Super-Admin (bisher nur „Super-Admin ja/nein“) |
+| Übersicht | Willkommens-Hinweis |
+| Nutzerverwaltung (Seite + Schnittstelle) | Suche, „Alle Bereiche“, Rollen-Filter, letzter Login, Rolle „Lehrkraft“, Dialog mit E-Mail |
+| Rangliste + Profil | Pseudonym-Pflicht für Lehrer-Rollen, Schalter ausgeblendet |
+| Spieler-Startseite / Spieler-Menü | Link „Lehrkräfte-Bereich“ für alle Lehrer-Rollen |
+
+### E) Reihenfolge beim Ausrollen
+1. Datenbank-Änderung zuerst. Das ist gefahrlos, weil noch niemand die Rolle hat.
+2. Danach den Code deployen.
+3. Erst dann das erste Konto zur Lehrkraft machen (Testkonto), prüfen und danach die echten Kolleginnen und Kollegen freischalten.
+
+### F) Tests
+- Rollen-Übersicht: welche Rolle darf in den Bereich, welche verwalten, welche Navigation.
+- Middleware und Routen je Rolle: Super-Admin / Bereichs-Admin / Lehrkraft / Azubi. Lehrkraft auf Verwaltungs-Schnittstelle → 403, auf Verwaltungsseite → Umleitung zur Übersicht.
+- Rollenwechsel-Schnittstelle: nur Super-Admin darf „Lehrkraft“ setzen oder entziehen, Bereichs-Admin → 403.
+- Rangliste: Lehrkraft mit „Echten Namen zeigen = an“ erscheint trotzdem mit Pseudonym.
+- SQL-Prüfung in einer Transaktion mit Rollback: Ein Testkonto mit Rolle „Lehrkraft“ kann in keiner Tabelle mehr lesen oder schreiben als ein Azubi und kann seine Rolle nicht selbst ändern.
+- `npm test` + `npm run build`. Kein Dev-Server und kein Playwright.
+
+### G) Abhängigkeiten (Pakete)
+Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Bausteine: Eingabefeld, Auswahlfeld, Tabelle, Dialog bzw. Bestätigungsdialog, Badge.
 
 ## QA Test Results
 _To be added by /qa_
