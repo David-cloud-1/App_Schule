@@ -1,6 +1,15 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { isManagerRole, isTeacherRole, mayOpenAdminPath, START_PATH, TEACHER_HOME_PATH } from '@/lib/roles'
+import {
+  isManagerRole,
+  isTeacherRole,
+  mayOpenAdminPath,
+  NO_ACCESS_MESSAGE,
+  NO_ACCESS_PARAM,
+  NO_RIGHTS_MESSAGE,
+  START_PATH,
+  TEACHER_HOME_PATH,
+} from '@/lib/roles'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -81,16 +90,18 @@ export async function proxy(request: NextRequest) {
       .single()
     const role = profile?.role
     if (!isTeacherRole(role)) {
+      // Rolle fehlt oder wurde entzogen: verständliche Meldung statt stummer Umleitung (QA BUG-4)
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        return NextResponse.json({ error: NO_ACCESS_MESSAGE }, { status: 403 })
       }
       const url = request.nextUrl.clone()
       url.pathname = '/'
+      url.search = `?${NO_ACCESS_PARAM}=1`
       return NextResponse.redirect(url)
     }
     if (!isManagerRole(role)) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        return NextResponse.json({ error: NO_RIGHTS_MESSAGE }, { status: 403 })
       }
       if (!mayOpenAdminPath(role, pathname)) {
         const url = request.nextUrl.clone()

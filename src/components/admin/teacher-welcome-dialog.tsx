@@ -16,13 +16,28 @@ import {
 export const TEACHER_WELCOME_ENDPOINT = '/api/profile/teacher-welcome'
 
 /**
+ * Gilt für die Lebensdauer dieser Browser-Seite (bis zum Neuladen). Der
+ * Layout-Wert „noch nicht gesehen“ kommt einmal vom Server und bleibt bei
+ * App-Navigation und „Zurück“ stehen (QA BUG-2): ohne diese Merkhilfe käme der
+ * Hinweis nach dem Schließen wieder, sobald die Übersicht neu aufgebaut wird.
+ * Nach einem Neuladen entscheidet wieder das Konto in der Datenbank.
+ */
+let dismissedInThisPage = false
+
+/** Nur für Tests: setzt die Merkhilfe zurück */
+export function resetTeacherWelcomeForTests() {
+  dismissedInThisPage = false
+}
+
+/**
  * Einmaliger Willkommens-Hinweis nach der Freischaltung als Lehrkraft (PROJ-44).
  * Schließen auf jedem Weg (Button, Esc, daneben tippen) zählt als gesehen.
  */
 export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) {
-  const [open, setOpen] = useState(initialOpen)
+  const [open, setOpen] = useState(initialOpen && !dismissedInThisPage)
 
   function dismiss() {
+    dismissedInThisPage = true
     setOpen(false)
     // Ein Fehler hier ist unkritisch: dann erscheint der Hinweis beim nächsten Mal noch einmal.
     fetch(TEACHER_WELCOME_ENDPOINT, { method: 'POST' }).catch(() => {})

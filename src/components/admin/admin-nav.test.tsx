@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { AdminNav } from './admin-nav'
 import { AdminHome } from './admin-home'
 import { AdminRoleProvider } from './admin-role-provider'
+import { resetTeacherWelcomeForTests } from './teacher-welcome-dialog'
 import { DepartmentProvider } from '@/components/department-provider'
 import type { DepartmentBranding } from '@/lib/departments'
 import type { TeacherRole } from '@/lib/roles'
@@ -87,6 +88,8 @@ describe('AdminHome (PROJ-40)', () => {
 })
 
 describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
+  beforeEach(() => resetTeacherWelcomeForTests())
+
   it('zeigt in der Navigation nur Übersicht und Werkzeugkiste', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
     const names = screen.getAllByRole('link').map((a) => a.textContent)
@@ -118,6 +121,17 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Los geht’s' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/profile/teacher-welcome', { method: 'POST' })
+    vi.unstubAllGlobals()
+  })
+
+  it('zeigt den Hinweis nach dem Schließen nicht wieder, wenn die Übersicht neu aufgebaut wird (BUG-2)', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
+    const first = wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Los geht’s' }))
+    first.unmount()
+    // z. B. „Zurück“ im Browser oder Klick auf „Übersicht“: der Server-Wert ist noch „nicht gesehen“
+    wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     vi.unstubAllGlobals()
   })
 

@@ -7,7 +7,8 @@ import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { PlayerMenu } from '@/components/player-menu'
-import { isTeacherRole } from '@/lib/roles'
+import { isTeacherRole, NO_ACCESS_MESSAGE, NO_ACCESS_PARAM } from '@/lib/roles'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { CoinBalance } from '@/components/coin-balance'
 import { BlitzRoundTile } from '@/components/blitz-round-card'
@@ -24,9 +25,14 @@ import {
   toBerlinDateStr,
 } from '@/lib/home-today'
 import { cn } from '@/lib/utils'
-import { Zap, Flame, Target } from 'lucide-react'
+import { Zap, Flame, Target, ShieldAlert } from 'lucide-react'
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const noAccess = (await searchParams)[NO_ACCESS_PARAM] !== undefined
   const supabase = await createClient()
   const {
     data: { user },
@@ -190,6 +196,15 @@ export default async function HomePage() {
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-3 pb-6 space-y-6">
+        {/* Erklärung, wenn jemand ohne Berechtigung (oder nach Entzug der Rolle) im Lehrkräfte-Bereich landen wollte */}
+        {noAccess && (
+          <Alert className="rounded-2xl border-[#FF9600]/50 bg-[#FF9600]/10 text-[#F9FAFB]">
+            <ShieldAlert className="size-5 text-[#FF9600]" />
+            <AlertDescription className="text-[#F9FAFB]">
+              {NO_ACCESS_MESSAGE} Falls du Lehrkraft bist, frag bitte die Administration.
+            </AlertDescription>
+          </Alert>
+        )}
         {/* Begrüßung & Woche */}
         <section className="space-y-4">
           <div>

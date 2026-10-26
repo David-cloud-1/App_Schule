@@ -1,6 +1,6 @@
 # PROJ-44: Lehrkraft-Rolle & Freischaltung
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -160,7 +160,7 @@ Lern-App (Spielerseite)
 ├── Spieler-Menü: Eintrag heißt „Lehrkräfte-Bereich“, sichtbar für alle Lehrer-Rollen
 ├── Rangliste: Lehrer-Rollen immer unter Pseudonym, kein Hinweis auf die Rolle
 └── Profil → „Echten Namen zeigen“: für Lehrer-Rollen ausgeblendet,
-    stattdessen ein Satz: „Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Pseudonym.“
+    stattdessen ein Satz: „In der Rangliste erscheinst du immer unter deinem Fantasienamen.“ (neutral formuliert, ohne Rollenhinweis; QA BUG-5c)
 ```
 
 ### B) Datenmodell (in einfachen Worten)
@@ -238,7 +238,7 @@ Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Baustein
 - **Kopfzeile:** „Admin“ → „Lehrkräfte“, neuer Button „Zur Lern-App“ (auf dem Handy nur Icon mit Screenreader-Text), Menü-Titel „Menü“, Navigation heißt für Screenreader „Lehrkräfte-Bereich“.
 - **Admin-Layout:** lässt alle Lehrer-Rollen herein (`isTeacherRole`), Rollen-Kontext trägt `TeacherRole`.
 - **Spieler-Startseite & Spieler-Menü:** Eintrag „Lehrkräfte-Bereich“ für alle Lehrer-Rollen (Prop `showTeacherArea` statt `isAdmin`).
-- **Profil:** Für Lehrer-Rollen ist der Schalter „Mit Klarnamen erscheinen“ ausgeblendet. Stattdessen steht dort: „Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Fantasienamen.“ „Neu würfeln“ bleibt möglich.
+- **Profil:** Für Lehrer-Rollen ist der Schalter „Mit Klarnamen erscheinen“ ausgeblendet. Stattdessen steht dort: „In der Rangliste erscheinst du immer unter deinem Fantasienamen.“ „Neu würfeln“ bleibt möglich.
 - **Nutzerverwaltung:** Rollen-Filter (Alle · Azubis · Lehrkräfte · Bereichs-Admins · Super-Admin), Schalter „Alle Bereiche“ (nur Super-Admin, lädt `?scope=all`, zeigt dann die Spalte „Bereich“), Spalte „Letzter Login“ für Lehrer-Rollen, Rolle „Lehrkraft“ im Rollen-Menü, Bestätigungstext mit Name **und** E-Mail sowie dem Hinweis „Erstellte Inhalte bleiben erhalten …“ beim Entziehen (`role-change-text.ts` + Tests).
 - `tsconfig.json`: `scripts/scratch` (git-ignorierte lokale Wegwerf-Skripte mit Syntaxfehlern) von der Typprüfung ausgenommen, weil sie den lokalen `npm run build` blockierten. Auf Vercel waren sie nie vorhanden.
 
@@ -303,24 +303,24 @@ Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Baustein
 
 ### Bugs
 
-**BUG-1 – Umleitung auf fremde Seiten nach dem Login ist umgehbar (High, Sicherheit)**
+**BUG-1 – Umleitung auf fremde Seiten nach dem Login ist umgehbar (High, Sicherheit) – ✅ behoben**
 `safeRedirectTarget()` ([src/lib/roles.ts](src/lib/roles.ts)) erkennt `//` und `/\` am Anfang, aber nicht Tab, Zeilenumbruch oder Wagenrücklauf. Der Browser entfernt diese Zeichen aus Adressen, aus `/\t/evil.example` wird `//evil.example`.
 - *Schritte:* Link `…/login?redirect=%2F%09%2Fevil.example` öffnen, einloggen. Die Login- und Registrierungsseite setzen `window.location.href = redirectTarget`, der Browser landet auf `evil.example`. In Node nachgestellt: `new URL('/\t/evil.example', 'https://spedilern.vercel.app')` ergibt `https://evil.example/`; dasselbe mit `\n` und `\r`.
 - *Auswirkung:* Phishing: Ein präparierter Link schickt Kolleginnen und Azubis nach dem echten Login auf eine fremde Seite. Vor PROJ-44 war das Ziel gar nicht geprüft; der Schutz ist also besser als vorher, aber lückenhaft, und die Frontend-Notizen („abgesichert“) stimmen so nicht.
 - *Nicht betroffen:* Der serverseitige Callback (`next`) hängt das Ziel an die eigene Adresse an und bleibt auf derselben Domain.
-- *Absicherung:* `it.fails`-Test in [src/lib/roles.test.ts](src/lib/roles.test.ts). Nach dem Fix schlägt er an, dann `.fails` entfernen.
+- *Absicherung:* Der Test war zunächst als erwarteter Fehlschlag (`it.fails`) angelegt und ist nach dem Fix ein normaler Test.
 - *Empfehlung (für /backend bzw. /frontend):* Steuerzeichen vor der Prüfung entfernen oder ablehnen und das Ergebnis über `new URL(…, origin)` auf dieselbe Herkunft prüfen.
 
-**BUG-2 – Willkommens-Hinweis kann in derselben Sitzung wieder auftauchen (Low, nicht im Browser geprüft)**
+**BUG-2 – Willkommens-Hinweis kann in derselben Sitzung wieder auftauchen (Low, nicht im Browser geprüft) – ✅ behoben**
 Der Layout-Wert `showTeacherWelcome` wird einmal serverseitig berechnet und bleibt bei App-Navigation im Lehrkräfte-Bereich stehen. Kommt die Lehrkraft per „Zurück“ (Browser-Verlauf) oder, sobald PROJ-46 weitere Seiten bringt, per Klick zurück auf die Übersicht, kann der Hinweis erneut erscheinen, obwohl er in der DB als gesehen gilt. Heute nur über „Zurück“ erreichbar. *Empfehlung:* Schließen auch im Rollen-Kontext (Client) merken. Bitte im Browser bestätigen.
 
-**BUG-3 – Super-Admin kann eine Lehrkraft nicht in einen anderen Bereich verschieben (Low)**
+**BUG-3 – Super-Admin kann eine Lehrkraft nicht in einen anderen Bereich verschieben (Low) – ✅ behoben**
 „Bereich verschieben“ erscheint in der Nutzerverwaltung nur bei Azubis ([src/app/admin/users/page.tsx](src/app/admin/users/page.tsx)), obwohl die Schnittstelle es für den Super-Admin bei jeder Rolle erlaubt. Hat sich eine Lehrkraft über die Adresse des falschen Bereichs registriert, sieht sie dauerhaft dessen Lern-App. *Empfehlung:* Aktion für Super-Admin auch bei Lehrer-Rollen zeigen.
 
-**BUG-4 – Kein erklärender Hinweis, wenn die Rolle entzogen wurde (Low)**
+**BUG-4 – Kein erklärender Hinweis, wenn die Rolle entzogen wurde (Low) – ✅ behoben**
 Die Spec verlangt bei entzogener Rolle in laufender Sitzung „einen verständlichen Hinweis“. Heute leitet die Middleware stumm auf `/` um, API-Aufrufe zeigen das allgemeine „Aktion fehlgeschlagen“. *Empfehlung:* Kurzer Hinweis auf der Zielseite oder eine verständliche 403-Meldung im Lehrkräfte-Bereich.
 
-**BUG-5 – Kleinigkeiten in der Nutzerverwaltung (Low)**
+**BUG-5 – Kleinigkeiten in der Nutzerverwaltung (Low) – ✅ behoben**
 (a) Ein Bereichs-Admin sieht den Sperren-Knopf auch bei Lehrer-Konten und Admins seines Bereichs, bekommt beim Klick aber „Not found“ (die Schnittstelle erlaubt ihm nur Azubis; das Muster gab es für Admin-Zeilen schon vorher). (b) Wird eine Lehrkraft ohne Bereich zum Bereichs-Admin gemacht, erscheint nur „Invalid payload“ statt „Bereichs-Admin braucht einen Fachbereich“. (c) Der Profil-Hinweis „Als Lehrkraft erscheinst du …“ steht auch bei Bereichs-Admins und Super-Admin.
 
 ### Sicherheitsprüfung (Red Team)
@@ -335,8 +335,22 @@ Die Spec verlangt bei entzogener Rolle in laufender Sitzung „einen verständli
 ### Regression
 Alle bestehenden Tests grün (1.173), darunter Admin-Routen, Leistungsnachweise, Rangliste, Login-Callback, PROJ-29-Sitzungswechsel. Die Produktions-DB nach der Migration: 1 Super-Admin, 17 Bereichs-Admins, 132 Azubis, 0 Lehrkräfte, `role` weiterhin nicht schreibbar.
 
+### Nachtest nach Fehlerbehebung (2026-10-26)
+
+| Fehler | Behebung | Beleg |
+|---|---|---|
+| BUG-1 (High) | `safeRedirectTarget()` ([src/lib/roles.ts](src/lib/roles.ts)) lehnt Steuerzeichen (Tab, Zeilenumbruch, Wagenrücklauf, NUL …) und jeden Backslash ab und prüft das Ergebnis am Ende als Adresse: es muss auf derselben Herkunft bleiben. Gilt für Login, Registrierung und den Callback. | 4 Tests in `roles.test.ts`: die drei Umgehungen aus der QA, Backslash an jeder Stelle, „jedes Ergebnis bleibt auf derselben Herkunft“ (auch `///x`, `javascript:`, `http:x`), normale Pfade mit Suchparametern und Anker laufen unverändert durch. Der frühere `it.fails`-Test ist jetzt ein normaler, grüner Test. |
+| BUG-2 | Das Schließen des Hinweises wird für die Lebensdauer der Browser-Seite gemerkt (`teacher-welcome-dialog.tsx`). Nach einem Neuladen entscheidet wieder das Konto in der Datenbank. Der Server setzt den Merker nie, er kann nicht zwischen Nutzern durchsickern. | Test: schließen, Übersicht neu aufbauen → kein zweiter Hinweis. |
+| BUG-3 | „Bereich verschieben“ erscheint für den Super-Admin auch bei Lehrkräften und Bereichs-Admins (nicht bei sich selbst). Bei Bereichs-Admins weist der Dialog darauf hin, dass ihre Verwaltungsrechte mit dem Bereich wechseln. | 5 neue Oberflächentests (`users/page.test.tsx`), 2 neue Schnittstellen-Tests (Super-Admin darf, Bereichs-Admin bekommt 404). |
+| BUG-4 | Ohne Zugang leitet die Middleware auf `/?kein-zugang=1` um, die Startseite zeigt einen Hinweis („Du hast keinen Zugang zum Lehrkräfte-Bereich. Falls du Lehrkraft bist, frag bitte die Administration.“). Schnittstellen antworten 403 mit einer verständlichen deutschen Meldung (fehlende Rolle bzw. „Dafür fehlen dir die Rechte“). | 2 geänderte und 1 neuer Middleware-Test. |
+| BUG-5 | (a) Sperren-Knopf ist für Bereichs-Admins bei Lehrer-Konten und Admins deaktiviert, mit Erklärung. (b) Verständliche Meldung „Bereichs-Admin braucht einen Fachbereich.“ in Schnittstelle und Oberfläche. (c) Profil-Hinweis ohne Rollenwort. Dazu bekommen die Icon-Knöpfe in der Liste jetzt Beschriftungen für Screenreader. | Oberflächentests (a), Schnittstellen-Test (b). |
+
+**Automatik nach den Fixes:** `npm test`: **1.187 bestanden**, 0 Fehlschläge, 0 erwartete Fehlschläge. `tsc --noEmit`: sauber. Lint: 0 Fehler, in den geänderten Dateien keine neuen Warnungen. `npm run build`: grün.
+
+**Weiterhin nicht im Browser geprüft:** das Aussehen der Oberfläche (z. B. des neuen Hinweises auf der Startseite), Responsive-Ansicht, Browser-Vielfalt, Tastatur-Bedienung. Für BUG-2 ist das „Zurück“-Verhalten aus dem Code abgeleitet und nach dem Fix durch einen Test des Neuaufbaus abgedeckt, nicht im echten Browser.
+
 ### Entscheidung
-**NICHT BEREIT für den Push**, solange BUG-1 offen ist (High, Sicherheit). BUG-2 bis BUG-5 sind Low und blockieren nichts. Alle anderen Kriterien sind erfüllt. Mit dem Fix von BUG-1 ist die Funktion produktionsreif.
+**BEREIT für den Push.** Es sind keine Critical- oder High-Fehler offen, alle 30 Akzeptanzkriterien sind erfüllt, alle fünf gefundenen Fehler sind behoben und per Test abgesichert. Empfehlung nach dem Deployment: mit einem Testkonto einmal in Weiche, Willkommens-Hinweis, Rangliste (als Azubi und als Lehrkraft) und dem Hinweis „kein Zugang“ im Browser nachsehen.
 
 ## Deployment
 _To be added by /deploy_

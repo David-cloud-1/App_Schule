@@ -39,8 +39,19 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
 
   it('lässt Azubis nicht in den Lehrkräfte-Bereich', async () => {
     state.role = 'student'
-    expect(locationOf(await call('/admin'))).toBe('/')
+    expect(locationOf(await call('/admin'))).toBe('/?kein-zugang=1')
     expect((await call('/api/admin/users')).status).toBe(403)
+  })
+
+  it('erklärt bei entzogener Rolle, warum es nicht weitergeht (BUG-4)', async () => {
+    state.role = 'student'
+    const api = await call('/api/admin/users')
+    expect(api.status).toBe(403)
+    expect((await api.json()).error).toBe('Du hast keinen Zugang zum Lehrkräfte-Bereich.')
+    expect(locationOf(await call('/admin/questions'))).toBe('/?kein-zugang=1')
+    state.role = 'teacher'
+    const teacherApi = await call('/api/admin/users')
+    expect((await teacherApi.json()).error).toBe('Dafür fehlen dir die Rechte. Das kann nur ein Administrator.')
   })
 
   it('lässt eine Lehrkraft auf die Übersicht', async () => {
@@ -77,7 +88,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
 
   it('sperrt Konten ohne gültige Rolle aus (fail closed)', async () => {
     state.role = null
-    expect(locationOf(await call('/admin'))).toBe('/')
+    expect(locationOf(await call('/admin'))).toBe('/?kein-zugang=1')
     state.role = 'irgendwas'
     expect((await call('/api/admin/users')).status).toBe(403)
   })

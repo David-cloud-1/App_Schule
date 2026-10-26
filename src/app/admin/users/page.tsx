@@ -159,6 +159,11 @@ export default function AdminUsersPage() {
 
   async function handleRoleConfirm() {
     if (!roleChange) return
+    if (roleChange.newRole === 'department_admin' && !roleChange.user.department_id) {
+      toast.error('Bereichs-Admin braucht einen Fachbereich. Verschiebe das Konto zuerst in einen Fachbereich.')
+      setRoleChange(null)
+      return
+    }
     setSubmitting(true)
     try {
       const payload: { role: Role; department_id?: string } = { role: roleChange.newRole }
@@ -278,6 +283,13 @@ export default function AdminUsersPage() {
             ) : (
               filtered.map((u) => {
                 const isSelf = ownId === u.id
+                // Bereichs-Admins dürfen nur Azubis sperren/verschieben, der Super-Admin jedes Konto
+                // außer Super-Admins (Schnittstelle: PATCH /api/admin/users/[id])
+                const canModerate = isSuperAdmin || u.role === 'student'
+                const canMove =
+                  !isSelf &&
+                  (u.role === 'student' ||
+                    (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
                 return (
                   <TableRow key={u.id} className="border-[#4B5563] hover:bg-[#111827]/40">
                     <TableCell className="text-[#F9FAFB] font-medium">
@@ -354,8 +366,8 @@ export default function AdminUsersPage() {
                           </DropdownMenu>
                         )}
 
-                        {/* Bereich verschieben — Azubis, beide Admin-Rollen dürfen das */}
-                        {u.role === 'student' && (
+                        {/* Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin */}
+                        {canMove && (
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -363,6 +375,7 @@ export default function AdminUsersPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => setMoveTarget(u)}
+                                  aria-label={`${u.display_name ?? u.email ?? 'Konto'} in anderen Fachbereich verschieben`}
                                   className="text-[#9CA3AF] hover:text-[#F9FAFB]"
                                 >
                                   <MapPinned className="w-4 h-4" />
@@ -382,8 +395,9 @@ export default function AdminUsersPage() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  disabled={isSelf}
+                                  disabled={isSelf || !canModerate}
                                   onClick={() => setTarget(u)}
+                                  aria-label={`${u.display_name ?? u.email ?? 'Konto'} ${u.banned ? 'entsperren' : 'sperren'}`}
                                   className={
                                     u.banned
                                       ? 'text-[#58CC02] hover:text-[#58CC02]'
@@ -401,7 +415,9 @@ export default function AdminUsersPage() {
                             <TooltipContent className="bg-[#111827] text-[#F9FAFB] border-[#4B5563]">
                               {isSelf
                                 ? 'Du kannst dich nicht selbst sperren.'
-                                : u.banned
+                                : !canModerate
+                                  ? 'Nur der Super-Admin kann dieses Konto sperren.'
+                                  : u.banned
                                   ? 'Entsperren'
                                   : 'Sperren'}
                             </TooltipContent>
@@ -491,7 +507,8 @@ export default function AdminUsersPage() {
           if (!v) setMoveTarget(null)
         }}
         userId={moveTarget?.id ?? null}
-        userLabel={moveTarget?.display_name ?? moveTarget?.email ?? 'Der Azubi'}
+        userLabel={moveTarget?.display_name ?? moveTarget?.email ?? 'Das Konto'}
+        isManager={moveTarget?.role === 'department_admin'}
         currentDepartmentId={moveTarget?.department_id ?? null}
         onSuccess={load}
       />

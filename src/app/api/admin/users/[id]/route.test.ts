@@ -244,6 +244,35 @@ describe('PATCH /api/admin/users/[id]', () => {
       expect(ensurePseudonym).not.toHaveBeenCalled()
     })
 
+    it('nennt den Grund verständlich, wenn ein Bereichs-Admin keinen Fachbereich bekommt (BUG-5b)', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
+      vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'teacher', department_id: null }).client as never)
+
+      const res = await PATCH(makeRequest({ role: 'department_admin' }), makeCtx())
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toBe('Bereichs-Admin braucht einen Fachbereich.')
+    })
+
+    it('lässt den Super-Admin eine Lehrkraft in einen anderen Fachbereich verschieben (BUG-3)', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
+      const service = serviceWithWrites({ role: 'teacher', department_id: DEPT_SPED })
+      vi.mocked(createServiceClient).mockReturnValue(service.client as never)
+
+      const res = await PATCH(makeRequest({ department_id: DEPT_TOUR }), makeCtx())
+      expect(res.status).toBe(200)
+      expect(service.writes).toContainEqual({ table: 'profiles', method: 'update', payload: { department_id: DEPT_TOUR } })
+    })
+
+    it('verweigert dem Bereichs-Admin das Verschieben einer Lehrkraft (404)', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+      const service = serviceWithWrites({ role: 'teacher', department_id: DEPT_SPED })
+      vi.mocked(createServiceClient).mockReturnValue(service.client as never)
+
+      const res = await PATCH(makeRequest({ department_id: DEPT_TOUR }), makeCtx())
+      expect(res.status).toBe(404)
+      expect(service.writes).toEqual([])
+    })
+
     it('lehnt unbekannte Rollen mit 400 ab', async () => {
       vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
       vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'student', department_id: DEPT_SPED }).client as never)

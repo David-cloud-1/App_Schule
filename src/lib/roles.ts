@@ -38,6 +38,12 @@ export function isManagerRole(role: unknown): role is ManagerRole {
 }
 
 export const TEACHER_HOME_PATH = '/admin'
+
+/** Hinweis-Parameter: Die Startseite erklärt, dass der Zugang zum Lehrkräfte-Bereich fehlt (QA BUG-4) */
+export const NO_ACCESS_PARAM = 'kein-zugang'
+
+export const NO_ACCESS_MESSAGE = 'Du hast keinen Zugang zum Lehrkräfte-Bereich.'
+export const NO_RIGHTS_MESSAGE = 'Dafür fehlen dir die Rechte. Das kann nur ein Administrator.'
 export const PLAYER_HOME_PATH = '/'
 
 /** Neutrales Login-Ziel; verteilt nach Rolle (Start-Weiche) */
@@ -68,11 +74,30 @@ export function mayOpenAdminPath(role: unknown, pathname: string): boolean {
   return false
 }
 
+/** Platzhalter-Herkunft für die Endkontrolle in `safeRedirectTarget` */
+const REDIRECT_CHECK_ORIGIN = 'http://app.invalid'
+
+/** Steuerzeichen (Tab, Zeilenumbruch, …) und Backslash: Der Browser entfernt bzw. wertet sie um */
+const UNSAFE_REDIRECT_CHARS = /[\u0000-\u001f\u007f\\]/
+
 /**
  * Login-Ziel aus `?redirect=`/`?next=` bereinigen: nur Pfade innerhalb der App
- * (keine fremden Domains, kein `//evil.example`). Ohne Angabe → Start-Weiche.
+ * (keine fremden Domains). Ohne Angabe oder bei Verdacht → Start-Weiche.
+ *
+ * Tücken, die hier abgefangen werden: Der Browser entfernt Tab und Zeilenumbruch
+ * aus Adressen (`/<Tab>/evil.example` wird zu `//evil.example`) und liest `\`
+ * wie `/`. Deshalb wird solches Zeichen komplett abgelehnt und das Ergebnis
+ * zum Schluss noch einmal als Adresse ausgewertet: Es muss auf derselben
+ * Herkunft bleiben.
  */
 export function safeRedirectTarget(value: string | null | undefined): string {
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.startsWith('/\\')) return START_PATH
+  if (!value) return START_PATH
+  if (UNSAFE_REDIRECT_CHARS.test(value)) return START_PATH
+  if (!value.startsWith('/') || value.startsWith('//')) return START_PATH
+  try {
+    if (new URL(value, REDIRECT_CHECK_ORIGIN).origin !== REDIRECT_CHECK_ORIGIN) return START_PATH
+  } catch {
+    return START_PATH
+  }
   return value
 }

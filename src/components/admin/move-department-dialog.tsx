@@ -28,6 +28,8 @@ interface Props {
   userId: string | null
   userLabel: string
   currentDepartmentId: string | null
+  /** Bereichs-Admin: Mit dem Bereich wechselt auch der Bereich seiner Verwaltungsrechte */
+  isManager?: boolean
   onSuccess: () => void
 }
 
@@ -38,6 +40,7 @@ export function MoveDepartmentDialog({
   userId,
   userLabel,
   currentDepartmentId,
+  isManager = false,
   onSuccess,
 }: Props) {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
@@ -86,7 +89,8 @@ export function MoveDepartmentDialog({
         <DialogHeader>
           <DialogTitle>In anderen Fachbereich verschieben</DialogTitle>
           <DialogDescription className="text-[#9CA3AF]">
-            {userLabel} wechselt sofort in den gewählten Fachbereich — passend für falsch registrierte Azubis.
+            {userLabel} wechselt sofort in den gewählten Fachbereich — passend für falsch registrierte Konten.
+            {isManager && ' Die Verwaltungsrechte gelten danach für den neuen Fachbereich.'}
           </DialogDescription>
         </DialogHeader>
 

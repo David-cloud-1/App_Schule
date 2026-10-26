@@ -53,10 +53,13 @@ export async function PATCH(
 
   const parsed = UpdateSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid payload', details: parsed.error.flatten() },
-      { status: 400 }
-    )
+    // Verständliche Meldung für den häufigsten Fall (QA BUG-5b): Bereichs-Admin ohne Bereich
+    const b = body as { role?: unknown; department_id?: unknown } | null
+    const message =
+      b?.role === 'department_admin' && !b.department_id
+        ? 'Bereichs-Admin braucht einen Fachbereich.'
+        : 'Invalid payload'
+    return NextResponse.json({ error: message, details: parsed.error.flatten() }, { status: 400 })
   }
 
   // Service-Role-Route (umgeht RLS) — Bereichstrennung muss hier im Code

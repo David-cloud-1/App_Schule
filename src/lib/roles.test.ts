@@ -67,13 +67,31 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(safeRedirectTarget('/\\evil.example')).toBe(START_PATH)
   })
 
-  // BEKANNTER FEHLER (QA PROJ-44, BUG-1): Der Browser entfernt Tab und Zeilenumbruch aus
-  // Adressen, `/\t/evil.example` wird so zu `//evil.example` (fremde Domain). Der Test
-  // ist `.fails`, solange der Fehler besteht. Nach dem Fix schlägt er an: dann `.fails`
-  // entfernen, damit er dauerhaft absichert.
-  it.fails('weist Pfade mit Tab/Zeilenumbruch ab, die der Browser zu //fremde-domain macht (BUG-1)', () => {
-    for (const raw of ['/\t/evil.example', '/\n/evil.example', '/\r/evil.example']) {
+  // QA PROJ-44, BUG-1: Der Browser entfernt Tab und Zeilenumbruch aus Adressen,
+  // `/<Tab>/evil.example` würde sonst zu `//evil.example` (fremde Domain).
+  it('weist Pfade mit Tab/Zeilenumbruch/Steuerzeichen ab, die der Browser zu //fremde-domain macht', () => {
+    for (const raw of ['/\t/evil.example', '/\n/evil.example', '/\r/evil.example', '/\u0000/evil.example', '/\u007f/x', '/ok\npfad']) {
       expect(safeRedirectTarget(raw)).toBe(START_PATH)
     }
+  })
+
+  it('weist Backslash an jeder Stelle ab, weil der Browser ihn wie / liest', () => {
+    for (const raw of ['/\\evil.example', '/pfad\\..\\..', '/a\\b']) {
+      expect(safeRedirectTarget(raw)).toBe(START_PATH)
+    }
+  })
+
+  it('führt jedes erlaubte Ergebnis tatsächlich auf dieselbe Herkunft', () => {
+    const base = 'https://spedilern.vercel.app'
+    const inputs = ['/start', '/pruefung/ABCD', '/admin/leistungsnachweise/1?x=1#a', '///evil.example', 'javascript:alert(1)', 'http:evil.example', ' /x', '/\t/evil.example']
+    for (const raw of inputs) {
+      const target = safeRedirectTarget(raw)
+      expect(new URL(target, base).origin).toBe(base)
+    }
+  })
+
+  it('lässt normale Pfade mit Suchparametern und Anker unverändert durch', () => {
+    expect(safeRedirectTarget('/pruefung/ABCD?code=7K2M-QX#start')).toBe('/pruefung/ABCD?code=7K2M-QX#start')
+    expect(safeRedirectTarget('/admin/leistungsnachweise/abc/druck/klasse')).toBe('/admin/leistungsnachweise/abc/druck/klasse')
   })
 })

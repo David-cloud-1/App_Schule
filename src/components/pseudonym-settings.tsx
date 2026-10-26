@@ -88,7 +88,7 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseud
       {pseudonymOnly ? (
         <p className="flex items-start gap-2 text-xs text-[#9CA3AF]">
           <User size={16} className="mt-px text-[#9CA3AF] flex-shrink-0" />
-          Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Fantasienamen.
+          In der Rangliste erscheinst du immer unter deinem Fantasienamen.
         </p>
       ) : (
         <div className="flex items-center justify-between gap-4">
