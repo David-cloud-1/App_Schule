@@ -13,6 +13,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
+import type { TeacherRole } from '@/lib/roles'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -29,6 +30,11 @@ export interface AdminNavItem {
   icon: LucideIcon
   /** Nur für Super-Admins sichtbar */
   superAdminOnly?: boolean
+  /**
+   * Auch für Lehrkräfte ohne Verwaltungsrechte sichtbar (PROJ-44). Ohne
+   * Kennzeichen sehen nur Bereichs-Admins und Super-Admin den Eintrag.
+   */
+  teacherVisible?: boolean
   /** Titel kommt aus dem Fachbereich (z. B. „Hof-Items“) statt aus `label` */
   usesHofName?: boolean
   /** Erscheint als große Kachel auf der Startseite */
@@ -80,6 +86,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Wrench,
         tile: true,
         external: true,
+        teacherVisible: true,
       },
     ],
   },
@@ -148,11 +155,19 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
 ]
 
+/** Darf diese Rolle den Eintrag sehen? Nur Anzeige — die Rechte prüft der Server. */
+export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole): boolean {
+  if (role === 'admin') return true
+  if (item.superAdminOnly) return false
+  if (role === 'department_admin') return true
+  return !!item.teacherVisible
+}
+
 /** Gruppen für eine Rolle; leere Gruppen entfallen */
-export function adminNavGroupsFor(isSuperAdmin: boolean): AdminNavGroup[] {
+export function adminNavGroupsFor(role: TeacherRole): AdminNavGroup[] {
   return ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => isSuperAdmin || !item.superAdminOnly),
+    items: group.items.filter((item) => adminNavItemVisibleFor(item, role)),
   })).filter((group) => group.items.length > 0)
 }
 

@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { assignDepartmentIfMissing } from '@/lib/departments-server'
+import { safeRedirectTarget } from '@/lib/roles'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  // Ohne Ziel → Start-Weiche (PROJ-44). Nur Pfade innerhalb der App, sonst
+  // würde z. B. `next=@fremde-seite.de` aus der eigenen Adresse eine fremde machen.
+  const next = safeRedirectTarget(searchParams.get('next'))
 
   if (code) {
     const supabase = await createClient()

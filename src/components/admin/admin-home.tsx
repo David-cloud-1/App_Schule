@@ -5,15 +5,17 @@ import { ChevronRight, ExternalLink } from 'lucide-react'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useDepartment } from '@/components/department-provider'
 import { adminNavGroupsFor, adminNavLabel } from '@/lib/admin-nav'
+import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 
 /**
- * Startseite des Admin-Bereichs (PROJ-40): große Kacheln für die
- * Hauptaufgaben. Keine Datenabfrage — die Kacheln stammen aus der Navigations-Liste.
+ * Startseite des Lehrkräfte-Bereichs (PROJ-40/44): große Kacheln für die
+ * Hauptaufgaben, gefiltert nach Rolle. Keine Datenabfrage — die Kacheln stammen
+ * aus der Navigations-Liste.
  */
 export function AdminHome() {
-  const { isSuperAdmin, displayName } = useAdminRole()
+  const { role, displayName, showTeacherWelcome } = useAdminRole()
   const { hofShortName } = useDepartment()
-  const tiles = adminNavGroupsFor(isSuperAdmin).flatMap((group) => group.items.filter((item) => item.tile))
+  const tiles = adminNavGroupsFor(role).flatMap((group) => group.items.filter((item) => item.tile))
 
   return (
     <div className="space-y-6">
@@ -50,6 +52,12 @@ export function AdminHome() {
           </li>
         ))}
       </ul>
+
+      {role === 'teacher' && (
+        <p className="text-sm text-[#9CA3AF]">Weitere Werkzeuge für Lehrkräfte, etwa Leistungsnachweise, folgen bald.</p>
+      )}
+
+      {role === 'teacher' && showTeacherWelcome && <TeacherWelcomeDialog initialOpen />}
     </div>
   )
 }

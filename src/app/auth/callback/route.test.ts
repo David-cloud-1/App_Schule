@@ -24,7 +24,7 @@ describe('GET /auth/callback', () => {
     vi.clearAllMocks()
   })
 
-  it('exchanges code for session and redirects to / by default', async () => {
+  it('exchanges code for session and redirects to the Start-Weiche by default (PROJ-44)', async () => {
     mockCreateClient.mockResolvedValue({
       auth: {
         exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
@@ -35,7 +35,20 @@ describe('GET /auth/callback', () => {
     const res = await GET(req)
 
     expect(res.status).toBe(307)
-    expect(res.headers.get('location')).toBe('http://localhost:3000/')
+    expect(res.headers.get('location')).toBe('http://localhost:3000/start')
+  })
+
+  it('ignores a ?next= that would leave the app', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+      },
+    } as never)
+
+    for (const next of ['@evil.example', '//evil.example', 'https://evil.example']) {
+      const res = await GET(buildRequest(`http://localhost:3000/auth/callback?code=valid-code&next=${encodeURIComponent(next)}`))
+      expect(res.headers.get('location')).toBe('http://localhost:3000/start')
+    }
   })
 
   it('respects the ?next= param for post-auth redirect', async () => {
@@ -105,6 +118,6 @@ describe('GET /auth/callback', () => {
 
     const res = await GET(buildRequest('https://spedilern.vercel.app/auth/callback?code=valid-code'))
 
-    expect(res.headers.get('location')).toBe('https://spedilern.vercel.app/')
+    expect(res.headers.get('location')).toBe('https://spedilern.vercel.app/start')
   })
 })

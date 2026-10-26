@@ -1,6 +1,6 @@
 # PROJ-44: Lehrkraft-Rolle & Freischaltung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -224,6 +224,33 @@ Lern-App (Spielerseite)
 
 ### G) Abhängigkeiten (Pakete)
 Keine neuen Pakete. Genutzt werden ausschließlich vorhandene shadcn/ui-Bausteine: Eingabefeld, Auswahlfeld, Tabelle, Dialog bzw. Bestätigungsdialog, Badge.
+
+## Implementation Notes (Frontend Developer)
+
+**Stand 2026-10-26 – Frontend fertig, Backend offen.** Bis zum Backend-Schritt bleibt eine Lehrkraft sicher ausgesperrt: Die Middleware (`proxy.ts`) und `requireAdmin()` lassen weiterhin nur `admin`/`department_admin` durch, und die Datenbank kennt den Rollenwert `teacher` noch nicht.
+
+**Gebaut:**
+- `src/lib/roles.ts` (+ Tests): zentrale Rollen-Übersicht – `UserRole`/`TeacherRole`/`ManagerRole`, `ROLE_LABEL`, `isTeacherRole`, `isManagerRole`, `startPathFor`, `mayOpenAdminPath` (Lehrkraft vorerst nur `/admin`), `safeRedirectTarget`.
+- **Start-Weiche** `src/app/start/page.tsx`: Lehrer-Rollen → `/admin`, Azubis → `/`. Login, Registrierung und OAuth-Rückkehr (`auth/callback`) nutzen ohne `?redirect=` jetzt `/start` statt `/`.
+- **Nebenbei behoben:** `auth/callback` hängte `next` ungeprüft an die eigene Adresse (`?next=@fremde-seite.de` hätte auf eine fremde Seite umgeleitet). Ziele laufen jetzt durch `safeRedirectTarget`, ebenso in Login und Registrierung. Test ergänzt.
+- **Navigation & Startseite:** `adminNavGroupsFor(role)` statt `adminNavGroupsFor(isSuperAdmin)`. Neues Kennzeichen `teacherVisible` am Navigationseintrag. Lehrkraft sieht: Übersicht + Werkzeugkiste, auf der Startseite zusätzlich „Weitere Werkzeuge … folgen bald“.
+- **Willkommens-Hinweis** `src/components/admin/teacher-welcome-dialog.tsx`: erscheint, wenn `role === 'teacher'` und `showTeacherWelcome` im Rollen-Kontext gesetzt ist. Schließen ruft `POST /api/profile/teacher-welcome` auf.
+- **Kopfzeile:** „Admin“ → „Lehrkräfte“, neuer Button „Zur Lern-App“ (auf dem Handy nur Icon mit Screenreader-Text), Menü-Titel „Menü“, Navigation heißt für Screenreader „Lehrkräfte-Bereich“.
+- **Admin-Layout:** lässt alle Lehrer-Rollen herein (`isTeacherRole`), Rollen-Kontext trägt `TeacherRole`.
+- **Spieler-Startseite & Spieler-Menü:** Eintrag „Lehrkräfte-Bereich“ für alle Lehrer-Rollen (Prop `showTeacherArea` statt `isAdmin`).
+- **Profil:** Für Lehrer-Rollen ist der Schalter „Mit Klarnamen erscheinen“ ausgeblendet. Stattdessen steht dort: „Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Fantasienamen.“ „Neu würfeln“ bleibt möglich.
+- **Nutzerverwaltung:** Rollen-Filter (Alle · Azubis · Lehrkräfte · Bereichs-Admins · Super-Admin), Schalter „Alle Bereiche“ (nur Super-Admin, lädt `?scope=all`, zeigt dann die Spalte „Bereich“), Spalte „Letzter Login“ für Lehrer-Rollen, Rolle „Lehrkraft“ im Rollen-Menü, Bestätigungstext mit Name **und** E-Mail sowie dem Hinweis „Erstellte Inhalte bleiben erhalten …“ beim Entziehen (`role-change-text.ts` + Tests).
+- `tsconfig.json`: `scripts/scratch` (git-ignorierte lokale Wegwerf-Skripte mit Syntaxfehlern) von der Typprüfung ausgenommen, weil sie den lokalen `npm run build` blockierten. Auf Vercel waren sie nie vorhanden.
+
+**Vertrag für /backend (noch offen):**
+1. Migration + Rückweg: `profiles.role` erlaubt `teacher`. Neue Spalte `teacher_welcome_seen boolean not null default false`, für die eigene Zeile selbst schreibbar (Spalten-Grant wie `starter_coins_seen`).
+2. `src/app/admin/layout.tsx`: `teacher_welcome_seen` mitlesen und `showTeacherWelcome: role === 'teacher' && !teacher_welcome_seen` in den Rollen-Kontext geben.
+3. `POST /api/profile/teacher-welcome`: setzt `teacher_welcome_seen = true` für die eigene Zeile.
+4. `src/proxy.ts`: `/admin`-Seiten für alle Lehrer-Rollen öffnen. Lehrkraft per `mayOpenAdminPath` nur auf freigegebene Seiten, sonst Umleitung auf `/admin`. `/api/admin/**` bleibt nur für Verwaltungs-Rollen (403 für Lehrkraft). Eingeloggte auf `/login`/`/register` → `/start`.
+5. `GET /api/admin/users?scope=all` (nur Super-Admin, sonst 403): ohne Bereichsfilter, zusätzlich `department_name`. Für alle Antworten zusätzlich `last_sign_in_at` aus den Login-Konten.
+6. `PATCH /api/admin/users/[id]`: Rollenwert `teacher` zulassen (weiterhin nur Super-Admin). Beim Wechsel zu `teacher` bleibt `department_id` unverändert.
+7. `GET /api/leaderboard`: Für Lehrer-Rollen immer `pseudonym`, `show_real_name` ignorieren (Liste und eigene Zeile).
+8. `src/lib/database.types.ts` neu erzeugen.
 
 ## QA Test Results
 _To be added by /qa_

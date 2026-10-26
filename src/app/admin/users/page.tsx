@@ -4,6 +4,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Ban, CheckCircle2, ChevronDown, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -40,8 +49,11 @@ import {
 import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
+import { roleChangeDescription } from '@/components/admin/role-change-text'
+import { isTeacherRole, ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
 
-type Role = 'student' | 'department_admin' | 'admin'
+type Role = UserRole
+type RoleFilter = 'all' | Role
 
 type AdminUserRow = {
   id: string
@@ -52,12 +64,18 @@ type AdminUserRow = {
   total_xp: number
   current_streak: number
   last_session_date: string | null
+  /** Letzter Login (aus dem Login-Konto), damit verwaiste Lehrer-Zugänge auffallen (PROJ-44) */
+  last_sign_in_at?: string | null
+  /** Name des Fachbereichs — nur in der Ansicht „Alle Bereiche“ befüllt */
+  department_name?: string | null
   banned: boolean
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  student: 'Azubi',
-  department_admin: 'Bereichs-Admin',
+const ROLE_FILTER_LABEL: Record<RoleFilter, string> = {
+  all: 'Alle Rollen',
+  student: 'Azubis',
+  teacher: 'Lehrkräfte',
+  department_admin: 'Bereichs-Admins',
   admin: 'Super-Admin',
 }
 
@@ -66,6 +84,11 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  // Super-Admin: bereichsübergreifend suchen, z. B. um eine Lehrkraft freizuschalten,
+  // die sich über eine andere Bereichs-Adresse registriert hat (PROJ-44)
+  const [allDepartments, setAllDepartments] = useState(false)
+  const showAllDepartments = isSuperAdmin && allDepartments
   const [ownId, setOwnId] = useState<string | null>(null)
   const [target, setTarget] = useState<AdminUserRow | null>(null)
   const [roleChange, setRoleChange] = useState<{ user: AdminUserRow; newRole: Role } | null>(null)
@@ -75,7 +98,7 @@ export default function AdminUsersPage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/users')
+      const res = await fetch(showAllDepartments ? '/api/admin/users?scope=all' : '/api/admin/users')
       if (!res.ok) {
         toast.error('Nutzer konnten nicht geladen werden.')
         return
@@ -88,7 +111,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showAllDepartments])
 
   useEffect(() => {
     load()
@@ -100,13 +123,14 @@ export default function AdminUsersPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return users
     return users.filter(
       (u) =>
-        (u.display_name ?? '').toLowerCase().includes(q) ||
-        (u.email ?? '').toLowerCase().includes(q)
+        (roleFilter === 'all' || u.role === roleFilter) &&
+        (!q ||
+          (u.display_name ?? '').toLowerCase().includes(q) ||
+          (u.email ?? '').toLowerCase().includes(q))
     )
-  }, [users, search])
+  }, [users, search, roleFilter])
 
   async function handleConfirm() {
     if (!target) return
@@ -153,7 +177,7 @@ export default function AdminUsersPage() {
         toast.error(data?.error ?? 'Aktion fehlgeschlagen')
         return
       }
-      toast.success(`Rolle geändert zu „${ROLE_LABEL[roleChange.newRole]}"`)
+      toast.success(`Rolle geändert zu „${ROLE_LABEL[roleChange.newRole]}“`)
       setRoleChange(null)
       load()
     } catch (err) {
@@ -163,6 +187,9 @@ export default function AdminUsersPage() {
       setSubmitting(false)
     }
   }
+
+  // Name, E-Mail, [Bereich], XP, Streak, Letzte Session, Letzter Login, Status, Aktion
+  const columnCount = showAllDepartments ? 9 : 8
 
   return (
     <div className="space-y-6">
@@ -175,14 +202,45 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Name oder E-Mail suchen…"
-          className="pl-9 bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Name oder E-Mail suchen…"
+            aria-label="Name oder E-Mail suchen"
+            className="pl-9 min-h-11 rounded-xl bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={(v) => setRoleFilter(v as RoleFilter)}>
+          <SelectTrigger
+            aria-label="Nach Rolle filtern"
+            className="min-h-11 w-full rounded-xl bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] sm:w-48"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
+            {(['all', ...USER_ROLES] as RoleFilter[]).map((r) => (
+              <SelectItem key={r} value={r} className="focus:bg-[#374151] focus:text-[#F9FAFB]">
+                {ROLE_FILTER_LABEL[r]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isSuperAdmin && (
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-[#4B5563] bg-[#1F2937] px-3">
+            <Switch
+              id="users-all-departments"
+              checked={allDepartments}
+              onCheckedChange={setAllDepartments}
+              className="data-[state=checked]:bg-[#58CC02]"
+            />
+            <Label htmlFor="users-all-departments" className="cursor-pointer whitespace-nowrap text-sm text-[#F9FAFB]">
+              Alle Bereiche
+            </Label>
+          </div>
+        )}
       </div>
 
       <div className="border border-[#4B5563] rounded-2xl overflow-hidden bg-[#1F2937]">
@@ -191,9 +249,11 @@ export default function AdminUsersPage() {
             <TableRow className="bg-[#111827] hover:bg-[#111827] border-[#4B5563]">
               <TableHead className="text-[#9CA3AF]">Name</TableHead>
               <TableHead className="text-[#9CA3AF]">E-Mail</TableHead>
+              {showAllDepartments && <TableHead className="text-[#9CA3AF]">Bereich</TableHead>}
               <TableHead className="text-[#9CA3AF]">XP</TableHead>
               <TableHead className="text-[#9CA3AF]">Streak</TableHead>
               <TableHead className="text-[#9CA3AF]">Letzte Session</TableHead>
+              <TableHead className="text-[#9CA3AF]">Letzter Login</TableHead>
               <TableHead className="text-[#9CA3AF]">Status</TableHead>
               <TableHead className="text-right text-[#9CA3AF]">Aktion</TableHead>
             </TableRow>
@@ -202,7 +262,7 @@ export default function AdminUsersPage() {
             {loading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <TableRow key={`sk-${i}`} className="border-[#4B5563]">
-                  {Array.from({ length: 7 }).map((__, j) => (
+                  {Array.from({ length: columnCount }).map((__, j) => (
                     <TableCell key={j}>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
@@ -211,7 +271,7 @@ export default function AdminUsersPage() {
               ))
             ) : filtered.length === 0 ? (
               <TableRow className="border-[#4B5563]">
-                <TableCell colSpan={7} className="text-center text-[#9CA3AF] py-10">
+                <TableCell colSpan={columnCount} className="text-center text-[#9CA3AF] py-10">
                   Keine Nutzer gefunden.
                 </TableCell>
               </TableRow>
@@ -237,12 +297,18 @@ export default function AdminUsersPage() {
                     <TableCell className="text-[#9CA3AF] text-sm">
                       {u.email ?? '—'}
                     </TableCell>
+                    {showAllDepartments && (
+                      <TableCell className="text-[#9CA3AF] text-sm">{u.department_name ?? '—'}</TableCell>
+                    )}
                     <TableCell className="text-[#F9FAFB]">{u.total_xp}</TableCell>
                     <TableCell className="text-[#F9FAFB]">
                       {u.current_streak}
                     </TableCell>
                     <TableCell className="text-xs text-[#9CA3AF]">
                       {formatDate(u.last_session_date)}
+                    </TableCell>
+                    <TableCell className="text-xs text-[#9CA3AF]">
+                      {isTeacherRole(u.role) ? formatDate(u.last_sign_in_at ?? null) : '—'}
                     </TableCell>
                     <TableCell>
                       {u.banned ? (
@@ -273,7 +339,7 @@ export default function AdminUsersPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB]">
-                              {(['student', 'department_admin', 'admin'] as Role[])
+                              {USER_ROLES
                                 .filter((r) => r !== u.role)
                                 .map((r) => (
                                   <DropdownMenuItem
@@ -361,13 +427,7 @@ export default function AdminUsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Rolle ändern?</AlertDialogTitle>
             <AlertDialogDescription className="text-[#9CA3AF]">
-              {roleChange &&
-                `${roleChange.user.display_name ?? roleChange.user.email} wird „${ROLE_LABEL[roleChange.newRole]}"` +
-                  (roleChange.newRole === 'department_admin'
-                    ? ' für den eigenen Fachbereich.'
-                    : roleChange.newRole === 'admin'
-                      ? '. Diese Person erhält vollen Zugriff auf alle Fachbereiche.'
-                      : ' und verliert jeden Admin-Zugang.')}
+              {roleChange && roleChangeDescription(roleChange.user, roleChange.newRole)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

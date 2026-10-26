@@ -6,17 +6,19 @@ import { AdminHome } from './admin-home'
 import { AdminRoleProvider } from './admin-role-provider'
 import { DepartmentProvider } from '@/components/department-provider'
 import type { DepartmentBranding } from '@/lib/departments'
+import type { TeacherRole } from '@/lib/roles'
 
 let mockPath = '/admin'
 vi.mock('next/navigation', () => ({ usePathname: () => mockPath }))
 
 const department = { hofShortName: 'Hof' } as DepartmentBranding
 
-function wrap(ui: ReactNode, isSuperAdmin: boolean) {
+function wrap(ui: ReactNode, isSuperAdmin: boolean, extra: { role?: TeacherRole; showTeacherWelcome?: boolean } = {}) {
+  const role = extra.role ?? (isSuperAdmin ? 'admin' : 'department_admin')
   return render(
     <DepartmentProvider value={{ department, examParts: [] }}>
       <AdminRoleProvider
-        value={{ role: isSuperAdmin ? 'admin' : 'department_admin', isSuperAdmin, displayName: 'Frau Muster' }}
+        value={{ role, isSuperAdmin, displayName: 'Frau Muster', showTeacherWelcome: extra.showTeacherWelcome }}
       >
         {ui}
       </AdminRoleProvider>
@@ -81,5 +83,46 @@ describe('AdminHome (PROJ-40)', () => {
     const link = screen.getByRole('link', { name: /Werkzeugkiste/ })
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+})
+
+describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
+  it('zeigt in der Navigation nur Übersicht und Werkzeugkiste', () => {
+    wrap(<AdminNav />, false, { role: 'teacher' })
+    const names = screen.getAllByRole('link').map((a) => a.textContent)
+    expect(names).toEqual(['Übersicht', 'Werkzeugkiste'])
+    expect(screen.queryByRole('list', { name: 'Inhalte' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Einstellungen' })).not.toBeInTheDocument()
+  })
+
+  it('zeigt auf der Startseite nur die Werkzeugkiste-Kachel und den Hinweis auf weitere Werkzeuge', () => {
+    wrap(<AdminHome />, false, { role: 'teacher' })
+    expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
+      'https://divadl-werkzeugkiste.hf.space',
+    ])
+    expect(screen.getByText(/folgen bald/)).toBeInTheDocument()
+  })
+
+  it('zeigt den Willkommens-Hinweis nur, wenn er noch nicht gesehen wurde', () => {
+    const { unmount } = wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: false })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    unmount()
+    wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
+    expect(screen.getByRole('dialog', { name: 'Willkommen im Lehrkräfte-Bereich' })).toBeInTheDocument()
+  })
+
+  it('merkt sich das Schließen des Willkommens-Hinweises am Konto', () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchMock)
+    wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
+    fireEvent.click(screen.getByRole('button', { name: 'Los geht’s' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/profile/teacher-welcome', { method: 'POST' })
+    vi.unstubAllGlobals()
+  })
+
+  it('zeigt Bereichs-Admins keinen Willkommens-Hinweis für Lehrkräfte', () => {
+    wrap(<AdminHome />, false, { role: 'department_admin', showTeacherWelcome: true })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

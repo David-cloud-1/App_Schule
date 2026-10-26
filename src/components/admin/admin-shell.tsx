@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Menu, Shield } from 'lucide-react'
+import { Gamepad2, Menu, Shield } from 'lucide-react'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { DepartmentSwitcher } from '@/components/admin/department-switcher'
 import { BrandIcon, BrandName } from '@/components/app-brand'
 
 /**
- * Rahmen des Admin-Bereichs (PROJ-40): Kopfzeile, Seitenleiste ab 1024 px,
+ * Rahmen des Lehrkräfte-Bereichs (PROJ-40/44): Kopfzeile, Seitenleiste ab 1024 px,
  * darunter ein Menü, das von links einfährt. Im Druck entfällt alles außer dem Inhalt.
  */
 export function AdminShell({
@@ -56,11 +56,18 @@ export function AdminShell({
             <span className="text-[#4B5563] hidden sm:inline">/</span>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[#58CC02]" />
-              <span className="font-bold text-[#F9FAFB]">Admin</span>
+              <span className="font-bold text-[#F9FAFB]">Lehrkräfte</span>
             </div>
           </div>
           <div className="flex min-w-0 items-center gap-3">
             {isSuperAdmin && <DepartmentSwitcher />}
+            <Link
+              href="/"
+              className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-[#4B5563] px-3 text-sm font-semibold text-[#F9FAFB] transition-all duration-200 hover:border-[#58CC02] hover:bg-[#374151] active:scale-95"
+            >
+              <Gamepad2 className="size-5 text-[#58CC02]" />
+              <span className="sr-only sm:not-sr-only">Zur Lern-App</span>
+            </Link>
             <div className="hidden sm:block text-sm text-[#9CA3AF] truncate max-w-[200px]">
               {displayName}
             </div>
@@ -73,8 +80,8 @@ export function AdminShell({
           side="left"
           className="w-72 max-w-[85vw] overflow-y-auto border-[#4B5563] bg-[#1F2937] p-4 text-[#F9FAFB]"
         >
-          <SheetTitle className="mb-4 text-[#F9FAFB]">Admin-Menü</SheetTitle>
-          <SheetDescription className="sr-only">Bereiche des Admin-Bereichs</SheetDescription>
+          <SheetTitle className="mb-4 text-[#F9FAFB]">Menü</SheetTitle>
+          <SheetDescription className="sr-only">Bereiche des Lehrkräfte-Bereichs</SheetDescription>
           <AdminNav onNavigate={() => setMenuOpen(false)} />
         </SheetContent>
       </Sheet>

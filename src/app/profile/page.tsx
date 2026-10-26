@@ -9,6 +9,7 @@ import { fetchBadgeDefinitions, toBadgeDisplay, type BadgeDisplay } from '@/lib/
 import { BetriebVorschau } from '@/components/betrieb-vorschau'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 import { PseudonymSettings } from '@/components/pseudonym-settings'
+import { isTeacherRole } from '@/lib/roles'
 import { AreaSwitcher } from '@/components/area-switcher'
 import { getLinkContext, LINKED_DEPARTMENT_CODE } from '@/lib/linked-account'
 import { OverallStatsRow } from '@/components/overall-stats-row'
@@ -27,7 +28,7 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out, department_id')
+    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out, department_id, role')
     .eq('id', user.id)
     .single()
 
@@ -161,7 +162,7 @@ export default async function ProfilePage() {
         {/* Privacy settings */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-5">
           <h2 className="text-sm font-semibold text-[#F9FAFB]">Rangliste</h2>
-          <PseudonymSettings initialPseudonym={pseudonym} initialShowRealName={showRealName} />
+          <PseudonymSettings initialPseudonym={pseudonym} initialShowRealName={showRealName} pseudonymOnly={isTeacherRole(profile?.role)} />
           <div className="border-t border-[#374151] pt-4">
             <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
           </div>

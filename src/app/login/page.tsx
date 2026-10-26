@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase-browser'
+import { safeRedirectTarget, START_PATH } from '@/lib/roles'
 
 const loginSchema = z.object({
   email: z.string().email('Bitte eine gültige E-Mail eingeben'),
@@ -22,7 +23,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 function LoginPageContent() {
   const searchParams = useSearchParams()
-  const redirectTarget = searchParams.get('redirect') ?? '/'
+  const redirectTarget = safeRedirectTarget(searchParams.get('redirect'))
   const [error, setError] = useState<string | null>(null)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
 
@@ -194,7 +195,7 @@ function LoginPageContent() {
             <p className="text-sm text-[#9CA3AF]">
               Noch kein Konto?{' '}
               <Link
-                href={redirectTarget !== '/' ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : '/register'}
+                href={redirectTarget !== START_PATH ? `/register?redirect=${encodeURIComponent(redirectTarget)}` : '/register'}
                 className="text-[#1CB0F6] font-medium hover:underline"
               >
                 Registrieren

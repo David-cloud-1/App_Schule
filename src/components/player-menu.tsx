@@ -15,11 +15,12 @@ import {
 
 interface PlayerMenuProps {
   displayName: string
-  isAdmin: boolean
+  /** Alle Lehrer-Rollen sehen den Wechsel in den Lehrkräfte-Bereich (PROJ-44) */
+  showTeacherArea: boolean
 }
 
-/** Profil-Menü oben rechts: bündelt Profil, Admin-Zugang und Abmelden. */
-export function PlayerMenu({ displayName, isAdmin }: PlayerMenuProps) {
+/** Profil-Menü oben rechts: bündelt Profil, Lehrkräfte-Bereich und Abmelden. */
+export function PlayerMenu({ displayName, showTeacherArea }: PlayerMenuProps) {
   const [loggingOut, setLoggingOut] = useState(false)
   const initial = displayName.trim().charAt(0).toUpperCase() || '?'
 
@@ -54,11 +55,11 @@ export function PlayerMenu({ displayName, isAdmin }: PlayerMenuProps) {
             Profil
           </Link>
         </DropdownMenuItem>
-        {isAdmin && (
+        {showTeacherArea && (
           <DropdownMenuItem asChild className="py-2.5 focus:bg-[#374151] focus:text-[#F9FAFB]">
             <Link href="/admin">
               <Shield className="w-4 h-4 text-[#9CA3AF]" />
-              Admin-Bereich
+              Lehrkräfte-Bereich
             </Link>
           </DropdownMenuItem>
         )}

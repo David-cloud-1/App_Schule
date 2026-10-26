@@ -49,14 +49,14 @@ describe('AdminShell (PROJ-40)', () => {
   it('zeigt den Seiteninhalt und die Navigation in der Seitenleiste', () => {
     setup(false)
     expect(screen.getByText('Seiteninhalt')).toBeInTheDocument()
-    expect(screen.getAllByRole('navigation', { name: 'Admin Bereiche' })).toHaveLength(1)
+    expect(screen.getAllByRole('navigation', { name: 'Lehrkräfte-Bereich' })).toHaveLength(1)
   })
 
   it('öffnet das Menü per Button und schließt es nach Auswahl eines Eintrags', () => {
     setup(false)
     fireEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }))
     expect(screen.getByRole('dialog')).toBeInTheDocument()
-    expect(within(screen.getByRole('dialog')).getByRole('navigation', { name: 'Admin Bereiche' })).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByRole('navigation', { name: 'Lehrkräfte-Bereich' })).toBeInTheDocument()
 
     const menuLinks = screen.getByRole('dialog').querySelectorAll('a')
     const fragen = Array.from(menuLinks).find((a) => a.textContent === 'Fragen')!
@@ -78,5 +78,10 @@ describe('AdminShell (PROJ-40)', () => {
     unmount()
     setup(true)
     expect(screen.getByTestId('department-switcher')).toBeInTheDocument()
+  })
+
+  it('bietet in der Kopfzeile den Wechsel „Zur Lern-App“ (PROJ-44)', () => {
+    setup(false)
+    expect(screen.getByRole('link', { name: 'Zur Lern-App' })).toHaveAttribute('href', '/')
   })
 })

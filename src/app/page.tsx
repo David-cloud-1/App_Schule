@@ -7,6 +7,7 @@ import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { PlayerMenu } from '@/components/player-menu'
+import { isTeacherRole } from '@/lib/roles'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { CoinBalance } from '@/components/coin-balance'
 import { BlitzRoundTile } from '@/components/blitz-round-card'
@@ -85,7 +86,7 @@ export default async function HomePage() {
   const totalXp = (profile?.total_xp as number) ?? 0
   const currentStreak = (profile?.current_streak as number) ?? 0
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'department_admin'
+  const showTeacherArea = isTeacherRole(profile?.role)
   const hasSessions = answers.length > 0
 
   const level = getLevelFromXp(totalXp)
@@ -184,7 +185,7 @@ export default async function HomePage() {
             </span>
             <CoinBalance variant="pill" className="bg-[#1F2937] border-transparent" />
           </div>
-          <PlayerMenu displayName={displayName} isAdmin={isAdmin} />
+          <PlayerMenu displayName={displayName} showTeacherArea={showTeacherArea} />
         </div>
       </header>
 

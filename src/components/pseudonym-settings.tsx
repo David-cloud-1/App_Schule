@@ -10,11 +10,17 @@ import { toast } from 'sonner'
 interface PseudonymSettingsProps {
   initialPseudonym: string
   initialShowRealName: boolean
+  /**
+   * Lehrer-Rollen erscheinen in der Rangliste immer unter Pseudonym (PROJ-44):
+   * dann gibt es keinen Klarnamen-Schalter, nur einen kurzen Hinweis.
+   */
+  pseudonymOnly?: boolean
 }
 
-export function PseudonymSettings({ initialPseudonym, initialShowRealName }: PseudonymSettingsProps) {
+export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseudonymOnly = false }: PseudonymSettingsProps) {
   const [pseudonym, setPseudonym] = useState(initialPseudonym)
-  const [showRealName, setShowRealName] = useState(initialShowRealName)
+  const [showRealNameSetting, setShowRealName] = useState(initialShowRealName)
+  const showRealName = !pseudonymOnly && showRealNameSetting
   const [rerolling, setRerolling] = useState(false)
   const [savingToggle, setSavingToggle] = useState(false)
 
@@ -79,29 +85,35 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName }: Pse
         </Button>
       </div>
 
-      {/* Toggle */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <User size={16} className="text-[#9CA3AF] flex-shrink-0" />
-          <div>
-            <Label htmlFor="show-real-name" className="text-sm font-medium text-[#F9FAFB] cursor-pointer">
-              Mit Klarnamen erscheinen
-            </Label>
-            <p className="text-xs text-[#9CA3AF]">
-              {showRealName
-                ? 'Dein echter Name ist in der Rangliste sichtbar'
-                : 'Dein Fantasiename wird in der Rangliste angezeigt'}
-            </p>
+      {pseudonymOnly ? (
+        <p className="flex items-start gap-2 text-xs text-[#9CA3AF]">
+          <User size={16} className="mt-px text-[#9CA3AF] flex-shrink-0" />
+          Als Lehrkraft erscheinst du in der Rangliste immer unter deinem Fantasienamen.
+        </p>
+      ) : (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <User size={16} className="text-[#9CA3AF] flex-shrink-0" />
+            <div>
+              <Label htmlFor="show-real-name" className="text-sm font-medium text-[#F9FAFB] cursor-pointer">
+                Mit Klarnamen erscheinen
+              </Label>
+              <p className="text-xs text-[#9CA3AF]">
+                {showRealName
+                  ? 'Dein echter Name ist in der Rangliste sichtbar'
+                  : 'Dein Fantasiename wird in der Rangliste angezeigt'}
+              </p>
+            </div>
           </div>
+          <Switch
+            id="show-real-name"
+            checked={showRealName}
+            onCheckedChange={handleToggle}
+            disabled={savingToggle}
+            className="data-[state=checked]:bg-[#58CC02]"
+          />
         </div>
-        <Switch
-          id="show-real-name"
-          checked={showRealName}
-          onCheckedChange={handleToggle}
-          disabled={savingToggle}
-          className="data-[state=checked]:bg-[#58CC02]"
-        />
-      </div>
+      )}
     </div>
   )
 }

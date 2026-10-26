@@ -57,7 +57,7 @@
 | PROJ-41 | Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Deployed | [PROJ-41-bottom-navigation.md](PROJ-41-bottom-navigation.md) | 2026-10-22 |
 | PROJ-42 | „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed | [PROJ-42-heute-screen.md](PROJ-42-heute-screen.md) | 2026-10-22 |
 | PROJ-43 | Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Deployed | [PROJ-43-lernbibliothek-fachseite.md](PROJ-43-lernbibliothek-fachseite.md) | 2026-10-22 |
-| PROJ-44 | Lehrkraft-Rolle & Freischaltung | Architected | [PROJ-44-lehrkraft-rolle-freischaltung.md](PROJ-44-lehrkraft-rolle-freischaltung.md) | 2026-10-26 |
+| PROJ-44 | Lehrkraft-Rolle & Freischaltung | In Progress | [PROJ-44-lehrkraft-rolle-freischaltung.md](PROJ-44-lehrkraft-rolle-freischaltung.md) | 2026-10-26 |
 | PROJ-45 | Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy | Planned | [PROJ-45-lehrkraefte-arbeitsbereich.md](PROJ-45-lehrkraefte-arbeitsbereich.md) | 2026-10-26 |
 | PROJ-46 | Leistungsnachweise für Lehrkräfte ohne Fachbereich | Planned | [PROJ-46-nachweise-fuer-lehrkraefte.md](PROJ-46-nachweise-fuer-lehrkraefte.md) | 2026-10-26 |
 | PROJ-47 | Änderungsverlauf & Wiederherstellen für Inhalte | Planned | [PROJ-47-aenderungsverlauf-wiederherstellen.md](PROJ-47-aenderungsverlauf-wiederherstellen.md) | 2026-10-26 |

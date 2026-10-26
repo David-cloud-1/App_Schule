@@ -19,13 +19,13 @@ import {
  */
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const { hofShortName } = useDepartment()
-  const { isSuperAdmin } = useAdminRole()
+  const { role } = useAdminRole()
   const pathname = usePathname()
   const idPrefix = useId()
-  const groups = adminNavGroupsFor(isSuperAdmin)
+  const groups = adminNavGroupsFor(role)
 
   return (
-    <nav aria-label="Admin Bereiche" className="space-y-6">
+    <nav aria-label="Lehrkräfte-Bereich" className="space-y-6">
       <ul>
         <li>
           <NavLink

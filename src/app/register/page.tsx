@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase-browser'
+import { safeRedirectTarget, START_PATH } from '@/lib/roles'
 
 const registerSchema = z
   .object({
@@ -30,7 +31,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>
 
 function RegisterPageContent() {
   const searchParams = useSearchParams()
-  const redirectTarget = searchParams.get('redirect') ?? '/'
+  const redirectTarget = safeRedirectTarget(searchParams.get('redirect'))
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null)
@@ -99,7 +100,7 @@ function RegisterPageContent() {
           darauf, um dein Konto zu aktivieren.
         </p>
         <Link
-          href={redirectTarget !== '/' ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
+          href={redirectTarget !== START_PATH ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
           className="mt-6 text-[#1CB0F6] font-medium hover:underline text-sm"
         >
           Zurück zum Login
@@ -244,7 +245,7 @@ function RegisterPageContent() {
           <p className="mt-6 text-sm text-[#9CA3AF] text-center">
             Schon ein Konto?{' '}
             <Link
-              href={redirectTarget !== '/' ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
+              href={redirectTarget !== START_PATH ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login'}
               className="text-[#1CB0F6] font-medium hover:underline"
             >
               Anmelden

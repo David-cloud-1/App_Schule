@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { Toaster } from '@/components/ui/sonner'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { AdminRoleProvider } from '@/components/admin/admin-role-provider'
+import { isTeacherRole } from '@/lib/roles'
 
 export default async function AdminLayout({
   children,
@@ -22,13 +23,17 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single()
 
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'department_admin')) redirect('/')
+  // Alle Lehrer-Rollen kommen in den Lehrkräfte-Bereich (PROJ-44). Welche
+  // Seiten eine reine Lehrkraft öffnen darf, entscheidet die Middleware; die
+  // Verwaltungs-Schnittstellen prüfen weiterhin requireAdmin().
+  if (!profile || !isTeacherRole(profile.role)) redirect('/')
+  const role = profile.role
 
-  const isSuperAdmin = profile.role === 'admin'
+  const isSuperAdmin = role === 'admin'
   const displayName = profile.display_name ?? user.email ?? ''
 
   return (
-    <AdminRoleProvider value={{ role: profile.role, isSuperAdmin, displayName }}>
+    <AdminRoleProvider value={{ role, isSuperAdmin, displayName }}>
       <AdminShell displayName={displayName} isSuperAdmin={isSuperAdmin}>
         {children}
       </AdminShell>

@@ -1,0 +1,57 @@
+'use client'
+
+import { useState } from 'react'
+import { Wrench } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+
+/** Merkt am Konto (nicht im Browser), dass der Hinweis gesehen wurde — erscheint auf keinem Gerät erneut. */
+export const TEACHER_WELCOME_ENDPOINT = '/api/profile/teacher-welcome'
+
+/**
+ * Einmaliger Willkommens-Hinweis nach der Freischaltung als Lehrkraft (PROJ-44).
+ * Schließen auf jedem Weg (Button, Esc, daneben tippen) zählt als gesehen.
+ */
+export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) {
+  const [open, setOpen] = useState(initialOpen)
+
+  function dismiss() {
+    setOpen(false)
+    // Ein Fehler hier ist unkritisch: dann erscheint der Hinweis beim nächsten Mal noch einmal.
+    fetch(TEACHER_WELCOME_ENDPOINT, { method: 'POST' }).catch(() => {})
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : dismiss())}>
+      <DialogContent className="bg-[#1F2937] border-[#4B5563] text-[#F9FAFB] rounded-2xl">
+        <DialogHeader>
+          <span className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-[#58CC02]/15 text-[#58CC02]">
+            <Wrench className="size-6" />
+          </span>
+          <DialogTitle className="text-center text-xl font-bold tracking-tight">
+            Willkommen im Lehrkräfte-Bereich
+          </DialogTitle>
+          <DialogDescription className="text-center text-base leading-relaxed text-[#9CA3AF]">
+            Du bist jetzt als Lehrkraft freigeschaltet. Hier findest du die Werkzeugkiste für Arbeitsblätter,
+            Klassenarbeiten und mehr. Über „Zur Lern-App“ siehst du jederzeit, was deine Schüler sehen.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="sm:justify-center">
+          <Button
+            onClick={dismiss}
+            className="min-h-11 w-full rounded-2xl bg-[#58CC02] font-bold text-white shadow-lg transition-all duration-200 hover:bg-[#4CAD02] active:scale-95 sm:w-auto sm:px-8"
+          >
+            Los geht’s
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

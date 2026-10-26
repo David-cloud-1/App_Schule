@@ -1,17 +1,20 @@
 'use client'
 
 import { createContext, useContext } from 'react'
+import type { TeacherRole } from '@/lib/roles'
 
 /**
- * Rolle der eingeloggten Admin-Person im Admin-Panel (PROJ-24) — einmal im
+ * Rolle der eingeloggten Person im Lehrkräfte-Bereich (PROJ-24/44) — einmal im
  * Admin-Grundlayout auf dem Server geladen und hier bereitgestellt, damit
- * Bildschirme wissen, ob sie Super-Admin-only-Aktionen zeigen dürfen.
+ * Bildschirme wissen, welche Einträge und Aktionen sie zeigen dürfen.
  */
 export interface AdminRoleContextValue {
-  role: 'admin' | 'department_admin'
+  role: TeacherRole
   isSuperAdmin: boolean
   /** Anzeigename bzw. E-Mail für die Begrüßung auf der Startseite (PROJ-40) */
   displayName?: string
+  /** Einmaliger Willkommens-Hinweis für frisch freigeschaltete Lehrkräfte (PROJ-44) */
+  showTeacherWelcome?: boolean
 }
 
 const AdminRoleContext = createContext<AdminRoleContextValue | null>(null)

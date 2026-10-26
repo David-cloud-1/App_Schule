@@ -20,9 +20,9 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(items.filter((i) => !i.external).every((i) => i.href.startsWith('/admin/'))).toBe(true)
   })
 
-  it('verlinkt die Werkzeugkiste als externen Eintrag für alle Admins', () => {
-    for (const isSuper of [true, false]) {
-      const item = adminNavGroupsFor(isSuper)
+  it('verlinkt die Werkzeugkiste als externen Eintrag für alle Lehrer-Rollen', () => {
+    for (const role of ['admin', 'department_admin', 'teacher'] as const) {
+      const item = adminNavGroupsFor(role)
         .flatMap((g) => g.items)
         .find((i) => i.label === 'Werkzeugkiste')!
       expect(item.href).toBe(WERKZEUGKISTE_URL)
@@ -31,11 +31,17 @@ describe('Admin-Navigation (PROJ-40)', () => {
   })
 
   it('zeigt Super-Admins „Fachbereiche“, Fachbereichs-Admins nicht', () => {
-    const labels = (isSuper: boolean) =>
-      adminNavGroupsFor(isSuper).flatMap((g) => g.items.map((i) => i.label))
-    expect(labels(true)).toContain('Fachbereiche')
-    expect(labels(false)).not.toContain('Fachbereiche')
-    expect(labels(false)).toHaveLength(labels(true).length - 1)
+    const labels = (role: 'admin' | 'department_admin') =>
+      adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
+    expect(labels('admin')).toContain('Fachbereiche')
+    expect(labels('department_admin')).not.toContain('Fachbereiche')
+    expect(labels('department_admin')).toHaveLength(labels('admin').length - 1)
+  })
+
+  it('zeigt einer Lehrkraft ohne Verwaltungsrechte nur die Werkzeugkiste (PROJ-44)', () => {
+    const groups = adminNavGroupsFor('teacher')
+    expect(groups.map((g) => g.label)).toEqual(['Unterricht'])
+    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual(['Werkzeugkiste'])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {
