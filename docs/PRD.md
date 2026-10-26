@@ -74,7 +74,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-42: „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed |
 | P1 | PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Deployed |
 | P1 | PROJ-44: Lehrkraft-Rolle & Freischaltung | Deployed |
-| P1 | PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy | Planned |
+| P1 | PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy | Deployed |
 | P1 | PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich | Planned |
 | P1 | PROJ-47: Änderungsverlauf & Wiederherstellen für Inhalte | Planned |
 | P1 | PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Planned |

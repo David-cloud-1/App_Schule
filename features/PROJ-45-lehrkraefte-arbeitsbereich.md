@@ -1,6 +1,6 @@
 # PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-26
 
@@ -425,4 +425,16 @@ Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Da
 - **Danach geprüft:** Vitest 111 Dateien / 1.294 Tests grün, Build erfolgreich, ESLint 0 Fehler (Warnungen 24 → 22). Vorschaubilder mit der neuen Palette neu gerendert.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Produktion:** https://spedilern.vercel.app
+- **Deployt:** 2026-10-26 (Push auf `main`, Commit `605efd2`, Vercel-Build „Ready“ nach ca. 1 Minute)
+- **Datenbank:** keine Änderung (reines Oberflächen-Feature)
+- **Vor dem Push:** committeter Stand in getrenntem Arbeitsverzeichnis geprüft: `tsc` sauber, 1.294 Tests grün, Build grün, Lint 0 Fehler, keine Secrets.
+- **Prüfung der Produktion ohne Login (curl):**
+  - `/`, `/admin` und `/admin/leistungsnachweise` leiten zum Login (mit Ziel).
+  - Login-Seite 200, `/api/admin/users` 401.
+  - Sicherheits-Header gesetzt (HSTS, `X-Frame-Options`, `nosniff`).
+  - Das ausgelieferte CSS enthält die Farb-Schicht (`.ws-root`, hell/System, Touch-Regel, `ws-table-sticky`, neue Palette).
+- **Nicht geprüft (braucht Konto und Browser):** Aussehen in beiden Modi, Einklappen, Schublade und Wischen auf dem Handy, Schnellsuche, Konto-Menü, Beamer, Druck, Ladezeit.
+- **Rückweg:** Im Vercel-Dashboard das vorherige Deployment (`spedilern-heeo7yadk…`) zur Produktion befördern.
+- **Tag:** `v1.45.0-PROJ-45`
