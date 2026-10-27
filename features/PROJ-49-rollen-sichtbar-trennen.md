@@ -1,6 +1,6 @@
 # PROJ-49: Lehrkraft und Bereichs-Admin sichtbar trennen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -180,4 +180,8 @@ Gebaut wie im Tech Design, mit diesen Abweichungen von den Acceptance Criteria:
 **Ergebnis:** Approved, bereit zum Deploy.
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-10-27
+- **URL:** https://spedilern.vercel.app (Deployment `spedilern-p8q2w62fn`, Production, Ready)
+- **Commit:** 61bd3d8 auf `main`
+- **Datenbank:** keine Migration nötig
+- **Prüfung nach dem Deploy:** `/admin` ohne Login → 307 zum Login; `/api/admin/users` ohne Login → 401. Die sichtbare Darstellung (Konto-Menü, Navigation, Umfangszeile, Hinweis) wurde nicht im Browser geprüft.
