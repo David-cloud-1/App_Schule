@@ -180,7 +180,10 @@ describe('Schnellsuche (PROJ-45)', () => {
   it('zeigt einer Lehrkraft nur, wofür sie Rechte hat', async () => {
     setup({ role: 'teacher' })
     const palette = await openPalette()
-    expect(palette.queryByRole('option', { name: /^Fragen$/ })).not.toBeInTheDocument()
+    // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Meine Fächer/Papierkorb
+    // sind jetzt auch für Lehrkräfte sichtbar — welche Inhalte sie darin
+    // sieht, entscheidet ihre Fach-Zuständigkeit.
+    expect(palette.getByRole('option', { name: /^Fragen$/ })).toBeInTheDocument()
     expect(palette.queryByRole('option', { name: /Fachbereiche/ })).not.toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Werkzeugkiste öffnen/ })).toBeInTheDocument()
     // PROJ-46: eigene Leistungsnachweise anlegen und einsehen

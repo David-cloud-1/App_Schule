@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,16 +55,25 @@ export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) 
             Willkommen im Lehrkräfte-Bereich
           </DialogTitle>
           <DialogDescription className="text-center text-base leading-relaxed text-ws-muted">
-            Du bist jetzt als Lehrkraft freigeschaltet. Hier findest du die Werkzeugkiste für Arbeitsblätter,
-            Klassenarbeiten und mehr. Über „Zur Lern-App“ siehst du jederzeit, was deine Schüler sehen.
+            Du bist jetzt als Lehrkraft freigeschaltet. Trag unter „Meine Fächer“ ein, was du unterrichtest —
+            danach kannst du dort Fragen, Themen und Prüfungssets pflegen. Hier findest du außerdem die
+            Werkzeugkiste für Arbeitsblätter, Klassenarbeiten und mehr.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="sm:justify-center">
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-center">
           <Button
+            asChild
             onClick={dismiss}
             className="min-h-11 w-full rounded-2xl bg-ws-green font-bold text-ws-on-accent shadow-lg transition-all duration-200 hover:bg-ws-green-hover active:scale-95 sm:w-auto sm:px-8"
           >
-            Los geht’s
+            <Link href="/admin/my-subjects">Zu Meine Fächer</Link>
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={dismiss}
+            className="min-h-11 w-full rounded-2xl text-ws-muted hover:bg-ws-raised hover:text-ws-text sm:w-auto"
+          >
+            Später
           </Button>
         </DialogFooter>
       </DialogContent>

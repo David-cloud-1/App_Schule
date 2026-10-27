@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, ExternalLink } from 'lucide-react'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
@@ -8,6 +9,33 @@ import { adminNavGroupsFor, adminNavLabel } from '@/lib/admin-nav'
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
+
+type MySubjectTile = {
+  id: string
+  name: string
+  code: string
+  department_name: string | null
+  active_question_count: number
+}
+
+/**
+ * „Meine Fächer"-Kacheln auf der Startseite (PROJ-48 AC) — nur für eine
+ * Lehrkraft mit Zuständigkeiten. Bereichs-Admin/Super-Admin brauchen das
+ * nicht, die sehen ihre Fächer bereits unter „Fächer".
+ */
+function useMySubjectTiles(enabled: boolean): MySubjectTile[] {
+  const [tiles, setTiles] = useState<MySubjectTile[]>([])
+  useEffect(() => {
+    if (!enabled) return
+    fetch('/api/admin/subjects')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.subjects) setTiles(json.subjects)
+      })
+      .catch(() => {})
+  }, [enabled])
+  return tiles
+}
 
 /**
  * Startseite des Lehrkräfte-Bereichs (PROJ-40/44): große Kacheln für die
@@ -19,6 +47,7 @@ export function AdminHome() {
   const { hofShortName } = useDepartment()
   const isApple = useIsApplePlatform()
   const tiles = adminNavGroupsFor(role).flatMap((group) => group.items.filter((item) => item.tile))
+  const mySubjects = useMySubjectTiles(role === 'teacher')
 
   return (
     <div className="space-y-6">
@@ -53,6 +82,30 @@ export function AdminHome() {
           </li>
         ))}
       </ul>
+
+      {role === 'teacher' && mySubjects.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-ws-faint">Meine Fächer</h2>
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {mySubjects.map((s) => (
+              <li key={s.id}>
+                <Link
+                  href={`/admin/questions?subject=${encodeURIComponent(s.code)}`}
+                  className="group flex items-center justify-between gap-3 rounded-2xl border border-ws-line bg-ws-surface p-4 shadow-lg transition-all duration-200 hover:border-ws-green hover:bg-ws-raised active:scale-95"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-ws-muted">{s.department_name ?? ''}</span>
+                    <span className="block truncate text-base font-semibold text-ws-text">{s.name}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full bg-ws-green/15 px-3 py-1 text-xs font-semibold text-ws-green">
+                    {s.active_question_count} aktiv
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {role === 'teacher' && (
         <p className="text-sm text-ws-muted">Weitere Werkzeuge für Lehrkräfte, etwa Leistungsnachweise, folgen bald.</p>

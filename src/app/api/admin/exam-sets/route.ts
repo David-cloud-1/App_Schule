@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const departmentId = isTeacher ? parsed.data.department_id ?? null : auth.departmentIds[0]
+  const departmentId = isTeacher ? parsed.data.department_id ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null) : auth.departmentIds[0]
   if (!departmentId) {
     return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
   }

@@ -61,26 +61,36 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     expect(res.headers.get('location')).toBeNull()
   })
 
-  it('leitet eine Lehrkraft von Verwaltungsseiten zur Übersicht um', async () => {
+  it('leitet eine Lehrkraft von reiner Verwaltungsseiten (Nutzer/Bereiche) zur Übersicht um', async () => {
     state.role = 'teacher'
-    for (const path of ['/admin/questions', '/admin/users', '/admin/departments']) {
+    for (const path of ['/admin/users', '/admin/departments']) {
       expect(locationOf(await call(path))).toBe('/admin')
     }
   })
 
-  it('lässt eine Lehrkraft auf die Leistungsnachweis-Seiten (PROJ-46)', async () => {
+  it('lässt eine Lehrkraft auf die Leistungsnachweis- und Inhalts-Seiten (PROJ-46/48)', async () => {
     state.role = 'teacher'
-    for (const path of ['/admin/leistungsnachweise', '/admin/leistungsnachweise/abc/druck/klasse']) {
+    for (const path of [
+      '/admin/leistungsnachweise',
+      '/admin/leistungsnachweise/abc/druck/klasse',
+      '/admin/questions',
+      '/admin/subjects',
+      '/admin/topics',
+      '/admin/exam-sets',
+      '/admin/papierkorb',
+      '/admin/my-subjects',
+    ]) {
       const res = await call(path)
       expect(res.status).toBe(200)
       expect(res.headers.get('location')).toBeNull()
     }
   })
 
-  it('sperrt die Verwaltungs-Schnittstellen für eine Lehrkraft mit 403', async () => {
+  it('sperrt die Nutzer-/Bereichsverwaltung für eine Lehrkraft mit 403, lässt Inhalts-Schnittstellen durch (PROJ-48)', async () => {
     state.role = 'teacher'
-    for (const path of ['/api/admin/users', '/api/admin/questions']) {
-      expect((await call(path)).status).toBe(403)
+    expect((await call('/api/admin/users')).status).toBe(403)
+    for (const path of ['/api/admin/questions', '/api/admin/subjects', '/api/admin/my-subjects']) {
+      expect((await call(path)).status).toBe(200)
     }
   })
 

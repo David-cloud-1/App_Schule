@@ -23,6 +23,8 @@ type SubjectWithLinks = {
   icon_name: string
   created_at: string | null
   is_active: boolean
+  department_id: string
+  departments?: { name: string; code: string } | null
   question_subjects?: {
     questions: { is_active: boolean } | null
   }[]
@@ -40,7 +42,8 @@ export async function GET() {
     .from('subjects')
     .select(
       `
-        id, name, code, color, icon_name, created_at, is_active,
+        id, name, code, color, icon_name, created_at, is_active, department_id,
+        departments ( name, code ),
         question_subjects ( questions ( is_active ) )
       `
     )
@@ -72,6 +75,8 @@ export async function GET() {
       created_at: s.created_at,
       is_active: s.is_active,
       active_question_count: activeCount,
+      department_id: s.department_id,
+      department_name: s.departments?.name ?? null,
     }
   })
 
@@ -101,7 +106,7 @@ export async function POST(request: NextRequest) {
   // Admin/Bereichs-Admin: immer der eigene Arbeits-Bereich. Lehrkraft
   // (PROJ-48, E3): der im Body angegebene Bereich, geprüft gegen ihre
   // eigenen Zuständigkeiten — reicht eine bereichsweite ohne eigenes Fach.
-  const departmentId = isTeacher ? parsed.data.department_id ?? null : auth.departmentIds[0]
+  const departmentId = isTeacher ? parsed.data.department_id ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null) : auth.departmentIds[0]
   if (!departmentId) {
     return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
   }

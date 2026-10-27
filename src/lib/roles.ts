@@ -58,10 +58,22 @@ export function startPathFor(role: unknown): string {
  * Seiten unter /admin, die eine reine Lehrkraft (ohne Verwaltungsrechte)
  * öffnen darf. Exakte Pfade bzw. Pfad-Präfixe; alles andere leitet zur
  * Übersicht um. Leistungsnachweise (PROJ-46): eigene Nachweise anlegen,
- * durchführen und auswerten — kein Zugriff auf Fragen-, Fächer- oder
- * Nutzerverwaltung.
+ * durchführen und auswerten. Fragen/Fächer/Themen/Prüfungssimulation/
+ * Papierkorb (PROJ-48): feinere Prüfung je Fach-Zuständigkeit übernehmen
+ * die API-Routen (`requireContentAdmin`) — hier geht es nur darum, dass eine
+ * Lehrkraft die Seite überhaupt öffnen darf, auch bevor sie unter „Meine
+ * Fächer" ihre erste Zuständigkeit eingetragen hat.
  */
-export const TEACHER_ADMIN_PATHS: readonly string[] = [TEACHER_HOME_PATH, '/admin/leistungsnachweise']
+export const TEACHER_ADMIN_PATHS: readonly string[] = [
+  TEACHER_HOME_PATH,
+  '/admin/leistungsnachweise',
+  '/admin/my-subjects',
+  '/admin/questions',
+  '/admin/subjects',
+  '/admin/topics',
+  '/admin/exam-sets',
+  '/admin/papierkorb',
+]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
   return TEACHER_ADMIN_PATHS.some((p) =>
@@ -77,7 +89,17 @@ export function teacherMayOpenAdminPath(pathname: string): boolean {
  * Alle anderen `/api/admin/**`-Routen bleiben Bereichs-Admin und Super-Admin
  * vorbehalten.
  */
-export const TEACHER_API_PATH_PREFIXES: readonly string[] = ['/api/admin/assessments']
+export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
+  '/api/admin/assessments',
+  '/api/admin/my-subjects',
+  '/api/admin/questions',
+  '/api/admin/subjects',
+  '/api/admin/topics',
+  '/api/admin/exam-sets',
+  '/api/admin/question-prompt',
+  '/api/admin/trash',
+  '/api/admin/content-history',
+]
 
 export function teacherMayCallApiPath(pathname: string): boolean {
   return TEACHER_API_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))

@@ -176,7 +176,23 @@ Keine neuen Pakete nötig — das Feature nutzt ausschließlich bereits vorhande
 
 **Tests:** `npm test` (1424 Tests) und `npm run build` grün. Kein Dev-Server, kein Playwright (Projektregel).
 
-**Noch offen (vor /frontend):** Migration auf die Live-DB anwenden; UI für „Meine Fächer", Navigation-Filterung und die Zuständigkeiten-Übersicht fehlt noch komplett.
+## Frontend (2026-10-27)
+
+**Middleware (`src/lib/roles.ts`, kritisch):** Ohne diese Änderung hätte eine Lehrkraft die neuen/erweiterten Admin-Routen nie erreicht — `TEACHER_ADMIN_PATHS`/`TEACHER_API_PATH_PREFIXES` um `/admin/my-subjects`, `/admin/questions`, `/admin/subjects`, `/admin/topics`, `/admin/exam-sets`, `/admin/papierkorb` (+ passende `/api/admin/*`-Präfixe) erweitert. Die feine Prüfung je Fach bleibt bei den API-Routen (`requireContentAdmin`).
+
+**Navigation** (`src/lib/admin-nav.ts`): bestehende Einträge Fragen/Fächer/Themen/Prüfungssimulation/Papierkorb jetzt `teacherVisible`; neuer Eintrag „Meine Fächer" (nur für `teacher`, über `managerVisible: false` vor Bereichs-Admin/Super-Admin versteckt); neuer Super-Admin-Eintrag „Zuständigkeiten".
+
+**Neue Seiten:**
+- `/admin/my-subjects` — Ankreuz-Liste aller aktiven Bereiche/Fächer, bereichsweiter Haken „Ich unterrichte hier (noch ohne Fach)", „Neues Fach anlegen" pro Bereich (nur wenn dort schon eine Zuständigkeit besteht). Jede Änderung sofort per POST/DELETE, keine Freigabe.
+- `/admin/teacher-assignments` — Super-Admin-Übersicht, zwei Tabs (Nach Fach / Nach Lehrkraft), Entfernen mit Sicherheitsabfrage.
+
+**Startseite:** neuer Abschnitt „Meine Fächer" mit Live-Kacheln (Bereich · Fach · Anzahl aktiver Fragen, Sprung in die gefilterte Fragenliste) — lädt `/api/admin/subjects`, die dafür um `department_id`/`department_name` ergänzt wurde (additiv, keine bestehenden Felder entfernt).
+
+**Willkommens-Hinweis** (PROJ-44, `teacher-welcome-dialog.tsx`) erweitert: verweist jetzt auf „Meine Fächer" statt nur auf die Werkzeugkiste; Haupt-Button verlinkt direkt dorthin, „Später" schließt wie bisher.
+
+**Bewusste Vereinfachung (Scope-Entscheidung):** Fach-/Prüfungsset-/Bulk-Import-Anlage braucht serverseitig einen `department_id`-Wert. Für eine Lehrkraft mit **genau einem** Bereich wird er automatisch verwendet (kein UI-Picker nötig) — die weit überwiegende Mehrheit der Lehrkräfte unterrichtet nur in einem Bereich. Eine Lehrkraft mit Zuständigkeiten in **mehreren** Bereichen bekommt beim Anlegen (nicht beim Bearbeiten/Pflegen bestehender Inhalte) „Fachbereich fehlt", bis ein Bereichs-Picker ergänzt wird — zum Zeitpunkt dieses Commits gibt es noch keine solche Lehrkraft in der Praxis.
+
+**Tests:** `npm test` (1425 Tests, inkl. aktualisierter Middleware-/Navigations-Tests) und `npm run build` grün. Kein Dev-Server, kein Playwright (Projektregel) — UI daher nicht im Browser gegengeprüft, nur durch Tests und Build.
 
 ## QA Test Results
 _To be added by /qa_

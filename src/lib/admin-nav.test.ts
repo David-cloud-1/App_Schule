@@ -34,18 +34,36 @@ describe('Admin-Navigation (PROJ-40)', () => {
     }
   })
 
-  it('zeigt Super-Admins „Fachbereiche“, Fachbereichs-Admins nicht', () => {
+  it('zeigt Super-Admins „Fachbereiche“ und „Zuständigkeiten“, Fachbereichs-Admins keins von beiden', () => {
     const labels = (role: 'admin' | 'department_admin') =>
       adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
     expect(labels('admin')).toContain('Fachbereiche')
+    expect(labels('admin')).toContain('Zuständigkeiten')
     expect(labels('department_admin')).not.toContain('Fachbereiche')
-    expect(labels('department_admin')).toHaveLength(labels('admin').length - 1)
+    expect(labels('department_admin')).not.toContain('Zuständigkeiten')
+    expect(labels('department_admin')).toHaveLength(labels('admin').length - 2)
   })
 
-  it('zeigt einer Lehrkraft ohne Verwaltungsrechte Leistungsnachweise und die Werkzeugkiste (PROJ-44/46)', () => {
+  it('zeigt weder Super-Admin noch Bereichs-Admin „Meine Fächer“ (PROJ-48 — die sind bereits bereichsweit zuständig)', () => {
+    const labels = (role: 'admin' | 'department_admin') =>
+      adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
+    expect(labels('admin')).not.toContain('Meine Fächer')
+    expect(labels('department_admin')).not.toContain('Meine Fächer')
+  })
+
+  it('zeigt einer Lehrkraft ohne Verwaltungsrechte Leistungsnachweise, Inhalte und die Werkzeugkiste (PROJ-44/46/48)', () => {
     const groups = adminNavGroupsFor('teacher')
-    expect(groups.map((g) => g.label)).toEqual(['Unterricht'])
-    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual(['Leistungsnachweise', 'Werkzeugkiste'])
+    expect(groups.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Einstellungen'])
+    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual([
+      'Leistungsnachweise',
+      'Fragen',
+      'Werkzeugkiste',
+      'Fächer',
+      'Themen',
+      'Prüfungssimulation',
+      'Meine Fächer',
+      'Papierkorb',
+    ])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {

@@ -80,19 +80,32 @@ describe('AdminHome (PROJ-40)', () => {
 describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
   beforeEach(() => resetTeacherWelcomeForTests())
 
-  it('zeigt in der Navigation nur Übersicht, Leistungsnachweise und Werkzeugkiste (PROJ-46)', () => {
+  it('zeigt in der Navigation auch Inhalts-Seiten und Meine Fächer (PROJ-46/48)', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
     const names = screen.getAllByRole('link').map((a) => a.textContent)
-    expect(names).toEqual(['Übersicht', 'Leistungsnachweise', 'Werkzeugkiste'])
-    expect(screen.queryByRole('list', { name: 'Inhalte' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Einstellungen' })).not.toBeInTheDocument()
+    expect(names).toEqual([
+      'Übersicht',
+      'Leistungsnachweise',
+      'Fragen',
+      'Werkzeugkiste',
+      'Fächer',
+      'Themen',
+      'Prüfungssimulation',
+      'Meine Fächer',
+      'Papierkorb',
+    ])
+    expect(screen.getByRole('list', { name: 'Inhalte' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Einstellungen' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Nutzer' })).not.toBeInTheDocument()
   })
 
-  it('zeigt auf der Startseite die Leistungsnachweise- und Werkzeugkiste-Kachel samt Hinweis auf weitere Werkzeuge (PROJ-46)', () => {
+  it('zeigt auf der Startseite die Leistungsnachweise-, Fragen-, Werkzeugkiste- und Meine-Fächer-Kachel samt Hinweis auf weitere Werkzeuge (PROJ-46/48)', () => {
     wrap(<AdminHome />, false, { role: 'teacher' })
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
       '/admin/leistungsnachweise',
+      '/admin/questions',
       'https://divadl-werkzeugkiste.hf.space',
+      '/admin/my-subjects',
     ])
     expect(screen.getByText(/folgen bald/)).toBeInTheDocument()
   })
@@ -109,7 +122,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetchMock)
     wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Los geht’s' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Später' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/profile/teacher-welcome', { method: 'POST' })
     vi.unstubAllGlobals()
@@ -118,7 +131,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
   it('zeigt den Hinweis nach dem Schließen nicht wieder, wenn die Übersicht neu aufgebaut wird (BUG-2)', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }))
     const first = wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Los geht’s' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Später' }))
     first.unmount()
     // z. B. „Zurück“ im Browser oder Klick auf „Übersicht“: der Server-Wert ist noch „nicht gesehen“
     wrap(<AdminHome />, false, { role: 'teacher', showTeacherWelcome: true })

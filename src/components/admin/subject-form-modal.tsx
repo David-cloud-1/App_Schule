@@ -27,6 +27,13 @@ interface Props {
   onOpenChange: (open: boolean) => void
   subject?: AdminSubjectRow | null
   onSuccess: () => void
+  /**
+   * Ziel-Fachbereich beim Anlegen (PROJ-48) — nötig für eine Lehrkraft mit
+   * Zuständigkeiten in mehreren Bereichen, die keinen einzelnen
+   * Arbeits-Bereich hat. Admin/Bereichs-Admin brauchen das nicht (ihr
+   * Bereich wird serverseitig aus der Sitzung bestimmt).
+   */
+  departmentId?: string
 }
 
 type FormState = {
@@ -37,7 +44,7 @@ type FormState = {
 
 const EMPTY: FormState = { name: '', code: '', description: '' }
 
-export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Props) {
+export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, departmentId }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -74,6 +81,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess }: Pro
         code: form.code.trim().toUpperCase(),
       }
       if (form.description.trim()) payload.description = form.description.trim()
+      if (!isEdit && departmentId) payload.department_id = departmentId
 
       const url = isEdit ? `/api/admin/subjects/${subject!.id}` : '/api/admin/subjects'
       const method = isEdit ? 'PATCH' : 'POST'

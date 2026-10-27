@@ -47,12 +47,18 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(startPathFor(null)).toBe('/')
   })
 
-  it('lässt eine Lehrkraft nur auf Übersicht und Leistungsnachweise, Verwaltungs-Rollen überall hin', () => {
+  it('lässt eine Lehrkraft auf Übersicht, Leistungsnachweise und Inhalts-Seiten (PROJ-48), aber nicht auf Nutzer-/Bereichsverwaltung', () => {
     expect(mayOpenAdminPath('teacher', '/admin')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/leistungsnachweise')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/leistungsnachweise/a1')).toBe(true)
-    for (const path of ['/admin/questions', '/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
+    // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Papierkorb/Meine Fächer
+    // darf eine Lehrkraft öffnen — welche Inhalte sie darin sieht, entscheiden
+    // die API-Routen über ihre Fach-Zuständigkeiten (requireContentAdmin).
+    for (const path of ['/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+    }
+    for (const path of ['/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(false)
     }
     expect(mayOpenAdminPath('department_admin', '/admin/questions')).toBe(true)

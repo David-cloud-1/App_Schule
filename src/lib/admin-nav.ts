@@ -11,6 +11,7 @@ import {
   Tag,
   Trash2,
   Users,
+  UserCog,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,6 +37,12 @@ export interface AdminNavItem {
    * Kennzeichen sehen nur Bereichs-Admins und Super-Admin den Eintrag.
    */
   teacherVisible?: boolean
+  /**
+   * Für Bereichs-Admin und Super-Admin ausblenden (PROJ-48: „Meine Fächer"
+   * ist nur für Lehrkräfte sinnvoll — die beiden anderen Rollen sind bereits
+   * bereichsweit zuständig). Standard: sichtbar.
+   */
+  managerVisible?: boolean
   /** Titel kommt aus dem Fachbereich (z. B. „Hof-Items“) statt aus `label` */
   usesHofName?: boolean
   /** Erscheint als große Kachel auf der Startseite */
@@ -74,6 +81,9 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Fragen ansehen, bearbeiten und importieren',
         icon: FileText,
         tile: true,
+        // PROJ-48: sichtbar für Lehrkräfte — welche Fragen sie darin sieht,
+        // entscheidet ihre Fach-Zuständigkeit (Meine Fächer).
+        teacherVisible: true,
       },
       {
         href: '/admin/users',
@@ -102,18 +112,21 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Fächer',
         description: 'Fächer anlegen und ordnen',
         icon: FolderKanban,
+        teacherVisible: true,
       },
       {
         href: '/admin/topics',
         label: 'Themen',
         description: 'Themen und Klassenstufen pflegen',
         icon: Tag,
+        teacherVisible: true,
       },
       {
         href: '/admin/exam-sets',
         label: 'Prüfungssimulation',
         description: 'Fragenzusammenstellungen für die Prüfungssimulation',
         icon: ClipboardList,
+        teacherVisible: true,
       },
       {
         href: '/admin/ai-generator',
@@ -128,6 +141,17 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: 'einstellungen',
     label: 'Einstellungen',
     items: [
+      {
+        href: '/admin/my-subjects',
+        label: 'Meine Fächer',
+        description: 'Eintragen, in welchen Fächern du unterrichtest',
+        icon: UserCog,
+        tile: true,
+        // PROJ-48: nur für Lehrkräfte — Bereichs-Admin/Super-Admin brauchen
+        // keine Zuständigkeiten (ihre Rechte gelten bereichsweit).
+        teacherVisible: true,
+        managerVisible: false,
+      },
       {
         href: '/admin/department-settings',
         label: 'Fachbereich',
@@ -152,6 +176,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Papierkorb',
         description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
         icon: Trash2,
+        teacherVisible: true,
+      },
+      {
+        href: '/admin/teacher-assignments',
+        label: 'Zuständigkeiten',
+        description: 'Wer unterrichtet welches Fach',
+        icon: Users,
+        superAdminOnly: true,
       },
       {
         href: '/admin/departments',
@@ -166,6 +198,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 
 /** Darf diese Rolle den Eintrag sehen? Nur Anzeige — die Rechte prüft der Server. */
 export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole): boolean {
+  if (item.managerVisible === false && role !== 'teacher') return false
   if (role === 'admin') return true
   if (item.superAdminOnly) return false
   if (role === 'department_admin') return true

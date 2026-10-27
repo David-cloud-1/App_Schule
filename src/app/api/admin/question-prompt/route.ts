@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
   const { supabase, isTeacher } = auth
 
   const requestedDepartmentId = request.nextUrl.searchParams.get('department_id')
-  const departmentId = isTeacher ? requestedDepartmentId : auth.departmentIds[0]
+  const departmentId = isTeacher
+    ? requestedDepartmentId ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null)
+    : auth.departmentIds[0]
   if (!departmentId) {
     return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
   }
