@@ -35,6 +35,10 @@ const ListQuerySchema = z.object({
   // für den Super-Admin wirksam — alle anderen sehen laut Datenbank-Regel
   // ohnehin nur ihre eigenen bzw. die geteilten ihres Bereichs.
   createdBy: z.string().optional(),
+  // 'workspace' = nur der aktive Arbeitsbereich (Umschalter bzw. eigener Bereich).
+  // Für die Startseite: sonst sähe der Super-Admin in „Spedition" auch die Nachweise
+  // von Tourismus. Eine Lehrkraft ohne Bereich ist davon nicht betroffen.
+  scope: z.literal('workspace').optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
   if (!parsedQuery.success) {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
   }
-  const { departmentId, createdBy } = parsedQuery.data
+  const { departmentId, createdBy, scope } = parsedQuery.data
 
   // Keine .eq('department_id', ...) mehr auf den Arbeitsbereich der anfragenden
   // Person: die Datenbank-Regel (PROJ-46) entscheidet bereits, welche Zeilen
@@ -60,6 +64,9 @@ export async function GET(request: NextRequest) {
     )
     .order('created_at', { ascending: false })
   if (departmentId) query = query.eq('department_id', departmentId)
+  else if (scope === 'workspace' && auth.suggestedDepartmentId) {
+    query = query.eq('department_id', auth.suggestedDepartmentId)
+  }
   if (auth.isSuperAdmin && createdBy) {
     query = createdBy === 'deleted' ? query.is('created_by', null) : query.eq('created_by', createdBy)
   }

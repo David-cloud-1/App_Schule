@@ -106,7 +106,7 @@ function AssessmentsPageContent() {
     setFailed(false)
     try {
       const [assessmentsRes, setsRes] = await Promise.all([
-        fetch('/api/admin/assessments'),
+        fetch('/api/admin/assessments?scope=workspace'),
         fetch('/api/admin/exam-sets'),
       ])
       if (!assessmentsRes.ok) {

@@ -55,7 +55,7 @@ function useRunningAssessments(): { data: RunningAssessment[] | null | 'error'; 
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     let cancelled = false
-    fetch('/api/admin/assessments')
+    fetch('/api/admin/assessments?scope=workspace')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((json: { assessments?: RunningAssessment[] }) => {
         if (!cancelled) setData((json.assessments ?? []).filter((a) => a.status === 'open'))
