@@ -1,6 +1,6 @@
 # PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 
@@ -194,8 +194,70 @@ Keine neuen Pakete nötig — das Feature nutzt ausschließlich bereits vorhande
 
 **Tests:** `npm test` (1425 Tests, inkl. aktualisierter Middleware-/Navigations-Tests) und `npm run build` grün. Kein Dev-Server, kein Playwright (Projektregel) — UI daher nicht im Browser gegengeprüft, nur durch Tests und Build.
 
-## QA Test Results
-_To be added by /qa_
+## QA Test Results (2026-10-27)
+
+**Methodik:** Kein Dev-Server, kein Playwright (Projektregel — stürzt den Laptop ab). Geprüft über: Code-Review gegen jedes AC, die bestehende/erweiterte Vitest-Suite, `npm run build`, und eine RLS-Matrix direkt gegen die **Produktions-DB** — jeweils in `BEGIN; … ROLLBACK;` mit zwei echten (temporär zu „teacher" umgewidmeten) Konten, am Ende per Kontrollabfrage verifiziert, dass nichts von den Testdaten zurückblieb.
+
+### Gefundener Bug (behoben)
+- **High — `PATCH`/`DELETE /api/admin/topics/[id]` nutzten noch `requireAdmin()` statt `requireContentAdmin()`.** Beim Backend-Umbau wurde diese Datei übersehen (nur `topics/route.ts` für GET/POST wurde umgestellt). Folge: Eine zuständige Lehrkraft hätte ein Thema ihres eigenen Fachs **nicht** umbenennen oder löschen können (403 schon vor jeder Fach-Prüfung) — ein Kernbestandteil von E2 wäre nicht nutzbar gewesen. **Fix:** auf `requireContentAdmin()` + `assertCanAdminSubject()` umgestellt, inkl. neuer Regressionstests (`topics/[id]/route.test.ts`).
+
+### Acceptance Criteria
+
+**Selbst eintragen**
+- [x] Seite „Meine Fächer" zeigt alle aktiven Bereiche + Fächer zum Ankreuzen (`/admin/my-subjects`)
+- [x] Bereich ohne Fach ankreuzbar („Ich unterrichte hier, noch ohne Fach")
+- [x] Änderungen sofort, ohne Freigabe — per RLS-Matrix verifiziert (Insert/Delete direkt wirksam)
+- [x] Einmaliger Hinweis beim ersten Öffnen (erweiterter `TeacherWelcomeDialog`, verlinkt zu „Meine Fächer")
+- [x] Nur Lehrer-Rolle kann sich eintragen — `requireTeacher()` lehnt admin/department_admin/student mit 403 ab (per Test verifiziert)
+- [x] Bereichs-Admin/Super-Admin brauchen keine Zuständigkeiten, unveränderte Rechte — per RLS-Matrix: `can_admin_department`-Zweig unverändert, zusätzlicher Lehrkraft-Zweig rein additiv
+
+**Rechte je Zuständigkeit (E2)**
+- [x] Kopier-Prompt + Bulk-Import je Fach — Torwächter (PROJ-16) unverändert aufgerufen, nur die Zugangsprüfung erweitert
+- [x] Fragen/Themen/Prüfungssets des Fachs pflegen — per RLS-Matrix verifiziert (inkl. des oben behobenen Bugs)
+- [x] Frage mit mehreren Fächern: eine Zuständigkeit reicht — per RLS-Matrix explizit mit einer Zwei-Fächer-Frage verifiziert
+- [x] Außerhalb ihrer Fächer: kein Zugriff, 404 bei direktem Aufruf — per RLS-Matrix (`n=0`-Updates) und Code-Review (`assertCanAdminSubject`/`assertCanAdminQuestion` → 404) verifiziert
+- [x] KI-Generator bleibt gesperrt — `ai-generate/*`-Routen unverändert auf `requireAdmin()`, UI-Navigationseintrag nicht `teacherVisible`
+- [x] Fachbereich-Einstellungen/Hof-Items/Nutzerverwaltung bleiben Bereichs-Admin/Super-Admin — Routen unverändert auf `requireAdmin()`
+
+**Neue Fächer (E3)**
+- [x] „Neues Fach anlegen" nur in Bereichen mit bestehender Zuständigkeit — UI-Gate (`hasAnyAssignmentIn`) + serverseitig `assertCanAdminDepartmentContent`
+- [x] Ersteller automatisch zuständig — per RLS-Matrix verifiziert (Trigger `auto_assign_subject_creator`)
+- [x] Doppelte Kürzel je Bereich weiterhin abgelehnt — bestehende Prüfung unverändert, nur die Bereichsermittlung ist neu
+- [x] Neue Fachbereiche bleiben Super-Admin — `departments`-Route unverändert
+
+**Navigation & Übersicht**
+- [x] Navigation zeigt Lehrkraft zusätzlich Fragen/Themen/Fächer/Prüfungssimulation/Papierkorb/Meine Fächer
+- [x] Startseite zeigt „Meine Fächer"-Kacheln mit Bereich · Fach · Anzahl aktiver Fragen, Sprung in gefilterte Fragenliste
+- [~] **Teilweise:** Explizite „nach Bereich"-Filterung in Listen fehlt (nur impliziter Fach-Filter über das bestehende Code-Dropdown). Siehe „Nicht behobene Lücken" — betrifft aktuell niemanden, da es noch keine Lehrkraft mit mehreren Bereichen gibt.
+- [x] Super-Admin-Übersicht „Zuständigkeiten" (nach Fach/nach Lehrkraft), Entfernen protokolliert (`writeAuditLog`)
+
+**Rolle entzogen**
+- [x] Rollenverlust → Zuständigkeiten sofort weg, Inhalte inkl. Verlauf bleiben — per RLS-Matrix verifiziert (Trigger `remove_assignments_on_role_change`)
+
+### Sicherheits-Audit (Red-Team, gegen die Live-DB)
+Alle Prüfungen in rückgerollten Transaktionen gegen die Produktions-DB, mit zwei realen Konten temporär als Testlehrkräfte:
+- Lehrkraft kann **nur** ihr eigenes Fach ändern, nicht ein fremdes im selben Bereich (bestätigt)
+- Lehrkraft kann sich **nicht** für eine andere Person eintragen — RLS blockiert mit „row-level security policy"-Fehler (bestätigt)
+- Lehrkraft ohne jede Zuständigkeit kann weder Fächer noch Fragen ändern, darf sich aber selbst eintragen (bestätigt)
+- Ersteller eines neuen Fachs wird automatisch zuständig (bestätigt)
+- Rollenverlust entfernt Zuständigkeiten sofort (bestätigt)
+- Frage mit zwei Fächern: Zuständigkeit für eines reicht (bestätigt)
+- Keine Testdaten blieben nach `ROLLBACK` zurück (Kontrollabfrage: alle Zähler 0)
+- Supabase-Security-Advisor: keine neuen Befunde durch PROJ-48 (nur bestehende, projektweite Muster bei `SECURITY DEFINER`-Funktionen)
+
+### Regression
+- `npm test`: **1430/1430** grün (inkl. 13 neuer/angepasster Tests für PROJ-48 und PROJ-44/45-Navigationstests, die an die neue Sichtbarkeit angepasst wurden)
+- `npm run build`: grün, alle neuen Routen/Seiten registriert
+- Bereichs-Admin/Super-Admin-Verhalten unverändert (per Tests: `exam-sets`, `subjects`, `questions`, `trash` — bestehende Admin-Testfälle laufen unverändert durch)
+
+### Nicht behobene Lücken (keine Blocker)
+- **Low:** Kein Bereichs-Picker beim Anlegen neuer Fächer/Prüfungssets/Bulk-Imports für eine Lehrkraft mit **mehreren** Bereichen — wird bei genau einem Bereich automatisch aufgelöst (Normalfall). Aktuell gibt es keine solche Lehrkraft; nachzuziehen, sobald eine entsteht.
+- **Low:** Keine explizite „nach Bereich" Filter-Gruppierung in den Listen (Fragen/Themen) — das bestehende Fach-Dropdown filtert bereits nach Fach, nur ohne Bereichs-Gruppierung.
+- **Low:** `DELETE /api/admin/my-subjects/[id]` antwortet mit `{ok:true}`, auch wenn die ID gar nicht der eigenen Zuständigkeit gehörte (0 Zeilen betroffen, aber kein Fehler) — harmlos, da nichts gelöscht wird, aber keine ehrliche Rückmeldung.
+- **Info:** Mehrere neue `SECURITY DEFINER`-Funktionen folgen demselben (bereits projektweit etablierten) Muster, das der Supabase-Linter als „von `anon`/`authenticated` aufrufbar" meldet — bewusst, wie bei `is_admin()` & Co., keine neue Angriffsfläche (reine Lesefunktionen ohne Seiteneffekt).
+
+### Produktionsreife: **READY**
+Keine Critical/High-Bugs offen (der eine gefundene High-Bug wurde noch in dieser QA-Runde behoben und regressionsgetestet). Die drei dokumentierten Low-Lücken blockieren nicht, da sie aktuell niemanden betreffen (keine Lehrkraft mit mehreren Bereichen) bzw. rein kosmetisch sind.
 
 ## Deployment
 _To be added by /deploy_

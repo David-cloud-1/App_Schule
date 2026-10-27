@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../../_lib/auth'
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
@@ -10,7 +10,7 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -30,6 +30,16 @@ export async function PATCH(
       { status: 400 }
     )
   }
+
+  const { data: existing } = await supabase
+    .from('topics')
+    .select('subjects!inner(id, department_id)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const existingSubject = existing.subjects as unknown as { id: string; department_id: string }
+  const forbidden = assertCanAdminSubject(auth, existingSubject.id, existingSubject.department_id)
+  if (forbidden) return forbidden
 
   const { data, error } = await supabase
     .from('topics')
@@ -67,7 +77,7 @@ export async function DELETE(
   _request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -75,12 +85,12 @@ export async function DELETE(
 
   const { data: existing } = await supabase
     .from('topics')
-    .select('subjects!inner(department_id)')
+    .select('subjects!inner(id, department_id)')
     .eq('id', id)
     .maybeSingle()
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const subjectDept = (existing.subjects as unknown as { department_id: string }).department_id
-  const forbidden = assertCanAdminDepartment(auth, subjectDept)
+  const existingSubject = existing.subjects as unknown as { id: string; department_id: string }
+  const forbidden = assertCanAdminSubject(auth, existingSubject.id, existingSubject.department_id)
   if (forbidden) return forbidden
 
   // Papierkorb statt endgültigem Löschen (PROJ-47).
