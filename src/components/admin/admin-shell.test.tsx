@@ -133,7 +133,8 @@ describe('Konto-Menü (PROJ-45)', () => {
     const menu = openAccountMenu()
     expect(within(menu).getByText('muster@schule.de')).toBeInTheDocument()
     expect(within(menu).getByText('Bereichs-Admin Spedition')).toBeInTheDocument()
-    expect(within(menu).getByRole('menuitem', { name: /Profil/ })).toHaveAttribute('href', '/profile')
+    expect(within(menu).getByRole('menuitem', { name: /Mein Konto/ })).toHaveAttribute('href', '/admin/konto')
+    expect(within(menu).getByRole('menuitem', { name: /Spielerprofil/ })).toHaveAttribute('href', '/profile')
     expect(within(menu).getByRole('menuitem', { name: /Zur Lern-App/ })).toHaveAttribute('href', '/')
     expect(within(menu).getByRole('menuitem', { name: /Abmelden/ })).toBeInTheDocument()
     expect(within(menu).getAllByRole('menuitemradio').map((i) => i.textContent)).toEqual([

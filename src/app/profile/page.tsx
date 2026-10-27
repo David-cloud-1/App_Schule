@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { User } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, IdCard, User } from 'lucide-react'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { StreakBadge } from '@/components/streak-badge'
@@ -39,14 +40,19 @@ export default async function ProfilePage() {
   const currentStreak = (profile?.current_streak as number | null) ?? 0
   const leaderboardOptOut = (profile?.leaderboard_opt_out as boolean | null) ?? false
 
+  // Lehrer-Rollen sehen hier nur eine kurze Spielkarte (PROJ-50); ihr Profil liegt unter „Mein Konto“
+  const isTeacher = isTeacherRole(profile?.role)
+
   // Gesamtstatistik und Wochenaktivität (PROJ-41, vorher auf der Startseite)
   const now = new Date()
   const weekStart = new Date(now.getTime() - 7 * 86_400_000)
-  const [{ rows: answers }, sessionsResult, blitzResult] = await Promise.all([
-    fetchAllUserAnswers(supabase, user.id),
-    supabase.from('quiz_sessions').select('completed_at').eq('user_id', user.id).gte('completed_at', weekStart.toISOString()),
-    supabase.from('blitz_rounds').select('calendar_day').eq('user_id', user.id).gte('calendar_day', toBerlinDateStr(weekStart)),
-  ])
+  const [{ rows: answers }, sessionsResult, blitzResult] = isTeacher
+    ? [{ rows: [] as Awaited<ReturnType<typeof fetchAllUserAnswers>>['rows'] }, { data: null }, { data: null }]
+    : await Promise.all([
+        fetchAllUserAnswers(supabase, user.id),
+        supabase.from('quiz_sessions').select('completed_at').eq('user_id', user.id).gte('completed_at', weekStart.toISOString()),
+        supabase.from('blitz_rounds').select('calendar_day').eq('user_id', user.id).gte('calendar_day', toBerlinDateStr(weekStart)),
+      ])
   const totalCorrect = answers.filter((a) => a.is_correct).length
   const totalWrong = answers.length - totalCorrect
   const accuracy = answers.length > 0 ? Math.round((totalCorrect / answers.length) * 100) : 0
@@ -57,11 +63,9 @@ export default async function ProfilePage() {
   const weekActivity = buildLast7Days(now, learnedDates)
 
   // Fetch unlocked badges
-  const { data: userBadgeRows } = await supabase
-    .from('user_badges')
-    .select('badge_id, unlocked_at')
-    .eq('user_id', user.id)
-    .order('unlocked_at', { ascending: true })
+  const { data: userBadgeRows } = isTeacher
+    ? { data: null }
+    : await supabase.from('user_badges').select('badge_id, unlocked_at').eq('user_id', user.id).order('unlocked_at', { ascending: true })
 
   const unlockedBadges: UnlockedBadge[] = (userBadgeRows ?? []).map((r) => ({
     badge_id: r.badge_id as string,
@@ -70,11 +74,13 @@ export default async function ProfilePage() {
 
   // Badges des eigenen Fachbereichs (PROJ-22)
   let badgeDefinitions: BadgeDisplay[] = []
-  try {
-    const defs = await fetchBadgeDefinitions(supabase, (profile?.department_id as string | null) ?? null)
-    badgeDefinitions = defs.map(toBadgeDisplay)
-  } catch (err) {
-    console.error('[profile] badge definitions:', err)
+  if (!isTeacher) {
+    try {
+      const defs = await fetchBadgeDefinitions(supabase, (profile?.department_id as string | null) ?? null)
+      badgeDefinitions = defs.map(toBadgeDisplay)
+    } catch (err) {
+      console.error('[profile] badge definitions:', err)
+    }
   }
 
   // Bereichs-Umschalter nur für Super-Admin und dessen Zweitkonto (PROJ-29)
@@ -143,30 +149,50 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {answers.length > 0 && (
+        {isTeacher && (
+          <Link
+            href="/admin/konto"
+            className="flex min-h-11 items-center gap-3 bg-[#1F2937] border border-[#4B5563] rounded-2xl p-4 transition-all duration-200 hover:border-[#58CC02]/60 active:scale-95"
+          >
+            <IdCard size={20} className="text-[#58CC02] flex-shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-semibold text-[#F9FAFB]">Dein Lehrkraft-Profil</span>
+              <span className="block text-xs text-[#9CA3AF]">Fächer, Aufgaben, Anmeldung und Einstellungen findest du unter „Mein Konto“.</span>
+            </span>
+            <ChevronRight size={18} className="text-[#9CA3AF] flex-shrink-0" />
+          </Link>
+        )}
+
+        {!isTeacher && answers.length > 0 && (
           <OverallStatsRow totalCorrect={totalCorrect} totalWrong={totalWrong} accuracyPercent={accuracy} />
         )}
 
-        <WeekActivityDots weekActivity={weekActivity} />
+        {!isTeacher && (
+          <>
+            <WeekActivityDots weekActivity={weekActivity} />
 
-        {/* Badge gallery */}
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
-          <BadgeGallery definitions={badgeDefinitions} unlockedBadges={unlockedBadges} />
-        </div>
+            {/* Badge gallery */}
+            <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
+              <BadgeGallery definitions={badgeDefinitions} unlockedBadges={unlockedBadges} />
+            </div>
+          </>
+        )}
 
         {/* Mein Betrieb (PROJ-34; ersetzt die flache Hof-Galerie, die für Bereiche ohne Aufbau-Welt bleibt) */}
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
           <BetriebVorschau />
         </div>
 
-        {/* Privacy settings */}
-        <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-[#F9FAFB]">Rangliste</h2>
-          <PseudonymSettings initialPseudonym={pseudonym} initialShowRealName={showRealName} pseudonymOnly={isTeacherRole(profile?.role)} />
-          <div className="border-t border-[#374151] pt-4">
-            <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
+        {/* Privacy settings — bei Lehrer-Rollen unter „Mein Konto“ */}
+        {!isTeacher && (
+          <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-5">
+            <h2 className="text-sm font-semibold text-[#F9FAFB]">Rangliste</h2>
+            <PseudonymSettings initialPseudonym={pseudonym} initialShowRealName={showRealName} />
+            <div className="border-t border-[#374151] pt-4">
+              <LeaderboardOptOutToggle initialOptOut={leaderboardOptOut} />
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   )

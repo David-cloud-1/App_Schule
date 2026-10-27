@@ -17,6 +17,10 @@ beforeEach(() => {
 })
 
 describe('adminCrumbs (PROJ-45)', () => {
+  it('benennt „Mein Konto“ (PROJ-50), obwohl die Seite nicht in der Seitenleiste steht', () => {
+    expect(adminCrumbs('/admin/konto', 'Hof', null)).toEqual([{ label: 'Übersicht', href: '/admin' }, { label: 'Mein Konto' }])
+  })
+
   it('zeigt auf der Übersicht nur „Übersicht“', () => {
     expect(adminCrumbs('/admin', 'Hof', null)).toEqual([{ label: 'Übersicht' }])
   })

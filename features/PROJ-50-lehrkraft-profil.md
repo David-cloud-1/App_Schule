@@ -1,6 +1,6 @@
 # PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -204,6 +204,27 @@ Konto-Menü & Schnellsuche: neuer Eintrag „Mein Konto“ (ganz oben)
 
 ### F) Pakete
 Keine neuen Pakete.
+
+## Implementation Notes (Frontend, 2026-10-27)
+
+**Gebaut:** Seite `/admin/konto` ([page.tsx](../src/app/admin/konto/page.tsx)) mit sieben Karten als Komponenten `src/components/admin/konto-*.tsx` (Über mich, Offene Aufgaben, Mein Beitrag, Meine Fächer, Anmeldung, Darstellung & Rangliste, Spielstand). Gemeinsame Regeln (Kürzel, Passwort, E-Mail, Zeitangaben) in `src/lib/konto.ts`, Datensammlung auf dem Server in `src/lib/konto-data.ts`.
+**Eingebunden:** „Mein Konto“ oben im Konto-Menü (der alte Eintrag „Profil“ heißt jetzt „Spielerprofil“), in der Schnellsuche (Aktion „Mein Konto“) und in den Brotkrumen; `/admin/konto` ist für alle Lehrer-Rollen freigeschaltet (`TEACHER_ADMIN_PATHS`).
+**`/profile` für Lehrkräfte:** nur Hinweis-Karte „Dein Lehrkraft-Profil“, kurze Profilkarte (Name, Level, Streak, XP-Balken), „Mein Betrieb“ und der Bereichs-Umschalter. Statistik, Wochenaktivität, Achievements und Ranglisten-Einstellungen entfallen (die Abfragen dafür werden bei Lehrkräften gar nicht erst gemacht). Azubi-Profil unverändert.
+**Wiederverwendet:** `PseudonymSettings` und `LeaderboardOptOutToggle` haben ein neues Merkmal `workspace` (ws-Farben statt fester Hex-Werte).
+**Tests:** 28 neue Tests (`konto.test.ts`, `konto.test.tsx`), angepasst: Konto-Menü, Schnellsuche, Brotkrumen, Zugangsregeln. Gesamt 1479 Tests grün, Build grün.
+
+**Abweichungen von der Beschreibung**
+- **Bereichs-Admin/Super-Admin:** Die Fächer-Schnittstelle (`/api/admin/my-subjects`) ist bewusst nur für Lehrkräfte (PROJ-48). Diese Rollen sehen daher nur den Umfangs-Satz („Du siehst den ganzen Bereich …“), keine eigene Zuständigkeitsliste.
+- **Lehrkraft ohne Fachbereich:** „Meine Fächer“ listet alle aktiven Bereiche; Fächer sind also auch ohne eigenen Fachbereich wählbar. Der geplante Erklärtext „erst mit Fachbereich wählbar“ entfällt.
+- **„Mein Beitrag“:** Zähl-Funktion in der Datenbank ist nicht nötig; einfache Zählabfragen auf `content_versions` und `graded_assessments` genügen (RLS erlaubt jedem die eigenen Zeilen).
+
+**Für /backend offen (die Oberfläche ruft diese Stellen schon auf)**
+1. Migration (vor dem Deploy einspielen, sonst zeigt die Seite einen Fehler): `profiles.kuerzel` (text, optional) und `graded_assessments.creator_viewed_at` (timestamptz). Bestehende geschlossene Nachweise einmalig auf „angesehen“ setzen. Kürzel nur durch die Person selbst oder den Super-Admin änderbar; die Rolle darf dadurch nie änderbar werden.
+2. `PATCH /api/profile/kuerzel` mit `{ kuerzel: string | null }` (Prüfung mit `parseKuerzel` aus `src/lib/konto.ts`).
+3. `POST /api/profile/password` mit `{ currentPassword?, newPassword }`; prüft das aktuelle Passwort, bei Konten ohne Passwort entfällt es. Fehlerform `{ error, field?: 'currentPassword' | 'newPassword' }`.
+4. `POST /api/profile/email` `{ email }` (Bestätigungslink nur an die neue Adresse), `PUT` = Link erneut senden, `DELETE` = ausstehende Änderung abbrechen. Rücksprung des Links nach `/admin/konto?email=bestaetigt` (bei Fehler `?email=fehler`).
+5. `creator_viewed_at` setzen, wenn die erstellende Person die Auswertung (`GET /api/admin/assessments/[id]/results`) eines geschlossenen Nachweises lädt; nie bei anderen Personen.
+6. Vor dem Deploy: in Supabase Auth „Secure email change“ ausschalten.
 
 ## QA Test Results
 _To be added by /qa_

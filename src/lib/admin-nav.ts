@@ -63,6 +63,13 @@ export interface AdminNavGroup {
 
 export const ADMIN_HOME_HREF = '/admin'
 
+/**
+ * Seiten im Lehrkräfte-Bereich, die nicht in der Seitenleiste stehen, aber
+ * Titel und Brotkrumen brauchen (PROJ-50: „Mein Konto“ liegt im Konto-Menü).
+ */
+export const ADMIN_ACCOUNT_HREF = '/admin/konto'
+export const ADMIN_ACCOUNT_LABEL = 'Mein Konto'
+
 export const WERKZEUGKISTE_URL = 'https://divadl-werkzeugkiste.hf.space'
 
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
@@ -287,6 +294,13 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     kind: 'link',
     href: WERKZEUGKISTE_URL,
     external: true,
+  },
+  {
+    id: 'mein-konto',
+    label: 'Mein Konto',
+    keywords: ['profil', 'passwort', 'e-mail', 'kürzel', 'pseudonym', 'aufgaben', 'beitrag'],
+    kind: 'link',
+    href: ADMIN_ACCOUNT_HREF,
   },
   { id: 'lern-app', label: 'Zur Lern-App', keywords: ['schüler', 'quiz', 'spielen'], kind: 'link', href: '/' },
   { id: 'darstellung', label: 'Darstellung wechseln', keywords: ['hell', 'dunkel', 'beamer', 'farbe', 'theme'], kind: 'theme' },

@@ -19,7 +19,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { ADMIN_HOME_HREF, adminNavLabel, adminNavMatch } from '@/lib/admin-nav'
+import { ADMIN_ACCOUNT_HREF, ADMIN_ACCOUNT_LABEL, ADMIN_HOME_HREF, adminNavLabel, adminNavMatch } from '@/lib/admin-nav'
 
 interface Crumb {
   label: string
@@ -29,6 +29,7 @@ interface Crumb {
 /** Brotkrumen aus Pfad + Navigations-Liste; Detailseiten liefern den letzten Teil selbst */
 export function adminCrumbs(pathname: string, hofShortName: string, detail: string | null): Crumb[] {
   const crumbs: Crumb[] = [{ label: 'Übersicht', href: ADMIN_HOME_HREF }]
+  if (pathname === ADMIN_ACCOUNT_HREF) return [...crumbs, { label: ADMIN_ACCOUNT_LABEL }]
   const match = adminNavMatch(pathname)
   if (!match) return pathname === ADMIN_HOME_HREF ? [{ label: 'Übersicht' }] : crumbs
   const label = adminNavLabel(match.item, hofShortName)

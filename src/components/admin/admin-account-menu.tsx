@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronsUpDown, Gamepad2, Loader2, LogOut, Monitor, Moon, Sun, User, UserCog } from 'lucide-react'
+import { ChevronsUpDown, Gamepad2, IdCard, Loader2, LogOut, Monitor, Moon, Sun, User, UserCog } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
@@ -18,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { teacherRoleLabel } from '@/lib/admin-nav'
+import { ADMIN_ACCOUNT_HREF, teacherRoleLabel } from '@/lib/admin-nav'
 import { ROLE_DESCRIPTION } from '@/lib/roles'
 import { parseWorkspaceTheme, WORKSPACE_THEME_LABEL, WORKSPACE_THEMES } from '@/lib/workspace-theme'
 
@@ -115,9 +115,15 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
         )}
         <DropdownMenuSeparator className="bg-ws-line" />
         <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
+          <Link href={ADMIN_ACCOUNT_HREF}>
+            <IdCard className="text-ws-muted" />
+            Mein Konto
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
           <Link href="/profile">
             <User className="text-ws-muted" />
-            Profil
+            Spielerprofil
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-ws-line" />

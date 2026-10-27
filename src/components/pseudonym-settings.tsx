@@ -15,9 +15,30 @@ interface PseudonymSettingsProps {
    * dann gibt es keinen Klarnamen-Schalter, nur einen kurzen Hinweis.
    */
   pseudonymOnly?: boolean
+  /** Farben des Lehrkräfte-Bereichs (`ws-*`, hell/dunkel) statt der festen Spieler-Farben (PROJ-50) */
+  workspace?: boolean
 }
 
-export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseudonymOnly = false }: PseudonymSettingsProps) {
+const PLAYER = {
+  box: 'bg-[#374151]',
+  accent: 'text-[#1CB0F6]',
+  accentBtn: 'text-[#1CB0F6] hover:text-[#1CB0F6] hover:bg-[#1CB0F6]/10',
+  muted: 'text-[#9CA3AF]',
+  text: 'text-[#F9FAFB]',
+  switchOn: 'data-[state=checked]:bg-[#58CC02]',
+}
+
+const WS = {
+  box: 'bg-ws-raised',
+  accent: 'text-ws-blue',
+  accentBtn: 'text-ws-blue hover:text-ws-blue hover:bg-ws-blue/10',
+  muted: 'text-ws-muted',
+  text: 'text-ws-text',
+  switchOn: 'data-[state=checked]:bg-ws-green',
+}
+
+export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseudonymOnly = false, workspace = false }: PseudonymSettingsProps) {
+  const c = workspace ? WS : PLAYER
   const [pseudonym, setPseudonym] = useState(initialPseudonym)
   const [showRealNameSetting, setShowRealName] = useState(initialShowRealName)
   const showRealName = !pseudonymOnly && showRealNameSetting
@@ -65,12 +86,12 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseud
   return (
     <div className="space-y-4">
       {/* Pseudonym display */}
-      <div className="bg-[#374151] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+      <div className={`${c.box} rounded-xl px-4 py-3 flex items-center justify-between gap-3`}>
         <div className="flex items-center gap-2 min-w-0">
-          <Ghost size={16} className="text-[#1CB0F6] flex-shrink-0" />
+          <Ghost size={16} className={`${c.accent} flex-shrink-0`} />
           <div className="min-w-0">
-            <p className="text-xs text-[#9CA3AF]">Dein Fantasiename</p>
-            <p className="text-sm font-semibold text-[#F9FAFB] truncate">{pseudonym}</p>
+            <p className={`text-xs ${c.muted}`}>Dein Fantasiename</p>
+            <p className={`text-sm font-semibold ${c.text} truncate`}>{pseudonym}</p>
           </div>
         </div>
         <Button
@@ -78,7 +99,7 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseud
           variant="ghost"
           onClick={handleReroll}
           disabled={rerolling || showRealName}
-          className="h-8 px-3 text-[#1CB0F6] hover:text-[#1CB0F6] hover:bg-[#1CB0F6]/10 flex-shrink-0 disabled:opacity-40"
+          className={`h-8 px-3 ${c.accentBtn} flex-shrink-0 disabled:opacity-40`}
         >
           <RefreshCw size={14} className={rerolling ? 'animate-spin' : ''} />
           <span className="ml-1.5 text-xs">Neu würfeln</span>
@@ -86,19 +107,19 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseud
       </div>
 
       {pseudonymOnly ? (
-        <p className="flex items-start gap-2 text-xs text-[#9CA3AF]">
-          <User size={16} className="mt-px text-[#9CA3AF] flex-shrink-0" />
+        <p className={`flex items-start gap-2 text-xs ${c.muted}`}>
+          <User size={16} className={`mt-px ${c.muted} flex-shrink-0`} />
           In der Rangliste erscheinst du immer unter deinem Fantasienamen.
         </p>
       ) : (
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <User size={16} className="text-[#9CA3AF] flex-shrink-0" />
+            <User size={16} className={`${c.muted} flex-shrink-0`} />
             <div>
-              <Label htmlFor="show-real-name" className="text-sm font-medium text-[#F9FAFB] cursor-pointer">
+              <Label htmlFor="show-real-name" className={`text-sm font-medium ${c.text} cursor-pointer`}>
                 Mit Klarnamen erscheinen
               </Label>
-              <p className="text-xs text-[#9CA3AF]">
+              <p className={`text-xs ${c.muted}`}>
                 {showRealName
                   ? 'Dein echter Name ist in der Rangliste sichtbar'
                   : 'Dein Fantasiename wird in der Rangliste angezeigt'}
@@ -110,7 +131,7 @@ export function PseudonymSettings({ initialPseudonym, initialShowRealName, pseud
             checked={showRealName}
             onCheckedChange={handleToggle}
             disabled={savingToggle}
-            className="data-[state=checked]:bg-[#58CC02]"
+            className={c.switchOn}
           />
         </div>
       )}

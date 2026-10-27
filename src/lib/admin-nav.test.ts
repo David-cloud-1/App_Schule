@@ -134,9 +134,9 @@ describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
 
   it('zeigt in der Schnellsuche nur Aktionen, deren Seite die Rolle sehen darf', () => {
     const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
-    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'lern-app', 'darstellung'])
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'mein-konto', 'lern-app', 'darstellung'])
     // PROJ-46: eine Lehrkraft darf jetzt auch eigene Leistungsnachweise anlegen
-    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'lern-app', 'darstellung'])
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'mein-konto', 'lern-app', 'darstellung'])
   })
 
   it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {

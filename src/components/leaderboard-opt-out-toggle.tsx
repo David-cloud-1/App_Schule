@@ -8,9 +8,20 @@ import { toast } from 'sonner'
 
 interface LeaderboardOptOutToggleProps {
   initialOptOut: boolean
+  /** Farben des Lehrkräfte-Bereichs (`ws-*`) statt der festen Spieler-Farben (PROJ-50) */
+  workspace?: boolean
+  /** Erklärtext je Zustand; Standard richtet sich an Azubis */
+  hints?: { visible: string; hidden: string }
 }
 
-export function LeaderboardOptOutToggle({ initialOptOut }: LeaderboardOptOutToggleProps) {
+const DEFAULT_HINTS = {
+  visible: 'Alle Azubis sehen dich in der Rangliste',
+  hidden: 'Du bist versteckt (nur du siehst deine Position)',
+}
+
+export function LeaderboardOptOutToggle({ initialOptOut, workspace = false, hints = DEFAULT_HINTS }: LeaderboardOptOutToggleProps) {
+  const muted = workspace ? 'text-ws-muted' : 'text-[#9CA3AF]'
+  const text = workspace ? 'text-ws-text' : 'text-[#F9FAFB]'
   const [optOut, setOptOut] = useState(initialOptOut)
   const [saving, setSaving] = useState(false)
 
@@ -37,14 +48,12 @@ export function LeaderboardOptOutToggle({ initialOptOut }: LeaderboardOptOutTogg
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2">
-        <EyeOff size={16} className="text-[#9CA3AF] flex-shrink-0" />
+        <EyeOff size={16} className={`${muted} flex-shrink-0`} />
         <div>
-          <Label htmlFor="leaderboard-opt-out" className="text-sm font-medium text-[#F9FAFB] cursor-pointer">
+          <Label htmlFor="leaderboard-opt-out" className={`text-sm font-medium ${text} cursor-pointer`}>
             In Rangliste erscheinen
           </Label>
-          <p className="text-xs text-[#9CA3AF]">
-            {optOut ? 'Du bist versteckt (nur du siehst deine Position)' : 'Alle Azubis sehen dich in der Rangliste'}
-          </p>
+          <p className={`text-xs ${muted}`}>{optOut ? hints.hidden : hints.visible}</p>
         </div>
       </div>
       <Switch
@@ -52,7 +61,7 @@ export function LeaderboardOptOutToggle({ initialOptOut }: LeaderboardOptOutTogg
         checked={!optOut}
         onCheckedChange={handleToggle}
         disabled={saving}
-        className="data-[state=checked]:bg-[#58CC02]"
+        className={workspace ? 'data-[state=checked]:bg-ws-green' : 'data-[state=checked]:bg-[#58CC02]'}
       />
     </div>
   )

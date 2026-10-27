@@ -97,6 +97,8 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   TEACHER_HOME_PATH,
   '/admin/leistungsnachweise',
   '/admin/my-subjects',
+  // PROJ-50: „Mein Konto“ — das Profil jeder Lehrer-Rolle
+  '/admin/konto',
   '/admin/questions',
   '/admin/subjects',
   '/admin/topics',

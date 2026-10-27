@@ -58,7 +58,7 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Papierkorb/Meine Fächer
     // darf eine Lehrkraft öffnen — welche Inhalte sie darin sieht, entscheiden
     // die API-Routen über ihre Fach-Zuständigkeiten (requireContentAdmin).
-    for (const path of ['/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects']) {
+    for (const path of ['/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects', '/admin/konto']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(true)
     }
     for (const path of ['/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
