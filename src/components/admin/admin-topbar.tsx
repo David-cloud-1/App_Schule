@@ -3,7 +3,7 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Menu, PanelLeft, Search } from 'lucide-react'
+import { Gamepad2, Menu, PanelLeft, Search } from 'lucide-react'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
@@ -118,6 +118,16 @@ export function AdminTopbar() {
           {isApple ? '⌘K' : 'Strg K'}
         </kbd>
       </button>
+
+      <Link
+        href="/"
+        aria-label="Zur Lern-App"
+        title="Zur Lern-App"
+        className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ws-green/30 bg-ws-green/15 px-3 text-ws-green transition-all duration-200 hover:bg-ws-green/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green active:scale-95"
+      >
+        <Gamepad2 className="size-5" />
+        <span className="hidden text-sm font-semibold sm:inline">Zur Lern-App</span>
+      </Link>
 
       {isSuperAdmin && (
         <div className="hidden sm:block">
