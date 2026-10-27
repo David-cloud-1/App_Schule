@@ -1,6 +1,6 @@
 # PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 
@@ -262,4 +262,12 @@ Alle Prüfungen in rückgerollten Transaktionen gegen die Produktions-DB, mit zw
 Beide gefundenen Bugs (High: Themen-Route, Low: stiller Erfolg beim Austragen) sind behoben und regressionsgetestet (`npm test`: 1431/1431, `npm run build` grün). Die verbleibenden Punkte sind dokumentierte Scope-Entscheidungen, keine Defekte, und betreffen aktuell niemanden.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Datum:** 2026-10-27
+- **Produktions-URL:** https://spedilern.vercel.app (zusätzlich alias `https://touristiklern.vercel.app`)
+- **Deployment-ID:** `dpl_3vnw23CgMmv4fdyhSBamRM8QAktX`, Status READY
+- **Migration:** `20261027_proj48_subject_assignments.sql` bereits vor diesem Deploy direkt auf die Produktions-DB angewendet und verifiziert (siehe Backend-Abschnitt)
+- **Vorgehen:** `npm run lint` (0 Fehler, nur vorbestehende Warnungen außerhalb von PROJ-48) → `git push origin main` → nicht zu diesem Feature gehörende, unkommittete Änderungen (`betrieb-client.tsx`, `docs/vorschau/*`) per `git stash` beiseitegelegt, damit nur der geprüfte PROJ-48-Stand hochgeladen wird → `vercel --prod` → nach dem Deploy den Stash zurückgeholt
+- **Verifikation:** `vercel inspect` → Ready; `vercel curl` gegen `/` und `/admin/my-subjects` liefert die erwarteten Login-Weiterleitungen mit korrekten Sicherheits-Headern; `vercel logs --since 5m` zeigt nur die beiden Prüf-Requests, keine Fehler
+
+Noch zu erledigen (nicht Teil dieses Deploys, siehe QA-Abschnitt): Bereichs-Picker für eine Lehrkraft mit mehreren Bereichen, falls künftig eine solche entsteht.
