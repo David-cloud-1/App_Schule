@@ -63,7 +63,8 @@
 | PROJ-47 | Änderungsverlauf & Wiederherstellen für Inhalte | Deployed | [PROJ-47-aenderungsverlauf-wiederherstellen.md](PROJ-47-aenderungsverlauf-wiederherstellen.md) | 2026-10-26 |
 | PROJ-48 | Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Deployed | [PROJ-48-fach-zustaendigkeiten.md](PROJ-48-fach-zustaendigkeiten.md) | 2026-10-26 |
 | PROJ-49 | Lehrkraft und Bereichs-Admin sichtbar trennen | Deployed | [PROJ-49-rollen-sichtbar-trennen.md](PROJ-49-rollen-sichtbar-trennen.md) | 2026-10-27 |
+| PROJ-50 | Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Planned | [PROJ-50-lehrkraft-profil.md](PROJ-50-lehrkraft-profil.md) | 2026-10-27 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-50
+## Next Available ID: PROJ-51
