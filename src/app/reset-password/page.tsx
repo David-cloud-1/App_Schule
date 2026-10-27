@@ -10,7 +10,7 @@ import { BrandIcon, BrandName } from '@/components/app-brand'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createClient } from '@/lib/supabase-browser'
+import { CHANGE_PASSWORD_API_PATH } from '@/lib/roles'
 
 const resetPasswordSchema = z
   .object({
@@ -38,18 +38,25 @@ export default function ResetPasswordPage() {
 
   async function onSubmit(values: ResetPasswordFormValues) {
     setError(null)
-    const supabase = createClient()
-    const { error: authError } = await supabase.auth.updateUser({
-      password: values.password,
-    })
-
-    if (authError) {
-      if (authError.message.toLowerCase().includes('expired') ||
-          authError.message.toLowerCase().includes('invalid')) {
+    // Über die Server-Route statt direkt bei Supabase: Sie entfernt auch den
+    // Merker für den Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-58).
+    try {
+      const res = await fetch(CHANGE_PASSWORD_API_PATH, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: values.password }),
+      })
+      if (res.status === 401) {
         setError('Dieser Reset-Link ist abgelaufen.')
-      } else {
-        setError('Passwort konnte nicht gesetzt werden. Bitte versuche es erneut.')
+        return
       }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data?.error ?? 'Passwort konnte nicht gesetzt werden. Bitte versuche es erneut.')
+        return
+      }
+    } catch {
+      setError('Passwort konnte nicht gesetzt werden. Bitte versuche es erneut.')
       return
     }
 

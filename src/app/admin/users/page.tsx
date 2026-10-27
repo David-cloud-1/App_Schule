@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, ChevronDown, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
+import { Ban, CheckCircle2, ChevronDown, KeyRound, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -50,9 +50,27 @@ import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
 import { roleChangeDescription } from '@/components/admin/role-change-text'
-import { isTeacherRole, ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
+import { ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
+import { SortableTableHead } from '@/components/admin/sortable-table-head'
+import { SetPasswordDialog } from '@/components/admin/set-password-dialog'
+import {
+  ACTIVITY_FILTERS,
+  ACTIVITY_LABEL,
+  DEFAULT_SORT,
+  defaultDir,
+  matchesActivity,
+  parseUserListParams,
+  SORT_KEYS,
+  SORT_LABEL,
+  sortUsers,
+  userListParams,
+  type ActivityFilter,
+  type SortDir,
+  type SortKey,
+  type UserListView,
+} from '@/lib/user-list'
 
 type Role = UserRole
 type RoleFilter = 'all' | Role
@@ -96,7 +114,36 @@ export default function AdminUsersPage() {
   const [target, setTarget] = useState<AdminUserRow | null>(null)
   const [roleChange, setRoleChange] = useState<{ user: AdminUserRow; newRole: Role } | null>(null)
   const [moveTarget, setMoveTarget] = useState<AdminUserRow | null>(null)
+  const [passwordTarget, setPasswordTarget] = useState<AdminUserRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Sortierung und Aktivitäts-Filter stehen in der Adresse (PROJ-57): Neuladen
+  // und geteilte Links zeigen dieselbe Ansicht
+  const [view, setView] = useState<UserListView>({ sort: DEFAULT_SORT.key, dir: DEFAULT_SORT.dir, activity: 'all' })
+
+  useEffect(() => {
+    setView(parseUserListParams(new URLSearchParams(window.location.search)))
+  }, [])
+
+  const updateView = useCallback((patch: Partial<UserListView>) => {
+    setView((prev) => {
+      const next = { ...prev, ...patch }
+      const params = userListParams(next, new URLSearchParams(window.location.search)).toString()
+      window.history.replaceState(window.history.state, '', params ? `?${params}` : window.location.pathname)
+      return next
+    })
+  }, [])
+
+  function handleSort(key: SortKey) {
+    updateView(
+      view.sort === key
+        ? { dir: view.dir === 'asc' ? 'desc' : 'asc' }
+        : { sort: key, dir: defaultDir(key) }
+    )
+  }
+
+  // Ohne Spalte „Bereich“ (nur in „Alle Bereiche“) fällt deren Sortierung auf den Standard zurück
+  const effectiveSort: { key: SortKey; dir: SortDir } =
+    view.sort === 'department' && !showAllDepartments ? DEFAULT_SORT : { key: view.sort, dir: view.dir }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -127,14 +174,27 @@ export default function AdminUsersPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return users.filter(
+    const now = new Date()
+    const matching = users.filter(
       (u) =>
         (roleFilter === 'all' || u.role === roleFilter) &&
+        matchesActivity(u, view.activity, now) &&
         (!q ||
           (u.display_name ?? '').toLowerCase().includes(q) ||
           (u.email ?? '').toLowerCase().includes(q))
     )
-  }, [users, search, roleFilter])
+    return sortUsers(matching, effectiveSort.key, effectiveSort.dir)
+  }, [users, search, roleFilter, view.activity, effectiveSort.key, effectiveSort.dir])
+
+  const hasFilter = search.trim() !== '' || roleFilter !== 'all' || view.activity !== 'all'
+
+  function resetFilters() {
+    setSearch('')
+    setRoleFilter('all')
+    updateView({ activity: 'all' })
+  }
+
+  const sortableKeys = SORT_KEYS.filter((k) => k !== 'department' || showAllDepartments)
 
   async function handleConfirm() {
     if (!target) return
@@ -230,6 +290,45 @@ export default function AdminUsersPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={view.activity} onValueChange={(v) => updateView({ activity: v as ActivityFilter })}>
+          <SelectTrigger
+            aria-label="Nach Aktivität filtern"
+            className="min-h-11 w-full rounded-xl bg-ws-surface border-ws-line text-ws-text sm:w-56"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+            {ACTIVITY_FILTERS.map((a) => (
+              <SelectItem key={a} value={a} className="focus:bg-ws-raised focus:text-ws-text">
+                {ACTIVITY_LABEL[a]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {/* Handy: Überschriften in der seitlich scrollenden Tabelle sind schwer zu treffen */}
+        <Select
+          value={`${effectiveSort.key}:${effectiveSort.dir}`}
+          onValueChange={(v) => {
+            const [sort, dir] = v.split(':') as [SortKey, SortDir]
+            updateView({ sort, dir })
+          }}
+        >
+          <SelectTrigger
+            aria-label="Sortieren nach"
+            className="min-h-11 w-full rounded-xl bg-ws-surface border-ws-line text-ws-text sm:hidden"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+            {sortableKeys.flatMap((k) =>
+              (['asc', 'desc'] as const).map((d) => (
+                <SelectItem key={`${k}:${d}`} value={`${k}:${d}`} className="focus:bg-ws-raised focus:text-ws-text">
+                  {SORT_LABEL[k]} {sortDirLabel(k, d)}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
         {isSuperAdmin && (
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-ws-line bg-ws-surface px-3">
             <Switch
@@ -252,14 +351,16 @@ export default function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
-                <TableHead className="text-ws-muted">Name</TableHead>
-                <TableHead className="text-ws-muted">E-Mail</TableHead>
-                {showAllDepartments && <TableHead className="text-ws-muted">Bereich</TableHead>}
-                <TableHead className="text-ws-muted">XP</TableHead>
-                <TableHead className="text-ws-muted">Streak</TableHead>
-                <TableHead className="text-ws-muted">Letzte Session</TableHead>
-                <TableHead className="text-ws-muted">Letzter Login</TableHead>
-                <TableHead className="text-ws-muted">Status</TableHead>
+                {sortableKeys.map((k) => (
+                  <SortableTableHead
+                    key={k}
+                    sortKey={k}
+                    label={SORT_LABEL[k]}
+                    activeKey={effectiveSort.key}
+                    dir={effectiveSort.dir}
+                    onSort={handleSort}
+                  />
+                ))}
                 <TableHead className="text-right text-ws-muted">Aktion</TableHead>
               </TableRow>
             </TableHeader>
@@ -277,7 +378,20 @@ export default function AdminUsersPage() {
               ) : filtered.length === 0 ? (
                 <TableRow className="border-ws-line">
                   <TableCell colSpan={columnCount} className="text-center text-ws-muted py-10">
-                    Keine Nutzer gefunden.
+                    {hasFilter && users.length > 0 ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <span>Niemand passt zu diesem Filter.</span>
+                        <Button
+                          variant="outline"
+                          onClick={resetFilters}
+                          className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                        >
+                          Filter zurücksetzen
+                        </Button>
+                      </div>
+                    ) : (
+                      'Keine Nutzer gefunden.'
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -320,7 +434,7 @@ export default function AdminUsersPage() {
                         {formatDate(u.last_session_date)}
                       </TableCell>
                       <TableCell className="text-xs text-ws-muted">
-                        {isTeacherRole(u.role) ? formatDate(u.last_sign_in_at ?? null) : '—'}
+                        {formatDate(u.last_sign_in_at ?? null)}
                       </TableCell>
                       <TableCell>
                         {u.banned ? (
@@ -383,6 +497,28 @@ export default function AdminUsersPage() {
                                 </TooltipTrigger>
                                 <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
                                   In anderen Fachbereich verschieben
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+
+                          {/* Passwort neu vergeben (PROJ-58) — gleiche Regel wie beim Sperren */}
+                          {!isSelf && canModerate && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setPasswordTarget(u)}
+                                    aria-label={`Passwort für ${u.display_name ?? u.email ?? 'Konto'} neu vergeben`}
+                                    className="text-ws-muted hover:text-ws-text"
+                                  >
+                                    <KeyRound className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
+                                  Passwort neu vergeben
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -513,8 +649,23 @@ export default function AdminUsersPage() {
         currentDepartmentId={moveTarget?.department_id ?? null}
         onSuccess={load}
       />
+
+      <SetPasswordDialog
+        open={passwordTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setPasswordTarget(null)
+        }}
+        user={passwordTarget}
+      />
     </div>
   )
+}
+
+function sortDirLabel(key: SortKey, dir: SortDir): string {
+  if (key === 'name' || key === 'email' || key === 'department') return dir === 'asc' ? '(A–Z)' : '(Z–A)'
+  if (key === 'status') return dir === 'asc' ? '(aktiv zuerst)' : '(gesperrt zuerst)'
+  if (key === 'session' || key === 'login') return dir === 'desc' ? '(neueste zuerst)' : '(älteste zuerst)'
+  return dir === 'desc' ? '(höchste zuerst)' : '(niedrigste zuerst)'
 }
 
 function formatDate(value: string | null): string {

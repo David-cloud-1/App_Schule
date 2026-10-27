@@ -1,7 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import {
+  allowedDuringPasswordChange,
+  CHANGE_PASSWORD_PATH,
   isManagerRole,
+  mustChangePassword,
   isTeacherRole,
   mayOpenAdminPath,
   BLOCKED_PARAM,
@@ -61,6 +64,26 @@ export async function proxy(request: NextRequest) {
     if (pathname !== '/') {
       url.searchParams.set('redirect', pathname + request.nextUrl.search)
     }
+    return NextResponse.redirect(url)
+  }
+
+  // Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-58): vor allem anderen
+  // ein eigenes Passwort festlegen. Der Merker kommt mit dem Konto aus
+  // getUser() — keine zusätzliche Abfrage pro Seitenaufruf.
+  if (user && mustChangePassword(user) && !allowedDuringPasswordChange(pathname)) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Bitte zuerst ein eigenes Passwort festlegen.' }, { status: 403 })
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = CHANGE_PASSWORD_PATH
+    url.search = ''
+    return NextResponse.redirect(url)
+  }
+  // Ohne Merker gibt es auf der Pflicht-Seite nichts zu tun
+  if (user && pathname === CHANGE_PASSWORD_PATH && !mustChangePassword(user)) {
+    const url = request.nextUrl.clone()
+    url.pathname = START_PATH
+    url.search = ''
     return NextResponse.redirect(url)
   }
 

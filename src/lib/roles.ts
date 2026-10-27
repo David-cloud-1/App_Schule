@@ -170,3 +170,28 @@ export function safeRedirectTarget(value: string | null | undefined): string {
   }
   return value
 }
+
+/**
+ * Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-58): Merker in den
+ * geschützten Konto-Daten (`app_metadata`), den nur der Server setzen und
+ * entfernen kann. Der Proxy schickt markierte Konten auf CHANGE_PASSWORD_PATH.
+ */
+export const MUST_CHANGE_PASSWORD_FLAG = 'must_change_password'
+
+export const CHANGE_PASSWORD_PATH = '/passwort-festlegen'
+
+/** Schnittstelle, über die die Person ihr eigenes Passwort setzt (auch „Passwort vergessen“) */
+export const CHANGE_PASSWORD_API_PATH = '/api/account/password'
+
+export function mustChangePassword(user: { app_metadata?: Record<string, unknown> | null } | null | undefined): boolean {
+  return user?.app_metadata?.[MUST_CHANGE_PASSWORD_FLAG] === true
+}
+
+/** Was ein markiertes Konto vor dem Pflichtwechsel noch erreichen darf */
+export function allowedDuringPasswordChange(pathname: string): boolean {
+  return (
+    pathname === CHANGE_PASSWORD_PATH ||
+    pathname === CHANGE_PASSWORD_API_PATH ||
+    pathname.startsWith('/auth/')
+  )
+}

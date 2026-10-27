@@ -1,6 +1,6 @@
 # PROJ-58: Passwort neu vergeben (mit Pflichtwechsel)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -28,7 +28,7 @@ Azubis vergessen ihr Passwort oder haben keinen Zugriff auf ihre E-Mails. Der We
 
 ### Vergeben
 - [ ] In der Aktionsspalte der Nutzerliste gibt es den Eintrag „Passwort neu vergeben“ (Schlüssel-Icon).
-- [ ] Ein Dialog nennt Name und E-Mail der Person und zeigt ein Feld mit einem **Vorschlag**: drei deutsche Wörter plus zweistellige Zahl, mit Bindestrichen getrennt (z. B. `Hafen-Kran-Wolke-47`). Er enthält keine verwechselbaren Zeichen (0/O, 1/l/I).
+- [ ] Ein Dialog nennt Name und E-Mail der Person und zeigt ein Feld mit einem **Vorschlag**: drei deutsche Wörter plus zweistellige Zahl, mit Bindestrichen getrennt (z. B. `Hafen-Kran-Birke-47`). Er enthält keine verwechselbaren Zeichen (0/O, 1/l/I).
 - [ ] Ein Button „Neuer Vorschlag“ erzeugt einen anderen Vorschlag.
 - [ ] Das Feld ist änderbar. Regel: mindestens 8 Zeichen (wie bei `/reset-password`). Bei zu kurzer Eingabe erscheint ein Hinweis direkt am Feld, und Speichern ist gesperrt.
 - [ ] Nach „Passwort setzen“ zeigt der Dialog das Passwort groß und gut lesbar (Monospace) mit „Kopieren“. Der Hinweis lautet: „Teile das Passwort jetzt mit. Es wird nicht gespeichert und ist später nicht mehr abrufbar.“
@@ -145,6 +145,16 @@ Keine neuen Pakete.
 - Route Person: setzt Passwort und entfernt Markierung; gleiches Passwort → verständliche Meldung; ohne Login 401.
 - Proxy: markiert → Umleitung auf Pflicht-Seite (auch `/admin`), API 403; Pflicht-Seite und Abmelden bleiben erreichbar; nicht markiert → unverändert.
 - Vorschlag: Format, keine verwechselbaren Zeichen, ausreichende Vielfalt.
+
+### Umsetzung (2026-10-27)
+- **Vorschlag:** `src/lib/password-suggestion.ts` — 80 neutrale Wörter ohne `l`, `I`, `O`, Umlaute; Zahl aus 2–9; `crypto.getRandomValues`. Tests prüfen Format, Zeichen und Streuung.
+- **Dialog:** `src/components/admin/set-password-dialog.tsx` — Vorschlag, „Neuer Vorschlag“, Mindestlänge mit Hinweis am Feld, Hinweis bei gesperrtem Konto, danach Anzeige (Monospace) mit „Kopieren“. Beim Schließen wird das Passwort aus dem Speicher gelöscht. In der Nutzerliste als Schlüssel-Knopf neben „Sperren“ (gleiche Regel: Bereichs-Admin nur Azubis).
+- **Admin-Route:** `POST /api/admin/users/[id]/password` — Bereichsprüfung wie beim Sperren (404), eigenes Konto 400, Zweitaccount (PROJ-29) 404, Rate-Limit 20/Stunde über `admin_audit_log` (429), setzt Passwort + `app_metadata.must_change_password = true`, beendet Sitzungen, Protokoll `user.password_set` ohne Passwort.
+- **Migration:** `20261027_proj58_revoke_sessions.sql` — `admin_revoke_user_sessions(uuid)` (security definer, nur `service_role`) löscht `auth.sessions` und `auth.refresh_tokens`. Spaltentypen und Rechte in der Produktions-DB geprüft (nur lesend). Schlägt der Aufruf fehl, bleibt die Vergabe erfolgreich, denn der Proxy schickt auch alte Sitzungen auf die Pflicht-Seite.
+- **Eigene Route:** `POST /api/account/password` — setzt das Passwort über die eigene Sitzung (Supabase lehnt ein unverändertes mit `same_password` ab) und entfernt danach den Merker per Service-Rolle. Auch `/reset-password` („Passwort vergessen“) nutzt jetzt diese Route.
+- **Proxy:** `src/proxy.ts` — Merker gesetzt → jede Seite auf `/passwort-festlegen`, jede API außer `/api/account/password` 403; `/auth/*` bleibt erreichbar. Ohne Merker leitet `/passwort-festlegen` zur Start-Weiche. Konstanten in `src/lib/roles.ts`.
+- **Pflicht-Seite:** `src/app/passwort-festlegen/page.tsx` im Schüler-Design (dunkel, mobil) mit „Abmelden“.
+- **Abweichung:** keine inhaltliche. Der Spec-Beispielvorschlag wurde auf `Hafen-Kran-Birke-47` geändert, weil „Wolke“ ein verwechselbares `l` enthält.
 
 ## QA Test Results
 _To be added by /qa_

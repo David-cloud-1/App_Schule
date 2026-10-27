@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const state: { user: { id: string } | null; role: string | null } = { user: null, role: null }
+const state: { user: { id: string; app_metadata?: Record<string, unknown> } | null; role: string | null } = { user: null, role: null }
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
@@ -132,5 +132,38 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
       expect(res.status).toBe(200)
       expect(res.headers.get('location')).toBeNull()
     }
+  })
+})
+
+describe('Middleware – Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-58)', () => {
+  beforeEach(() => {
+    state.user = { id: 'u1', app_metadata: { must_change_password: true } }
+    state.role = 'student'
+  })
+
+  it('leitet jede Seite auf „Neues Passwort festlegen“ um, auch den Lehrkräfte-Bereich', async () => {
+    expect(locationOf(await call('/'))).toBe('/passwort-festlegen')
+    expect(locationOf(await call('/quiz?x=1'))).toBe('/passwort-festlegen')
+    expect(locationOf(await call('/login'))).toBe('/passwort-festlegen')
+    state.role = 'admin'
+    expect(locationOf(await call('/admin/users'))).toBe('/passwort-festlegen')
+  })
+
+  it('sperrt Schnittstellen mit 403, außer der eigenen Passwort-Schnittstelle', async () => {
+    const res = await call('/api/quiz/session')
+    expect(res.status).toBe(403)
+    expect((await res.json()).error).toBe('Bitte zuerst ein eigenes Passwort festlegen.')
+    expect((await call('/api/account/password')).status).toBe(200)
+  })
+
+  it('lässt die Pflicht-Seite und den Auth-Callback durch', async () => {
+    expect((await call('/passwort-festlegen')).status).toBe(200)
+    expect((await call('/auth/callback')).status).toBe(200)
+  })
+
+  it('ohne Merker: Pflicht-Seite leitet zur Start-Weiche, sonst alles wie bisher', async () => {
+    state.user = { id: 'u1', app_metadata: { must_change_password: false } }
+    expect(locationOf(await call('/passwort-festlegen'))).toBe('/start')
+    expect((await call('/')).status).toBe(200)
   })
 })
