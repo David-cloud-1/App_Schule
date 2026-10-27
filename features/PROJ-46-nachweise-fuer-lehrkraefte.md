@@ -1,8 +1,8 @@
 # PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27 (QA + Fixes)
+**Last Updated:** 2026-10-27 (Deployed)
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -392,4 +392,16 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 - Live-DB danach erneut geprüft: unverändert (5 Nachweise, 0 private Fragen, 0 Lehrkräfte) — kein Fix hat auf die Datenbank selbst zugegriffen außer über die ohnehin bestehenden, bereits migrierten RLS-Regeln.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployed:** 2026-10-27 · **Production-URL:** https://spedilern.vercel.app
+
+- Migration bereits vor der Backend-Phase live angewendet (`20261027_proj46_teacher_assessments.sql`), daher kein zusätzlicher Migrationsschritt beim Deploy nötig — Reihenfolge laut Deploy-Ablauf (erst Migration, dann Code) eingehalten.
+- Pre-Deployment-Checks: `npm run build` fehlerfrei, `npm run lint` 0 Fehler (37 vorbestehende, von diesem Feature unabhängige Warnungen; ein echter, selbst eingeführter Fund — ungenutzter `toast`-Import — vor dem Push behoben), gesamter Vitest-Lauf 114 Dateien/1.356 Tests grün.
+- Push auf `main` (Commits `39e645d`…`e66ca38`) löste den Vercel-Production-Build aus. Build erfolgreich, Dauer 47 s.
+- Verifikation ohne Login direkt gegen die Produktion:
+  - `/` und `/admin/leistungsnachweise` → 307 zum Login (`/admin/leistungsnachweise` konkret zu `/login?redirect=%2Fadmin%2Fleistungsnachweise`).
+  - `/api/admin/assessments`, `/api/admin/assessments/departments`, `/api/admin/assessments/category-options` → 401.
+  - Andere Admin-Route (`/api/admin/questions`) weiterhin 401 — die Lehrkraft-Öffnung bleibt auf `/api/admin/assessments/**` begrenzt.
+  - Live-DB danach: 6 Nachweise (ein neuer seit der QA-Prüfung, reguläre Nutzung), 0 davon „nicht geteilt" außerhalb erwarteter Fälle, 0 private Fragen — unauffällig.
+- Keine neuen Umgebungsvariablen, keine neuen Dienste (`Kosten: keine neuen Dienste` laut Spec eingehalten).
+- Kein Dev-Server, kein Playwright, auch beim Deploy nicht — Produktions-Check ausschließlich per `curl` und Supabase-Lesezugriff.
