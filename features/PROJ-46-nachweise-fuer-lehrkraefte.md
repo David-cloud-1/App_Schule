@@ -1,8 +1,8 @@
 # PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27 (Backend + Frontend)
+**Last Updated:** 2026-10-27 (QA)
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -255,7 +255,130 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 - Edge Case „Zielbereich wird während des Bearbeitens deaktiviert“ und die volle Rollen-Matrix über die fertige Oberfläche sind noch nicht end-to-end durchgeklickt (kein Dev-Server/Playwright laut Projektregel) → Aufgabe für `/qa`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-10-27 · **Tester:** QA Engineer (AI) · **Methode:** Code-Review gegen jedes Kriterium, Vitest, Build, plus eine eigene, zusätzliche RLS-Prüfung direkt an der Live-Datenbank (rückgerollte Transaktionen, nichts bleibt bestehen) für zwei Pfade, die die Backend-Phase noch nicht geprüft hatte.
+**Nicht möglich:** Browser-, Cross-Browser- und Responsive-Test sowie Playwright E2E. Laut Projektabsprache laufen hier kein Dev-Server und kein Playwright (Absturzgefahr) — das steht auch so in den Technical Requirements dieser Spec. Alles, was nur im Browser sichtbar wäre (Layout, Klickpfade, Radix-Select-Verhalten bei einem nicht mehr passenden Wert), ist aus dem Code abgeleitet und **noch im Browser abzunehmen**. Keine neuen E2E-Specs, aus demselben Grund. Die drei bestehenden E2E-Specs mit `/admin`-Bezug (PROJ-9/10/11) prüfen nur unauthentifizierten Zugriff auf andere Admin-Routen — unverändertes Verhalten, nicht betroffen.
+
+### Automatisierte Tests
+- Vitest gesamt: **114 Dateien, 1.345 Tests grün** (113/1.340 nach Backend+Frontend + 5 neue für `question-picker.tsx`, die während der QA ergänzt wurden, weil diese Komponente trotz geänderter Logik noch keinen eigenen Test hatte).
+- `npm run build`: fehlerfrei, alle neuen Routen (`/api/admin/assessments/departments`, `/category-options`, `/questions/[id]`, `/[id]/department`) und Seiten im Build-Output vorhanden.
+- Zusätzliche Live-DB-Prüfung (rückgerollt): Beförderung einer Lehrkraft zum Bereichs-Admin lässt ihre alten, privaten Nachweise weiterhin nicht geteilt (`nach_befoerderung_immer_noch_nicht_geteilt=f`); ein Kollege im selben Bereich sieht sie weiterhin nicht (`B_sieht_befoerderten_alten_nicht=0`); ein deaktivierter Zielbereich lässt bestehende Nachweise für Bereichs-Admins weiterhin sichtbar (`B_sieht_bestand_trotz_inaktiv=5`). Alle drei Werte wie erwartet. Nach dem Rollback: Datenbank unverändert (5 Nachweise, 0 private Fragen, 0 Lehrkräfte — wie vorher).
+
+### Acceptance Criteria Status
+
+#### Anlegen
+- [x] Lehrkräfte sehen „Leistungsnachweise“ und „Neuer Leistungsnachweis“ (Seitenleiste, Startseiten-Kachel, Schnellsuche) — `admin-nav.ts`/-Tests.
+- [x] Zielbereich als erster Schritt, Vorbelegung wie gefordert (ein Bereich automatisch, sonst eigener Arbeitsbereich bzw. leer für Lehrkraft) — Code-Review `create-assessment-modal.tsx`.
+- [x] Bestehender PROJ-27-Ablauf danach unverändert, jetzt bezogen auf den gewählten Zielbereich.
+- [x] Fragenauswahl zeigt Bereichs-Pool + eigene private Fragen (`fetchSelectableQuestions` mit `ownerId`).
+- [x] Lehrkräfte können Pool-Fragen nur auswählen: Der Picker zeigt Bearbeiten/Löschen ausschließlich bei `isPrivate` (neuer Test in `question-picker.test.tsx`), zusätzlich durch RLS abgesichert (Pool-Änderungen verlangen `can_admin_department`, das eine Lehrkraft nie erfüllt).
+- [x] Datei- und Kopier-Prompt-Import verfügbar; Fragen für einen fremden Bereich werden immer privat angelegt (`import/route.ts`, getestet).
+- [x] Private Fragen bearbeiten/löschen, blockiert bei Nutzung durch einen offenen Nachweis (409, getestet) — Wiederverwendung in späteren eigenen Nachweisen bestätigt (Code-Review: `fetchSelectableQuestions` ist Bereich+Besitzer-, nicht Nachweis-gebunden).
+- [x] Keine Freigabe-Aktion für Lehrkräfte: Picker hat keinen solchen Knopf; Datenbank-Constraint verhindert „privat + freigegeben“ zusätzlich hart. Für den Super-Admin aber eine Lücke gefunden → **BUG-1**.
+- [x] Zielbereich steht in Liste (Spalte, immer) und Detailseite (Pill im Kopf).
+
+#### Durchführen & Auswerten
+- [x] PROJ-21/28/30/39-Funktionen für eigene Nachweise verfügbar — alle Routen auf `requireTeacherOrAdmin`/`assertCanViewAssessment` umgestellt, je mit Routen-Tests.
+- [x] Beitritt per Code/Link unverändert (Join-Route nicht angefasst, nutzt weiterhin den Service-Client und denselben Bereichs-Vergleich) — Regression bestätigt durch Code-Review, Datei unverändert in diesem Feature.
+- [x] Für Azubis kein Unterschied erkennbar: Durchführung/Snapshot/Benotung laufen über denselben Service-Client-Pfad unabhängig von der Rolle der erstellenden Person.
+
+#### Sichtbarkeit (E2–E4)
+- [x] Lehrkraft sieht nur eigene Nachweise — RLS-Matrix (39 Punkte, Backend-Phase) + Routen-Tests.
+- [x] Bereichs-Admin sieht geteilte des eigenen Bereichs + eigene fremde, keine Lehrkraft-Nachweise — RLS-Matrix + Live-Nachtest (Beförderung).
+- [x] Super-Admin sieht alle, mit Filter/Spalte „Erstellt von“ (inkl. „Gelöschtes Konto“, Markierung ehemaliger Lehrkräfte) — `assessment-filter.ts`-Tests + Listen-Route-Tests.
+- [x] Fremder Zugriff liefert 404, nicht 403 — durchgängig verifiziert (category/reports/results/export/participants/focus/department/questions[id]).
+- [x] Teilnehmer/Noten/Fokus nur für Berechtigte, RLS + Server-Code — `assertCanViewAssessment` vor jedem Service-Client-Zugriff, getestet.
+- [x] Keine neue Profil-Zugriffsmöglichkeit für Lehrkräfte — Migration fasst `profiles`-Policies nicht an; Teilnehmernamen kommen aus `exam_sessions.participant_name`, nicht aus `profiles`.
+
+#### Rolle entzogen (E5)
+- [x] Nachweise/Noten/Fragen bleiben, private Fragen danach nur Super-Admin sichtbar — RLS-Matrix (`T_ohne_rolle_sieht=0`, `T_ohne_rolle_frage=0`).
+- [x] Ein offener Nachweis läuft weiter (Join-Route prüft nur Zeitfenster/Status, nicht die Rolle der erstellenden Person) — Code-Review, keine Kopplung gefunden.
+- [x] Super-Admin kann solche Nachweise weiter verwalten — `isSuperAdmin`-Bypass überall bestätigt.
+
+#### Bestehende Nachweise
+- [x] Regression: alle 5 Bestandsnachweise bleiben für Bereichs-Admins sichtbar — live direkt nach der Migration verifiziert (`not_shared: 0`) und durch den Live-Nachtest in dieser QA-Runde erneut bestätigt (`B_sieht_bestand_trotz_inaktiv=5`).
+
+### Edge Cases Status
+- [x] **Zielbereich im Entwurf ändern:** Pool-Fragen raus, private bleiben, Teil/Fach-Ablage neu berechnet — Routen-Tests. Eine Folge davon beim Wiederverwenden privater Fragen über einen Bereichswechsel hinweg → **BUG-3**.
+- [x] **Zielbereich wird deaktiviert:** Neue Nachweise blockiert (Anlegen + Zielbereich-ändern prüfen `is_active`), bestehende bleiben sichtbar — Code-Review + Live-Nachtest. UI-Detail bei einem bereits inaktiven Bestandsbereich → **BUG-2**.
+- [x] **Frage nach dem Öffnen geändert/deaktiviert:** unverändertes PROJ-21-Verhalten, von diesem Feature nicht berührt.
+- [x] **Bereichs-Admin → Lehrkraft:** RLS-Matrix bestätigt.
+- [x] **Lehrkraft → Bereichs-Admin:** bisher ungetestete Richtung, in dieser QA-Runde live nachgeprüft (s. o.) — bestanden.
+- [x] **Gute Nachweis-Frage für alle zugänglich machen:** außerhalb des Funktionsumfangs (PROJ-48), private Frage bleibt unberührt — nichts im Code widerspricht dem.
+- [x] **Zwei Lehrkräfte, dieselbe Klasse:** jede sieht nur eigene Nachweise, kein Teilen — wie spezifiziert, trivial erfüllt.
+- [x] **Azubi mit falschem/fehlendem Bereich:** unveränderte Join-Route, Code nicht berührt.
+- [x] **Konto der Lehrkraft gelöscht:** `ON DELETE SET NULL` auf `owner_id`/`created_by`, „Gelöschtes Konto“ in der Liste, RLS lässt dann nur noch den Super-Admin herein (`owner_leer_bleibt_privat=t` in der Backend-Matrix).
+- [x] **Super-Admin legt selbst an:** Zielbereich-Vorschlag kommt aus dem Bereichs-Umschalter (`suggestedDepartmentId`) — Code-Review.
+
+### Security Audit Results
+- [x] **Autorisierung (Nachweise):** Jede Route liest erst mit den Rechten der anfragenden Person; RLS verweigert fremde Zeilen, der Service-Client kommt erst danach zum Zug. Durchgängig 404 statt 403 bestätigt.
+- [x] **Keine erweiterte API-Öffnung:** Die Middleware lässt Lehrkräfte ausschließlich unter `/api/admin/assessments/**` herein (`teacherMayCallApiPath`), geprüft in `proxy.test.ts` inkl. „andere `/api/admin/*`-Routen bleiben 403“.
+- [x] **Private Fragen:** RLS schließt sie für alle außer Besitzerin/Super-Admin, auch beim direkten Lesen von `questions`/`answer_options` — schließt die in der Tech-Design-Phase gefundene Vorab-Lücke. Ein `CHECK`-Constraint verhindert „privat + freigegeben“ selbst für den Super-Admin auf Datenbankebene.
+- [x] **Eingabevalidierung:** Alle neuen/geänderten Routen mit Zod-Schemas (`departmentId: z.string().uuid()` etc.), keine Rohwerte vom Client in SQL (Supabase-Client ist parametrisiert).
+- [x] **Keine Dateninjektion über Fragetext/Titel:** React escaped automatisch, kein `dangerouslySetInnerHTML` in den geänderten/neuen Komponenten.
+- [x] **CSV-Export (bestehend, PROJ-21):** unverändert, Formel-Injection-Schutz bleibt.
+- [x] **Rate-Limiting:** keine neuen, unauthentifizierten Endpunkte — alle neuen Routen verlangen eine Sitzung.
+- [ ] **Kleine, nicht sicherheitsrelevante Lücke:** Die Fragen-Routen (Auswahl/Import/Vorschau/Prompt) prüfen nicht, ob der übergebene Zielbereich aktiv ist (nur Anlegen und Zielbereich-ändern tun das) → siehe BUG-4. Kein Datenleck (aktive Fragen sind ohnehin allgemein lesbar), nur eine mögliche verwaiste private Frage in einem deaktivierten Bereich.
+
+### Regressionstest
+- Bestehende Admin-Routen außerhalb von `/api/admin/assessments/**` unverändert: `requireAdmin()` nicht angerührt, Middleware blockt Lehrkräfte dort weiterhin mit 403 (`proxy.test.ts`).
+- Fragenverwaltung/-Export für Bereichs-Admins: vollständig unverändertes Ergebnis für Pool-Fragen (private werden zusätzlich ausgefiltert) — bestehende Tests weiterhin grün, neue Tests ergänzt.
+- Azubi-Beitritt, Durchführung, Benotung, Druck (PROJ-21/28/30): Dateien in diesem Feature nicht verändert, verifiziert per Code-Diff (`git log --name-only`) — kein Berührungspunkt außer den absichtlich geänderten Zugangs-Checks der Admin-Routen.
+- Vollständiger Vitest-Lauf nach jeder Änderung grün gehalten, keine einzige Regression in den 1.345 Tests.
+
+### Bugs Found
+
+#### BUG-1: Super-Admin sieht private Fragen in der Fragenverwaltung ohne Kennzeichnung; „Für Übung freigeben“ schlägt mit unklarer Meldung fehl
+- **Severity:** Medium
+- **Betroffene Dateien:** `src/app/admin/questions/page.tsx`, `src/components/admin/question-form-modal.tsx`
+- **Steps to Reproduce:**
+  1. Eine Lehrkraft importiert eine private Nachweis-Frage (für einen fremden oder, als Bereichs-Admin, den eigenen Bereich mit `assessmentOnly`).
+  2. Super-Admin öffnet `/admin/questions` im betroffenen Bereich.
+  3. Erwartet (Tech Design D): Die private Frage ist zu sehen, mit dem Vermerk „privat“.
+  4. Tatsächlich: Die Frage erscheint wie jede andere „Nur für Nachweise“-Frage, ohne jeden Hinweis, dass sie einer Lehrkraft gehört und nie regulär freigegeben werden kann.
+  5. Klickt der Super-Admin trotzdem „Für Übung freigeben“ (sichtbar, weil die Schaltfläche nur an `assessment_only` hängt, nicht an `is_private`), schlägt das serverseitig an einem Datenbank-Constraint fehl; die Oberfläche zeigt nur „Freigabe fehlgeschlagen.“ statt eines erklärenden Hinweises.
+- **Warum nicht kritischer:** Kein Datenverlust, keine Sicherheitslücke (der Datenbank-Constraint verhindert die Freigabe zuverlässig), betrifft ausschließlich das einzige Super-Admin-Konto, jederzeit wiederholbar ohne Folgeschäden.
+- **Priority:** Fix before deployment empfohlen (Tech Design verlangt den Vermerk explizit), ist aber kein Blocker für die eigentlichen Akzeptanzkriterien (die sich auf Lehrkräfte beziehen, welche diese Seite nicht erreichen).
+
+#### BUG-2: „Zielbereich ändern“-Auswahl zeigt möglicherweise einen leeren Wert, wenn der aktuelle Zielbereich inzwischen deaktiviert wurde
+- **Severity:** Low (im Code vorhergesagt, nicht im Browser bestätigt)
+- **Betroffene Datei:** `src/components/admin/change-assessment-department-dialog.tsx`
+- **Steps to Reproduce:**
+  1. Nachweis-Entwurf für Bereich X anlegen.
+  2. Bereich X deaktivieren.
+  3. „Zielbereich ändern“ öffnen.
+  4. Erwartet: Das aktuell gewählte Feld zeigt zumindest den Namen von X (auch wenn er nicht mehr zur Auswahl steht) oder einen erklärenden Hinweis.
+  5. Vermutlich tatsächlich: Radix `SelectValue` zeigt nichts an, weil kein `SelectItem` mit dem aktuellen Wert existiert (die Liste enthält nur aktive Bereiche).
+- **Auswirkung:** Rein optisch. Ohne eine Auswahl zu treffen und zu speichern ändert sich nichts (`target === currentDepartmentId`-Kurzschluss greift weiterhin über den internen State, nicht über die Anzeige).
+- **Priority:** Nice to have.
+
+#### BUG-3: Eine mitgenommene private Frage wird nach einem Zielbereich-Wechsel in der Fragenauswahl unsichtbar (bleibt aber ausgewählt)
+- **Severity:** Medium
+- **Betroffene Dateien:** `src/app/api/admin/assessments/[id]/department/route.ts`, `src/lib/assessment-questions.ts`
+- **Steps to Reproduce:**
+  1. Lehrkraft legt einen Entwurf für Bereich Tourismus an, importiert eine private Frage (Fach-Zuordnung liegt dadurch bei einem Tourismus-Fach).
+  2. „Zielbereich ändern“ auf Spedition.
+  3. Die Frage bleibt laut Spec ausgewählt („eigene importierte Fragen bleiben“) — bestätigt, `draft_question_ids` behält die ID.
+  4. „Fragen bearbeiten“ öffnen.
+  5. Erwartet: Die private Frage erscheint im Picker, ggf. mit Hinweis, dass sie aus dem alten Bereich stammt.
+  6. Tatsächlich: Die Frage erscheint **nicht** in der Liste (`fetchSelectableQuestions` filtert private Fragen weiterhin über ihre ursprüngliche, jetzt bereichsfremde Fach-Zuordnung), bleibt aber im „Gewählte Fragen“-Zähler mitgezählt und lässt sich über die Oberfläche nicht mehr gezielt abwählen.
+- **Zusätzliche Folge:** Wird der Entwurf später geöffnet, prüft die Open-Route nur „aktiv + Multiple-Choice“, nicht die Fach-Zuordnung — die Frage landet im Snapshot, obwohl ihr Fach fachlich nicht zum neuen Zielbereich passt.
+- **Warum nicht höher:** Kein Sicherheitsproblem (die Frage bleibt privat und nur für die Besitzerin sichtbar), kein Datenverlust, betrifft nur die Kombination „private Frage importiert UND danach Zielbereich gewechselt“ — vermutlich ein seltener Pfad. Workaround: Frage vor dem Wechsel bewusst abwählen und bei Bedarf im neuen Bereich neu importieren.
+- **Priority:** Fix before deployment empfohlen, da er exakt den in der Spec beschriebenen Edge Case betrifft und zu einem inkonsistenten, für die Lehrkraft nicht nachvollziehbaren Zustand führt.
+
+#### BUG-4: Fragen-Routen prüfen den Zielbereich nicht auf „aktiv“
+- **Severity:** Low
+- **Betroffene Dateien:** `src/app/api/admin/assessments/questions/route.ts`, `.../import/route.ts`, `.../preview/route.ts`, `.../prompt/route.ts`
+- **Beschreibung:** Nur `POST /api/admin/assessments` und `PATCH .../[id]/department` prüfen, dass der Zielbereich aktiv ist. Die Fragen-Routen nehmen jede existierende `departmentId` ohne Aktiv-Prüfung an. Über die Oberfläche nicht erreichbar (die Zielbereich-Auswahl zeigt nur aktive Bereiche), nur über einen direkten API-Aufruf. Folge wäre höchstens eine private Frage, die einem deaktivierten Bereich zugeordnet ist und nie in einem echten Nachweis landen kann (die Anlegen-Route blockt das weiterhin) — kein Sicherheits- oder Datenproblem, nur unnötige verwaiste Datensätze.
+- **Priority:** Nice to have.
+
+### Summary
+- **Acceptance Criteria:** 23/23 Kriterien-Gruppen bestanden (Prüfmethode: Code-Review + Tests; Browser-Abnahme steht noch aus)
+- **Edge Cases:** 10/10 behandelt, 2 davon mit einem gefundenen Bug (BUG-2, BUG-3)
+- **Bugs Found:** 4 total (0 critical, 0 high, 2 medium, 2 low)
+- **Security:** Kein Critical/High-Fund. Eine Low-Lücke (BUG-4) ohne Sicherheitsrelevanz dokumentiert.
+- **Production Ready:** **Bedingt JA** — keine Critical/High-Bugs, aber BUG-1 und BUG-3 sollten vor dem Live-Gang behoben werden, weil sie genau die Punkte betreffen, die das Tech Design explizit verspricht (Vermerk „privat“ bzw. der Zielbereich-Wechsel-Edge-Case). BUG-2/BUG-4 können auch danach erledigt werden.
+- **Recommendation:** BUG-1 und BUG-3 fixen, dann erneut `/qa` für eine kurze Nachprüfung dieser beiden Punkte plus die noch ausstehende Browser-Abnahme (Layout, Klickpfade) durch den Nutzer selbst, da hier kein Dev-Server läuft.
 
 ## Deployment
 _To be added by /deploy_
