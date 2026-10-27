@@ -78,7 +78,12 @@ const ACTION_TYPES = [
   { value: 'subject.deactivate', label: 'Fach deaktiviert' },
   { value: 'user.ban', label: 'Nutzer gesperrt' },
   { value: 'user.unban', label: 'Nutzer entsperrt' },
+  { value: 'user.role_change', label: 'Rolle geändert' },
+  { value: 'user.move_department', label: 'Bereich gewechselt' },
+  { value: 'user.password_set', label: 'Passwort neu vergeben' },
 ]
+
+const ACTION_LABEL = new Map(ACTION_TYPES.map((t) => [t.value, t.label]))
 
 type BatchPreview = { batchId: string; affectedCount: number; conflicts: { contentType: string; contentId: string }[] }
 
@@ -251,9 +256,10 @@ export default function AdminAuditLogPage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="border-ws-line text-ws-green font-mono text-xs"
+                        className="border-ws-line text-ws-green text-xs"
+                        title={e.action_type}
                       >
-                        {e.action_type}
+                        {ACTION_LABEL.get(e.action_type) ?? e.action_type}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-ws-muted text-sm">{e.object_type}</TableCell>

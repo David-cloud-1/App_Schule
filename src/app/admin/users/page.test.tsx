@@ -106,6 +106,14 @@ describe('Nutzerliste – Sortieren & Inaktiv-Filter (PROJ-57)', () => {
     expect(screen.getByRole('button', { name: /^Letzter Login/ }).closest('th')).toHaveAttribute('aria-sort', 'descending')
   })
 
+  it('ausgeblendete Bereich-Sortierung: erster Klick auf XP dreht sichtbar um (QA BUG-57-1)', async () => {
+    window.history.replaceState(null, '', '/admin/users?sort=department&dir=asc')
+    await setup('admin')
+    expect(screen.getByRole('button', { name: /^XP/ }).closest('th')).toHaveAttribute('aria-sort', 'descending')
+    fireEvent.click(screen.getByRole('button', { name: /^XP/ }))
+    expect(screen.getByRole('button', { name: /^XP/ }).closest('th')).toHaveAttribute('aria-sort', 'ascending')
+  })
+
   it('zeigt bei leerem Filter-Ergebnis „Filter zurücksetzen“', async () => {
     await setup('admin')
     fireEvent.change(screen.getByLabelText('Name oder E-Mail suchen'), { target: { value: 'gibtsnicht' } })

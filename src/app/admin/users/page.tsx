@@ -134,9 +134,10 @@ export default function AdminUsersPage() {
   }, [])
 
   function handleSort(key: SortKey) {
+    // Mit der angezeigten Sortierung vergleichen, nicht mit der gespeicherten (QA BUG-57-1)
     updateView(
-      view.sort === key
-        ? { dir: view.dir === 'asc' ? 'desc' : 'asc' }
+      effectiveSort.key === key
+        ? { sort: key, dir: effectiveSort.dir === 'asc' ? 'desc' : 'asc' }
         : { sort: key, dir: defaultDir(key) }
     )
   }

@@ -77,7 +77,7 @@ export default function PasswortFestlegenPage() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-[#F9FAFB] text-center">Lege dein eigenes Passwort fest</h1>
         <p className="mt-2 mb-8 text-base leading-relaxed text-[#9CA3AF] text-center">
-          Du hast ein Passwort von deiner Lehrkraft bekommen. Wähle jetzt eins, das nur du kennst.
+          Du hast ein vorläufiges Passwort bekommen. Wähle jetzt eins, das nur du kennst.
         </p>
 
         {error && (
