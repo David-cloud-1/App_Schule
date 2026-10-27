@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, ExternalLink, GraduationCap, UserCog } from 'lucide-react'
+import { ChevronRight, ExternalLink, GraduationCap, Info, UserCog } from 'lucide-react'
 import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
 import { adminHomeActionsFor } from '@/lib/admin-nav'
+import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM } from '@/lib/roles'
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminLoadingState } from '@/components/admin/admin-states'
@@ -77,7 +78,7 @@ function useRunningAssessments(): { data: RunningAssessment[] | null | 'error'; 
  * Startseite des Lehrkräfte-Bereichs: was gerade läuft (offene Nachweise mit
  * Live-Stand), dann Schnellaktionen — keine zweite Kopie der Navigation.
  */
-export function AdminHome() {
+export function AdminHome({ blocked = false }: { blocked?: boolean }) {
   const { role, displayName, showTeacherWelcome } = useAdminRole()
   const hasSubjects = useHasSubjects()
   const isApple = useIsApplePlatform()
@@ -85,12 +86,34 @@ export function AdminHome() {
   const mySubjects = useMySubjectTiles(role === 'teacher' && hasSubjects)
   const running = useRunningAssessments()
 
+  // PROJ-49: Hinweis nach der Umleitung einmal zeigen, dann die Markierung aus der Adresse nehmen
+  useEffect(() => {
+    if (!blocked) return
+    const url = new URL(window.location.href)
+    if (url.searchParams.has(BLOCKED_PARAM)) {
+      url.searchParams.delete(BLOCKED_PARAM)
+      window.history.replaceState(null, '', url.pathname + url.search)
+    }
+  }, [blocked])
+
   return (
     <div className="space-y-8">
       <AdminPageHeader
         title={displayName ? `Hallo, ${displayName}` : 'Hallo'}
         description={`Was möchtest du heute tun? Mit ${isApple ? '⌘K' : 'Strg+K'} findest du jede Seite.`}
       />
+
+      {blocked && (
+        <p
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-ws-blue/30 bg-ws-blue/15 p-4 text-sm text-ws-blue"
+        >
+          <Info className="mt-0.5 size-5 shrink-0" aria-hidden />
+          <span>
+            <span className="font-semibold">Diese Seite ist nur für Admins.</span> {BLOCKED_PAGE_MESSAGE}
+          </span>
+        </p>
+      )}
 
       {!hasSubjects && (
         <Link href="/admin/my-subjects" className={`${cardLink} border-ws-green/40`}>

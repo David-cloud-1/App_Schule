@@ -64,7 +64,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
   it('leitet eine Lehrkraft von reiner Verwaltungsseiten (Nutzer/Bereiche) zur Übersicht um', async () => {
     state.role = 'teacher'
     for (const path of ['/admin/users', '/admin/departments']) {
-      expect(locationOf(await call(path))).toBe('/admin')
+      expect(locationOf(await call(path))).toBe('/admin?gesperrt=1')
     }
   })
 

@@ -224,7 +224,7 @@ describe('AdminShell – Lehrkraft ohne eingetragenes Fach', () => {
     setup({ role: 'teacher', hasSubjectAssignments: false })
     expect(screen.queryByText('Seiteninhalt')).not.toBeInTheDocument()
     expect(screen.getByText('Trag zuerst deine Fächer ein')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Zu Meine Fächer' })).toHaveAttribute('href', '/admin/my-subjects')
+    expect(screen.getByRole('link', { name: 'Meine Fächer öffnen' })).toHaveAttribute('href', '/admin/my-subjects')
   })
 
   it('lässt Seiten ohne Fach-Bezug und Lehrkräfte mit Fach durch', () => {

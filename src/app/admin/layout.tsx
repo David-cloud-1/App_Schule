@@ -42,12 +42,14 @@ export default async function AdminLayout({
 
   // Ohne eingetragenes Fach blendet die Navigation die (dann leeren) Inhalts-Seiten aus
   let hasSubjectAssignments = true
+  let subjectCount: number | undefined
   if (role === 'teacher') {
     const { count } = await supabase
       .from('teacher_subject_assignments')
       .select('teacher_id', { count: 'exact', head: true })
       .eq('teacher_id', user.id)
     hasSubjectAssignments = (count ?? 0) > 0
+    subjectCount = count ?? 0
   }
 
   // Darstellung und Seitenleiste kommen aus Cookies, damit die Seite gleich richtig erscheint (PROJ-45)
@@ -56,7 +58,7 @@ export default async function AdminLayout({
   const sidebarOpen = parseSidebarOpen(cookieStore.get(SIDEBAR_STATE_COOKIE)?.value)
 
   return (
-    <AdminRoleProvider value={{ role, isSuperAdmin, displayName, email: user.email ?? '', showTeacherWelcome, hasSubjectAssignments }}>
+    <AdminRoleProvider value={{ role, isSuperAdmin, displayName, email: user.email ?? '', showTeacherWelcome, hasSubjectAssignments, subjectCount }}>
       <AdminShell initialTheme={initialTheme} sidebarOpen={sidebarOpen}>
         {children}
       </AdminShell>

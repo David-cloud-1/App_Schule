@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronsUpDown, Gamepad2, Loader2, LogOut, Monitor, Moon, Sun, User } from 'lucide-react'
+import { ChevronsUpDown, Gamepad2, Loader2, LogOut, Monitor, Moon, Sun, User, UserCog } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { teacherRoleLabel } from '@/lib/admin-nav'
+import { ROLE_DESCRIPTION } from '@/lib/roles'
 import { parseWorkspaceTheme, WORKSPACE_THEME_LABEL, WORKSPACE_THEMES } from '@/lib/workspace-theme'
 
 const THEME_ICON = { dark: Moon, light: Sun, system: Monitor } as const
@@ -29,7 +30,7 @@ const THEME_ICON = { dark: Moon, light: Sun, system: Monitor } as const
  * `sidebar` sitzt unten in der Seitenleiste, `avatar` in der Handy-Kopfzeile.
  */
 export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' }) {
-  const { role, displayName = '', email = '' } = useAdminRole()
+  const { role, displayName = '', email = '', subjectCount } = useAdminRole()
   const { name: departmentName } = useDepartment()
   const { theme, setTheme } = useWorkspace()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -98,7 +99,20 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
             </span>
           )}
           <span className="block text-xs font-semibold text-ws-green">{roleLabel}</span>
+          <span className="block text-xs text-ws-muted">{ROLE_DESCRIPTION[role]}</span>
         </DropdownMenuLabel>
+        {role === 'teacher' && subjectCount !== undefined && (
+          <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
+            <Link href="/admin/my-subjects">
+              <UserCog className="text-ws-muted" />
+              {subjectCount === 0
+                ? 'Noch kein Fach eingetragen'
+                : subjectCount === 1
+                  ? '1 Fach eingetragen'
+                  : `${subjectCount} Fächer eingetragen`}
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator className="bg-ws-line" />
         <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
           <Link href="/profile">

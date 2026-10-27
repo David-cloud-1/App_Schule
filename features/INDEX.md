@@ -62,7 +62,8 @@
 | PROJ-46 | Leistungsnachweise für Lehrkräfte ohne Fachbereich | Deployed | [PROJ-46-nachweise-fuer-lehrkraefte.md](PROJ-46-nachweise-fuer-lehrkraefte.md) | 2026-10-26 |
 | PROJ-47 | Änderungsverlauf & Wiederherstellen für Inhalte | Deployed | [PROJ-47-aenderungsverlauf-wiederherstellen.md](PROJ-47-aenderungsverlauf-wiederherstellen.md) | 2026-10-26 |
 | PROJ-48 | Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Deployed | [PROJ-48-fach-zustaendigkeiten.md](PROJ-48-fach-zustaendigkeiten.md) | 2026-10-26 |
+| PROJ-49 | Lehrkraft und Bereichs-Admin sichtbar trennen | Approved | [PROJ-49-rollen-sichtbar-trennen.md](PROJ-49-rollen-sichtbar-trennen.md) | 2026-10-27 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-49
+## Next Available ID: PROJ-50

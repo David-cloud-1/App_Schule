@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
+  contentScopeShort,
+  contentScopeText,
   isManagerRole,
   isTeacherRole,
   isUserRole,
   mayOpenAdminPath,
+  ROLE_DESCRIPTION,
   ROLE_LABEL,
   safeRedirectTarget,
   START_PATH,
@@ -101,5 +104,29 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
   it('lässt normale Pfade mit Suchparametern und Anker unverändert durch', () => {
     expect(safeRedirectTarget('/pruefung/ABCD?code=7K2M-QX#start')).toBe('/pruefung/ABCD?code=7K2M-QX#start')
     expect(safeRedirectTarget('/admin/leistungsnachweise/abc/druck/klasse')).toBe('/admin/leistungsnachweise/abc/druck/klasse')
+  })
+})
+
+describe('Rollen-Texte (PROJ-49)', () => {
+  it('hat für jede Lehrer-Rolle einen Erklärsatz von höchstens 15 Wörtern', () => {
+    for (const role of ['teacher', 'department_admin', 'admin'] as const) {
+      const words = ROLE_DESCRIPTION[role].split(/\s+/).length
+      expect(words).toBeGreaterThan(0)
+      expect(words).toBeLessThanOrEqual(15)
+    }
+  })
+
+  it('nennt den Umfang je Rolle', () => {
+    expect(contentScopeText('teacher', 'Spedition')).toBe('Du siehst nur Inhalte deiner Fächer.')
+    expect(contentScopeText('department_admin', 'Spedition')).toBe('Du siehst den ganzen Bereich Spedition.')
+    expect(contentScopeText('department_admin')).toBe('Du siehst den ganzen Bereich.')
+    expect(contentScopeText('admin', 'Tourismus')).toBe('Du siehst den Bereich Tourismus.')
+    expect(contentScopeText('admin')).toBe('Du siehst alle Bereiche.')
+  })
+
+  it('hat eine Kurzform für die Navigation', () => {
+    expect(contentScopeShort('teacher')).toBe('deine Fächer')
+    expect(contentScopeShort('department_admin')).toBe('ganzer Bereich')
+    expect(contentScopeShort('admin')).toBe('alle Bereiche')
   })
 })

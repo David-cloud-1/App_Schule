@@ -113,13 +113,13 @@ function SubjectsGate({ children }: { children: React.ReactNode }) {
     <AdminEmptyState
       icon={UserCog}
       title="Trag zuerst deine Fächer ein"
-      description="Fragen, Themen und Prüfungssimulationen siehst du, sobald du unter „Meine Fächer“ angekreuzt hast, was du unterrichtest."
+      description="Trag unter „Meine Fächer“ ein, was du unterrichtest. Danach siehst du hier die Inhalte deiner Fächer."
       action={
         <Button
           asChild
           className="min-h-11 rounded-2xl bg-ws-green font-bold text-ws-on-accent hover:bg-ws-green-hover"
         >
-          <Link href="/admin/my-subjects">Zu Meine Fächer</Link>
+          <Link href="/admin/my-subjects">Meine Fächer öffnen</Link>
         </Button>
       }
     />

@@ -16,7 +16,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import type { TeacherRole } from '@/lib/roles'
+import { contentScopeShort, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -68,7 +68,7 @@ export const WERKZEUGKISTE_URL = 'https://divadl-werkzeugkiste.hf.space'
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     id: 'unterricht',
-    label: 'Unterricht',
+    label: 'Mein Unterricht',
     items: [
       {
         href: '/admin/leistungsnachweise',
@@ -85,6 +85,16 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: Wrench,
         external: true,
         teacherVisible: true,
+      },
+      {
+        href: '/admin/my-subjects',
+        label: 'Meine Fächer',
+        description: 'Eintragen, in welchen Fächern du unterrichtest',
+        icon: UserCog,
+        // PROJ-48: nur für Lehrkräfte — Bereichs-Admin/Super-Admin brauchen
+        // keine Zuständigkeiten (ihre Rechte gelten bereichsweit).
+        teacherVisible: true,
+        managerVisible: false,
       },
     ],
   },
@@ -131,6 +141,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         teacherVisible: true,
         needsSubjects: true,
       },
+      {
+        href: '/admin/papierkorb',
+        label: 'Papierkorb',
+        description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
+        icon: Trash2,
+        teacherVisible: true,
+        needsSubjects: true,
+      },
     ],
   },
   {
@@ -142,16 +160,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Nutzer',
         description: 'Azubis und Rollen verwalten',
         icon: Users,
-      },
-      {
-        href: '/admin/my-subjects',
-        label: 'Meine Fächer',
-        description: 'Eintragen, in welchen Fächern du unterrichtest',
-        icon: UserCog,
-        // PROJ-48: nur für Lehrkräfte — Bereichs-Admin/Super-Admin brauchen
-        // keine Zuständigkeiten (ihre Rechte gelten bereichsweit).
-        teacherVisible: true,
-        managerVisible: false,
       },
       {
         href: '/admin/department-settings',
@@ -171,14 +179,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Änderungsprotokoll',
         description: 'Wer hat wann was geändert',
         icon: ScrollText,
-      },
-      {
-        href: '/admin/papierkorb',
-        label: 'Papierkorb',
-        description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
-        icon: Trash2,
-        teacherVisible: true,
-        needsSubjects: true,
       },
       {
         href: '/admin/teacher-assignments',
@@ -250,8 +250,16 @@ export function adminNavMatch(pathname: string): { group: AdminNavGroup; item: A
 
 /** Rolle in Klartext fürs Konto-Menü: „Lehrkraft“, „Bereichs-Admin Spedition“, „Super-Admin“ */
 export function teacherRoleLabel(role: TeacherRole, departmentName: string): string {
-  if (role === 'department_admin') return departmentName ? `Bereichs-Admin ${departmentName}` : 'Bereichs-Admin'
-  return role === 'admin' ? 'Super-Admin' : 'Lehrkraft'
+  if (role === 'department_admin' && departmentName) return `${ROLE_LABEL[role]} ${departmentName}`
+  return ROLE_LABEL[role]
+}
+
+/**
+ * Zusatz hinter dem Gruppentitel (PROJ-49): Die Gruppe „Inhalte“ nennt, was die
+ * Rolle dort sieht — „deine Fächer“, „ganzer Bereich“ oder „alle Bereiche“.
+ */
+export function adminNavGroupHint(group: AdminNavGroup, role: TeacherRole): string | null {
+  return group.id === 'inhalte' ? contentScopeShort(role) : null
 }
 
 /**

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/sidebar'
 import {
   ADMIN_HOME_HREF,
+  adminNavGroupHint,
   adminNavGroupsFor,
   adminNavLabel,
   isAdminNavActive,
@@ -59,10 +60,14 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
       {groups.map((group) => (
         <SidebarGroup key={group.id}>
           <SidebarGroupLabel
-            id={`${idPrefix}-${group.id}`}
             className="text-xs font-semibold uppercase tracking-wider text-ws-faint"
           >
-            {group.label}
+            <span id={`${idPrefix}-${group.id}`}>{group.label}</span>
+            {adminNavGroupHint(group, role) && (
+              <span aria-hidden className="ml-1 font-normal normal-case tracking-normal">
+                · {adminNavGroupHint(group, role)}
+              </span>
+            )}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu aria-labelledby={`${idPrefix}-${group.id}`}>

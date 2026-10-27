@@ -25,6 +25,30 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   admin: 'Super-Admin',
 }
 
+/** Ein Satz, was die Rolle darf (Konto-Menü, PROJ-49) */
+export const ROLE_DESCRIPTION: Record<TeacherRole, string> = {
+  teacher: 'Du pflegst Inhalte deiner Fächer und führst Leistungsnachweise durch.',
+  department_admin: 'Du verwaltest Inhalte, Nutzer und Einstellungen deines Fachbereichs.',
+  admin: 'Du verwaltest alle Fachbereiche, Nutzer und Rollen.',
+}
+
+/**
+ * Umfang der Inhalts-Seiten in einem Satz (PROJ-49): was die Rolle dort sieht.
+ * Reine Anzeige — was sie darf, entscheidet weiterhin der Server.
+ */
+export function contentScopeText(role: TeacherRole, departmentName = ''): string {
+  if (role === 'teacher') return 'Du siehst nur Inhalte deiner Fächer.'
+  if (role === 'department_admin') {
+    return departmentName ? `Du siehst den ganzen Bereich ${departmentName}.` : 'Du siehst den ganzen Bereich.'
+  }
+  return departmentName ? `Du siehst den Bereich ${departmentName}.` : 'Du siehst alle Bereiche.'
+}
+
+/** Kurzform für die Gruppe „Inhalte“ in der Navigation */
+export function contentScopeShort(role: TeacherRole): string {
+  return role === 'teacher' ? 'deine Fächer' : role === 'department_admin' ? 'ganzer Bereich' : 'alle Bereiche'
+}
+
 export function isUserRole(role: unknown): role is UserRole {
   return typeof role === 'string' && (USER_ROLES as readonly string[]).includes(role)
 }
@@ -43,6 +67,11 @@ export const TEACHER_HOME_PATH = '/admin'
 export const NO_ACCESS_PARAM = 'kein-zugang'
 
 export const NO_ACCESS_MESSAGE = 'Du hast keinen Zugang zum Lehrkräfte-Bereich.'
+/** Hinweis-Parameter: Eine Lehrkraft wurde von einer Verwaltungsseite zur Übersicht umgeleitet (PROJ-49) */
+export const BLOCKED_PARAM = 'gesperrt'
+
+export const BLOCKED_PAGE_MESSAGE = 'Das verwaltet dein Bereichs-Admin.'
+
 export const NO_RIGHTS_MESSAGE = 'Dafür fehlen dir die Rechte. Das kann nur ein Administrator.'
 export const PLAYER_HOME_PATH = '/'
 

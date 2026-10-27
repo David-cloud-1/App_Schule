@@ -5,6 +5,7 @@ import {
   ADMIN_NAV_GROUPS,
   adminCommandActionsFor,
   adminHomeActionsFor,
+  adminNavGroupHint,
   adminNavMatch,
   teacherRoleLabel,
   adminNavGroupsFor,
@@ -14,8 +15,8 @@ import {
 } from './admin-nav'
 
 describe('Admin-Navigation (PROJ-40)', () => {
-  it('gruppiert in Unterricht, Inhalte und Verwaltung', () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Verwaltung'])
+  it('gruppiert in Mein Unterricht, Inhalte und Verwaltung', () => {
+    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte', 'Verwaltung'])
   })
 
   it('hat für jeden Eintrag eine eindeutige Adresse unter /admin', () => {
@@ -52,19 +53,28 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(labels('department_admin')).not.toContain('Meine Fächer')
   })
 
-  it('zeigt einer Lehrkraft ohne Verwaltungsrechte Leistungsnachweise, Inhalte und die Werkzeugkiste (PROJ-44/46/48)', () => {
+  it('zeigt einer Lehrkraft nur „Mein Unterricht“ und „Inhalte“, keine Verwaltung (PROJ-44/46/48/49)', () => {
     const groups = adminNavGroupsFor('teacher')
-    expect(groups.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Verwaltung'])
-    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual([
-      'Leistungsnachweise',
-      'Werkzeugkiste',
-      'Fragen',
-      'Fächer',
-      'Themen',
-      'Prüfungssimulation',
-      'Meine Fächer',
-      'Papierkorb',
+    expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte'])
+    expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
+      ['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer'],
+      ['Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
     ])
+  })
+
+  it('hängt „Meine Fächer“ und Papierkorb nicht mehr an die Verwaltung', () => {
+    const verwaltung = ADMIN_NAV_GROUPS.find((g) => g.id === 'verwaltung')!.items.map((i) => i.label)
+    expect(verwaltung).not.toContain('Meine Fächer')
+    expect(verwaltung).not.toContain('Papierkorb')
+  })
+
+  it('nennt hinter der Gruppe „Inhalte“ den Umfang der Rolle (PROJ-49)', () => {
+    const inhalte = ADMIN_NAV_GROUPS.find((g) => g.id === 'inhalte')!
+    const verwaltung = ADMIN_NAV_GROUPS.find((g) => g.id === 'verwaltung')!
+    expect(adminNavGroupHint(inhalte, 'teacher')).toBe('deine Fächer')
+    expect(adminNavGroupHint(inhalte, 'department_admin')).toBe('ganzer Bereich')
+    expect(adminNavGroupHint(inhalte, 'admin')).toBe('alle Bereiche')
+    expect(adminNavGroupHint(verwaltung, 'admin')).toBeNull()
   })
 
   it('zeigt einer Lehrkraft ohne eingetragenes Fach keine (leeren) Inhalts-Seiten', () => {

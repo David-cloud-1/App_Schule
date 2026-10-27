@@ -40,7 +40,7 @@ function stubAssessments(assessments: unknown[]) {
 describe('AdminNav (PROJ-40)', () => {
   it('zeigt die drei Gruppen mit ihren Einträgen', () => {
     wrap(<AdminNav />, false)
-    for (const name of ['Unterricht', 'Inhalte', 'Verwaltung']) {
+    for (const name of ['Mein Unterricht', 'Inhalte', 'Verwaltung']) {
       expect(screen.getByRole('list', { name })).toBeInTheDocument()
     }
     // Gruppentitel sind keine Überschriften (sonst stünden sie vor der h1 jeder Seite)
@@ -72,6 +72,21 @@ describe('AdminNav (PROJ-40)', () => {
     wrap(<AdminNav onNavigate={onNavigate} />, false)
     fireEvent.click(screen.getByRole('link', { name: 'Fragen' }))
     expect(onNavigate).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('AdminNav je Rolle (PROJ-49)', () => {
+  it('zeigt einer Lehrkraft keine Gruppe „Verwaltung“ und nennt „deine Fächer“ hinter „Inhalte“', () => {
+    wrap(<AdminNav />, false, { role: 'teacher' })
+    expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Mein Unterricht' })).toBeInTheDocument()
+    expect(screen.getByText('· deine Fächer')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Meine Fächer' })).toBeInTheDocument()
+  })
+
+  it('nennt dem Bereichs-Admin „ganzer Bereich“', () => {
+    wrap(<AdminNav />, false)
+    expect(screen.getByText('· ganzer Bereich')).toBeInTheDocument()
   })
 })
 
@@ -127,15 +142,15 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Übersicht',
       'Leistungsnachweise',
       'Werkzeugkiste',
+      'Meine Fächer',
       'Fragen',
       'Fächer',
       'Themen',
       'Prüfungssimulation',
-      'Meine Fächer',
       'Papierkorb',
     ])
     expect(screen.getByRole('list', { name: 'Inhalte' })).toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'Verwaltung' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Nutzer' })).not.toBeInTheDocument()
   })
 

@@ -19,6 +19,8 @@ export interface AdminRoleContextValue {
   showTeacherWelcome?: boolean
   /** Lehrkraft hat unter „Meine Fächer“ mindestens ein Fach eingetragen (PROJ-48). Für andere Rollen ohne Bedeutung. */
   hasSubjectAssignments?: boolean
+  /** Anzahl eingetragener Fächer einer Lehrkraft, fürs Konto-Menü (PROJ-49) */
+  subjectCount?: number
 }
 
 const AdminRoleContext = createContext<AdminRoleContextValue | null>(null)
@@ -37,6 +39,11 @@ export function useAdminRole(): AdminRoleContextValue {
   const ctx = useContext(AdminRoleContext)
   if (!ctx) throw new Error('useAdminRole() außerhalb von <AdminRoleProvider>')
   return ctx
+}
+
+/** Wie `useAdminRole`, aber ohne Fehler außerhalb des Providers (Seitenkopf in Tests und Einzelseiten) */
+export function useOptionalAdminRole(): AdminRoleContextValue | null {
+  return useContext(AdminRoleContext)
 }
 
 /** Darf die Person Inhalts-Seiten sinnvoll nutzen? Admins immer, Lehrkräfte erst mit eingetragenem Fach. */

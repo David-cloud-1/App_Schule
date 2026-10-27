@@ -4,6 +4,7 @@ import {
   isManagerRole,
   isTeacherRole,
   mayOpenAdminPath,
+  BLOCKED_PARAM,
   NO_ACCESS_MESSAGE,
   NO_ACCESS_PARAM,
   NO_RIGHTS_MESSAGE,
@@ -111,7 +112,7 @@ export async function proxy(request: NextRequest) {
       } else if (!mayOpenAdminPath(role, pathname)) {
         const url = request.nextUrl.clone()
         url.pathname = TEACHER_HOME_PATH
-        url.search = ''
+        url.search = `?${BLOCKED_PARAM}=1`
         return NextResponse.redirect(url)
       }
     }
