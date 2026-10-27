@@ -203,6 +203,24 @@ Auf Wunsch entfällt die Teil-Auswahl im Anlegen-Dialog. Stattdessen Filter in d
 Keine Critical/High-Bugs. **Bedingt bereit:** erst BUG-1 beheben und einmal von Hand durchklicken (Anlegen, Set-Start, Import, Entwurf bearbeiten, Öffnen) – das konnte ich ohne Browser nicht ersetzen.
 
 
+## Erweiterung: Fragen ansehen, bearbeiten und neu anlegen im Auswahl-Dialog (PROJ-49, 2026-10-27)
+Auf Wunsch zeigt die Fragenauswahl im Entwurf jetzt pro Frage einen Knopf „Ansehen" bzw. „Bearbeiten" (öffnet Fragetext, alle Antwortoptionen, Schwierigkeit, Klassenstufe, Erklärung) und einen Knopf „Neue Frage erstellen".
+
+- **Bearbeiten wirkt global:** Eine geänderte Pool-Frage ändert sich auch im Quiz, in der Blitzrunde und in anderen Nachweisen — bewusste Entscheidung des Projektinhabers (keine Kopie pro Nachweis).
+- **Rechte:** Private eigene Fragen sind immer bearbeitbar (wie bisher, PROJ-46). Pool-Fragen des Zielbereichs sind nur für Bereichs-Admins des eigenen Bereichs bzw. den Super-Admin bearbeitbar (`canEditPool`, serverseitig über dieselbe Regel wie beim Datei-Import ermittelt); alle anderen sehen die Frage nur (Felder gesperrt).
+- **Neue Frage erstellen:** nutzt dieselbe Anlage-Schnittstelle wie der Datei-Import (`POST .../questions/import`) mit genau einer Frage — landet automatisch im Bereichs-Pool (eigener Bereich, Admin-Rechte) oder als private Nachweis-Frage (Lehrkraft/fremder Bereich), exakt wie beim Import.
+- Löschen bleibt wie bisher auf private Fragen begrenzt (Löschen einer Pool-Frage aus diesem Dialog ist bewusst nicht Teil dieser Erweiterung).
+
+**Geänderte/neue Dateien:**
+- `src/app/api/admin/assessments/questions/route.ts` — Antwort um `canEditPool` ergänzt.
+- `src/app/api/admin/questions/[id]/route.ts` — neuer `GET` (Text + Optionen + Lösung einer Pool-Frage, gleiche Antwortform wie die private Route).
+- `src/components/admin/edit-question-dialog.tsx` (neu, ersetzt `edit-private-question-dialog.tsx`) — ein Dialog für private und Pool-Fragen, mit `editable`-Flag.
+- `src/components/admin/create-question-dialog.tsx` (neu) — Formular für eine einzelne neue Frage.
+- `src/components/admin/question-picker.tsx` — `onEditPrivate`/`onDeletePrivate` zu `onOpenQuestion` (+ `canEditPool`-Prop) verallgemeinert; Tests angepasst.
+- `src/components/admin/assessment-question-selector.tsx` — verdrahtet die neuen Dialoge.
+
+**Tests:** `npm test` (1364 Tests) und `tsc --noEmit` grün. Neue/angepasste Tests in `question-picker.test.tsx`, `assessments/questions/route.test.ts`, `admin/questions/[id]/route.test.ts`. **Nicht geprüft:** Browser-Test (laut Projektregel kein Dev-Server/Playwright).
+
 ## Deployment
 - **Datum:** 2026-10-08, Produktion (spedilern.vercel.app), Commit `966b065` + `5804116`, Vercel-Deployment READY.
 - **Datenbank:** Migration `20261008_proj27_assessment_own_questions.sql` vorab auf „Spedilern App" angewendet (abwärtskompatibel, alter Code lief damit weiter).

@@ -41,9 +41,16 @@ interface Props {
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
   minSelection?: number
-  /** PROJ-46: eigene private Frage bearbeiten/löschen */
-  onEditPrivate?: (question: PickerQuestion) => void
+  /**
+   * PROJ-49: Frage ansehen bzw. bearbeiten — private Fragen immer, Pool-Fragen
+   * nur wenn `canEditPool` gesetzt ist. `editable` sagt dem Aufrufer, ob der
+   * Dialog im Bearbeiten- oder nur-ansehen-Modus geöffnet werden soll.
+   */
+  onOpenQuestion?: (question: PickerQuestion, editable: boolean) => void
+  /** PROJ-46: eigene private Frage löschen */
   onDeletePrivate?: (question: PickerQuestion) => void
+  /** Darf die anfragende Person Pool-Fragen dieses Zielbereichs bearbeiten? (Bereichs-/Super-Admin) */
+  canEditPool?: boolean
 }
 
 /**
@@ -52,7 +59,7 @@ interface Props {
  * Klassenstufen-Filter kommt aus den geladenen Fragen selbst (nicht aus dem
  * Bereich der anfragenden Person) — richtig auch für einen fremden Zielbereich.
  */
-export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onEditPrivate, onDeletePrivate }: Props) {
+export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onOpenQuestion, onDeletePrivate, canEditPool = false }: Props) {
   const classLevelOptions = useMemo(() => {
     const levels = [...new Set(questions.map((q) => q.class_level).filter((l): l is number => l != null))]
     return levels.sort((a, b) => a - b).map((l) => ({ value: String(l), label: `Klasse ${l}` }))
@@ -181,59 +188,62 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
             {questions.length === 0 ? 'Keine passenden Fragen vorhanden.' : 'Keine Frage passt zu den Filtern.'}
           </p>
         ) : (
-          visible.map((q) => (
-            <div key={q.id} className="group flex items-start gap-3 py-2">
-              <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
-                <Checkbox
-                  checked={selectedIds.has(q.id)}
-                  onCheckedChange={(checked) => toggleOne(q.id, checked === true)}
-                  className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs leading-snug text-ws-text">
-                    {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
-                  </p>
-                  <span className="text-xs text-ws-blue">
-                    {q.difficulty}
-                    {q.class_level != null && ` · Kl. ${q.class_level}`}
-                    {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}
-                    {q.topic && ` · ${q.topic}`}
-                  </span>
-                  {q.isPrivate && (
-                    <Badge className="ml-2 border-0 bg-ws-gold/15 text-ws-gold text-[10px]">Meine Frage</Badge>
-                  )}
-                </div>
-              </label>
-              {q.isPrivate && (onEditPrivate || onDeletePrivate) && (
-                <div className="flex shrink-0 gap-1">
-                  {onEditPrivate && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onEditPrivate(q)}
-                      aria-label={`„${q.question_text.slice(0, 40)}“ bearbeiten`}
-                      className="h-9 px-2 text-ws-muted hover:text-ws-text"
-                    >
-                      Bearbeiten
-                    </Button>
-                  )}
-                  {onDeletePrivate && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDeletePrivate(q)}
-                      aria-label={`„${q.question_text.slice(0, 40)}“ löschen`}
-                      className="size-9 text-ws-muted hover:text-ws-red"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))
+          visible.map((q) => {
+            const editable = q.isPrivate || canEditPool
+            return (
+              <div key={q.id} className="group flex items-start gap-3 py-2">
+                <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={selectedIds.has(q.id)}
+                    onCheckedChange={(checked) => toggleOne(q.id, checked === true)}
+                    className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs leading-snug text-ws-text">
+                      {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
+                    </p>
+                    <span className="text-xs text-ws-blue">
+                      {q.difficulty}
+                      {q.class_level != null && ` · Kl. ${q.class_level}`}
+                      {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}
+                      {q.topic && ` · ${q.topic}`}
+                    </span>
+                    {q.isPrivate && (
+                      <Badge className="ml-2 border-0 bg-ws-gold/15 text-ws-gold text-[10px]">Meine Frage</Badge>
+                    )}
+                  </div>
+                </label>
+                {(onOpenQuestion || (q.isPrivate && onDeletePrivate)) && (
+                  <div className="flex shrink-0 gap-1">
+                    {onOpenQuestion && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onOpenQuestion(q, editable)}
+                        aria-label={`„${q.question_text.slice(0, 40)}“ ${editable ? 'bearbeiten' : 'ansehen'}`}
+                        className="h-9 px-2 text-ws-muted hover:text-ws-text"
+                      >
+                        {editable ? 'Bearbeiten' : 'Ansehen'}
+                      </Button>
+                    )}
+                    {q.isPrivate && onDeletePrivate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onDeletePrivate(q)}
+                        aria-label={`„${q.question_text.slice(0, 40)}“ löschen`}
+                        className="size-9 text-ws-muted hover:text-ws-red"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })
         )}
       </div>
     </div>

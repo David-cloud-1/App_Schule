@@ -39,7 +39,25 @@ describe('GET /api/admin/assessments/questions', () => {
     const res = await GET(get())
     expect(res.status).toBe(200)
     expect(fetchSelectableQuestions).toHaveBeenCalledWith(admin.supabase, DEPT, 'u')
-    expect((await res.json()).questions).toEqual([])
+    const body = await res.json()
+    expect(body.questions).toEqual([])
+    expect(body.canEditPool).toBe(true)
+  })
+
+  it('canEditPool is false for a teacher without department-admin rights (PROJ-49)', async () => {
+    const teacher = { error: null, user: { id: 'u' }, supabase: {}, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null }
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(teacher as never)
+    vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
+    const res = await GET(get())
+    expect((await res.json()).canEditPool).toBe(false)
+  })
+
+  it('canEditPool is false for a department admin of a foreign target department', async () => {
+    const other = { error: null, user: { id: 'u' }, supabase: {}, role: 'department_admin', isSuperAdmin: false, isDepartmentAdmin: true, suggestedDepartmentId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(other as never)
+    vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
+    const res = await GET(get())
+    expect((await res.json()).canEditPool).toBe(false)
   })
 
   it('returns 500 when loading fails', async () => {

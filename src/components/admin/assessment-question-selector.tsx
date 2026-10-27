@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { FileUp } from 'lucide-react'
+import { FileUp, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -17,7 +17,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { QuestionPicker, type PickerQuestion } from './question-picker'
 import { AssessmentImportDialog } from './assessment-import-dialog'
-import { EditPrivateQuestionDialog } from './edit-private-question-dialog'
+import { EditQuestionDialog, type EditableQuestion } from './edit-question-dialog'
+import { CreateQuestionDialog } from './create-question-dialog'
 
 interface Props {
   /** Zielbereich des Nachweises — die Fragenauswahl zeigt dessen Pool + eigene private Fragen (PROJ-46) */
@@ -34,10 +35,12 @@ interface Props {
  */
 export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange, onLoaded }: Props) {
   const [questions, setQuestions] = useState<PickerQuestion[]>([])
+  const [canEditPool, setCanEditPool] = useState(false)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editing, setEditing] = useState<(EditableQuestion & { editable: boolean }) | null>(null)
   const [deleting, setDeleting] = useState<PickerQuestion | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
 
@@ -59,6 +62,7 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
       if (requestId !== requestRef.current) return
       const list: PickerQuestion[] = data.questions ?? []
       setQuestions(list)
+      setCanEditPool(!!data.canEditPool)
       onLoaded?.(list)
     } catch {
       if (requestId === requestRef.current) setFailed(true)
@@ -84,6 +88,10 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
     const next = new Set(selectedIds)
     imported.forEach((q) => next.add(q.id))
     onChange(next)
+  }
+
+  function handleCreated(created: PickerQuestion) {
+    handleImported([created])
   }
 
   async function confirmDelete() {
@@ -136,26 +144,50 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
         questions={questions}
         selectedIds={selectedIds}
         onChange={onChange}
-        onEditPrivate={(q) => setEditingId(q.id)}
+        onOpenQuestion={(q, editable) => setEditing({ id: q.id, isPrivate: !!q.isPrivate, editable })}
         onDeletePrivate={setDeleting}
+        canEditPool={canEditPool}
       />
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setImportOpen(true)}
-        className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-      >
-        <FileUp size={14} className="mr-1.5" />
-        Fragen aus Aufgabenblatt erzeugen
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setCreateOpen(true)}
+          className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+        >
+          <Plus size={14} className="mr-1.5" />
+          Neue Frage erstellen
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setImportOpen(true)}
+          className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+        >
+          <FileUp size={14} className="mr-1.5" />
+          Fragen aus Aufgabenblatt erzeugen
+        </Button>
+      </div>
       <AssessmentImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
         departmentId={departmentId}
         onImported={handleImported}
       />
-      <EditPrivateQuestionDialog questionId={editingId} onOpenChange={(o) => !o && setEditingId(null)} onSaved={load} />
+      <CreateQuestionDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        departmentId={departmentId}
+        onCreated={handleCreated}
+      />
+      <EditQuestionDialog
+        question={editing}
+        editable={editing?.editable ?? false}
+        onOpenChange={(o) => !o && setEditing(null)}
+        onSaved={load}
+      />
       <AlertDialog open={deleting !== null} onOpenChange={(o) => !o && !deleteBusy && setDeleting(null)}>
         <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>

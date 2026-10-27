@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+import { attachAnswerKey } from '@/lib/answer-key'
 
 /** Fachbereich einer Frage über ihr (einziges) verknüpftes Fach (PROJ-24). */
 async function loadQuestionDepartment(
@@ -48,6 +49,44 @@ const UpdateSchema = z
   .refine((val) => Object.keys(val).length > 0, {
     message: 'No fields provided',
   })
+
+/**
+ * Volle Angaben einer Pool-Frage (Text, Optionen, Lösung) — für den
+ * „Frage bearbeiten"-Dialog im Nachweis-Entwurf (PROJ-49). Nur Admins, die
+ * den Fachbereich der Frage verwalten dürfen; gleiche Antwortform wie
+ * `/api/admin/assessments/questions/[id]` (private Fragen), damit beide
+ * Fälle denselben Dialog nutzen können.
+ */
+export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const auth = await requireAdmin()
+  if (auth.error) return auth.error
+  const { supabase } = auth
+
+  const { id } = await ctx.params
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const questionDept = await loadQuestionDepartment(supabase, id)
+  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  if (forbidden) return forbidden
+
+  const { data } = await supabase
+    .from('questions')
+    .select('id, question_text, difficulty, explanation, class_level, answer_options(id, option_text, display_order)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!data) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+
+  const [withKey] = await attachAnswerKey([data as { id: string; answer_options: { id: string; option_text: string; display_order: number }[] }])
+  const options = [...withKey.answer_options].sort((a, b) => a.display_order - b.display_order)
+
+  return NextResponse.json({
+    questionText: data.question_text,
+    difficulty: data.difficulty,
+    explanation: data.explanation,
+    classLevel: data.class_level,
+    answers: options.map((o) => ({ text: o.option_text, is_correct: o.is_correct })),
+  })
+}
 
 export async function PATCH(
   request: NextRequest,

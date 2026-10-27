@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PATCH, DELETE } from './route'
+import { GET, PATCH, DELETE } from './route'
 import { NextRequest } from 'next/server'
-import { chainMock, hasCall } from '@/test/supabase-chain-mock'
+import { chainMock, hasCall, selectArg } from '@/test/supabase-chain-mock'
+
+// Die Lösung wird serverseitig über den Service-Client zugemischt (PROJ-21).
+// Die Fixtures hier sind schon sortiert, also nur is_correct=false anhängen.
+vi.mock('@/lib/answer-key', () => ({
+  attachAnswerKey: vi.fn(async (qs: { id: string; answer_options?: { id: string; option_text: string; display_order: number }[] }[]) =>
+    qs.map((q) => ({ ...q, answer_options: (q.answer_options ?? []).map((o) => ({ ...o, is_correct: o.display_order === 1 })) })),
+  ),
+}))
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -60,7 +68,24 @@ function makeAdminSupabase(opts: {
     if (table === 'questions') {
       if (hasCall(calls, 'update')) return { error: updateError }
       if (hasCall(calls, 'delete')) return { error: deleteError }
-      if (hasCall(calls, 'maybeSingle')) return { data: { is_private: isPrivate } }
+      if (hasCall(calls, 'maybeSingle')) {
+        if (selectArg(calls).includes('question_text')) {
+          return {
+            data: {
+              id: QUESTION_ID,
+              question_text: 'Frage?',
+              difficulty: 'mittel',
+              explanation: null,
+              class_level: 11,
+              answer_options: [
+                { id: 'o1', option_text: 'A', display_order: 1 },
+                { id: 'o2', option_text: 'B', display_order: 2 },
+              ],
+            },
+          }
+        }
+        return { data: { is_private: isPrivate } }
+      }
       return {}
     }
     return {}
@@ -85,6 +110,44 @@ function makeNonAdminSupabase() {
     from: vi.fn().mockReturnValue(profileBuilder),
   }
 }
+
+describe('GET /api/admin/questions/[id] (PROJ-49)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 401 when not authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
+    const res = await GET(makeRequest('GET'), makeCtx())
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 403 when not admin', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeNonAdminSupabase() as never)
+    const res = await GET(makeRequest('GET'), makeCtx())
+    expect(res.status).toBe(403)
+  })
+
+  it('department_admin gets 404 for a question of a foreign department (PROJ-24)', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
+    )
+    const res = await GET(makeRequest('GET'), makeCtx())
+    expect(res.status).toBe(404)
+  })
+
+  it('returns question text, difficulty, class level and sorted answer options with the answer key merged in', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    const res = await GET(makeRequest('GET'), makeCtx())
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.questionText).toBe('Frage?')
+    expect(body.difficulty).toBe('mittel')
+    expect(body.classLevel).toBe(11)
+    expect(body.answers).toEqual([
+      { text: 'A', is_correct: true },
+      { text: 'B', is_correct: false },
+    ])
+  })
+})
 
 describe('PATCH /api/admin/questions/[id]', () => {
   beforeEach(() => vi.clearAllMocks())

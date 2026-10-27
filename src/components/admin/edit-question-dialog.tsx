@@ -21,20 +21,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 type Difficulty = 'leicht' | 'mittel' | 'schwer'
 const NO_CLASS = 'none'
 
+export type EditableQuestion = { id: string; isPrivate: boolean }
+
 interface Props {
   /** null = Dialog geschlossen */
-  questionId: string | null
+  question: EditableQuestion | null
+  /** false = nur ansehen (z. B. Pool-Frage ohne Bereichs-Admin-Rechte) */
+  editable: boolean
   onOpenChange: (open: boolean) => void
   /** Nach erfolgreichem Speichern (z. B. um die Auswahl-Liste neu zu laden) */
   onSaved: () => void
 }
 
 /**
- * PROJ-46 (E6): eine eigene private Nachweis-Frage bearbeiten. Lädt die
- * vollen Angaben (inkl. Optionen) erst beim Öffnen, weil die Auswahl-Liste
- * selbst nur die schlanken Picker-Felder kennt.
+ * Frage ansehen bzw. bearbeiten — eigene private Nachweis-Frage (immer
+ * editierbar) oder Bereichs-Pool-Frage (nur mit Bereichs-Admin-Rechten,
+ * PROJ-49). Pool-Fragen behalten immer genau 5 Optionen (wie in der
+ * Fragenverwaltung), private Fragen erlauben 2–5.
  */
-export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }: Props) {
+export function EditQuestionDialog({ question, editable, onOpenChange, onSaved }: Props) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [questionText, setQuestionText] = useState('')
@@ -44,12 +49,15 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
   const [options, setOptions] = useState<{ text: string; is_correct: boolean }[]>([])
   const [error, setError] = useState<string | null>(null)
 
+  const apiBase = question?.isPrivate ? '/api/admin/assessments/questions' : '/api/admin/questions'
+  const allowOptionCountChange = question?.isPrivate === true
+
   useEffect(() => {
-    if (!questionId) return
+    if (!question) return
     let cancelled = false
     setLoading(true)
     setError(null)
-    fetch(`/api/admin/assessments/questions/${questionId}`)
+    fetch(`${apiBase}/${question.id}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
         if (cancelled) return
@@ -68,7 +76,9 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
     return () => {
       cancelled = true
     }
-  }, [questionId])
+    // apiBase hängt nur von question ab
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question])
 
   function updateOption(i: number, text: string) {
     setOptions((prev) => prev.map((o, j) => (j === i ? { ...o, text } : o)))
@@ -86,12 +96,14 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
   function validate(): string | null {
     if (!questionText.trim()) return 'Fragetext fehlt.'
     if (options.length < 2) return 'Mindestens 2 Antwortoptionen.'
+    if (!allowOptionCountChange && options.length !== 5) return 'Pool-Fragen benötigen genau 5 Antwortoptionen.'
     if (options.some((o) => !o.text.trim())) return 'Keine Antwortoption darf leer sein.'
     if (options.filter((o) => o.is_correct).length !== 1) return 'Genau eine Antwort muss richtig sein.'
     return null
   }
 
   async function handleSave() {
+    if (!question) return
     const validationError = validate()
     if (validationError) {
       setError(validationError)
@@ -100,7 +112,7 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
     setSaving(true)
     setError(null)
     try {
-      const res = await fetch(`/api/admin/assessments/questions/${questionId}`, {
+      const res = await fetch(`${apiBase}/${question.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,14 +138,19 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
     }
   }
 
+  const title = editable ? (question?.isPrivate ? 'Eigene Frage bearbeiten' : 'Pool-Frage bearbeiten') : 'Frage ansehen'
+  const description = editable
+    ? question?.isPrivate
+      ? 'Diese Frage ist nur für dich sichtbar und bleibt es auch nach dem Speichern.'
+      : 'Diese Änderung wirkt sich auf die Frage im Bereichs-Pool aus — auch im Quiz, in der Blitzrunde und in anderen Nachweisen.'
+    : 'Nur Bereichs-Admins dieses Fachbereichs können Pool-Fragen bearbeiten.'
+
   return (
-    <Dialog open={questionId !== null} onOpenChange={(o) => !saving && onOpenChange(o)}>
+    <Dialog open={question !== null} onOpenChange={(o) => !saving && onOpenChange(o)}>
       <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto border-ws-line bg-ws-surface text-ws-text">
         <DialogHeader>
-          <DialogTitle>Eigene Frage bearbeiten</DialogTitle>
-          <DialogDescription className="text-ws-muted">
-            Diese Frage ist nur für dich sichtbar und bleibt es auch nach dem Speichern.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="text-ws-muted">{description}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -141,32 +158,37 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="epq-text">Fragetext</Label>
+              <Label htmlFor="eq-text">Fragetext</Label>
               <Textarea
-                id="epq-text"
+                id="eq-text"
                 value={questionText}
                 onChange={(e) => setQuestionText(e.target.value)}
                 rows={3}
                 maxLength={1000}
+                disabled={!editable}
                 className="rounded-xl border-ws-line bg-ws-bg text-ws-text"
               />
             </div>
 
             <div className="space-y-2">
               <Label>Antwortoptionen <span className="font-normal text-ws-faint">— die markierte ist richtig</span></Label>
-              <RadioGroup value={String(options.findIndex((o) => o.is_correct))} onValueChange={(v) => setCorrect(Number(v))}>
+              <RadioGroup
+                value={String(options.findIndex((o) => o.is_correct))}
+                onValueChange={(v) => editable && setCorrect(Number(v))}
+              >
                 <div className="space-y-2">
                   {options.map((o, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <RadioGroupItem value={String(i)} id={`epq-opt-${i}`} aria-label={`Option ${i + 1} ist richtig`} />
+                      <RadioGroupItem value={String(i)} id={`eq-opt-${i}`} aria-label={`Option ${i + 1} ist richtig`} disabled={!editable} />
                       <Input
                         value={o.text}
                         onChange={(e) => updateOption(i, e.target.value)}
                         maxLength={500}
                         placeholder={`Option ${i + 1}`}
+                        disabled={!editable}
                         className="h-11 flex-1 rounded-xl border-ws-line bg-ws-bg text-ws-text"
                       />
-                      {options.length > 2 && (
+                      {editable && allowOptionCountChange && options.length > 2 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -182,7 +204,7 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
                   ))}
                 </div>
               </RadioGroup>
-              {options.length < 5 && (
+              {editable && allowOptionCountChange && options.length < 5 && (
                 <Button type="button" variant="outline" size="sm" onClick={addOption} className="min-h-11 rounded-xl border-ws-line text-ws-muted">
                   <Plus size={14} className="mr-1.5" />
                   Option hinzufügen
@@ -192,9 +214,9 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="epq-difficulty">Schwierigkeit</Label>
-                <Select value={difficulty} onValueChange={(v) => setDifficulty(v as Difficulty)}>
-                  <SelectTrigger id="epq-difficulty" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
+                <Label htmlFor="eq-difficulty">Schwierigkeit</Label>
+                <Select value={difficulty} onValueChange={(v) => editable && setDifficulty(v as Difficulty)} disabled={!editable}>
+                  <SelectTrigger id="eq-difficulty" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
@@ -205,9 +227,9 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="epq-class">Klassenstufe</Label>
-                <Select value={classLevel} onValueChange={setClassLevel}>
-                  <SelectTrigger id="epq-class" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
+                <Label htmlFor="eq-class">Klassenstufe</Label>
+                <Select value={classLevel} onValueChange={(v) => editable && setClassLevel(v)} disabled={!editable}>
+                  <SelectTrigger id="eq-class" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
@@ -221,13 +243,14 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="epq-explanation">Erklärung <span className="font-normal text-ws-faint">— optional</span></Label>
+              <Label htmlFor="eq-explanation">Erklärung <span className="font-normal text-ws-faint">— optional</span></Label>
               <Textarea
-                id="epq-explanation"
+                id="eq-explanation"
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 rows={2}
                 maxLength={2000}
+                disabled={!editable}
                 className="rounded-xl border-ws-line bg-ws-bg text-ws-text"
               />
             </div>
@@ -238,17 +261,19 @@ export function EditPrivateQuestionDialog({ questionId, onOpenChange, onSaved }:
 
         <DialogFooter className="gap-2">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-            Abbrechen
+            {editable ? 'Abbrechen' : 'Schließen'}
           </Button>
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={loading || saving}
-            className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
-          >
-            {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Speichern
-          </Button>
+          {editable && (
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
+            >
+              {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Speichern
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

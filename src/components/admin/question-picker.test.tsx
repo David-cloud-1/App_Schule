@@ -35,31 +35,55 @@ describe('QuestionPicker – PROJ-46', () => {
     expect(screen.getAllByText('Meine Frage')).toHaveLength(1)
   })
 
-  it('bietet Bearbeiten/Löschen nur für private Fragen und ruft die richtigen Callbacks mit der richtigen Frage auf', () => {
+  it('bietet ohne canEditPool nur bei privaten Fragen „Bearbeiten“, bei Pool-Fragen „Ansehen“ — Löschen nur privat', () => {
     const questions = [q({ id: 'pool' }), q({ id: 'priv', isPrivate: true, question_text: 'Eigene Frage' })]
-    const onEditPrivate = vi.fn()
+    const onOpenQuestion = vi.fn()
     const onDeletePrivate = vi.fn()
     render(
       <QuestionPicker
         questions={questions}
         selectedIds={new Set()}
         onChange={() => {}}
-        onEditPrivate={onEditPrivate}
+        onOpenQuestion={onOpenQuestion}
         onDeletePrivate={onDeletePrivate}
       />,
     )
     expect(screen.getAllByRole('button', { name: /bearbeiten/ })).toHaveLength(1)
-    fireEvent.click(screen.getByRole('button', { name: /bearbeiten/ }))
-    expect(onEditPrivate).toHaveBeenCalledWith(questions[1])
+    expect(screen.getAllByRole('button', { name: /ansehen/ })).toHaveLength(1)
 
+    fireEvent.click(screen.getByRole('button', { name: /bearbeiten/ }))
+    expect(onOpenQuestion).toHaveBeenCalledWith(questions[1], true)
+
+    fireEvent.click(screen.getByRole('button', { name: /ansehen/ }))
+    expect(onOpenQuestion).toHaveBeenCalledWith(questions[0], false)
+
+    expect(screen.getAllByRole('button', { name: /löschen/ })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: /löschen/ }))
     expect(onDeletePrivate).toHaveBeenCalledWith(questions[1])
   })
 
-  it('zeigt keine Bearbeiten/Löschen-Knöpfe, wenn keine Callbacks übergeben werden (Lehrkraft darf Pool-Fragen nur auswählen)', () => {
+  it('bietet mit canEditPool „Bearbeiten“ auch für Pool-Fragen an (Bereichs-/Super-Admin)', () => {
+    const questions = [q({ id: 'pool' }), q({ id: 'priv', isPrivate: true })]
+    const onOpenQuestion = vi.fn()
+    render(
+      <QuestionPicker
+        questions={questions}
+        selectedIds={new Set()}
+        onChange={() => {}}
+        onOpenQuestion={onOpenQuestion}
+        canEditPool
+      />,
+    )
+    expect(screen.getAllByRole('button', { name: /bearbeiten/ })).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: /bearbeiten/ })[0])
+    expect(onOpenQuestion).toHaveBeenCalledWith(questions[0], true)
+  })
+
+  it('zeigt keine Knöpfe, wenn keine Callbacks übergeben werden (Lehrkraft darf Pool-Fragen nur auswählen)', () => {
     const questions = [q({ id: 'pool' }), q({ id: 'priv', isPrivate: true })]
     render(<QuestionPicker questions={questions} selectedIds={new Set()} onChange={() => {}} />)
     expect(screen.queryByRole('button', { name: /bearbeiten/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ansehen/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /löschen/ })).not.toBeInTheDocument()
   })
 
