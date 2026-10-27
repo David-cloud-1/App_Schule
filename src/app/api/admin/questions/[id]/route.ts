@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
+import { checkVersionConflict } from '@/lib/content-history'
 
 /** Fachbereich einer Frage über ihr (einziges) verknüpftes Fach (PROJ-24). */
 async function loadQuestionDepartment(
@@ -45,6 +46,10 @@ const UpdateSchema = z
     assessment_only: z.boolean().optional(),
     class_level: z.union([z.literal(10), z.literal(11), z.literal(12), z.null()]).optional(),
     topic_id: z.string().uuid().nullable().optional(),
+    // Zählnummer beim Laden (PROJ-47) — erkennt, wenn jemand anderes
+    // zwischenzeitlich schon gespeichert hat, statt diese Änderung
+    // stillschweigend zu überschreiben.
+    expected_version: z.number().int().min(1).optional(),
   })
   .refine((val) => Object.keys(val).length > 0, {
     message: 'No fields provided',
@@ -119,6 +124,18 @@ export async function PATCH(
   }
 
   const payload = parsed.data
+
+  const conflict = await checkVersionConflict(supabase, 'question', id, payload.expected_version)
+  if (conflict) {
+    return NextResponse.json(
+      {
+        error: `Diese Frage wurde gerade von ${conflict.changedByName ?? 'jemand anderem'} geändert.`,
+        conflict: true,
+        currentVersion: conflict.currentVersion,
+      },
+      { status: 409 }
+    )
+  }
 
   // Validate correct-answer constraint if answers are provided
   if (payload.answers) {
@@ -233,35 +250,13 @@ export async function DELETE(
   const forbidden = assertCanAdminDepartment(auth, questionDept)
   if (forbidden) return forbidden
 
-  // If the question appears in quiz history, soft-delete to preserve learner records
-  const { count } = await supabase
-    .from('quiz_answers')
-    .select('*', { count: 'exact', head: true })
-    .eq('question_id', id)
-
-  if ((count ?? 0) > 0) {
-    const { error } = await supabase
-      .from('questions')
-      .update({ is_active: false })
-      .eq('id', id)
-    if (error) {
-      console.error('[DELETE question soft]', error)
-      return NextResponse.json({ error: 'Failed to deactivate question' }, { status: 500 })
-    }
-    await writeAuditLog(supabase, {
-      admin_id: user.id,
-      action_type: 'question.deactivate',
-      object_type: 'question',
-      object_id: id,
-    })
-    return NextResponse.json({ ok: true, softDeleted: true })
-  }
-
-  // No quiz history — hard delete
-  await supabase.from('answer_options').delete().eq('question_id', id)
-  await supabase.from('question_subjects').delete().eq('question_id', id)
-
-  const { error } = await supabase.from('questions').delete().eq('id', id)
+  // Papierkorb statt endgültigem Löschen (PROJ-47) — die Frage bleibt
+  // erhalten (und damit auch bestehende Lern-Statistiken/Snapshots
+  // unberührt) und lässt sich aus dem Papierkorb wiederherstellen.
+  const { error } = await supabase
+    .from('questions')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) {
     console.error('[DELETE question]', error)
     return NextResponse.json({ error: 'Failed to delete question' }, { status: 500 })

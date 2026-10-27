@@ -97,6 +97,14 @@ describe('GET /api/admin/subjects', () => {
     expect(res.status).toBe(403)
   })
 
+  it('excludes subjects in the trash (deleted_at, PROJ-47)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    await GET()
+    const subjectsQuery = lastMock.queries.find((q) => q.table === 'subjects')
+    expect(hasCall(subjectsQuery!.calls, 'is')).toBe(true)
+    expect(subjectsQuery!.calls.find((c) => c.method === 'is')?.args).toEqual(['deleted_at', null])
+  })
+
   it('returns subjects with active question counts', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ subjectsData: mockSubjects }) as never

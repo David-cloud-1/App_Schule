@@ -70,7 +70,11 @@ export async function DELETE(
   const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
   if (forbidden) return forbidden
 
-  const { error } = await supabase.from('exam_question_sets').delete().eq('id', id)
+  // Papierkorb statt endgültigem Löschen (PROJ-47).
+  const { error } = await supabase
+    .from('exam_question_sets')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) return NextResponse.json({ error: 'Failed to delete exam set' }, { status: 500 })
   return NextResponse.json({ success: true })
 }

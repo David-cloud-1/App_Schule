@@ -21,6 +21,8 @@ const EXAM_PARTS = [1, 2, 3].map((n) => ({
   open_question_share: '0', default_subject_id: null, exam_part_subjects: [],
 }))
 
+let lastExamSetCalls: { method: string; args: unknown[] }[] = []
+
 function makeSupabaseMock({
   user = { id: ADMIN_ID } as unknown,
   role = 'admin',
@@ -34,6 +36,7 @@ function makeSupabaseMock({
       if (table === 'exam_parts') return { data: EXAM_PARTS }
       if (table === 'exam_question_sets') {
         if (hasCall(calls, 'insert')) return { data: insertedSet, error: dbError }
+        lastExamSetCalls = calls
         return { data: sets, error: dbError }
       }
       return {}
@@ -66,6 +69,13 @@ describe('GET /api/admin/exam-sets', () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabaseMock({ user: null }) as never)
     const res = await GET()
     expect(res.status).toBe(401)
+  })
+
+  it('excludes sets in the trash (deleted_at, PROJ-47)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabaseMock() as never)
+    await GET()
+    expect(hasCall(lastExamSetCalls, 'is')).toBe(true)
+    expect(lastExamSetCalls.find((c) => c.method === 'is')?.args).toEqual(['deleted_at', null])
   })
 })
 

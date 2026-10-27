@@ -21,6 +21,7 @@ export async function GET() {
     .from('exam_question_sets')
     .select('*')
     .eq('department_id', departmentId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(500)
 

@@ -38,6 +38,7 @@ export async function GET() {
       `
     )
     .eq('department_id', departmentId)
+    .is('deleted_at', null)
     .order('code')
 
   if (error) {

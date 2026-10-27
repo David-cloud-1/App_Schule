@@ -9,6 +9,7 @@ import {
   Settings,
   Store,
   Tag,
+  Trash2,
   Users,
   Wrench,
   type LucideIcon,
@@ -145,6 +146,12 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Änderungsprotokoll',
         description: 'Wer hat wann was geändert',
         icon: ScrollText,
+      },
+      {
+        href: '/admin/papierkorb',
+        label: 'Papierkorb',
+        description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
+        icon: Trash2,
       },
       {
         href: '/admin/departments',

@@ -10,6 +10,7 @@ import {
   Download,
   Edit,
   FileUp,
+  History,
   Loader2,
   Plus,
   Search,
@@ -17,6 +18,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
+import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -81,6 +83,8 @@ type TopicWithSubject = {
 type QuestionWithTopic = AdminQuestion & {
   topics?: { id: string; name: string } | null
   created_at?: string
+  last_changed_by?: string | null
+  last_changed_at?: string | null
 }
 
 type QuestionsResponse = {
@@ -126,6 +130,7 @@ export default function AdminQuestionsPage() {
   const [editingQuestion, setEditingQuestion] = useState<QuestionWithTopic | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<QuestionWithTopic | null>(null)
+  const [historyTarget, setHistoryTarget] = useState<QuestionWithTopic | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -906,9 +911,22 @@ export default function AdminQuestionsPage() {
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {formatCreatedAt(q)}
+                            {q.last_changed_by && (
+                              <div className="text-ws-faint">
+                                Zuletzt: {q.last_changed_by}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setHistoryTarget(q)}
+                                title="Verlauf"
+                              >
+                                <History className="w-4 h-4" />
+                              </Button>
                               {q.assessment_only && !q.is_private && (
                                 <Button
                                   variant="outline"
@@ -1094,8 +1112,7 @@ export default function AdminQuestionsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Frage löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
-              Diese Aktion kann nicht rückgängig gemacht werden. Die Frage und alle ihre
-              Antworten werden unwiderruflich entfernt.
+              Die Frage wandert in den Papierkorb und lässt sich von dort wiederherstellen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1158,8 +1175,8 @@ export default function AdminQuestionsPage() {
               {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} löschen?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
-              Diese Aktion kann nicht rückgängig gemacht werden. Alle ausgewählten Fragen
-              werden unwiderruflich gelöscht.
+              Alle ausgewählten Fragen wandern in den Papierkorb und lassen sich von dort
+              wiederherstellen — einzeln oder als ganzer Vorgang.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1178,6 +1195,17 @@ export default function AdminQuestionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {historyTarget && (
+        <ContentHistorySheet
+          open={historyTarget !== null}
+          onOpenChange={(open) => !open && setHistoryTarget(null)}
+          contentType="question"
+          contentId={historyTarget.id}
+          title={historyTarget.question_text}
+          onRestored={fetchQuestions}
+        />
+      )}
     </div>
   )
 }

@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
       { count: 'exact' }
     )
     .eq('qs_filter.subjects.department_id', departmentId)
+    .is('deleted_at', null)
     .order(sort, { ascending: sort_dir === 'asc' })
 
   // PROJ-46 (E6): private Nachweis-Fragen gehören nicht in die
@@ -143,15 +144,40 @@ export async function GET(request: NextRequest) {
   // is_correct via the service client: the authenticated role (admins
   // included) no longer has SELECT on that column (PROJ-21).
   const withKey = await attachAnswerKey(data ?? [])
+
+  // "Zuletzt geändert von <Name> am <Datum>" (PROJ-47) — letzte Version je
+  // Frage auf dieser Seite in einer Abfrage statt N+1.
+  const questionIds = withKey.map((q) => q.id as string)
+  const lastChangeMap = new Map<string, { name: string | null; at: string }>()
+  if (questionIds.length > 0) {
+    const { data: versions } = await supabase
+      .from('content_versions')
+      .select('content_id, version_number, created_at, changed_by_label, profiles:changed_by ( display_name )')
+      .eq('content_type', 'question')
+      .in('content_id', questionIds)
+      .order('version_number', { ascending: false })
+    for (const v of versions ?? []) {
+      const row = v as typeof v & { profiles?: { display_name?: string | null } | null }
+      if (lastChangeMap.has(row.content_id as string)) continue
+      lastChangeMap.set(row.content_id as string, {
+        name: row.profiles?.display_name ?? row.changed_by_label ?? null,
+        at: row.created_at as string,
+      })
+    }
+  }
+
   const questions = withKey.map((q) => {
     // qs_filter diente nur dem Bereichsfilter (s. o.) und gehört nicht in die Antwort.
     const { qs_filter: _qsFilter, ...rest } = q as typeof q & { qs_filter?: unknown }
+    const lastChange = lastChangeMap.get(q.id as string) ?? null
     return {
       ...rest,
       answer_options: [...(rest.answer_options ?? [])].sort(
         (a: { display_order: number }, b: { display_order: number }) =>
           a.display_order - b.display_order
       ),
+      last_changed_by: lastChange?.name ?? null,
+      last_changed_at: lastChange?.at ?? null,
     }
   })
 

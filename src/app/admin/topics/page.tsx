@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Pencil, Plus, Search, Tag, Trash2, X, Check, AlertTriangle } from 'lucide-react'
+import { History, Loader2, Pencil, Plus, Search, Tag, Trash2, X, Check, AlertTriangle } from 'lucide-react'
+import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -44,6 +45,7 @@ export default function TopicsPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Topic | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [historyTarget, setHistoryTarget] = useState<Topic | null>(null)
 
   useEffect(() => {
     loadSubjects()
@@ -313,6 +315,15 @@ export default function TopicsPage() {
                           <Button
                             size="sm"
                             variant="ghost"
+                            onClick={() => setHistoryTarget(topic)}
+                            className="text-ws-muted hover:text-ws-text h-7 w-7 p-0"
+                            title="Verlauf"
+                          >
+                            <History className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             onClick={() => startEdit(topic)}
                             className="text-ws-muted hover:text-ws-text h-7 w-7 p-0"
                           >
@@ -351,8 +362,9 @@ export default function TopicsPage() {
               Thema löschen?
             </DialogTitle>
             <DialogDescription className="text-ws-muted">
-              Das Thema <span className="font-semibold text-ws-text">„{deleteTarget?.name}"</span> wird
-              unwiderruflich gelöscht. Fragen, die diesem Thema zugewiesen sind, verlieren ihre Zuordnung.
+              Das Thema <span className="font-semibold text-ws-text">„{deleteTarget?.name}"</span> wandert
+              in den Papierkorb und lässt sich von dort wiederherstellen. Fragen, die diesem Thema
+              zugewiesen sind, verlieren bis dahin ihre Zuordnung.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -372,6 +384,17 @@ export default function TopicsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {historyTarget && (
+        <ContentHistorySheet
+          open={historyTarget !== null}
+          onOpenChange={(open) => !open && setHistoryTarget(null)}
+          contentType="topic"
+          contentId={historyTarget.id}
+          title={historyTarget.name}
+          onRestored={loadTopics}
+        />
+      )}
     </div>
   )
 }

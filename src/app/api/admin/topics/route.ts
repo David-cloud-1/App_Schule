@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     .from('topics')
     .select('id, name, subject_id, created_at, subjects!inner(id, code, name, department_id)')
     .eq('subjects.department_id', departmentId)
+    .is('deleted_at', null)
     .order('name')
 
   if (parsed.data.subject_id) {

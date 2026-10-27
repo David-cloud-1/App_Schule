@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { groupIntoBatch } from '@/lib/content-history'
 
 const BulkIdsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(200),
@@ -25,34 +26,18 @@ export async function DELETE(request: NextRequest) {
 
   const { ids } = parsed.data
 
-  // Separate questions with quiz history (soft-delete) from those without (hard-delete)
-  const { data: usedRows } = await supabase
-    .from('quiz_answers')
-    .select('question_id')
-    .in('question_id', ids)
-
-  const usedIds = new Set((usedRows ?? []).map((r) => r.question_id as string))
-  const softIds = ids.filter((id) => usedIds.has(id))
-  const hardIds = ids.filter((id) => !usedIds.has(id))
-
-  if (softIds.length > 0) {
-    const { error } = await supabase
-      .from('questions')
-      .update({ is_active: false })
-      .in('id', softIds)
-    if (error) {
-      console.error('[DELETE /api/admin/questions/bulk] soft-delete', error)
-      return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
-    }
+  // Papierkorb statt endgültigem Löschen (PROJ-47) — für alle Fragen
+  // gleich, unabhängig von vorhandener Lern-Historie.
+  const { error } = await supabase
+    .from('questions')
+    .update({ deleted_at: new Date().toISOString() })
+    .in('id', ids)
+  if (error) {
+    console.error('[DELETE /api/admin/questions/bulk]', error)
+    return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
   }
 
-  if (hardIds.length > 0) {
-    const { error } = await supabase.from('questions').delete().in('id', hardIds)
-    if (error) {
-      console.error('[DELETE /api/admin/questions/bulk] hard-delete', error)
-      return NextResponse.json({ error: 'Bulk delete failed' }, { status: 500 })
-    }
-  }
+  const batchId = await groupIntoBatch(supabase, 'question', ids, `${ids.length} Fragen gelöscht`)
 
   await writeAuditLog(supabase, {
     admin_id: user.id,
@@ -60,10 +45,10 @@ export async function DELETE(request: NextRequest) {
     object_type: 'question',
     object_id: ids[0],
     object_label: `${ids.length} Fragen`,
-    details: { hardDeleted: hardIds.length, softDeleted: softIds.length },
+    details: { count: ids.length, batchId },
   })
 
-  return NextResponse.json({ ok: true, deleted: hardIds.length, softDeleted: softIds.length })
+  return NextResponse.json({ ok: true, deleted: ids.length, batchId })
 }
 
 const BulkUpdateSchema = z
@@ -140,13 +125,16 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
+  const batchId = await groupIntoBatch(supabase, 'question', ids, `${ids.length} Fragen gemeinsam geändert`)
+
   await writeAuditLog(supabase, {
     admin_id: user.id,
     action_type: 'question.bulk_update',
     object_type: 'question',
     object_id: ids[0],
     object_label: `${ids.length} Fragen`,
+    details: { batchId },
   })
 
-  return NextResponse.json({ ok: true, updated: ids.length })
+  return NextResponse.json({ ok: true, updated: ids.length, batchId })
 }

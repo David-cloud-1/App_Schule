@@ -71,6 +71,7 @@ function makeAdminSupabase(overrides: {
     order: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     ilike: vi.fn().mockReturnThis(),
     range: vi.fn().mockResolvedValue({
       data: overrides.queryData ?? [],
@@ -112,6 +113,16 @@ function makeAdminSupabase(overrides: {
       if (table === 'question_subjects') return questionSubjectsBuilder
       if (table === 'answer_options') return answerInsertBuilder
       if (table === 'admin_audit_log') return auditBuilder
+      // "Zuletzt geändert von" (PROJ-47) — eigene, isolierte Kette, damit sie
+      // die .in()/.eq()-Aufrufe der questions-Abfrage selbst nicht verfälscht.
+      if (table === 'content_versions') {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }
+      }
       return questionsBuilder
     }),
   }

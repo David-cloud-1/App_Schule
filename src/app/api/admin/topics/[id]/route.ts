@@ -83,7 +83,11 @@ export async function DELETE(
   const forbidden = assertCanAdminDepartment(auth, subjectDept)
   if (forbidden) return forbidden
 
-  const { error } = await supabase.from('topics').delete().eq('id', id)
+  // Papierkorb statt endgültigem Löschen (PROJ-47).
+  const { error } = await supabase
+    .from('topics')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
   if (error) {
     console.error('[DELETE /api/admin/topics/[id]]', error)
     return NextResponse.json({ error: 'Failed to delete topic' }, { status: 500 })

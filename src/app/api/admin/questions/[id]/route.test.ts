@@ -247,22 +247,23 @@ describe('DELETE /api/admin/questions/[id]', () => {
     expect(res.status).toBe(403)
   })
 
-  it('hard-deletes question when no quiz history exists', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ quizHistoryCount: 0 }) as never)
+  it('verschiebt die Frage in den Papierkorb (deleted_at), statt sie endgültig zu löschen (PROJ-47)', async () => {
+    const { client, writes } = chainMock(
+      (table, calls) => {
+        if (table === 'profiles') return { data: { role: 'admin', department_id: 'dept-sped' } }
+        if (table === 'question_subjects') return { data: { subjects: { department_id: 'dept-sped' } } }
+        if (table === 'questions') return hasCall(calls, 'update') ? { error: null } : {}
+        return {}
+      },
+      { auth: { getUser: () => Promise.resolve({ data: { user: { id: 'admin-1', email: 'a@a.de' } } }) } }
+    )
+    vi.mocked(createClient).mockResolvedValue(client as never)
     const res = await DELETE(makeRequest('DELETE'), makeCtx())
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
-    expect(body.softDeleted).toBeUndefined()
-  })
-
-  it('soft-deletes question when quiz history exists', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ quizHistoryCount: 3 }) as never)
-    const res = await DELETE(makeRequest('DELETE'), makeCtx())
-    expect(res.status).toBe(200)
-    const body = await res.json()
-    expect(body.ok).toBe(true)
-    expect(body.softDeleted).toBe(true)
+    const write = writes.find((w) => w.table === 'questions' && w.method === 'update')
+    expect(write?.payload).toMatchObject({ deleted_at: expect.any(String) })
   })
 
   it('department_admin gets 404 when deleting a question of a foreign department (PROJ-24)', async () => {

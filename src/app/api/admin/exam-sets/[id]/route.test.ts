@@ -95,11 +95,12 @@ describe('PATCH /api/admin/exam-sets/[id]', () => {
 })
 
 describe('DELETE /api/admin/exam-sets/[id]', () => {
-  it('deletes a set of the own department', async () => {
+  it('moves a set of the own department to the trash instead of deleting it (PROJ-47)', async () => {
     setup()
     const res = await DELETE({} as NextRequest, ctx)
     expect(res.status).toBe(200)
-    expect(lastWrites[0]).toMatchObject({ table: 'exam_question_sets', method: 'delete' })
+    expect(lastWrites[0]).toMatchObject({ table: 'exam_question_sets', method: 'update' })
+    expect(lastWrites[0].payload).toMatchObject({ deleted_at: expect.any(String) })
   })
 
   it('hides a set of another department', async () => {

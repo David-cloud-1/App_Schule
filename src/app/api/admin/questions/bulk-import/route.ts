@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
 import { checkImportRows, type ImportRow } from '@/lib/question-import'
+import { groupIntoBatch } from '@/lib/content-history'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects, formatAllowedCodes, normalizeSubjectCode } from '@/lib/subjects'
 
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
 
   let imported = 0
   let skipped = rejected.length
+  const importedIds: string[] = []
 
   for (const row of rowsToImport) {
     const subjectId = subjectMap.get(normalizeSubjectCode(row.fach_code))
@@ -193,7 +195,15 @@ export async function POST(request: NextRequest) {
     }
 
     imported++
+    importedIds.push(question.id as string)
   }
+
+  const batchId = await groupIntoBatch(
+    supabase,
+    'question',
+    importedIds,
+    `Bulk-Import von ${imported} Fragen`
+  )
 
   await writeAuditLog(supabase, {
     admin_id: user.id,
@@ -206,6 +216,7 @@ export async function POST(request: NextRequest) {
       flagged: check.flagged.length,
       forced: allowFlagged && check.flagged.length > 0,
       rejected: rejected.length,
+      batchId,
     },
     department_id: departmentId,
   })
@@ -213,6 +224,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     imported,
     skipped,
+    batchId,
     rejected,
     flagged: allowFlagged
       ? []
