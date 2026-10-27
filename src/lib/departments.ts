@@ -123,6 +123,19 @@ export async function getDepartmentById(supabase: AnyClient, id: string): Promis
   return data ? mapDepartment(data as DepartmentRow) : null
 }
 
+/**
+ * Ist dieser Bereich noch aktiv? (PROJ-46, BUG-4) Für Routen, die NEUE private
+ * Nachweis-Fragen anlegen (Import, Vorschau, Prompt) — ein deaktivierter
+ * Bereich bekommt keinen neuen Inhalt mehr, genau wie keine neuen Nachweise.
+ * Die reine Fragenauswahl bleibt davon bewusst unberührt: Ein bestehender
+ * Entwurf mit inzwischen deaktiviertem Zielbereich muss weiter bearbeitbar
+ * bleiben ("Bestehende bleiben sichtbar und auswertbar").
+ */
+export async function isDepartmentActive(supabase: AnyClient, id: string): Promise<boolean> {
+  const { data } = await supabase.from('departments').select('id').eq('id', id).eq('is_active', true).maybeSingle()
+  return !!data
+}
+
 export async function getDepartmentByHost(supabase: AnyClient, host: string | null | undefined): Promise<Department | null> {
   const domain = normalizeHost(host)
   if (!domain) return null

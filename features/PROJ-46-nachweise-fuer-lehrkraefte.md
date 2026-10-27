@@ -1,8 +1,8 @@
 # PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27 (QA)
+**Last Updated:** 2026-10-27 (QA + Fixes)
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -328,8 +328,11 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 
 ### Bugs Found
 
+**Nachtrag (2026-10-27, nach Nutzerwunsch „bitte alle Bugs beheben“):** Alle vier Bugs wurden behoben. Details je Bug unten unter „Fix“. Vollständiger Testlauf danach: **114 Dateien, 1.356 Tests grün**, `npm run build` fehlerfrei, Datenbank nach einem erneuten Live-Nachtest unverändert (5 Nachweise, 0 private Fragen).
+
 #### BUG-1: Super-Admin sieht private Fragen in der Fragenverwaltung ohne Kennzeichnung; „Für Übung freigeben“ schlägt mit unklarer Meldung fehl
 - **Severity:** Medium
+- **Fix:** `question-form-modal.tsx` (Typ um `is_private`/`owner_id` ergänzt), `admin/questions/page.tsx` (Badge „Privat“ neben „Nur für Nachweise“; der „Für Übung freigeben“-Knopf erscheint jetzt nur noch, wenn `!is_private`), `admin/questions/[id]/route.ts` (PATCH lehnt `assessment_only: false` auf einer privaten Frage jetzt mit einer klaren 400-Meldung ab, statt den rohen Datenbank-Fehler durchzureichen — Verteidigung in der Tiefe, da die Oberfläche den Knopf jetzt ohnehin nicht mehr zeigt). 2 neue Tests in `admin/questions/[id]/route.test.ts`.
 - **Betroffene Dateien:** `src/app/admin/questions/page.tsx`, `src/components/admin/question-form-modal.tsx`
 - **Steps to Reproduce:**
   1. Eine Lehrkraft importiert eine private Nachweis-Frage (für einen fremden oder, als Bereichs-Admin, den eigenen Bereich mit `assessmentOnly`).
@@ -351,6 +354,7 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
   5. Vermutlich tatsächlich: Radix `SelectValue` zeigt nichts an, weil kein `SelectItem` mit dem aktuellen Wert existiert (die Liste enthält nur aktive Bereiche).
 - **Auswirkung:** Rein optisch. Ohne eine Auswahl zu treffen und zu speichern ändert sich nichts (`target === currentDepartmentId`-Kurzschluss greift weiterhin über den internen State, nicht über die Anzeige).
 - **Priority:** Nice to have.
+- **Fix:** `change-assessment-department-dialog.tsx` bekommt jetzt den Namen des aktuellen Zielbereichs als Prop (`currentDepartmentName`, von der Detailseite durchgereicht) und fügt ihn der Bereichsliste hinzu, falls er nicht unter den aktiven Bereichen auftaucht — mit dem Zusatz „(deaktiviert)“. Die Auswahl zeigt dadurch immer einen passenden Eintrag.
 
 #### BUG-3: Eine mitgenommene private Frage wird nach einem Zielbereich-Wechsel in der Fragenauswahl unsichtbar (bleibt aber ausgewählt)
 - **Severity:** Medium
@@ -365,20 +369,27 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 - **Zusätzliche Folge:** Wird der Entwurf später geöffnet, prüft die Open-Route nur „aktiv + Multiple-Choice“, nicht die Fach-Zuordnung — die Frage landet im Snapshot, obwohl ihr Fach fachlich nicht zum neuen Zielbereich passt.
 - **Warum nicht höher:** Kein Sicherheitsproblem (die Frage bleibt privat und nur für die Besitzerin sichtbar), kein Datenverlust, betrifft nur die Kombination „private Frage importiert UND danach Zielbereich gewechselt“ — vermutlich ein seltener Pfad. Workaround: Frage vor dem Wechsel bewusst abwählen und bei Bedarf im neuen Bereich neu importieren.
 - **Priority:** Fix before deployment empfohlen, da er exakt den in der Spec beschriebenen Edge Case betrifft und zu einem inkonsistenten, für die Lehrkraft nicht nachvollziehbaren Zustand führt.
+- **Fix:** `PATCH /api/admin/assessments/[id]/department` zieht die Fach-Zuordnung mitgenommener privater Fragen jetzt aktiv auf ein Fach des neuen Bereichs um (`question_subjects.subject_id` → Standardfach des neuen Bereichs, dieselbe Regel wie beim Import — neuer gemeinsamer Helfer `defaultSubjectIdFor` in `assessment-questions.ts`, auch von `import`/`preview` übernommen statt der bisherigen doppelten Inline-Logik). Dadurch taucht die Frage danach wieder korrekt in der Fragenauswahl des neuen Bereichs auf, und die spätere Open-Route-Prüfung sieht ein stimmiges Fach. Schlägt der Umzug fehl, bricht die Route mit 500 ab, statt einen inkonsistenten Zustand zu speichern. 3 neue Routen-Tests, 4 neue Unit-Tests für `defaultSubjectIdFor`.
 
 #### BUG-4: Fragen-Routen prüfen den Zielbereich nicht auf „aktiv“
 - **Severity:** Low
 - **Betroffene Dateien:** `src/app/api/admin/assessments/questions/route.ts`, `.../import/route.ts`, `.../preview/route.ts`, `.../prompt/route.ts`
 - **Beschreibung:** Nur `POST /api/admin/assessments` und `PATCH .../[id]/department` prüfen, dass der Zielbereich aktiv ist. Die Fragen-Routen nehmen jede existierende `departmentId` ohne Aktiv-Prüfung an. Über die Oberfläche nicht erreichbar (die Zielbereich-Auswahl zeigt nur aktive Bereiche), nur über einen direkten API-Aufruf. Folge wäre höchstens eine private Frage, die einem deaktivierten Bereich zugeordnet ist und nie in einem echten Nachweis landen kann (die Anlegen-Route blockt das weiterhin) — kein Sicherheits- oder Datenproblem, nur unnötige verwaiste Datensätze.
 - **Priority:** Nice to have.
+- **Fix (mit Einschränkung):** `import`, `preview` und `prompt` prüfen jetzt über die neue Hilfsfunktion `isDepartmentActive` (`src/lib/departments.ts`), ob der Zielbereich aktiv ist, und lehnen sonst mit 400 „Dieser Fachbereich ist nicht verfügbar.“ ab. **Bewusst nicht geändert:** die reine Fragenauswahl-Route (`GET .../questions`). Sie wird auch beim Bearbeiten eines bereits bestehenden Entwurfs aufgerufen, dessen Zielbereich inzwischen deaktiviert wurde — genau dieser Fall ist durch die Spec ausdrücklich geschützt („Bestehende bleiben sichtbar und auswertbar“). Eine Aktiv-Prüfung dort hätte das Bearbeiten eines solchen Entwurfs zu Unrecht blockiert und damit eine neue, gegenteilige Regression eingeführt. 3 neue Routen-Tests (prompt/preview/import).
 
 ### Summary
 - **Acceptance Criteria:** 23/23 Kriterien-Gruppen bestanden (Prüfmethode: Code-Review + Tests; Browser-Abnahme steht noch aus)
-- **Edge Cases:** 10/10 behandelt, 2 davon mit einem gefundenen Bug (BUG-2, BUG-3)
-- **Bugs Found:** 4 total (0 critical, 0 high, 2 medium, 2 low)
-- **Security:** Kein Critical/High-Fund. Eine Low-Lücke (BUG-4) ohne Sicherheitsrelevanz dokumentiert.
-- **Production Ready:** **Bedingt JA** — keine Critical/High-Bugs, aber BUG-1 und BUG-3 sollten vor dem Live-Gang behoben werden, weil sie genau die Punkte betreffen, die das Tech Design explizit verspricht (Vermerk „privat“ bzw. der Zielbereich-Wechsel-Edge-Case). BUG-2/BUG-4 können auch danach erledigt werden.
-- **Recommendation:** BUG-1 und BUG-3 fixen, dann erneut `/qa` für eine kurze Nachprüfung dieser beiden Punkte plus die noch ausstehende Browser-Abnahme (Layout, Klickpfade) durch den Nutzer selbst, da hier kein Dev-Server läuft.
+- **Edge Cases:** 10/10 behandelt
+- **Bugs Found:** 4 total (0 critical, 0 high, 2 medium, 2 low) — **alle 4 behoben** (siehe Fix-Vermerk je Bug oben)
+- **Security:** Kein Critical/High-Fund.
+- **Production Ready:** **JA** aus Sicht von Code-Review und automatisierten Tests. Offen bleibt ausschließlich die Browser-Abnahme (Layout, Klickpfade, insbesondere BUG-2, das nur im Code vorhergesagt und nicht im Browser bestätigt wurde) — kein Dev-Server hier, das übernimmt der Nutzer selbst.
+- **Recommendation:** Deploy vorbereiten. Beim ersten echten Durchklicken gezielt auf das Verhalten von BUG-2 achten (Zielbereich-ändern-Dialog bei einem inzwischen deaktivierten Bestandsbereich).
+
+### Nachtrag: Fix-Verifikation (2026-10-27)
+- Vitest gesamt nach allen vier Fixes: **114 Dateien, 1.356 Tests grün** (11 neue Tests ggü. dem ersten QA-Durchlauf: 2 für BUG-1, 3 für BUG-3-Routen + 4 für den neuen Helfer `defaultSubjectIdFor`, 3 für BUG-4).
+- `npm run build`: fehlerfrei.
+- Live-DB danach erneut geprüft: unverändert (5 Nachweise, 0 private Fragen, 0 Lehrkräfte) — kein Fix hat auf die Datenbank selbst zugegriffen außer über die ohnehin bestehenden, bereits migrierten RLS-Regeln.
 
 ## Deployment
 _To be added by /deploy_

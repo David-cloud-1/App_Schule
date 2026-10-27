@@ -31,6 +31,8 @@ function makeAdminSupabase(opts: {
   role?: string
   departmentId?: string
   questionDepartmentId?: string | null
+  /** PROJ-46 (BUG-1): für den Vorab-Check, ob die Frage privat ist */
+  isPrivate?: boolean
 } = {}) {
   const {
     updateError = null,
@@ -39,6 +41,7 @@ function makeAdminSupabase(opts: {
     role = 'admin',
     departmentId = 'dept-sped',
     questionDepartmentId = 'dept-sped',
+    isPrivate = false,
   } = opts
 
   const { client } = chainMock((table, calls) => {
@@ -57,6 +60,7 @@ function makeAdminSupabase(opts: {
     if (table === 'questions') {
       if (hasCall(calls, 'update')) return { error: updateError }
       if (hasCall(calls, 'delete')) return { error: deleteError }
+      if (hasCall(calls, 'maybeSingle')) return { data: { is_private: isPrivate } }
       return {}
     }
     return {}
@@ -117,6 +121,19 @@ describe('PATCH /api/admin/questions/[id]', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.ok).toBe(true)
+  })
+
+  it('rejects "Für Übung freigeben" on a private question with a clear message (PROJ-46 BUG-1)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ isPrivate: true }) as never)
+    const res = await PATCH(makeRequest('PATCH', { assessment_only: false }), makeCtx())
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/nicht für den Übungsbetrieb freigegeben/)
+  })
+
+  it('still allows other fields to change on a private question (e.g. is_active)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ isPrivate: true }) as never)
+    const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
+    expect(res.status).toBe(200)
   })
 
   it('returns 400 when answers provided but no correct answer', async () => {

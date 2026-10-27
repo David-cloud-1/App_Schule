@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
-import { getDepartmentById } from '@/lib/departments'
+import { getDepartmentById, isDepartmentActive } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { buildAssessmentImportPrompt, MAX_PROMPT_CHARS, MIN_MATERIAL_CHARS } from '@/lib/assessment-import'
 
@@ -31,6 +31,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 })
   }
   const { departmentId } = parsed.data
+
+  // PROJ-46 (BUG-4): ein deaktivierter Bereich bekommt keinen neuen Inhalt mehr.
+  if (!(await isDepartmentActive(supabase, departmentId))) {
+    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+  }
 
   const department = await getDepartmentById(supabase, departmentId)
   if (!department) return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })

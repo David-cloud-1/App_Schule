@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
-import { getDepartmentById } from '@/lib/departments'
-import { fetchSelectableQuestions } from '@/lib/assessment-questions'
+import { getDepartmentById, isDepartmentActive } from '@/lib/departments'
+import { defaultSubjectIdFor, fetchSelectableQuestions } from '@/lib/assessment-questions'
 import { fetchExamParts } from '@/lib/exam-parts'
 import {
   assessQuestionQuality,
@@ -53,6 +53,12 @@ export async function POST(request: NextRequest) {
   }
 
   const { departmentId } = parsed.data
+
+  // PROJ-46 (BUG-4): ein deaktivierter Bereich bekommt keinen neuen Inhalt mehr.
+  if (!(await isDepartmentActive(supabase, departmentId))) {
+    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+  }
+
   const result = parseAiAnswer(parsed.data.answer)
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 })
 
@@ -72,8 +78,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Vorschau konnte nicht erstellt werden.' }, { status: 500 })
   }
 
-  const firstPart = [...examParts].sort((a, b) => a.partNumber - b.partNumber)[0]
-  const defaultId = firstPart?.defaultSubjectId ?? firstPart?.subjects[0]?.id ?? subjects[0]?.id
+  const defaultId = defaultSubjectIdFor(examParts, subjects)
   const defaultCode = subjects.find((s) => s.id === defaultId)?.code ?? subjects[0]?.code ?? ''
   const codes = new Set(subjects.map((s) => normalizeSubjectCode(s.code)))
   const classLevels = new Set(department?.classLevels ?? [])

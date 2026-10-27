@@ -7,15 +7,18 @@ import { POST as materialPOST } from './material/route'
 import { POST as importPOST } from './import/route'
 
 vi.mock('../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
-vi.mock('@/lib/assessment-questions', () => ({ fetchSelectableQuestions: vi.fn() }))
-vi.mock('@/lib/departments', () => ({ getDepartmentById: vi.fn() }))
+vi.mock('@/lib/assessment-questions', async (orig) => ({
+  ...(await orig<typeof import('@/lib/assessment-questions')>()),
+  fetchSelectableQuestions: vi.fn(),
+}))
+vi.mock('@/lib/departments', () => ({ getDepartmentById: vi.fn(), isDepartmentActive: vi.fn().mockResolvedValue(true) }))
 vi.mock('@/lib/subjects', async (orig) => ({ ...(await orig<typeof import('@/lib/subjects')>()), fetchDepartmentSubjects: vi.fn() }))
 vi.mock('@/lib/exam-parts', () => ({ fetchExamParts: vi.fn() }))
 vi.mock('../../ai-generate/_lib/process-job', () => ({ extractText: vi.fn() }))
 
 import { requireTeacherOrAdmin } from '../../_lib/auth'
 import { fetchSelectableQuestions } from '@/lib/assessment-questions'
-import { getDepartmentById } from '@/lib/departments'
+import { getDepartmentById, isDepartmentActive } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { fetchExamParts } from '@/lib/exam-parts'
 import { extractText } from '../../ai-generate/_lib/process-job'
@@ -43,6 +46,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireTeacherOrAdmin).mockResolvedValue(admin as never)
   vi.mocked(getDepartmentById).mockResolvedValue(department as never)
+  vi.mocked(isDepartmentActive).mockResolvedValue(true)
   vi.mocked(fetchDepartmentSubjects).mockResolvedValue(subjects as never)
   vi.mocked(fetchExamParts).mockResolvedValue([] as never)
   vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
@@ -69,6 +73,13 @@ describe('POST …/prompt', () => {
   it('warnt bei sehr langem Prompt', async () => {
     const res = await promptPOST(json('prompt', { task: 'x'.repeat(40_000) }))
     expect((await res.json()).tooLong).toBe(true)
+  })
+
+  it('400 für einen deaktivierten Zielbereich (PROJ-46 BUG-4)', async () => {
+    vi.mocked(isDepartmentActive).mockResolvedValue(false)
+    const res = await promptPOST(json('prompt', { task: 'Aufgabe: ' + 'x'.repeat(80) }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/nicht verfügbar/)
   })
 })
 
@@ -99,6 +110,13 @@ describe('POST …/preview', () => {
     const res = await previewPOST(json('preview', { answer: JSON.stringify({ rows: [goodRow, goodRow] }) }))
     const body = await res.json()
     expect(body.items.map((i: { duplicate: boolean }) => i.duplicate)).toEqual([false, true])
+  })
+
+  it('400 für einen deaktivierten Zielbereich (PROJ-46 BUG-4)', async () => {
+    vi.mocked(isDepartmentActive).mockResolvedValue(false)
+    const res = await previewPOST(json('preview', { answer: JSON.stringify({ rows: [goodRow] }) }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/nicht verfügbar/)
   })
 })
 
@@ -153,5 +171,12 @@ describe('POST …/import mit assessmentOnly', () => {
     vi.mocked(fetchSelectableQuestions).mockResolvedValue([{ id: 'x', question_text: 'frage' } as never])
     const res = await importPOST(json('import', { questions: [q], assessmentOnly: true }))
     expect(res.status).toBe(409)
+  })
+
+  it('400 für einen deaktivierten Zielbereich (PROJ-46 BUG-4)', async () => {
+    vi.mocked(isDepartmentActive).mockResolvedValue(false)
+    const res = await importPOST(json('import', { questions: [q], assessmentOnly: true }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/nicht verfügbar/)
   })
 })

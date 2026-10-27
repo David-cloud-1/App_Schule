@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { checkQuestionSelection, derivePartNumber, fetchSelectableQuestions } from './assessment-questions'
+import { checkQuestionSelection, defaultSubjectIdFor, derivePartNumber, fetchSelectableQuestions } from './assessment-questions'
 import type { ExamPart } from './exam-parts'
 
 const examPartRow = (n: number, subjectId: string, code: string) => ({
@@ -91,6 +91,29 @@ describe('derivePartNumber', () => {
 
   it('returns null without exam parts', () => {
     expect(derivePartNumber([], [{ subject_codes: ['BGP'] }])).toBeNull()
+  })
+})
+
+describe('defaultSubjectIdFor (PROJ-46 BUG-3)', () => {
+  const parts = PARTS.map((p) => ({
+    partNumber: p.part_number, subjects: p.exam_part_subjects.map((e) => ({ id: e.subjects.id, code: e.subjects.code })),
+  })) as unknown as ExamPart[]
+
+  it('prefers the default subject of the first exam part', () => {
+    const withDefault = parts.map((p, i) => ({ ...p, defaultSubjectId: i === 0 ? 's1' : null })) as ExamPart[]
+    expect(defaultSubjectIdFor(withDefault, SUBJECTS)).toBe('s1')
+  })
+
+  it('falls back to the first part\'s first subject without a default subject', () => {
+    expect(defaultSubjectIdFor(parts, SUBJECTS)).toBe(parts[0].subjects[0].id)
+  })
+
+  it('falls back to the first subject of the department without exam parts', () => {
+    expect(defaultSubjectIdFor([], SUBJECTS)).toBe('s1')
+  })
+
+  it('returns null with neither exam parts nor subjects', () => {
+    expect(defaultSubjectIdFor([], [])).toBeNull()
   })
 })
 

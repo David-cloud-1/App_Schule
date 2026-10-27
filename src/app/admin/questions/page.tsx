@@ -854,6 +854,15 @@ export default function AdminQuestionsPage() {
                                 Nur für Nachweise
                               </Badge>
                             )}
+                            {q.is_private && (
+                              <Badge
+                                variant="outline"
+                                className="mt-1 ml-1.5 border-ws-gold text-ws-gold"
+                                title="Private Nachweis-Frage einer Lehrkraft — kann nie für den Übungsbetrieb freigegeben werden"
+                              >
+                                Privat
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="hidden lg:table-cell">
                             {hasNoTopic ? (
@@ -900,7 +909,7 @@ export default function AdminQuestionsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              {q.assessment_only && (
+                              {q.assessment_only && !q.is_private && (
                                 <Button
                                   variant="outline"
                                   size="sm"

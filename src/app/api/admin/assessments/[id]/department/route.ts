@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
 import { fetchExamParts } from '@/lib/exam-parts'
-import { derivePartNumber, fetchSelectableQuestions } from '@/lib/assessment-questions'
+import { fetchDepartmentSubjects } from '@/lib/subjects'
+import { defaultSubjectIdFor, derivePartNumber, fetchSelectableQuestions } from '@/lib/assessment-questions'
 
 const Schema = z.object({ departmentId: z.string().uuid() })
 
@@ -76,7 +77,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   const removedCount = currentIds.length - keptIds.length
 
-  const examParts = await fetchExamParts(supabase, departmentId)
+  const [examParts, newDepartmentSubjects] = await Promise.all([
+    fetchExamParts(supabase, departmentId),
+    fetchDepartmentSubjects(supabase, departmentId),
+  ])
+
+  // BUG-3: eine mitgenommene private Frage trägt noch die Fach-Zuordnung des
+  // alten Bereichs — ohne Umzug bliebe sie in der Fragenauswahl des neuen
+  // Bereichs unsichtbar, obwohl sie laut Entwurf weiter ausgewählt ist.
+  if (keptIds.length > 0) {
+    const newDefaultSubjectId = defaultSubjectIdFor(examParts, newDepartmentSubjects)
+    if (newDefaultSubjectId) {
+      const { error: moveError } = await supabase
+        .from('question_subjects')
+        .update({ subject_id: newDefaultSubjectId })
+        .in('question_id', keptIds)
+      if (moveError) {
+        return NextResponse.json({ error: 'Eigene Fragen konnten nicht umgezogen werden.' }, { status: 500 })
+      }
+    }
+  }
+
   let newPart: number | null
   if (keptIds.length > 0) {
     const selectable = await fetchSelectableQuestions(supabase, departmentId, assessment.created_by)

@@ -16,6 +16,15 @@ async function loadQuestionDepartment(
   return (data?.subjects as unknown as { department_id: string } | null)?.department_id ?? null
 }
 
+/** Ist diese Frage eine private Nachweis-Frage einer Lehrkraft (PROJ-46)? */
+async function loadIsPrivate(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
+  questionId: string
+): Promise<boolean> {
+  const { data } = await supabase!.from('questions').select('is_private').eq('id', questionId).maybeSingle()
+  return (data as { is_private?: boolean } | null)?.is_private ?? false
+}
+
 const AnswerSchema = z.object({
   text: z.string().min(1).max(500),
   is_correct: z.boolean(),
@@ -81,6 +90,15 @@ export async function PATCH(
         { status: 400 }
       )
     }
+  }
+
+  // PROJ-46 (E6, BUG-1): private Nachweis-Fragen lassen sich nie für den
+  // Übungsbetrieb freigeben — klare Meldung statt eines rohen Constraint-Fehlers.
+  if (payload.assessment_only === false && (await loadIsPrivate(supabase, id))) {
+    return NextResponse.json(
+      { error: 'Private Nachweis-Fragen können nicht für den Übungsbetrieb freigegeben werden.' },
+      { status: 400 }
+    )
   }
 
   // Update question fields

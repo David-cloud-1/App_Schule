@@ -111,6 +111,18 @@ export function derivePartNumber(examParts: ExamPart[], questions: Pick<PickerQu
   return best.partNumber
 }
 
+/**
+ * Standardfach eines Bereichs: das Standardfach seines ersten Prüfungsteils,
+ * sonst dessen erstes Fach, sonst irgendein Fach des Bereichs. Für Importe
+ * ohne erkanntes Fachkürzel (PROJ-38) und für eigene private Fragen, die beim
+ * Zielbereich-Wechsel im Entwurf bleiben (PROJ-46) — ihre Fach-Zuordnung zieht
+ * mit um, sonst blieben sie in der Auswahl des neuen Bereichs unsichtbar.
+ */
+export function defaultSubjectIdFor(examParts: ExamPart[], subjects: { id: string }[]): string | null {
+  const firstPart = [...examParts].sort((a, b) => a.partNumber - b.partNumber)[0]
+  return firstPart?.defaultSubjectId ?? firstPart?.subjects[0]?.id ?? subjects[0]?.id ?? null
+}
+
 export type QuestionSelectionCheck =
   | { ok: true; ids: string[]; part: number }
   | { ok: false; status: number; error: string }

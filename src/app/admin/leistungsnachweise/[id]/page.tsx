@@ -669,6 +669,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             open={changeDepartmentOpen}
             onOpenChange={setChangeDepartmentOpen}
             assessmentId={detail.id}
+            currentDepartmentName={detail.departmentName}
             currentDepartmentId={detail.departmentId}
             onSaved={load}
           />

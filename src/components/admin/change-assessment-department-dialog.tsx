@@ -22,6 +22,8 @@ interface Props {
   onOpenChange: (open: boolean) => void
   assessmentId: string
   currentDepartmentId: string
+  /** Name des aktuellen Zielbereichs — zeigt die Auswahl auch an, falls der Bereich inzwischen deaktiviert wurde (BUG-2) */
+  currentDepartmentName: string | null
   onSaved: () => void
 }
 
@@ -30,7 +32,7 @@ interface Props {
  * Bereichs-Pool werden entfernt, eigene private Fragen bleiben — die genaue
  * Anzahl zeigt erst die Rückmeldung nach dem Speichern.
  */
-export function ChangeAssessmentDepartmentDialog({ open, onOpenChange, assessmentId, currentDepartmentId, onSaved }: Props) {
+export function ChangeAssessmentDepartmentDialog({ open, onOpenChange, assessmentId, currentDepartmentId, currentDepartmentName, onSaved }: Props) {
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [loading, setLoading] = useState(true)
   const [target, setTarget] = useState(currentDepartmentId)
@@ -42,10 +44,19 @@ export function ChangeAssessmentDepartmentDialog({ open, onOpenChange, assessmen
     setLoading(true)
     fetch('/api/admin/assessments/departments')
       .then((res) => (res.ok ? res.json() : { departments: [] }))
-      .then((data) => setDepartments(data.departments ?? []))
-      .catch(() => setDepartments([]))
+      .then((data) => {
+        const list: DepartmentOption[] = data.departments ?? []
+        // Der aktuelle Zielbereich muss immer wählbar sein, auch wenn er
+        // inzwischen deaktiviert wurde (sonst zeigt die Auswahl nichts an, BUG-2).
+        setDepartments(
+          list.some((d) => d.id === currentDepartmentId)
+            ? list
+            : [{ id: currentDepartmentId, name: `${currentDepartmentName ?? 'Unbekannter Bereich'} (deaktiviert)`, code: '' }, ...list],
+        )
+      })
+      .catch(() => setDepartments([{ id: currentDepartmentId, name: currentDepartmentName ?? 'Unbekannter Bereich', code: '' }]))
       .finally(() => setLoading(false))
-  }, [open, currentDepartmentId])
+  }, [open, currentDepartmentId, currentDepartmentName])
 
   async function handleSave() {
     if (target === currentDepartmentId) {

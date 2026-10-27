@@ -55,6 +55,9 @@ export type AdminQuestion = {
   is_active: boolean
   /** PROJ-38: nur in Leistungsnachweisen nutzbar, bis der Admin sie freigibt */
   assessment_only?: boolean
+  /** PROJ-46: private Nachweis-Frage einer Lehrkraft — nur für den Super-Admin sichtbar, nie freigebbar */
+  is_private?: boolean
+  owner_id?: string | null
   class_level?: number | null
   topic_id?: string | null
   answer_options: AdminAnswerOption[]

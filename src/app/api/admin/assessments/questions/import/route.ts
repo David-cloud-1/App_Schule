@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
 import { fetchExamParts } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
-import { fetchSelectableQuestions, type PickerQuestion } from '@/lib/assessment-questions'
-import { getDepartmentById } from '@/lib/departments'
+import { defaultSubjectIdFor, fetchSelectableQuestions, type PickerQuestion } from '@/lib/assessment-questions'
+import { getDepartmentById, isDepartmentActive } from '@/lib/departments'
 import { assessQuestionQuality, duplicateKey, DIFFICULTIES } from '@/lib/assessment-import'
 
 const QuestionSchema = z.object({
@@ -50,6 +50,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
   }
   const { departmentId } = parsed.data
+
+  // PROJ-46 (BUG-4): ein deaktivierter Bereich bekommt keinen neuen Inhalt
+  // mehr — bestehende, bereits importierte Fragen bleiben davon unberührt.
+  if (!(await isDepartmentActive(supabase, departmentId))) {
+    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+  }
 
   // Eigener Bereich: Super-Admin überall, Bereichs-Admin nur im eigenen.
   // Sonst (Lehrkraft, oder Bereichs-Admin für einen fremden Bereich) immer
@@ -99,8 +105,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Fächer konnten nicht geladen werden.' }, { status: 500 })
   }
   // Ohne erkanntes Fachkürzel: Standardfach des ersten Prüfungsteils
-  const firstPart = [...examParts].sort((a, b) => a.partNumber - b.partNumber)[0]
-  const defaultSubjectId = firstPart?.defaultSubjectId ?? firstPart?.subjects[0]?.id ?? subjects[0]?.id
+  const defaultSubjectId = defaultSubjectIdFor(examParts, subjects)
   if (!defaultSubjectId) {
     return NextResponse.json({ error: 'Für diesen Fachbereich sind keine Fächer eingerichtet.' }, { status: 500 })
   }

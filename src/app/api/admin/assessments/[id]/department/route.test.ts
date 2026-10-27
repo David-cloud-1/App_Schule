@@ -25,6 +25,7 @@ function setup(opts: {
   targetActive?: boolean
   questionRows?: { id: string; is_private: boolean; owner_id: string | null }[]
   subjectInNewDept?: boolean
+  moveError?: unknown
 }) {
   const assessment: AssessmentRow = {
     id: 'a1', status: 'draft', department_id: OLD_DEPT, created_by: CREATOR,
@@ -32,6 +33,8 @@ function setup(opts: {
     ...opts.assessment,
   }
   const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
+  const questionSubjectsUpdate = vi.fn()
+  const questionSubjectsIn = vi.fn()
 
   const supabase = {
     from: vi.fn().mockImplementation((table: string) => {
@@ -60,7 +63,16 @@ function setup(opts: {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
+          order: vi.fn().mockReturnThis(),
+          // fetchDepartmentSubjects() des neuen Bereichs (für den Fach-Umzug privater Fragen, BUG-3)
+          limit: vi.fn().mockResolvedValue({ data: [{ id: 'subj-new', code: 'NEW', name: 'Neues Fach', is_active: true, sort_order: 1 }], error: null }),
+          // die Ablage-Prüfung (PROJ-39): gehört das bestehende Fach zum neuen Bereich?
           maybeSingle: vi.fn().mockResolvedValue({ data: opts.subjectInNewDept === false ? null : { id: 'subj-1' } }),
+        }
+      }
+      if (table === 'question_subjects') {
+        return {
+          update: questionSubjectsUpdate.mockReturnValue({ in: questionSubjectsIn.mockResolvedValue({ error: opts.moveError ?? null }) }),
         }
       }
       throw new Error(`Unexpected table: ${table}`)
@@ -72,7 +84,7 @@ function setup(opts: {
     role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null,
   } as never)
 
-  return { supabase, update, assessment }
+  return { supabase, update, assessment, questionSubjectsUpdate, questionSubjectsIn }
 }
 
 vi.mock('@/lib/exam-parts', () => ({
@@ -81,7 +93,8 @@ vi.mock('@/lib/exam-parts', () => ({
     { partNumber: 2, subjects: [{ id: 's2', code: 'TOUR2' }] },
   ]),
 }))
-vi.mock('@/lib/assessment-questions', () => ({
+vi.mock('@/lib/assessment-questions', async (orig) => ({
+  ...(await orig<typeof import('@/lib/assessment-questions')>()),
   fetchSelectableQuestions: vi.fn().mockResolvedValue([
     { id: 'priv-1', subject_codes: ['TOUR2'], isPrivate: true },
   ]),
@@ -151,6 +164,30 @@ describe('PATCH /api/admin/assessments/[id]/department', () => {
       draft_question_ids: ['priv-1'],
       subject_id: null,
     })
+  })
+
+  it('moves a kept private question to a subject of the new department (PROJ-46 BUG-3)', async () => {
+    const { questionSubjectsUpdate, questionSubjectsIn } = setup({
+      questionRows: [
+        { id: 'pool-1', is_private: false, owner_id: null },
+        { id: 'priv-1', is_private: true, owner_id: CREATOR },
+      ],
+    })
+    const res = await request({ departmentId: NEW_DEPT })
+    expect(res.status).toBe(200)
+    // defaultSubjectIdFor nimmt zuerst das Standardfach des ersten Prüfungsteils (hier: dessen erstes Fach, 's1')
+    expect(questionSubjectsUpdate).toHaveBeenCalledWith({ subject_id: 's1' })
+    expect(questionSubjectsIn).toHaveBeenCalledWith('question_id', ['priv-1'])
+  })
+
+  it('returns 500 when the subject move fails and does not change the assessment', async () => {
+    const { update } = setup({
+      questionRows: [{ id: 'priv-1', is_private: true, owner_id: CREATOR }],
+      moveError: { message: 'x' },
+    })
+    const res = await request({ departmentId: NEW_DEPT })
+    expect(res.status).toBe(500)
+    expect(update).not.toHaveBeenCalled()
   })
 
   it('does not keep a private question owned by someone else', async () => {
