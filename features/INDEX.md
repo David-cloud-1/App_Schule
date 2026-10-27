@@ -70,7 +70,13 @@
 | PROJ-54 | Werkzeugkiste – die übrigen 11 Werkzeuge | Planned | [PROJ-54-werkzeugkiste-weitere-werkzeuge.md](PROJ-54-werkzeugkiste-weitere-werkzeuge.md) | 2026-10-27 |
 | PROJ-55 | Schulrecht nachschlagen | Planned | [PROJ-55-schulrecht-nachschlagen.md](PROJ-55-schulrecht-nachschlagen.md) | 2026-10-27 |
 | PROJ-56 | Alte Werkzeugkiste ablösen | Planned | [PROJ-56-alte-werkzeugkiste-abloesen.md](PROJ-56-alte-werkzeugkiste-abloesen.md) | 2026-10-27 |
+| PROJ-57 | Nutzerliste – Sortieren & Inaktiv-Filter | Planned | [PROJ-57-nutzerliste-sortieren-inaktiv-filter.md](PROJ-57-nutzerliste-sortieren-inaktiv-filter.md) | 2026-10-27 |
+| PROJ-58 | Passwort neu vergeben (mit Pflichtwechsel) | Planned | [PROJ-58-passwort-neu-vergeben.md](PROJ-58-passwort-neu-vergeben.md) | 2026-10-27 |
+| PROJ-59 | Nutzer-Detailseite (Super-Admin) | Planned | [PROJ-59-nutzer-detailseite.md](PROJ-59-nutzer-detailseite.md) | 2026-10-27 |
+| PROJ-60 | Konto löschen (DSGVO) | Planned | [PROJ-60-konto-loeschen-dsgvo.md](PROJ-60-konto-loeschen-dsgvo.md) | 2026-10-27 |
+| PROJ-61 | Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned | [PROJ-61-nutzer-export-mehrfachauswahl.md](PROJ-61-nutzer-export-mehrfachauswahl.md) | 2026-10-27 |
+| PROJ-62 | Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned | [PROJ-62-konten-anlegen-sammel-anlage.md](PROJ-62-konten-anlegen-sammel-anlage.md) | 2026-10-27 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-57
+## Next Available ID: PROJ-63
