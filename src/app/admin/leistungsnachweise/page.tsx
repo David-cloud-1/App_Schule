@@ -185,7 +185,7 @@ function AssessmentsPageContent() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Leistungsnachweise"
-        description="Benotete Durchläufe mit selbst zusammengestellten Fragen — Zugang per Code — Klasse und Fach dienen nur der Ablage."
+        description="Benotete Tests für deine Klasse: Die Azubis treten per Code bei, du siehst Noten und Auswertung. Nicht zu verwechseln mit der Prüfungssimulation, die Azubis ohne Note selbst üben."
         actions={
           showEmpty ? undefined : (
             <Button

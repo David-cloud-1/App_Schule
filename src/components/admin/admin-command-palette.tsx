@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ExternalLink, LayoutDashboard, Monitor, Moon, Sun, Zap } from 'lucide-react'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
 import { useDepartment } from '@/components/department-provider'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -37,10 +37,11 @@ const itemClass =
 export default function AdminCommandPalette() {
   const router = useRouter()
   const { role } = useAdminRole()
+  const hasSubjects = useHasSubjects()
   const { hofShortName } = useDepartment()
   const { commandOpen, setCommandOpen, theme, setTheme } = useWorkspace()
-  const pages = adminNavItemsFor(role)
-  const actions = adminCommandActionsFor(role)
+  const pages = adminNavItemsFor(role, hasSubjects)
+  const actions = adminCommandActionsFor(role, hasSubjects)
 
   function go(href: string, external?: boolean) {
     setCommandOpen(false)

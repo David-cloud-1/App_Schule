@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, UserCog } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -27,6 +28,7 @@ type Catalog = {
  * nötig (E1) — jede Änderung gilt sofort.
  */
 export default function MySubjectsPage() {
+  const router = useRouter()
   const [data, setData] = useState<Catalog | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -101,6 +103,8 @@ export default function MySubjectsPage() {
         }
       }
       await load()
+      // Layout neu laden: die Navigation zeigt Inhalts-Seiten erst mit eingetragenem Fach
+      router.refresh()
     } catch (err) {
       console.error(err)
       toast.error('Netzwerkfehler')
@@ -220,6 +224,7 @@ export default function MySubjectsPage() {
           onSuccess={() => {
             setNewSubjectDeptId(null)
             load()
+            router.refresh()
           }}
         />
       )}

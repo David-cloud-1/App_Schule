@@ -5,6 +5,7 @@ import {
   FileText,
   FolderKanban,
   GraduationCap,
+  Plus,
   ScrollText,
   Settings,
   Store,
@@ -27,7 +28,7 @@ import type { TeacherRole } from '@/lib/roles'
 export interface AdminNavItem {
   href: string
   label: string
-  /** Ein Satz für die Kachel auf der Startseite */
+  /** Ein Satz Erklärung: Tooltip in der Schnellsuche, Untertitel der Schnellaktionen */
   description: string
   icon: LucideIcon
   /** Nur für Super-Admins sichtbar */
@@ -43,16 +44,19 @@ export interface AdminNavItem {
    * bereichsweit zuständig). Standard: sichtbar.
    */
   managerVisible?: boolean
+  /**
+   * Eine Lehrkraft sieht den Eintrag erst, wenn sie unter „Meine Fächer"
+   * mindestens ein Fach eingetragen hat — vorher wäre die Seite leer.
+   */
+  needsSubjects?: boolean
   /** Titel kommt aus dem Fachbereich (z. B. „Hof-Items“) statt aus `label` */
   usesHofName?: boolean
-  /** Erscheint als große Kachel auf der Startseite */
-  tile?: boolean
   /** Externe Adresse: öffnet in neuem Tab, nie als „aktiv“ markiert */
   external?: boolean
 }
 
 export interface AdminNavGroup {
-  id: 'unterricht' | 'inhalte' | 'einstellungen'
+  id: 'unterricht' | 'inhalte' | 'verwaltung'
   label: string
   items: AdminNavItem[]
 }
@@ -69,35 +73,16 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       {
         href: '/admin/leistungsnachweise',
         label: 'Leistungsnachweise',
-        description: 'Tests erstellen, auswerten und drucken',
+        description: 'Benotete Tests für deine Klasse: Code verteilen, auswerten, drucken',
         icon: GraduationCap,
-        tile: true,
         // PROJ-46: auch für Lehrkräfte ohne Fachbereich — eigene Nachweise
         teacherVisible: true,
-      },
-      {
-        href: '/admin/questions',
-        label: 'Fragen',
-        description: 'Fragen ansehen, bearbeiten und importieren',
-        icon: FileText,
-        tile: true,
-        // PROJ-48: sichtbar für Lehrkräfte — welche Fragen sie darin sieht,
-        // entscheidet ihre Fach-Zuständigkeit (Meine Fächer).
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/users',
-        label: 'Nutzer',
-        description: 'Azubis und Rollen verwalten',
-        icon: Users,
-        tile: true,
       },
       {
         href: WERKZEUGKISTE_URL,
         label: 'Werkzeugkiste',
         description: 'KI-Werkzeuge für Arbeitsblätter, Klassenarbeiten und mehr',
         icon: Wrench,
-        tile: true,
         external: true,
         teacherVisible: true,
       },
@@ -108,11 +93,27 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     label: 'Inhalte',
     items: [
       {
+        href: '/admin/questions',
+        label: 'Fragen',
+        description: 'Die Lernfragen der Azubis ansehen, bearbeiten und importieren',
+        icon: FileText,
+        // PROJ-48: welche Fragen eine Lehrkraft sieht, entscheidet ihre Fach-Zuständigkeit
+        teacherVisible: true,
+        needsSubjects: true,
+      },
+      {
+        href: '/admin/ai-generator',
+        label: 'Fragen aus Material',
+        description: 'Aus Lernmaterial neue Fragen erstellen lassen',
+        icon: Bot,
+      },
+      {
         href: '/admin/subjects',
         label: 'Fächer',
         description: 'Fächer anlegen und ordnen',
         icon: FolderKanban,
         teacherVisible: true,
+        needsSubjects: true,
       },
       {
         href: '/admin/topics',
@@ -120,33 +121,33 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Themen und Klassenstufen pflegen',
         icon: Tag,
         teacherVisible: true,
+        needsSubjects: true,
       },
       {
         href: '/admin/exam-sets',
         label: 'Prüfungssimulation',
-        description: 'Fragenzusammenstellungen für die Prüfungssimulation',
+        description: 'Übungsprüfungen, die Azubis selbst ohne Note spielen',
         icon: ClipboardList,
         teacherVisible: true,
-      },
-      {
-        href: '/admin/ai-generator',
-        label: 'Fragen aus Material',
-        description: 'Aus Lernmaterial neue Fragen erstellen lassen',
-        icon: Bot,
-        tile: true,
+        needsSubjects: true,
       },
     ],
   },
   {
-    id: 'einstellungen',
-    label: 'Einstellungen',
+    id: 'verwaltung',
+    label: 'Verwaltung',
     items: [
+      {
+        href: '/admin/users',
+        label: 'Nutzer',
+        description: 'Azubis und Rollen verwalten',
+        icon: Users,
+      },
       {
         href: '/admin/my-subjects',
         label: 'Meine Fächer',
         description: 'Eintragen, in welchen Fächern du unterrichtest',
         icon: UserCog,
-        tile: true,
         // PROJ-48: nur für Lehrkräfte — Bereichs-Admin/Super-Admin brauchen
         // keine Zuständigkeiten (ihre Rechte gelten bereichsweit).
         teacherVisible: true,
@@ -177,12 +178,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
         icon: Trash2,
         teacherVisible: true,
+        needsSubjects: true,
       },
       {
         href: '/admin/teacher-assignments',
         label: 'Zuständigkeiten',
         description: 'Wer unterrichtet welches Fach',
-        icon: Users,
+        icon: UserCog,
         superAdminOnly: true,
       },
       {
@@ -196,20 +198,23 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   },
 ]
 
-/** Darf diese Rolle den Eintrag sehen? Nur Anzeige — die Rechte prüft der Server. */
-export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole): boolean {
+/**
+ * Darf diese Rolle den Eintrag sehen? Nur Anzeige — die Rechte prüft der Server.
+ * `hasSubjects` zählt nur für Lehrkräfte (Standard: true).
+ */
+export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole, hasSubjects = true): boolean {
   if (item.managerVisible === false && role !== 'teacher') return false
   if (role === 'admin') return true
   if (item.superAdminOnly) return false
   if (role === 'department_admin') return true
-  return !!item.teacherVisible
+  return !!item.teacherVisible && (hasSubjects || !item.needsSubjects)
 }
 
 /** Gruppen für eine Rolle; leere Gruppen entfallen */
-export function adminNavGroupsFor(role: TeacherRole): AdminNavGroup[] {
+export function adminNavGroupsFor(role: TeacherRole, hasSubjects = true): AdminNavGroup[] {
   return ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => adminNavItemVisibleFor(item, role)),
+    items: group.items.filter((item) => adminNavItemVisibleFor(item, role, hasSubjects)),
   })).filter((group) => group.items.length > 0)
 }
 
@@ -225,8 +230,8 @@ export function isAdminNavActive(pathname: string, href: string): boolean {
 }
 
 /** Alle Einträge, die eine Rolle sehen darf, in Reihenfolge der Navigation */
-export function adminNavItemsFor(role: TeacherRole): AdminNavItem[] {
-  return adminNavGroupsFor(role).flatMap((group) => group.items)
+export function adminNavItemsFor(role: TeacherRole, hasSubjects = true): AdminNavItem[] {
+  return adminNavGroupsFor(role, hasSubjects).flatMap((group) => group.items)
 }
 
 /**
@@ -279,9 +284,72 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
   { id: 'darstellung', label: 'Darstellung wechseln', keywords: ['hell', 'dunkel', 'beamer', 'farbe', 'theme'], kind: 'theme' },
 ]
 
-export function adminCommandActionsFor(role: TeacherRole): AdminCommandAction[] {
-  const visible = new Set(adminNavItemsFor(role).map((item) => item.href))
+export function adminCommandActionsFor(role: TeacherRole, hasSubjects = true): AdminCommandAction[] {
+  const visible = new Set(adminNavItemsFor(role, hasSubjects).map((item) => item.href))
   return ADMIN_COMMAND_ACTIONS.filter(
     (action) => action.kind !== 'link' || !action.requiresHref || visible.has(action.requiresHref),
   )
+}
+
+/**
+ * Schnellaktionen der Startseite: Verben statt einer zweiten Kopie der
+ * Navigation. Wie in der Schnellsuche nur, wenn die Rolle die Zielseite sieht.
+ */
+export interface AdminHomeAction {
+  id: string
+  label: string
+  description: string
+  href: string
+  icon: LucideIcon
+  external?: boolean
+  requiresHref: string
+}
+
+export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
+  {
+    id: 'neuer-nachweis',
+    label: 'Neuer Leistungsnachweis',
+    description: 'Test anlegen und den Code an die Klasse geben',
+    href: '/admin/leistungsnachweise?neu=1',
+    icon: Plus,
+    requiresHref: '/admin/leistungsnachweise',
+  },
+  {
+    id: 'fragen',
+    label: 'Fragen durchsuchen',
+    description: 'Lernfragen finden, prüfen und verbessern',
+    href: '/admin/questions',
+    icon: FileText,
+    requiresHref: '/admin/questions',
+  },
+  {
+    id: 'material',
+    label: 'Fragen aus Material',
+    description: 'Aus einem Skript neue Fragen erstellen lassen',
+    href: '/admin/ai-generator',
+    icon: Bot,
+    requiresHref: '/admin/ai-generator',
+  },
+  {
+    id: 'nutzer',
+    label: 'Azubis verwalten',
+    description: 'Konten, Rollen und Aktivität',
+    href: '/admin/users',
+    icon: Users,
+    requiresHref: '/admin/users',
+  },
+  {
+    id: 'werkzeugkiste',
+    label: 'Werkzeugkiste öffnen',
+    description: 'Arbeitsblätter und Klassenarbeiten mit KI',
+    href: WERKZEUGKISTE_URL,
+    icon: Wrench,
+    external: true,
+    requiresHref: WERKZEUGKISTE_URL,
+  },
+]
+
+export function adminHomeActionsFor(role: TeacherRole, hasSubjects = true): AdminHomeAction[] {
+  const visible = new Set(adminNavItemsFor(role, hasSubjects).map((item) => item.href))
+  return ADMIN_HOME_ACTIONS.filter((action) => visible.has(action.requiresHref))
 }

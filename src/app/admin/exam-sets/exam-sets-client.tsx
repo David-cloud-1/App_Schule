@@ -414,7 +414,16 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       <div className="mb-6">
         <AdminPageHeader
           title="Prüfungssimulation"
-          description="Erstelle kuratierte Fragensets für die Prüfungssimulation. Pro Teil können mehrere Sets gleichzeitig aktiv sein — z.B. verschiedene Prüfungen für verschiedene Klassen."
+          description={
+            <>
+              Übungsprüfungen, die Azubis jederzeit selbst und ohne Note spielen. Pro Prüfungsteil können mehrere
+              gleichzeitig aktiv sein. Für einen benoteten Test deiner Klasse nutze{' '}
+              <Link href="/admin/leistungsnachweise" className="font-semibold text-ws-blue hover:underline">
+                Leistungsnachweise
+              </Link>
+              .
+            </>
+          }
           actions={
             <>
               <Button

@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-26
+**Last Updated:** 2026-10-27
 
 ## Kontext
 Teil 2 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Die Schülerseite bleibt Mobile-First und Dark Mode wie in `docs/DESIGN.md`. Lehrkräfte arbeiten dagegen oft am Laptop, am Beamer oder drucken aus. Der Lehrkräfte-Bereich soll sich deshalb anfühlen wie ein aktuelles professionelles Werkzeug (Vorbilder: Linear, Notion, Vercel-Dashboard): ruhig, schnell, übersichtlich, mit derselben Qualität auf Desktop und Handy.
@@ -438,3 +438,24 @@ Nur `/frontend`. `/backend` entfällt, weil nichts auf dem Server oder in der Da
 - **Nicht geprüft (braucht Konto und Browser):** Aussehen in beiden Modi, Einklappen, Schublade und Wischen auf dem Handy, Schnellsuche, Konto-Menü, Beamer, Druck, Ladezeit.
 - **Rückweg:** Im Vercel-Dashboard das vorherige Deployment (`spedilern-heeo7yadk…`) zur Produktion befördern.
 - **Tag:** `v1.45.0-PROJ-45`
+
+## Nacharbeit: Übersicht aus Lehrkraft-Sicht (2026-10-27)
+
+Ergebnis einer Durchsicht des Bereichs aus Sicht einer Lehrkraft (Punkte A1–A6):
+
+- **A1:** Der veraltete Hinweis „Leistungsnachweise folgen bald“ auf der Startseite ist entfernt (die gibt es seit PROJ-46).
+- **A2 Startseite:** zeigt statt einer Kopie der Navigation zuerst die **laufenden Leistungsnachweise** mit Live-Stand („x schreiben · y abgegeben“, Klasse, Code), dann **Schnellaktionen** als Verben (`ADMIN_HOME_ACTIONS`: Neuer Leistungsnachweis, Fragen durchsuchen, Fragen aus Material, Azubis verwalten, Werkzeugkiste). Sie erscheinen nur, wenn die Rolle die Zielseite sieht. Das Kennzeichen `tile` an den Navigations-Einträgen ist entfallen.
+- **A3 Gruppen:** **Unterricht** (Leistungsnachweise, Werkzeugkiste) · **Inhalte** (Fragen, Fragen aus Material, Fächer, Themen, Prüfungssimulation) · **Verwaltung** (Nutzer, Meine Fächer, Fachbereich, Items, Änderungsprotokoll, Papierkorb, Zuständigkeiten, Fachbereiche). Gruppe `einstellungen` heißt jetzt `verwaltung`.
+- **A4 Begriffe:** Die Seitenköpfe von Leistungsnachweisen und Prüfungssimulation grenzen beides voneinander ab: benoteter Test der Klasse gegenüber Übungsprüfung ohne Note. Die Prüfungssimulation verlinkt auf Leistungsnachweise. Die Beschreibungen in der Navigation sind entsprechend geschärft.
+- **A5 Lehrkraft ohne Fach:**
+  - Das Layout liest einmal, ob die Lehrkraft eine Zuständigkeit hat (`hasSubjectAssignments` im Rollen-Kontext, Hook `useHasSubjects()`).
+  - Einträge mit `needsSubjects` (Fragen, Fächer, Themen, Prüfungssimulation, Papierkorb) sind ohne Fach in Navigation, Schnellsuche und Schnellaktionen ausgeblendet.
+  - Ein direkter Aufruf zeigt im Rahmen (`SubjectsGate`) den Leerzustand „Trag zuerst deine Fächer ein“ statt eines 403-Fehlers. Die Startseite zeigt dazu eine Hinweis-Karte.
+  - „Meine Fächer“ ruft nach jeder Änderung `router.refresh()` auf, damit die Navigation sofort stimmt.
+- **A6 Nachweis-Detail:**
+  - Druck und Export (Klassenauswertung, alle Einzelauswertungen, CSV) stehen in einem Menü „Drucken & Export“ im Seitenkopf. Die doppelten Leisten in den Tabs „Teilnehmer“ und „Notenspiegel“ sind weg.
+  - Beitrittscode und Live-Zahlen bilden eine Karte: Im Entwurf erscheint nur der Code mit Hinweis, nach dem Schließen nur die Zahlen.
+- **Mitgefundene Fehler:**
+  - `/admin/exam-sets` prüfte serverseitig mit `requireAdmin()`. Eine Lehrkraft sah deshalb eine leere Seite. Die Seite nutzt jetzt wie die Schnittstelle `requireContentAdmin()` mit den Bereichen der Zuständigkeiten.
+  - Die Seite zeigte außerdem Sets aus dem Papierkorb. Neu ist der Filter `deleted_at is null`.
+- **Geprüft:** `tsc` sauber, Vitest 125 Dateien / 1.437 Tests grün (neue Tests für Fach-Bedingung, Schnellaktionen, laufende Nachweise und den Rahmen-Hinweis), Build grün, keine neuen Lint-Warnungen. Im Browser nicht geprüft (kein Dev-Server).

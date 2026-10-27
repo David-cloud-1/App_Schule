@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Building2,
+  ChevronDown,
   Copy,
   Download,
   ListChecks,
@@ -34,6 +35,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -54,6 +62,8 @@ import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
+
+const menuItemClass = 'min-h-11 cursor-pointer gap-2 focus:bg-ws-raised focus:text-ws-text'
 
 type AssessmentDetail = {
   id: string
@@ -340,6 +350,38 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   Ergebnisse freigeben
                 </Button>
               )}
+              {detail.status !== 'draft' && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
+                      <Printer size={14} className="mr-1.5" />
+                      Drucken & Export
+                      <ChevronDown size={14} className="ml-1.5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 rounded-xl border-ws-line bg-ws-surface text-ws-text">
+                    <DropdownMenuItem asChild disabled={!hasSubmissions} className={menuItemClass}>
+                      <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
+                        <Printer className="text-ws-muted" />
+                        Klassenauswertung drucken
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild disabled={!hasSubmissions} className={menuItemClass}>
+                      <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`}>
+                        <Printer className="text-ws-muted" />
+                        Alle Einzelauswertungen drucken
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-ws-line" />
+                    <DropdownMenuItem asChild className={menuItemClass}>
+                      <a href={`/api/admin/assessments/${id}/export`} download>
+                        <Download className="text-ws-muted" />
+                        Ergebnisse als CSV
+                      </a>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <Button
                 variant="outline"
                 onClick={() => setConfirmDelete(true)}
@@ -376,35 +418,47 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </AdminPageHeader>
       </div>
 
-      {/* Code / Link / QR */}
-      <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-5">
-        <div className="bg-white p-2 rounded-xl flex-shrink-0">
-          <QRCodeSVG value={detail.joinUrl} size={112} />
-        </div>
-        <div className="flex-1 text-center sm:text-left space-y-2">
-          <p className="text-xs text-ws-muted uppercase tracking-wide">Beitrittscode</p>
-          <p className="text-3xl font-mono font-bold text-ws-text tracking-widest">{detail.accessCode}</p>
-          <Button variant="outline" size="sm" onClick={copyLink} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
-            <Copy size={14} className="mr-1.5" />
-            Link kopieren
-          </Button>
-        </div>
-      </div>
-
-      {/* Live-Kachel */}
-      <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 flex items-center justify-around text-center">
-        <div>
-          <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
-          <p className="text-xs text-ws-muted">Beigetreten</p>
-        </div>
-        <div>
-          <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
-          <p className="text-xs text-ws-muted">Schreiben</p>
-        </div>
-        <div>
-          <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
-          <p className="text-xs text-ws-muted">Abgegeben</p>
-        </div>
+      {/* Beitritt (bis zum Schließen) und Live-Stand (ab dem Öffnen) in einer Karte */}
+      <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-5">
+        {detail.status !== 'closed' && (
+          <div className="flex flex-1 flex-col sm:flex-row items-center gap-5">
+            <div className="bg-white p-2 rounded-xl flex-shrink-0">
+              <QRCodeSVG value={detail.joinUrl} size={112} />
+            </div>
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <p className="text-xs text-ws-muted uppercase tracking-wide">Beitrittscode</p>
+              <p className="text-3xl font-mono font-bold text-ws-text tracking-widest">{detail.accessCode}</p>
+              <Button variant="outline" size="sm" onClick={copyLink} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
+                <Copy size={14} className="mr-1.5" />
+                Link kopieren
+              </Button>
+              {detail.status === 'draft' && (
+                <p className="text-xs text-ws-muted">Beitreten geht erst, wenn du den Nachweis öffnest.</p>
+              )}
+            </div>
+          </div>
+        )}
+        {detail.status !== 'draft' && (
+          <div
+            className={cn(
+              'flex items-center justify-around text-center gap-6',
+              detail.status === 'closed' ? 'flex-1' : 'lg:border-l lg:border-ws-line lg:pl-6',
+            )}
+          >
+            <div>
+              <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
+              <p className="text-xs text-ws-muted">Beigetreten</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
+              <p className="text-xs text-ws-muted">Schreiben</p>
+            </div>
+            <div>
+              <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
+              <p className="text-xs text-ws-muted">Abgegeben</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* PROJ-39: Ablage — in jedem Status änderbar */}
@@ -458,26 +512,6 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsList>
 
         <TabsContent value="participants" className="mt-4">
-          <div className="flex flex-wrap justify-end gap-2 mb-2">
-            <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
-                <Printer size={14} className="mr-1.5" />
-                Klassenauswertung drucken
-              </Button>
-            </Link>
-            <Link href={`/admin/leistungsnachweise/${id}/druck/einzeln`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
-                <Printer size={14} className="mr-1.5" />
-                Alle Einzelauswertungen
-              </Button>
-            </Link>
-            <a href={`/api/admin/assessments/${id}/export`} download>
-              <Button variant="outline" size="sm" className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
-                <Download size={14} className="mr-1.5" />
-                CSV-Export
-              </Button>
-            </a>
-          </div>
           {showFocus && conspicuousCount > 0 && (
             <div role="status" className="mb-3 flex items-start gap-3 rounded-2xl border border-ws-orange/30 bg-ws-orange/5 p-4">
               <AlertTriangle size={18} className="text-ws-orange flex-shrink-0 mt-0.5" aria-hidden="true" />
@@ -568,14 +602,6 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsContent>
 
         <TabsContent value="grades" className="mt-4">
-          <div className="flex justify-end mb-2">
-            <Link href={`/admin/leistungsnachweise/${id}/druck/klasse`}>
-              <Button variant="outline" size="sm" disabled={!hasSubmissions} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
-                <Printer size={14} className="mr-1.5" />
-                Klassenauswertung drucken
-              </Button>
-            </Link>
-          </div>
           <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 space-y-4">
             {!results || activeParticipants.length === 0 ? (
               <p className="text-center text-ws-muted py-8">Noch keine gewerteten Teilnahmen.</p>

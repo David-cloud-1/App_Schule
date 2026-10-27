@@ -4,6 +4,7 @@ import {
   ADMIN_HOME_HREF,
   ADMIN_NAV_GROUPS,
   adminCommandActionsFor,
+  adminHomeActionsFor,
   adminNavMatch,
   teacherRoleLabel,
   adminNavGroupsFor,
@@ -13,8 +14,8 @@ import {
 } from './admin-nav'
 
 describe('Admin-Navigation (PROJ-40)', () => {
-  it('gruppiert in Unterricht, Inhalte und Einstellungen', () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Einstellungen'])
+  it('gruppiert in Unterricht, Inhalte und Verwaltung', () => {
+    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Verwaltung'])
   })
 
   it('hat für jeden Eintrag eine eindeutige Adresse unter /admin', () => {
@@ -53,17 +54,32 @@ describe('Admin-Navigation (PROJ-40)', () => {
 
   it('zeigt einer Lehrkraft ohne Verwaltungsrechte Leistungsnachweise, Inhalte und die Werkzeugkiste (PROJ-44/46/48)', () => {
     const groups = adminNavGroupsFor('teacher')
-    expect(groups.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Einstellungen'])
+    expect(groups.map((g) => g.label)).toEqual(['Unterricht', 'Inhalte', 'Verwaltung'])
     expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual([
       'Leistungsnachweise',
-      'Fragen',
       'Werkzeugkiste',
+      'Fragen',
       'Fächer',
       'Themen',
       'Prüfungssimulation',
       'Meine Fächer',
       'Papierkorb',
     ])
+  })
+
+  it('zeigt einer Lehrkraft ohne eingetragenes Fach keine (leeren) Inhalts-Seiten', () => {
+    const labels = adminNavGroupsFor('teacher', false).flatMap((g) => g.items.map((i) => i.label))
+    expect(labels).toEqual(['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer'])
+    // für Admins spielt die Angabe keine Rolle
+    expect(adminNavGroupsFor('department_admin', false)).toEqual(adminNavGroupsFor('department_admin'))
+  })
+
+  it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {
+    const ids = (role: 'teacher' | 'department_admin', hasSubjects = true) =>
+      adminHomeActionsFor(role, hasSubjects).map((a) => a.id)
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'fragen', 'material', 'nutzer', 'werkzeugkiste'])
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'fragen', 'werkzeugkiste'])
+    expect(ids('teacher', false)).toEqual(['neuer-nachweis', 'werkzeugkiste'])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {
@@ -96,7 +112,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
 describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
   it('findet den Eintrag zur Seite, auch auf Unterseiten', () => {
     expect(adminNavMatch('/admin/leistungsnachweise/abc')?.item.label).toBe('Leistungsnachweise')
-    expect(adminNavMatch('/admin/audit-log')?.group.label).toBe('Einstellungen')
+    expect(adminNavMatch('/admin/audit-log')?.group.label).toBe('Verwaltung')
     expect(adminNavMatch('/admin')).toBeNull()
   })
 

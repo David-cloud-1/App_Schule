@@ -17,6 +17,8 @@ export interface AdminRoleContextValue {
   email?: string
   /** Einmaliger Willkommens-Hinweis für frisch freigeschaltete Lehrkräfte (PROJ-44) */
   showTeacherWelcome?: boolean
+  /** Lehrkraft hat unter „Meine Fächer“ mindestens ein Fach eingetragen (PROJ-48). Für andere Rollen ohne Bedeutung. */
+  hasSubjectAssignments?: boolean
 }
 
 const AdminRoleContext = createContext<AdminRoleContextValue | null>(null)
@@ -35,4 +37,10 @@ export function useAdminRole(): AdminRoleContextValue {
   const ctx = useContext(AdminRoleContext)
   if (!ctx) throw new Error('useAdminRole() außerhalb von <AdminRoleProvider>')
   return ctx
+}
+
+/** Darf die Person Inhalts-Seiten sinnvoll nutzen? Admins immer, Lehrkräfte erst mit eingetragenem Fach. */
+export function useHasSubjects(): boolean {
+  const { role, hasSubjectAssignments } = useAdminRole()
+  return role !== 'teacher' || hasSubjectAssignments !== false
 }

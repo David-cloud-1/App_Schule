@@ -8,7 +8,8 @@ import type { TeacherRole } from '@/lib/roles'
 import type { WorkspaceTheme } from '@/lib/workspace-theme'
 
 const push = vi.fn()
-vi.mock('next/navigation', () => ({ usePathname: () => '/admin', useRouter: () => ({ push }) }))
+let mockPath = '/admin'
+vi.mock('next/navigation', () => ({ usePathname: () => mockPath, useRouter: () => ({ push }) }))
 vi.mock('@/components/admin/department-switcher', () => ({
   DepartmentSwitcher: () => <div data-testid="department-switcher" />,
 }))
@@ -25,6 +26,7 @@ beforeEach(() => {
     disconnect() {}
   } as unknown as typeof ResizeObserver
   push.mockReset()
+  mockPath = '/admin'
 })
 
 function setup({
@@ -32,12 +34,19 @@ function setup({
   width = 1280,
   theme = 'dark',
   sidebarOpen = true,
-}: { role?: TeacherRole; width?: number; theme?: WorkspaceTheme; sidebarOpen?: boolean } = {}) {
+  hasSubjectAssignments,
+}: {
+  role?: TeacherRole
+  width?: number
+  theme?: WorkspaceTheme
+  sidebarOpen?: boolean
+  hasSubjectAssignments?: boolean
+} = {}) {
   mockViewport(width)
   return render(
     <DepartmentProvider value={{ department: testDepartment, examParts: [] }}>
       <AdminRoleProvider
-        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de' }}
+        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de', hasSubjectAssignments }}
       >
         <AdminShell initialTheme={theme} sidebarOpen={sidebarOpen}>
           <p>Seiteninhalt</p>
@@ -206,5 +215,25 @@ describe('Schnellsuche (PROJ-45)', () => {
     const palette = await openPalette()
     fireEvent.click(palette.getByRole('option', { name: /Darstellung: Wie System/ }))
     expect(root(container)).toHaveAttribute('data-ws-theme', 'system')
+  })
+})
+
+describe('AdminShell – Lehrkraft ohne eingetragenes Fach', () => {
+  it('zeigt auf Inhalts-Seiten den Weg zu „Meine Fächer“ statt des Seiteninhalts', () => {
+    mockPath = '/admin/topics'
+    setup({ role: 'teacher', hasSubjectAssignments: false })
+    expect(screen.queryByText('Seiteninhalt')).not.toBeInTheDocument()
+    expect(screen.getByText('Trag zuerst deine Fächer ein')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Zu Meine Fächer' })).toHaveAttribute('href', '/admin/my-subjects')
+  })
+
+  it('lässt Seiten ohne Fach-Bezug und Lehrkräfte mit Fach durch', () => {
+    mockPath = '/admin/leistungsnachweise'
+    const first = setup({ role: 'teacher', hasSubjectAssignments: false })
+    expect(screen.getByText('Seiteninhalt')).toBeInTheDocument()
+    first.unmount()
+    mockPath = '/admin/topics'
+    setup({ role: 'teacher', hasSubjectAssignments: true })
+    expect(screen.getByText('Seiteninhalt')).toBeInTheDocument()
   })
 })

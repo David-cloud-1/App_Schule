@@ -47,7 +47,14 @@ export function renderInWorkspace(
     theme = 'dark',
     withSidebar = true,
     showTeacherWelcome,
-  }: { role?: TeacherRole; theme?: WorkspaceTheme; withSidebar?: boolean; showTeacherWelcome?: boolean } = {},
+    hasSubjectAssignments,
+  }: {
+    role?: TeacherRole
+    theme?: WorkspaceTheme
+    withSidebar?: boolean
+    showTeacherWelcome?: boolean
+    hasSubjectAssignments?: boolean
+  } = {},
 ) {
   const content = withSidebar ? <SidebarProvider>{ui}</SidebarProvider> : ui
   return render(
@@ -59,6 +66,7 @@ export function renderInWorkspace(
           displayName: 'Frau Muster',
           email: 'muster@schule.de',
           showTeacherWelcome,
+          hasSubjectAssignments,
         }}
       >
         <WorkspaceProvider initialTheme={theme}>{content}</WorkspaceProvider>

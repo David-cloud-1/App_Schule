@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ExternalLink, LayoutDashboard, type LucideIcon } from 'lucide-react'
 import { useDepartment } from '@/components/department-provider'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -30,10 +30,11 @@ import {
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const { hofShortName } = useDepartment()
   const { role } = useAdminRole()
+  const hasSubjects = useHasSubjects()
   const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
   const idPrefix = useId()
-  const groups = adminNavGroupsFor(role)
+  const groups = adminNavGroupsFor(role, hasSubjects)
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false)
