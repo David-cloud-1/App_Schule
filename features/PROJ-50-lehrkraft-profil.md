@@ -67,7 +67,7 @@ Alle Rollen mit Zugang zum Lehrkräfte-Bereich: Lehrkraft, Bereichs-Admin, Super
 ### 5. Einstellungen
 - [ ] **Passwort ändern:** aktuelles Passwort, neues Passwort, Wiederholung. Gleiche Mindestregeln wie bei der Registrierung. Falsches aktuelles Passwort → Meldung am Feld. Erfolg → Toast, Person bleibt angemeldet.
 - [ ] **E-Mail (= Anmeldename) ändern:** Die aktuelle Adresse wird angezeigt; die Lehrkraft gibt eine neue Adresse ein. An die neue Adresse geht ein Bestätigungslink. Erst nach Klick auf den Link gilt die neue Adresse für die Anmeldung; bis dahin bleibt die alte gültig.
-- [ ] Nach dem Absenden zeigt die Seite „Bestätigung ausstehend an <neue Adresse>“ mit der Möglichkeit, den Link erneut zu senden oder die Änderung abzubrechen.
+- [ ] Nach dem Absenden zeigt die Seite „Bestätigung ausstehend an <neue Adresse>“ mit der Möglichkeit, den Link erneut zu senden. Wer sich vertippt hat, gibt einfach eine andere Adresse ein; sie ersetzt die ausstehende.
 - [ ] Ungültige Adresse oder eine Adresse, die schon zu einem anderen Konto gehört → verständliche Meldung am Feld (ohne zu verraten, wem sie gehört).
 - [ ] Nach erfolgreicher Bestätigung: Toast „Deine E-Mail-Adresse wurde geändert“, Person bleibt angemeldet.
 - [ ] Der Super-Admin kann E-Mail-Adressen weiterhin in der Nutzerverwaltung ändern.
@@ -97,7 +97,7 @@ Alle Rollen mit Zugang zum Lehrkräfte-Bereich: Lehrkraft, Bereichs-Admin, Super
 - **Passwort ändern schlägt fehl** (Netzwerk, Server): Fehlermeldung, Felder bleiben ausgefüllt (außer Passwörter werden aus Sicherheitsgründen geleert), Person bleibt angemeldet.
 - **Konto über Google/Apple angemeldet** (kein eigenes Passwort): Statt „Passwort ändern“ steht „Passwort festlegen“ (ohne Feld für das aktuelle Passwort); die E-Mail-Änderung zeigt den Hinweis, dass die Google-/Apple-Anmeldung danach evtl. nicht mehr zum Konto passt.
 - **Bestätigungslink abgelaufen oder in anderem Browser geöffnet**: verständliche Meldung, Änderung kann neu angestoßen werden; die alte Adresse bleibt gültig.
-- **Tippfehler in der neuen Adresse**: Da die alte Adresse bis zur Bestätigung gültig bleibt, sperrt sich niemand aus; „Änderung abbrechen“ löst das.
+- **Tippfehler in der neuen Adresse**: Da die alte Adresse bis zur Bestätigung gültig bleibt, sperrt sich niemand aus; wer sich vertippt hat, gibt eine andere Adresse ein.
 - **Pseudonym bereits vergeben / unzulässig**: dieselbe Prüfung und Meldung wie bisher im Spielerprofil.
 - **Kürzel mit Leerzeichen/Ziffern**: Leerzeichen am Rand werden entfernt, Ziffern/Sonderzeichen abgelehnt.
 
@@ -183,7 +183,7 @@ Konto-Menü & Schnellsuche: neuer Eintrag „Mein Konto“ (ganz oben)
 | **Kürzel über eine eigene kleine Schnittstelle** statt direktem Schreiben ins Profil | Prüft Länge/Zeichen auf dem Server und ändert garantiert nur dieses eine Feld (nie z. B. die Rolle). |
 | **Passwort ändern über den Server:** prüft erst das aktuelle Passwort, setzt dann das neue | Wer an einem offenen Rechner sitzt, kann das Passwort nicht ohne das alte ändern. Bei Google/Apple-Konten ohne Passwort entfällt das alte Passwort („festlegen“). Der Anmeldedienst begrenzt zu viele Fehlversuche. |
 | **E-Mail ändern über den Anmeldedienst (Supabase):** Bestätigungslink **nur an die neue Adresse** (Entscheidung 2026-10-27) | Funktioniert auch, wenn die alte Adresse nicht mehr abrufbar ist. Die alte Adresse gilt bis zum Klick weiter → kein Aussperren durch Tippfehler. Der Link führt über den vorhandenen Anmelde-Rücksprung zurück nach „Mein Konto“ mit Erfolgsmeldung. |
-| **E-Mail: „erneut senden“ und „abbrechen“** über den Server | Abbrechen setzt die ausstehende Adresse zurück; dafür braucht es Server-Rechte, daher nicht im Browser. |
+| **E-Mail: „erneut senden“ über den Server; kein „Abbrechen“-Knopf** (Entscheidung 2026-10-27) | Der Anmeldedienst kennt kein Abbrechen; ein Eingriff in sein Schema wurde abgelehnt. Eine neue Adresse ersetzt die ausstehende. |
 | **„Angesehen“ wird beim Laden der Auswertung gesetzt**, nur wenn die erstellende Person lädt | Kein eigener Knopf nötig; Admins, die mitschauen, verfälschen nichts. |
 | **Spielstand auf/zu pro Gerät** im Browser gemerkt | Reine Ansichts-Vorliebe, muss nicht synchronisiert werden. |
 
@@ -195,12 +195,12 @@ Konto-Menü & Schnellsuche: neuer Eintrag „Mein Konto“ (ganz oben)
 ### E) Was gebaut wird
 **Datenbank (1 Migration + Rückweg):** Kürzel-Feld im Profil · „angesehen am“ bei Nachweisen (bestehende geschlossene = angesehen) · Zähl-Funktion für „Mein Beitrag“ (nur eigene Einträge).
 
-**Server-Schnittstellen (neu):** Kürzel speichern · Passwort ändern/festlegen · E-Mail ändern / erneut senden / abbrechen.
+**Server-Schnittstellen (neu):** Kürzel speichern · Passwort ändern/festlegen · E-Mail ändern / erneut senden.
 **Server-Schnittstellen (angepasst):** Auswertung eines Nachweises setzt „angesehen“, wenn der Ersteller lädt.
 
 **Oberfläche:** Seite „Mein Konto“ mit den Karten oben · Eintrag im Konto-Menü und in der Schnellsuche · `/profile` für Lehrkräfte verkürzt · Erfolgsmeldung nach bestätigter E-Mail-Änderung.
 
-**Tests:** Kürzel-Prüfung, Passwort (falsches altes Passwort, Google-Konto), E-Mail (vergeben, ungültig, abbrechen), „angesehen“ nur durch Ersteller, Zahlen nur eigene Einträge, `/profile` Azubi unverändert / Lehrkraft verkürzt.
+**Tests:** Kürzel-Prüfung, Passwort (falsches altes Passwort, Google-Konto), E-Mail (vergeben, ungültig, erneut senden), „angesehen“ nur durch Ersteller, Zahlen nur eigene Einträge, `/profile` Azubi unverändert / Lehrkraft verkürzt.
 
 ### F) Pakete
 Keine neuen Pakete.
@@ -222,9 +222,32 @@ Keine neuen Pakete.
 1. Migration (vor dem Deploy einspielen, sonst zeigt die Seite einen Fehler): `profiles.kuerzel` (text, optional) und `graded_assessments.creator_viewed_at` (timestamptz). Bestehende geschlossene Nachweise einmalig auf „angesehen“ setzen. Kürzel nur durch die Person selbst oder den Super-Admin änderbar; die Rolle darf dadurch nie änderbar werden.
 2. `PATCH /api/profile/kuerzel` mit `{ kuerzel: string | null }` (Prüfung mit `parseKuerzel` aus `src/lib/konto.ts`).
 3. `POST /api/profile/password` mit `{ currentPassword?, newPassword }`; prüft das aktuelle Passwort, bei Konten ohne Passwort entfällt es. Fehlerform `{ error, field?: 'currentPassword' | 'newPassword' }`.
-4. `POST /api/profile/email` `{ email }` (Bestätigungslink nur an die neue Adresse), `PUT` = Link erneut senden, `DELETE` = ausstehende Änderung abbrechen. Rücksprung des Links nach `/admin/konto?email=bestaetigt` (bei Fehler `?email=fehler`).
+4. `POST /api/profile/email` `{ email }` (Bestätigungslink nur an die neue Adresse), `PUT` = Link erneut senden. Rücksprung des Links nach `/admin/konto?email=bestaetigt` (bei Fehler `?email=fehler`).
 5. `creator_viewed_at` setzen, wenn die erstellende Person die Auswertung (`GET /api/admin/assessments/[id]/results`) eines geschlossenen Nachweises lädt; nie bei anderen Personen.
 6. Vor dem Deploy: in Supabase Auth „Secure email change“ ausschalten.
+
+## Implementation Notes (Backend, 2026-10-27)
+
+**Entscheidungen des Nutzers (2026-10-27, wegen Regel „Änderungen am Anmelde-Ablauf/Rechten brauchen Freigabe“):** (1) **Kein „Abbrechen“-Knopf** für die E-Mail-Änderung, also auch kein Eingriff in das Schema des Anmeldedienstes. (2) Passwort wird auf dem Server geprüft und dann mit dem Service-Konto gesetzt. (3) Kürzel per Spalten-Recht direkt vom Browser, nicht über das Service-Konto.
+
+**Migration** `20261027_proj50_lehrkraft_konto.sql` (+ `_down`), **noch nicht an der Produktions-DB angewendet**; der Trockenlauf (Block mit `RAISE EXCEPTION`, zurückgerollt) bestand: Format-Regel greift, 4 geschlossene Nachweise würden als „angesehen“ markiert. Inhalt: `profiles.kuerzel` mit Format-Regel `^[A-ZÄÖÜẞ]{2,5}$` und `GRANT UPDATE (kuerzel)`; `graded_assessments.creator_viewed_at` (bestehende geschlossene Nachweise = angesehen). Rein additiv. Keine neue Tabelle, keine neue Policy; die bestehende Policy „profiles_update_own“ begrenzt auf die eigene Zeile.
+
+**Schnittstellen** (alle nur für Lehrer-Rollen, Azubis 403):
+- `PATCH /api/profile/kuerzel`, Prüfung mit `parseKuerzel`, schreibt nur die eigene Spalte.
+- `POST /api/profile/password`: aktuelles Passwort per Wegwerf-Client geprüft (Sitzung bleibt unberührt), neues per `admin.updateUserById`; Google/Apple-Konten ohne Passwort dürfen eines festlegen; 429 bei Rate-Limit; Passwörter werden nie geloggt.
+- `POST /api/profile/email` (Link an die neue Adresse; vergebene und ungültige Adresse geben dieselbe Meldung), `PUT` = Link erneut senden. Rücksprung `/auth/callback?next=/admin/konto?email=bestaetigt`.
+- `GET /api/admin/assessments/[id]/results` setzt `creator_viewed_at`, wenn die erstellende Person eine geschlossene Auswertung öffnet (Regel in `src/lib/assessment-viewed.ts`). Hinweis: Die Detailseite lädt die Auswertung beim Öffnen immer mit; schließt die Lehrkraft einen Nachweis auf dieser Seite, gilt er dadurch sofort als angesehen. Fehler beim Markieren verhindern die Auswertung nie.
+- `/auth/callback`: Schlägt der Austausch bei einem Link aus einem anderen Browser fehl, führt der Weg nach `/admin/konto?email=fehler` statt zur Anmelde-Fehlermeldung (die Änderung ist beim Klick schon bestätigt).
+
+**Tests:** 28 neue Tests (Kürzel, Passwort, E-Mail, „angesehen“, Callback); Gesamtsuite grün.
+
+**Vor dem Deploy (Reihenfolge):**
+1. Migration an Produktion anwenden (vor dem Push, sonst zeigt „Mein Konto“ einen Fehler).
+2. Supabase Auth → Email → „Secure email change“ **ausschalten**.
+3. Supabase Auth → URL Configuration: Prüfen, dass `https://spedilern.vercel.app/auth/callback` (mit Query, am besten `/auth/callback**`) in den Redirect-URLs steht, sonst fällt der Bestätigungslink auf die Startseite zurück.
+4. E-Mail-Vorlage „Change Email Address“ auf Deutsch prüfen.
+
+**Zusammenspiel mit PROJ-58 (Pflichtwechsel):** Setzt PROJ-58 später ein Merkmal „muss Passwort ändern“, muss `POST /api/profile/password` es mit zurücksetzen. Bis dahin berührt PROJ-50 das nicht.
 
 ## QA Test Results
 _To be added by /qa_

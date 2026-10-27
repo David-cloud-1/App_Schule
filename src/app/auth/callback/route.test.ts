@@ -51,6 +51,24 @@ describe('GET /auth/callback', () => {
     }
   })
 
+  it('bringt eine bestätigte E-Mail-Änderung samt Hinweis zurück nach „Mein Konto“ (PROJ-50)', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
+    } as never)
+    const next = encodeURIComponent('/admin/konto?email=bestaetigt')
+    const res = await GET(buildRequest(`http://localhost:3000/auth/callback?code=c&next=${next}`))
+    expect(res.headers.get('location')).toBe('http://localhost:3000/admin/konto?email=bestaetigt')
+  })
+
+  it('führt bei einem Link aus einem anderen Browser zurück nach „Mein Konto“ statt zur Anmelde-Fehlermeldung (PROJ-50)', async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: { message: 'code verifier missing' } }) },
+    } as never)
+    const next = encodeURIComponent('/admin/konto?email=bestaetigt')
+    const res = await GET(buildRequest(`http://localhost:3000/auth/callback?code=c&next=${next}`))
+    expect(res.headers.get('location')).toBe('http://localhost:3000/admin/konto?email=fehler')
+  })
+
   it('respects the ?next= param for post-auth redirect', async () => {
     mockCreateClient.mockResolvedValue({
       auth: {

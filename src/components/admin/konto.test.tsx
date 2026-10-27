@@ -128,12 +128,12 @@ describe('Karte „Mein Beitrag“', () => {
 })
 
 describe('Karte „Anmeldung“', () => {
-  it('zeigt eine ausstehende Adresse mit „erneut senden“ und „abbrechen“ statt des Formulars', () => {
+  it('zeigt eine ausstehende Adresse mit „erneut senden“ und lässt eine andere Adresse eingeben', () => {
     render(<KontoAnmeldung head={{ email: 'alt@schule.de', pendingEmail: 'neu@schule.de', hasPassword: true }} />)
     expect(screen.getByText('neu@schule.de')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Link erneut senden' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Änderung abbrechen' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Neue E-Mail-Adresse')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /abbrechen/i })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Andere Adresse eingeben')).toBeInTheDocument()
   })
 
   it('lehnt eine ungültige und die aktuelle Adresse am Feld ab', async () => {

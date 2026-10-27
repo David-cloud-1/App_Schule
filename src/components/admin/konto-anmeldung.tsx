@@ -50,7 +50,7 @@ function EmailForm({ email, pendingEmail, hasPassword }: { email: string; pendin
   const router = useRouter()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | undefined>()
-  const [busy, setBusy] = useState<'change' | 'resend' | 'cancel' | null>(null)
+  const [busy, setBusy] = useState<'change' | 'resend' | null>(null)
 
   async function change(e: React.FormEvent) {
     e.preventDefault()
@@ -81,16 +81,15 @@ function EmailForm({ email, pendingEmail, hasPassword }: { email: string; pendin
     }
   }
 
-  async function action(kind: 'resend' | 'cancel') {
-    setBusy(kind)
+  async function resend() {
+    setBusy('resend')
     try {
-      const { ok, body } = await send('/api/profile/email', kind === 'resend' ? 'PUT' : 'DELETE')
+      const { ok, body } = await send('/api/profile/email', 'PUT')
       if (!ok) {
         toast.error(body.error ?? 'Das hat nicht geklappt. Bitte versuche es erneut.')
         return
       }
-      toast.success(kind === 'resend' ? 'Link erneut gesendet.' : 'Änderung abgebrochen.')
-      router.refresh()
+      toast.success('Link erneut gesendet.')
     } catch {
       toast.error('Netzwerkfehler')
     } finally {
@@ -110,61 +109,55 @@ function EmailForm({ email, pendingEmail, hasPassword }: { email: string; pendin
         </p>
       </div>
 
-      {pendingEmail ? (
+      {pendingEmail && (
         <div role="status" className="space-y-3 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-4">
           <p className="flex items-start gap-2 text-sm text-ws-text">
             <MailCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-ws-orange" />
             <span>
-              Bestätigung ausstehend an <strong className="break-all">{pendingEmail}</strong>. Bis du den Link angeklickt hast, meldest du dich weiter mit {email} an.
+              Bestätigung ausstehend an <strong className="break-all">{pendingEmail}</strong>. Bis du den Link angeklickt hast, meldest du dich weiter mit {email} an. Vertippt? Gib unten einfach eine andere Adresse ein.
             </span>
           </p>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={busy !== null} onClick={() => action('resend')} className={outlineButton}>
-              {busy === 'resend' && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Link erneut senden
-            </Button>
-            <Button type="button" variant="outline" disabled={busy !== null} onClick={() => action('cancel')} className={outlineButton}>
-              {busy === 'cancel' && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Änderung abbrechen
-            </Button>
-          </div>
+          <Button type="button" variant="outline" disabled={busy !== null} onClick={resend} className={outlineButton}>
+            {busy === 'resend' && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Link erneut senden
+          </Button>
         </div>
-      ) : (
-        <form onSubmit={change} noValidate className="space-y-2">
-          <Label htmlFor="konto-email-neu" className="text-sm font-medium text-ws-text">
-            Neue E-Mail-Adresse
-          </Label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="konto-email-neu"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              aria-invalid={!!error}
-              aria-describedby={error ? 'konto-email-fehler' : 'konto-email-hinweis'}
-              placeholder="neue@adresse.de"
-              className={`${inputClass} sm:flex-1`}
-            />
-            <Button type="submit" disabled={busy !== null || value.trim() === ''} className={primaryButton}>
-              {busy === 'change' && <Loader2 className="mr-2 size-4 animate-spin" />}
-              Adresse ändern
-            </Button>
-          </div>
-          <FieldError id="konto-email-fehler" message={error} />
-          {!error && (
-            <p id="konto-email-hinweis" className="text-xs text-ws-muted">
-              Wir schicken einen Bestätigungslink an die neue Adresse. Erst nach dem Klick gilt sie für die Anmeldung.
-            </p>
-          )}
-          {!hasPassword && (
-            <p className="text-xs text-ws-muted">
-              Du meldest dich über Google oder Apple an. Nach einer neuen Adresse passt diese Anmeldung eventuell nicht mehr zu deinem Konto.
-            </p>
-          )}
-        </form>
       )}
+
+      <form onSubmit={change} noValidate className="space-y-2">
+        <Label htmlFor="konto-email-neu" className="text-sm font-medium text-ws-text">
+          {pendingEmail ? 'Andere Adresse eingeben' : 'Neue E-Mail-Adresse'}
+        </Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="konto-email-neu"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? 'konto-email-fehler' : 'konto-email-hinweis'}
+            placeholder="neue@adresse.de"
+            className={`${inputClass} sm:flex-1`}
+          />
+          <Button type="submit" disabled={busy !== null || value.trim() === ''} className={primaryButton}>
+            {busy === 'change' && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Adresse ändern
+          </Button>
+        </div>
+        <FieldError id="konto-email-fehler" message={error} />
+        {!error && (
+          <p id="konto-email-hinweis" className="text-xs text-ws-muted">
+            Wir schicken einen Bestätigungslink an die neue Adresse. Erst nach dem Klick gilt sie für die Anmeldung.
+          </p>
+        )}
+        {!hasPassword && (
+          <p className="text-xs text-ws-muted">
+            Du meldest dich über Google oder Apple an. Nach einer neuen Adresse passt diese Anmeldung eventuell nicht mehr zu deinem Konto.
+          </p>
+        )}
+      </form>
     </div>
   )
 }

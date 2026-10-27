@@ -63,7 +63,7 @@ export function KontoEmailHinweis() {
   useEffect(() => {
     if (!state) return
     if (state === 'bestaetigt') toast.success('Deine E-Mail-Adresse wurde geändert.')
-    else if (state === 'fehler') toast.error('Der Bestätigungslink ist abgelaufen oder ungültig. Du kannst die Änderung neu starten.')
+    else if (state === 'fehler') toast.error('Die Bestätigung konnte in diesem Browser nicht abgeschlossen werden. Prüfe unter „Anmeldung“, welche Adresse gilt, oder starte die Änderung neu.')
     router.replace(pathname)
   }, [state, pathname, router])
 

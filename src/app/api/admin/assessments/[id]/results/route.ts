@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { shouldMarkCreatorViewed } from '@/lib/assessment-viewed'
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import {
@@ -20,10 +21,24 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const { data: assessment } = await supabase
     .from('graded_assessments')
-    .select('id, part, grading_scale, focus_tracking')
+    .select('id, part, grading_scale, focus_tracking, status, created_by, creator_viewed_at')
     .eq('id', id)
     .single()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+
+  // PROJ-50: Öffnet die erstellende Person die Auswertung eines geschlossenen
+  // Nachweises zum ersten Mal, gilt sie als „angesehen“ (Mein Konto → Offene
+  // Aufgaben). Andere Personen (Super-Admin, Bereichs-Admin) ändern nichts.
+  // Ein Fehler hier darf die Auswertung selbst nie verhindern.
+  if (shouldMarkCreatorViewed(assessment, auth.user.id)) {
+    const { error: viewedError } = await supabase
+      .from('graded_assessments')
+      .update({ creator_viewed_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('created_by', auth.user.id)
+      .is('creator_viewed_at', null)
+    if (viewedError) console.error('[GET /api/admin/assessments/:id/results] creator_viewed_at', viewedError)
+  }
 
   const service = createServiceClient()
   const { data: sessions } = await service
