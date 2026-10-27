@@ -127,6 +127,15 @@ export type ParseResult =
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E']
 
+/**
+ * Manche KI-Chats liefern Antworten, die beim Kopieren Markdown-Fluchtzeichen vor
+ * Unterstrichen/Klammern stehen lassen (z. B. "antwort\_e", "\[ … \]"). Das sind keine
+ * gültigen JSON-Escapes — JSON.parse scheitert sonst komplett daran.
+ */
+function stripInvalidEscapes(text: string): string {
+  return text.replace(/\\([^"\\/bfnrtu])/g, '$1')
+}
+
 /** Findet das JSON in einer Chat-Antwort: pur, in ```-Block oder mit Text drumherum. */
 export function extractJson(raw: string): unknown | null {
   const text = raw.trim()
@@ -143,6 +152,13 @@ export function extractJson(raw: string): unknown | null {
   for (const candidate of attempts) {
     try {
       return JSON.parse(candidate)
+    } catch {
+      // nächster Versuch
+    }
+  }
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(stripInvalidEscapes(candidate))
     } catch {
       // nächster Versuch
     }

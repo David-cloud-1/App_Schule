@@ -66,6 +66,10 @@ describe('extractJson', () => {
   it('liest JSON im Codeblock', () => expect(extractJson('Hier:\n```json\n{"a":1}\n```\nViel Erfolg')).toEqual({ a: 1 }))
   it('liest JSON mit Text davor und danach', () => expect(extractJson('Klar! {"a":1} Fertig.')).toEqual({ a: 1 }))
   it('liefert null bei Unsinn', () => expect(extractJson('kein json')).toBeNull())
+  it('liest JSON mit fälschlich escapten Unterstrichen und Klammern (Markdown-Kopierfehler)', () => {
+    const broken = '{ "rows": \\[ { "antwort\\_e": "x", "fach\\_code": "STG" } \\] }'
+    expect(extractJson(broken)).toEqual({ rows: [{ antwort_e: 'x', fach_code: 'STG' }] })
+  })
 })
 
 describe('parseAiAnswer', () => {
