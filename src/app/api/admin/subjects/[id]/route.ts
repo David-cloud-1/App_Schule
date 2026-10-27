@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../../_lib/auth'
 
 const UpdateSchema = z
   .object({
@@ -16,7 +16,7 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -40,7 +40,7 @@ export async function PATCH(
 
   const { data: current } = await supabase.from('subjects').select('department_id').eq('id', id).maybeSingle()
   if (!current) return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
-  const forbidden = assertCanAdminDepartment(auth, current.department_id as string)
+  const forbidden = assertCanAdminSubject(auth, id, current.department_id as string)
   if (forbidden) return forbidden
 
   const update: Record<string, unknown> = {}
@@ -101,6 +101,60 @@ export async function PATCH(
           ? 'subject.activate'
           : 'subject.deactivate'
         : 'subject.update',
+    object_type: 'subject',
+    object_id: id,
+  })
+
+  return NextResponse.json({ ok: true })
+}
+
+/**
+ * Fach löschen (PROJ-48) — nur möglich, wenn es keine aktiven Fragen mehr
+ * hat (sonst Hinweis, zuerst Fragen zu verschieben/deaktivieren). Papierkorb
+ * statt endgültigem Löschen, wie bei Fragen/Themen/Sets (PROJ-47).
+ */
+export async function DELETE(
+  _request: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const auth = await requireContentAdmin()
+  if (auth.error) return auth.error
+  const { supabase, user } = auth
+
+  const { id } = await ctx.params
+  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+
+  const { data: current } = await supabase.from('subjects').select('department_id').eq('id', id).maybeSingle()
+  if (!current) return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
+  const forbidden = assertCanAdminSubject(auth, id, current.department_id as string)
+  if (forbidden) return forbidden
+
+  const { data: links } = await supabase
+    .from('question_subjects')
+    .select('questions ( is_active )')
+    .eq('subject_id', id)
+  const activeCount = (
+    (links ?? []) as unknown as { questions: { is_active: boolean } | null }[]
+  ).filter((l) => l.questions?.is_active === true).length
+  if (activeCount > 0) {
+    return NextResponse.json(
+      { error: `Fach hat noch ${activeCount} aktive Fragen. Bitte Fragen zuerst verschieben oder deaktivieren.` },
+      { status: 409 }
+    )
+  }
+
+  const { error } = await supabase
+    .from('subjects')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) {
+    console.error('[DELETE subject]', error)
+    return NextResponse.json({ error: 'Failed to delete subject' }, { status: 500 })
+  }
+
+  await writeAuditLog(supabase, {
+    admin_id: user.id,
+    action_type: 'subject.delete',
     object_type: 'subject',
     object_id: id,
   })

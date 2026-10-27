@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminDepartmentContent } from '../../_lib/auth'
 import { checkImportRows, type ImportRow } from '@/lib/question-import'
 import { groupIntoBatch } from '@/lib/content-history'
 import { getDepartmentById } from '@/lib/departments'
@@ -26,12 +26,16 @@ const BodySchema = z.object({
   rows: z.array(RowSchema).min(1).max(500),
   // Bewusstes Überstimmen der Qualitätsprüfung durch den Admin
   allow_flagged: z.boolean().optional(),
+  // Nur relevant für eine Lehrkraft mit Zuständigkeiten in mehreren
+  // Bereichen (PROJ-48) — Admin/Bereichs-Admin nutzen immer ihren eigenen
+  // Arbeits-Bereich, ein mitgeschickter Wert wird für sie ignoriert.
+  department_id: z.string().uuid().optional(),
 })
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user, isTeacher } = auth
 
   let body: unknown
   try {
@@ -48,12 +52,25 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const departmentId = isTeacher ? parsed.data.department_id ?? null : auth.departmentIds[0]
+  if (!departmentId) {
+    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
+  }
+  const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
+  if (forbidden) return forbidden
+
   // Fächer und Klassenstufen des Bereichs (PROJ-22): ein Kürzel gilt nur in
-  // seinem Bereich; unbekannte Kürzel werden zeilengenau abgelehnt.
+  // seinem Bereich; unbekannte Kürzel werden zeilengenau abgelehnt. Eine
+  // Lehrkraft (PROJ-48) sieht hier nur ihre eigenen Fächer — ein fach_code
+  // außerhalb ihrer Zuständigkeit wird dadurch automatisch wie ein
+  // unbekanntes Kürzel abgelehnt.
   const department = await getDepartmentById(supabase, departmentId)
   let departmentSubjects
   try {
     departmentSubjects = await fetchDepartmentSubjects(supabase, departmentId, { activeOnly: true })
+    if (isTeacher) {
+      departmentSubjects = departmentSubjects.filter((s) => auth.subjectIds?.includes(s.id))
+    }
   } catch (err) {
     console.error('[bulk-import] subject load', err)
     return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })

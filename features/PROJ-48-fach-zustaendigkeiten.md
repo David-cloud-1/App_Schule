@@ -1,8 +1,8 @@
 # PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-26
+**Last Updated:** 2026-10-27
 
 ## Kontext
 Teil der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Lehrkräfte unterrichten Fächer, oft über mehrere Fachbereiche hinweg (Beispiel: Spedition · STG und Tourismus · KSK). Außerdem gibt es an der Schule weitere Bildungsgänge, die noch keine Fragen in der App haben, aber künftig dazukommen sollen. Der Fachbereich als Einheit für Rechte (Bereichs-Admin) ist dafür zu grob.
@@ -92,7 +92,91 @@ Deshalb kommt die **Fach-Zuständigkeit** dazu: Eine Lehrkraft trägt sich selbs
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Überblick
+Das Feature fügt eine neue, feinere Rechte-Ebene **unterhalb** des bestehenden Bereichs-Rechtemodells (PROJ-24) hinzu: Statt „ganzer Fachbereich" oder „gar nichts" gibt es jetzt „einzelne Fächer innerhalb eines Bereichs". Bereichs-Admin und Super-Admin ändert sich nichts — sie prüfen weiterhin auf Bereichsebene. Eine Lehrkraft ohne Admin-Rolle bekommt zusätzlich Zugriff, aber nur auf die Fächer (oder Bereiche ohne Fach), die sie selbst eingetragen hat.
+
+### B) Komponenten-Struktur (UI)
+
+```
+Lehrkräfte-Bereich (bestehend, PROJ-45)
+├── Startseite
+│   └── "Meine Fächer" (Kachel-Liste: Bereich · Fach · Anzahl aktiver Fragen)
+│       └── Klick → Fragenliste, vorgefiltert auf das Fach
+├── NEU: Seite "Meine Fächer" (Einstellungen-Bereich)
+│   ├── Liste aller aktiven Fachbereiche
+│   │   ├── je Bereich: Ankreuzfeld "Ich unterrichte in diesem Bereich" (ohne Fach)
+│   │   └── je Fach im Bereich: Ankreuzfeld
+│   └── "Neues Fach anlegen" (nur in Bereichen, in denen die Lehrkraft eingetragen ist)
+├── Navigation (Seitenleiste)
+│   └── Für Lehrkraft mit Zuständigkeiten zusätzlich sichtbar:
+│       Fragen · Themen · Fächer · Prüfungssimulation (alle vorgefiltert)
+├── Bestehende Seiten (Fragen, Themen, Fächer, Prüfungssets, Papierkorb)
+│   └── Unverändert in der Darstellung — zeigen einer Lehrkraft nur ihre
+│       zuständigen Fächer/Inhalte, statt wie bisher "kein Zugriff"
+└── NEU (nur Super-Admin): Seite "Zuständigkeiten" (unter Nutzerverwaltung)
+    ├── Ansicht "Nach Fach": Fach → eingetragene Lehrkräfte
+    ├── Ansicht "Nach Lehrkraft": Lehrkraft → ihre Fächer
+    └── Aktion "Entfernen" je Eintrag (mit Protokolleintrag)
+```
+
+### C) Datenmodell (einfache Sprache)
+
+**Neue Tabelle: Fach-Zuständigkeiten**
+Jeder Eintrag verbindet eine Lehrkraft mit entweder
+- einem Fachbereich allein (für Bereiche ohne eigene Fächer), oder
+- einem konkreten Fach innerhalb eines Bereichs.
+
+Gespeichert wird: wer (Lehrkraft), welcher Bereich, welches Fach (optional), wann eingetragen. Jede Lehrkraft kann sich beliebig oft eintragen (mehrere Bereiche, mehrere Fächer), aber nur für sich selbst — nie für jemand anderen.
+
+**Wiederverwendung bestehender Strukturen:**
+- Fachbereiche, Fächer, Themen, Fragen, Prüfungssets existieren bereits (PROJ-2, PROJ-12, PROJ-22) — es ändert sich nur, *wer* darauf zugreifen darf.
+- Das Änderungsprotokoll (PROJ-47) erfasst automatisch jede Fragen-/Themen-Änderung einer Lehrkraft mit Namen und Zeitpunkt — das ist bereits die in E1 geforderte Absicherung, hier wird nichts Neues gebaut.
+- „Rolle entzogen → Zuständigkeiten weg" ergibt sich von selbst: Die Prüfung verlangt immer *aktuell* die Lehrer-Rolle UND einen Eintrag. Verliert jemand die Rolle, greift die Prüfung nicht mehr, auch wenn der Zuständigkeits-Eintrag technisch noch existiert (wird zusätzlich aufgeräumt, siehe Edge Case).
+
+### D) Rechte-Prüfung (Konzept, keine Implementierung)
+Bisher prüfte jede Verwaltungsseite: „Bist du Super-Admin, oder Bereichs-Admin für diesen Bereich?"
+Neu kommt eine dritte Möglichkeit dazu: „… oder bist du eine Lehrkraft mit einem Zuständigkeits-Eintrag für genau dieses Fach (bzw. für Fragen: für mindestens eines der zugeordneten Fächer)?"
+
+Diese Prüfung sitzt an zwei Stellen, die immer übereinstimmen müssen (wie bei PROJ-46):
+1. **In der Datenbank** (Row Level Security) — die technische Absicherung, die auch bei direkten Datenbankzugriffen gilt.
+2. **In den Verwaltungs-Routen** — dieselbe Regel, damit ein fremdes Fach serverseitig als „nicht gefunden" (404) statt als „verboten" erscheint (verrät nicht, dass es existiert).
+
+Der kostenpflichtige KI-Generator bleibt separat gesperrt (eigene, unveränderte Prüfung: nur Super-Admin).
+
+### E) Tech-Entscheidungen (Begründung)
+- **Eigene Tabelle statt Erweiterung von „profiles":** Eine Lehrkraft kann für mehrere Fächer zuständig sein — das passt nicht in eine einzelne Spalte am Profil. Eine eigene Tabelle (ein Eintrag pro Zuständigkeit) ist die naheliegende Lösung für diese „viele-zu-viele"-Beziehung.
+- **Keine Freigabe-Warteschlange (E1):** Bewusste Nutzer-Entscheidung — spart eine komplette Workflow-Komponente (Beantragen/Genehmigen/Ablehnen). Das Änderungsprotokoll (PROJ-47) übernimmt die Kontrolle nachträglich statt vorher.
+- **Wiederverwendung der bestehenden Verwaltungsseiten:** Es entstehen keine neuen Fragen-/Themen-/Prüfungssets-Seiten für Lehrkräfte — dieselben Seiten, die Bereichs-Admins nutzen, werden nur zusätzlich für Lehrkräfte mit Zuständigkeit geöffnet und automatisch auf deren Fächer eingeschränkt. Reduziert Pflegeaufwand erheblich.
+- **„Ohne Fach"-Eintrag für neue Bildungsgänge (E3):** Statt ein Fach zu erfinden, das es noch nicht gibt, trägt sich die Lehrkraft nur für den Bereich ein — das reicht, um dort das erste Fach anzulegen.
+
+### F) Abhängigkeiten (Pakete)
+Keine neuen Pakete nötig — das Feature nutzt ausschließlich bereits vorhandene Bausteine (Supabase RLS, bestehende shadcn/ui-Komponenten: Checkbox, Card, Table, Tabs).
+
+### G) Betroffene Bestandsteile
+- Verwaltungs-Routen für Fragen, Themen, Fächer, Prüfungssets (Zugriffsprüfung erweitert)
+- Seitenleiste & Startseite des Lehrkräfte-Bereichs (PROJ-45) — neue Einträge, abhängig von Zuständigkeiten
+- Nutzerverwaltung (Super-Admin) — neue Unteransicht „Zuständigkeiten"
+- Erstmal-Hinweis (ähnlich `teacher_welcome_seen` aus PROJ-44) für den Verweis auf „Meine Fächer"
+
+## Backend (2026-10-27)
+
+**Datenbank** (`supabase/migrations/20261027_proj48_subject_assignments.sql` + `_down.sql`):
+- Neue Tabelle `teacher_subject_assignments` (teacher_id, department_id, subject_id nullable = bereichsweit ohne Fach). Eindeutig je Lehrkraft+Fach bzw. je Lehrkraft+Bereich (bereichsweite Einträge).
+- Neue Hilfsfunktionen: `can_admin_subject`, `can_admin_department_content`, `can_admin_question`, `has_teacher_assignment_subject`, `has_teacher_assignment_department`.
+- Trigger: neues Fach → Ersteller-Lehrkraft wird automatisch zugewiesen (E3); Rolle verliert `teacher` → ihre Zuständigkeiten werden gelöscht.
+- Bestehende RLS-Policies erweitert (Fragen, Themen, Fächer, Fach-Verknüpfungen, Prüfungssets, Änderungsverlauf, `restore_content_version`) — Admin/Bereichs-Admin unverändert, Lehrkraft zusätzlich über die neuen Funktionen zugelassen.
+- **Migration ist zum Zeitpunkt dieses Commits noch NICHT auf der Produktions-DB angewendet** — der `apply_migration`-Aufruf wurde wiederholt vom Berechtigungssystem abgelehnt. Muss vor dem nächsten Deploy manuell nachgezogen werden (Supabase-CLI `db push` oder SQL-Editor), sonst scheitern die betroffenen Routen gegen die Live-DB.
+
+**API-Routen:**
+- Neuer Auth-Helfer `requireContentAdmin()` (`src/app/api/admin/_lib/auth.ts`) — Admin/Bereichs-Admin/Lehrkraft mit Zuständigkeit; plus `requireTeacher()` für die Selbstverwaltung.
+- Bestehende Routen umgestellt: `questions`, `questions/[id]`, `questions/bulk`, `questions/bulk-import`, `topics`, `topics/[id]`, `subjects`, `subjects/[id]` (+ neue DELETE-Route für Fach-Löschung), `exam-sets`, `exam-sets/[id]`, `question-prompt`, `trash`, `trash/[type]/[id]`.
+- Neu: `GET/POST /api/admin/my-subjects`, `DELETE /api/admin/my-subjects/[id]` („Meine Fächer"), `GET /api/admin/teacher-assignments`, `DELETE /api/admin/teacher-assignments/[id]` (Super-Admin-Übersicht).
+- `exam-sets/extract` und `exam-sets/import` bewusst **nicht** geöffnet (E4 — hängen am kostenpflichtigen KI-Pfad bzw. sind nur über diesen erreichbar).
+
+**Tests:** `npm test` (1424 Tests) und `npm run build` grün. Kein Dev-Server, kein Playwright (Projektregel).
+
+**Noch offen (vor /frontend):** Migration auf die Live-DB anwenden; UI für „Meine Fächer", Navigation-Filterung und die Zuständigkeiten-Übersicht fehlt noch komplett.
 
 ## QA Test Results
 _To be added by /qa_

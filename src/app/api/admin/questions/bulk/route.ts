@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireContentAdmin, writeAuditLog } from '../../_lib/auth'
 import { groupIntoBatch } from '@/lib/content-history'
 
 const BulkIdsSchema = z.object({
@@ -8,7 +8,7 @@ const BulkIdsSchema = z.object({
 })
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -71,7 +71,7 @@ const BulkUpdateSchema = z
   )
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

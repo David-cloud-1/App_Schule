@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../_lib/auth'
 
 const ListQuerySchema = z.object({
   subject_id: z.string().uuid().optional(),
@@ -12,9 +12,9 @@ const CreateSchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, isTeacher } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -26,12 +26,18 @@ export async function GET(request: NextRequest) {
   // topics ist für alle authentifizierten Nutzer lesbar (fachneutrale
   // RLS-Policy) — der Bereichsfilter muss deshalb hier im Code passieren,
   // sonst sieht ein Bereichs-Admin auch Themen anderer Bereiche (PROJ-24).
+  // Eine Lehrkraft (PROJ-48) sieht statt des Bereichs nur ihre eigenen Fächer.
   let query = supabase
     .from('topics')
     .select('id, name, subject_id, created_at, subjects!inner(id, code, name, department_id)')
-    .eq('subjects.department_id', departmentId)
     .is('deleted_at', null)
     .order('name')
+
+  if (isTeacher) {
+    query = query.in('subject_id', auth.subjectIds ?? [])
+  } else {
+    query = query.eq('subjects.department_id', auth.departmentIds[0])
+  }
 
   if (parsed.data.subject_id) {
     query = query.eq('subject_id', parsed.data.subject_id)
@@ -78,9 +84,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId, isSuperAdmin } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -100,9 +106,11 @@ export async function POST(request: NextRequest) {
   const { subject_id, name } = parsed.data
 
   const { data: subject } = await supabase.from('subjects').select('department_id').eq('id', subject_id).maybeSingle()
-  if (!subject || (!isSuperAdmin && subject.department_id !== departmentId)) {
+  if (!subject) {
     return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
   }
+  const forbidden = assertCanAdminSubject(auth, subject_id, subject.department_id as string)
+  if (forbidden) return forbidden
 
   const { data, error } = await supabase
     .from('topics')

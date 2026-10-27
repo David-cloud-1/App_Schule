@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireContentAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 
 const ListQuerySchema = z.object({
@@ -41,9 +41,9 @@ const CreateQuestionSchema = z.object({
 const PAGE_SIZE = 20
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId, isSuperAdmin } = auth
+  const { supabase, isSuperAdmin, isTeacher } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -67,12 +67,28 @@ export async function GET(request: NextRequest) {
   // und die Anfrage scheitern lassen (PROJ-24-Regression, 2026-10-01).
   let subjectId: string | null = null
   if (subject) {
-    // Kürzel nur im Bereich des Admins (PROJ-22)
-    const subjectRow = await resolveSubjectCode(supabase, departmentId, subject)
-    if (!subjectRow) {
-      return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
+    if (isTeacher) {
+      // Kürzel nur unter den eigenen Zuständigkeiten (PROJ-48) — eine
+      // Lehrkraft kann in mehreren Bereichen unterrichten, daher kein
+      // einzelner Bereich wie bei Admin/Bereichs-Admin.
+      const { data: subjectRow } = await supabase
+        .from('subjects')
+        .select('id')
+        .eq('code', subject.trim().toUpperCase())
+        .in('id', auth.subjectIds ?? [])
+        .maybeSingle()
+      if (!subjectRow) {
+        return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
+      }
+      subjectId = (subjectRow as { id: string }).id
+    } else {
+      // Kürzel nur im Bereich des Admins (PROJ-22)
+      const subjectRow = await resolveSubjectCode(supabase, auth.departmentIds[0], subject)
+      if (!subjectRow) {
+        return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
+      }
+      subjectId = subjectRow.id
     }
-    subjectId = subjectRow.id
   }
 
   let query = supabase
@@ -97,9 +113,15 @@ export async function GET(request: NextRequest) {
       `,
       { count: 'exact' }
     )
-    .eq('qs_filter.subjects.department_id', departmentId)
     .is('deleted_at', null)
     .order(sort, { ascending: sort_dir === 'asc' })
+
+  if (isTeacher) {
+    // Außerhalb ihrer Fächer sieht eine Lehrkraft keine Inhalte (PROJ-48 AC).
+    query = query.in('qs_filter.subject_id', auth.subjectIds ?? [])
+  } else {
+    query = query.eq('qs_filter.subjects.department_id', auth.departmentIds[0])
+  }
 
   // PROJ-46 (E6): private Nachweis-Fragen gehören nicht in die
   // Fragenverwaltung der Bereichs-Admins — nur der Super-Admin sieht sie
@@ -188,7 +210,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

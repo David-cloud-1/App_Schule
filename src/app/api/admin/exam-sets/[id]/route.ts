@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, assertCanAdminDepartment } from '../../_lib/auth'
+import { requireContentAdmin, assertCanAdminDepartmentContent } from '../../_lib/auth'
 
 const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
@@ -15,7 +15,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
@@ -35,7 +35,7 @@ export async function PATCH(
     .single()
 
   if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
-  const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
+  const forbidden = assertCanAdminDepartmentContent(auth, existing.department_id as string)
   if (forbidden) return forbidden
 
   // Multiple sets may be active per part simultaneously (e.g. different exams
@@ -57,7 +57,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
@@ -67,7 +67,7 @@ export async function DELETE(
     .eq('id', id)
     .maybeSingle()
   if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
-  const forbidden = assertCanAdminDepartment(auth, existing.department_id as string)
+  const forbidden = assertCanAdminDepartmentContent(auth, existing.department_id as string)
   if (forbidden) return forbidden
 
   // Papierkorb statt endgültigem Löschen (PROJ-47).

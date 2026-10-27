@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireContentAdmin, writeAuditLog } from '../../../_lib/auth'
 import { CONTENT_TABLE, isContentType } from '@/lib/content-history'
 
 /** Aus dem Papierkorb wiederherstellen (PROJ-47). */
@@ -7,7 +7,7 @@ export async function POST(
   _request: NextRequest,
   ctx: { params: Promise<{ type: string; id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -37,7 +37,7 @@ export async function DELETE(
   _request: NextRequest,
   ctx: { params: Promise<{ type: string; id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user, isSuperAdmin } = auth
 

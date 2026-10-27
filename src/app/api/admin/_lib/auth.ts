@@ -155,6 +155,235 @@ export function assertCanAdminDepartment(
 }
 
 /**
+ * Zugangs-Check für „Meine Fächer" (PROJ-48): nur eine echte Lehrkraft (role
+ * = 'teacher') darf sich selbst eintragen/austragen. Bereichs-Admin und
+ * Super-Admin brauchen laut Spec keine Zuständigkeiten — sie bekommen hier
+ * bewusst 403, statt sich versehentlich nutzlose Einträge anzulegen.
+ */
+export async function requireTeacher(): Promise<
+  | { error: NextResponse; user: null; supabase: null }
+  | { error: null; user: { id: string; email: string | undefined }; supabase: SupabaseClient }
+> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), user: null, supabase: null }
+  }
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  const role = (profile as { role?: string } | null)?.role
+  if (!profile || role !== 'teacher') {
+    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }), user: null, supabase: null }
+  }
+
+  return { error: null, user: { id: user.id, email: user.email }, supabase: supabase as unknown as SupabaseClient }
+}
+
+/**
+ * Zugangs-Check für die Fragen-/Themen-/Fächer-/Prüfungsset-Routen (PROJ-48):
+ * zusätzlich zu Super-Admin und Bereichs-Admin darf hier eine Lehrkraft mit
+ * mindestens einer eigenen Fach-Zuständigkeit herein. Welche konkreten Fächer
+ * und Bereiche das sind, steht in `departmentIds`/`subjectIds` — die eigentliche
+ * Grenze pro Objekt ziehen `canAdminSubject`/`canAdminDepartmentContent`
+ * unten (gespiegelt in der RLS, siehe Migration 20261027_proj48).
+ */
+export type ContentAuthResult =
+  | {
+      error: NextResponse
+      user: null
+      supabase: null
+    }
+  | {
+      error: null
+      user: { id: string; email: string | undefined }
+      supabase: SupabaseClient
+      role: 'teacher' | AdminRole
+      isSuperAdmin: boolean
+      isDepartmentAdmin: boolean
+      isTeacher: boolean
+      /**
+       * Bereiche, in denen diese Person Inhalte verwalten darf.
+       * Admin/Bereichs-Admin: genau ihr Arbeits-Bereich (ein Eintrag, wie
+       * bei `departmentId` aus requireAdmin). Lehrkraft: alle Bereiche, in
+       * denen sie mindestens eine Zuständigkeit hat (Fach oder bereichsweit).
+       */
+      departmentIds: string[]
+      /**
+       * Fächer, für die eine Lehrkraft konkret zuständig ist (ohne
+       * bereichsweite Einträge ohne Fach). `null` für Admin/Bereichs-Admin —
+       * die sind nicht auf einzelne Fächer eingeschränkt.
+       */
+      subjectIds: string[] | null
+    }
+
+export async function requireContentAdmin(): Promise<ContentAuthResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+      user: null,
+      supabase: null,
+    }
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, department_id')
+    .eq('id', user.id)
+    .single()
+
+  const role = (profile as { role?: string } | null)?.role
+  if (!profile || (role !== 'admin' && role !== 'department_admin' && role !== 'teacher')) {
+    return {
+      error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+      user: null,
+      supabase: null,
+    }
+  }
+
+  const isSuperAdmin = role === 'admin'
+  const isDepartmentAdmin = role === 'department_admin'
+  const isTeacher = role === 'teacher'
+  const ownDepartmentId = (profile as { department_id?: string | null }).department_id ?? null
+
+  if (!isTeacher) {
+    const departmentId = isSuperAdmin
+      ? await resolveSuperAdminDepartment(supabase, ownDepartmentId)
+      : ownDepartmentId
+    if (!departmentId) {
+      console.error('[requireContentAdmin] no department found', { userId: user.id, role })
+      return {
+        error: NextResponse.json({ error: 'Kein Fachbereich zugeordnet' }, { status: 403 }),
+        user: null,
+        supabase: null,
+      }
+    }
+    return {
+      error: null,
+      user: { id: user.id, email: user.email },
+      supabase: supabase as unknown as SupabaseClient,
+      role,
+      isSuperAdmin,
+      isDepartmentAdmin,
+      isTeacher: false,
+      departmentIds: [departmentId],
+      subjectIds: null,
+    }
+  }
+
+  // Lehrkraft: ihre eigenen Zuständigkeiten bestimmen Bereiche und Fächer.
+  const { data: assignments } = await supabase
+    .from('teacher_subject_assignments')
+    .select('department_id, subject_id')
+    .eq('teacher_id', user.id)
+
+  const rows = (assignments ?? []) as { department_id: string; subject_id: string | null }[]
+  if (rows.length === 0) {
+    return {
+      error: NextResponse.json({ error: 'Keine Fach-Zuständigkeit eingetragen' }, { status: 403 }),
+      user: null,
+      supabase: null,
+    }
+  }
+
+  const departmentIds = [...new Set(rows.map((r) => r.department_id))]
+  const subjectIds = [...new Set(rows.filter((r) => r.subject_id).map((r) => r.subject_id as string))]
+
+  return {
+    error: null,
+    user: { id: user.id, email: user.email },
+    supabase: supabase as unknown as SupabaseClient,
+    role: 'teacher',
+    isSuperAdmin: false,
+    isDepartmentAdmin: false,
+    isTeacher: true,
+    departmentIds,
+    subjectIds,
+  }
+}
+
+/**
+ * Darf `auth` dieses Fach verwalten (PROJ-48)? Admin: immer. Bereichs-Admin:
+ * eigener Bereich. Lehrkraft: NUR mit eigener Zuständigkeit für genau dieses
+ * Fach — bloße Mitgliedschaft im Bereich reicht nicht.
+ */
+export function canAdminSubject(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  subjectId: string | null | undefined,
+  subjectDepartmentId: string | null | undefined
+): boolean {
+  if (auth.isSuperAdmin) return true
+  if (auth.isDepartmentAdmin) return !!subjectDepartmentId && subjectDepartmentId === auth.departmentIds[0]
+  return !!subjectId && !!auth.subjectIds?.includes(subjectId)
+}
+
+export function assertCanAdminSubject(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  subjectId: string | null | undefined,
+  subjectDepartmentId: string | null | undefined
+): NextResponse | null {
+  if (canAdminSubject(auth, subjectId, subjectDepartmentId)) return null
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
+
+/**
+ * Darf `auth` in diesem Bereich grundsätzlich etwas anlegen (ein neues Fach,
+ * E3, oder ein Prüfungsset des Bereichs)? Für eine Lehrkraft reicht hier
+ * jede Zuständigkeit im Bereich, auch eine bereichsweite ohne eigenes Fach.
+ */
+export function canAdminDepartmentContent(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  departmentId: string | null | undefined
+): boolean {
+  if (auth.isSuperAdmin) return true
+  if (auth.isDepartmentAdmin) return !!departmentId && departmentId === auth.departmentIds[0]
+  return !!departmentId && auth.departmentIds.includes(departmentId)
+}
+
+export function assertCanAdminDepartmentContent(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  departmentId: string | null | undefined
+): NextResponse | null {
+  if (canAdminDepartmentContent(auth, departmentId)) return null
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
+
+/**
+ * Darf `auth` diese Frage verwalten? Prüft ALLE verknüpften Fächer — bei
+ * einer Frage mit mehreren Fächern reicht die Zuständigkeit für eines davon
+ * (gespiegelt in der RLS-Funktion `can_admin_question`).
+ */
+export async function canAdminQuestion(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  questionId: string
+): Promise<boolean> {
+  if (auth.isSuperAdmin) return true
+  const { data } = await auth.supabase
+    .from('question_subjects')
+    .select('subject_id, subjects!inner(department_id)')
+    .eq('question_id', questionId)
+  const rows = (data ?? []) as unknown as { subject_id: string; subjects: { department_id: string } }[]
+  if (rows.length === 0) return false
+  if (auth.isDepartmentAdmin) return rows.some((r) => r.subjects.department_id === auth.departmentIds[0])
+  return rows.some((r) => !!auth.subjectIds?.includes(r.subject_id))
+}
+
+export async function assertCanAdminQuestion(
+  auth: Extract<ContentAuthResult, { error: null }>,
+  questionId: string
+): Promise<NextResponse | null> {
+  if (await canAdminQuestion(auth, questionId)) return null
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
+
+/**
  * Zugangs-Check für die Nachweis-Routen (PROJ-46): zusätzlich zu Super-Admin
  * und Bereichs-Admin darf hier auch eine Lehrkraft ohne Fachbereich herein.
  * Bewusst getrennt von `requireAdmin` — alle anderen Admin-Routen (Fragen,

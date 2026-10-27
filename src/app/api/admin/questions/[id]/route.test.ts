@@ -57,12 +57,12 @@ function makeAdminSupabase(opts: {
     if (table === 'admin_audit_log') return {}
     if (table === 'answer_options') return { error: null }
     if (table === 'question_subjects') {
-      if (hasCall(calls, 'maybeSingle')) {
-        return {
-          data: questionDepartmentId === null ? null : { subjects: { department_id: questionDepartmentId } },
-        }
+      return {
+        data:
+          questionDepartmentId === null
+            ? []
+            : [{ subject_id: 'subj-1', subjects: { department_id: questionDepartmentId } }],
       }
-      return { error: null }
     }
     if (table === 'quiz_answers') return { count: quizHistoryCount, error: null }
     if (table === 'questions') {

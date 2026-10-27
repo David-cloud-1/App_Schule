@@ -5,6 +5,9 @@ import { IHK_DEFAULT_SCALE } from '@/lib/graded-assessments'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({
+    auth: { admin: { getUserById: vi.fn().mockResolvedValue({ data: { user: null } }) } },
+  })),
 }))
 
 vi.mock('@/lib/assessment-questions', () => ({

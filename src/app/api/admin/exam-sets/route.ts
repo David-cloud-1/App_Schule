@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../_lib/auth'
+import { requireContentAdmin, assertCanAdminDepartmentContent } from '../_lib/auth'
 import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 
 const CreateSetSchema = z.object({
@@ -10,17 +10,24 @@ const CreateSetSchema = z.object({
   question_ids: z.array(z.string()).min(1),
   is_active: z.boolean().default(false),
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
+  // Nur relevant für eine Lehrkraft mit Zuständigkeiten in mehreren
+  // Bereichen (PROJ-48) — Admin/Bereichs-Admin nutzen immer ihren eigenen
+  // Arbeits-Bereich, ein mitgeschickter Wert wird für sie ignoriert.
+  department_id: z.string().uuid().optional(),
 })
 
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, departmentIds } = auth
 
+  // Eine Lehrkraft sieht die Sets aller Bereiche, in denen sie mindestens
+  // eine Zuständigkeit hat (PROJ-48) — Admin/Bereichs-Admin wie bisher nur
+  // ihren einen Arbeits-Bereich.
   const { data, error } = await supabase
     .from('exam_question_sets')
     .select('*')
-    .eq('department_id', departmentId)
+    .in('department_id', departmentIds)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(500)
@@ -30,9 +37,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user, isTeacher } = auth
 
   let body: unknown
   try {
@@ -45,14 +52,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
 
+  const departmentId = isTeacher ? parsed.data.department_id ?? null : auth.departmentIds[0]
+  if (!departmentId) {
+    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
+  }
+  const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
+  if (forbidden) return forbidden
+
   const parts = await fetchExamParts(supabase, departmentId).catch(() => [])
   if (!findExamPart(parts, parsed.data.part)) {
     return NextResponse.json({ error: `Prüfungsteil ${parsed.data.part} gibt es in diesem Fachbereich nicht.` }, { status: 400 })
   }
 
+  const { name, part, question_ids, is_active, duration_minutes } = parsed.data
   const { data, error } = await supabase
     .from('exam_question_sets')
-    .insert({ ...parsed.data, created_by: user.id, department_id: departmentId })
+    .insert({ name, part, question_ids, is_active, duration_minutes, created_by: user.id, department_id: departmentId })
     .select()
     .single()
 

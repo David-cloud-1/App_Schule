@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminDepartmentContent } from '../_lib/auth'
 import { SUBJECTS_CACHE_TAG } from '@/lib/departments-server'
 
 const CreateSchema = z.object({
   name: z.string().min(1).max(100),
   code: z.string().min(1).max(5),
   description: z.string().max(500).optional().nullable(),
+  // Nur relevant für eine Lehrkraft mit Zuständigkeiten in mehreren
+  // Bereichen (PROJ-48) — sie hat keinen einzelnen Arbeits-Bereich wie
+  // Admin/Bereichs-Admin. Für die beiden wird ein mitgeschickter Wert
+  // ignoriert, es gilt immer ihr eigener Arbeits-Bereich.
+  department_id: z.string().uuid().optional(),
 })
 
 type SubjectWithLinks = {
@@ -24,12 +29,14 @@ type SubjectWithLinks = {
 }
 
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, isTeacher } = auth
 
-  // Nur Fächer des eigenen Bereichs (PROJ-22)
-  const { data, error } = await supabase
+  // Nur Fächer des eigenen Bereichs (PROJ-22). Eine Lehrkraft (PROJ-48)
+  // sieht statt des ganzen Bereichs nur ihre eigenen Fächer — außerhalb
+  // ihrer Zuständigkeit sieht sie laut Spec keine Inhalte.
+  let query = supabase
     .from('subjects')
     .select(
       `
@@ -37,9 +44,16 @@ export async function GET() {
         question_subjects ( questions ( is_active ) )
       `
     )
-    .eq('department_id', departmentId)
     .is('deleted_at', null)
     .order('code')
+
+  if (isTeacher) {
+    query = query.in('id', auth.subjectIds ?? [])
+  } else {
+    query = query.eq('department_id', auth.departmentIds[0])
+  }
+
+  const { data, error } = await query
 
   if (error) {
     console.error('[GET /api/admin/subjects]', error)
@@ -65,9 +79,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user, isTeacher } = auth
 
   let body: unknown
   try {
@@ -83,6 +97,16 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     )
   }
+
+  // Admin/Bereichs-Admin: immer der eigene Arbeits-Bereich. Lehrkraft
+  // (PROJ-48, E3): der im Body angegebene Bereich, geprüft gegen ihre
+  // eigenen Zuständigkeiten — reicht eine bereichsweite ohne eigenes Fach.
+  const departmentId = isTeacher ? parsed.data.department_id ?? null : auth.departmentIds[0]
+  if (!departmentId) {
+    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
+  }
+  const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
+  if (forbidden) return forbidden
 
   const code = parsed.data.code.toUpperCase()
 

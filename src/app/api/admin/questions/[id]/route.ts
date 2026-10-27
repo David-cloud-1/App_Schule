@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog, assertCanAdminDepartment } from '../../_lib/auth'
+import { requireContentAdmin, writeAuditLog, assertCanAdminQuestion } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 import { checkVersionConflict } from '@/lib/content-history'
 
-/** Fachbereich einer Frage über ihr (einziges) verknüpftes Fach (PROJ-24). */
-async function loadQuestionDepartment(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
-  questionId: string
-): Promise<string | null> {
-  const { data } = await supabase!
-    .from('question_subjects')
-    .select('subjects!inner(department_id)')
-    .eq('question_id', questionId)
-    .limit(1)
-    .maybeSingle()
-  return (data?.subjects as unknown as { department_id: string } | null)?.department_id ?? null
-}
-
 /** Ist diese Frage eine private Nachweis-Frage einer Lehrkraft (PROJ-46)? */
 async function loadIsPrivate(
-  supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'],
+  supabase: Awaited<ReturnType<typeof requireContentAdmin>>['supabase'],
   questionId: string
 ): Promise<boolean> {
   const { data } = await supabase!.from('questions').select('is_private').eq('id', questionId).maybeSingle()
@@ -63,15 +49,14 @@ const UpdateSchema = z
  * Fälle denselben Dialog nutzen können.
  */
 export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const questionDept = await loadQuestionDepartment(supabase, id)
-  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  const forbidden = await assertCanAdminQuestion(auth, id)
   if (forbidden) return forbidden
 
   const { data } = await supabase
@@ -97,15 +82,14 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const questionDept = await loadQuestionDepartment(supabase, id)
-  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  const forbidden = await assertCanAdminQuestion(auth, id)
   if (forbidden) return forbidden
 
   let body: unknown
@@ -239,15 +223,14 @@ export async function DELETE(
   _request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
   const { id } = await ctx.params
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const questionDept = await loadQuestionDepartment(supabase, id)
-  const forbidden = assertCanAdminDepartment(auth, questionDept)
+  const forbidden = await assertCanAdminQuestion(auth, id)
   if (forbidden) return forbidden
 
   // Papierkorb statt endgültigem Löschen (PROJ-47) — die Frage bleibt
