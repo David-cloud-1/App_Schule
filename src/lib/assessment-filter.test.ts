@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, classOptions, defaultFilters, filterAssessments, filtersFromParams,
-  filtersToParams, schoolYearChoices, schoolYearOptions, subjectOptions, type CategorizedAssessment,
+  FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, classOptions, creatorOptions, defaultFilters, departmentOptions,
+  filterAssessments, filtersFromParams, filtersToParams, schoolYearChoices, schoolYearOptions, subjectOptions,
+  type CategorizedAssessment,
 } from './assessment-filter'
 
 const make = (over: Partial<CategorizedAssessment>): CategorizedAssessment => ({
@@ -45,6 +46,49 @@ describe('filterAssessments', () => {
     expect(filterAssessments(items, { ...f, query: 'e4yu qz' }).map((a) => a.title)).toEqual(['Luftfracht'])
     expect(filterAssessments(items, { ...f, query: 'e4yu-qz' })).toHaveLength(1)
     expect(filterAssessments(items, { ...f, query: 'gibtsnicht' })).toEqual([])
+  })
+})
+
+describe('PROJ-46: Zielbereich und Erstellt-von', () => {
+  const dept = [
+    make({ title: 'Sped-Nachweis', departmentId: 'd1', departmentName: 'Spedition', createdBy: 'u1', createdByName: 'Frau Muster' }),
+    make({ title: 'Tour-Nachweis', departmentId: 'd2', departmentName: 'Tourismus', createdBy: 'u2', createdByName: 'Herr Beispiel', createdByFormer: true }),
+    make({ title: 'Verwaist', departmentId: 'd1', departmentName: 'Spedition', createdBy: null }),
+  ]
+
+  it('filtert nach Zielbereich', () => {
+    const f = { ...defaultFilters('2026/27'), schoolYear: FILTER_ALL, departmentId: 'd2' }
+    expect(filterAssessments(dept, f).map((a) => a.title)).toEqual(['Tour-Nachweis'])
+  })
+
+  it('filtert nach Ersteller-ID und nach gelöschten Konten', () => {
+    const fUser = { ...defaultFilters('2026/27'), schoolYear: FILTER_ALL, createdBy: 'u1' }
+    expect(filterAssessments(dept, fUser).map((a) => a.title)).toEqual(['Sped-Nachweis'])
+    const fDeleted = { ...defaultFilters('2026/27'), schoolYear: FILTER_ALL, createdBy: 'deleted' }
+    expect(filterAssessments(dept, fDeleted).map((a) => a.title)).toEqual(['Verwaist'])
+  })
+
+  it('schreibt und liest Zielbereich/Erstellt-von in der Adresszeile', () => {
+    const f = { ...defaultFilters('2026/27'), departmentId: 'd2', createdBy: 'deleted' }
+    const params = filtersToParams(f, '2026/27', new URLSearchParams())
+    expect(params.toString()).toBe('bereich=d2&erstellt=deleted')
+    expect(filtersFromParams(params, '2026/27')).toEqual(f)
+  })
+
+  it('departmentOptions: eindeutig nach Name sortiert', () => {
+    expect(departmentOptions(dept)).toEqual([{ id: 'd1', name: 'Spedition' }, { id: 'd2', name: 'Tourismus' }])
+  })
+
+  it('creatorOptions: ehemalige Lehrkraft markiert, gelöschtes Konto als Sammeleintrag am Ende', () => {
+    expect(creatorOptions(dept)).toEqual([
+      { id: 'u1', name: 'Frau Muster' },
+      { id: 'u2', name: 'Herr Beispiel (ehemalige Lehrkraft)' },
+      { id: 'deleted', name: 'Gelöschtes Konto' },
+    ])
+  })
+
+  it('creatorOptions: leer, wenn das Feld gar nicht befüllt ist (keine Super-Admin-Sicht)', () => {
+    expect(creatorOptions(items)).toEqual([])
   })
 })
 

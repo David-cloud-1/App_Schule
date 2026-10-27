@@ -1,13 +1,14 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useClassLevelOptions } from '@/components/department-provider'
 
-/** Schlanke Frage für die Auswahl (aktive Multiple-Choice-Fragen des Bereichs) */
+/** Schlanke Frage für die Auswahl (Bereichs-Pool + eigene private Nachweis-Fragen, PROJ-46) */
 export type PickerQuestion = {
   id: string
   question_text: string
@@ -15,6 +16,8 @@ export type PickerQuestion = {
   class_level: number | null
   topic: string | null
   subject_codes: string[]
+  /** Eigene Nachweis-Frage (PROJ-46) — trägt das Schild „Meine Frage“ und ist bearbeitbar/löschbar */
+  isPrivate?: boolean
 }
 
 type PickerSort = 'newest' | 'class' | 'subject' | 'topic' | 'difficulty' | 'text'
@@ -38,14 +41,22 @@ interface Props {
   selectedIds: Set<string>
   onChange: (next: Set<string>) => void
   minSelection?: number
+  /** PROJ-46: eigene private Frage bearbeiten/löschen */
+  onEditPrivate?: (question: PickerQuestion) => void
+  onDeletePrivate?: (question: PickerQuestion) => void
 }
 
 /**
  * Fragenauswahl mit Suche, Filter und Sortierung — Alle/Keine wirkt nur auf
  * die gefilterte Liste, bereits gewählte, gerade ausgeblendete Fragen bleiben.
+ * Klassenstufen-Filter kommt aus den geladenen Fragen selbst (nicht aus dem
+ * Bereich der anfragenden Person) — richtig auch für einen fremden Zielbereich.
  */
-export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5 }: Props) {
-  const classLevelOptions = useClassLevelOptions()
+export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onEditPrivate, onDeletePrivate }: Props) {
+  const classLevelOptions = useMemo(() => {
+    const levels = [...new Set(questions.map((q) => q.class_level).filter((l): l is number => l != null))]
+    return levels.sort((a, b) => a - b).map((l) => ({ value: String(l), label: `Klasse ${l}` }))
+  }, [questions])
   const [search, setSearch] = useState('')
   const [classLevel, setClassLevel] = useState('all')
   const [subject, setSubject] = useState('all')
@@ -171,24 +182,57 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
           </p>
         ) : (
           visible.map((q) => (
-            <label key={q.id} className="group flex cursor-pointer items-start gap-3 py-2">
-              <Checkbox
-                checked={selectedIds.has(q.id)}
-                onCheckedChange={(checked) => toggleOne(q.id, checked === true)}
-                className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs leading-snug text-ws-text">
-                  {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
-                </p>
-                <span className="text-xs text-ws-blue">
-                  {q.difficulty}
-                  {q.class_level != null && ` · Kl. ${q.class_level}`}
-                  {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}
-                  {q.topic && ` · ${q.topic}`}
-                </span>
-              </div>
-            </label>
+            <div key={q.id} className="group flex items-start gap-3 py-2">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3">
+                <Checkbox
+                  checked={selectedIds.has(q.id)}
+                  onCheckedChange={(checked) => toggleOne(q.id, checked === true)}
+                  className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs leading-snug text-ws-text">
+                    {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
+                  </p>
+                  <span className="text-xs text-ws-blue">
+                    {q.difficulty}
+                    {q.class_level != null && ` · Kl. ${q.class_level}`}
+                    {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}
+                    {q.topic && ` · ${q.topic}`}
+                  </span>
+                  {q.isPrivate && (
+                    <Badge className="ml-2 border-0 bg-ws-gold/15 text-ws-gold text-[10px]">Meine Frage</Badge>
+                  )}
+                </div>
+              </label>
+              {q.isPrivate && (onEditPrivate || onDeletePrivate) && (
+                <div className="flex shrink-0 gap-1">
+                  {onEditPrivate && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEditPrivate(q)}
+                      aria-label={`„${q.question_text.slice(0, 40)}“ bearbeiten`}
+                      className="h-9 px-2 text-ws-muted hover:text-ws-text"
+                    >
+                      Bearbeiten
+                    </Button>
+                  )}
+                  {onDeletePrivate && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDeletePrivate(q)}
+                      aria-label={`„${q.question_text.slice(0, 40)}“ löschen`}
+                      className="size-9 text-ws-muted hover:text-ws-red"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
           ))
         )}
       </div>

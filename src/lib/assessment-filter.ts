@@ -27,6 +27,13 @@ export type CategorizedAssessment = {
   subjectId: string | null
   subjectName: string | null
   createdAt: string
+  /** PROJ-46: Zielbereich */
+  departmentId?: string | null
+  departmentName?: string | null
+  /** PROJ-46: nur für den Super-Admin befüllt */
+  createdBy?: string | null
+  createdByName?: string | null
+  createdByFormer?: boolean
 }
 
 export type AssessmentFilters = {
@@ -38,12 +45,24 @@ export type AssessmentFilters = {
   subjectId: string
   /** Status, FILTER_ALL für alle */
   status: string
+  /** Zielbereich-ID, FILTER_ALL für alle (PROJ-46) */
+  departmentId: string
+  /** Ersteller-ID, FILTER_ALL für alle, 'deleted' für gelöschte Konten; nur für den Super-Admin wirksam (PROJ-46) */
+  createdBy: string
   /** Suche in Titel und Code */
   query: string
 }
 
 export function defaultFilters(currentSchoolYear: string): AssessmentFilters {
-  return { schoolYear: currentSchoolYear, className: FILTER_ALL, subjectId: FILTER_ALL, status: FILTER_ALL, query: '' }
+  return {
+    schoolYear: currentSchoolYear,
+    className: FILTER_ALL,
+    subjectId: FILTER_ALL,
+    status: FILTER_ALL,
+    departmentId: FILTER_ALL,
+    createdBy: FILTER_ALL,
+    query: '',
+  }
 }
 
 const STATUSES = ['draft', 'open', 'closed']
@@ -57,6 +76,8 @@ export function filtersFromParams(params: URLSearchParams, currentSchoolYear: st
     className: params.get('klasse') || base.className,
     subjectId: params.get('fach') || base.subjectId,
     status: status && STATUSES.includes(status) ? status : base.status,
+    departmentId: params.get('bereich') || base.departmentId,
+    createdBy: params.get('erstellt') || base.createdBy,
     query: base.query,
   }
 }
@@ -64,11 +85,13 @@ export function filtersFromParams(params: URLSearchParams, currentSchoolYear: st
 /** Nur vom Standard abweichende Werte in die Adresszeile schreiben (Suche bleibt lokal) */
 export function filtersToParams(filters: AssessmentFilters, currentSchoolYear: string, into: URLSearchParams): URLSearchParams {
   const params = new URLSearchParams(into)
-  for (const key of ['sj', 'klasse', 'fach', 'status']) params.delete(key)
+  for (const key of ['sj', 'klasse', 'fach', 'status', 'bereich', 'erstellt']) params.delete(key)
   if (filters.schoolYear !== currentSchoolYear) params.set('sj', filters.schoolYear)
   if (filters.className !== FILTER_ALL) params.set('klasse', filters.className)
   if (filters.subjectId !== FILTER_ALL) params.set('fach', filters.subjectId)
   if (filters.status !== FILTER_ALL) params.set('status', filters.status)
+  if (filters.departmentId !== FILTER_ALL) params.set('bereich', filters.departmentId)
+  if (filters.createdBy !== FILTER_ALL) params.set('erstellt', filters.createdBy)
   return params
 }
 
@@ -84,6 +107,11 @@ export function filterAssessments<T extends CategorizedAssessment>(items: T[], f
       if (filters.className === FILTER_NONE ? a.className !== null : filters.className !== FILTER_ALL && a.className !== classFromFilter(filters.className)) return false
       if (filters.subjectId === FILTER_NONE ? a.subjectId !== null : filters.subjectId !== FILTER_ALL && a.subjectId !== filters.subjectId) return false
       if (filters.status !== FILTER_ALL && a.status !== filters.status) return false
+      if (filters.departmentId !== FILTER_ALL && a.departmentId !== filters.departmentId) return false
+      if (filters.createdBy !== FILTER_ALL) {
+        const wantDeleted = filters.createdBy === 'deleted'
+        if (wantDeleted ? a.createdBy !== null : a.createdBy !== filters.createdBy) return false
+      }
       if (query && !normalizeSearch(a.title).includes(query) && !normalizeSearch(a.accessCode).includes(query)) return false
       return true
     })
@@ -112,4 +140,35 @@ export function subjectOptions(items: { subjectId: string | null; subjectName: s
   const byId = new Map<string, string>()
   for (const a of items) if (a.subjectId && a.subjectName) byId.set(a.subjectId, a.subjectName)
   return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'de'))
+}
+
+/** PROJ-46: vorkommende Zielbereiche für die Filterleiste */
+export function departmentOptions(items: { departmentId?: string | null; departmentName?: string | null }[]): { id: string; name: string }[] {
+  const byId = new Map<string, string>()
+  for (const a of items) if (a.departmentId && a.departmentName) byId.set(a.departmentId, a.departmentName)
+  return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'de'))
+}
+
+/**
+ * PROJ-46: vorkommende Erstellerinnen für die Filterleiste des Super-Admins.
+ * „Ehemalige / ohne Rolle“ steht als Zusatz hinter dem Namen, „Gelöschtes
+ * Konto“ ist ein eigener Sammeleintrag (dort gibt es keinen Namen mehr).
+ */
+export function creatorOptions(
+  items: { createdBy?: string | null; createdByName?: string | null; createdByFormer?: boolean }[],
+): { id: string; name: string }[] {
+  const byId = new Map<string, string>()
+  let hasDeleted = false
+  for (const a of items) {
+    if (a.createdBy === undefined) continue // Feld nicht befüllt (keine Super-Admin-Sicht)
+    if (a.createdBy === null) {
+      hasDeleted = true
+      continue
+    }
+    const name = a.createdByFormer ? `${a.createdByName ?? 'Unbekannt'} (ehemalige Lehrkraft)` : (a.createdByName ?? 'Unbekannt')
+    byId.set(a.createdBy, name)
+  }
+  const list = Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'de'))
+  if (hasDeleted) list.push({ id: 'deleted', name: 'Gelöschtes Konto' })
+  return list
 }

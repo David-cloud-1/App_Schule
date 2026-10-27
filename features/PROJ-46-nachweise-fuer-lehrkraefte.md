@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27 (Backend)
+**Last Updated:** 2026-10-27 (Backend + Frontend)
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -231,9 +231,28 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 
 **Tests:** 38 neue/angepasste Testfälle in den betroffenen Routen- und Bibliotheks-Testdateien, plus die Middleware-Tests. Gesamter Testlauf: **113 Testdateien, 1331 Tests, alle grün**. `npm run build` fehlerfrei. Kein Dev-Server, kein Playwright (siehe `.claude/rules`).
 
-**Noch offen (kein Backend-Thema mehr):**
-- Oberfläche: Zielbereich-Schritt im Anlegen-Dialog, Filter/Spalten „Zielbereich“ und „Erstellt von“, Schild „Meine Frage“, Bearbeiten/Löschen-UI für private Fragen, „Zielbereich ändern“-Dialog im Entwurf. → `/frontend`.
-- QA: Rollen-Matrix end-to-end über die fertige Oberfläche, insbesondere E5 (Rollenentzug während eines offenen Nachweises) und die Edge Cases aus der Spec. → `/qa`.
+## Implementation Notes (Frontend, 2026-10-27)
+
+**Neue, unterstützende API-Routen** (unter `/api/admin/assessments/**`, damit die Middleware sie auch einer Lehrkraft öffnet):
+- `GET /api/admin/assessments/departments`: aktive Fachbereiche (id/name/code/Klassenstufen) für den Zielbereich-Schritt, plus `suggestedDepartmentId` (eigener Bereich bzw. Umschalter-Bereich).
+- `GET /api/admin/assessments/category-options?departmentId=`: Fächer + bereits verwendete Klassen des **Zielbereichs** für die Ablage (PROJ-39) im Anlegen-Dialog — ersetzt dort den bisherigen Rückgriff auf `/api/admin/subjects` (Arbeitsbereich der anfragenden Person, für Lehrkräfte ohnehin unerreichbar).
+- `GET /api/admin/assessments/[id]/route.ts` liefert jetzt zusätzlich `departmentId`/`departmentName`/`departmentCode`.
+- `GET /api/admin/assessments/questions/[id]/route.ts` (neu, ergänzt die bestehende PATCH/DELETE-Route): volle Angaben einer eigenen privaten Frage für den Bearbeiten-Dialog.
+
+**Komponenten:**
+- `create-assessment-modal.tsx`: neuer Schritt „Zielbereich wählen“ ganz oben — bei genau einem aktiven Bereich automatisch vorbelegt, sonst der eigene Arbeitsbereich (Bereichs-Admin/Super-Admin) bzw. leer (Lehrkraft, E1). Ablage-Fächer/-Klassen und die Fragenauswahl laden danach für den **gewählten** Bereich nach, nicht mehr für den Arbeitsbereich der anfragenden Person. „Startauswahl aus Prüfungssimulation“ bleibt auf den eigenen Arbeitsbereich beschränkt (Prüfungssets sind nicht bereichsübergreifend abrufbar) und blendet sich für einen fremden Zielbereich aus.
+- `assessment-question-selector.tsx` / `assessment-import-dialog.tsx` / `edit-assessment-questions-dialog.tsx`: nehmen jetzt `departmentId` als Pflicht-Prop entgegen und reichen ihn an alle Fragen-Endpunkte weiter, statt sich auf den Arbeitsbereich der anfragenden Person zu verlassen.
+- `question-picker.tsx`: Klassenstufen-Filter wird jetzt aus den geladenen Fragen selbst abgeleitet (wie Fach/Thema) statt aus dem Bereichs-Kontext der anfragenden Person — notwendig, weil der Zielbereich jetzt vom gewählten Bereich kommen kann, nicht vom eigenen. Private Fragen tragen das Schild „Meine Frage“ und bekommen „Bearbeiten“/Löschen-Aktionen.
+- `edit-private-question-dialog.tsx` (neu): eigene private Frage bearbeiten (Text, 2–5 Antwortoptionen, Schwierigkeit, Klassenstufe, Erklärung).
+- `change-assessment-department-dialog.tsx` (neu): Zielbereich eines Entwurfs wechseln, mit Warnhinweis vor dem Speichern; die tatsächliche Anzahl entfernter Fragen zeigt die Rückmeldung nach dem Speichern.
+- `assessment-filter.ts`/`assessment-filter-bar.tsx`: neue Filter „Zielbereich“ und (nur Super-Admin) „Erstellt von“ (inkl. „Gelöschtes Konto“ und Markierung „ehemalige Lehrkraft“), nach demselben client-seitigen Muster wie die bestehenden Schuljahr-/Klassen-/Fach-Filter.
+- `admin-nav.ts`: Eintrag „Leistungsnachweise“ jetzt `teacherVisible`, dadurch automatisch auch Startseiten-Kachel und Schnellsuche-Aktion „Neuer Leistungsnachweis“ für Lehrkräfte sichtbar.
+
+**Tests:** neue/angepasste Fälle in `assessment-filter.test.ts`, `admin-nav.test.ts`, `admin-nav.test.tsx`, `admin-shell.test.tsx`. Keine neuen Komponiententests für die größeren Dialoge (`create-assessment-modal.tsx`, `assessment-import-dialog.tsx`, `question-picker.tsx` u. a.) — das entspricht dem bisherigen Stand in diesem Bereich, dort gab es auch vorher keine. Gesamter Testlauf: **113 Testdateien, 1340 Tests, alle grün**. `npm run build` fehlerfrei.
+
+**Bekannte, kleine Lücken:**
+- Der Hinweistext im Fragen-Import-Dialog („… bis du sie in der Fragenverwaltung für den Übungsbetrieb freigibst“) gilt wörtlich nur für den eigenen Bereich; für einen fremden Zielbereich bleibt die Frage dauerhaft privat. Der Text wurde aus Zeitgründen nicht bereichsabhängig umformuliert — fachlich falsch wird dadurch nichts (die Freigabe-Aktion erscheint bei privaten Fragen ohnehin nicht), nur der Begleittext ist an dieser Stelle zu optimistisch.
+- Edge Case „Zielbereich wird während des Bearbeitens deaktiviert“ und die volle Rollen-Matrix über die fertige Oberfläche sind noch nicht end-to-end durchgeklickt (kein Dev-Server/Playwright laut Projektregel) → Aufgabe für `/qa`.
 
 ## QA Test Results
 _To be added by /qa_

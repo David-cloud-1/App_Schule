@@ -181,9 +181,11 @@ describe('Schnellsuche (PROJ-45)', () => {
     setup({ role: 'teacher' })
     const palette = await openPalette()
     expect(palette.queryByRole('option', { name: /^Fragen$/ })).not.toBeInTheDocument()
-    expect(palette.queryByRole('option', { name: /Leistungsnachweis/ })).not.toBeInTheDocument()
     expect(palette.queryByRole('option', { name: /Fachbereiche/ })).not.toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Werkzeugkiste öffnen/ })).toBeInTheDocument()
+    // PROJ-46: eigene Leistungsnachweise anlegen und einsehen
+    expect(palette.getByRole('option', { name: 'Leistungsnachweise' })).toBeInTheDocument()
+    expect(palette.getByRole('option', { name: /Neuer Leistungsnachweis/ })).toBeInTheDocument()
   })
 
   it('springt per Enter zur gewählten Seite und schließt sich', async () => {

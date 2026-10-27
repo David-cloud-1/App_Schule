@@ -42,10 +42,10 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(labels('department_admin')).toHaveLength(labels('admin').length - 1)
   })
 
-  it('zeigt einer Lehrkraft ohne Verwaltungsrechte nur die Werkzeugkiste (PROJ-44)', () => {
+  it('zeigt einer Lehrkraft ohne Verwaltungsrechte Leistungsnachweise und die Werkzeugkiste (PROJ-44/46)', () => {
     const groups = adminNavGroupsFor('teacher')
     expect(groups.map((g) => g.label)).toEqual(['Unterricht'])
-    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual(['Werkzeugkiste'])
+    expect(groups.flatMap((g) => g.items.map((i) => i.label))).toEqual(['Leistungsnachweise', 'Werkzeugkiste'])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {
@@ -91,7 +91,8 @@ describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
   it('zeigt in der Schnellsuche nur Aktionen, deren Seite die Rolle sehen darf', () => {
     const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
     expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'lern-app', 'darstellung'])
-    expect(ids('teacher')).toEqual(['werkzeugkiste', 'lern-app', 'darstellung'])
+    // PROJ-46: eine Lehrkraft darf jetzt auch eigene Leistungsnachweise anlegen
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'lern-app', 'darstellung'])
   })
 
   it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {

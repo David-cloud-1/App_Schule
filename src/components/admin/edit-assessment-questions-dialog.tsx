@@ -20,12 +20,14 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   assessmentId: string
+  /** Zielbereich des Nachweises (PROJ-46) */
+  departmentId: string
   initialQuestionIds: string[]
   onSaved: () => void
 }
 
 /** Fragenauswahl eines Entwurfs ändern — nach dem Öffnen des Nachweises nicht mehr möglich */
-export function EditAssessmentQuestionsDialog({ open, onOpenChange, assessmentId, initialQuestionIds, onSaved }: Props) {
+export function EditAssessmentQuestionsDialog({ open, onOpenChange, assessmentId, departmentId, initialQuestionIds, onSaved }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [saving, setSaving] = useState(false)
 
@@ -71,7 +73,7 @@ export function EditAssessmentQuestionsDialog({ open, onOpenChange, assessmentId
             Solange der Nachweis ein Entwurf ist, kannst du die Fragen ändern. Beim Öffnen werden sie festgeschrieben.
           </DialogDescription>
         </DialogHeader>
-        {open && <AssessmentQuestionSelector selectedIds={selectedIds} onChange={setSelectedIds} />}
+        {open && <AssessmentQuestionSelector departmentId={departmentId} selectedIds={selectedIds} onChange={setSelectedIds} />}
         <DialogFooter className="gap-2">
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
             Abbrechen

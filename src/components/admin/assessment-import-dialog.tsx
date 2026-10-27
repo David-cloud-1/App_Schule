@@ -50,6 +50,8 @@ const STEP_LABEL: Record<Exclude<Step, 'importing'>, string> = {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Zielbereich des Nachweises (PROJ-46) */
+  departmentId: string
   onImported: (questions: PickerQuestion[]) => void
 }
 
@@ -67,7 +69,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
  * ohne KI-Schlüssel. Die App baut den Prompt, der Ausbilder lässt ihn in einem
  * kostenlosen KI-Chat beantworten und fügt die Antwort hier wieder ein.
  */
-export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props) {
+export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImported }: Props) {
   const [step, setStep] = useState<Step>('material')
   const [task, setTask] = useState('')
   const [solution, setSolution] = useState('')
@@ -129,7 +131,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
       const res = await fetch('/api/admin/assessments/questions/prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task, solution: solution.trim() || null }),
+        body: JSON.stringify({ departmentId, task, solution: solution.trim() || null }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -165,7 +167,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
       const res = await fetch('/api/admin/assessments/questions/preview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify({ departmentId, answer }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -244,6 +246,7 @@ export function AssessmentImportDialog({ open, onOpenChange, onImported }: Props
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          departmentId,
           assessmentOnly: true,
           questions: selected.map((i) => {
             const q = items[i]

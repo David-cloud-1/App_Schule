@@ -80,17 +80,18 @@ describe('AdminHome (PROJ-40)', () => {
 describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
   beforeEach(() => resetTeacherWelcomeForTests())
 
-  it('zeigt in der Navigation nur Übersicht und Werkzeugkiste', () => {
+  it('zeigt in der Navigation nur Übersicht, Leistungsnachweise und Werkzeugkiste (PROJ-46)', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
     const names = screen.getAllByRole('link').map((a) => a.textContent)
-    expect(names).toEqual(['Übersicht', 'Werkzeugkiste'])
+    expect(names).toEqual(['Übersicht', 'Leistungsnachweise', 'Werkzeugkiste'])
     expect(screen.queryByRole('list', { name: 'Inhalte' })).not.toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Einstellungen' })).not.toBeInTheDocument()
   })
 
-  it('zeigt auf der Startseite nur die Werkzeugkiste-Kachel und den Hinweis auf weitere Werkzeuge', () => {
+  it('zeigt auf der Startseite die Leistungsnachweise- und Werkzeugkiste-Kachel samt Hinweis auf weitere Werkzeuge (PROJ-46)', () => {
     wrap(<AdminHome />, false, { role: 'teacher' })
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
+      '/admin/leistungsnachweise',
       'https://divadl-werkzeugkiste.hf.space',
     ])
     expect(screen.getByText(/folgen bald/)).toBeInTheDocument()

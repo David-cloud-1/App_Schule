@@ -8,6 +8,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import {
   AlertTriangle,
   ArrowLeft,
+  Building2,
   Copy,
   Download,
   ListChecks,
@@ -45,6 +46,7 @@ import {
 import { listHref } from '@/lib/assessment-list-memory'
 import { AssessmentCategoryCard } from '@/components/admin/assessment-category-card'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
+import { ChangeAssessmentDepartmentDialog } from '@/components/admin/change-assessment-department-dialog'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
@@ -61,6 +63,10 @@ type AssessmentDetail = {
   status: AssessmentStatus
   accessCode: string
   joinUrl: string
+  /** PROJ-46: Zielbereich — nach dem Öffnen fest */
+  departmentId: string
+  departmentName: string | null
+  departmentCode: string | null
   opensAt: string
   closesAt: string
   durationMinutes: number
@@ -138,6 +144,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const { id } = use(params)
   const router = useRouter()
   const [editQuestionsOpen, setEditQuestionsOpen] = useState(false)
+  const [changeDepartmentOpen, setChangeDepartmentOpen] = useState(false)
   const [detail, setDetail] = useState<AssessmentDetail | null>(null)
   const [results, setResults] = useState<ResultsResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -301,6 +308,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                     <ListChecks size={14} className="mr-1.5" />
                     Fragen bearbeiten
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setChangeDepartmentOpen(true)}
+                    disabled={actionPending}
+                    className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+                  >
+                    <Building2 size={14} className="mr-1.5" />
+                    Zielbereich ändern
+                  </Button>
                 </>
               )}
               {detail.status === 'open' && (
@@ -345,6 +361,12 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             )}>
               {STATUS_LABELS[detail.status]}
             </Badge>
+            {detail.departmentName && (
+              <Badge className="text-xs border-0 bg-ws-blue/15 text-ws-blue">
+                <Building2 size={11} className="mr-1" />
+                {detail.departmentName}
+              </Badge>
+            )}
             {detail.resultsReleasedAt && (
               <Badge className="bg-ws-green/20 text-ws-green border-0">
                 Ergebnisse freigegeben · {new Date(detail.resultsReleasedAt).toLocaleString('de-DE')}
@@ -634,13 +656,23 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       </Tabs>
 
       {detail.status === 'draft' && (
-        <EditAssessmentQuestionsDialog
-          open={editQuestionsOpen}
-          onOpenChange={setEditQuestionsOpen}
-          assessmentId={detail.id}
-          initialQuestionIds={detail.draftQuestionIds ?? []}
-          onSaved={load}
-        />
+        <>
+          <EditAssessmentQuestionsDialog
+            open={editQuestionsOpen}
+            onOpenChange={setEditQuestionsOpen}
+            assessmentId={detail.id}
+            departmentId={detail.departmentId}
+            initialQuestionIds={detail.draftQuestionIds ?? []}
+            onSaved={load}
+          />
+          <ChangeAssessmentDepartmentDialog
+            open={changeDepartmentOpen}
+            onOpenChange={setChangeDepartmentOpen}
+            assessmentId={detail.id}
+            currentDepartmentId={detail.departmentId}
+            onSaved={load}
+          />
+        </>
       )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

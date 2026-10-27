@@ -58,6 +58,35 @@ async function isUsedByOpenAssessment(
   return (data ?? []).length > 0
 }
 
+/** Volle Angaben einer eigenen privaten Frage — für den Bearbeiten-Dialog (Text, Optionen, Erklärung). */
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const auth = await requireTeacherOrAdmin()
+  if (auth.error) return auth.error
+  const { supabase } = auth
+
+  const question = await loadOwnPrivateQuestion(supabase, auth, id)
+  if (!question) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+
+  const { data: full } = await supabase!
+    .from('questions')
+    .select('question_text, difficulty, explanation, class_level, answer_options(id, option_text, is_correct, display_order)')
+    .eq('id', id)
+    .maybeSingle()
+  if (!full) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+
+  const options = [...((full.answer_options as { id: string; option_text: string; is_correct: boolean; display_order: number }[]) ?? [])]
+    .sort((a, b) => a.display_order - b.display_order)
+
+  return NextResponse.json({
+    questionText: full.question_text,
+    difficulty: full.difficulty,
+    explanation: full.explanation,
+    classLevel: full.class_level,
+    answers: options.map((o) => ({ text: o.option_text, is_correct: o.is_correct })),
+  })
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const auth = await requireTeacherOrAdmin()

@@ -22,10 +22,24 @@ interface Props {
   subjects: { id: string; name: string }[]
   hasUnassignedClass: boolean
   hasUnassignedSubject: boolean
+  /** PROJ-46: nur anzeigen, wenn es mehr als einen Zielbereich gibt */
+  departments?: { id: string; name: string }[]
+  /** PROJ-46: nur für den Super-Admin befüllt */
+  creators?: { id: string; name: string }[]
 }
 
-/** PROJ-39: Filterleiste über der Nachweis-Tabelle */
-export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, subjects, hasUnassignedClass, hasUnassignedSubject }: Props) {
+/** PROJ-39/46: Filterleiste über der Nachweis-Tabelle */
+export function AssessmentFilterBar({
+  filters,
+  onChange,
+  schoolYears,
+  classes,
+  subjects,
+  hasUnassignedClass,
+  hasUnassignedSubject,
+  departments = [],
+  creators = [],
+}: Props) {
   const triggerClass = 'h-11 bg-ws-surface border-ws-line text-ws-text w-full'
   const contentClass = 'bg-ws-surface border-ws-line text-ws-text'
   // Ein Wert aus der Adresszeile, den es nicht (mehr) gibt, bleibt sichtbar und wählbar
@@ -85,6 +99,34 @@ export function AssessmentFilterBar({ filters, onChange, schoolYears, classes, s
             ))}
           </SelectContent>
         </Select>
+
+        {departments.length > 1 && (
+          <Select value={filters.departmentId} onValueChange={(v) => onChange({ ...filters, departmentId: v })}>
+            <SelectTrigger className={triggerClass} aria-label="Zielbereich">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={contentClass}>
+              <SelectItem value={FILTER_ALL}>Alle Zielbereiche</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {creators.length > 0 && (
+          <Select value={filters.createdBy} onValueChange={(v) => onChange({ ...filters, createdBy: v })}>
+            <SelectTrigger className={triggerClass} aria-label="Erstellt von">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className={contentClass}>
+              <SelectItem value={FILTER_ALL}>Alle Erstellerinnen</SelectItem>
+              {creators.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Status filtern">

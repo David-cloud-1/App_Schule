@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
-import { PATCH, DELETE } from './route'
+import { GET, PATCH, DELETE } from './route'
 
 vi.mock('../../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
 
@@ -12,6 +12,7 @@ const QID = '6f1a2b3c-4d5e-4f60-8a7b-9c0d1e2f3a01'
 interface Opts {
   role?: 'teacher' | 'admin'
   question?: { id: string; is_private: boolean; owner_id: string | null } | null
+  fullQuestion?: Record<string, unknown>
   usedByOpen?: boolean
   updateError?: unknown
   deleteError?: unknown
@@ -25,15 +26,22 @@ function setup(opts: Opts = {}) {
   const supabase = {
     from: vi.fn().mockImplementation((table: string) => {
       if (table === 'questions') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({
-            data: opts.question !== undefined ? opts.question : { id: QID, is_private: true, owner_id: OWNER },
+        let lastSelect = ''
+        const builder = {
+          select: vi.fn().mockImplementation((cols: string) => {
+            lastSelect = cols
+            return builder
           }),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockImplementation(() => Promise.resolve({
+            data: lastSelect.includes('answer_options')
+              ? (opts.fullQuestion ?? { question_text: 'Text', difficulty: 'mittel', explanation: null, class_level: 10, answer_options: [] })
+              : (opts.question !== undefined ? opts.question : { id: QID, is_private: true, owner_id: OWNER }),
+          })),
           update,
           delete: del,
         }
+        return builder
       }
       if (table === 'graded_assessments') {
         return {
@@ -67,6 +75,42 @@ const patchReq = (body: unknown) =>
     method: 'PATCH', body: JSON.stringify(body), headers: { 'content-type': 'application/json' },
   })
 const deleteReq = () => new NextRequest(`http://localhost/api/admin/assessments/questions/${QID}`, { method: 'DELETE' })
+const getReq = () => new NextRequest(`http://localhost/api/admin/assessments/questions/${QID}`)
+
+describe('GET /api/admin/assessments/questions/[id]', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns 404 for a pool (non-private) question', async () => {
+    setup({ question: { id: QID, is_private: false, owner_id: null } })
+    expect((await GET(getReq(), ctx)).status).toBe(404)
+  })
+
+  it("returns 404 for someone else's private question", async () => {
+    setup({ question: { id: QID, is_private: true, owner_id: 'other-teacher' } })
+    expect((await GET(getReq(), ctx)).status).toBe(404)
+  })
+
+  it('returns text, difficulty, explanation, class level and sorted answers', async () => {
+    setup({
+      fullQuestion: {
+        question_text: 'Was ist ein Frachtbrief?', difficulty: 'leicht', explanation: 'Begleitpapier.', class_level: 11,
+        answer_options: [
+          { id: 'b', option_text: 'B', is_correct: false, display_order: 2 },
+          { id: 'a', option_text: 'A', is_correct: true, display_order: 1 },
+        ],
+      },
+    })
+    const res = await GET(getReq(), ctx)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({
+      questionText: 'Was ist ein Frachtbrief?',
+      difficulty: 'leicht',
+      explanation: 'Begleitpapier.',
+      classLevel: 11,
+      answers: [{ text: 'A', is_correct: true }, { text: 'B', is_correct: false }],
+    })
+  })
+})
 
 describe('PATCH /api/admin/assessments/questions/[id]', () => {
   beforeEach(() => vi.clearAllMocks())

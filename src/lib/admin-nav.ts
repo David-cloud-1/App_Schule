@@ -64,6 +64,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Tests erstellen, auswerten und drucken',
         icon: GraduationCap,
         tile: true,
+        // PROJ-46: auch für Lehrkräfte ohne Fachbereich — eigene Nachweise
+        teacherVisible: true,
       },
       {
         href: '/admin/questions',

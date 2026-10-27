@@ -18,13 +18,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
 import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
-import { useAssessmentSubjects } from '@/components/admin/assessment-category-fields'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { schoolYearFor } from '@/lib/assessment-category'
 import { saveListQuery } from '@/lib/assessment-list-memory'
 import {
   FILTER_ALL,
   classOptions,
+  creatorOptions,
   defaultFilters,
+  departmentOptions,
   filterAssessments,
   filtersFromParams,
   filtersToParams,
@@ -51,6 +53,14 @@ type AssessmentListItem = {
   className: string | null
   subjectId: string | null
   subjectName: string | null
+  /** PROJ-46: Zielbereich */
+  departmentId: string | null
+  departmentName: string | null
+  departmentCode: string | null
+  /** PROJ-46: nur für den Super-Admin befüllt */
+  createdBy?: string | null
+  createdByName?: string | null
+  createdByFormer?: boolean
 }
 
 type ExamSetOption = {
@@ -77,7 +87,7 @@ function AssessmentsPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const subjectChoices = useAssessmentSubjects()
+  const { isSuperAdmin } = useAdminRole()
   const currentSchoolYear = useMemo(() => schoolYearFor(new Date()), [])
   // Filter stehen in der Adresszeile (bleiben beim Wechsel in die Detailansicht erhalten); die Suche bleibt lokal
   const [query, setQuery] = useState('')
@@ -105,7 +115,9 @@ function AssessmentsPageContent() {
         return
       }
       const assessmentsJson = await assessmentsRes.json()
-      // Sets sind nur optionale Startauswahl — ihr Fehlen blockiert die Seite nicht
+      // Sets sind nur optionale Startauswahl des eigenen Arbeitsbereichs — eine
+      // Lehrkraft ohne Fachbereich bekommt hier 403 (kein eigener Bereich) und
+      // das blockiert die Seite nicht
       const setsJson = setsRes.ok ? await setsRes.json() : { sets: [] }
       setAssessments(assessmentsJson.assessments ?? [])
       setSets(setsJson.sets ?? [])
@@ -141,10 +153,12 @@ function AssessmentsPageContent() {
       schoolYears: schoolYearOptions(assessments.map((a) => a.schoolYear), currentSchoolYear),
       classes: classOptions(assessments),
       subjects: subjectOptions(assessments),
+      departments: departmentOptions(assessments),
+      creators: isSuperAdmin ? creatorOptions(assessments) : [],
       hasUnassignedClass: assessments.some((a) => a.className === null),
       hasUnassignedSubject: assessments.some((a) => a.subjectId === null),
     }),
-    [assessments, currentSchoolYear],
+    [assessments, currentSchoolYear, isSuperAdmin],
   )
 
   useEffect(() => {
@@ -166,6 +180,7 @@ function AssessmentsPageContent() {
 
   // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
   const showEmpty = !failed && !loading && assessments.length === 0
+  const columnCount = 6 + (isSuperAdmin ? 1 : 0)
 
   return (
     <div className="space-y-6">
@@ -195,6 +210,8 @@ function AssessmentsPageContent() {
           schoolYears={filterOptions.schoolYears}
           classes={filterOptions.classes}
           subjects={filterOptions.subjects}
+          departments={filterOptions.departments}
+          creators={filterOptions.creators}
           hasUnassignedClass={filterOptions.hasUnassignedClass}
           hasUnassignedSubject={filterOptions.hasUnassignedSubject}
         />
@@ -227,6 +244,8 @@ function AssessmentsPageContent() {
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
                 <TableHead className="text-ws-muted">Titel</TableHead>
                 <TableHead className="text-ws-muted">Status</TableHead>
+                <TableHead className="text-ws-muted">Zielbereich</TableHead>
+                {isSuperAdmin && <TableHead className="text-ws-muted">Erstellt von</TableHead>}
                 <TableHead className="text-ws-muted">Code</TableHead>
                 <TableHead className="text-ws-muted">Teilnehmer</TableHead>
                 <TableHead className="text-ws-muted">Erstellt</TableHead>
@@ -238,6 +257,8 @@ function AssessmentsPageContent() {
                   <TableRow key={`sk-${i}`} className="border-ws-line">
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    {isSuperAdmin && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -245,7 +266,7 @@ function AssessmentsPageContent() {
                 ))
               ) : visible.length === 0 ? (
                 <TableRow className="border-ws-line">
-                  <TableCell colSpan={5} className="text-center text-ws-muted py-10">
+                  <TableCell colSpan={columnCount} className="text-center text-ws-muted py-10">
                     <GraduationCap size={32} className="mx-auto mb-2 text-ws-raised" />
                     <p>
                       {filters.schoolYear !== FILTER_ALL && filters.className === FILTER_ALL && filters.subjectId === FILTER_ALL && filters.status === FILTER_ALL && !filters.query
@@ -295,6 +316,17 @@ function AssessmentsPageContent() {
                         {STATUS_LABELS[a.status]}
                       </Badge>
                     </TableCell>
+                    <TableCell>
+                      {a.departmentName && (
+                        <Badge className="text-xs border-0 bg-ws-blue/15 text-ws-blue">{a.departmentName}</Badge>
+                      )}
+                    </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell className="text-ws-muted text-sm">
+                        {a.createdByName ?? '—'}
+                        {a.createdByFormer && <span className="text-ws-faint"> (ehemalig)</span>}
+                      </TableCell>
+                    )}
                     <TableCell className="text-ws-text font-mono text-sm">{a.accessCode}</TableCell>
                     <TableCell className="text-ws-text text-sm">
                       {a.submittedCount}/{a.participantCount}
@@ -314,7 +346,6 @@ function AssessmentsPageContent() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         sets={sets}
-        subjects={subjectChoices}
         classSuggestions={filterOptions.classes}
         usedSchoolYears={assessments.map((a) => a.schoolYear)}
         preselectedSetId={preselectedSetId}

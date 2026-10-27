@@ -71,12 +71,21 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .eq('department_id', assessment.department_id)
     .order('code')
   const classSuggestions = (await fetchUsedClassNames(supabase, assessment.department_id)) ?? []
+  // PROJ-46: Zielbereich-Name für die Kopfzeile und den "ändern"-Dialog
+  const { data: departmentRow } = await supabase
+    .from('departments')
+    .select('name, code')
+    .eq('id', assessment.department_id)
+    .maybeSingle()
 
   return NextResponse.json({
     id: assessment.id,
     title: assessment.title,
     examSetId: assessment.exam_set_id,
     examSetName: set?.name ?? null,
+    departmentId: assessment.department_id,
+    departmentName: (departmentRow as { name: string } | null)?.name ?? null,
+    departmentCode: (departmentRow as { code: string } | null)?.code ?? null,
     part: assessment.part,
     status: assessment.status,
     accessCode: formatAccessCode(assessment.access_code),

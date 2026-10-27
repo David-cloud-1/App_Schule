@@ -38,12 +38,12 @@ type ExamSetOption = {
   duration_minutes: number | null
 }
 
+type DepartmentOption = { id: string; name: string; code: string }
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   sets: ExamSetOption[]
-  /** PROJ-39: Auswahl für die Ablage */
-  subjects: SubjectOption[]
   classSuggestions: string[]
   usedSchoolYears: string[]
   preselectedSetId?: string | null
@@ -64,8 +64,19 @@ function defaultWindow() {
 const NO_START = 'none'
 const MIN_QUESTIONS = 5
 
-export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, classSuggestions, usedSchoolYears, preselectedSetId, onSuccess }: Props) {
+export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestions, usedSchoolYears, preselectedSetId, onSuccess }: Props) {
   const partLabel = useExamPartLabel()
+
+  // PROJ-46: Zielbereich — Schritt 0
+  const [departments, setDepartments] = useState<DepartmentOption[]>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
+  const [departmentId, setDepartmentId] = useState('')
+  const [suggestedDepartmentId, setSuggestedDepartmentId] = useState<string | null>(null)
+
+  // Ablage-Felder (PROJ-39) kommen jetzt vom Zielbereich, nicht vom Arbeitsbereich
+  const [categorySubjects, setCategorySubjects] = useState<SubjectOption[]>([])
+  const [categoryClasses, setCategoryClasses] = useState<string[]>([])
+
   const [startSetId, setStartSetId] = useState<string>(NO_START)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [skippedFromSet, setSkippedFromSet] = useState(0)
@@ -78,6 +89,12 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
   const [category, setCategory] = useState<CategoryValue>({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+
+  // Startauswahl aus der Prüfungssimulation gibt es nur für den eigenen
+  // Arbeitsbereich — die geladenen Sets gehören zu diesem, nicht zum
+  // (ggf. fremden) Zielbereich.
+  const ownDepartment = departmentId !== '' && departmentId === suggestedDepartmentId
+  const visibleSets = ownDepartment ? sets : []
 
   // IDs der wählbaren Fragen und eine noch ausstehende Set-Vorauswahl: Set-Fragen
   // werden erst nach dem Laden gegen die wählbaren Fragen abgeglichen (offene
@@ -110,17 +127,12 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
     pendingSetRef.current = null
     setSkippedFromSet(0)
     setSelectedIds(new Set())
-    const preset = sets.find((s) => s.id === preselectedSetId)
-    if (preset) {
-      setStartSetId(preset.id)
-      setTitle(`${preset.name} – Leistungsnachweis`)
-      setDurationMinutes(String(preset.duration_minutes ?? 90))
-      pendingSetRef.current = preset.question_ids
-    } else {
-      setStartSetId(NO_START)
-      setTitle('')
-      setDurationMinutes('90')
-    }
+    setStartSetId(NO_START)
+    setTitle('')
+    setDurationMinutes('90')
+    setDepartmentId('')
+    setCategorySubjects([])
+    setCategoryClasses([])
     const { opensAt, closesAt } = defaultWindow()
     setOpensAt(opensAt)
     setClosesAt(closesAt)
@@ -128,7 +140,76 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
     setFocus(DEFAULT_FOCUS_FORM)
     setCategory({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
     setErrors({})
-  }, [open, preselectedSetId, sets])
+
+    setDepartmentsLoading(true)
+    fetch('/api/admin/assessments/departments')
+      .then((res) => (res.ok ? res.json() : { departments: [], suggestedDepartmentId: null }))
+      .then((data) => {
+        const list: DepartmentOption[] = data.departments ?? []
+        setDepartments(list)
+        setSuggestedDepartmentId(data.suggestedDepartmentId ?? null)
+        // Nur ein aktiver Bereich: egal welche Rolle, direkt vorbelegen.
+        // Sonst: Bereichs-Admin/Super-Admin bekommen ihren Arbeitsbereich
+        // vorausgewählt, eine Lehrkraft ohne Fachbereich bleibt leer (E1).
+        if (list.length === 1) setDepartmentId(list[0].id)
+        else if (data.suggestedDepartmentId) setDepartmentId(data.suggestedDepartmentId)
+      })
+      .catch(() => setDepartments([]))
+      .finally(() => setDepartmentsLoading(false))
+  }, [open])
+
+  // Ablage-Optionen (Fächer/Klassen) des gewählten Zielbereichs nachladen
+  useEffect(() => {
+    if (!departmentId) {
+      setCategorySubjects([])
+      setCategoryClasses([])
+      return
+    }
+    let cancelled = false
+    fetch(`/api/admin/assessments/category-options?departmentId=${departmentId}`)
+      .then((res) => (res.ok ? res.json() : { subjects: [], classes: [] }))
+      .then((data) => {
+        if (cancelled) return
+        setCategorySubjects(data.subjects ?? [])
+        setCategoryClasses(data.classes ?? [])
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCategorySubjects([])
+          setCategoryClasses([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [departmentId])
+
+  // Nach dem ersten Laden der Bereiche die Set-Vorauswahl übernehmen (sofern
+  // der eigene Arbeitsbereich gewählt wurde)
+  useEffect(() => {
+    if (!open || departmentsLoading) return
+    const preset = sets.find((s) => s.id === preselectedSetId)
+    if (preset && ownDepartment) {
+      setStartSetId(preset.id)
+      if (!title.trim()) setTitle(`${preset.name} – Leistungsnachweis`)
+      setDurationMinutes(String(preset.duration_minutes ?? 90))
+      pendingSetRef.current = preset.question_ids
+    }
+    // nur einmal nach dem Laden der Bereiche auswerten
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, departmentsLoading])
+
+  function handleDepartmentChange(value: string) {
+    if (value === departmentId) return
+    setDepartmentId(value)
+    // Fragenauswahl gehört zum alten Bereich — ohne Entwurf, der schon existiert,
+    // ist "alles neu wählen" hier einfacher als ein Übernahme-Versuch.
+    setSelectedIds(new Set())
+    setSkippedFromSet(0)
+    setStartSetId(NO_START)
+    loadedIdsRef.current = null
+    pendingSetRef.current = null
+  }
 
   function handleStartSetChange(value: string) {
     setStartSetId(value)
@@ -146,6 +227,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
 
   function validate(): boolean {
     const e: Record<string, string> = {}
+    if (!departmentId) e.departmentId = 'Zielbereich wählen.'
     if (selectedIds.size < MIN_QUESTIONS) e.questions = `Mindestens ${MIN_QUESTIONS} Fragen auswählen.`
     if (!title.trim()) e.title = 'Titel ist Pflicht.'
     if (!opensAt) e.opensAt = 'Startzeit fehlt.'
@@ -172,6 +254,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          departmentId,
           questionIds: [...selectedIds],
           title: title.trim(),
           opensAt: new Date(opensAt).toISOString(),
@@ -211,38 +294,65 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {sets.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
-              <Select value={startSetId} onValueChange={handleStartSetChange}>
-                <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                  <SelectItem value={NO_START}>Ohne Startauswahl</SelectItem>
-                  {sets.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name} — {partLabel(s.part)} ({s.question_ids.length} Fragen)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-ws-faint">
-                Die Fragen werden kopiert und sind danach unabhängig vom Set.
-              </p>
-              {skippedFromSet > 0 && (
-                <p className="text-xs text-ws-orange">
-                  {skippedFromSet} Fragen aus dem Set wurden übersprungen (offene oder deaktivierte Fragen).
-                </p>
-              )}
-            </div>
-          )}
-
           <div className="space-y-2">
-            <Label>Fragen</Label>
-            <AssessmentQuestionSelector selectedIds={selectedIds} onChange={setSelectedIds} onLoaded={handleLoaded} />
-            {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
+            <Label htmlFor="zielbereich">Zielbereich</Label>
+            <Select value={departmentId} onValueChange={handleDepartmentChange} disabled={departmentsLoading}>
+              <SelectTrigger id="zielbereich" className="bg-ws-bg border-ws-line text-ws-text">
+                <SelectValue placeholder={departmentsLoading ? 'Wird geladen…' : 'Bitte wählen…'} />
+              </SelectTrigger>
+              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+                {departments.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-ws-faint">
+              Bestimmt den Fragenpool und wer per Code beitreten kann. Nach dem Öffnen nicht mehr änderbar.
+            </p>
+            {errors.departmentId && <p className="text-xs text-ws-red">{errors.departmentId}</p>}
           </div>
+
+          {departmentId && (
+            <>
+              {visibleSets.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
+                  <Select value={startSetId} onValueChange={handleStartSetChange}>
+                    <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+                      <SelectItem value={NO_START}>Ohne Startauswahl</SelectItem>
+                      {visibleSets.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} — {partLabel(s.part)} ({s.question_ids.length} Fragen)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-ws-faint">
+                    Die Fragen werden kopiert und sind danach unabhängig vom Set.
+                  </p>
+                  {skippedFromSet > 0 && (
+                    <p className="text-xs text-ws-orange">
+                      {skippedFromSet} Fragen aus dem Set wurden übersprungen (offene oder deaktivierte Fragen).
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label>Fragen</Label>
+                <AssessmentQuestionSelector
+                  departmentId={departmentId}
+                  selectedIds={selectedIds}
+                  onChange={setSelectedIds}
+                  onLoaded={handleLoaded}
+                />
+                {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="title">Titel</Label>
@@ -263,8 +373,8 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, subjects, clas
               idPrefix="neu"
               value={category}
               onChange={setCategory}
-              subjects={subjects}
-              classSuggestions={classSuggestions}
+              subjects={categorySubjects}
+              classSuggestions={categoryClasses.length > 0 ? categoryClasses : classSuggestions}
               schoolYears={schoolYearChoices(usedSchoolYears, schoolYearFor(new Date()))}
               disabled={submitting}
             />
