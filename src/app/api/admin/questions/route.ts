@@ -43,7 +43,7 @@ const PAGE_SIZE = 20
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, departmentId, isSuperAdmin } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -87,6 +87,8 @@ export async function GET(request: NextRequest) {
         topic_id,
         is_active,
         assessment_only,
+        is_private,
+        owner_id,
         created_at,
         answer_options ( id, option_text, display_order ),
         question_subjects ( subjects ( id, code, name ) ),
@@ -97,6 +99,13 @@ export async function GET(request: NextRequest) {
     )
     .eq('qs_filter.subjects.department_id', departmentId)
     .order(sort, { ascending: sort_dir === 'asc' })
+
+  // PROJ-46 (E6): private Nachweis-Fragen gehören nicht in die
+  // Fragenverwaltung der Bereichs-Admins — nur der Super-Admin sieht sie
+  // (mit dem Vermerk "privat" in der Oberfläche).
+  if (!isSuperAdmin) {
+    query = query.eq('is_private', false)
+  }
 
   if (subjectId) {
     query = query.eq('qs_filter.subject_id', subjectId)

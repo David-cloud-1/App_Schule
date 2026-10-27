@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { buildAssessmentImportPrompt, MAX_PROMPT_CHARS, MIN_MATERIAL_CHARS } from '@/lib/assessment-import'
 
 const PromptSchema = z.object({
+  departmentId: z.string().uuid(),
   task: z.string().trim().min(MIN_MATERIAL_CHARS, 'Aufgabentext ist zu kurz.').max(200_000),
   solution: z.string().trim().max(100_000).nullish(),
 })
@@ -15,9 +16,9 @@ const PromptSchema = z.object({
  * Ausbilder fügt ihn selbst in einen kostenlosen Chat ein.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase } = auth
 
   let body: unknown
   try {
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 })
   }
+  const { departmentId } = parsed.data
 
   const department = await getDepartmentById(supabase, departmentId)
   if (!department) return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })

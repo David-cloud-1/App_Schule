@@ -9,6 +9,7 @@ import {
   NO_RIGHTS_MESSAGE,
   START_PATH,
   TEACHER_HOME_PATH,
+  teacherMayCallApiPath,
 } from '@/lib/roles'
 
 export async function proxy(request: NextRequest) {
@@ -101,9 +102,13 @@ export async function proxy(request: NextRequest) {
     }
     if (!isManagerRole(role)) {
       if (pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: NO_RIGHTS_MESSAGE }, { status: 403 })
-      }
-      if (!mayOpenAdminPath(role, pathname)) {
+        // PROJ-46: die Nachweis-Routen sind das eine Tor, durch das eine
+        // reine Lehrkraft in die Verwaltungs-Schnittstellen darf — jede
+        // Route prüft das selbst noch einmal mit requireTeacherOrAdmin().
+        if (!teacherMayCallApiPath(pathname)) {
+          return NextResponse.json({ error: NO_RIGHTS_MESSAGE }, { status: 403 })
+        }
+      } else if (!mayOpenAdminPath(role, pathname)) {
         const url = request.nextUrl.clone()
         url.pathname = TEACHER_HOME_PATH
         url.search = ''

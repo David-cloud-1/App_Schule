@@ -26,7 +26,7 @@ function escapeCsv(value: string | null | undefined): string {
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, departmentId, isSuperAdmin } = auth
 
   const parsed = ExportQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -71,6 +71,8 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false })
     .limit(5000)
 
+  // PROJ-46 (E6): private Nachweis-Fragen gehören nicht in den Bereichs-Export
+  if (!isSuperAdmin) query = query.eq('is_private', false)
   if (subjectId) query = query.eq('qs_filter.subject_id', subjectId)
   if (difficulty) query = query.eq('difficulty', difficulty)
   if (class_level) query = query.eq('class_level', class_level)

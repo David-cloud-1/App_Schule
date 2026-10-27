@@ -1,8 +1,8 @@
 # PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-10-27 (Backend)
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -210,6 +210,30 @@ Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus 
 
 ### H) Abhängigkeiten
 - Keine neuen Pakete, keine neuen Dienste.
+
+## Implementation Notes (Backend, 2026-10-27)
+
+**Datenbank (live angewendet und mit 39-Punkte-RLS-Matrix geprüft, Transaktion mit `RAISE EXCEPTION` am Ende):**
+- `supabase/migrations/20261027_proj46_teacher_assessments.sql` (+ `..._down.sql`): `graded_assessments.shared_with_department` (Bestand = `true`), `questions.is_private` + `questions.owner_id`, zwei CHECK-Constraints (privat ⇒ nur-für-Nachweise; Besitzer nur bei privat), die Funktionen `has_teacher_role`, `can_view_assessment(_id)`, `assessment_shared_for`, `can_manage_private_question`, `question_is_private`, `can_read_question_options`, `can_edit_question`, zwei Trigger (`graded_assessments_guard` friert „geteilt“ ein und verweigert Fremd-Fragen; `questions_private_guard` setzt den Besitzer beim Anlegen und verweigert spätere Änderungen von `is_private`/`owner_id`), sowie neue RLS-Regeln auf `graded_assessments`, `assessment_focus_summary`, `assessment_focus_events`, `questions`, `answer_options`, `question_subjects`.
+- `shared_with_department` wird **ausschließlich durch die Datenbank** gesetzt (Trigger), nie vom Server-Code übergeben — genau wie in der Spec verlangt.
+
+**Server-Code:**
+- `src/app/api/admin/_lib/auth.ts`: neuer Zugangs-Check `requireTeacherOrAdmin()` (lässt zusätzlich `teacher` herein) nur für Nachweis-Routen; `canViewAssessment`/`assertCanViewAssessment` spiegeln `can_view_assessment` aus der Datenbank für Routen, die den Service-Client nutzen (Ergebnisse, Berichte, Teilnehmer, Fokus). `requireAdmin` unverändert für alle übrigen Admin-Routen.
+- `src/proxy.ts` + `src/lib/roles.ts`: Middleware ließ `/api/admin/**` bisher pauschal nur Bereichs-Admin/Super-Admin durch — neuer, auf `/api/admin/assessments/**` begrenzter Durchlass (`teacherMayCallApiPath`) für Lehrkräfte; Seiten-Zugang um `/admin/leistungsnachweise` erweitert (`TEACHER_ADMIN_PATHS`).
+- `src/lib/assessment-questions.ts`: `fetchSelectableQuestions`/`checkQuestionSelection` nehmen jetzt einen optionalen `ownerId` entgegen und liefern zusätzlich die eigenen privaten Fragen des Zielbereichs (Feld `isPrivate`).
+- `src/app/api/admin/assessments/route.ts` (Liste/Anlegen): `departmentId` kommt jetzt im Request statt aus dem Arbeitsbereich der anfragenden Person; Liste zeigt, was RLS erlaubt, mit Filtern `departmentId`/`createdBy` und (nur Super-Admin) `createdBy`/`createdByName`/`createdByFormer`.
+- `src/app/api/admin/assessments/[id]/**` (Detail, Kategorie, Export, Berichte, Ergebnisse, Teilnehmer, Fokus): Zugangs-Check umgestellt; die Service-Client-Routen prüfen jetzt `assertCanViewAssessment` statt `assertCanAdminDepartment`.
+- `src/app/api/admin/assessments/[id]/department/route.ts` (neu): Zielbereich im Entwurf wechseln — Pool-Fragen raus, eigene private Fragen bleiben, Prüfungsteil wird neu abgeleitet, Fach-Ablage geleert, falls sie nicht zum neuen Bereich passt. Nach dem Öffnen blockt zusätzlich der DB-Trigger.
+- `src/app/api/admin/assessments/questions/**` (Auswahl, Import, Vorschau, Prompt): `departmentId` kommt jetzt aus der Anfrage; Import legt für einen fremden Bereich (Lehrkraft, oder Bereichs-Admin außerhalb des eigenen Bereichs) immer private, dauerhaft nur-für-Nachweise-Fragen an.
+- `src/app/api/admin/assessments/questions/[id]/route.ts` (neu): eigene private Fragen bearbeiten/löschen — nur Besitzerin oder Super-Admin, blockt mit 409, solange ein **offener** Nachweis die Frage verwendet.
+- `src/app/api/admin/questions/route.ts` + `export/route.ts`: blenden private Fragen für alle außer dem Super-Admin aus (`is_private`, `owner_id` zusätzlich im Select für den Super-Admin-Vermerk „privat“).
+- „Für Übung freigeben“ (`assessment_only: false` auf eine private Frage) ist durch den CHECK-Constraint `questions_private_is_assessment_only` in der Datenbank blockiert, nicht nur im Server-Code.
+
+**Tests:** 38 neue/angepasste Testfälle in den betroffenen Routen- und Bibliotheks-Testdateien, plus die Middleware-Tests. Gesamter Testlauf: **113 Testdateien, 1331 Tests, alle grün**. `npm run build` fehlerfrei. Kein Dev-Server, kein Playwright (siehe `.claude/rules`).
+
+**Noch offen (kein Backend-Thema mehr):**
+- Oberfläche: Zielbereich-Schritt im Anlegen-Dialog, Filter/Spalten „Zielbereich“ und „Erstellt von“, Schild „Meine Frage“, Bearbeiten/Löschen-UI für private Fragen, „Zielbereich ändern“-Dialog im Entwurf. → `/frontend`.
+- QA: Rollen-Matrix end-to-end über die fertige Oberfläche, insbesondere E5 (Rollenentzug während eines offenen Nachweises) und die Edge Cases aus der Spec. → `/qa`.
 
 ## QA Test Results
 _To be added by /qa_

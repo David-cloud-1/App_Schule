@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
 import { fetchExamParts } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 import { fetchSelectableQuestions, type PickerQuestion } from '@/lib/assessment-questions'
@@ -20,19 +20,24 @@ const QuestionSchema = z.object({
 }).refine((q) => q.correct_index < q.options.length, { message: 'correct_index außerhalb der Optionen', path: ['correct_index'] })
 
 const ImportSchema = z.object({
+  departmentId: z.string().uuid(),
   questions: z.array(QuestionSchema).min(1).max(200),
-  // PROJ-38: true = Fragen sind bis zur Freigabe nur für Nachweise nutzbar
+  // PROJ-38: true = Fragen sind bis zur Freigabe nur für Nachweise nutzbar.
+  // Für einen fremden Bereich (Lehrkraft, oder Bereichs-Admin außerhalb des
+  // eigenen Bereichs) gilt das ohnehin immer — dauerhaft privat (PROJ-46, E6).
   assessmentOnly: z.boolean().default(false),
 })
 
 /**
- * Legt ausgelesene Fragen nur als Fragen an (Fach über das Kürzel, sonst Standardfach) (kein Prüfungsset) und gibt sie für
- * die Auswahl im Nachweis-Dialog zurück (PROJ-27).
+ * Legt ausgelesene Fragen nur als Fragen an (Fach über das Kürzel, sonst
+ * Standardfach) (kein Prüfungsset) und gibt sie für die Auswahl im
+ * Nachweis-Dialog zurück (PROJ-27). Für einen fremden Bereich entstehen sie
+ * als private Nachweis-Fragen der importierenden Person (PROJ-46, E6).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -44,10 +49,17 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid payload', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { assessmentOnly } = parsed.data
+  const { departmentId } = parsed.data
+
+  // Eigener Bereich: Super-Admin überall, Bereichs-Admin nur im eigenen.
+  // Sonst (Lehrkraft, oder Bereichs-Admin für einen fremden Bereich) immer
+  // privat und immer „nur für Nachweise" — unabhängig vom gesendeten Wert.
+  const isOwnDepartment = auth.isSuperAdmin || (auth.isDepartmentAdmin && departmentId === auth.suggestedDepartmentId)
+  const isPrivate = !isOwnDepartment
+  const assessmentOnly = isOwnDepartment ? parsed.data.assessmentOnly : true
   let questions = parsed.data.questions
 
-  // PROJ-38: Qualitätsprüfung und Duplikate serverseitig, dem Browser wird nicht vertraut
+  // PROJ-38/46: Qualitätsprüfung und Duplikate serverseitig, dem Browser wird nicht vertraut
   if (assessmentOnly) {
     const blocked = questions.filter((q) => assessQuestionQuality({ ...q, explanation: q.explanation ?? null }).blockers.length > 0)
     if (blocked.length > 0) {
@@ -58,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
     let known: Set<string>
     try {
-      known = new Set((await fetchSelectableQuestions(supabase, departmentId)).map((q) => duplicateKey(q.question_text)))
+      known = new Set((await fetchSelectableQuestions(supabase, departmentId, user.id)).map((q) => duplicateKey(q.question_text)))
     } catch (err) {
       console.error('[assessments/questions/import]', err)
       return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
@@ -107,6 +119,8 @@ export async function POST(request: NextRequest) {
       explanation: q.explanation?.trim() || null,
       class_level: q.class_level != null && allowedClassLevels.has(q.class_level) ? q.class_level : null,
       assessment_only: assessmentOnly,
+      is_private: isPrivate,
+      owner_id: isPrivate ? user.id : null,
     })))
     .select('id')
   if (qErr || !inserted || inserted.length !== questions.length) {
@@ -152,7 +166,8 @@ export async function POST(request: NextRequest) {
     action_type: 'import',
     object_type: 'question',
     object_label: `Nachweis-Import (${ids.length} Fragen)`,
-    details: { questions_imported: ids.length, assessment_only: assessmentOnly },
+    details: { questions_imported: ids.length, assessment_only: assessmentOnly, is_private: isPrivate },
+    department_id: departmentId,
   })
 
   const result: PickerQuestion[] = inserted.map((q, i) => ({
@@ -162,6 +177,7 @@ export async function POST(request: NextRequest) {
     class_level: questions[i].class_level != null && allowedClassLevels.has(questions[i].class_level!) ? questions[i].class_level! : null,
     topic: null,
     subject_codes: [codeById.get(subjectIdFor(i)) ?? ''].filter(Boolean),
+    isPrivate,
   }))
   return NextResponse.json({ questions: result, skippedDuplicates: parsed.data.questions.length - questions.length }, { status: 201 })
 }

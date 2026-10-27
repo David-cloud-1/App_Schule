@@ -1,15 +1,29 @@
-import { NextResponse } from 'next/server'
-import { requireAdmin } from '../../_lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
+import { requireTeacherOrAdmin } from '../../_lib/auth'
 import { fetchSelectableQuestions } from '@/lib/assessment-questions'
 
-/** Wählbare Fragen (aktiv, Multiple-Choice) des eigenen Fachbereichs über alle Fächer */
-export async function GET() {
-  const auth = await requireAdmin()
+const QuerySchema = z.object({ departmentId: z.string().uuid() })
+
+/**
+ * Wählbare Fragen (aktiv, Multiple-Choice) des Zielbereichs über alle
+ * Fächer: der Bereichs-Pool plus die eigenen privaten Nachweis-Fragen der
+ * anfragenden Person in diesem Bereich (PROJ-46). Der Zielbereich kommt
+ * jetzt vom Dialog, nicht mehr aus dem Arbeitsbereich der Person — eine
+ * Lehrkraft hat keinen.
+ */
+export async function GET(request: NextRequest) {
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, user } = auth
+
+  const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
+  }
 
   try {
-    const questions = await fetchSelectableQuestions(supabase, departmentId)
+    const questions = await fetchSelectableQuestions(supabase, parsed.data.departmentId, user.id)
     return NextResponse.json({ questions })
   } catch (err) {
     console.error('[GET /api/admin/assessments/questions]', err)

@@ -41,6 +41,7 @@ function setup(o: Overrides = {}) {
       data: o.assessment === undefined
         ? {
             title: 'LN 1', part: 1, grading_scale: IHK_DEFAULT_SCALE, department_id: 'dept-sped',
+            created_by: 'other-user', shared_with_department: true,
             access_code: '7K2MQX', opens_at: '2026-10-01T08:00:00Z', closes_at: '2026-10-01T10:00:00Z', status: 'closed',
           }
         : o.assessment,
@@ -109,7 +110,7 @@ describe('GET /api/admin/assessments/[id]/reports', () => {
     const serviceCalled = { value: false }
     setup({
       serviceCalled,
-      assessment: { title: 'LN', part: 1, grading_scale: IHK_DEFAULT_SCALE, department_id: 'dept-tour', access_code: 'AAAAAA', opens_at: '', closes_at: '', status: 'closed' },
+      assessment: { title: 'LN', part: 1, grading_scale: IHK_DEFAULT_SCALE, department_id: 'dept-tour', created_by: 'other-user', shared_with_department: true, access_code: 'AAAAAA', opens_at: '', closes_at: '', status: 'closed' },
     })
     expect((await GET(makeRequest(), ctx)).status).toBe(404)
     expect(serviceCalled.value).toBe(false)

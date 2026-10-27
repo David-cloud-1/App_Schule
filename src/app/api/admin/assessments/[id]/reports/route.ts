@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, assertCanAdminDepartment } from '../../../_lib/auth'
+import { requireTeacherOrAdmin, assertCanViewAssessment } from '../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import {
   applyGrading,
@@ -21,7 +21,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
@@ -32,11 +32,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: assessment } = await supabase
     .from('graded_assessments')
-    .select('title, part, grading_scale, department_id, access_code, opens_at, closes_at, status')
+    .select('title, part, grading_scale, department_id, created_by, shared_with_department, access_code, opens_at, closes_at, status')
     .eq('id', id)
     .maybeSingle()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
-  const forbidden = assertCanAdminDepartment(auth, assessment.department_id as string)
+  const forbidden = assertCanViewAssessment(auth, assessment)
   if (forbidden) return forbidden
 
   // Service-Client erst nach der Bereichsprüfung: Klarnamen und Antworten

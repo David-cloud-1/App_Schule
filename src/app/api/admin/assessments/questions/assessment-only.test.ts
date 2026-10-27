@@ -6,28 +6,30 @@ import { POST as previewPOST } from './preview/route'
 import { POST as materialPOST } from './material/route'
 import { POST as importPOST } from './import/route'
 
-vi.mock('../../_lib/auth', () => ({ requireAdmin: vi.fn(), writeAuditLog: vi.fn() }))
+vi.mock('../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
 vi.mock('@/lib/assessment-questions', () => ({ fetchSelectableQuestions: vi.fn() }))
 vi.mock('@/lib/departments', () => ({ getDepartmentById: vi.fn() }))
 vi.mock('@/lib/subjects', async (orig) => ({ ...(await orig<typeof import('@/lib/subjects')>()), fetchDepartmentSubjects: vi.fn() }))
 vi.mock('@/lib/exam-parts', () => ({ fetchExamParts: vi.fn() }))
 vi.mock('../../ai-generate/_lib/process-job', () => ({ extractText: vi.fn() }))
 
-import { requireAdmin } from '../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../_lib/auth'
 import { fetchSelectableQuestions } from '@/lib/assessment-questions'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { fetchExamParts } from '@/lib/exam-parts'
 import { extractText } from '../../ai-generate/_lib/process-job'
 
+const DEPT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const unauth = { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), user: null, supabase: null }
-const admin = { error: null, user: { id: 'u' }, supabase: {}, role: 'department_admin', isSuperAdmin: false, departmentId: 'dept' }
-const department = { id: 'dept', promptRole: 'Lehrer', targetGroup: 'Azubis', promptNotes: null, classLevels: [10, 11] }
+// Bereichs-Admin im EIGENEN Bereich — verhält sich wie vor PROJ-46 (pool, nicht privat)
+const admin = { error: null, user: { id: 'u' }, supabase: {}, role: 'department_admin', isSuperAdmin: false, isDepartmentAdmin: true, suggestedDepartmentId: DEPT }
+const department = { id: DEPT, promptRole: 'Lehrer', targetGroup: 'Azubis', promptNotes: null, classLevels: [10, 11] }
 const subjects = [{ id: 's1', code: 'STG', name: 'STG' }]
 
 const json = (url: string, body: unknown) =>
   new NextRequest(`http://localhost/api/admin/assessments/questions/${url}`, {
-    method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' },
+    method: 'POST', body: JSON.stringify({ departmentId: DEPT, ...(body as object) }), headers: { 'content-type': 'application/json' },
   })
 
 const goodRow = {
@@ -39,7 +41,7 @@ const goodRow = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(requireAdmin).mockResolvedValue(admin as never)
+  vi.mocked(requireTeacherOrAdmin).mockResolvedValue(admin as never)
   vi.mocked(getDepartmentById).mockResolvedValue(department as never)
   vi.mocked(fetchDepartmentSubjects).mockResolvedValue(subjects as never)
   vi.mocked(fetchExamParts).mockResolvedValue([] as never)
@@ -48,7 +50,7 @@ beforeEach(() => {
 
 describe('POST …/prompt', () => {
   it('401 ohne Login', async () => {
-    vi.mocked(requireAdmin).mockResolvedValue(unauth as never)
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(unauth as never)
     expect((await promptPOST(json('prompt', { task: 'x'.repeat(80) }))).status).toBe(401)
   })
 
@@ -72,7 +74,7 @@ describe('POST …/prompt', () => {
 
 describe('POST …/preview', () => {
   it('401 ohne Login', async () => {
-    vi.mocked(requireAdmin).mockResolvedValue(unauth as never)
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(unauth as never)
     expect((await previewPOST(json('preview', { answer: '{}' }))).status).toBe(401)
   })
 
@@ -109,7 +111,7 @@ describe('POST …/material', () => {
   const docBytes = new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, 0, 0])
 
   it('401 ohne Login', async () => {
-    vi.mocked(requireAdmin).mockResolvedValue(unauth as never)
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(unauth as never)
     expect((await materialPOST(upload(null))).status).toBe(401)
   })
 

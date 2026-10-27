@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { extractText } from '../../../ai-generate/_lib/process-job'
 import { detectMaterialKind, MATERIAL_MAX_BYTES, MIME_BY_KIND, MIN_MATERIAL_CHARS } from '@/lib/assessment-import'
 
@@ -11,7 +11,7 @@ export const maxDuration = 60
  * Vercel den Request-Body auf 4,5 MB begrenzt.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
 
   let formData: FormData

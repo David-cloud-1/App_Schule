@@ -13,6 +13,8 @@ export type PickerQuestion = {
   class_level: number | null
   topic: string | null
   subject_codes: string[]
+  /** Eigene Nachweis-Frage (PROJ-46) — trägt in der Auswahl das Schild „Meine Frage“. */
+  isPrivate: boolean
 }
 
 type QuestionRow = {
@@ -26,45 +28,65 @@ type QuestionRow = {
 
 const PAGE_SIZE = 1000
 
+async function loadQuestionRows(
+  supabase: SupabaseClient,
+  subjectIds: string[],
+  isPrivate: boolean,
+  ownerId: string | null,
+): Promise<QuestionRow[]> {
+  const all: QuestionRow[] = []
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let query = supabase
+      .from('questions')
+      .select('id, question_text, difficulty, class_level, topics(name), question_subjects!inner(subject_id)')
+      .eq('is_active', true)
+      .eq('type', 'multiple_choice')
+      .eq('is_private', isPrivate)
+    if (isPrivate) query = query.eq('owner_id', ownerId as string)
+    const { data, error } = await query
+      .in('question_subjects.subject_id', subjectIds)
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+    if (error) throw new Error(`Fragen konnten nicht geladen werden: ${error.message}`)
+    const rows = (data ?? []) as unknown as QuestionRow[]
+    all.push(...rows)
+    if (rows.length < PAGE_SIZE) break
+  }
+  return all
+}
+
 /**
- * Alle aktiven Multiple-Choice-Fragen des Fachbereichs (neueste zuerst),
- * über alle Fächer hinweg. Seitenweise geladen, weil PostgREST bei 1000
- * Zeilen kappt.
+ * Alle aktiven Multiple-Choice-Fragen des Fachbereichs (neueste zuerst), über
+ * alle Fächer hinweg: der Bereichs-Pool, plus — mit `ownerId` — die eigenen
+ * privaten Nachweis-Fragen der Person in diesem Bereich (PROJ-46, E6). Jede
+ * Gruppe wird seitenweise geladen, weil PostgREST bei 1000 Zeilen kappt.
  */
 export async function fetchSelectableQuestions(
   supabase: SupabaseClient,
   departmentId: string,
+  ownerId?: string | null,
 ): Promise<PickerQuestion[]> {
   const subjects = await fetchDepartmentSubjects(supabase, departmentId)
   if (subjects.length === 0) return []
   const subjectIds = subjects.map((s) => s.id)
   const codeById = new Map(subjects.map((s) => [s.id, s.code]))
 
-  const all: PickerQuestion[] = []
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('id, question_text, difficulty, class_level, topics(name), question_subjects!inner(subject_id)')
-      .eq('is_active', true)
-      .eq('type', 'multiple_choice')
-      .in('question_subjects.subject_id', subjectIds)
-      .order('created_at', { ascending: false })
-      .range(from, from + PAGE_SIZE - 1)
-    if (error) throw new Error(`Fragen konnten nicht geladen werden: ${error.message}`)
-    const rows = (data ?? []) as unknown as QuestionRow[]
-    for (const q of rows) {
-      all.push({
-        id: q.id,
-        question_text: q.question_text,
-        difficulty: q.difficulty,
-        class_level: q.class_level,
-        topic: q.topics?.name ?? null,
-        subject_codes: q.question_subjects.map((qs) => codeById.get(qs.subject_id)).filter((c): c is string => !!c),
-      })
-    }
-    if (rows.length < PAGE_SIZE) break
-  }
-  return all
+  const toPicker = (rows: QuestionRow[], isPrivate: boolean): PickerQuestion[] =>
+    rows.map((q) => ({
+      id: q.id,
+      question_text: q.question_text,
+      difficulty: q.difficulty,
+      class_level: q.class_level,
+      topic: q.topics?.name ?? null,
+      subject_codes: q.question_subjects.map((qs) => codeById.get(qs.subject_id)).filter((c): c is string => !!c),
+      isPrivate,
+    }))
+
+  const pool = toPicker(await loadQuestionRows(supabase, subjectIds, false, null), false)
+  const own = ownerId
+    ? toPicker(await loadQuestionRows(supabase, subjectIds, true, ownerId), true)
+    : []
+  return [...pool, ...own]
 }
 
 /**
@@ -95,17 +117,19 @@ export type QuestionSelectionCheck =
 
 /**
  * Serverseitige Prüfung einer Fragenauswahl: Duplikate raus, jede Frage muss
- * aktiv, Multiple-Choice und im Fachbereich sein, mindestens 5 Fragen. Liefert
- * zusätzlich den abgeleiteten technischen Prüfungsteil.
+ * aktiv, Multiple-Choice und im Fachbereich sein (Bereichs-Pool oder eigene
+ * private Nachweis-Frage, PROJ-46), mindestens 5 Fragen. Liefert zusätzlich
+ * den abgeleiteten technischen Prüfungsteil.
  */
 export async function checkQuestionSelection(
   supabase: SupabaseClient,
   departmentId: string,
   questionIds: string[],
+  ownerId?: string | null,
 ): Promise<QuestionSelectionCheck> {
   const ids = [...new Set(questionIds)]
   const [selectable, examParts] = await Promise.all([
-    fetchSelectableQuestions(supabase, departmentId),
+    fetchSelectableQuestions(supabase, departmentId, ownerId),
     fetchExamParts(supabase, departmentId),
   ])
   const byId = new Map(selectable.map((q) => [q.id, q]))

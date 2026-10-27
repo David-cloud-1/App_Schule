@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireTeacherOrAdmin, writeAuditLog } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import {
   formatAccessCode,
@@ -31,7 +31,7 @@ const EditSchema = z.object({
   focusAutoSubmitAfter: z.number().int().nullable().optional(),
 })
 
-async function loadAssessment(supabase: Awaited<ReturnType<typeof requireAdmin>>['supabase'], id: string) {
+async function loadAssessment(supabase: Awaited<ReturnType<typeof requireTeacherOrAdmin>>['supabase'], id: string) {
   const { data } = await supabase!
     .from('graded_assessments')
     .select('*, exam_question_sets(name, question_ids)')
@@ -42,7 +42,7 @@ async function loadAssessment(supabase: Awaited<ReturnType<typeof requireAdmin>>
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 
@@ -284,7 +284,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (patch.questionIds !== undefined) {
     let check
     try {
-      check = await checkQuestionSelection(supabase, assessment.department_id, patch.questionIds)
+      check = await checkQuestionSelection(supabase, assessment.department_id, patch.questionIds, assessment.created_by)
     } catch (err) {
       console.error('[PATCH /api/admin/assessments/[id]]', err)
       return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
@@ -310,7 +310,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

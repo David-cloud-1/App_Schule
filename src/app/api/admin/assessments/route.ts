@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireTeacherOrAdmin, writeAuditLog } from '../_lib/auth'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
 
 const CreateAssessmentSchema = z.object({
+  // PROJ-46: der Zielbereich wird jetzt beim Anlegen gewählt statt automatisch
+  // aus dem Arbeitsbereich der anlegenden Person übernommen.
+  departmentId: z.string().uuid(),
   questionIds: z.array(z.string().uuid()).min(1).max(500),
   title: z.string().min(1).max(100),
   opensAt: z.string().datetime(),
@@ -25,17 +28,42 @@ const CreateAssessmentSchema = z.object({
   schoolYear: z.string().optional(),
 })
 
-export async function GET() {
-  const auth = await requireAdmin()
+const ListQuerySchema = z.object({
+  departmentId: z.string().uuid().optional(),
+  // 'deleted' = Konto gelöscht (created_by leer); sonst eine Nutzer-ID. Nur
+  // für den Super-Admin wirksam — alle anderen sehen laut Datenbank-Regel
+  // ohnehin nur ihre eigenen bzw. die geteilten ihres Bereichs.
+  createdBy: z.string().optional(),
+})
+
+export async function GET(request: NextRequest) {
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase } = auth
 
-  const { data, error } = await supabase
+  const parsedQuery = ListQuerySchema.safeParse(
+    Object.fromEntries(request.nextUrl.searchParams.entries())
+  )
+  if (!parsedQuery.success) {
+    return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
+  }
+  const { departmentId, createdBy } = parsedQuery.data
+
+  // Keine .eq('department_id', ...) mehr auf den Arbeitsbereich der anfragenden
+  // Person: die Datenbank-Regel (PROJ-46) entscheidet bereits, welche Zeilen
+  // überhaupt zurückkommen. departmentId/createdBy sind reine Zusatzfilter.
+  let query = supabase
     .from('graded_assessments')
-    .select('id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, exam_question_sets(name), subjects(name, code)')
-    .eq('department_id', departmentId)
+    .select(
+      'id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, department_id, created_by, exam_question_sets(name), subjects(name, code), departments(name, code)'
+    )
     .order('created_at', { ascending: false })
+  if (departmentId) query = query.eq('department_id', departmentId)
+  if (auth.isSuperAdmin && createdBy) {
+    query = createdBy === 'deleted' ? query.is('created_by', null) : query.eq('created_by', createdBy)
+  }
 
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: 'Failed to fetch assessments' }, { status: 500 })
 
   const ids = (data ?? []).map((a) => a.id)
@@ -53,30 +81,64 @@ export async function GET() {
     }
   }
 
-  const assessments = (data ?? []).map((a) => ({
-    id: a.id,
-    title: a.title,
-    examSetName: (a.exam_question_sets as unknown as { name: string } | null)?.name ?? null,
-    part: a.part,
-    status: a.status,
-    accessCode: formatAccessCode(a.access_code),
-    participantCount: counts[a.id]?.participantCount ?? 0,
-    submittedCount: counts[a.id]?.submittedCount ?? 0,
-    createdAt: a.created_at,
-    schoolYear: a.school_year as string,
-    className: (a.class_name as string | null) ?? null,
-    subjectId: (a.subject_id as string | null) ?? null,
-    subjectName: (a.subjects as unknown as { name: string } | null)?.name ?? null,
-    subjectCode: (a.subjects as unknown as { code: string } | null)?.code ?? null,
-  }))
+  // Namen der Erstellerinnen — nur für den Super-Admin interessant (die
+  // anderen Rollen sehen laut Regel ohnehin nur sich selbst bzw. den eigenen
+  // Bereich, da ist „Erstellt von" redundant). „Ehemalige / ohne Rolle":
+  // das Konto existiert noch, hat aber keine Lehrer-Rolle mehr (E5).
+  const creatorNameById = new Map<string, { name: string; former: boolean }>()
+  if (auth.isSuperAdmin) {
+    const creatorIds = [...new Set((data ?? []).map((a) => a.created_by as string | null).filter((id): id is string => !!id))]
+    if (creatorIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, display_name, pseudonym, role')
+        .in('id', creatorIds)
+      for (const p of profiles ?? []) {
+        const row = p as { id: string; display_name: string | null; pseudonym: string | null; role: string }
+        creatorNameById.set(row.id, {
+          name: row.display_name ?? row.pseudonym ?? 'Unbekannt',
+          former: row.role === 'student',
+        })
+      }
+    }
+  }
+
+  const assessments = (data ?? []).map((a) => {
+    const creator = a.created_by ? creatorNameById.get(a.created_by as string) : undefined
+    return {
+      id: a.id,
+      title: a.title,
+      examSetName: (a.exam_question_sets as unknown as { name: string } | null)?.name ?? null,
+      part: a.part,
+      status: a.status,
+      accessCode: formatAccessCode(a.access_code),
+      participantCount: counts[a.id]?.participantCount ?? 0,
+      submittedCount: counts[a.id]?.submittedCount ?? 0,
+      createdAt: a.created_at,
+      schoolYear: a.school_year as string,
+      className: (a.class_name as string | null) ?? null,
+      subjectId: (a.subject_id as string | null) ?? null,
+      subjectName: (a.subjects as unknown as { name: string } | null)?.name ?? null,
+      subjectCode: (a.subjects as unknown as { code: string } | null)?.code ?? null,
+      departmentId: a.department_id as string | null,
+      departmentName: (a.departments as unknown as { name: string } | null)?.name ?? null,
+      departmentCode: (a.departments as unknown as { code: string } | null)?.code ?? null,
+      // Nur für den Super-Admin befüllt (s. o.)
+      createdBy: auth.isSuperAdmin ? ((a.created_by as string | null) ?? null) : undefined,
+      createdByName: auth.isSuperAdmin
+        ? (a.created_by ? creator?.name ?? 'Unbekannt' : 'Gelöschtes Konto')
+        : undefined,
+      createdByFormer: auth.isSuperAdmin ? (creator?.former ?? false) : undefined,
+    }
+  })
 
   return NextResponse.json({ assessments })
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -88,7 +150,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
-  const { questionIds, title, opensAt, closesAt, durationMinutes, gradingScale, focusTracking, focusAutoSubmitAfter, className, subjectId, schoolYear } = parsed.data
+  const { departmentId, questionIds, title, opensAt, closesAt, durationMinutes, gradingScale, focusTracking, focusAutoSubmitAfter, className, subjectId, schoolYear } = parsed.data
 
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
@@ -98,17 +160,31 @@ export async function POST(request: NextRequest) {
   const focusError = validateFocusSettings({ focusTracking, focusAutoSubmitAfter })
   if (focusError) return NextResponse.json({ error: focusError }, { status: 400 })
 
-  // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereich (PROJ-27)
+  // Zielbereich muss existieren und aktiv sein (die Datenbank-Regel beim
+  // Anlegen prüft das ohnehin noch einmal, das hier ist nur die freundliche
+  // Fehlermeldung statt eines rohen RLS-Fehlers).
+  const { data: targetDepartment } = await supabase
+    .from('departments')
+    .select('id')
+    .eq('id', departmentId)
+    .eq('is_active', true)
+    .maybeSingle()
+  if (!targetDepartment) {
+    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+  }
+
+  // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereichs-Pool
+  // oder eigene private Nachweis-Frage dieses Bereichs (PROJ-46, E6)
   let check
   try {
-    check = await checkQuestionSelection(supabase, departmentId, questionIds)
+    check = await checkQuestionSelection(supabase, departmentId, questionIds, user.id)
   } catch (err) {
     console.error('[POST /api/admin/assessments]', err)
     return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
   }
   if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
 
-  // PROJ-39: Ablage prüfen (Fach gehört zum Bereich, Klasse vereinheitlichen)
+  // PROJ-39: Ablage prüfen (Fach gehört zum Zielbereich, Klasse vereinheitlichen)
   const category = await resolveCategory(supabase, departmentId, { className, subjectId, schoolYear })
   if (!category.ok) return NextResponse.json({ error: category.error }, { status: category.status })
 
@@ -146,6 +222,8 @@ export async function POST(request: NextRequest) {
       focus_auto_submit_after: focusAutoSubmitAfter,
       ...category.columns,
       created_by: user.id,
+      // shared_with_department setzt die Datenbank selbst (Trigger, PROJ-46) —
+      // nie vom Browser.
     })
     .select('id')
     .single()
@@ -160,6 +238,7 @@ export async function POST(request: NextRequest) {
     object_type: 'graded_assessment',
     object_id: created.id,
     object_label: title,
+    department_id: departmentId,
   })
 
   return NextResponse.json({ id: created.id }, { status: 201 })

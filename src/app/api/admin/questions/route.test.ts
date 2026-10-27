@@ -207,6 +207,22 @@ describe('GET /api/admin/questions', () => {
     expect(builder.in).not.toHaveBeenCalled()
   })
 
+  it('hides private Nachweis-Fragen from a department admin (PROJ-46)', async () => {
+    const mock = makeAdminSupabase({ profileData: { role: 'department_admin', department_id: 'dept-sped' } })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await GET(makeRequest('GET'))
+    const questionsCall = mock.from.mock.results.find((r, i) => mock.from.mock.calls[i][0] === 'questions')
+    expect(questionsCall!.value.eq).toHaveBeenCalledWith('is_private', false)
+  })
+
+  it('shows private Nachweis-Fragen to the super-admin (PROJ-46)', async () => {
+    const mock = makeAdminSupabase({ profileData: { role: 'admin', department_id: 'dept-sped' } })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    await GET(makeRequest('GET'))
+    const questionsCall = mock.from.mock.results.find((r, i) => mock.from.mock.calls[i][0] === 'questions')
+    expect(questionsCall!.value.eq).not.toHaveBeenCalledWith('is_private', false)
+  })
+
   it('returns 400 for invalid query params', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
     const res = await GET(makeRequest('GET', { status: 'unknown' }))

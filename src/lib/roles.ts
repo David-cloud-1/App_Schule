@@ -57,14 +57,30 @@ export function startPathFor(role: unknown): string {
 /**
  * Seiten unter /admin, die eine reine Lehrkraft (ohne Verwaltungsrechte)
  * öffnen darf. Exakte Pfade bzw. Pfad-Präfixe; alles andere leitet zur
- * Übersicht um. Leistungsnachweise kommen mit PROJ-46 dazu.
+ * Übersicht um. Leistungsnachweise (PROJ-46): eigene Nachweise anlegen,
+ * durchführen und auswerten — kein Zugriff auf Fragen-, Fächer- oder
+ * Nutzerverwaltung.
  */
-export const TEACHER_ADMIN_PATHS: readonly string[] = [TEACHER_HOME_PATH]
+export const TEACHER_ADMIN_PATHS: readonly string[] = [TEACHER_HOME_PATH, '/admin/leistungsnachweise']
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
   return TEACHER_ADMIN_PATHS.some((p) =>
     p === TEACHER_HOME_PATH ? pathname === p || pathname === p + '/' : pathname === p || pathname.startsWith(p + '/'),
   )
+}
+
+/**
+ * Verwaltungs-Schnittstellen (/api/admin/**), die eine reine Lehrkraft
+ * aufrufen darf (PROJ-46) — die Nachweis-Routen, über die die Seiten unter
+ * `/admin/leistungsnachweise` laufen. Jede Route prüft selbst noch einmal
+ * mit `requireTeacherOrAdmin()`; dies hier ist nur das Tor in der Middleware.
+ * Alle anderen `/api/admin/**`-Routen bleiben Bereichs-Admin und Super-Admin
+ * vorbehalten.
+ */
+export const TEACHER_API_PATH_PREFIXES: readonly string[] = ['/api/admin/assessments']
+
+export function teacherMayCallApiPath(pathname: string): boolean {
+  return TEACHER_API_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))
 }
 
 /** Darf diese Rolle die Seite unter /admin öffnen? */

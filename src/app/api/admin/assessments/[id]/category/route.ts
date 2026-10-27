@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
 import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
 
 // PROJ-39: Ablage (Schuljahr, Klasse, Fach) — bewusst getrennt vom allgemeinen
@@ -18,7 +18,7 @@ const CategorySchema = z
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

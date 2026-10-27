@@ -36,7 +36,7 @@ function setup(o: Overrides = {}) {
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockResolvedValue({
       data: o.assessment === undefined
-        ? { department_id: 'dept-sped', focus_tracking: true, focus_auto_submit_after: 3 }
+        ? { department_id: 'dept-sped', created_by: 'other-user', shared_with_department: true, focus_tracking: true, focus_auto_submit_after: 3 }
         : o.assessment,
     }),
   }
@@ -106,7 +106,7 @@ describe('GET /api/admin/assessments/[id]/participants/[sessionId]/focus', () =>
 
   it('hides assessments of another department without touching the service client', async () => {
     const serviceCalled = { value: false }
-    setup({ assessment: { department_id: 'dept-tourismus', focus_tracking: true, focus_auto_submit_after: null }, serviceCalled })
+    setup({ assessment: { department_id: 'dept-tourismus', created_by: 'other-user', shared_with_department: true, focus_tracking: true, focus_auto_submit_after: null }, serviceCalled })
     expect((await call()).status).toBe(404)
     expect(serviceCalled.value).toBe(false)
   })

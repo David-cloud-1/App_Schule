@@ -32,6 +32,34 @@ export type AdminAuthResult =
     }
 
 /**
+ * Fachbereich, in dem der Super-Admin laut Bereichs-Umschalter (PROJ-24)
+ * gerade arbeitet: ungültige/gelöschte Bereiche und „noch nie gewählt"
+ * fallen auf den Rückfall-Bereich zurück, statt die Anfrage scheitern zu
+ * lassen. Geteilt von requireAdmin und requireTeacherOrAdmin.
+ */
+async function resolveSuperAdminDepartment(
+  supabase: SupabaseClient,
+  ownDepartmentId: string | null
+): Promise<string | null> {
+  const cookieStore = await cookies()
+  const chosen = cookieStore.get(ADMIN_DEPARTMENT_COOKIE)?.value ?? null
+  if (chosen) {
+    const { data: dept } = await supabase
+      .from('departments')
+      .select('id')
+      .eq('id', chosen)
+      .maybeSingle()
+    const chosenId = (dept as { id: string } | null)?.id ?? null
+    if (chosenId) return chosenId
+  }
+  return (
+    ownDepartmentId ??
+    (await getFallbackDepartment(supabase as unknown as SupabaseClient))?.id ??
+    null
+  )
+}
+
+/**
  * Require an authenticated admin (Super-Admin oder Bereichs-Admin, PROJ-24).
  * Returns either a short-circuit `NextResponse` (401/403) or the supabase
  * client + user + effektiver Arbeits-Fachbereich.
@@ -74,22 +102,7 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
     // Bereichs-Umschalter: der Super-Admin arbeitet im zuletzt gewählten
     // Bereich. Ungültige/gelöschte Bereiche und "noch nie gewählt" fallen
     // auf den Standardbereich zurück, statt die Anfrage scheitern zu lassen.
-    const cookieStore = await cookies()
-    const chosen = cookieStore.get(ADMIN_DEPARTMENT_COOKIE)?.value ?? null
-    if (chosen) {
-      const { data: dept } = await supabase
-        .from('departments')
-        .select('id')
-        .eq('id', chosen)
-        .maybeSingle()
-      departmentId = (dept as { id: string } | null)?.id ?? null
-    }
-    if (!departmentId) {
-      departmentId =
-        ownDepartmentId ??
-        (await getFallbackDepartment(supabase as unknown as SupabaseClient))?.id ??
-        null
-    }
+    departmentId = await resolveSuperAdminDepartment(supabase, ownDepartmentId)
   } else {
     // Bereichs-Admin: fest der eigene Bereich, kein Umschalter, KEIN
     // Rückfall auf den Standardbereich — ein department_admin ohne eigenen
@@ -138,6 +151,125 @@ export function assertCanAdminDepartment(
   objectDepartmentId: string | null | undefined
 ): NextResponse | null {
   if (canAdminDepartment(auth, objectDepartmentId)) return null
+  return NextResponse.json({ error: 'Not found' }, { status: 404 })
+}
+
+/**
+ * Zugangs-Check für die Nachweis-Routen (PROJ-46): zusätzlich zu Super-Admin
+ * und Bereichs-Admin darf hier auch eine Lehrkraft ohne Fachbereich herein.
+ * Bewusst getrennt von `requireAdmin` — alle anderen Admin-Routen (Fragen,
+ * Fächer, Shop …) bleiben für Lehrkräfte verschlossen.
+ */
+export type TeacherAuthResult =
+  | {
+      error: NextResponse
+      user: null
+      supabase: null
+    }
+  | {
+      error: null
+      user: { id: string; email: string | undefined }
+      supabase: SupabaseClient
+      role: 'teacher' | AdminRole
+      isSuperAdmin: boolean
+      isDepartmentAdmin: boolean
+      /**
+       * Vorschlag für den Zielbereich im Anlegen-Dialog: der eigene Bereich
+       * (Bereichs-Admin) bzw. der Umschalter-Bereich (Super-Admin). Eine
+       * Lehrkraft hat keinen eigenen Bereich → null. Dient NIE der
+       * Rechteprüfung (die liegt in der Datenbank-Regel + canViewAssessment) —
+       * nur als Default für die Oberfläche.
+       */
+      suggestedDepartmentId: string | null
+    }
+
+export async function requireTeacherOrAdmin(): Promise<TeacherAuthResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return {
+      error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+      user: null,
+      supabase: null,
+    }
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, department_id')
+    .eq('id', user.id)
+    .single()
+
+  const role = (profile as { role?: string } | null)?.role
+  if (!profile || (role !== 'admin' && role !== 'department_admin' && role !== 'teacher')) {
+    return {
+      error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
+      user: null,
+      supabase: null,
+    }
+  }
+
+  const isSuperAdmin = role === 'admin'
+  const isDepartmentAdmin = role === 'department_admin'
+  const ownDepartmentId = (profile as { department_id?: string | null }).department_id ?? null
+
+  let suggestedDepartmentId: string | null = null
+  if (isSuperAdmin) {
+    suggestedDepartmentId = await resolveSuperAdminDepartment(supabase, ownDepartmentId)
+  } else if (isDepartmentAdmin) {
+    suggestedDepartmentId = ownDepartmentId
+  }
+
+  return {
+    error: null,
+    user: { id: user.id, email: user.email },
+    supabase: supabase as unknown as SupabaseClient,
+    role: role as 'teacher' | AdminRole,
+    isSuperAdmin,
+    isDepartmentAdmin,
+    suggestedDepartmentId,
+  }
+}
+
+/** Schlanke Nachweis-Angaben, wie sie `can_view_assessment` in der Datenbank prüft. */
+type ViewableAssessment = {
+  department_id: string | null
+  created_by: string | null
+  shared_with_department: boolean
+}
+
+/**
+ * Darf `auth` diesen Nachweis sehen? Spiegelt exakt die Datenbank-Funktion
+ * `can_view_assessment` (PROJ-46 Tech Design E — eine Prüfung, zwei Stellen):
+ * Super-Admin immer; die erstellende Person, solange sie eine Lehrer-Rolle
+ * hat; ein Bereichs-Admin nur für geteilte Nachweise seines eigenen Bereichs.
+ */
+export function canViewAssessment(
+  auth: Extract<TeacherAuthResult, { error: null }>,
+  assessment: ViewableAssessment
+): boolean {
+  if (auth.isSuperAdmin) return true
+  if (assessment.created_by && assessment.created_by === auth.user.id) return true
+  return (
+    auth.isDepartmentAdmin &&
+    assessment.shared_with_department &&
+    !!assessment.department_id &&
+    assessment.department_id === auth.suggestedDepartmentId
+  )
+}
+
+/**
+ * Wie `canViewAssessment`, aber gibt bei Ablehnung direkt die passende
+ * NextResponse zurück (404 — verrät nicht, ob der Nachweis existiert).
+ */
+export function assertCanViewAssessment(
+  auth: Extract<TeacherAuthResult, { error: null }>,
+  assessment: ViewableAssessment
+): NextResponse | null {
+  if (canViewAssessment(auth, assessment)) return null
   return NextResponse.json({ error: 'Not found' }, { status: 404 })
 }
 

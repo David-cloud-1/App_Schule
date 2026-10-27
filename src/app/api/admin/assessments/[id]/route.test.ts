@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { PATCH } from './route'
 
-vi.mock('../../_lib/auth', () => ({ requireAdmin: vi.fn(), writeAuditLog: vi.fn() }))
+vi.mock('../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
 vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn() }))
 
-import { requireAdmin } from '../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../_lib/auth'
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `q${i}`)
 
@@ -37,8 +37,8 @@ function setup(draftIds: string[], questionsImpl: (chunk: string[]) => { data?: 
       }
     }),
   }
-  vi.mocked(requireAdmin).mockResolvedValue({
-    error: null, user: { id: 'u' }, supabase, role: 'admin', isSuperAdmin: true, departmentId: 'dept',
+  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
+    error: null, user: { id: 'u' }, supabase, role: 'admin', isSuperAdmin: true, isDepartmentAdmin: false, suggestedDepartmentId: 'dept',
   } as never)
   return { inCalls, update }
 }

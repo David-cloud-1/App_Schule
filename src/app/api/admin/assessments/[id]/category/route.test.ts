@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { PATCH } from './route'
 
-vi.mock('../../../_lib/auth', () => ({ requireAdmin: vi.fn(), writeAuditLog: vi.fn() }))
+vi.mock('../../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
 
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
 
 const SUBJECT_ID = '6f1a2b3c-4d5e-4f60-8a7b-9c0d1e2f3a01'
 
@@ -45,9 +45,9 @@ function setup(opts: { status?: string; found?: boolean; subjectFound?: boolean;
       throw new Error(`Unexpected table: ${table}`)
     }),
   }
-  vi.mocked(requireAdmin).mockResolvedValue({
+  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
     error: null, user: { id: 'admin', email: 'a@a.com' }, supabase: supabase as never,
-    role: 'admin', isSuperAdmin: true, departmentId: 'dept',
+    role: 'admin', isSuperAdmin: true, isDepartmentAdmin: false, suggestedDepartmentId: 'dept',
   })
   return { update, updateEq }
 }
@@ -57,9 +57,9 @@ const params = { params: Promise.resolve({ id: 'a1' }) }
 describe('PATCH /api/admin/assessments/[id]/category', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('gibt den Fehler von requireAdmin zurück (401/403)', async () => {
+  it('gibt den Fehler von requireTeacherOrAdmin zurück (401/403)', async () => {
     const { NextResponse } = await import('next/server')
-    vi.mocked(requireAdmin).mockResolvedValue({ error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), user: null, supabase: null })
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), user: null, supabase: null })
     const res = await PATCH(makeRequest({ className: 'SP11a' }), params)
     expect(res.status).toBe(401)
   })

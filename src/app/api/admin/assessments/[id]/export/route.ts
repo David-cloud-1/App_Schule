@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import {
   applyGrading,
@@ -15,7 +15,7 @@ const BERLIN = { timeZone: 'Europe/Berlin' } as const
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 

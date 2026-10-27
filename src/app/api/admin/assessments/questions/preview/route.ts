@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchSelectableQuestions } from '@/lib/assessment-questions'
@@ -14,6 +14,7 @@ import {
 import type { QualityFinding } from '@/lib/question-quality'
 
 const PreviewSchema = z.object({
+  departmentId: z.string().uuid(),
   answer: z.string().min(2).max(500_000),
 })
 
@@ -36,9 +37,9 @@ export interface PreviewResponse {
  * Fach-Zuordnung. Legt nichts an.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Bitte die Antwort der KI einfügen.' }, { status: 400 })
   }
 
+  const { departmentId } = parsed.data
   const result = parseAiAnswer(parsed.data.answer)
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 422 })
 
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
   try {
     ;[subjects, existing, examParts, department] = await Promise.all([
       fetchDepartmentSubjects(supabase, departmentId),
-      fetchSelectableQuestions(supabase, departmentId),
+      fetchSelectableQuestions(supabase, departmentId, user.id),
       fetchExamParts(supabase, departmentId),
       getDepartmentById(supabase, departmentId),
     ])

@@ -47,10 +47,12 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(startPathFor(null)).toBe('/')
   })
 
-  it('lässt eine Lehrkraft nur auf die Übersicht, Verwaltungs-Rollen überall hin', () => {
+  it('lässt eine Lehrkraft nur auf Übersicht und Leistungsnachweise, Verwaltungs-Rollen überall hin', () => {
     expect(mayOpenAdminPath('teacher', '/admin')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/')).toBe(true)
-    for (const path of ['/admin/questions', '/admin/users', '/admin/leistungsnachweise', '/admin/departments', '/administrator']) {
+    expect(mayOpenAdminPath('teacher', '/admin/leistungsnachweise')).toBe(true)
+    expect(mayOpenAdminPath('teacher', '/admin/leistungsnachweise/a1')).toBe(true)
+    for (const path of ['/admin/questions', '/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(false)
     }
     expect(mayOpenAdminPath('department_admin', '/admin/questions')).toBe(true)

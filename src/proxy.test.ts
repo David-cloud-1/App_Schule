@@ -63,15 +63,31 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
 
   it('leitet eine Lehrkraft von Verwaltungsseiten zur Übersicht um', async () => {
     state.role = 'teacher'
-    for (const path of ['/admin/questions', '/admin/users', '/admin/departments', '/admin/leistungsnachweise/abc/druck/klasse']) {
+    for (const path of ['/admin/questions', '/admin/users', '/admin/departments']) {
       expect(locationOf(await call(path))).toBe('/admin')
+    }
+  })
+
+  it('lässt eine Lehrkraft auf die Leistungsnachweis-Seiten (PROJ-46)', async () => {
+    state.role = 'teacher'
+    for (const path of ['/admin/leistungsnachweise', '/admin/leistungsnachweise/abc/druck/klasse']) {
+      const res = await call(path)
+      expect(res.status).toBe(200)
+      expect(res.headers.get('location')).toBeNull()
     }
   })
 
   it('sperrt die Verwaltungs-Schnittstellen für eine Lehrkraft mit 403', async () => {
     state.role = 'teacher'
-    for (const path of ['/api/admin/users', '/api/admin/questions', '/api/admin/assessments']) {
+    for (const path of ['/api/admin/users', '/api/admin/questions']) {
       expect((await call(path)).status).toBe(403)
+    }
+  })
+
+  it('lässt eine Lehrkraft auf die Nachweis-Schnittstellen (PROJ-46) — die Route prüft die Rechte dann selbst', async () => {
+    state.role = 'teacher'
+    for (const path of ['/api/admin/assessments', '/api/admin/assessments/a1', '/api/admin/assessments/questions']) {
+      expect((await call(path)).status).toBe(200)
     }
   })
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, assertCanAdminDepartment } from '../../../../../_lib/auth'
+import { requireTeacherOrAdmin, assertCanViewAssessment } from '../../../../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { FOCUS_MAX_EVENTS } from '@/lib/focus-tracking'
 
@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; sessionId: string }> },
 ) {
   const { id, sessionId } = await params
-  const auth = await requireAdmin()
+  const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
 
@@ -27,11 +27,11 @@ export async function GET(
   // Bereichsprüfung vor jedem Service-Client-Zugriff (PROJ-24)
   const { data: assessment } = await supabase
     .from('graded_assessments')
-    .select('department_id, focus_tracking, focus_auto_submit_after')
+    .select('department_id, created_by, shared_with_department, focus_tracking, focus_auto_submit_after')
     .eq('id', id)
     .maybeSingle()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
-  const forbidden = assertCanAdminDepartment(auth, assessment.department_id as string)
+  const forbidden = assertCanViewAssessment(auth, assessment)
   if (forbidden) return forbidden
 
   const service = createServiceClient()

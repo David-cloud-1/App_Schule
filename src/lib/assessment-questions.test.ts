@@ -14,7 +14,7 @@ const SUBJECTS = [
   { id: 's2', code: 'KSK', name: 'KSK', color: '#fff', icon_name: 'x', description: null, is_active: true, sort_order: 2 },
 ]
 
-function makeSupabase(questionRows: unknown[]) {
+function makeSupabase(questionRows: unknown[], privateRows: unknown[] = []) {
   return {
     from: vi.fn().mockImplementation((table: string) => {
       if (table === 'exam_parts') {
@@ -23,10 +23,22 @@ function makeSupabase(questionRows: unknown[]) {
       if (table === 'subjects') {
         return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: SUBJECTS, error: null }) }
       }
-      return {
-        select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(),
-        range: vi.fn().mockResolvedValue({ data: questionRows, error: null }),
+      // questions: jeder Aufruf filtert u. a. per .eq('is_private', ...) — welcher
+      // Wert zuletzt gesetzt wurde, bestimmt, welche Zeilen zurückkommen.
+      let wantsPrivate = false
+      const builder = {
+        select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockImplementation((col: string, val: unknown) => {
+          if (col === 'is_private') wantsPrivate = val === true
+          return builder
+        }),
+        range: vi.fn().mockImplementation(() =>
+          Promise.resolve({ data: wantsPrivate ? privateRows : questionRows, error: null }),
+        ),
       }
+      return builder
     }),
   } as never
 }
@@ -40,8 +52,21 @@ describe('fetchSelectableQuestions', () => {
   it('maps rows of all subjects to picker questions with subject codes', async () => {
     const res = await fetchSelectableQuestions(makeSupabase([row('a'), row('b', 's2')]), 'dept')
     expect(res).toEqual([
-      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'] },
-      { id: 'b', question_text: 'Frage b', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['KSK'] },
+      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false },
+      { id: 'b', question_text: 'Frage b', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['KSK'], isPrivate: false },
+    ])
+  })
+
+  it('without ownerId never loads private questions (PROJ-46)', async () => {
+    const res = await fetchSelectableQuestions(makeSupabase([row('a')], [row('priv')]), 'dept')
+    expect(res.map((q) => q.id)).toEqual(['a'])
+  })
+
+  it('with ownerId appends the owner\'s own private questions, marked isPrivate (PROJ-46)', async () => {
+    const res = await fetchSelectableQuestions(makeSupabase([row('a')], [row('priv')]), 'dept', 'owner-1')
+    expect(res).toEqual([
+      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false },
+      { id: 'priv', question_text: 'Frage priv', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: true },
     ])
   })
 })
