@@ -5,6 +5,7 @@ import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
+import { createServiceClient } from '@/lib/supabase-server'
 
 const CreateAssessmentSchema = z.object({
   // PROJ-46: der Zielbereich wird jetzt beim Anlegen gewählt statt automatisch
@@ -93,12 +94,25 @@ export async function GET(request: NextRequest) {
         .from('profiles')
         .select('id, display_name, role')
         .in('id', creatorIds)
+
+      // display_name wird bei der Registrierung nie automatisch gesetzt (kein
+      // Namensfeld im Signup) — als Klarname-Fallback die E-Mail laden, wie an
+      // allen anderen Stellen der App auch (z. B. /admin/users).
+      const service = createServiceClient()
+      const emailById = new Map<string, string>()
+      await Promise.all(
+        creatorIds.map(async (id) => {
+          const { data } = await service.auth.admin.getUserById(id)
+          if (data.user?.email) emailById.set(id, data.user.email)
+        })
+      )
+
       for (const p of profiles ?? []) {
         const row = p as { id: string; display_name: string | null; role: string }
         creatorNameById.set(row.id, {
           // Hier bewusst der Klarname statt Pseudonym: nur Super-Admins sehen
           // diese Spalte, anders als bei der Rangliste (Datenschutz dort).
-          name: row.display_name ?? 'Unbekannt',
+          name: row.display_name ?? emailById.get(row.id) ?? 'Unbekannt',
           former: row.role === 'student',
         })
       }
