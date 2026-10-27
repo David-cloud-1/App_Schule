@@ -1,6 +1,6 @@
 # PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -68,7 +68,46 @@ Die Nutzerverwaltung (`/admin/users`) ist fest nach XP sortiert. Suchen, Rollen-
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+**Nur Frontend.** Die Nutzerliste lädt heute schon alle nötigen Werte (Name, E-Mail, Bereich, XP, Streak, letzte Session, letzter Login, gesperrt). Sortieren und Filtern passieren im Browser auf der bereits geladenen Liste. Es gibt keine neue Schnittstelle, keine Datenbank-Änderung und keine Rechte-Änderung.
+
+### Komponenten-Struktur
+```
+Nutzer-Seite (/admin/users) — bestehend
++-- AdminPageHeader „Nutzer“ („{gefiltert} von {gesamt}“) — bestehend
++-- Filterleiste
+|   +-- Suche — bestehend
+|   +-- Rollen-Filter — bestehend
+|   +-- NEU: Aktivitäts-Filter (Alle · 7 · 14 · 30 Tage · Nie eingeloggt)
+|   +-- NEU: „Sortieren nach“-Auswahl (nur Handy, < 640 px)
+|   +-- „Alle Bereiche“-Schalter — bestehend (nur Super-Admin)
++-- Tabelle — bestehend
+|   +-- NEU: sortierbare Spaltenüberschriften (Button + Pfeil + aria-sort)
++-- NEU: Leerzustand „Niemand passt zu diesem Filter“ + „Filter zurücksetzen“
+```
+
+### Neue Bausteine
+- **Sortier- und Filter-Logik als eigene, getestete Hilfsdatei** (z. B. `src/lib/user-list.ts`): Sie bekommt die Liste plus Sortierung und Filter und gibt die geordnete Liste zurück. Dort stehen die Regeln aus der Spec: leere Werte ans Ende, deutsche Sortierung, Name als Gleichstand-Entscheider, Kalendertage nach Berliner Zeit (`berlinDay` aus `engagement-metrics.ts` wird wiederverwendet). Weil sie reine Logik ist, lässt sie sich ohne Browser vollständig mit Vitest prüfen.
+- **Sortierbare Spaltenüberschrift** als kleine Komponente unter `src/components/admin/`. PROJ-61 und weitere Tabellen können sie später wiederverwenden.
+- **Zustand in der Adresse:** Sortierung, Richtung und Aktivität werden als `?sort=…&dir=…&aktiv=…` gelesen und geschrieben. Dabei kommt kein neuer Eintrag in den Browser-Verlauf (ersetzen statt hinzufügen). Ungültige Werte fallen auf den Standard zurück.
+
+### Daten
+Es wird nichts Neues gespeichert. „Inaktiv seit X Tagen“ vergleicht `last_session_date` mit dem heutigen Tag in Berliner Zeit. „Nie eingeloggt“ heißt: kein `last_sign_in_at`.
+
+### Entscheidungen
+| Entscheidung | Warum |
+|---|---|
+| Sortieren im Browser statt in der Datenbank | Die Liste ist schon vollständig geladen (Bereich: wenige hundert Konten). Ein Klick sortiert sofort, ohne Ladezeit und ohne neue Schnittstelle. |
+| Logik in eigener Datei statt in der Seite | Die Nutzer-Seite hat schon 530 Zeilen. Getrennte Logik ist testbar und für PROJ-61 (Export „in sichtbarer Reihenfolge“) wiederverwendbar. |
+| Zustand in der Adresse statt im Browser-Speicher | Links lassen sich teilen, und Neuladen behält die Ansicht. So steht es in der Spec. |
+
+### Abhängigkeiten (Pakete)
+Keine neuen Pakete.
+
+### Tests
+- Unit: Sortier- und Filter-Logik (alle Spalten, beide Richtungen, leere Werte, Umlaute, Tagesgrenze Berlin, Kombination mit Suche und Rolle, ungültige Adresse).
+- Komponente: Klick auf Überschrift → `aria-sort` und Reihenfolge, Leerzustand mit „Filter zurücksetzen“.
 
 ## QA Test Results
 _To be added by /qa_

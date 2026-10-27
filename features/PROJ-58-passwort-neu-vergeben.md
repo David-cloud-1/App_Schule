@@ -1,6 +1,6 @@
 # PROJ-58: Passwort neu vergeben (mit Pflichtwechsel)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -70,7 +70,81 @@ Azubis vergessen ihr Passwort oder haben keinen Zugriff auf ihre E-Mails. Der We
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Das Feature besteht aus drei Teilen:
+1. ein **Dialog** in der Nutzerliste,
+2. eine **Server-Schnittstelle**, die das Passwort setzt,
+3. eine **Pflicht-Seite** „Neues Passwort festlegen“, auf die der Proxy jede markierte Person schickt.
+
+Es gibt keine neue Tabelle. Die Markierung „muss Passwort ändern“ liegt in den **geschützten Konto-Daten von Supabase Auth** (`app_metadata`). Nur der Server kann sie ändern, die Person selbst nicht.
+
+### Komponenten-Struktur
+```
+Nutzer-Seite (/admin/users) — bestehend
++-- Aktionsmenü je Zeile — bestehend
+    +-- NEU: „Passwort neu vergeben“ (Schlüssel-Icon; nur wenn erlaubt)
+        +-- NEU: Passwort-Dialog
+            +-- Schritt 1: Name/E-Mail, Feld mit Vorschlag, „Neuer Vorschlag“,
+            |   Hinweis bei gesperrtem Konto, „Passwort setzen“
+            +-- Schritt 2: Passwort groß (Monospace) + „Kopieren“ + Hinweis
+                „wird nicht gespeichert“
+
+NEU: Pflicht-Seite /passwort-festlegen (Schüler-Design, dunkel, mobil)
++-- Kurzer Satz „Lege dein eigenes Passwort fest“
++-- Neues Passwort + Wiederholung (mind. 8 Zeichen)
++-- „Speichern“ → weiter zur normalen Startseite (/start)
++-- „Abmelden“
+```
+
+### Ablauf
+1. Der Admin öffnet den Dialog. Der Browser erzeugt einen **Vorschlag** aus einer kuratierten, neutralen Wortliste (Logistik und Natur, ohne verwechselbare Zeichen), mit sicherem Zufall.
+2. „Passwort setzen“ schickt ID und Passwort an eine **neue Server-Route** (z. B. `POST /api/admin/users/{id}/password`). Sie prüft:
+   - Admin? Nicht das eigene Konto?
+   - Bereichs-Admin: Ziel ist Azubi im eigenen Bereich, sonst 404 (dieselbe Regel wie beim Sperren in `users/[id]/route.ts`).
+   - Mindestens 8 Zeichen?
+   - Rate-Limit: höchstens 20 Vergaben pro Admin und Stunde.
+3. Die Route setzt mit der Service-Rolle das Passwort und die Markierung `must_change_password`. Danach **beendet sie alle Sitzungen** der Person.
+4. Sie schreibt den Protokoll-Eintrag `user.password_set` (ohne Passwort) und antwortet nur mit „ok“. Das Passwort zeigt der Dialog aus seinem eigenen Speicher an und vergisst es beim Schließen.
+5. Die Person meldet sich an. Der **Proxy** sieht die Markierung (sie steckt im Konto-Objekt, das er sowieso abruft, ohne zusätzliche Abfrage). Er leitet jede Seite auf `/passwort-festlegen` um, API-Aufrufe bekommen 403. Ausnahmen: die Pflicht-Seite selbst, ihre Schnittstelle und Abmelden.
+6. Auf der Pflicht-Seite schickt die Person ihr neues Passwort an eine **zweite neue Route** (z. B. `POST /api/account/password`). Sie setzt das Passwort und entfernt die Markierung. Supabase lehnt dabei ein gleiches Passwort selbst ab („same password“). Dafür muss das vergebene Passwort nirgends gespeichert werden.
+7. **„Passwort vergessen“** (`/reset-password`) nutzt künftig dieselbe Route. So erfüllt auch der Mail-Weg den Pflichtwechsel.
+
+### Daten
+| Was | Wo | Wer darf es ändern |
+|---|---|---|
+| Passwort | Supabase Auth (verschlüsselt, wie bisher) | Server-Route (Admin), Person selbst |
+| Markierung „muss Passwort ändern“ | Supabase Auth `app_metadata` | nur Server (Service-Rolle) |
+| Protokoll `user.password_set` | bestehende Tabelle `admin_audit_log` | nur Server |
+
+**Sitzungen beenden:** Supabase bietet über die Admin-Schnittstelle kein „alle Geräte abmelden“ für eine fremde Person. Deshalb gibt es eine kleine Datenbank-Funktion, die die Sitzungen dieser Person löscht. Ausführen darf sie nur die Service-Rolle (Migration). Bis die Funktion läuft, schützt zusätzlich der Proxy: Auch eine alte Sitzung landet sofort auf der Pflicht-Seite.
+
+**Rate-Limit:** Es braucht keine neue Tabelle. Die Route zählt die eigenen `user.password_set`-Einträge des Admins in der letzten Stunde im Änderungsprotokoll.
+
+### Entscheidungen
+| Entscheidung | Warum |
+|---|---|
+| Markierung in `app_metadata` statt Profil-Spalte | Die Person kann sie nicht selbst entfernen. Der Proxy bekommt sie ohne zusätzliche Datenbank-Abfrage pro Seitenaufruf. |
+| Pflicht-Prüfung im Proxy | Eine zentrale Stelle für alle Seiten (Lernen, Hof, Admin-Bereich). Keine Seite kann sie vergessen. |
+| Passwort-Vorschlag im Browser | Das Passwort muss sowieso einmal zum Server. Der Vorschlag braucht keinen Server-Aufruf, und „Neuer Vorschlag“ geht sofort. |
+| Eigene Route für den Passwortwechsel der Person | Nur der Server darf die Markierung entfernen. Passwort setzen und Markierung entfernen passieren zusammen. |
+| Wortliste als feste Datei im Code | Neutral kuratiert, ohne anstößige Kombinationen. Kein externer Dienst, kostenlos. |
+
+### Berührte Stellen
+- `src/proxy.ts`: Pflicht-Umleitung, vor den Rollen-Prüfungen.
+- `src/app/admin/users/page.tsx`: Menüeintrag und Dialog (Dialog als eigene Komponente unter `src/components/admin/`).
+- `src/app/reset-password/page.tsx`: nutzt die neue Route.
+- Neu: Pflicht-Seite, zwei Routen, Wortliste mit Vorschlags-Funktion, Migration für „Sitzungen beenden“.
+- `src/lib/roles.ts`: Der Pfad `/passwort-festlegen` gilt als „immer erlaubt“.
+
+### Abhängigkeiten (Pakete)
+Keine neuen Pakete.
+
+### Tests
+- Route Admin: Super-Admin ok; Bereichs-Admin bei eigenem Azubi ok, bei Lehrkraft, fremdem Bereich oder Admin 404; Lehrkraft 403; eigenes Konto 400; zu kurz 400; Rate-Limit 429; das Protokoll enthält kein Passwort.
+- Route Person: setzt Passwort und entfernt Markierung; gleiches Passwort → verständliche Meldung; ohne Login 401.
+- Proxy: markiert → Umleitung auf Pflicht-Seite (auch `/admin`), API 403; Pflicht-Seite und Abmelden bleiben erreichbar; nicht markiert → unverändert.
+- Vorschlag: Format, keine verwechselbaren Zeichen, ausreichende Vielfalt.
 
 ## QA Test Results
 _To be added by /qa_
