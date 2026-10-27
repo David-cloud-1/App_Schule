@@ -1,6 +1,6 @@
 # PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -117,7 +117,42 @@ Keine neuen Pakete.
 - Ist nach „Bereich“ sortiert und „Alle Bereiche“ aus, gilt der Standard (XP absteigend). Die Adresse behält den Wert, damit er beim Wiedereinschalten zurückkommt.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-10-27 · **Umfang:** Code-Review gegen alle AC und Edge Cases, Unit- und Komponenten-Tests, Build, Lint. **Kein** Browser-/Playwright-Test (Nutzer-Vorgabe: kein Dev-Server). Cross-Browser und 375/768/1440 px deshalb nicht geprüft.
+
+**Automatisiert:** `npm test` 137 Dateien / 1563 Tests grün · `npm run build` grün · ESLint auf allen geänderten Dateien ohne Befund.
+Neu: `src/lib/user-list.test.ts` (16), `src/app/admin/users/page.test.tsx` (+4 für PROJ-57).
+
+### Acceptance Criteria
+| Bereich | Ergebnis |
+|---|---|
+| Sortierbare Spalten (8, Bereich nur bei „Alle Bereiche“) | ✅ |
+| Erste Richtung Text A→Z / Zahl+Datum absteigend, zweiter Klick dreht | ✅ (Test) |
+| Pfeil + `aria-sort`, Button ≥ 44 px | ✅ |
+| Leere Werte immer am Ende | ✅ (Test, beide Richtungen) |
+| Deutsche Sortierung, Groß/Klein egal | ✅ (Test mit „Ömer“/„anna“) |
+| Status: Aktiv vor Gesperrt · Gleichstand nach Name · Standard XP absteigend | ✅ |
+| Handy-Auswahl „Sortieren nach“ | ✅ (`sm:hidden`) |
+| Aktivitäts-Filter 7/14/30/nie, Berliner Kalendertage, Kombination mit Suche/Rolle | ✅ (Test inkl. Tagesgrenze) |
+| „{gefiltert} von {gesamt}“, Leerzustand mit „Filter zurücksetzen“ | ✅ |
+| Adresse lesen/schreiben, ungültige Werte still ignoriert | ✅ |
+| Bereichs-Admin sieht nur eigenen Bereich (unverändert) | ✅ |
+
+### Edge Cases
+- Login ohne Session → bei „inaktiv“ dabei, bei „nie eingeloggt“ nicht ✅ (Test)
+- Gesperrte Konten erscheinen im Inaktiv-Filter ✅ · Zweitaccount bleibt ausgeblendet ✅ (Server unverändert)
+- Sortierung nach „Bereich“, dann „Alle Bereiche“ aus → Standard ✅ (aber siehe BUG-57-1)
+- > 1000 Konten: Sortieren per `useMemo`, O(n log n) ✅ (nicht gemessen)
+
+### Bugs
+- **BUG-57-1 (Low) — ✅ behoben (Klick vergleicht mit der angezeigten Sortierung, Regressionstest):** Ist in der Adresse noch „Bereich“ gespeichert, die Spalte aber ausgeblendet, bewirkt der **erste** Klick auf „XP“ nichts Sichtbares. Grund: Der Klick vergleicht mit der gespeicherten statt der angezeigten Sortierung. *Repro:* Alle Bereiche an → nach Bereich sortieren → Alle Bereiche aus → auf „XP“ klicken.
+- **BUG-57-2 (Low, kosmetisch) — offen gelassen:** Beim Öffnen eines Links mit `?sort=…` steht die Liste für einen Augenblick in der Standard-Reihenfolge, weil die Adresse erst nach dem ersten Zeichnen gelesen wird. Während des Ladens sieht man nur Platzhalter, also praktisch unsichtbar.
+
+### Security
+Keine neue Schnittstelle, keine neuen Daten. Namen werden als Text gerendert (kein XSS).
+
+### Ergebnis
+**Production-ready: JA.** Keine Critical/High-Bugs.
 
 ## Deployment
 _To be added by /deploy_

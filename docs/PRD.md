@@ -86,8 +86,8 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-54: Werkzeugkiste – die übrigen 11 Werkzeuge | Planned |
 | P1 | PROJ-55: Schulrecht nachschlagen | Planned |
 | P2 | PROJ-56: Alte Werkzeugkiste ablösen | Planned |
-| P1 | PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter | In Progress |
-| P1 | PROJ-58: Passwort neu vergeben (mit Pflichtwechsel) | In Progress |
+| P1 | PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter | Approved |
+| P1 | PROJ-58: Passwort neu vergeben (mit Pflichtwechsel) | Approved |
 | P2 | PROJ-59: Nutzer-Detailseite (Super-Admin) | Planned |
 | P1 | PROJ-60: Konto löschen (DSGVO) | Planned |
 | P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned |

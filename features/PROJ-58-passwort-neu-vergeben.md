@@ -1,6 +1,6 @@
 # PROJ-58: Passwort neu vergeben (mit Pflichtwechsel)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -157,7 +157,51 @@ Keine neuen Pakete.
 - **Abweichung:** keine inhaltliche. Der Spec-Beispielvorschlag wurde auf `Hafen-Kran-Birke-47` geändert, weil „Wolke“ ein verwechselbares `l` enthält.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-10-27 · **Umfang:** Code-Review gegen alle AC und Edge Cases, Routen-, Proxy-, Komponenten- und Unit-Tests, Build, Lint, Prüfung der Produktions-DB (nur lesend: Spaltentypen `auth.sessions`/`auth.refresh_tokens`, DELETE-Recht von `postgres`). **Kein** Browser-Test (Nutzer-Vorgabe). Der echte Ablauf gegen Supabase (Passwort setzen → Login → Pflichtwechsel) ist deshalb **erst nach dem Deploy** einmal von Hand zu prüfen.
+
+**Automatisiert:** `npm test` 1563 Tests grün · Build grün · Lint ohne Befund.
+Neu: Admin-Route (13), eigene Route (7), Proxy (+4), Vorschlag (5), Pflicht-Seite (3), Nutzerliste (+4 für PROJ-58).
+
+### Acceptance Criteria
+| Bereich | Ergebnis |
+|---|---|
+| Eintrag mit Schlüssel-Icon in der Aktionsspalte | ✅ |
+| Dialog nennt Name + E-Mail, Vorschlag im Format Wort-Wort-Wort-Zahl ohne 0/O/1/l/I | ✅ (Test) |
+| „Neuer Vorschlag“, Feld änderbar, < 8 Zeichen → Hinweis + Speichern gesperrt | ✅ (Test) |
+| Nach dem Setzen: Monospace-Anzeige, „Kopieren“, Hinweis „nicht gespeichert“ | ✅ (Test) |
+| Beim Schließen weg, nirgends wieder abrufbar | ✅ (State wird geleert, Antwort enthält kein Passwort) |
+| Toast „Passwort für {Name} gesetzt“ | ✅ |
+| Merker gesetzt, Proxy leitet jede Seite (auch `/admin`) um, API 403 | ✅ (Proxy-Test) |
+| Neues Passwort ≥ 8 und ≠ vergebenes | ✅ (Supabase `same_password`, Route-Test) |
+| Nach Ändern Merker weg, Weiter zu `/start` · „Abmelden“ möglich | ✅ |
+| Sitzungen beendet | ✅ Code + DB-Rechte geprüft · ⚠️ Live-Wirkung erst nach Migration + Deploy prüfbar |
+| Rechte: Super-Admin alle außer sich · Bereichs-Admin nur eigene Azubis (sonst 404) · Lehrkraft 403 · eigenes Konto 400 | ✅ (Route-Tests) |
+| Protokoll `user.password_set` ohne Passwort | ✅ (Test) · siehe BUG-58-1 |
+
+### Edge Cases
+- Gesperrtes Konto → erlaubt, Hinweis im Dialog ✅
+- Netzfehler → Meldung, Eingabe bleibt, „Erneut versuchen“ ✅ (Test)
+- „Passwort vergessen“ erfüllt Pflichtwechsel ✅ (gleiche Route; mit Merker landet der Reset-Link ohnehin auf der Pflicht-Seite)
+- Admin-Konten mit Merker → auch im Lehrkräfte-Bereich umgeleitet ✅ (Test)
+- Wortliste neutral ✅ (geprüft: 80 Wörter, keine verwechselbaren Zeichen)
+- Zwei Admins gleichzeitig → das letzte Passwort gilt, zwei Protokoll-Einträge ✅
+
+### Security (Red Team)
+- **Rechte-Umgehung:** Bereichs-Admin auf Lehrkraft, fremden Bereich, Admin oder Zweitaccount → 404, ohne Hinweis auf die Existenz ✅. Ungültige ID → 404 ✅.
+- **Merker selbst entfernen:** unmöglich. `app_metadata` lässt sich nur mit der Service-Rolle ändern, `updateUser` kennt nur `user_metadata` ✅. Mit dem vergebenen Passwort durch die eigene Route → `same_password`, der Merker bleibt ✅ (Test). Schlägt nur das Entfernen des Merkers fehl, wird bewusst **nicht** auf anderem Weg freigeschaltet ✅.
+- **Passwort-Leck:** nicht in Antwort, Protokoll oder `console.error` (nur Fehlercodes) ✅.
+- **DB-Funktion:** `security definer`, `search_path = ''`, `execute` nur für `service_role` ✅.
+- **Rate-Limit:** 20 pro Admin und Stunde ✅ (Test). *Info:* Das Zählen läuft über das Protokoll. Fällt dessen Schreiben aus, wird nicht gezählt (gleiches Muster wie die bestehende Protokollierung).
+- **CSRF:** Die Routen lesen JSON aus dem Body. Supabase-Cookies sind `SameSite=Lax`, ein fremder Formular-POST trägt also keine Sitzung mit ✅ (Muster wie bestehende Admin-Routen).
+- **Hinzunehmendes Restrisiko (Info):** Wer das vergebene Passwort kennt (der Admin), könnte sich vor der Person anmelden und das Passwort selbst festlegen. Das liegt in der Natur des Features. Es fällt auf, weil die Person dann nicht mehr hineinkommt, und der Vorgang steht im Protokoll.
+
+### Bugs
+- **BUG-58-1 (Low) — ✅ behoben (Protokoll zeigt „Passwort neu vergeben“, „Rolle geändert“, „Bereich gewechselt“, alle drei auch im Filter):** Das Änderungsprotokoll zeigt `user.password_set` als Rohtext, und der Aktions-Filter bietet es nicht an. Das Gleiche gilt schon für die bestehenden `user.role_change` und `user.move_department`.
+- **BUG-58-2 (Low) — ✅ behoben (Text jetzt „Du hast ein vorläufiges Passwort bekommen.“):** Die Pflicht-Seite sagt „Du hast ein Passwort von deiner Lehrkraft bekommen“. Bei Lehrkräften oder Admins, deren Passwort der Super-Admin vergeben hat, passt „Lehrkraft“ nicht.
+
+### Ergebnis
+**Production-ready: JA.** Keine Critical/High-Bugs. Vor dem Push muss die Migration `20261027_proj58_revoke_sessions.sql` in die Produktion. Ohne sie funktioniert alles, nur „andere Geräte abmelden“ entfällt, und der Proxy fängt das auf.
 
 ## Deployment
 _To be added by /deploy_
