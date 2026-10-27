@@ -95,9 +95,8 @@ BEGIN
 END;
 $$;
 
-DROP POLICY content_versions_read ON content_versions;
-CREATE POLICY content_versions_read ON content_versions
-  FOR SELECT USING (
+ALTER POLICY content_versions_read ON content_versions
+  USING (
     is_admin()
     OR can_admin_department(department_id)
     OR (has_teacher_role() AND changed_by = auth.uid())
@@ -148,11 +147,9 @@ ALTER POLICY questions_insert_admin ON questions
     END
   );
 
-DROP POLICY subjects_admin_delete ON subjects;
-DROP POLICY subjects_admin_update ON subjects;
-DROP POLICY subjects_admin_insert ON subjects;
-CREATE POLICY subjects_admin_write ON subjects
-  FOR ALL USING (can_admin_department(department_id)) WITH CHECK (can_admin_department(department_id));
+ALTER POLICY subjects_admin_write ON subjects
+  USING (can_admin_department(department_id))
+  WITH CHECK (can_admin_department(department_id));
 
 CREATE OR REPLACE FUNCTION public.can_edit_question(p_question_id uuid)
 RETURNS boolean

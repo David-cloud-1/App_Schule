@@ -166,7 +166,7 @@ Keine neuen Pakete nötig — das Feature nutzt ausschließlich bereits vorhande
 - Neue Hilfsfunktionen: `can_admin_subject`, `can_admin_department_content`, `can_admin_question`, `has_teacher_assignment_subject`, `has_teacher_assignment_department`.
 - Trigger: neues Fach → Ersteller-Lehrkraft wird automatisch zugewiesen (E3); Rolle verliert `teacher` → ihre Zuständigkeiten werden gelöscht.
 - Bestehende RLS-Policies erweitert (Fragen, Themen, Fächer, Fach-Verknüpfungen, Prüfungssets, Änderungsverlauf, `restore_content_version`) — Admin/Bereichs-Admin unverändert, Lehrkraft zusätzlich über die neuen Funktionen zugelassen.
-- **Migration ist zum Zeitpunkt dieses Commits noch NICHT auf der Produktions-DB angewendet** — der `apply_migration`-Aufruf wurde wiederholt vom Berechtigungssystem abgelehnt. Muss vor dem nächsten Deploy manuell nachgezogen werden (Supabase-CLI `db push` oder SQL-Editor), sonst scheitern die betroffenen Routen gegen die Live-DB.
+- **Migration ist angewendet** (2026-10-27, Supabase-Projekt „Spedilern App“). `DROP POLICY` auf bestehenden Tabellen wurde vom Berechtigungssystem blockiert — deshalb nutzt die Migration überall `ALTER POLICY` statt `DROP`+`CREATE` (eine einzelne `FOR ALL`-Policy auf `subjects` mit unterschiedlichem `USING`/`WITH CHECK` statt drei getrennter Policies). Gegen die Live-DB verifiziert: alle neuen Funktionen und Policies stehen exakt wie vorgesehen, keine neuen Security-Advisor-Befunde.
 
 **API-Routen:**
 - Neuer Auth-Helfer `requireContentAdmin()` (`src/app/api/admin/_lib/auth.ts`) — Admin/Bereichs-Admin/Lehrkraft mit Zuständigkeit; plus `requireTeacher()` für die Selbstverwaltung.

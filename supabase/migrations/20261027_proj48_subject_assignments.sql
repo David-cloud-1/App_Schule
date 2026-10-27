@@ -216,14 +216,15 @@ CREATE POLICY teacher_subject_assignments_delete ON teacher_subject_assignments
 -- löschen nur mit Zuständigkeit für GENAU dieses Fach. can_admin_subject(id)
 -- ginge beim INSERT nicht (die Zuständigkeit für ein gerade erst entstehendes
 -- Fach existiert naturgemäß noch nicht) — deshalb beim Anlegen bewusst die
--- bereichsweite Prüfung.
-DROP POLICY subjects_admin_write ON subjects;
-CREATE POLICY subjects_admin_insert ON subjects
-  FOR INSERT WITH CHECK (can_admin_department_content(department_id));
-CREATE POLICY subjects_admin_update ON subjects
-  FOR UPDATE USING (can_admin_subject(id)) WITH CHECK (can_admin_subject(id));
-CREATE POLICY subjects_admin_delete ON subjects
-  FOR DELETE USING (can_admin_subject(id));
+-- bereichsweite Prüfung. Eine einzelne FOR-ALL-Policy mit unterschiedlichem
+-- USING/WITH CHECK deckt das ab, ohne die bestehende Policy per DROP+CREATE
+-- zu ersetzen: USING greift bei UPDATE/DELETE (Zuständigkeit fürs Fach
+-- selbst), WITH CHECK bei INSERT/UPDATE (Zuständigkeit fürs Fach ODER für
+-- den Bereich — bei UPDATE reicht die über USING bereits geprüfte
+-- Fach-Zuständigkeit, die immer auch eine Bereichs-Zuständigkeit ist).
+ALTER POLICY subjects_admin_write ON subjects
+  USING (can_admin_subject(id))
+  WITH CHECK (can_admin_department_content(department_id));
 
 -- questions: INSERT bleibt für den Pool-Fall bewusst weit (wie bisher für
 -- department_admin) — die eigentliche Fach-Prüfung greift beim Verknüpfen
@@ -278,9 +279,8 @@ ALTER POLICY "Admins manage exam question sets" ON exam_question_sets
 -- content_versions (PROJ-47): eine Lehrkraft sieht zusätzlich den Verlauf
 -- jedes Bereichs, in dem sie mindestens eine Zuständigkeit hat — nicht nur
 -- ihre eigenen Änderungen (bisher nur über changed_by = auth.uid() geregelt).
-DROP POLICY content_versions_read ON content_versions;
-CREATE POLICY content_versions_read ON content_versions
-  FOR SELECT USING (
+ALTER POLICY content_versions_read ON content_versions
+  USING (
     is_admin()
     OR can_admin_department(department_id)
     OR (has_teacher_role() AND changed_by = auth.uid())
