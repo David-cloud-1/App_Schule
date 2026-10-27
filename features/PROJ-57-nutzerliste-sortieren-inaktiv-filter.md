@@ -1,6 +1,6 @@
 # PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -108,6 +108,13 @@ Keine neuen Pakete.
 ### Tests
 - Unit: Sortier- und Filter-Logik (alle Spalten, beide Richtungen, leere Werte, Umlaute, Tagesgrenze Berlin, Kombination mit Suche und Rolle, ungültige Adresse).
 - Komponente: Klick auf Überschrift → `aria-sort` und Reihenfolge, Leerzustand mit „Filter zurücksetzen“.
+
+### Umsetzung (2026-10-27)
+- **Logik:** `src/lib/user-list.ts` (+ 16 Unit-Tests) — Sortierung, Aktivitäts-Filter, Lesen/Schreiben der Adresse. Kalendertage über `berlinDay` aus `engagement-metrics.ts`.
+- **Komponente:** `src/components/admin/sortable-table-head.tsx` (Button mit Pfeil, `aria-sort`, 44 px), wiederverwendbar für PROJ-61.
+- **Seite:** `src/app/admin/users/page.tsx` — sortierbare Überschriften, Auswahlfeld „Aktivität“, am Handy (< 640 px) zusätzlich „Sortieren nach“, Leerzustand mit „Filter zurücksetzen“. Adresse wird per `history.replaceState` geschrieben (kein Verlaufseintrag).
+- **Abweichung:** „Letzter Login“ zeigt die Tabelle jetzt für **alle** Rollen, nicht mehr nur für Lehrer-Rollen (PROJ-44). Sonst wäre die Sortierung nach Login und der Filter „Nie eingeloggt“ bei Azubis nicht nachvollziehbar. Die Schnittstelle lieferte den Wert schon immer für alle.
+- Ist nach „Bereich“ sortiert und „Alle Bereiche“ aus, gilt der Standard (XP absteigend). Die Adresse behält den Wert, damit er beim Wiedereinschalten zurückkommt.
 
 ## QA Test Results
 _To be added by /qa_
