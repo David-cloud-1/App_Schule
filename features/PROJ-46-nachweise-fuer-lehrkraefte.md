@@ -1,8 +1,8 @@
 # PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-26
-**Last Updated:** 2026-10-26
+**Last Updated:** 2026-10-27
 
 ## Kontext
 Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute können nur Bereichs-Admins und der Super-Admin Leistungsnachweise anlegen. Jeder Nachweis gehört dem Fachbereich des Admins, und alle Admins dieses Bereichs sehen ihn. Künftig sollen auch Lehrkräfte ohne Fachbereich Leistungsnachweise erstellen und durchführen, mit allen bestehenden Funktionen (PROJ-21, 27, 28, 30, 38, 39).
@@ -93,7 +93,123 @@ Teil 3 der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Heute k�
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Ausgangslage (geprüft am 2026-10-27)
+- Live: 1 Super-Admin, 17 Bereichs-Admins, noch keine Lehrkraft. 5 Nachweise (4 geschlossen, 1 offen), alle mit Ersteller und alle in einem Bereich. 0 Fragen mit „nur für Nachweise“. Aktive Bereiche: SPED und TOUR.
+- **Wer einen Nachweis sehen darf, entscheidet heute genau eine Datenbank-Regel** auf der Nachweis-Tabelle: „Admin des Nachweis-Bereichs“. Jede Detail-Route (Ergebnisse, Export, Druck, Teilnehmer, Fokus) liest den Nachweis zuerst mit den Rechten der angemeldeten Person. Erst wenn das klappt, holt sie Namen, Noten und Fokus-Daten mit Server-Rechten. Findet sie nichts, antwortet sie mit 404. **Dieses Tor bauen wir um, nicht jede Route einzeln.**
+- Azubis bekommen die Fragen beim Beitritt per Server in ihre Sitzung kopiert. Sie lesen die Fragentabelle dafür nicht selbst. Deshalb können wir private Fragen in der Datenbank verbergen, ohne dass das Durchführen bricht.
+- **Gefundene Lücke (heute schon vorhanden):** Jede angemeldete Person darf alle *aktiven* Fragen und alle Antwortoptionen direkt aus der Datenbank lesen, auch Fragen „nur für Nachweise“. Für private Lehrkraft-Fragen reicht das nicht (E6). Das Design schließt die Lücke für private Fragen.
+
+### A) Was sich auf den Seiten ändert
+
+```
+Lehrkräfte-Bereich (/admin)
++-- Seitenleiste & Startseite
+|   +-- Eintrag „Leistungsnachweise“ jetzt auch für Lehrkräfte
+|   +-- Schnellaktion „Neuer Leistungsnachweis“ auch für Lehrkräfte
+|
++-- Leistungsnachweise (Liste)  /admin/leistungsnachweise
+|   +-- Seitenkopf mit Hauptaktion „Neuer Leistungsnachweis“
+|   +-- Filterleiste (PROJ-39) + NEU Filter „Zielbereich“
+|   |   +-- nur Super-Admin: NEU Filter „Erstellt von“
+|   |       (Personen, „Ehemalige / ohne Rolle“, „Gelöschtes Konto“)
+|   +-- Tabelle
+|       +-- NEU Spalte „Zielbereich“ (Pill, z. B. „Spedition“)
+|       +-- nur Super-Admin: NEU Spalte „Erstellt von“
+|
++-- Dialog „Neuer Leistungsnachweis“ (PROJ-27)
+|   +-- NEU Schritt 0: Zielbereich wählen (aktive Bereiche)
+|   |   +-- Bereichs-Admin: eigener Bereich vorausgewählt
+|   |   +-- Super-Admin: Bereich aus dem Umschalter vorausgewählt
+|   |   +-- Lehrkraft: leer, außer es gibt nur einen aktiven Bereich
+|   +-- Teil wählen / Fragen zusammenstellen (Fragen des Zielbereichs
+|   |   + eigene private Fragen), Titel, Zeitfenster, Notenschlüssel,
+|   |   Kategorie (Fächer des Zielbereichs): unverändert
+|   +-- Import per Datei / Kopier-Prompt: unverändert, legt Fragen
+|       für den Zielbereich an (privat, siehe unten)
+|
++-- Detailseite eines Nachweises
+    +-- Kopfzeile zeigt den Zielbereich
+    +-- Im Entwurf: „Zielbereich ändern“ mit Hinweis
+    |   „X Fragen aus dem alten Bereich werden entfernt“
+    +-- alles Weitere (Code/QR, Öffnen, Ergebnisse, Druck, Auswertung,
+        Fokus, Kategorie) unverändert
+```
+
+In der Fragenauswahl tragen private Fragen ein kleines Schild „Meine Frage“. Bei Pool-Fragen fehlen für Lehrkräfte die Knöpfe Bearbeiten, Deaktivieren und Löschen. „Für Übung freigeben“ (PROJ-38) erscheint nie bei privaten Fragen.
+
+Für Azubis ändert sich nichts: Beitritt, Durchführung und Ergebnisansicht bleiben gleich.
+
+### B) Datenmodell (in Worten)
+
+**Leistungsnachweis**: ein neues Merkmal:
+- **„Für den Bereich geteilt“ (ja/nein)**: Wird einmal beim Anlegen festgelegt und ändert sich danach nicht mehr.
+  - *Ja*, wenn ein Bereichs-Admin für seinen **eigenen** Bereich anlegt oder der Super-Admin anlegt. Dann sehen ihn die Bereichs-Admins dieses Bereichs (wie heute, E3).
+  - *Nein* in allen anderen Fällen: Lehrkraft, oder Bereichs-Admin für einen fremden Bereich (E4).
+  - Alle 5 bestehenden Nachweise bekommen *Ja*. Damit bleibt für die heutigen Bereichs-Admins alles gleich (Regression).
+- Der **Zielbereich** ist das schon vorhandene Feld „Fachbereich“ des Nachweises. Neu ist nur, dass er beim Anlegen gewählt wird statt automatisch übernommen. Nach dem Öffnen ist er fest.
+- **„Erstellt von“** gibt es schon. Wird ein Konto gelöscht, wird es leer. Die Oberfläche zeigt dann „Gelöschtes Konto“.
+
+Weil das Merkmal beim Anlegen fest eingefroren wird, sind die Rollenwechsel aus den Edge Cases ohne Zusatzlogik erfüllt: Ein herabgestufter Bereichs-Admin lässt seine Bereichs-Nachweise im Bereich. Eine hochgestufte Lehrkraft öffnet ihre alten Nachweise nicht nachträglich.
+
+**Frage**: ein neues Merkmal:
+- **„Private Frage von …“ (Besitzer, sonst leer)**: Leer bedeutet Pool-Frage wie bisher. Gefüllt bedeutet, die Frage gehört nur dieser Person (E6). Sie ist automatisch „nur für Nachweise“ und kann nie freigegeben werden.
+- Wer einen Nachweis für einen **fremden** Bereich anlegt (Lehrkraft, oder Bereichs-Admin außerhalb des eigenen Bereichs), importiert immer private Fragen. Ein Bereichs-Admin, der im **eigenen** Bereich importiert, verhält sich wie heute (PROJ-38: Bereichs-Frage „nur für Nachweise“, freigebbar).
+- Fach und Bereich einer privaten Frage laufen wie bei jeder Frage über die Fach-Zuordnung. So bleibt sie im Zielbereich und taucht nur dort in der Auswahl der Besitzerin auf.
+
+**Wer was sieht, als Regeln in der Datenbank (RLS)**
+
+| Daten | Super-Admin | Bereichs-Admin | Lehrkraft | Azubi |
+|---|---|---|---|---|
+| Nachweis (und damit Ergebnisse, Export, Druck, Teilnehmer, Fokus) | alle | geteilte des eigenen Bereichs + selbst erstellte | nur selbst erstellte | keiner (wie heute, nur per Code über Server) |
+| Private Fragen + deren Antwortoptionen | alle | nur eigene | nur eigene | keine |
+| Pool-Fragen lesen | wie heute | wie heute | wie heute (aktive) | wie heute |
+| Pool-Fragen ändern | alle | eigener Bereich | **nie** | nie |
+| Profile von Azubis | wie heute | wie heute | **keine** neue Regel | nur eigenes |
+
+- „Selbst erstellt“ gilt nur, solange die Person eine Lehrer-Rolle hat. Verliert sie die Rolle, sieht nur noch der Super-Admin den Nachweis und die privaten Fragen (E5).
+- Diese Prüfung steht in **einer gemeinsamen Datenbank-Funktion** „darf diesen Nachweis sehen“. Sie gilt für die Nachweis-Tabelle und die Fokus-Protokolle. Server-Code und Datenbank fragen also dieselbe Stelle.
+- Teilnehmer-Namen stehen in der Teilnahme selbst. Lehrkräfte brauchen deshalb **keinen** Profil-Zugriff auf Azubis. Daran ändern wir nichts.
+
+### C) Server-Routen (`/api/admin/assessments/**`)
+- **Neuer Zugangs-Check „Lehrkraft oder Admin“** nur für die Nachweis-Routen. Der bisherige Admin-Check für alle anderen Admin-Routen (Fragen, Fächer, Shop …) bleibt unverändert. Lehrkräfte kommen dort weiterhin nicht hinein.
+- **Liste:** Der Filter „nur Nachweise des Arbeits-Bereichs“ entfällt. Die Liste zeigt genau das, was die Datenbank-Regel erlaubt. Für den Super-Admin heißt das: alle Bereiche, eingrenzbar über die Filter „Zielbereich“ und „Erstellt von“.
+- **Anlegen:** nimmt den Zielbereich entgegen. Die Route prüft: Bereich existiert und ist aktiv. Fragen sind aktive Multiple-Choice-Fragen dieses Bereichs oder eigene private Fragen dieses Bereichs. Das Fach der Kategorie gehört zu diesem Bereich. Daraus setzt sie „Für den Bereich geteilt“. Der Wert kommt nie vom Browser.
+- **Fragenauswahl, Import, Kopier-Prompt, Vorschau, Material:** arbeiten mit dem Zielbereich des Nachweises statt mit dem Arbeits-Bereich des Admins.
+- **Zielbereich ändern:** nur im Entwurf. Pool-Fragen des alten Bereichs fliegen raus, eigene private Fragen bleiben. Die Kategorie wird geleert, wenn ihr Fach nicht zum neuen Bereich gehört.
+- **Private Fragen bearbeiten oder löschen:** nur durch die Besitzerin und nur, wenn kein offener Nachweis sie nutzt. Geschlossene Nachweise sind durch ihren Fragen-Schnappschuss geschützt.
+- **„Für Übung freigeben“** (Fragenverwaltung PROJ-38): lehnt private Fragen immer ab.
+- Alle Detail-Routen behalten ihr Muster „erst Nachweis mit eigenen Rechten lesen, sonst 404“. Sie funktionieren dadurch automatisch für Lehrkräfte richtig. Jede Route wird trotzdem einzeln getestet.
+- **Beitritt der Azubis:** unverändert, prüft weiter den Zielbereich.
+- **Seiten-Freigabe:** `/admin/leistungsnachweise` und Unterseiten kommen auf die Liste der Seiten, die Lehrkräfte öffnen dürfen (PROJ-44 hat das bereits vorgesehen).
+
+### D) Lern-App und Fragenverwaltung abschotten (E6)
+- Alle Übungswege sperren Fragen „nur für Nachweise“ bereits aus (PROJ-38). Private Fragen haben dieses Merkmal immer, also kommt nichts in die Lern-App.
+- Die Fragenverwaltung der Bereichs-Admins blendet private Fragen aus, auch die von Bereichs-Admins aus Nachweisen für fremde Bereiche. Nur der Super-Admin sieht sie, mit dem Vermerk „privat“.
+- Die Datenbank-Regel zum Lesen von Fragen und Antwortoptionen schließt private Fragen für alle außer Besitzerin und Super-Admin aus (schließt die oben gefundene Lücke).
+
+### E) Technische Entscheidungen (warum)
+- **Ein eingefrorenes Merkmal statt Live-Berechnung aus der Rolle:** Würde die Sichtbarkeit jedes Mal aus der aktuellen Rolle der Erstellerin berechnet, würden Nachweise bei jedem Rollenwechsel auf- oder zugehen. Die Spec will genau das nicht.
+- **Prüfung in der Datenbank und eine gemeinsame Funktion:** Die Rechte stehen an einer Stelle. Eine vergessene Route kann so nichts verraten, sie bekommt einfach nichts zurück und antwortet mit 404.
+- **Eigener Zugangs-Check nur für Nachweise:** Würden wir den allgemeinen Admin-Check für Lehrkräfte öffnen, kämen sie auf einen Schlag in alle Admin-Routen. So bleibt die Öffnung klein und überprüfbar.
+- **Private Fragen in derselben Fragentabelle (mit Besitzer)** statt in einer eigenen Tabelle: Schnappschuss, Antwortschlüssel, Druck und Auswertung funktionieren dann ohne Änderung.
+- **Kein Rückfall auf den Arbeits-Bereich** bei Lehrkräften: Sie haben keinen. Der Zielbereich kommt immer vom Nachweis.
+
+### F) Migration & Rückweg
+- Eine Migration, rein additiv:
+  - zwei neue Felder („geteilt“ am Nachweis, Bestand = ja; „Besitzer“ an der Frage, Bestand = leer)
+  - die gemeinsame Funktion „darf Nachweis sehen“
+  - angepasste Regeln für Nachweise, Fokus-Protokolle, Fragen, Antwortoptionen und Fach-Zuordnung (Lehrkräfte dürfen nur eigene private Fragen anlegen, ändern und löschen)
+- Rückweg-SQL stellt die bisherigen Regeln wieder her und entfernt die Felder.
+- Reihenfolge laut Deploy-Ablauf: erst Migration, dann Code. Der alte Code läuft mit der neuen Migration weiter, weil alle Bestandsnachweise „geteilt“ sind und es keine privaten Fragen gibt.
+
+### G) Tests
+- Routen-Tests je Rolle für Liste, Anlegen, Detail, Ergebnisse, Export, Berichte, Teilnehmer, Fokus, Kategorie, Fragenauswahl und Import: Super-Admin / Bereichs-Admin eigener Bereich / Bereichs-Admin fremder Nachweis / Lehrkraft eigener / Lehrkraft fremder Nachweis / Azubi.
+- RLS-Matrix per SQL in einer Transaktion mit Rollback. Abgedeckt: alle Rollen, Rollenentzug (E5), Herab- und Hochstufung, private Fragen für Azubis unsichtbar.
+- Reine Funktionen (Ableitung „geteilt“, Zielbereich-Wechsel, Filter „Erstellt von“) als Unit-Tests. Danach `npm run build`. Kein Dev-Server, kein Playwright.
+
+### H) Abhängigkeiten
+- Keine neuen Pakete, keine neuen Dienste.
 
 ## QA Test Results
 _To be added by /qa_
