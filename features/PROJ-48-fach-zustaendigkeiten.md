@@ -250,14 +250,16 @@ Alle Prüfungen in rückgerollten Transaktionen gegen die Produktions-DB, mit zw
 - `npm run build`: grün, alle neuen Routen/Seiten registriert
 - Bereichs-Admin/Super-Admin-Verhalten unverändert (per Tests: `exam-sets`, `subjects`, `questions`, `trash` — bestehende Admin-Testfälle laufen unverändert durch)
 
-### Nicht behobene Lücken (keine Blocker)
-- **Low:** Kein Bereichs-Picker beim Anlegen neuer Fächer/Prüfungssets/Bulk-Imports für eine Lehrkraft mit **mehreren** Bereichen — wird bei genau einem Bereich automatisch aufgelöst (Normalfall). Aktuell gibt es keine solche Lehrkraft; nachzuziehen, sobald eine entsteht.
-- **Low:** Keine explizite „nach Bereich" Filter-Gruppierung in den Listen (Fragen/Themen) — das bestehende Fach-Dropdown filtert bereits nach Fach, nur ohne Bereichs-Gruppierung.
-- **Low:** `DELETE /api/admin/my-subjects/[id]` antwortet mit `{ok:true}`, auch wenn die ID gar nicht der eigenen Zuständigkeit gehörte (0 Zeilen betroffen, aber kein Fehler) — harmlos, da nichts gelöscht wird, aber keine ehrliche Rückmeldung.
+### Nachgezogene Fixes (nach erster QA-Runde)
+- **Behoben:** `DELETE /api/admin/my-subjects/[id]` antwortete mit `{ok:true}`, auch wenn die ID gar nicht der eigenen Zuständigkeit gehörte (0 Zeilen betroffen, aber kein Fehler). Jetzt: `.select('id')` nach dem Löschen, `404` wenn keine Zeile betroffen war. Test ergänzt; die Oberfläche (`my-subjects/page.tsx`) behandelte `!res.ok` bereits generisch und zeigt jetzt korrekt einen Fehler-Toast statt eines stillen Erfolgs.
+
+### Bewusst nicht umgesetzt (Scope-Entscheidung, keine Bugs)
+- **Bereichs-Picker beim Anlegen** (neues Fach/Prüfungsset/Bulk-Import) für eine Lehrkraft mit **mehreren** Bereichen: Bei genau einem Bereich wird er automatisch aufgelöst (deckt jeden heute existierenden Fall ab). Ein echter Picker würde in `exam-sets-client.tsx` tief in die bestehende Architektur eingreifen (die Seite bezieht Prüfungsteile/Klassenstufen aktuell aus einem einzelnen Ambient-Bereichs-Kontext, nicht aus einer Liste) — ein Umbau ohne Browser-Testmöglichkeit und ohne eine einzige real existierende mehrbereichs-Lehrkraft wäre ein Risiko für die funktionierenden Admin-/Bereichs-Admin-Abläufe ohne aktuellen Nutzen. Nachzuziehen, sobald eine solche Lehrkraft entsteht.
+- **Explizite „nach Bereich"-Gruppierung** in Listen (Fragen/Themen): Das bestehende Fach-Filter-Dropdown filtert bereits korrekt über alle ihre Fächer hinweg (serverseitig ohnehin auf ihre `subjectIds` beschränkt) — die Gruppierung wäre nur eine zusätzliche Anzeige-Erleichterung, keine fehlende Rechteprüfung.
 - **Info:** Mehrere neue `SECURITY DEFINER`-Funktionen folgen demselben (bereits projektweit etablierten) Muster, das der Supabase-Linter als „von `anon`/`authenticated` aufrufbar" meldet — bewusst, wie bei `is_admin()` & Co., keine neue Angriffsfläche (reine Lesefunktionen ohne Seiteneffekt).
 
 ### Produktionsreife: **READY**
-Keine Critical/High-Bugs offen (der eine gefundene High-Bug wurde noch in dieser QA-Runde behoben und regressionsgetestet). Die drei dokumentierten Low-Lücken blockieren nicht, da sie aktuell niemanden betreffen (keine Lehrkraft mit mehreren Bereichen) bzw. rein kosmetisch sind.
+Beide gefundenen Bugs (High: Themen-Route, Low: stiller Erfolg beim Austragen) sind behoben und regressionsgetestet (`npm test`: 1431/1431, `npm run build` grün). Die verbleibenden Punkte sind dokumentierte Scope-Entscheidungen, keine Defekte, und betreffen aktuell niemanden.
 
 ## Deployment
 _To be added by /deploy_
