@@ -286,6 +286,25 @@ Die Werkzeugliste (Name, Gruppe, Icon, Erklärzeile, aktiv/„kommt bald“, For
 
 Bevor Oberfläche entsteht, wird der Kern einmal **leer** auf Vercel bereitgestellt und mit zwei echten Skripten (Word und ein PDF über 4,5 MB) durchgespielt: hochladen → einlesen → Prompt → bauen. Damit ist bestätigt, dass die PDF-Bibliothek in Vercels Python-Umgebung läuft und die Zeiten passen. Scheitert das, ist der Ausweichweg derselbe Kern in einem Container auf Hugging Face, also dort, wo er heute schon läuft. Die App ändert sich dadurch nicht.
 
+#### Ergebnis des Prüfpunkts (2026-10-27): bestanden
+
+Kern als Vercel-Projekt `werkzeugkiste-kern` bereitgestellt (https://werkzeugkiste-kern.vercel.app, Zweig `vercel-kern` im Repository `Werkzeugkiste`). Vier echte Skripte liefen über einen vorübergehenden privaten Speicherbereich (danach gelöscht):
+
+| Skript | Größe | Einlesen auf Vercel | Ergebnis gleich wie lokal? |
+|---|---|---|---|
+| Heft 2 Haftung (PDF) | 1,2 MB | 10,6 s, H5P-Bau 0,2 s | ja (233 Lösungen, 5 Tabellen, 4 Bilder) |
+| Außenhandel (PDF) | 1,3 MB | 6,7 s | ja (2 Lösungen, 34 Tabellen, 11 Bilder) |
+| BGP Teil 5 (Word) | 13,4 MB | 0,1 s | ja (86 Lösungen, 30 Bilder) |
+| PuG 10 (Word) | 24,9 MB | 0,4 s | ja (285 Lösungen, 52 Bilder) |
+
+Befunde und Folgen für den Bau:
+- **PDF-Bibliothek festschreiben:** Ohne Versionsangabe installierte Vercel PyMuPDF 2.0. Das erkannte rote Schrift und Tabellen anders (Heft 2: 252 statt 233 Lösungen). Mit `pymupdf==1.26.5` (die Version, mit der das Einlesen entwickelt wurde) sind die Ergebnisse identisch. **Regel: Alle Kern-Bibliotheken bekommen feste Versionen**, und die Python-Version wird an Hugging Face (3.11) angeglichen.
+- **H5P-Dateien sind nicht bytegleich** (Zufalls-IDs und Zeitstempel im Paket). Der Gleichwertigkeits-Test vergleicht deshalb den Inhalt (`content.json`), nicht die Datei als Ganzes.
+- **PDF-Einlesen ist auf Vercel etwa 2–3-mal langsamer als lokal** (rund 7–11 s für 20–40 Seiten), liegt aber weit unter der Zeitgrenze. Schritt 1 zeigt deshalb einen echten Fortschritt („Wird gelesen …“).
+- **Hochladen dauert je nach Leitung** (vom Heimanschluss 25 MB in rund 20 s). Der Fortschrittsbalken beim Hochladen ist Pflicht.
+- **Paketgröße:** etwa 320 MB mit `onnxruntime` und `edge-tts`. Ohne diese beiden (erst für PROJ-54/55) wird der Kern deutlich kleiner und startet schneller.
+- **Kennwortschutz** bestätigt: Ohne oder mit falschem Kennwort antwortet der Kern mit 401.
+
 ### Dependencies
 
 **Lern-App:** keine neuen Pakete. Supabase-Client, shadcn/ui und Lucide sind vorhanden.
