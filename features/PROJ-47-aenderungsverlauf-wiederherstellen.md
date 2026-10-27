@@ -1,6 +1,6 @@
 # PROJ-47: Änderungsverlauf & Wiederherstellen für Inhalte
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-26
 **Last Updated:** 2026-10-27
 
@@ -265,4 +265,10 @@ Bestehendes Änderungsprotokoll (/admin/audit-log) — erweitert
 Keine Critical- oder High-Bugs. Die sicherheitskritische Kerneigenschaft — jede Änderung wird unumgehbar aufgezeichnet, lässt sich wiederherstellen, Papierkorb statt Datenverlust — ist vollständig umgesetzt, live verifiziert und beim Sicherheits-Audit geprüft (ein Fund wurde vor Auslieferung behoben). Die offenen Punkte sind Komfort-/Vollständigkeits-Lücken (Fächer/Prüfungssets-UI, feinere Protokoll-Filter, Sammel-Rücknahme über Personen) und blockieren PROJ-48 nicht in seiner Kernfunktion.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Deployed:** 2026-10-27
+- **Produktions-URL:** https://spedilern.vercel.app (Deployment `dpl_Euk4h3PcsfHE7TPRiErmTzMKfeT9`)
+- **Datenbank-Migrationen** vorab live auf dem Supabase-Projekt `riqafwijurbxvywzlipx` angewendet (vor dem Code-Push, wie im Projekt üblich): `20261027_proj47_content_versioning`, `20261027_proj47_restore_function`, `20261027_proj47_batch_grouping_scope_fix`. Rückfüll-Lauf geprüft: 8.341 Fragen, 189 Themen, 9 Fächer, 3 Prüfungssets mit Startversion „Stand bei Einführung".
+- Trigger-Verhalten vor Auslieferung in einer Live-Transaktion mit Rollback verifiziert; ein beim Audit gefundener Berechtigungsfehler in der Vorgangs-Bündelung wurde vor dem Deploy behoben.
+- `/admin/papierkorb` nach Deploy erreichbar (307 → Login, wie bei allen geschützten Admin-Routen erwartet).
+- Offene Punkte aus der QA (Protokoll-Filter, Fächer/Prüfungssets-Verlaufs-UI, Sammel-Rücknahme über Personen) sind dokumentiert und blockieren PROJ-48 nicht.
