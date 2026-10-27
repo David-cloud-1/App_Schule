@@ -1,6 +1,6 @@
 # PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -117,7 +117,93 @@ Alle Rollen mit Zugang zum Lehrkräfte-Bereich: Lehrkraft, Bereichs-Admin, Super
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Fast alles baut auf Vorhandenem auf: Fach-Zuständigkeiten (PROJ-48), Änderungsverlauf (PROJ-47), Nachweise (PROJ-21/46), Pseudonym/Rangliste (PROJ-8), Darstellung (PROJ-45). Neu sind nur **zwei Datenfelder**, **drei kleine Server-Schnittstellen** (Kürzel, Passwort, E-Mail) und die Seite selbst. Keine neuen Pakete.
+
+### A) Seitenaufbau
+
+```
+/admin/konto  „Mein Konto“  (Lehrkräfte-Rahmen, ws-Farben)
++-- AdminPageHeader  (Titel „Mein Konto“, ein Satz)
++-- Zwei Spalten ab Desktop, eine Spalte auf dem Handy
+|   Linke Spalte (Arbeit)
+|   +-- Karte „Über mich“         Name, Kürzel (Stift → Inline-Bearbeiten), Rolle + Satz, Fachbereich
+|   +-- Karte „Offene Aufgaben“   Gruppen: Entwürfe · Laufen gerade (Abgaben) · Auswertung noch nicht angesehen
+|   |                             je max. 5, „Alle anzeigen“ → Nachweis-Liste; sonst „Alles erledigt“
+|   +-- Karte „Mein Beitrag“      3 Zahlen + „gezählt seit 27.10.2026“ + Liste „Zuletzt bearbeitet“ (5)
+|   Rechte Spalte (Konto)
+|   +-- Karte „Meine Fächer“      Liste + Hinzufügen/Austragen (gleiche Bausteine wie /admin/my-subjects)
+|   |                             Bereichs-Admin/Super-Admin: Umfangs-Satz statt Pflicht-Liste
+|   +-- Karte „Anmeldung“         E-Mail (ändern / „Bestätigung ausstehend“) · Passwort ändern bzw. festlegen
+|   +-- Karte „Darstellung & Rangliste“  Dunkel/Hell/System · Pseudonym · Ranglisten-Teilnahme
+|   +-- Aufklappbereich „Mein Spielstand“  Level · XP · Streak → aufgeklappt: XP-Balken, Mein Betrieb, Spielerprofil
++-- Lade-/Fehlerzustände je Karte (eine Karte mit Fehler blockiert die anderen nicht)
+
+/profile  (Spielerprofil)
++-- Azubi: unverändert
++-- Lehrkraft: Hinweis-Karte „Dein Lehrkraft-Profil → Mein Konto“
+               + kurze Spielkarte (Name, Level, XP-Balken, Streak) + Mein Betrieb
+               + Bereichs-Umschalter (nur Super-Admin, wie bisher)
+
+Konto-Menü & Schnellsuche: neuer Eintrag „Mein Konto“ (ganz oben)
+```
+
+### B) Daten
+
+**Neu im Profil jeder Person:**
+- **Kürzel** – optional, 2–5 Buchstaben, groß geschrieben. Nur die Person selbst (und der Super-Admin) darf es ändern.
+
+**Neu bei jedem Leistungsnachweis:**
+- **„Auswertung von Ersteller angesehen am“** – Zeitpunkt. Leer = noch nicht angesehen. Wird gesetzt, wenn die erstellende Person die Auswertung zum ersten Mal nach dem Schließen öffnet; wenn andere (Super-Admin, Bereichs-Admin) hineinschauen, passiert nichts.
+- Beim Einspielen werden alle **bereits geschlossenen** Nachweise als „angesehen“ markiert, damit die Liste am Start nicht überquillt.
+- Hinweis: Ein geschlossener Nachweis kann heute nicht wieder geöffnet werden; der Fall „wieder öffnen“ aus den Edge Cases tritt daher nicht auf.
+
+**Nur gelesen (vorhanden):**
+| Abschnitt | Quelle |
+|---|---|
+| Kopf | Profil (Name, Rolle, Fachbereich, Kürzel) |
+| Meine Fächer | Fach-Zuständigkeiten (PROJ-48) |
+| Mein Beitrag | Änderungsverlauf (PROJ-47): „angelegt“ = Einträge mit Art *erstellt* bei Fragen; „Änderungen“ = alle eigenen Einträge; Titel kommt aus der gespeicherten Momentaufnahme, daher auch nach endgültigem Löschen lesbar |
+| Mein Beitrag – Nachweise | Nachweise mit „erstellt von = ich“ |
+| Offene Aufgaben | eigene Nachweise nach Zustand Entwurf / offen / geschlossen + neues Feld; Abgaben aus den Prüfungssitzungen |
+| Spielstand | Profil (XP, Streak) |
+| Anmeldung | Anmeldedienst: aktuelle E-Mail, ausstehende neue E-Mail, Anmeldeart (Passwort / Google / Apple) |
+
+**Grenze „Mein Beitrag“:** Der Änderungsverlauf existiert erst seit PROJ-47 (27.10.2026). Ältere Arbeit ist niemandem zugeordnet; die Seite sagt das offen („gezählt seit 27.10.2026“).
+
+### C) Technische Entscheidungen
+
+| Entscheidung | Warum |
+|---|---|
+| **Seite liegt im Lehrkräfte-Bereich** (`/admin/konto`), nicht in `/profile` | Gleicher Rahmen, gleiche Darstellung hell/dunkel, gleicher Zugangsschutz wie alle Lehrkraft-Seiten; das Azubi-Profil bleibt unangetastet. |
+| **Daten werden beim Laden auf dem Server gesammelt** (eine Abfragerunde pro Abschnitt, parallel) | Schnell, keine Zusatz-Schnittstelle nur zum Lesen; jede Abfrage nur mit „ich“ als Filter, dadurch sieht niemand fremde Daten. Die Datenbank-Regeln (RLS) gelten zusätzlich. |
+| **Zahlen werden in der Datenbank gezählt**, Listen auf 5 begrenzt | Seite bleibt auch bei vielen Änderungen schnell. |
+| **Formulare wiederverwenden:** Fächer, Pseudonym, Rangliste, Darstellung | Gleiche Regeln und Meldungen wie bisher; keine zweite Logik, die auseinanderlaufen kann. |
+| **Kürzel über eine eigene kleine Schnittstelle** statt direktem Schreiben ins Profil | Prüft Länge/Zeichen auf dem Server und ändert garantiert nur dieses eine Feld (nie z. B. die Rolle). |
+| **Passwort ändern über den Server:** prüft erst das aktuelle Passwort, setzt dann das neue | Wer an einem offenen Rechner sitzt, kann das Passwort nicht ohne das alte ändern. Bei Google/Apple-Konten ohne Passwort entfällt das alte Passwort („festlegen“). Der Anmeldedienst begrenzt zu viele Fehlversuche. |
+| **E-Mail ändern über den Anmeldedienst (Supabase):** Bestätigungslink **nur an die neue Adresse** (Entscheidung 2026-10-27) | Funktioniert auch, wenn die alte Adresse nicht mehr abrufbar ist. Die alte Adresse gilt bis zum Klick weiter → kein Aussperren durch Tippfehler. Der Link führt über den vorhandenen Anmelde-Rücksprung zurück nach „Mein Konto“ mit Erfolgsmeldung. |
+| **E-Mail: „erneut senden“ und „abbrechen“** über den Server | Abbrechen setzt die ausstehende Adresse zurück; dafür braucht es Server-Rechte, daher nicht im Browser. |
+| **„Angesehen“ wird beim Laden der Auswertung gesetzt**, nur wenn die erstellende Person lädt | Kein eigener Knopf nötig; Admins, die mitschauen, verfälschen nichts. |
+| **Spielstand auf/zu pro Gerät** im Browser gemerkt | Reine Ansichts-Vorliebe, muss nicht synchronisiert werden. |
+
+### D) Einstellung beim Anmeldedienst (einmalig, Super-Admin/Deploy)
+- In Supabase Auth: **„Secure email change“ ausschalten** (sonst muss auch die alte Adresse bestätigen). Das gilt projektweit; Azubis haben in der App aber keine E-Mail-Änderung, und die Änderung durch den Super-Admin in der Nutzerverwaltung ist davon nicht betroffen.
+- Die Vorlage der Bestätigungs-Mail („Change Email Address“) auf Deutsch prüfen.
+- Hinweis: Eine geänderte E-Mail-Adresse ändert **nicht** den Fachbereich (die Zuordnung nach Mail-Domain greift nur bei Konten ohne Fachbereich).
+
+### E) Was gebaut wird
+**Datenbank (1 Migration + Rückweg):** Kürzel-Feld im Profil · „angesehen am“ bei Nachweisen (bestehende geschlossene = angesehen) · Zähl-Funktion für „Mein Beitrag“ (nur eigene Einträge).
+
+**Server-Schnittstellen (neu):** Kürzel speichern · Passwort ändern/festlegen · E-Mail ändern / erneut senden / abbrechen.
+**Server-Schnittstellen (angepasst):** Auswertung eines Nachweises setzt „angesehen“, wenn der Ersteller lädt.
+
+**Oberfläche:** Seite „Mein Konto“ mit den Karten oben · Eintrag im Konto-Menü und in der Schnellsuche · `/profile` für Lehrkräfte verkürzt · Erfolgsmeldung nach bestätigter E-Mail-Änderung.
+
+**Tests:** Kürzel-Prüfung, Passwort (falsches altes Passwort, Google-Konto), E-Mail (vergeben, ungültig, abbrechen), „angesehen“ nur durch Ersteller, Zahlen nur eigene Einträge, `/profile` Azubi unverändert / Lehrkraft verkürzt.
+
+### F) Pakete
+Keine neuen Pakete.
 
 ## QA Test Results
 _To be added by /qa_
