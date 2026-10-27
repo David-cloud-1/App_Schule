@@ -91,12 +91,14 @@ export async function GET(request: NextRequest) {
     if (creatorIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, display_name, pseudonym, role')
+        .select('id, display_name, role')
         .in('id', creatorIds)
       for (const p of profiles ?? []) {
-        const row = p as { id: string; display_name: string | null; pseudonym: string | null; role: string }
+        const row = p as { id: string; display_name: string | null; role: string }
         creatorNameById.set(row.id, {
-          name: row.display_name ?? row.pseudonym ?? 'Unbekannt',
+          // Hier bewusst der Klarname statt Pseudonym: nur Super-Admins sehen
+          // diese Spalte, anders als bei der Rangliste (Datenschutz dort).
+          name: row.display_name ?? 'Unbekannt',
           former: row.role === 'student',
         })
       }
