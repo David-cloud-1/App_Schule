@@ -253,7 +253,7 @@ Ablauf (PROJ-51, bekannter Rahmen)
 - Tageslimit über die letzten **24 Stunden** statt „Kalendertag“ (einfacher, gleiche Wirkung).
 - Der Probe-Lauf bei leerem Guthaben ist ein echter Lauf der Lehrkraft, kein Testaufruf.
 
-**Vor dem Deploy nötig:** Migration in Produktion (ab dann liest der Code die Spalte `weg`), Kern-Deploy (neue Schnittstellen), Anthropic-Konto: automatisches Nachladen aus, Modell `claude-sonnet-5-5` verfügbar, Ratenlimit-Stufe prüfen.
+**Stand 2026-10-29:** Migration in Produktion angewendet (vom Nutzer im SQL Editor, geprüft: 3 Tabellen mit RLS, 3 Regeln, Trigger, eindeutiger Index, Spalte `weg`). Kern mit `/api/teilen` und `/api/zusammenfuegen` deployt und erreichbar. Noch offen: Anthropic-Konto: automatisches Nachladen aus, Modell `claude-sonnet-5-5` verfügbar, Ratenlimit-Stufe prüfen.
 
 ## QA Test Results
 _To be added by /qa_
