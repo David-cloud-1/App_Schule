@@ -3,8 +3,9 @@ import { NextRequest } from 'next/server'
 import { chainMock } from '@/test/supabase-chain-mock'
 
 const signIn = vi.fn()
+const signOut = vi.fn()
 const updateUserById = vi.fn()
-vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn } })) }))
+vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn, signOut } })) }))
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
   createServiceClient: vi.fn(() => ({ auth: { admin: { updateUserById } } })),
@@ -26,6 +27,7 @@ describe('POST /api/profile/password (PROJ-50)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     signIn.mockResolvedValue({ error: null })
+    signOut.mockResolvedValue({ error: null })
     updateUserById.mockResolvedValue({ error: null })
   })
 
@@ -43,6 +45,32 @@ describe('POST /api/profile/password (PROJ-50)', () => {
     expect(res.status).toBe(200)
     expect(signIn).toHaveBeenCalledWith({ email: 'max@schule.de', password: 'altes-passwort' })
     expect(updateUserById).toHaveBeenCalledWith('u1', { password: 'neues-passwort' })
+  })
+
+  it('beendet die für die Prüfung erzeugte Sitzung (nur diese, scope „local“)', async () => {
+    login(emailUser)
+    await POST(req({ currentPassword: 'altes-passwort', newPassword: 'neues-passwort' }))
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('begrenzt Fehlversuche je Person: nach 5 falschen Passwörtern 429 ohne den Dienst zu fragen', async () => {
+    const limited = { id: 'u-limit', email: 'limit@schule.de', app_metadata: { providers: ['email'] } }
+    login(limited)
+    signIn.mockResolvedValue({ error: { status: 400, message: 'Invalid login credentials' } })
+    for (let i = 0; i < 5; i++) {
+      expect((await POST(req({ currentPassword: 'falsch', newPassword: 'neues-passwort' }))).status).toBe(400)
+    }
+    signIn.mockClear()
+    const res = await POST(req({ currentPassword: 'falsch', newPassword: 'neues-passwort' }))
+    expect(res.status).toBe(429)
+    expect(await res.json()).toMatchObject({ field: 'currentPassword' })
+    expect(signIn).not.toHaveBeenCalled()
+    expect(updateUserById).not.toHaveBeenCalled()
+    // andere Personen sind davon nicht betroffen
+    login(emailUser)
+    signIn.mockResolvedValue({ error: null })
+    expect((await POST(req({ currentPassword: 'altes-passwort', newPassword: 'neues-passwort' }))).status).toBe(200)
   })
 
   it('lehnt ein falsches aktuelles Passwort mit Hinweis am Feld ab und setzt nichts', async () => {

@@ -70,7 +70,7 @@ export function KontoBeitragKarte({ section }: { section: Section<KontoBeitrag> 
                         </div>
                       ) : (
                         <Link
-                          href={contentHref(item.type, item.deleted)}
+                          href={contentHref(item.type, item.deleted, item.searchText)}
                           className={`${rowClass} transition-colors duration-200 hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green`}
                         >
                           {inner}

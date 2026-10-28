@@ -272,13 +272,13 @@ Keine neuen Pakete.
 #### AC-4: Mein Beitrag
 - [x] Drei Zahlen auf dem Server gezählt, nur eigene Einträge, Stichtag-Hinweis, Leerzustand
 - [x] „gelöscht“-Kennzeichen, Papierkorb-Link, endgültig Gelöschtes nicht anklickbar
-- [ ] BUG-3: „Jeder Eintrag führt zum Inhalt“ nur teilweise: Link führt zur Liste (z. B. `/admin/questions`), nicht zum einzelnen Eintrag
+- [x] „Zuletzt bearbeitet“ führt in die passende Liste; Fragen und Themen öffnen mit dem Titel als Suchtext (`?q=`), so steht der Eintrag oben (BUG-3 behoben, siehe Fix-Notizen)
 
 #### AC-5: Offene Aufgaben
 - [x] Drei Gruppen nur eigener Nachweise, je max. 5, „Alle N anzeigen“, „Alles erledigt“
 - [x] „angesehen“ nur durch die erstellende Person (DB-Simulation: Update als Ersteller 1 Zeile; Regel-Tests für Fremde)
 - [x] Bestehende geschlossene Nachweise gelten als angesehen
-- [ ] BUG-1: „Laufen gerade“ zeigt die Abgaben falsch (siehe unten)
+- [x] „Laufen gerade“ zeigt die Abgaben der Klasse (BUG-1 behoben)
 
 #### AC-6: Einstellungen
 - [x] Passwort ändern (aktuelles Passwort geprüft) bzw. festlegen (Google/Apple), Fehler am Feld, bleibt angemeldet
@@ -301,8 +301,8 @@ Keine neuen Pakete.
 - [x] Google/Apple-Konto: „Passwort festlegen“, keine E-Mail-Änderung
 - [x] Tippfehler in neuer Adresse: doppelte Eingabe, Einfügen gesperrt
 - [x] Pseudonym: dieselbe Logik wie bisher
-- [ ] BUG-4: „Passwort ändern schlägt fehl → Passwörter werden geleert“: Bei einer Fehlerantwort des Servers (z. B. falsches aktuelles Passwort) bleiben die Passwortfelder gefüllt; geleert wird nur bei Netzwerkfehler und Erfolg
-- [ ] BUG-5: Gelöschtes Prüfungsset im „Zuletzt bearbeitet“ kann für eine reine Lehrkraft fälschlich als „endgültig gelöscht“ erscheinen (RLS von `exam_question_sets` zeigt ihr nur aktive Sets des eigenen Bereichs)
+- [x] Passwort ändern schlägt fehl → Passwörter werden geleert, auch bei einer Server-Fehlermeldung (BUG-4 behoben)
+- [x] Gelöschtes im „Zuletzt bearbeitet“ erscheint mit Link zum Papierkorb, nicht fälschlich als „endgültig gelöscht“ (BUG-5 behoben)
 
 ### Security Audit Results
 - [x] Ohne Login: alle neuen Schnittstellen 401, Seite leitet zur Anmeldung
@@ -311,12 +311,12 @@ Keine neuen Pakete.
 - [x] Passwort/E-Mail nur mit geprüftem aktuellen Passwort; Passwörter nie geloggt (Test); vergebene Adresse nicht unterscheidbar
 - [x] Während eines Pflichtwechsels (PROJ-58) sperrt der Proxy `/api/profile/*`, kein Umgehen des Pflichtwechsels
 - [x] Eingaben per Zod geprüft, Ausgabe nur über React (kein XSS-Pfad)
-- [ ] BUG-2 (Low): Jede Passwortprüfung erzeugt über den Wegwerf-Client eine zusätzliche Anmeldesitzung, die nie beendet wird
-- [ ] BUG-6 (Low): Kein eigenes Rate-Limit; das IP-Limit von Supabase greift bei Server-Aufrufen für alle Lehrkräfte gemeinsam (Vercel-IP). Wer es auslöst, sperrt die Passwortprüfung kurz für alle
+- [x] Die Passwortprüfung beendet die dabei erzeugte Sitzung wieder (BUG-2 behoben)
+- [x] Fehlversuche bei der Passwortprüfung sind je Person begrenzt (BUG-6 behoben, siehe Fix-Notizen für die Grenzen)
 
 ### Bugs Found
 
-#### BUG-1: Abgaben bei laufenden Nachweisen werden falsch gezählt
+#### BUG-1: Abgaben bei laufenden Nachweisen werden falsch gezählt — BEHOBEN 2026-10-28
 - **Severity:** Medium
 - **Steps to Reproduce:**
   1. Lehrkraft öffnet einen Nachweis, zwei Azubis geben ab
@@ -325,38 +325,47 @@ Keine neuen Pakete.
   4. Actual: „0 Abgaben“ (nur eigene Probe-Abgaben würden gezählt). Ursache: `konto-data.ts` zählt `exam_sessions` mit dem Client der Lehrkraft; die Policy „Users see own exam sessions“ erlaubt nur die eigenen Zeilen. Die Auswertungs-Route nutzt dafür das Service-Konto. In der DB-Simulation bestätigt.
 - **Priority:** Fix before deployment
 
-#### BUG-2: Verwaiste Sitzung nach jeder Passwortprüfung
+#### BUG-2: Verwaiste Sitzung nach jeder Passwortprüfung — BEHOBEN 2026-10-28
 - **Severity:** Low
 - **Steps to Reproduce:** Passwort oder E-Mail in „Mein Konto“ ändern → `verifyCurrentPassword` meldet sich mit `signInWithPassword` an und verwirft den Client, ohne die neue Sitzung zu beenden. Expected: keine zusätzliche Sitzung. Actual: je Versuch eine weitere Sitzung in `auth.sessions`.
 - **Priority:** Nice to have (z. B. nach der Prüfung `signOut` auf dem Wegwerf-Client)
 
-#### BUG-3: „Zuletzt bearbeitet“ führt nur zur Liste
+#### BUG-3: „Zuletzt bearbeitet“ führt nur zur Liste — BEHOBEN 2026-10-28
 - **Severity:** Low
 - **Steps to Reproduce:** Eintrag in „Zuletzt bearbeitet“ anklicken. Expected (AC): der Inhalt. Actual: die passende Liste ohne Auswahl; die Listen kennen keinen Direktlink.
 - **Priority:** Nice to have
 
-#### BUG-4: Passwortfelder bleiben nach Server-Fehler gefüllt
+#### BUG-4: Passwortfelder bleiben nach Server-Fehler gefüllt — BEHOBEN 2026-10-28
 - **Severity:** Low
 - **Steps to Reproduce:** Falsches aktuelles Passwort eingeben → „Passwort ändern“. Expected (Edge Case): Passwörter geleert. Actual: alle drei Felder bleiben gefüllt.
 - **Priority:** Fix in next sprint
 
-#### BUG-5: Gelöschtes Prüfungsset kann als „endgültig gelöscht“ erscheinen
+#### BUG-5: Gelöschtes Prüfungsset kann als „endgültig gelöscht“ erscheinen — BEHOBEN 2026-10-28
 - **Severity:** Low
 - **Steps to Reproduce:** Reine Lehrkraft löscht ein Prüfungsset → „Mein Konto“. Expected: „gelöscht“ mit Link zum Papierkorb. Actual: möglicherweise nicht anklickbar, weil die Existenzprüfung mit dem Client der Lehrkraft läuft und RLS das gelöschte Set verbirgt. Nur aus den Policies abgeleitet, nicht mit Daten nachgestellt (keine Lehrkraft-Konten in der DB).
 - **Priority:** Nice to have
 
-#### BUG-6: Gemeinsames Rate-Limit für die Passwortprüfung
+#### BUG-6: Gemeinsames Rate-Limit für die Passwortprüfung — BEHOBEN 2026-10-28
 - **Severity:** Low
 - **Steps to Reproduce:** Viele falsche Passwortversuche über `/api/profile/password` → Supabase antwortet mit 429, auch für andere Lehrkräfte, die kurz danach ihr Passwort ändern wollen (alle Aufrufe kommen von der Server-IP).
 - **Priority:** Nice to have (eigenes Limit je Person, z. B. 5 Versuche/10 Min.)
 
 ### Summary
 - **Acceptance Criteria:** 8 Bereiche geprüft, 6 vollständig bestanden, 2 mit Befund (AC-4 teilweise, AC-5 Abgaben-Zahl)
-- **Bugs Found:** 6 total (0 critical, 0 high, 1 medium, 5 low)
+- **Bugs Found:** 6 total (0 critical, 0 high, 1 medium, 5 low), alle behoben
 - **Security:** Bestanden, zwei kleine Härtungs-Hinweise (BUG-2, BUG-6)
 - **Production Ready:** YES (keine Critical/High)
-- **Recommendation:** BUG-1 vor dem Deploy beheben (kleiner Fix: Abgaben mit dem Service-Konto zählen, beschränkt auf die eigenen Nachweise); BUG-2 bis BUG-6 später
+- **Stand nach den Fixes (2026-10-28):** Alle 6 Befunde behoben (siehe Fix-Notizen), 1593 Tests grün, Build grün. Die Fixes sind noch nicht deployt.
 - **Offen vor dem Deploy:** Sichtprüfung im Browser (Handy + Laptop, hell/dunkel) und ein echter E-Mail-Wechsel an einem Testkonto, beides mangels Dev-Server nur nach dem Deploy bzw. an einer Vorschau-Version möglich
+
+### Fix-Notizen (2026-10-28)
+- **BUG-1:** `loadAufgaben` zählt die Abgaben mit dem Service-Konto, aber nur für Nachweise, die die eigene (per RLS gefilterte) Abfrage geliefert hat. Test mit Mock-Clients belegt, dass Sitzungen nie mit dem Lehrkraft-Client gelesen werden.
+- **BUG-2:** `verifyCurrentPassword` beendet die Prüf-Sitzung mit `signOut({ scope: 'local' })` (nur diese, nie die der Person), und zwar nur nach erfolgreicher Anmeldung.
+- **BUG-3:** `contentHref` hängt für Fragen und Themen `?q=<Titel>` an (auf 80 Zeichen gekürzt, kodiert); die Seiten „Fragen“ und „Themen“ füllen damit ihre Suche vor (`useSearchParams`, Suspense-Grenze). Fächer und Prüfungssets stehen in kurzen Listen und behalten den einfachen Link; ohne Titel oder bei Gelöschtem ebenfalls.
+- **BUG-4:** Die drei Passwortfelder werden auch nach einer Server-Fehlermeldung geleert (Eingabefehler im Formular selbst lassen die Felder stehen, damit nichts neu getippt werden muss).
+- **BUG-5:** Die Existenzprüfung für Gelöschtes läuft mit dem Service-Konto; sie liefert nur ja/nein für Inhalte, die die Person selbst geändert hat.
+- **BUG-6:** `src/lib/attempt-limiter.ts`: höchstens 5 Fehlversuche je Person in 10 Minuten, danach 429 ohne den Anmeldedienst zu fragen; ein Erfolg setzt zurück. **Grenze:** läuft im Speicher der Server-Instanz, ist also keine harte Sperre über alle Instanzen. Es verhindert, dass eine einzelne Person das gemeinsame Limit des Dienstes für alle Lehrkräfte aufbraucht, mehr nicht.
+- **Neue Tests (28):** Begrenzer, Konto-Daten (Abgaben, Papierkorb-Prüfung, „angesehen“), Passwort-/E-Mail-Schnittstelle (Sitzung beenden, Begrenzung), Direktlinks, Felder leeren.
 
 ## Deployment
 _To be added by /deploy_

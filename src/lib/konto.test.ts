@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   contentHref,
+  contentSearchTextFromSnapshot,
   contentTitleFromSnapshot,
   emailChangeSchema,
   formatRelativeTime,
@@ -78,9 +79,23 @@ describe('Inhalte im Verlauf', () => {
     expect(contentHref('exam_question_set', false)).toBe('/admin/exam-sets')
   })
 
+  it('öffnet Fragen und Themen mit dem Titel als Suchtext, gekürzt und sauber kodiert', () => {
+    expect(contentHref('question', false, 'Was ist CMR?')).toBe('/admin/questions?q=Was%20ist%20CMR%3F')
+    expect(contentHref('topic', false, '  Incoterms ')).toBe('/admin/topics?q=Incoterms')
+    expect(contentHref('question', false, 'x'.repeat(200))).toBe(`/admin/questions?q=${'x'.repeat(80)}`)
+    // ohne Suchtext, bei Gelöschtem und bei Fächern/Prüfungssets bleibt es der einfache Link
+    expect(contentHref('question', false, null)).toBe('/admin/questions')
+    expect(contentHref('question', false, '   ')).toBe('/admin/questions')
+    expect(contentHref('question', true, 'Was ist CMR?')).toBe('/admin/papierkorb')
+    expect(contentHref('subject', false, 'Zoll')).toBe('/admin/subjects')
+    expect(contentHref('exam_question_set', false, 'Set')).toBe('/admin/exam-sets')
+  })
+
   it('liest den Titel aus der Momentaufnahme', () => {
     expect(contentTitleFromSnapshot('question', { question_text: ' Was ist CMR? ' })).toBe('Was ist CMR?')
     expect(contentTitleFromSnapshot('topic', { name: 'Incoterms' })).toBe('Incoterms')
     expect(contentTitleFromSnapshot('subject', null)).toBe('Fach ohne Titel')
+    expect(contentSearchTextFromSnapshot('question', { question_text: ' Was ist CMR? ' })).toBe('Was ist CMR?')
+    expect(contentSearchTextFromSnapshot('subject', null)).toBeNull()
   })
 })

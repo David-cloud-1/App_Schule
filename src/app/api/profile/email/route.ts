@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Das ist schon deine aktuelle Adresse.', field: 'email' }, { status: 400 })
   }
 
-  const check = await verifyCurrentPassword(user.email, currentPassword)
+  const check = await verifyCurrentPassword(user.id, user.email, currentPassword)
   if (!check.ok) return NextResponse.json({ error: check.error, field: 'currentPassword' }, { status: check.status })
 
   // `email_confirm` hält die Änderung unabhängig von der Projekt-Einstellung sofort gültig

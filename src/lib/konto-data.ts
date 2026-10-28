@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js'
-import { contentTitleFromSnapshot, type KontoContentType } from '@/lib/konto'
+import { contentSearchTextFromSnapshot, contentTitleFromSnapshot, type KontoContentType } from '@/lib/konto'
+import { createServiceClient } from '@/lib/supabase-server'
 import type { TeacherRole } from '@/lib/roles'
 
 /**
@@ -50,6 +51,8 @@ export interface RecentChange {
   deleted: boolean
   /** Endgültig gelöscht: nicht mehr im Papierkorb, also nicht anklickbar */
   gone: boolean
+  /** Suchtext für den Direktlink in die Liste (Fragetext bzw. Name); leer, wenn der Inhalt keinen Titel hatte */
+  searchText: string | null
   at: string
 }
 
@@ -105,12 +108,15 @@ async function group(db: Db, userId: string, status: 'draft' | 'open' | 'closed'
   }
 }
 
-async function loadAufgaben(db: Db, userId: string): Promise<KontoAufgaben> {
+export async function loadAufgaben(db: Db, userId: string, service: Db = createServiceClient()): Promise<KontoAufgaben> {
   const [drafts, running, unseen] = await Promise.all([group(db, userId, 'draft'), group(db, userId, 'open'), group(db, userId, 'closed')])
 
-  // Abgaben der gerade laufenden Nachweise zählen
+  // Abgaben der gerade laufenden Nachweise zählen. Das Service-Konto ist nötig,
+  // weil die Datenbank-Regeln jeder Person nur die eigenen Prüfungssitzungen
+  // zeigen (also nicht die der Klasse). Gezählt werden nur Nachweise, die die
+  // eigene, bereits per RLS gefilterte Abfrage oben geliefert hat.
   if (running.items.length > 0) {
-    const { data, error } = await db
+    const { data, error } = await service
       .from('exam_sessions')
       .select('assessment_id, status')
       .in('assessment_id', running.items.map((i) => i.id))
@@ -128,7 +134,7 @@ async function loadAufgaben(db: Db, userId: string): Promise<KontoAufgaben> {
   return { drafts, running, unseen }
 }
 
-async function loadBeitrag(db: Db, userId: string): Promise<KontoBeitrag> {
+export async function loadBeitrag(db: Db, userId: string, service: Db = createServiceClient()): Promise<KontoBeitrag> {
   const mine = () => db.from('content_versions').select('id', { count: 'exact', head: true }).eq('changed_by', userId)
 
   const [created, changes, assessments, recentRows] = await Promise.all([
@@ -158,6 +164,7 @@ async function loadBeitrag(db: Db, userId: string): Promise<KontoBeitrag> {
       key,
       type,
       title: contentTitleFromSnapshot(type, row.data),
+      searchText: contentSearchTextFromSnapshot(type, row.data),
       deleted: row.change_type === 'deleted',
       gone: false,
       at: row.created_at as string,
@@ -166,6 +173,9 @@ async function loadBeitrag(db: Db, userId: string): Promise<KontoBeitrag> {
   }
 
   // Gelöschtes: liegt es noch im Papierkorb? Sonst ist der Inhalt endgültig weg.
+  // Das Service-Konto prüft nur das Vorhandensein (ja/nein) von Inhalten, die
+  // diese Person selbst geändert hat; mit den Rechten einer Lehrkraft wären
+  // gelöschte Zeilen unsichtbar und alles würde als „endgültig gelöscht“ gelten.
   const deletedIdsByType = new Map<KontoContentType, string[]>()
   for (const item of latest.filter((l) => l.deleted)) {
     const ids = deletedIdsByType.get(item.type) ?? []
@@ -175,7 +185,7 @@ async function loadBeitrag(db: Db, userId: string): Promise<KontoBeitrag> {
   const stillThere = new Set<string>()
   await Promise.all(
     [...deletedIdsByType.entries()].map(async ([type, ids]) => {
-      const { data } = await db.from(TABLE_BY_TYPE[type]).select('id').in('id', ids)
+      const { data } = await service.from(TABLE_BY_TYPE[type]).select('id').in('id', ids)
       for (const row of data ?? []) stillThere.add(`${type}:${row.id as string}`)
     }),
   )

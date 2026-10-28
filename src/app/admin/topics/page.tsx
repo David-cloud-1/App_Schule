@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { History, Loader2, Pencil, Plus, Search, Tag, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
@@ -27,11 +28,24 @@ import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/component
 type Subject = { id: string; code: string; name: string }
 type Topic = { id: string; name: string; subject_id: string }
 
+/**
+ * `?q=` füllt die Suche vor (PROJ-50: Direktlink aus „Mein Konto → Zuletzt
+ * bearbeitet“). `useSearchParams` braucht eine Suspense-Grenze.
+ */
 export default function TopicsPage() {
+  return (
+    <Suspense fallback={null}>
+      <TopicsPageContent />
+    </Suspense>
+  )
+}
+
+function TopicsPageContent() {
+  const initialQuery = useSearchParams().get('q') ?? ''
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState(initialQuery)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
 

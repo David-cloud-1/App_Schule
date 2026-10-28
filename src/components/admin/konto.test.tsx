@@ -107,9 +107,11 @@ describe('Karte „Mein Beitrag“', () => {
       <KontoBeitragKarte
         section={data({
           recent: [
-            { key: 'question:1', type: 'question', title: 'Was ist CMR?', deleted: true, gone: false, at },
-            { key: 'topic:2', type: 'topic', title: 'Incoterms', deleted: true, gone: true, at },
-            { key: 'subject:3', type: 'subject', title: 'Zoll', deleted: false, gone: false, at },
+            { key: 'question:1', type: 'question', title: 'Was ist CMR?', searchText: 'Was ist CMR?', deleted: true, gone: false, at },
+            { key: 'topic:2', type: 'topic', title: 'Incoterms', searchText: 'Incoterms', deleted: true, gone: true, at },
+            { key: 'subject:3', type: 'subject', title: 'Zoll', searchText: 'Zoll', deleted: false, gone: false, at },
+            { key: 'question:4', type: 'question', title: 'Wer haftet bei CMR & Frachtführer?', searchText: 'Wer haftet bei CMR & Frachtführer?', deleted: false, gone: false, at },
+            { key: 'topic:5', type: 'topic', title: 'Thema ohne Titel', searchText: null, deleted: false, gone: false, at },
           ],
         })}
       />,
@@ -118,6 +120,9 @@ describe('Karte „Mein Beitrag“', () => {
     expect(screen.getByRole('link', { name: /Zoll/ })).toHaveAttribute('href', '/admin/subjects')
     expect(screen.queryByRole('link', { name: /Incoterms/ })).not.toBeInTheDocument()
     expect(screen.getAllByText('gelöscht')).toHaveLength(2)
+    // Fragen und Themen öffnen mit dem Titel als Suchtext; ohne Titel bleibt es die einfache Liste
+    expect(screen.getByRole('link', { name: /Wer haftet/ })).toHaveAttribute('href', `/admin/questions?q=${encodeURIComponent('Wer haftet bei CMR & Frachtführer?')}`)
+    expect(screen.getByRole('link', { name: /Thema ohne Titel/ })).toHaveAttribute('href', '/admin/topics')
   })
 
   it('zeigt ohne Aktivität einen Leerzustand', () => {
@@ -169,6 +174,10 @@ describe('Karte „Anmeldung“', () => {
     render(<KontoAnmeldung head={emailHead} />)
     fill('neu@schule.de', 'neu@schule.de', 'falsch')
     expect(await screen.findByText('Das aktuelle Passwort stimmt nicht.')).toBeInTheDocument()
+    // Nach einem Fehler bleibt kein Passwort im Formular stehen
+    expect(screen.getByLabelText('Neues Passwort')).toHaveValue('')
+    expect(screen.getByLabelText('Neues Passwort wiederholen')).toHaveValue('')
+    expect(screen.getByLabelText('Aktuelles Passwort', { selector: '#konto-pw-alt' })).toHaveValue('')
   })
 
   it('lässt Google-/Apple-Konten die Adresse nicht ändern', () => {

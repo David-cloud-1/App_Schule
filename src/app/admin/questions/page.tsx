@@ -1,6 +1,7 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   AlertCircle,
@@ -110,9 +111,22 @@ function SortIcon({ col, current, dir }: { col: SortColumn; current: SortColumn;
     : <ChevronDown className="w-3 h-3 inline ml-1 text-ws-green" />
 }
 
+/**
+ * `?q=` füllt die Suche vor (PROJ-50: Direktlink aus „Mein Konto → Zuletzt
+ * bearbeitet“). `useSearchParams` braucht eine Suspense-Grenze.
+ */
 export default function AdminQuestionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminQuestionsPageContent />
+    </Suspense>
+  )
+}
+
+function AdminQuestionsPageContent() {
   const classLevelOptions = useClassLevelOptions()
-  const [search, setSearch] = useState('')
+  const initialSearch = useSearchParams().get('q') ?? ''
+  const [search, setSearch] = useState(initialSearch)
   const debouncedSearch = useDebounced(search, 300)
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')

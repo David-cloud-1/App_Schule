@@ -74,14 +74,23 @@ export const CONTENT_TYPE_LABEL: Record<KontoContentType, string> = {
   exam_question_set: 'Prüfungsset',
 }
 
-/** Wohin ein Eintrag aus „Zuletzt bearbeitet“ führt (Papierkorb für Gelöschtes) */
-export function contentHref(type: KontoContentType, deleted: boolean): string {
+/** Länge des Suchtexts im Direktlink: lang genug zum Finden, kurz genug für eine saubere Adresse */
+const SEARCH_TEXT_MAX = 80
+
+/**
+ * Wohin ein Eintrag aus „Zuletzt bearbeitet“ führt: Gelöschtes in den
+ * Papierkorb, sonst in die Liste des Inhalts. Fragen und Themen haben eine
+ * Suche; dort öffnet der Link mit dem Titel als Suchtext (`?q=`), so steht der
+ * Eintrag sofort oben. Fächer und Prüfungssets stehen in kurzen Listen.
+ */
+export function contentHref(type: KontoContentType, deleted: boolean, searchText?: string | null): string {
   if (deleted) return '/admin/papierkorb'
+  const q = searchText?.trim() ? `?q=${encodeURIComponent(searchText.trim().slice(0, SEARCH_TEXT_MAX))}` : ''
   switch (type) {
     case 'question':
-      return '/admin/questions'
+      return `/admin/questions${q}`
     case 'topic':
-      return '/admin/topics'
+      return `/admin/topics${q}`
     case 'subject':
       return '/admin/subjects'
     case 'exam_question_set':
@@ -89,18 +98,22 @@ export function contentHref(type: KontoContentType, deleted: boolean): string {
   }
 }
 
+function pickTitle(type: KontoContentType, data: unknown): string | null {
+  const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>
+  const keys = type === 'question' ? ['question_text', 'text', 'title'] : ['name', 'title']
+  for (const k of keys) {
+    const v = d[k]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+  }
+  return null
+}
+
 /** Titel aus der gespeicherten Momentaufnahme: Frage → Fragetext, sonst Name/Titel */
 export function contentTitleFromSnapshot(type: KontoContentType, data: unknown): string {
-  const d = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>
-  const pick = (...keys: string[]) => {
-    for (const k of keys) {
-      const v = d[k]
-      if (typeof v === 'string' && v.trim()) return v.trim()
-    }
-    return null
-  }
-  const fallback = `${CONTENT_TYPE_LABEL[type]} ohne Titel`
-  return type === 'question'
-    ? (pick('question_text', 'text', 'title') ?? fallback)
-    : (pick('name', 'title') ?? fallback)
+  return pickTitle(type, data) ?? `${CONTENT_TYPE_LABEL[type]} ohne Titel`
+}
+
+/** Wie der Titel, aber ohne Ersatztext: `null`, wenn es nichts zum Suchen gibt */
+export function contentSearchTextFromSnapshot(type: KontoContentType, data: unknown): string | null {
+  return pickTitle(type, data)
 }

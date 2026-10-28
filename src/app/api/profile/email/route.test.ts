@@ -3,8 +3,9 @@ import { NextRequest } from 'next/server'
 import { chainMock } from '@/test/supabase-chain-mock'
 
 const signIn = vi.fn()
+const signOut = vi.fn()
 const updateUserById = vi.fn()
-vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn } })) }))
+vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn, signOut } })) }))
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
   createServiceClient: vi.fn(() => ({ auth: { admin: { updateUserById } } })),
@@ -26,6 +27,7 @@ describe('POST /api/profile/email (PROJ-50, ohne Bestätigungs-Mail)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     signIn.mockResolvedValue({ error: null })
+    signOut.mockResolvedValue({ error: null })
     updateUserById.mockResolvedValue({ error: null })
   })
 
@@ -44,6 +46,16 @@ describe('POST /api/profile/email (PROJ-50, ohne Bestätigungs-Mail)', () => {
     expect(await res.json()).toEqual({ ok: true, email: 'neu@schule.de' })
     expect(signIn).toHaveBeenCalledWith({ email: 'alt@schule.de', password: 'mein-passwort' })
     expect(updateUserById).toHaveBeenCalledWith('u1', { email: 'neu@schule.de', email_confirm: true })
+  })
+
+  it('beendet nach der Prüfung die dafür erzeugte Sitzung (scope „local“) und nur bei Erfolg', async () => {
+    login(emailUser)
+    await POST(post({ email: 'neu@schule.de', currentPassword: 'mein-passwort' }))
+    expect(signOut).toHaveBeenCalledWith({ scope: 'local' })
+    signOut.mockClear()
+    signIn.mockResolvedValue({ error: { status: 400, message: 'Invalid login credentials' } })
+    await POST(post({ email: 'neu@schule.de', currentPassword: 'falsch' }))
+    expect(signOut).not.toHaveBeenCalled()
   })
 
   it('ändert nichts bei falschem Passwort und meldet es am Feld', async () => {

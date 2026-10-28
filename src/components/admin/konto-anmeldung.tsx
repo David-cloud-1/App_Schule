@@ -170,6 +170,10 @@ function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
       if (!ok) {
         const field = (['currentPassword', 'newPassword'] as const).find((f) => f === body.field) ?? 'newPassword'
         setErrors({ [field]: body.error ?? 'Das Passwort konnte nicht geändert werden.' })
+        // Auch nach einem Fehler bleibt kein Passwort im Formular stehen
+        setCurrent('')
+        setNext('')
+        setConfirm('')
         return
       }
       toast.success(hasPassword ? 'Passwort geändert.' : 'Passwort festgelegt.')

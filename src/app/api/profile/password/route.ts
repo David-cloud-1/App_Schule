@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
     if (!user.email) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const check = await verifyCurrentPassword(user.email, currentPassword)
+    const check = await verifyCurrentPassword(user.id, user.email, currentPassword)
     if (!check.ok) return NextResponse.json({ error: check.error, field: 'currentPassword' }, { status: check.status })
     if (currentPassword === newPassword) {
       return NextResponse.json({ error: 'Das neue Passwort muss sich vom aktuellen unterscheiden.', field: 'newPassword' }, { status: 400 })
