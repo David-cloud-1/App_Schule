@@ -1,6 +1,6 @@
 # PROJ-51: Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-28
 
@@ -388,7 +388,90 @@ Fehler kommen als `{ error, hint? }` mit verständlichem Text. Das Format des Ab
 - Kennzahl „Seiten“ bei Word kommt aus den Dokument-Eigenschaften (`docProps/app.xml`). Fehlen sie, wird sie aus der Textlänge geschätzt.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-10-28 · **Stand:** `main` ab `4d79842` (Frontend `7503068` + Backend) · Kern `vercel-kern` ab `da3cc9a`
+**Tester:** QA Engineer (AI)
+
+### Wie getestet wurde, und was NICHT
+Auf Wunsch des Nutzers gilt „kein Dev-Server, kein Playwright“ (beides bringt den Rechner zum Absturz). Deshalb wurde **kein Browser verwendet**. Geprüft wurde:
+- Code gegen jedes Akzeptanzkriterium (Lesen der Komponenten und Routen)
+- 1626 Vitest-Tests der App, 12 Tests des Kerns, `werkzeugtest.py` der alten Werkzeugkiste
+- der echte Kern auf Vercel mit echten Skripten, den echten Speicherbereich und echte Auswahllisten
+- die Datenbankregeln **lesend** an der Produktions-Datenbank (der Versuch, Zugriffe mit simulierten Rollen auszuführen, wurde vom Nutzer nicht freigegeben)
+- Produktions-Build, TypeScript, Lint
+
+**Nicht geprüft (Lücke!):** Aussehen und Bedienung im Browser, Handy-/Tablet-/Desktop-Breite, Chrome/Firefox/Safari, Hell-/Dunkelmodus, Tastatur- und Screenreader-Bedienung, Drag-and-drop, Zwischenablage. Es wurde **kein Playwright-Test** geschrieben, weil er sich hier nicht ausführen lässt (ein ungeprüfter Test wäre wertlos). Außerdem gibt es im System **kein Konto mit der Rolle „Lehrkraft“** (nur Super-Admin, 18 Bereichs-Admins, Azubis), die Rolle `teacher` selbst wurde also nirgends mit echten Daten durchlaufen.
+
+### Akzeptanzkriterien
+
+| Gruppe | Ergebnis | Bemerkung |
+|---|---|---|
+| Zugang & Navigation (6) | 5 ✅ · 1 ⚠️ | Navigation, Schnellsuche und Startseite zeigen auf `/admin/werkzeugkiste` (kein `hf.space` mehr im Code), alle drei Lehrer-Rollen haben Zugang (Tests). Azubis: Seite → Umleitung, Schnittstelle → 403 statt 404 (siehe BUG-5). |
+| Startseite „Werkzeuge“ (5) | 5 ✅ (nur Code) | 12 Werkzeuge in 4 Gruppen, nur „Ganzes Skript“ ein Link, 11× „kommt bald“ (Komponententest). 44-px- und Spalten-Klassen im Code vorhanden, visuell nicht geprüft. |
+| Ablauf-Rahmen (7) | 7 ✅ (nur Code/Tests) | Ablauf ohne Seitenleiste, Fortschritt, Rückfrage beim ✕, Schritt in der Adresse (Zurück-Knopf), Eingaben bleiben. |
+| Schritt 1 Skript (7) | 7 ✅ | Echte Dateien bis 25 MB über den Speicher; Kennzahlen; Hinweise bei 0 Lösungen und alten Formaten; Seiten-/Abschnittsauswahl. Kleine Textabweichung: „.docx empfohlen · auch PDF und PowerPoint · bis 50 MB“. |
+| Schritt 2 Einstellungen (5) | 5 ✅ | Auswahllisten stammen live vom Kern (5 Niveaus, 7 Bildungsgänge, Lernfelder je Bildungsgang, 5 Umfänge); Vorbelegung aus dem letzten Ablauf getestet. |
+| Schritt 3 Prompt (5) | 5 ✅ | **Prompt zeichengenau gleich** wie der alte Weg für 8 echte Dateien (PDF, Word, PowerPoint, .ppt, .doc, drei PDFs), auch mit Lernfeld, Umfang und Seiten-/Abschnittsauswahl. |
+| Schritt 4 Antwort & Prüfstelle (7) | 5 ✅ · 2 ❌ | Prüfung gleich wie der alte Weg; unlesbare Antwort sperrt das Bauen; Nachbesserungs-Prompt. ❌ BUG-1 (Fachbegriffe, zu lang), ❌ BUG-2 (falsches Grün). |
+| Schritt 5 Fertig (6) | 6 ✅ (nur Code/Tests) | Echter Durchlauf: Datei (gültiges ZIP) und Vorschau abrufbar, H5P-Inhalt gleich dem alten Weg. |
+| Gleichwertigkeit (2) | 1 ✅ · 1 ⚠️ | Einlesen/Prompt/Prüfung/H5P/Seite gleich. `werkzeugtest.py`: **22 von 24 grün**; die zwei Fehler sind **nicht von dieser Änderung** (siehe Befunde unten). |
+
+### Randfälle
+- ✅ Datei über 50 MB (146-MB-PowerPoint wird vor dem Hochladen mit dem Spec-Satz abgelehnt), falsches Format, kaum Text/Scan, beschädigte Datei, altes `.doc/.ppt` mit Hinweis.
+- ✅ Antwort mit Vortext und Codezaun, leere Antwort, nur Leerzeichen, Fließtext, YAML-Liste statt Objekt, Tabulatoren, 3-MB-Antwort mit 100 000 Kapiteln (baut ohne Absturz).
+- ✅ Bilder bleiben erhalten (Datei 57 KB mit 4 Bildern; 25-MB-Word mit 52 Bildern eingelesen).
+- ✅ Zwei Abläufe parallel: eigene Zeilen und Ordner, kein Überschreiben (Code/Tests).
+- ⚠️ Kern nicht erreichbar: Eingaben bleiben erhalten, aber ohne „Erneut versuchen“-Knopf (BUG-4).
+- ✅ Bei kaputter Struktur kein Absturz, aber teils technische Texte (BUG-3).
+
+### Sicherheitsprüfung
+- ✅ **Kern von außen:** Alle Routen antworten ohne oder mit falschem Kennwort mit 401 (GET und POST); die alte Probe-Route ist entfernt (404); unbekannte Routen 404; fehlerhafte Aufträge liefern Sätze statt Absturz.
+- ✅ **Rollen:** Jede Route prüft `requireTeacherOrAdmin`; Azubis und nicht Angemeldete werden von der Middleware abgewiesen (Tests). Pfad `/api/admin/werkzeugkiste-fremd` ist nicht freigegeben.
+- ✅ **Datenbank (nur lesend geprüft):** RLS auf `werkzeug_ablaeufe` aktiv, je eine Regel für SELECT/INSERT/UPDATE/DELETE mit `owner_id = auth.uid() AND has_teacher_role()` (auch Super-Admin sieht keine fremden Abläufe). `has_teacher_role()` ist `SECURITY DEFINER` mit festem `search_path`. Der Speicherbereich ist **nicht öffentlich**; für `storage.objects` existiert keine einzige Regel (RLS aktiv = alles verboten für Browser). Nach den Tests: 0 Zeilen, 0 Dateien übrig.
+- ✅ **Fremdzugriff:** Die App liest einen Ablauf immer zuerst über die Nutzer-Sitzung (RLS) und stellt erst danach Adressen aus; Speicherpfade kommen aus der geprüften Zeile, nie aus der Eingabe. Ungültige IDs → 404. Eine fremde ID liefert 404 (Test).
+- ✅ **Eingaben:** Zod auf allen Schreib-Routen; unbekannte Felder werden abgelehnt; Dateityp und -größe zweifach (App, Bucket 50 MB, Kern 60 MB).
+- ✅ **XSS:** `<script>`/`onerror` in Titel und Text der KI-Antwort erscheint **nicht** unescaped in der Vorschau; die Vorschau hat CSP `default-src 'none'; … sandbox` und wird im `iframe sandbox=""` angezeigt. Die App hat keine eigene CSP, die `srcdoc`-Vorschau wird davon nicht gestört.
+- ✅ **Cron:** `/api/cron/` ist die einzige Ausnahme beim Login; die Route verlangt `CRON_SECRET` (zeitkonstanter Vergleich), ohne gesetztes Geheimnis → 401. Die Middleware-Ausnahme gilt für **alle** künftigen Routen unter `/api/cron/` (jede muss selbst prüfen).
+- ✅ **Geheimnisse:** Kern-Kennwort und Cron-Kennwort nur serverseitig (`.env.local` nicht committet, Vercel „Sensitive“); keine Skriptinhalte in Logs (Kern gibt nur den Fehlertyp aus).
+- ℹ️ **Rechte der Rollen `anon`/`authenticated` auf der Tabelle** umfassen auch `TRUNCATE`/`REFERENCES` (Supabase-Standard bei allen Tabellen). Über die REST-Schnittstelle sind diese Rechte nicht erreichbar, RLS schützt Zeilen. Kein neues Risiko.
+- ℹ️ **Kein Ratenlimit** auf den Kern-Aufrufen außer „höchstens 50 offene Abläufe“ je Lehrkraft. Nur Lehrer-Rollen kommen heran; Missbrauch wäre ein Kostenthema (Rechenzeit), kein Datenleck. Speicher: 50 Abläufe × bis 50 MB könnten den Speicher der Supabase-Stufe füllen; die 7-Tage-Löschung begrenzt das.
+
+### Gefundene Fehler
+
+#### BUG-1: Prüf-Hinweise sind technisch, abgeschnitten und zu viele — Medium
+- **Wo:** Schritt 4 (Kern `kern.pruefen` → Anzeige).
+- **Schritte:** Echte Antwort (Heft 2) prüfen lassen.
+- **Ist:** 17 Zeilen, darunter „Aufgabentyp `crossword` wird ersetzt“, „`find_words`“, „`memory_game`“, „`flashcards`“, „`image_sequencing`“, „Überschrift ohne Schul-Design“ und Kapitel-Titel mitten im Wort abgeschnitten („Kapitel 1: 1. Überblick: Frachtführer- und Sp…“). Tipps stehen gleichrangig neben wichtigen Befunden.
+- **Soll:** „kurze Liste in verständlicher Sprache, ohne YAML-Fachbegriffe“ (AC Schritt 4) und das Leitbild „nicht überladen“.
+- **Vorschlag:** Nur Schwere „hoch“ und „mittel“ zeigen (Tipps eingeklappt, wie schon der Nachbesserungs-Prompt), Fachbegriffe in Klartext übersetzen („Kreuzworträtsel wird zu Lernkarten“), Kapitelnummer statt abgeschnittenem Titel. Die Schwere wird vom Kern bereits mitgeliefert.
+
+#### BUG-2: Kaputte Struktur wird als „Alles in Ordnung“ gemeldet — Medium
+- **Schritte:** Antwort `cover: …  chapters: foo` oder Kapitel als einfacher Text einfügen.
+- **Ist:** Die Prüfung ist **grün** („Alles in Ordnung“, 0 Befunde, `lesbar: true`); erst „Material erstellen“ scheitert mit „Die Antwort der KI hat nicht die verlangte Form“.
+- **Soll:** Als nicht lesbar erkennen (roter Satz) und das Bauen sperren.
+- **Vorschlag:** In `kern._antwort_laden` prüfen, dass `chapters` eine Liste von Objekten ist (und `cover` ein Objekt).
+
+#### BUG-3: Technische Fehlertexte bei kaputter Struktur — Low
+- **Schritte:** `chapters: 5` bzw. `elements: 7` bauen lassen, oder `cover: hallo`.
+- **Ist:** „Die H5P-Datei konnte nicht erstellt werden: 'int' object …“ (Python-Meldung) bzw. beim Titel ein unbehandelter Fehler → allgemeiner 500-Satz „Im Werkzeugkiste-Kern ist ein Fehler aufgetreten. Bitte versuche es gleich noch einmal“ (Wiederholen hilft nicht).
+- **Vorschlag:** Ein Fehlerauffang in `kern.bauen`, der die verständliche Meldung „nicht die verlangte Form“ liefert. Wird mit BUG-2 mitbehoben.
+
+#### BUG-4: Kein „Erneut versuchen“ in Schritt 2–5 bei Fehlern — Low
+- **Soll (Randfall):** `AdminErrorState` mit „Erneut versuchen“. **Ist:** Hinweis-Box; wiederholt wird über die Hauptaktion. Nur beim Einlesen (Schritt 1) gibt es den Knopf.
+
+#### BUG-5: Azubis erhalten Umleitung/403, nicht 404 — Low (Spec-Wortlaut)
+- **Soll:** „direkte Aufrufe liefern 404“. **Ist:** Seiten leiten auf `/?kein-zugang=1`, Schnittstellen antworten 403 — wie bei allen Seiten des Lehrkräfte-Bereichs (PROJ-44). Kein Sicherheitsproblem; entweder Spec anpassen (empfohlen) oder bewusst abweichen.
+
+### Weitere Befunde (nicht von diesem Feature)
+- **Podcast (PROJ-54):** Microsofts Sprachdienst weist `edge-tts` 7.2.8 mit **HTTP 403** ab (`WSServerHandshakeError`). Der Podcast funktioniert damit vermutlich auch in der alten Werkzeugkiste nicht mehr. Vor PROJ-54 eine neuere `edge-tts`-Version prüfen.
+- **`werkzeugtest.py` „deploy-paket“:** erwartet den Ordner `Lehrpläne/`, den es lokal nicht mehr gibt (nur `lehrplaene.py/.md`). Veralteter Test, schon vorher fehlerhaft.
+- **Offene Grenze:** Sehr große PDFs (hunderte Seiten) wurden nicht gemessen. 40 Seiten brauchen auf Vercel 7–19 s, die Zeitgrenze beträgt 120 s.
+
+### Regression
+1626 Tests der App grün (Navigation, Rollen, Middleware, Kontoseite PROJ-50, alle früheren Features), Build und Lint sauber. Berührte gemeinsame Dateien: `admin-shell.tsx`, `admin-nav.ts`, `roles.ts`, `proxy.ts`, `vercel.json`. Keine Regression gefunden.
+
+### Entscheidung
+**Keine Critical- oder High-Fehler.** Die zwei Medium-Fehler (BUG-1, BUG-2) betreffen Schritt 4 und lassen sich im Kern beheben, ohne die App neu zu bauen. **Status bleibt „In Review“**, weil die Prüfung im Browser (Aussehen, Handy, Browser, Bedienung) nicht stattfinden konnte. Empfohlenes Vorgehen: BUG-1/2/3 beheben, eine **Vorschau-Bereitstellung** (kein Produktions-Deploy) anlegen, einmal durchklicken (Handy und Desktop), dann „Approved“.
 
 ## Deployment
 _To be added by /deploy_
