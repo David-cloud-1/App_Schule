@@ -57,6 +57,13 @@ export const GUTHABEN_SATZ = GUTHABEN_TEXT
 const KI_SATZ = 'Die KI hat gerade nicht geantwortet. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
 const ZU_LANG_SATZ =
   'Die Antwort der KI war für dieses Skript zu lang und wurde abgeschnitten. Wähle in Schritt 1 einen kleineren Teil des Skripts oder mach kostenlos mit deiner eigenen KI weiter.'
+/** Hinweis an die Lehrkraft, wenn nur ein Teil der KI-Antwort gerettet werden konnte */
+export function gekuerztHinweis(teilNr: number, teileGesamt: number, kapitel: number, auswahl: AblaufAuswahl): string {
+  const wo = auswahl.abschnitte.length ? `Abschnitte ${auswahl.abschnitte.join(', ')}` : auswahl.seiten ? `Seiten ${auswahl.seiten}` : 'das ganze Skript'
+  const teil = teileGesamt > 1 ? `Teil ${teilNr} von ${teileGesamt} (${wo})` : 'Das Material'
+  return `Achtung, unvollständig: ${teil} wurde nach Kapitel ${kapitel} abgeschnitten, weil die Antwort der KI zu lang war. Der Rest fehlt. Wähle ihn in Schritt 1 gesondert aus.`
+}
+
 const UNLESBAR_SATZ =
   'Die KI hat zweimal keine verwertbare Antwort geliefert. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
 
@@ -292,6 +299,7 @@ export async function frageKi(modell: string, nachrichten: Anthropic.MessagePara
 // ── Speicher der Teil-Antworten ───────────────────────────────────────────
 
 const teilPfad = (ownerId: string, ablaufId: string, nr: number) => `${ablaufOrdner(ownerId, ablaufId)}/teil-${nr}.yaml`
+const teilHinweisPfad = (ownerId: string, ablaufId: string, nr: number) => `${ablaufOrdner(ownerId, ablaufId)}/teil-${nr}.hinweis`
 
 async function speichereTeilAntwort(service: SupabaseClient, pfad: string, text: string) {
   const { error } = await service.storage
@@ -459,9 +467,24 @@ export async function bearbeiteTeil(service: SupabaseClient, origin: string, tei
 
     let ergebnis = await rufeKi(service, teil, e, [erste])
     if (ergebnis.abgeschnitten) {
-      // Dieselbe Anfrage noch einmal würde wieder abgeschnitten — und noch einmal kosten
-      await service.from(TEIL_TABELLE).update({ status: 'fehlgeschlagen' }).eq('id', teil.id)
-      await beendeLauf(service, lauf.id, 'fehlgeschlagen', ZU_LANG_SATZ, 'zulang')
+      // Dieselbe Anfrage noch einmal würde wieder abgeschnitten — und noch einmal kosten.
+      // Stattdessen die vollständigen Kapitel retten: bezahlt ist die Antwort ohnehin.
+      let gerettet: { antwort: string; kapitel: number } | null = null
+      try {
+        gerettet = await kern<{ antwort: string; kapitel: number }>('/api/retten', { antwort: ergebnis.text })
+        if (!(await pruefe(gerettet.antwort)).lesbar) gerettet = null
+      } catch {
+        gerettet = null
+      }
+      if (!gerettet) {
+        await service.from(TEIL_TABELLE).update({ status: 'fehlgeschlagen' }).eq('id', teil.id)
+        await beendeLauf(service, lauf.id, 'fehlgeschlagen', ZU_LANG_SATZ, 'zulang')
+        return
+      }
+      await speichereTeilAntwort(service, pfad, gerettet.antwort)
+      await speichereTeilAntwort(service, teilHinweisPfad(lauf.owner_id, zeile.id, teil.nr), gekuerztHinweis(teil.nr, lauf.teile_gesamt, gerettet.kapitel, teil.auswahl))
+      await service.from(TEIL_TABELLE).update({ status: 'fertig' }).eq('id', teil.id)
+      await abschlussWennFertig(service, origin, lauf.id)
       return
     }
     let pruefung: KernPruefung | null = await pruefe(ergebnis.text)
@@ -528,10 +551,13 @@ export async function schliesseAb(service: SupabaseClient, laufId: string) {
   try {
     const { data: teile } = await service.from(TEIL_TABELLE).select('nr').eq('lauf_id', laufId).order('nr').limit(100)
     const antworten: string[] = []
+    const gekuerzt: string[] = []
     for (const t of (teile ?? []) as { nr: number }[]) {
       const text = await ladeTeilAntwort(service, teilPfad(lauf.owner_id, zeile.id, t.nr))
       if (!text) throw new KernFehler('Ein Teil der Antwort fehlt.', 500)
       antworten.push(text)
+      const hinweis = await ladeTeilAntwort(service, teilHinweisPfad(lauf.owner_id, zeile.id, t.nr))
+      if (hinweis) gekuerzt.push(hinweis)
     }
     const { antwort } = await kern<{ antwort: string }>('/api/zusammenfuegen', { antworten, werkzeug: zeile.werkzeug })
 
@@ -555,7 +581,8 @@ export async function schliesseAb(service: SupabaseClient, laufId: string) {
         pruefung: {
           lesbar: true,
           fehler: null,
-          befunde: (pruefung.befunde ?? []).map((b) => ({ text: String(b.text) })),
+          // Gekürzte Teile stehen zuerst: Das ist der wichtigste Hinweis
+          befunde: [...gekuerzt, ...(pruefung.befunde ?? []).map((b) => String(b.text))].map((text) => ({ text })),
           korrekturen: Number(pruefung.korrekturen) || 0,
           nachbesserungsPrompt: null,
         },
@@ -566,7 +593,7 @@ export async function schliesseAb(service: SupabaseClient, laufId: string) {
         ...frischStempel(),
       })
       .eq('id', zeile.id)
-    await beendeLauf(service, laufId, 'fertig')
+    await beendeLauf(service, laufId, 'fertig', gekuerzt[0], gekuerzt.length ? 'gekuerzt' : undefined)
   } catch (err) {
     console.error('[werkzeugkiste-direkt] Abschluss fehlgeschlagen', err instanceof Error ? err.message : 'unbekannt')
     // Kern-Fehler mit Satz sind endgültig; alles andere darf die Statusabfrage noch einmal versuchen

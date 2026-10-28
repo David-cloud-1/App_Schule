@@ -22,7 +22,7 @@ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { DELETE as abbrechen, GET as status, POST as starten } from './ablaeufe/[id]/direkt/route'
 import { POST as teilArbeiter } from '../../intern/werkzeugkiste/teil/route'
-import { anfrageFuer, bearbeiteTeil, guthabenGesperrt, MAX_ANTWORT_BAUSTEINE, promptBloecke } from '@/lib/werkzeugkiste-direkt'
+import { anfrageFuer, bearbeiteTeil, gekuerztHinweis, guthabenGesperrt, MAX_ANTWORT_BAUSTEINE, promptBloecke } from '@/lib/werkzeugkiste-direkt'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const LAUF = '22222222-2222-4222-8222-222222222222'
@@ -326,21 +326,55 @@ describe('Interne Arbeiter (PROJ-64)', () => {
     expect(anfrageFuer('m', []).thinking).toEqual({ type: 'disabled' })
   })
 
-  it('wiederholt eine abgeschnittene Antwort NICHT (gleiche Anfrage, doppelte Kosten) und sagt klar, was zu tun ist', async () => {
-    laeufe.push({ ...LAUF_ZEILE })
-    kern({ '/api/prompt': { prompt: 'REGELN\nLEHRTEXT:\nSkript' } })
+  const abgeschnitten = () =>
     ki.stream.mockReturnValue({
       finalMessage: async () => ({
-        content: [{ type: 'text', text: 'cover:\n  title: abge' }],
+        content: [{ type: 'text', text: 'cover:\n  title: A\nchapters:\n  - title: Eins\n    elements: []\n  - title: Zw' }],
         stop_reason: 'max_tokens',
         usage: { input_tokens: 5000, output_tokens: MAX_ANTWORT_BAUSTEINE },
       }),
       abort: vi.fn(),
     })
+
+  it('rettet eine abgeschnittene Antwort: gleiche Anfrage nicht wiederholt, vollständige Kapitel behalten, klarer Hinweis', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    kern({
+      '/api/prompt': { prompt: 'REGELN\nLEHRTEXT:\nSkript' },
+      '/api/retten': { antwort: 'cover:\n  title: A\nchapters:\n  - title: Eins\n    elements: []\n', kapitel: 1 },
+      '/api/pruefen': { lesbar: true, fehler: null, befunde: [], nachbesserungsPrompt: null },
+    })
+    abgeschnitten()
+    await bearbeiteTeil(db.client, 'https://app.test', TEIL)
+    expect(ki.stream).toHaveBeenCalledTimes(1) // nichts doppelt bezahlt
+    expect(teil).toMatchObject({ status: 'fertig', ki_aufrufe: 1, aus_tokens: MAX_ANTWORT_BAUSTEINE })
+    const hochgeladen = speicher.upload.mock.calls.map(([pfad]) => pfad as string)
+    expect(hochgeladen).toContain('u1/' + ID + '/teil-1.yaml')
+    expect(hochgeladen).toContain('u1/' + ID + '/teil-1.hinweis')
+    // der gerettete Text (nicht der abgeschnittene) wurde gespeichert
+    const yaml = speicher.upload.mock.calls.find(([pfad]) => String(pfad).endsWith('teil-1.yaml'))![1] as Blob
+    expect(await yaml.text()).not.toContain('Zw')
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/api/intern/werkzeugkiste/abschluss'))).toBe(true)
+  })
+
+  it('beendet den Lauf mit klarem Satz, wenn sich nichts retten lässt — ohne zweiten KI-Aufruf', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.includes('/api/intern/')) return new Response('{}', { status: 202 })
+      if (url.endsWith('/api/prompt')) return new Response(JSON.stringify({ prompt: 'R\nLEHRTEXT:\nS' }), { status: 200 })
+      return new Response(JSON.stringify({ error: 'Aus der abgeschnittenen Antwort ließ sich kein vollständiges Kapitel retten.' }), { status: 400 })
+    })
+    abgeschnitten()
     await bearbeiteTeil(db.client, 'https://app.test', TEIL)
     expect(ki.stream).toHaveBeenCalledTimes(1)
     expect(laeufe[0]).toMatchObject({ status: 'fehlgeschlagen', fehler_art: 'zulang' })
     expect(String(laeufe[0].fehler)).toContain('zu lang')
-    expect(teil).toMatchObject({ status: 'fehlgeschlagen', ki_aufrufe: 1, aus_tokens: MAX_ANTWORT_BAUSTEINE })
+    expect(teil).toMatchObject({ status: 'fehlgeschlagen', ki_aufrufe: 1 })
+  })
+
+  it('formuliert den Hinweis für gekürzte Teile mit Fundort', () => {
+    expect(gekuerztHinweis(1, 1, 3, { seiten: '', abschnitte: [] })).toContain('Das Material wurde nach Kapitel 3 abgeschnitten')
+    const teil2 = gekuerztHinweis(2, 6, 4, { seiten: '', abschnitte: [5, 6, 7] })
+    expect(teil2).toContain('Teil 2 von 6 (Abschnitte 5, 6, 7)')
+    expect(gekuerztHinweis(3, 6, 1, { seiten: '10-14', abschnitte: [] })).toContain('Seiten 10-14')
   })
 })
