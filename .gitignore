@@ -49,3 +49,6 @@ scripts/engagement/history/
 
 # Wegwerf-Skripte und Zwischenstände der Fragen-Sammelläufe — bleiben lokal
 scripts/scratch/
+
+# Vorschaubilder zum Ansehen (nur bewusst eingecheckte bleiben versioniert)
+docs/vorschau/*.png
