@@ -17,6 +17,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { contentScopeShort, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
+// PROJ-51: Die Werkzeugkiste ist eine Seite im Lehrkräfte-Bereich (vorher Hugging Face)
+import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -70,8 +72,6 @@ export const ADMIN_HOME_HREF = '/admin'
 export const ADMIN_ACCOUNT_HREF = '/admin/konto'
 export const ADMIN_ACCOUNT_LABEL = 'Mein Konto'
 
-export const WERKZEUGKISTE_URL = 'https://divadl-werkzeugkiste.hf.space'
-
 export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     id: 'unterricht',
@@ -86,11 +86,10 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         teacherVisible: true,
       },
       {
-        href: WERKZEUGKISTE_URL,
+        href: WERKZEUGKISTE_HREF,
         label: 'Werkzeugkiste',
-        description: 'KI-Werkzeuge für Arbeitsblätter, Klassenarbeiten und mehr',
+        description: 'Aus einem Skript Unterrichtsmaterial machen – kostenlos, mit deiner KI',
         icon: Wrench,
-        external: true,
         teacherVisible: true,
       },
       {
@@ -292,8 +291,8 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     label: 'Werkzeugkiste öffnen',
     keywords: ['ki', 'arbeitsblatt', 'werkzeug'],
     kind: 'link',
-    href: WERKZEUGKISTE_URL,
-    external: true,
+    href: WERKZEUGKISTE_HREF,
+    requiresHref: WERKZEUGKISTE_HREF,
   },
   {
     id: 'mein-konto',
@@ -363,11 +362,10 @@ export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
   {
     id: 'werkzeugkiste',
     label: 'Werkzeugkiste öffnen',
-    description: 'Arbeitsblätter und Klassenarbeiten mit KI',
-    href: WERKZEUGKISTE_URL,
+    description: 'Aus einem Skript Unterrichtsmaterial machen',
+    href: WERKZEUGKISTE_HREF,
     icon: Wrench,
-    external: true,
-    requiresHref: WERKZEUGKISTE_URL,
+    requiresHref: WERKZEUGKISTE_HREF,
   },
 ]
 
