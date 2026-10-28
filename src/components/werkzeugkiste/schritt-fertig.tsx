@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, Download, Eye, PencilLine, Repeat } from 'lucide-react'
+import { Check, Download, Eye, Loader2, PencilLine, Repeat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ablaufHref, type AblaufErgebnis } from '@/lib/werkzeugkiste'
-import { downloadHref, vorschauHref } from '@/lib/werkzeugkiste-api'
+import { downloadHref, ladeVorschau } from '@/lib/werkzeugkiste-api'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 
 /**
@@ -15,6 +15,19 @@ import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
  */
 export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebnis: AblaufErgebnis }) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
+  const [vorschau, setVorschau] = useState<string | null>(null)
+  const [vorschauFehler, setVorschauFehler] = useState(false)
+
+  useEffect(() => {
+    if (!vorschauOffen || vorschau !== null) return
+    let aktiv = true
+    ladeVorschau(ablaufId)
+      .then((html) => aktiv && setVorschau(html))
+      .catch(() => aktiv && setVorschauFehler(true))
+    return () => {
+      aktiv = false
+    }
+  }, [vorschauOffen, vorschau, ablaufId])
 
   return (
     <div className="space-y-8">
@@ -75,14 +88,23 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
               Jede Aufgabe mit der hinterlegten Lösung – richtige Antworten sind hervorgehoben.
             </DialogDescription>
           </DialogHeader>
-          {vorschauOffen && (
+          {vorschau !== null ? (
             // Abgeschottet: Die Vorschau enthält Text aus der KI-Antwort — keine Skripte, kein Zugriff auf die App
             <iframe
-              src={vorschauHref(ablaufId)}
+              srcDoc={vorschau}
               sandbox=""
               title={`Vorschau: ${ergebnis.titel}`}
               className="min-h-0 w-full flex-1 rounded-xl border border-ws-line bg-white"
             />
+          ) : vorschauFehler ? (
+            <p role="alert" className="text-sm text-ws-red">
+              Die Vorschau konnte nicht geladen werden. Die Datei kannst du trotzdem herunterladen.
+            </p>
+          ) : (
+            <p role="status" className="flex items-center gap-2 text-sm text-ws-muted">
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Vorschau wird geladen …
+            </p>
           )}
         </DialogContent>
       </Dialog>

@@ -101,8 +101,9 @@ export function lieseSkriptEin(id: string) {
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/einlesen`, { method: 'POST' })
 }
 
+/** `hinweis`: z. B. „Die Seitenangabe war nicht lesbar – ganzes Skript verwendet“ */
 export function erstellePrompt(id: string) {
-  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/prompt`, { method: 'POST' })
+  return anfrage<{ ablauf: Ablauf; hinweis?: string | null }>(`/ablaeufe/${encodeURIComponent(id)}/prompt`, { method: 'POST' })
 }
 
 export function pruefeAntwort(id: string, antwort: string) {
@@ -122,6 +123,13 @@ export function downloadHref(id: string) {
 
 export function vorschauHref(id: string) {
   return `${WK_API}/ablaeufe/${encodeURIComponent(id)}/vorschau`
+}
+
+/** Vorschau-HTML laden — angezeigt per srcdoc, weil die App iframes per X-Frame-Options sperrt */
+export async function ladeVorschau(id: string): Promise<string> {
+  const res = await fetch(vorschauHref(id)).catch(() => null)
+  if (!res?.ok) throw new WerkzeugFehler('Die Vorschau konnte nicht geladen werden.', res?.status ?? 0)
+  return res.text()
 }
 
 /**

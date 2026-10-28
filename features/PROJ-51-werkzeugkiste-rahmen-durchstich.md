@@ -356,6 +356,37 @@ Fehler kommen als `{ error, hint? }` mit verständlichem Text. Das Format des Ab
 
 **Noch offen bis `/backend`:** Ohne die Schnittstelle lässt sich der Ablauf nicht durchklicken. Die Startseite funktioniert schon. „Zuletzt gewählte Werte“ belegt der Server beim Anlegen vor.
 
+## Backend-Umsetzung (2026-10-28)
+
+**Datenbank** (`supabase/migrations/20261028_proj51_werkzeug_ablaeufe.sql`, angewendet nach Freigabe des Nutzers):
+- Tabelle `werkzeug_ablaeufe` wie im Tech Design. RLS für SELECT, INSERT, UPDATE und DELETE: nur `owner_id = auth.uid()` **und** `has_teacher_role()`. Auch der Super-Admin sieht keine fremden Abläufe. Indizes auf `(owner_id, updated_at)` und `laeuft_ab_am`.
+- Privater Speicherbereich `werkzeugkiste` (50 MB je Datei) **ohne** Policies für angemeldete Nutzer. Zugriff nur über den Service-Schlüssel des Servers und über kurzlebige Adressen (120 s). Pfade: `<owner>/<ablauf>/skript.<ext> | einlesung.zip | ausgabe | vorschau.html`.
+- Supabase-Sicherheitsprüfung danach ohne Befund für die neue Tabelle.
+
+**API-Routen** (`src/app/api/admin/werkzeugkiste/…`, gemeinsame Logik in `src/lib/werkzeugkiste-server.ts`): genau die Liste aus der Frontend-Umsetzung. Alle prüfen `requireTeacherOrAdmin`, lesen den Ablauf über RLS, validieren mit Zod und geben verständliche Fehler (`{error, hint}`) zurück. Ergänzungen:
+- `POST /ablaeufe` belegt Niveau, Bildungsgang und Format aus dem letzten eigenen Ablauf vor und bremst ab 50 offenen Abläufen (429).
+- `PATCH` erhöht `schritt` nur, wenn der Ablauf so weit vorbereitet ist (`schrittErlaubt`). Unbekannte Felder werden abgelehnt.
+- `POST …/einlesen` setzt alles zurück, was auf einer früheren Einlesung aufbaute.
+- `POST …/prompt` gibt zusätzlich `hinweis` zurück (z. B. unlesbare Seitenangabe, sehr langes Skript). Die Oberfläche zeigt ihn in Schritt 3.
+- `GET …/download` hängt den Dateinamen einfach kodiert an. Mit der Option von supabase-js würden Umlaute doppelt kodiert.
+- `GET …/vorschau` liefert HTML mit `Content-Security-Policy: default-src 'none'; …; sandbox`. Die Oberfläche lädt es und zeigt es per `iframe srcdoc sandbox=""` an, weil die App `X-Frame-Options: DENY` setzt.
+- Kern-Routen haben `maxDuration` 60–120 s.
+
+**Tägliches Aufräumen:** `GET /api/cron/werkzeugkiste-aufraeumen` (Vercel Cron 03:30 UTC, `vercel.json`) löscht Abläufe mit `laeuft_ab_am < jetzt` samt Dateien, höchstens 200 je Lauf, und prüft `CRON_SECRET`. Die Middleware lässt dafür `/api/cron/` ohne Anmeldung durch. Der Nutzer hat diese Änderung am Anmeldeablauf freigegeben.
+
+**Kern** (Repository `Werkzeugkiste`, Zweig `vercel-kern`, https://werkzeugkiste-kern.vercel.app): `kern.py` (Einlesen, Prompt, Prüfstelle, Bau, Vorschau mit denselben Aufrufen wie `h5p_server.py`) und `app.py` (Flask: `/api/optionen|einlesen|prompt|pruefen|bauen`, Kennwort `KERN_SECRET`, Dateien nur über die mitgeschickten Adressen). Einlesung = ZIP aus `text.txt` und Bildern. Alle Kern-Bibliotheken sind fest versioniert. Vercel nutzt Python 3.12 (3.11 wie auf Hugging Face bietet Vercel nicht an), die Tests laufen trotzdem identisch.
+
+**Umgebungsvariablen** (Production + Preview in `spedilern`, lokal in `.env.local`, dokumentiert in `.env.local.example`): `WERKZEUGKISTE_KERN_URL`, `WERKZEUGKISTE_KERN_SECRET`, `CRON_SECRET`.
+
+**Tests**
+- App: `src/lib/werkzeugkiste-server.test.ts` (9), `src/app/api/admin/werkzeugkiste/werkzeugkiste.test.ts` (18: Rollen, Validierung, 404 fremd, Schritt-Regeln, Löschen samt Dateien, alle Kern-Schritte, Download, CSP der Vorschau, Cron-Schutz und -Löschung), Proxy-Test für `/api/cron/`. Gesamtsuite 1626 grün, Build und Lint sauber.
+- Kern: `kern_test.py` (12) — **Prompt zeichengenau gleich** (Standard, mit Lernfeld/Umfang/Seite, mit Seiten- und Word-Abschnittsauswahl), **Prüfung gleich**, **H5P-Inhalt gleich** (ohne Zufalls-IDs), Seite baut, unlesbare Antwort sperrt.
+- Durchlauf gegen echten Speicher und echten Kern (Heft 2, PDF): Hochladen → Einlesen 11 s (233 Lösungen) → Prompt → Prüfen (17 Hinweise) → Bauen (9 Kapitel, 65 Aufgaben) → Datei und Vorschau abrufbar. Testdateien danach gelöscht.
+
+**Bekannte Grenzen**
+- Die Warnungs- und Aufgabenzähler des H5P- bzw. Seitenbaus sind Modul-Variablen. Bei gleichzeitigen Aufrufen im selben Kern-Prozess kann die angezeigte Zahl ungenau sein. Die Datei betrifft das nicht.
+- Kennzahl „Seiten“ bei Word kommt aus den Dokument-Eigenschaften (`docProps/app.xml`). Fehlen sie, wird sie aus der Textlänge geschätzt.
+
 ## QA Test Results
 _To be added by /qa_
 

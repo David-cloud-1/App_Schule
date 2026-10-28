@@ -77,6 +77,7 @@ export function AblaufSeite({ id }: { id: string }) {
   const [einstellungen, setEinstellungen] = useState<AblaufEinstellungen | null>(null)
   const [antwort, setAntwort] = useState('')
 
+  const [promptHinweis, setPromptHinweis] = useState<string | null>(null)
   const [beschaeftigt, setBeschaeftigt] = useState(false)
   const [aktionsFehler, setAktionsFehler] = useState<string | null>(null)
   const [prueftGerade, setPrueftGerade] = useState(false)
@@ -258,8 +259,9 @@ export function AblaufSeite({ id }: { id: string }) {
           {weiter('Prompt erstellen', () =>
             aktion(async () => {
               await speichereAblauf(id, { werkzeug, einstellungen })
-              const { ablauf: a } = await erstellePrompt(id)
+              const { ablauf: a, hinweis } = await erstellePrompt(id)
               setAblauf(a)
+              setPromptHinweis(hinweis ?? null)
               gehe(3)
             }),
           )}
@@ -268,7 +270,12 @@ export function AblaufSeite({ id }: { id: string }) {
       break
 
     case 3:
-      inhalt = <SchrittPrompt prompt={ablauf.prompt ?? ''} />
+      inhalt = (
+        <>
+          {promptHinweis && <Hinweis ton="warnung">{promptHinweis}</Hinweis>}
+          <SchrittPrompt prompt={ablauf.prompt ?? ''} />
+        </>
+      )
       fuss = (
         <>
           {zurueck}

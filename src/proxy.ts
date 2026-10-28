@@ -47,7 +47,9 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Public routes that don't require authentication
-  const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback']
+  // /api/cron/: Zeitpläne von Vercel kommen ohne Anmeldung — jede Route dort
+  // prüft selbst das CRON_SECRET (PROJ-51)
+  const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/api/cron/']
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path))
 
   // Redirect unauthenticated users to login (API routes get 401 JSON).

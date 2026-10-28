@@ -37,6 +37,13 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     expect((await call('/api/admin/users')).status).toBe(401)
   })
 
+  it('lässt nur Zeitpläne unter /api/cron/ ohne Anmeldung durch (PROJ-51, Route prüft CRON_SECRET)', async () => {
+    state.user = null
+    expect((await call('/api/cron/werkzeugkiste-aufraeumen')).status).toBe(200)
+    expect((await call('/api/cronjob')).status).toBe(401)
+    expect((await call('/api/admin/werkzeugkiste/optionen')).status).toBe(401)
+  })
+
   it('lässt Azubis nicht in den Lehrkräfte-Bereich', async () => {
     state.role = 'student'
     expect(locationOf(await call('/admin'))).toBe('/?kein-zugang=1')
