@@ -106,7 +106,7 @@ export async function POST(request: Request, { params }: Kontext) {
     }
 
     const einstellungen = einstellungenFuerWechsel(parsed.data.werkzeug, parsed.data.einstellungen)
-    const neu = await aktualisiere(auth.supabase, zeile.id, { werkzeug: parsed.data.werkzeug, einstellungen, weg: 'direkt' })
+    const neu = await aktualisiere(auth.supabase, zeile.id, { werkzeug: parsed.data.werkzeug, einstellungen, weg: 'direkt', schritt: Math.max(zeile.schritt, 3) })
     if (!neu) return fehler('Die Einstellungen konnten nicht gespeichert werden.', 500)
 
     // Bei leerem Guthaben ist das hier der eine Probe-Lauf der Stunde

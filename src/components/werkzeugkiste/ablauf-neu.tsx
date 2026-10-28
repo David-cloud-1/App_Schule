@@ -99,6 +99,9 @@ export function AblaufNeu({ werkzeugParam }: { werkzeugParam: string | null }) {
       }
     >
       {phase === 'wahl' && <DateiAblage onDatei={starte} />}
+      {phase === 'wahl' && (
+        <p className="text-sm text-ws-faint">Bitte keine Schülerdaten im Skript – nur Unterrichtsmaterial.</p>
+      )}
       {(phase === 'hochladen' || phase === 'lesen') && datei && (
         <HochladeFortschritt datei={datei} phase={phase} prozent={prozent} />
       )}

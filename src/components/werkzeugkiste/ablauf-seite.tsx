@@ -17,15 +17,19 @@ import {
   type AblaufAuswahl,
   type AblaufEinstellungen,
   type AblaufSchritt,
+  type LaufInfo,
 } from '@/lib/werkzeugkiste'
 import {
   baueMaterial,
+  brichDirektAb,
   erstellePrompt,
+  ladeDirektStand,
   ladeAblauf,
   ladeOptionen,
   loescheAblauf,
   pruefeAntwort,
   speichereAblauf,
+  starteDirekt,
   WerkzeugFehler,
   type WerkzeugOptionen,
 } from '@/lib/werkzeugkiste-api'
@@ -35,10 +39,17 @@ import { kurzesNiveau, SchrittEinstellungen } from '@/components/werkzeugkiste/s
 import { SchrittPrompt } from '@/components/werkzeugkiste/schritt-prompt'
 import { SchrittAntwort } from '@/components/werkzeugkiste/schritt-antwort'
 import { SchrittFertig } from '@/components/werkzeugkiste/schritt-fertig'
+import { SchrittErstellen } from '@/components/werkzeugkiste/schritt-erstellen'
+import { KostenRueckfrage, WegKarte, type WegDaten } from '@/components/werkzeugkiste/schritt-wegwahl'
+import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 
 /** Wartezeit nach dem letzten Tippen/Einfügen, bevor die Prüfstelle läuft */
 const PRUEF_PAUSE_MS = 800
 const MIN_ANTWORT_ZEICHEN = 20
+/** So oft fragt der Warte-Bildschirm nach dem Stand der direkten Erstellung */
+const LAUF_ABFRAGE_MS = 3000
+
+const TITEL_ERSTELLEN = { titel: 'Dein Material wird erstellt', beschreibung: 'Die App fragt die KI für dich und prüft die Antwort.' }
 
 const TITEL: Record<AblaufSchritt, { titel: string; beschreibung?: string }> = {
   1: { titel: 'Skript hochladen', beschreibung: 'Word, PDF oder PowerPoint. Rot markierter oder versteckter Text wird als Lösung erkannt.' },
@@ -84,6 +95,12 @@ export function AblaufSeite({ id }: { id: string }) {
   const [wiederholen, setWiederholen] = useState<(() => Promise<void>) | null>(null)
   /** Zählt Neuversuche der Prüfstelle hoch, damit sie nach einem Fehler noch einmal läuft */
   const [pruefVersuch, setPruefVersuch] = useState(0)
+
+  // Direkt erstellen (PROJ-64)
+  const [wegDaten, setWegDaten] = useState<WegDaten | null>(null)
+  const [wegFehler, setWegFehler] = useState(false)
+  const [lauf, setLauf] = useState<LaufInfo | null>(null)
+  const [rueckfrage, setRueckfrage] = useState<string | null>(null)
   const [prueftGerade, setPrueftGerade] = useState(false)
   const [pruefFehler, setPruefFehler] = useState<string | null>(null)
   /** Antwort, zu der die angezeigte Prüfung gehört */
@@ -154,6 +171,62 @@ export function AblaufSeite({ id }: { id: string }) {
     return () => clearTimeout(t)
   }, [antwort, geprueftFuer, ablauf, schritt, id, pruefVersuch])
 
+  const direkt = ablauf?.weg === 'direkt'
+  const geladen = !!ablauf
+
+  // Schritt 2: Kosten für die Wegwahl holen (die Auswahl steht seit Schritt 1 fest)
+  useEffect(() => {
+    if (!ablauf?.kennzahlen || schritt !== 2) return
+    let aktiv = true
+    setWegFehler(false)
+    ladeDirektStand(id, true)
+      .then((d) => aktiv && setWegDaten({ sperre: d.sperre, preis: d.preis, usdEur: d.usdEur, teile: d.teile }))
+      .catch(() => aktiv && setWegFehler(true))
+    return () => {
+      aktiv = false
+    }
+  }, [id, schritt, ablauf?.kennzahlen])
+
+  // Schritt „Erstellen“: Stand alle paar Sekunden abfragen; fertig → Ergebnis holen und weiter
+  useEffect(() => {
+    if (!geladen || !direkt || schritt !== 3) return
+    let aktiv = true
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const frage = async () => {
+      try {
+        const d = await ladeDirektStand(id)
+        if (!aktiv) return
+        setLauf(d.lauf)
+        if (d.lauf?.status === 'fertig') {
+          await lade()
+          if (aktiv) router.replace(ablaufHref(id, 5), { scroll: false })
+          return
+        }
+        if (d.lauf && d.lauf.status !== 'laeuft' && d.lauf.status !== 'baut') return
+      } catch {
+        // kurzer Aussetzer (Netz, Neustart des Servers) — der nächste Versuch klappt meist
+      }
+      if (aktiv) timer = setTimeout(frage, LAUF_ABFRAGE_MS)
+    }
+    void frage()
+    return () => {
+      aktiv = false
+      if (timer) clearTimeout(timer)
+    }
+  }, [id, geladen, direkt, schritt, lauf?.id, lade, router])
+
+  // Schritt 5 nach direktem Weg: genauen Betrag laden
+  useEffect(() => {
+    if (!geladen || !direkt || schritt !== 5 || lauf?.status === 'fertig') return
+    let aktiv = true
+    ladeDirektStand(id)
+      .then((d) => aktiv && setLauf(d.lauf))
+      .catch(() => undefined)
+    return () => {
+      aktiv = false
+    }
+  }, [id, geladen, direkt, schritt, lauf?.status])
+
   if (ladeFehler) {
     const weg = ladeFehler.status === 404
     const keinZugang = ladeFehler.status === 401 || ladeFehler.status === 403
@@ -184,9 +257,59 @@ export function AblaufSeite({ id }: { id: string }) {
     )
   }
 
+  async function startDirekt(bestaetigt = false) {
+    if (!einstellungen) return
+    setBeschaeftigt(true)
+    setAktionsFehler(null)
+    setWiederholen(null)
+    try {
+      const { lauf: neu } = await starteDirekt(id, werkzeug, einstellungen, bestaetigt)
+      setLauf(neu)
+      setAblauf((a) => (a ? { ...a, weg: 'direkt', schritt: Math.max(a.schritt, 3) as AblaufSchritt } : a))
+      router.push(ablaufHref(id, 3), { scroll: false })
+    } catch (e) {
+      if (e instanceof WerkzeugFehler && e.status === 409) {
+        setRueckfrage(e.message)
+      } else if (e instanceof WerkzeugFehler && (e.status === 403 || e.status === 429)) {
+        // gesperrt: Satz zeigen und die Karte neu laden, damit sie den Grund nennt
+        setAktionsFehler(e.message)
+        ladeDirektStand(id, true)
+          .then((d) => setWegDaten({ sperre: d.sperre, preis: d.preis, usdEur: d.usdEur, teile: d.teile }))
+          .catch(() => undefined)
+      } else {
+        setAktionsFehler(e instanceof WerkzeugFehler ? e.message : 'Das hat gerade nicht geklappt. Bitte versuche es erneut.')
+        setWiederholen(() => () => startDirekt(bestaetigt))
+      }
+    } finally {
+      setBeschaeftigt(false)
+    }
+  }
+
+  /** Vom direkten Weg in den kostenlosen: gleiche Auswahl und Einstellungen, jetzt mit Prompt */
+  function wechsleZuKostenlos() {
+    return aktion(async () => {
+      if (!einstellungen) return
+      await speichereAblauf(id, { werkzeug, einstellungen, weg: 'kostenlos' })
+      const { ablauf: a, hinweis } = await erstellePrompt(id)
+      setAblauf(a)
+      setPromptHinweis(hinweis ?? null)
+      setLauf(null)
+      router.push(ablaufHref(id, 3), { scroll: false })
+    })
+  }
+
+  async function brichAb() {
+    try {
+      const { lauf: neu } = await brichDirektAb(id)
+      setLauf(neu)
+    } catch (e) {
+      setAktionsFehler(e instanceof WerkzeugFehler ? e.message : 'Das Abbrechen hat gerade nicht geklappt.')
+    }
+  }
+
   const niveau = optionen?.niveaus.find((n) => n.key === einstellungen.niveau)
   const kurzinfo = ablaufKurzinfo({ werkzeug, einstellungen, datei: ablauf.datei }, niveau ? kurzesNiveau(niveau) : undefined)
-  const kopf = TITEL[schritt]
+  const kopf = direkt && schritt === 3 ? TITEL_ERSTELLEN : TITEL[schritt]
 
   const zurueck =
     schritt > 1 && schritt < 5 ? (
@@ -260,23 +383,52 @@ export function AblaufSeite({ id }: { id: string }) {
           setEinstellungen={setEinstellungen}
         />
       )
+      inhalt = (
+        <>
+          {inhalt}
+          <WegKarte daten={wegDaten} fehler={wegFehler} />
+        </>
+      )
       fuss = (
         <>
           {zurueck}
-          {weiter('Prompt erstellen', () =>
-            aktion(async () => {
-              await speichereAblauf(id, { werkzeug, einstellungen })
-              const { ablauf: a, hinweis } = await erstellePrompt(id)
-              setAblauf(a)
-              setPromptHinweis(hinweis ?? null)
-              gehe(3)
-            }),
-          )}
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+            <Button
+              variant="outline"
+              disabled={beschaeftigt}
+              onClick={() =>
+                aktion(async () => {
+                  await speichereAblauf(id, { werkzeug, einstellungen, weg: 'kostenlos' })
+                  const { ablauf: a, hinweis } = await erstellePrompt(id)
+                  setAblauf(a)
+                  setPromptHinweis(hinweis ?? null)
+                  gehe(3)
+                })
+              }
+              className={`${NEBENAKTION} min-h-12 px-5`}
+            >
+              Kostenlos mit eigener KI
+            </Button>
+            {weiter('Direkt erstellen', () => void startDirekt(), wegDaten?.sperre != null)}
+          </div>
         </>
       )
       break
 
     case 3:
+      if (direkt) {
+        inhalt = (
+          <SchrittErstellen
+            lauf={lauf}
+            beschaeftigt={beschaeftigt}
+            abbrechen={() => void brichAb()}
+            nochmal={() => void startDirekt(true)}
+            kostenlos={() => void wechsleZuKostenlos()}
+          />
+        )
+        fuss = null
+        break
+      }
       inhalt = (
         <>
           {promptHinweis && <Hinweis ton="warnung">{promptHinweis}</Hinweis>}
@@ -329,7 +481,15 @@ export function AblaufSeite({ id }: { id: string }) {
     }
 
     case 5:
-      inhalt = ablauf.ergebnis ? <SchrittFertig ablaufId={id} ergebnis={ablauf.ergebnis} /> : null
+      inhalt = ablauf.ergebnis ? (
+        <SchrittFertig
+          ablaufId={id}
+          ergebnis={ablauf.ergebnis}
+          direkt={direkt}
+          kostenEur={lauf?.status === 'fertig' ? lauf.kostenEur : null}
+          hinweise={direkt ? (ablauf.pruefung?.befunde ?? []).map((b) => b.text) : []}
+        />
+      ) : null
       fuss = null
       break
   }
@@ -338,6 +498,7 @@ export function AblaufSeite({ id }: { id: string }) {
     <AblaufRahmen
       schritt={schritt}
       erreicht={ablauf.schritt}
+      direkt={direkt}
       kurzinfo={kurzinfo}
       titel={kopf.titel}
       beschreibung={kopf.beschreibung}
@@ -345,6 +506,14 @@ export function AblaufSeite({ id }: { id: string }) {
       fuss={fuss}
     >
       {inhalt}
+      <KostenRueckfrage
+        satz={rueckfrage}
+        offen={rueckfrage !== null}
+        beiAuswahl={(weiter) => {
+          setRueckfrage(null)
+          if (weiter) void startDirekt(true)
+        }}
+      />
       {aktionsFehler && (
         <div role="alert">
           <Hinweis ton="warnung">{aktionsFehler}</Hinweis>

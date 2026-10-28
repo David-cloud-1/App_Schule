@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { ABLAUF_SCHRITTE, WERKZEUGKISTE_HREF, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import { ABLAUF_SCHRITTE, DIREKT_SCHRITTE, WERKZEUGKISTE_HREF, type AblaufSchritt } from '@/lib/werkzeugkiste'
 
 export const HAUPTAKTION =
   'min-h-12 w-full rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green sm:w-auto'
@@ -31,6 +31,7 @@ export const NEBENAKTION =
 export function AblaufRahmen({
   schritt,
   erreicht,
+  direkt,
   kurzinfo,
   titel,
   beschreibung,
@@ -41,6 +42,8 @@ export function AblaufRahmen({
   schritt: AblaufSchritt
   /** Weitester erreichter Schritt: davor gilt alles als erledigt */
   erreicht: AblaufSchritt
+  /** Direkter Weg (PROJ-64): vier Schritte statt fünf */
+  direkt?: boolean
   kurzinfo?: string
   titel: string
   beschreibung?: React.ReactNode
@@ -75,7 +78,7 @@ export function AblaufRahmen({
         tabIndex={-1}
         className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8"
       >
-        <Fortschritt schritt={schritt} erreicht={erreicht} />
+        <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} />
 
         <div className="space-y-2">
           <h1 ref={ueberschrift} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
@@ -96,23 +99,25 @@ export function AblaufRahmen({
   )
 }
 
-/** Fünf Schritte; auf dem Handy als „Schritt 2 von 5 · Einstellungen“ mit Balken */
-export function Fortschritt({ schritt, erreicht }: { schritt: AblaufSchritt; erreicht: AblaufSchritt }) {
-  const aktuell = ABLAUF_SCHRITTE[schritt - 1]
+/** Fünf Schritte (direkt: vier); auf dem Handy als „Schritt 2 von 5 · Einstellungen“ mit Balken */
+export function Fortschritt({ schritt, erreicht, direkt }: { schritt: AblaufSchritt; erreicht: AblaufSchritt; direkt?: boolean }) {
+  const schritte = direkt ? DIREKT_SCHRITTE : ABLAUF_SCHRITTE
+  const position = Math.max(1, schritte.findIndex((s) => s.nr === schritt) + 1)
+  const aktuell = schritte[position - 1]
   return (
     <nav aria-label="Fortschritt">
       <div className="space-y-2 sm:hidden">
         <p className="text-sm text-ws-muted">
-          Schritt {schritt} von {ABLAUF_SCHRITTE.length} · <span className="font-semibold text-ws-text">{aktuell.label}</span>
+          Schritt {position} von {schritte.length} · <span className="font-semibold text-ws-text">{aktuell.label}</span>
         </p>
         <Progress
-          value={(schritt / ABLAUF_SCHRITTE.length) * 100}
+          value={(position / schritte.length) * 100}
           className="h-2 bg-ws-raised [&>div]:bg-ws-green"
-          aria-label={`Schritt ${schritt} von ${ABLAUF_SCHRITTE.length}`}
+          aria-label={`Schritt ${position} von ${schritte.length}`}
         />
       </div>
       <ol className="hidden items-center gap-2 sm:flex">
-        {ABLAUF_SCHRITTE.map((s, i) => {
+        {schritte.map((s, i) => {
           const erledigt = s.nr < Math.max(schritt, erreicht) || schritt === 5
           const istAktuell = s.nr === schritt
           return (
@@ -134,7 +139,7 @@ export function Fortschritt({ schritt, erreicht }: { schritt: AblaufSchritt; err
                 {s.label}
                 {erledigt && !istAktuell && <span className="sr-only">(erledigt)</span>}
               </span>
-              {i < ABLAUF_SCHRITTE.length - 1 && (
+              {i < schritte.length - 1 && (
                 <span aria-hidden className={cn('h-0.5 min-w-4 flex-1 rounded-full', s.nr < schritt ? 'bg-ws-green' : 'bg-ws-raised')} />
               )}
             </li>

@@ -179,6 +179,14 @@ export const ABLAUF_SCHRITTE: { nr: AblaufSchritt; label: string }[] = [
   { nr: 5, label: 'Fertig' },
 ]
 
+/** Beim direkten Weg (PROJ-64) gibt es vier Schritte: Schritt 3 heißt „Erstellen“, Prompt und Antwort entfallen */
+export const DIREKT_SCHRITTE: { nr: AblaufSchritt; label: string }[] = [
+  { nr: 1, label: 'Skript' },
+  { nr: 2, label: 'Einstellungen' },
+  { nr: 3, label: 'Erstellen' },
+  { nr: 5, label: 'Fertig' },
+]
+
 export interface AblaufKennzahlen {
   seiten: number
   loesungen: number
@@ -267,13 +275,18 @@ export interface Ablauf {
  * Darf dieser Schritt geöffnet werden? Vorwärts nur, was schon vorbereitet
  * ist: Prompt erst mit Einlesung, Antwort erst mit Prompt, Fertig erst mit Ergebnis.
  */
-export function schrittErlaubt(ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'>, schritt: AblaufSchritt): boolean {
+export function schrittErlaubt(
+  ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg'>>,
+  schritt: AblaufSchritt,
+): boolean {
   switch (schritt) {
     case 1:
       return true
     case 2:
       return !!ablauf.kennzahlen
     case 3:
+      // Direkter Weg (PROJ-64): Schritt 3 ist „Erstellen“ und braucht keinen Prompt
+      return !!ablauf.kennzahlen && (ablauf.weg === 'direkt' || !!ablauf.prompt)
     case 4:
       return !!ablauf.kennzahlen && !!ablauf.prompt
     case 5:
@@ -284,7 +297,7 @@ export function schrittErlaubt(ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'e
 /** Schritt aus der Adresse, begrenzt auf das, was der Ablauf schon erlaubt */
 export function schrittAusParam(
   param: string | null | undefined,
-  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'>,
+  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg'>>,
 ): AblaufSchritt {
   const n = Number(param)
   const gewuenscht: AblaufSchritt = n >= 1 && n <= 5 && Number.isInteger(n) ? (n as AblaufSchritt) : ablauf.schritt

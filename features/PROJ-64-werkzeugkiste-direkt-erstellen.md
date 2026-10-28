@@ -255,6 +255,26 @@ Ablauf (PROJ-51, bekannter Rahmen)
 
 **Stand 2026-10-29:** Migration in Produktion angewendet (vom Nutzer im SQL Editor, geprüft: 3 Tabellen mit RLS, 3 Regeln, Trigger, eindeutiger Index, Spalte `weg`). Kern mit `/api/teilen` und `/api/zusammenfuegen` deployt und erreichbar. Noch offen: Anthropic-Konto: automatisches Nachladen aus, Modell `claude-sonnet-5-5` verfügbar, Ratenlimit-Stufe prüfen.
 
+## Frontend-Umsetzung (2026-10-29)
+
+**Neue Bausteine** (`src/components/werkzeugkiste/`)
+- `schritt-wegwahl.tsx`: `WegKarte` (zwei Wege kurz erklärt, Kostenschätzung „ca. 0,15 € · etwa 1–2 Minuten“ oder der Grund der Sperre: Guthaben leer / Tageslimit) und `KostenRueckfrage` (Dialog ab ca. 2 €).
+- `schritt-erstellen.tsx`: Warte-Schritt mit Fortschritt in Worten („2 von 6 Teilen sind fertig …“, „Die Datei wird gebaut …“), Balken, Hinweis „Seite darf verlassen werden“, Abbrechen mit Rückfrage (nennt den bisher angefallenen Betrag). Fehlerfall: erklärender Satz, bisherige Kosten, „Erneut versuchen“ und „Kostenlos mit eigener KI weitermachen“ (bei leerem Guthaben nur der zweite).
+- `werkzeugkiste-texte.ts`: gemeinsamer Guthaben-Satz für Server und Oberfläche.
+
+**Geändert**
+- `ablauf-seite.tsx`: Schritt 2 endet mit zwei Knöpfen: grün **„Direkt erstellen“** (gesperrt bei Guthaben/Tageslimit), outline **„Kostenlos mit eigener KI“** (speichert `weg: kostenlos`, bekannter Ablauf). Direkter Weg: Start → Schritt 3 „Erstellen“ → Abfrage des Stands alle 3 Sekunden (repariert dabei Hänger serverseitig) → bei „fertig“ Ergebnis laden und Schritt 5. Wechsel zum kostenlosen Weg erzeugt den Prompt aus derselben Auswahl und denselben Einstellungen.
+- Schrittleiste: beim direkten Weg **vier** Schritte (Skript · Einstellungen · Erstellen · Fertig), sonst fünf (`DIREKT_SCHRITTE`). `schrittErlaubt`/`schrittAusParam` kennen den Weg: Schritt 3 braucht beim direkten Weg keinen Prompt.
+- `schritt-fertig.tsx`: Zeile „Kosten: 0,13 €“ (genauer Betrag des Laufs), verbliebene Prüf-Hinweise als kurze Liste (höchstens 5, „… und N weitere“), „Antwort überarbeiten“ entfällt beim direkten Weg.
+- `ablauf-neu.tsx`: Hinweis „Bitte keine Schülerdaten im Skript – nur Unterrichtsmaterial.“
+- Backend: Start setzt Schritt 3, damit ein Neuladen den Warte-Schritt zeigt.
+
+**Tests:** `direkt.test.tsx` (17: Schätzung, Sperren, Rückfrage, Fortschrittssätze, Abbrechen mit Betrag, Fehlerfall mit beiden Knöpfen, leeres Guthaben, vier Schritte, Schrittregeln, Kosten und Hinweise in „Fertig“). Gesamtsuite 1663 grün, Typen, Lint und Build sauber.
+
+**Nicht geprüft:** Aussehen, Handy, echte Läufe mit der KI (kein Browser, kein KI-Schlüssel in Produktion).
+
+**Vor dem ersten Einsatz nötig:** `ANTHROPIC_API_KEY` in Vercel (Production) eintragen — fehlt dort bisher. Ohne ihn meldet „Direkt erstellen“ „noch nicht eingerichtet“ (503), der kostenlose Weg bleibt unberührt.
+
 ## QA Test Results
 _To be added by /qa_
 

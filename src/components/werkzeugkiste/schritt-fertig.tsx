@@ -7,13 +7,28 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ablaufHref, type AblaufErgebnis } from '@/lib/werkzeugkiste'
 import { downloadHref, ladeVorschau } from '@/lib/werkzeugkiste-api'
+import { euro } from '@/lib/werkzeugkiste-kosten'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 
 /**
  * Schritt 5 (PROJ-51): Erfolg, eine Hauptaktion „Herunterladen“, daneben die
  * Vorschau und darunter höchstens drei Vorschläge, wie es weitergeht.
  */
-export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebnis: AblaufErgebnis }) {
+export function SchrittFertig({
+  ablaufId,
+  ergebnis,
+  direkt,
+  kostenEur,
+  hinweise,
+}: {
+  ablaufId: string
+  ergebnis: AblaufErgebnis
+  /** Direkter Weg (PROJ-64): Kosten zeigen, kein „Antwort überarbeiten“ */
+  direkt?: boolean
+  kostenEur?: number | null
+  /** Was die Prüfstelle nach dem Lauf noch bemerkt hat — höchstens fünf, kurz */
+  hinweise?: string[]
+}) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
   const [vorschau, setVorschau] = useState<string | null>(null)
   const [vorschauFehler, setVorschauFehler] = useState(false)
@@ -59,8 +74,25 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
             Vorschau ansehen
           </Button>
         </div>
-        <p className="text-xs text-ws-faint">Der Download steht 7 Tage lang bereit.</p>
+        <p className="text-xs text-ws-faint">
+          Der Download steht 7 Tage lang bereit.
+          {direkt && kostenEur != null && <span className="ml-1 font-medium text-ws-muted">Kosten: {euro(kostenEur)}</span>}
+        </p>
       </div>
+
+      {hinweise && hinweise.length > 0 && (
+        <section aria-label="Hinweise zum Material" className="space-y-2 rounded-2xl border border-ws-orange/30 bg-ws-orange/10 p-4 text-sm">
+          <h2 className="font-semibold">
+            {hinweise.length === 1 ? 'Ein Hinweis zum Material' : `${hinweise.length} Hinweise zum Material`}
+          </h2>
+          <ul className="list-disc space-y-1 pl-5 leading-relaxed">
+            {hinweise.slice(0, 5).map((h, i) => (
+              <li key={i}>{h}</li>
+            ))}
+          </ul>
+          {hinweise.length > 5 && <p className="text-ws-muted">… und {hinweise.length - 5} weitere.</p>}
+        </section>
+      )}
 
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-ws-muted">Wie geht es weiter?</h2>
@@ -71,12 +103,14 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
               Gleiches Skript, anderes Werkzeug
             </Link>
           </Button>
-          <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>
-            <Link href={ablaufHref(ablaufId, 4)}>
-              <PencilLine className="mr-2 size-4 shrink-0" aria-hidden />
-              Antwort überarbeiten
-            </Link>
-          </Button>
+          {!direkt && (
+            <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>
+              <Link href={ablaufHref(ablaufId, 4)}>
+                <PencilLine className="mr-2 size-4 shrink-0" aria-hidden />
+                Antwort überarbeiten
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

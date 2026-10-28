@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { timingSafeEqual } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import { GUTHABEN_TEXT } from '@/lib/werkzeugkiste-texte'
 import { addiere, kostenUsd, TAGESLIMIT, type ModellPreis, type Verbrauch } from '@/lib/werkzeugkiste-kosten'
 import {
   ABLAUF_SPALTEN,
@@ -48,8 +49,7 @@ const PROBE_ABSTAND_MS = 60 * 60 * 1000
 const KI_FRIST_MS = 240_000
 const MAX_ANTWORT_BAUSTEINE = 20_000
 
-export const GUTHABEN_SATZ =
-  'Das Schulguthaben für die direkte Erstellung ist aufgebraucht. Du kannst kostenlos mit deiner eigenen KI weitermachen.'
+export const GUTHABEN_SATZ = GUTHABEN_TEXT
 const KI_SATZ = 'Die KI hat gerade nicht geantwortet. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
 const UNLESBAR_SATZ =
   'Die KI hat zweimal keine verwertbare Antwort geliefert. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
