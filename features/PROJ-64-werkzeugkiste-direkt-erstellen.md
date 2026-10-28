@@ -249,6 +249,13 @@ Ablauf (PROJ-51, bekannter Rahmen)
 - Browser-Aufrufe in `werkzeugkiste-api.ts`: `ladeDirektStand`, `starteDirekt`, `brichDirektAb`.
 - Tests: `direkt.test.ts` (14: Rollen, Start mit Anstoß, Doppelklick, Guthaben-Sperre und Probe, Tageslimit, Rückfrage ab 2 €, Validierung, Abbruch, Stand, Arbeiter-Schutz, Caching-Blöcke, genaue Verbuchung, Guthaben leer, keine Doppelübernahme), `werkzeugkiste-kosten.test.ts` (5), Middleware-Test. Gesamtsuite 1646 grün, Build sauber.
 
+**Praxistest 1 (2026-10-29) – Fehler und Behebung**
+- **Befund:** Ein Skript mit 5.395 Zeichen (3 Seiten) scheiterte mit „Die KI hat zweimal keine verwertbare Antwort geliefert“ und kostete **0,40 €**. Die Datenbank zeigte je Aufruf genau 20.000 Ausgabe-Bausteine, also exakt die eingestellte Obergrenze: Beide Antworten waren **abgeschnitten**.
+- **Ursache:** Claude Sonnet 5.5 „denkt“ ohne Angabe standardmäßig nach (adaptives Nachdenken, hoher Aufwand). Das Nachdenken zählt als Ausgabe, wird bezahlt und zählt zur Grenze. Es verbrauchte zusammen mit der halben Antwort die 20.000 Bausteine. Der zweite Versuch wiederholte dieselbe Anfrage und verdoppelte die Kosten.
+- **Behebung:** (1) Nachdenken ausdrücklich **aus** (`thinking: disabled`) — die Aufgabe ist reines Umformen in ein festes Gerüst. (2) Obergrenze 24.000 Bausteine (deckelt einen Aufruf auf ca. 0,24 $). (3) Eine **abgeschnittene** Antwort wird nicht wiederholt (gleiche Anfrage, gleiches Ergebnis, doppelte Kosten), der Lauf endet sofort mit dem Satz „Die Antwort der KI war für dieses Skript zu lang …“ (`fehler_art: zulang`). Wiederholt wird nur bei vollständiger, aber unlesbarer Antwort.
+- **Tests:** zwei neue (Nachdenken aus + Obergrenze; Abbruch ohne Wiederholung, ein einziger KI-Aufruf). 16 grün.
+- **Offen:** Die Wirkung gegen die echte KI ist noch nicht bestätigt (kein Zugriff auf den Schlüssel von hier). Der Nachtest mit dem 3-Seiten-Skript entscheidet.
+
 **Abweichungen vom Design**
 - Tageslimit über die letzten **24 Stunden** statt „Kalendertag“ (einfacher, gleiche Wirkung).
 - Der Probe-Lauf bei leerem Guthaben ist ein echter Lauf der Lehrkraft, kein Testaufruf.

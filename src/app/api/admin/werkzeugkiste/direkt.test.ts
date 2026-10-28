@@ -22,7 +22,7 @@ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { DELETE as abbrechen, GET as status, POST as starten } from './ablaeufe/[id]/direkt/route'
 import { POST as teilArbeiter } from '../../intern/werkzeugkiste/teil/route'
-import { bearbeiteTeil, guthabenGesperrt, promptBloecke } from '@/lib/werkzeugkiste-direkt'
+import { anfrageFuer, bearbeiteTeil, guthabenGesperrt, MAX_ANTWORT_BAUSTEINE, promptBloecke } from '@/lib/werkzeugkiste-direkt'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const LAUF = '22222222-2222-4222-8222-222222222222'
@@ -307,5 +307,40 @@ describe('Interne Arbeiter (PROJ-64)', () => {
     teil.gestartet_am = new Date().toISOString()
     await bearbeiteTeil(db.client, 'https://app.test', TEIL)
     expect(ki.stream).not.toHaveBeenCalled()
+  })
+
+  it('schaltet das Nachdenken des Modells aus — es zählte als Ausgabe und schnitt die Antwort ab (Praxistest 1)', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    kern({
+      '/api/prompt': { prompt: 'REGELN\nLEHRTEXT:\nSkript' },
+      '/api/pruefen': { lesbar: true, fehler: null, befunde: [], nachbesserungsPrompt: null },
+    })
+    ki.stream.mockReturnValue({
+      finalMessage: async () => ({ content: [{ type: 'text', text: 'cover: {}' }], stop_reason: 'end_turn', usage: { input_tokens: 10, output_tokens: 10 } }),
+      abort: vi.fn(),
+    })
+    await bearbeiteTeil(db.client, 'https://app.test', TEIL)
+    const gesendet = ki.stream.mock.calls[0][0]
+    expect(gesendet.thinking).toEqual({ type: 'disabled' })
+    expect(gesendet.max_tokens).toBe(MAX_ANTWORT_BAUSTEINE)
+    expect(anfrageFuer('m', []).thinking).toEqual({ type: 'disabled' })
+  })
+
+  it('wiederholt eine abgeschnittene Antwort NICHT (gleiche Anfrage, doppelte Kosten) und sagt klar, was zu tun ist', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    kern({ '/api/prompt': { prompt: 'REGELN\nLEHRTEXT:\nSkript' } })
+    ki.stream.mockReturnValue({
+      finalMessage: async () => ({
+        content: [{ type: 'text', text: 'cover:\n  title: abge' }],
+        stop_reason: 'max_tokens',
+        usage: { input_tokens: 5000, output_tokens: MAX_ANTWORT_BAUSTEINE },
+      }),
+      abort: vi.fn(),
+    })
+    await bearbeiteTeil(db.client, 'https://app.test', TEIL)
+    expect(ki.stream).toHaveBeenCalledTimes(1)
+    expect(laeufe[0]).toMatchObject({ status: 'fehlgeschlagen', fehler_art: 'zulang' })
+    expect(String(laeufe[0].fehler)).toContain('zu lang')
+    expect(teil).toMatchObject({ status: 'fehlgeschlagen', ki_aufrufe: 1, aus_tokens: MAX_ANTWORT_BAUSTEINE })
   })
 })

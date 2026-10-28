@@ -47,10 +47,16 @@ const MAX_ABSCHLUSS_VERSUCHE = 2
 const PROBE_ABSTAND_MS = 60 * 60 * 1000
 /** Claude muss vor der Zeitgrenze fertig sein, sonst ist der Verbrauch nicht mehr messbar */
 const KI_FRIST_MS = 240_000
-const MAX_ANTWORT_BAUSTEINE = 20_000
+/**
+ * Obergrenze der Antwort. Ein Teil (≤ ~22.000 Zeichen Skript) braucht im Normalfall
+ * 6.000–12.000 Bausteine; die Grenze deckelt zugleich die Kosten eines Aufrufs (~0,24 $).
+ */
+export const MAX_ANTWORT_BAUSTEINE = 24_000
 
 export const GUTHABEN_SATZ = GUTHABEN_TEXT
 const KI_SATZ = 'Die KI hat gerade nicht geantwortet. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
+const ZU_LANG_SATZ =
+  'Die Antwort der KI war für dieses Skript zu lang und wurde abgeschnitten. Wähle in Schritt 1 einen kleineren Teil des Skripts oder mach kostenlos mit deiner eigenen KI weiter.'
 const UNLESBAR_SATZ =
   'Die KI hat zweimal keine verwertbare Antwort geliefert. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
 
@@ -247,12 +253,27 @@ interface KiErgebnis {
 }
 
 /**
+ * Die Anfrage an Claude. Das Nachdenken ist bewusst AUS: Die Aufgabe (Text in ein
+ * festes Gerüst umformen) braucht es nicht, und es würde als Ausgabe zählen. Mit
+ * dem Standard (adaptives Nachdenken) verbrauchten zwei Aufrufe je 20.000 Bausteine,
+ * die Antwort wurde abgeschnitten und war unbrauchbar (PROJ-64, erster Praxistest).
+ */
+export function anfrageFuer(modell: string, nachrichten: Anthropic.MessageParam[]) {
+  return {
+    model: modell,
+    max_tokens: MAX_ANTWORT_BAUSTEINE,
+    thinking: { type: 'disabled' as const },
+    messages: nachrichten,
+  }
+}
+
+/**
  * Ein Aufruf bei Claude mit Streaming. Läuft die Frist ab, wird abgebrochen und
  * der bis dahin gemeldete Verbrauch trotzdem zurückgegeben (bezahlt ist er ja).
  */
 export async function frageKi(modell: string, nachrichten: Anthropic.MessageParam[]): Promise<KiErgebnis> {
   const client = new Anthropic({ maxRetries: 3 })
-  const stream = client.messages.stream({ model: modell, max_tokens: MAX_ANTWORT_BAUSTEINE, messages: nachrichten })
+  const stream = client.messages.stream(anfrageFuer(modell, nachrichten))
   const frist = setTimeout(() => stream.abort(), KI_FRIST_MS)
   try {
     const m = await stream.finalMessage()
@@ -437,10 +458,16 @@ export async function bearbeiteTeil(service: SupabaseClient, origin: string, tei
     }
 
     let ergebnis = await rufeKi(service, teil, e, [erste])
-    let pruefung = ergebnis.abgeschnitten ? null : await pruefe(ergebnis.text)
+    if (ergebnis.abgeschnitten) {
+      // Dieselbe Anfrage noch einmal würde wieder abgeschnitten — und noch einmal kosten
+      await service.from(TEIL_TABELLE).update({ status: 'fehlgeschlagen' }).eq('id', teil.id)
+      await beendeLauf(service, lauf.id, 'fehlgeschlagen', ZU_LANG_SATZ, 'zulang')
+      return
+    }
+    let pruefung: KernPruefung | null = await pruefe(ergebnis.text)
     if (!pruefung?.lesbar) {
       if ((await ladeLauf(service, lauf.id))?.status !== 'laeuft') return
-      // einmal neu — zählt zum selben Lauf
+      // Antwort vollständig, aber nicht lesbar (z. B. verrutschte Einrückung): einmal neu, zählt zum selben Lauf
       ergebnis = await rufeKi(service, teil, e, [erste])
       pruefung = ergebnis.abgeschnitten ? null : await pruefe(ergebnis.text)
       if (!pruefung?.lesbar) {
@@ -450,7 +477,7 @@ export async function bearbeiteTeil(service: SupabaseClient, origin: string, tei
       }
     }
     await speichereTeilAntwort(service, pfad, ergebnis.text)
-    const wichtig = pruefung.befunde.some((b) => b.schwere === 'hoch') && !!pruefung.nachbesserungsPrompt
+    const wichtig = (pruefung?.befunde ?? []).some((b) => b.schwere === 'hoch') && !!pruefung?.nachbesserungsPrompt
     if (wichtig && (await ladeLauf(service, lauf.id))?.status === 'laeuft') {
       await service.from(TEIL_TABELLE).update({ status: 'wartet', phase: 'nachbessern', gestartet_am: new Date().toISOString() }).eq('id', teil.id)
       await stosseAn(origin, 'teil', teil.id)
