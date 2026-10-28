@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { KontoSectionError } from '@/components/admin/konto-card'
+import { KontoSectionError } from '@/components/admin/konto-section-error'
 import { KontoUeberMich } from '@/components/admin/konto-ueber-mich'
 import { KontoAufgabenKarte } from '@/components/admin/konto-aufgaben'
 import { KontoBeitragKarte } from '@/components/admin/konto-beitrag'

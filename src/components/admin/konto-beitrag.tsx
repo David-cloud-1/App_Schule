@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { HandHeart } from 'lucide-react'
-import { KontoCard, KontoSectionError } from '@/components/admin/konto-card'
+import { KontoCard } from '@/components/admin/konto-card'
+import { KontoSectionError } from '@/components/admin/konto-section-error'
 import { AdminEmptyState } from '@/components/admin/admin-states'
 import { BEITRAG_SEIT_LABEL, CONTENT_TYPE_LABEL, contentHref, formatRelativeTime } from '@/lib/konto'
 import type { KontoBeitrag, Section } from '@/lib/konto-data'

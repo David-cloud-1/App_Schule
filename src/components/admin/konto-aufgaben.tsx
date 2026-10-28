@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle2, ChevronRight, ListChecks } from 'lucide-react'
-import { KontoCard, KontoSectionError } from '@/components/admin/konto-card'
+import { KontoCard } from '@/components/admin/konto-card'
+import { KontoSectionError } from '@/components/admin/konto-section-error'
 import { AUFGABEN_LIMIT, type AufgabenGruppe, type KontoAufgaben, type Section } from '@/lib/konto-data'
 
 const GROUPS: {

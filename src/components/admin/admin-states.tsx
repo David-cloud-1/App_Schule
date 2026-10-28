@@ -1,5 +1,7 @@
-'use client'
-
+// Bewusst ohne 'use client': Server-Komponenten (z. B. „Mein Beitrag“) reichen
+// ein Icon als Funktion weiter, das darf nicht über die Client-Grenze gehen.
+// Die Datei hat keine Hooks. `onRetry` (ein Klick-Handler) darf nur aus
+// Client-Komponenten kommen, in Server-Komponenten also weglassen.
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'

@@ -1,13 +1,14 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
-import { AdminErrorState } from '@/components/admin/admin-states'
 
 /**
  * Rahmen einer Karte auf „Mein Konto“ (PROJ-50): Icon, Titel, optional ein Satz
  * darunter. Der Titel ist eine echte Überschrift, damit Screenreader die
  * Abschnitte anspringen können.
+ *
+ * Bewusst **keine** Client-Komponente: Server-Komponenten (Aufgaben, Beitrag)
+ * reichen das Icon als Funktion weiter, und das darf nicht über die
+ * Client-Grenze gehen. Die Fehleranzeige mit `useRouter` steht deshalb in
+ * `konto-section-error.tsx`.
  */
 export function KontoCard({
   id,
@@ -39,10 +40,4 @@ export function KontoCard({
       {children}
     </section>
   )
-}
-
-/** Fehler in einer einzelnen Karte: die anderen Karten bleiben benutzbar */
-export function KontoSectionError() {
-  const router = useRouter()
-  return <AdminErrorState onRetry={() => router.refresh()} />
 }
