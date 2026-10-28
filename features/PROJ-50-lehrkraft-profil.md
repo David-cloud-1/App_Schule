@@ -1,6 +1,6 @@
 # PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -245,7 +245,118 @@ Keine neuen Pakete.
 **Zusammenspiel mit PROJ-58 (Pflichtwechsel):** Setzt PROJ-58 später ein Merkmal „muss Passwort ändern“, muss `POST /api/profile/password` es mit zurücksetzen. Bis dahin berührt PROJ-50 das nicht.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-10-28
+**App URL:** keine (laut Absprache kein Dev-Server und kein Playwright auf diesem Rechner, siehe Notiz „Kein Dev-Server“)
+**Tester:** QA Engineer (AI)
+**Methode:** Code-Review aller PROJ-50-Dateien, Vitest (gesamt 1565 Tests grün), `tsc`, Produktions-Build, Datenbank-Simulation an der Produktions-DB als echte Rollen (`SET LOCAL ROLE authenticated` + JWT-Claims) in zurückgerollten Blöcken. **Nicht getestet:** Browser-Darstellung (Chrome/Firefox/Safari, 375/768/1440 px), E2E-Tests, echter E-Mail-Wechsel an einem Konto.
+
+**Fund nebenbei (2026-10-28):** PROJ-50 ist **bereits live**: Der Deploy von PROJ-57/58 (`b1f31a3`) hat `main` gepusht und damit die PROJ-50-Commits bis `c96be8c` mit ausgeliefert. Live-Prüfung ohne Login: alle neuen Schnittstellen 401, `/admin/konto` leitet zur Anmeldung. Die PROJ-50-Migration ist an der Produktions-DB **bereits angewendet** (Spalten, Spalten-Recht, 4 geschlossene Nachweise = angesehen), aber nicht in `schema_migrations` eingetragen und nicht aus dieser Sitzung. Rein additiv, der live laufende Code (ohne PROJ-50) ist davon nicht betroffen. Beim Deploy also nicht noch einmal ausführen (die Format-Regel würde mit „existiert schon“ scheitern).
+
+### Acceptance Criteria Status
+
+#### AC-1: Zugang & Rahmen
+- [x] `/admin/konto` im Konto-Menü („Mein Konto“, darunter „Spielerprofil“), in der Schnellsuche und in den Brotkrumen/Handy-Titel
+- [x] Lehrkräfte-Rahmen, ws-Farben, Lade-/Leer-/Fehlerzustände je Karte (Code-Review)
+- [x] Azubis: Proxy und Layout leiten um; `/admin/konto` ist für reine Lehrkräfte freigegeben
+
+#### AC-2: Kopf
+- [x] Name, Rolle mit Satz, Fachbereich bzw. „Kein Fachbereich“, Kürzel
+- [x] Kürzel 2–5 Buchstaben inkl. Umlaute, groß gespeichert, leer = entfernen, Fehler am Feld, Toast (Tests + DB: Format-Regel greift, fremde Zeile 0 Treffer, Rolle bleibt gesperrt)
+- [x] Kürzel nicht eindeutig
+
+#### AC-3: Meine Fächer
+- [x] Lehrkraft: Liste, Hinzufügen, Austragen über dieselben Schnittstellen wie PROJ-48, Leerzustand
+- [x] Bereichs-/Super-Admin: Umfangs-Satz (dokumentierte Abweichung: keine eigene Zuständigkeitsliste)
+
+#### AC-4: Mein Beitrag
+- [x] Drei Zahlen auf dem Server gezählt, nur eigene Einträge, Stichtag-Hinweis, Leerzustand
+- [x] „gelöscht“-Kennzeichen, Papierkorb-Link, endgültig Gelöschtes nicht anklickbar
+- [ ] BUG-3: „Jeder Eintrag führt zum Inhalt“ nur teilweise: Link führt zur Liste (z. B. `/admin/questions`), nicht zum einzelnen Eintrag
+
+#### AC-5: Offene Aufgaben
+- [x] Drei Gruppen nur eigener Nachweise, je max. 5, „Alle N anzeigen“, „Alles erledigt“
+- [x] „angesehen“ nur durch die erstellende Person (DB-Simulation: Update als Ersteller 1 Zeile; Regel-Tests für Fremde)
+- [x] Bestehende geschlossene Nachweise gelten als angesehen
+- [ ] BUG-1: „Laufen gerade“ zeigt die Abgaben falsch (siehe unten)
+
+#### AC-6: Einstellungen
+- [x] Passwort ändern (aktuelles Passwort geprüft) bzw. festlegen (Google/Apple), Fehler am Feld, bleibt angemeldet
+- [x] E-Mail sofort ändern mit doppelter Eingabe + Passwort; Google/Apple nur Hinweis; vergebene Adresse verrät nichts
+- [x] Darstellung teilt den Zustand mit dem Konto-Menü
+- [x] Pseudonym neu würfeln, Ranglisten-Teilnahme (wiederverwendete Bausteine im ws-Stil)
+
+#### AC-7: Spielstand
+- [x] Eingeklappt Level/XP/Streak, aufgeklappt Balken + Links, Zustand pro Gerät (fehlertolerant)
+
+#### AC-8: `/profile` für Lehrkräfte
+- [x] Hinweis-Karte, kurze Spielkarte, Mein Betrieb, Bereichs-Umschalter bleibt; Statistik/Woche/Achievements/Rangliste entfallen (Abfragen werden gar nicht gemacht)
+- [x] Azubi-Profil unverändert (Code-Diff: alle Änderungen hinter `isTeacher`)
+
+### Edge Cases Status
+- [x] Lehrkraft ohne Fachbereich: „Kein Fachbereich“, Fächer trotzdem wählbar (dokumentierte Abweichung)
+- [x] Rollenwechsel: beim nächsten Laden gilt die neue Rolle
+- [x] Super-Admin mit Zweitkonto: Seite zeigt das aktive Konto (Sitzung)
+- [x] Viele Einträge: Zählungen per `count`, Listen begrenzt
+- [x] Google/Apple-Konto: „Passwort festlegen“, keine E-Mail-Änderung
+- [x] Tippfehler in neuer Adresse: doppelte Eingabe, Einfügen gesperrt
+- [x] Pseudonym: dieselbe Logik wie bisher
+- [ ] BUG-4: „Passwort ändern schlägt fehl → Passwörter werden geleert“: Bei einer Fehlerantwort des Servers (z. B. falsches aktuelles Passwort) bleiben die Passwortfelder gefüllt; geleert wird nur bei Netzwerkfehler und Erfolg
+- [ ] BUG-5: Gelöschtes Prüfungsset im „Zuletzt bearbeitet“ kann für eine reine Lehrkraft fälschlich als „endgültig gelöscht“ erscheinen (RLS von `exam_question_sets` zeigt ihr nur aktive Sets des eigenen Bereichs)
+
+### Security Audit Results
+- [x] Ohne Login: alle neuen Schnittstellen 401, Seite leitet zur Anmeldung
+- [x] Azubis: neue Schnittstellen 403
+- [x] Fremde Daten: alle Abfragen auf die eigene Person gefiltert, RLS zusätzlich; Kürzel einer fremden Zeile lässt sich nicht setzen (0 Zeilen), Rolle nicht änderbar (`insufficient_privilege`)
+- [x] Passwort/E-Mail nur mit geprüftem aktuellen Passwort; Passwörter nie geloggt (Test); vergebene Adresse nicht unterscheidbar
+- [x] Während eines Pflichtwechsels (PROJ-58) sperrt der Proxy `/api/profile/*`, kein Umgehen des Pflichtwechsels
+- [x] Eingaben per Zod geprüft, Ausgabe nur über React (kein XSS-Pfad)
+- [ ] BUG-2 (Low): Jede Passwortprüfung erzeugt über den Wegwerf-Client eine zusätzliche Anmeldesitzung, die nie beendet wird
+- [ ] BUG-6 (Low): Kein eigenes Rate-Limit; das IP-Limit von Supabase greift bei Server-Aufrufen für alle Lehrkräfte gemeinsam (Vercel-IP). Wer es auslöst, sperrt die Passwortprüfung kurz für alle
+
+### Bugs Found
+
+#### BUG-1: Abgaben bei laufenden Nachweisen werden falsch gezählt
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Lehrkraft öffnet einen Nachweis, zwei Azubis geben ab
+  2. „Mein Konto“ → Offene Aufgaben → Laufen gerade
+  3. Expected: „2 Abgaben“
+  4. Actual: „0 Abgaben“ (nur eigene Probe-Abgaben würden gezählt). Ursache: `konto-data.ts` zählt `exam_sessions` mit dem Client der Lehrkraft; die Policy „Users see own exam sessions“ erlaubt nur die eigenen Zeilen. Die Auswertungs-Route nutzt dafür das Service-Konto. In der DB-Simulation bestätigt.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Verwaiste Sitzung nach jeder Passwortprüfung
+- **Severity:** Low
+- **Steps to Reproduce:** Passwort oder E-Mail in „Mein Konto“ ändern → `verifyCurrentPassword` meldet sich mit `signInWithPassword` an und verwirft den Client, ohne die neue Sitzung zu beenden. Expected: keine zusätzliche Sitzung. Actual: je Versuch eine weitere Sitzung in `auth.sessions`.
+- **Priority:** Nice to have (z. B. nach der Prüfung `signOut` auf dem Wegwerf-Client)
+
+#### BUG-3: „Zuletzt bearbeitet“ führt nur zur Liste
+- **Severity:** Low
+- **Steps to Reproduce:** Eintrag in „Zuletzt bearbeitet“ anklicken. Expected (AC): der Inhalt. Actual: die passende Liste ohne Auswahl; die Listen kennen keinen Direktlink.
+- **Priority:** Nice to have
+
+#### BUG-4: Passwortfelder bleiben nach Server-Fehler gefüllt
+- **Severity:** Low
+- **Steps to Reproduce:** Falsches aktuelles Passwort eingeben → „Passwort ändern“. Expected (Edge Case): Passwörter geleert. Actual: alle drei Felder bleiben gefüllt.
+- **Priority:** Fix in next sprint
+
+#### BUG-5: Gelöschtes Prüfungsset kann als „endgültig gelöscht“ erscheinen
+- **Severity:** Low
+- **Steps to Reproduce:** Reine Lehrkraft löscht ein Prüfungsset → „Mein Konto“. Expected: „gelöscht“ mit Link zum Papierkorb. Actual: möglicherweise nicht anklickbar, weil die Existenzprüfung mit dem Client der Lehrkraft läuft und RLS das gelöschte Set verbirgt. Nur aus den Policies abgeleitet, nicht mit Daten nachgestellt (keine Lehrkraft-Konten in der DB).
+- **Priority:** Nice to have
+
+#### BUG-6: Gemeinsames Rate-Limit für die Passwortprüfung
+- **Severity:** Low
+- **Steps to Reproduce:** Viele falsche Passwortversuche über `/api/profile/password` → Supabase antwortet mit 429, auch für andere Lehrkräfte, die kurz danach ihr Passwort ändern wollen (alle Aufrufe kommen von der Server-IP).
+- **Priority:** Nice to have (eigenes Limit je Person, z. B. 5 Versuche/10 Min.)
+
+### Summary
+- **Acceptance Criteria:** 8 Bereiche geprüft, 6 vollständig bestanden, 2 mit Befund (AC-4 teilweise, AC-5 Abgaben-Zahl)
+- **Bugs Found:** 6 total (0 critical, 0 high, 1 medium, 5 low)
+- **Security:** Bestanden, zwei kleine Härtungs-Hinweise (BUG-2, BUG-6)
+- **Production Ready:** YES (keine Critical/High)
+- **Recommendation:** BUG-1 vor dem Deploy beheben (kleiner Fix: Abgaben mit dem Service-Konto zählen, beschränkt auf die eigenen Nachweise); BUG-2 bis BUG-6 später
+- **Offen vor dem Deploy:** Sichtprüfung im Browser (Handy + Laptop, hell/dunkel) und ein echter E-Mail-Wechsel an einem Testkonto, beides mangels Dev-Server nur nach dem Deploy bzw. an einer Vorschau-Version möglich
 
 ## Deployment
 _To be added by /deploy_
