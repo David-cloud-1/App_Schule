@@ -132,6 +132,10 @@ describe('Karte „Mein Beitrag“', () => {
 })
 
 describe('Karte „Anmeldung“', () => {
+  const renderAnmeldung = (head: { email: string; hasPassword: boolean }) => {
+    render(<KontoAnmeldung head={head} />)
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail oder Passwort ändern' }))
+  }
   const emailHead = { email: 'max@schule.de', hasPassword: true }
   const fill = (neu: string, wieder: string, passwort: string) => {
     fireEvent.change(screen.getByLabelText('Neue E-Mail-Adresse'), { target: { value: neu } })
@@ -142,13 +146,13 @@ describe('Karte „Anmeldung“', () => {
   }
 
   it('sagt ehrlich, dass die Adresse sofort und ohne Bestätigungs-Mail gilt', () => {
-    render(<KontoAnmeldung head={emailHead} />)
+    renderAnmeldung(emailHead)
     expect(screen.getByText(/gilt sofort für die Anmeldung/)).toBeInTheDocument()
     expect(screen.queryByText(/Bestätigungslink/)).not.toBeInTheDocument()
   })
 
   it('verlangt zweimal dieselbe Adresse und das Passwort, bevor etwas gesendet wird', () => {
-    render(<KontoAnmeldung head={emailHead} />)
+    renderAnmeldung(emailHead)
     fill('keine-adresse', '', '')
     expect(screen.getAllByRole('alert').map((a) => a.textContent).join(' ')).toMatch(/gültige E-Mail/)
     fill('neu@schule.de', 'anders@schule.de', 'pw')
@@ -161,7 +165,7 @@ describe('Karte „Anmeldung“', () => {
   })
 
   it('sendet Adresse und Passwort und lädt danach neu', async () => {
-    render(<KontoAnmeldung head={emailHead} />)
+    renderAnmeldung(emailHead)
     fill('Neu@Schule.de', 'neu@schule.de', 'mein-passwort')
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(fetchMock.mock.calls[0][0]).toBe('/api/profile/email')
@@ -171,7 +175,7 @@ describe('Karte „Anmeldung“', () => {
 
   it('zeigt „falsches Passwort“ der Server-Antwort am Passwort-Feld', async () => {
     fetchMock.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Das aktuelle Passwort stimmt nicht.', field: 'currentPassword' }) })
-    render(<KontoAnmeldung head={emailHead} />)
+    renderAnmeldung(emailHead)
     fill('neu@schule.de', 'neu@schule.de', 'falsch')
     expect(await screen.findByText('Das aktuelle Passwort stimmt nicht.')).toBeInTheDocument()
     // Nach einem Fehler bleibt kein Passwort im Formular stehen
@@ -181,13 +185,13 @@ describe('Karte „Anmeldung“', () => {
   })
 
   it('lässt Google-/Apple-Konten die Adresse nicht ändern', () => {
-    render(<KontoAnmeldung head={{ email: 'max@gmail.com', hasPassword: false }} />)
+    renderAnmeldung({ email: 'max@gmail.com', hasPassword: false })
     expect(screen.getByText(/Die Adresse kannst du dort ändern/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Neue E-Mail-Adresse')).not.toBeInTheDocument()
   })
 
   it('verlangt beim Passwortwechsel das aktuelle Passwort und prüft Länge und Wiederholung', async () => {
-    render(<KontoAnmeldung head={{ email: 'max@schule.de', hasPassword: true }} />)
+    renderAnmeldung({ email: 'max@schule.de', hasPassword: true })
     fireEvent.change(screen.getByLabelText('Neues Passwort'), { target: { value: 'kurz' } })
     fireEvent.change(screen.getByLabelText('Neues Passwort wiederholen'), { target: { value: 'anders' } })
     fireEvent.click(screen.getByRole('button', { name: 'Passwort ändern' }))
@@ -199,14 +203,14 @@ describe('Karte „Anmeldung“', () => {
   })
 
   it('zeigt Google-/Apple-Konten „Passwort festlegen“ ohne Feld für das aktuelle Passwort', () => {
-    render(<KontoAnmeldung head={{ email: 'max@schule.de', hasPassword: false }} />)
+    renderAnmeldung({ email: 'max@schule.de', hasPassword: false })
     expect(screen.getByRole('button', { name: 'Passwort festlegen' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Aktuelles Passwort', { selector: '#konto-pw-alt' })).not.toBeInTheDocument()
   })
 
   it('zeigt die Server-Meldung am Feld „Aktuelles Passwort“, wenn es falsch ist', async () => {
     fetchMock.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Das aktuelle Passwort stimmt nicht.', field: 'currentPassword' }) })
-    render(<KontoAnmeldung head={{ email: 'max@schule.de', hasPassword: true }} />)
+    renderAnmeldung({ email: 'max@schule.de', hasPassword: true })
     fireEvent.change(screen.getByLabelText('Aktuelles Passwort', { selector: '#konto-pw-alt' }), { target: { value: 'falsch' } })
     fireEvent.change(screen.getByLabelText('Neues Passwort'), { target: { value: 'neues-passwort' } })
     fireEvent.change(screen.getByLabelText('Neues Passwort wiederholen'), { target: { value: 'neues-passwort' } })

@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { KeyRound, Loader2, Mail } from 'lucide-react'
+import { ChevronDown, KeyRound, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { KontoCard } from '@/components/admin/konto-card'
@@ -38,9 +39,26 @@ async function send(url: string, method: string, payload?: unknown) {
 export function KontoAnmeldung({ head }: { head: Pick<KontoHead, 'email' | 'hasPassword'> }) {
   return (
     <KontoCard id="anmeldung" icon={KeyRound} title="Anmeldung" description="Mit der E-Mail-Adresse und deinem Passwort meldest du dich an.">
-      <EmailForm email={head.email} hasPassword={head.hasPassword} />
-      <div className="border-t border-ws-line" />
-      <PasswordForm hasPassword={head.hasPassword} />
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-ws-faint">E-Mail-Adresse (Anmeldename)</p>
+        <p className="mt-1 flex items-center gap-2 text-sm text-ws-text">
+          <Mail aria-hidden className="size-4 shrink-0 text-ws-muted" />
+          <span className="min-w-0 truncate" title={head.email}>
+            {head.email}
+          </span>
+        </p>
+      </div>
+      <Collapsible className="rounded-xl border border-ws-line">
+        <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-xl px-4 text-left text-sm font-semibold text-ws-text transition-colors duration-200 hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
+          E-Mail oder Passwort ändern
+          <ChevronDown aria-hidden className="size-4 shrink-0 text-ws-muted transition-transform duration-200 group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-6 border-t border-ws-line p-4">
+          <EmailForm email={head.email} hasPassword={head.hasPassword} />
+          <div className="border-t border-ws-line" />
+          <PasswordForm hasPassword={head.hasPassword} />
+        </CollapsibleContent>
+      </Collapsible>
     </KontoCard>
   )
 }
@@ -106,16 +124,6 @@ function EmailForm({ email, hasPassword }: { email: string; hasPassword: boolean
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-ws-faint">E-Mail-Adresse (Anmeldename)</p>
-        <p className="mt-1 flex items-center gap-2 text-sm text-ws-text">
-          <Mail aria-hidden className="size-4 shrink-0 text-ws-muted" />
-          <span className="min-w-0 truncate" title={email}>
-            {email}
-          </span>
-        </p>
-      </div>
-
       {!hasPassword ? (
         <p className="text-sm text-ws-muted">
           Du meldest dich über Google oder Apple an. Die Adresse kannst du dort ändern, hier nicht.
