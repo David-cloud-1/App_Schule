@@ -1,6 +1,6 @@
 # PROJ-51: Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-28
 
@@ -481,4 +481,9 @@ Auf Wunsch des Nutzers gilt „kein Dev-Server, kein Playwright“ (beides bring
 **Keine Critical- oder High-Fehler.** Die zwei Medium-Fehler (BUG-1, BUG-2) betreffen Schritt 4 und lassen sich im Kern beheben, ohne die App neu zu bauen. **Status bleibt „In Review“**, weil die Prüfung im Browser (Aussehen, Handy, Browser, Bedienung) nicht stattfinden konnte. Empfohlenes Vorgehen: BUG-1/2/3 beheben, eine **Vorschau-Bereitstellung** (kein Produktions-Deploy) anlegen, einmal durchklicken (Handy und Desktop), dann „Approved“.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Deployment `spedilern-fexyx7d2j`), **2026-10-28**
+- **Kern:** https://werkzeugkiste-kern.vercel.app (Fassung mit den Fehlerbehebungen, gleicher Tag). Zweig `vercel-kern` im Kern-Repo ist noch nicht gepusht.
+- **Reihenfolge:** Migration und Umgebungsvariablen waren vorher in Produktion, dann Push von `main` (Vercel baut automatisch).
+- **Freigabe ohne Browser-Test:** Auf Wunsch ohne Vorschau-Durchlauf deployt (die Vorschau hatte keine Supabase-Variablen). Das Durchklicken (Aussehen, Handy, Rolle „Lehrkraft“) findet in Produktion statt — Auffälligkeiten als Fehler nachtragen.
+- **Prüfung nach dem Deploy:** Login-Weiterleitung für Seite und Schnittstellen, Zeitplan-Schnittstelle ohne Kennwort 401, keine Fehler im Protokoll.
+- **Rollback:** In Vercel das vorige Produktions-Deployment per „Promote to Production“ wieder aktivieren. Die alte Werkzeugkiste auf Hugging Face läuft unverändert weiter bis PROJ-56.
