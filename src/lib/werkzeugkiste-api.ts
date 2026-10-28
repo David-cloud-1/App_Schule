@@ -1,4 +1,5 @@
-import type { Ablauf, AblaufAuswahl, AblaufEinstellungen } from '@/lib/werkzeugkiste'
+import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 
 /**
  * Aufrufe der Werkzeugkiste aus dem Browser (PROJ-51). Alle Routen liegen
@@ -85,7 +86,13 @@ export function ladeAblauf(id: string) {
 
 export function speichereAblauf(
   id: string,
-  aenderung: Partial<{ werkzeug: string; einstellungen: AblaufEinstellungen; auswahl: AblaufAuswahl; schritt: number }>,
+  aenderung: Partial<{
+    werkzeug: string
+    einstellungen: AblaufEinstellungen
+    auswahl: AblaufAuswahl
+    schritt: number
+    weg: 'direkt' | 'kostenlos'
+  }>,
 ) {
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -115,6 +122,37 @@ export function pruefeAntwort(id: string, antwort: string) {
 
 export function baueMaterial(id: string) {
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/bauen`, { method: 'POST' })
+}
+
+// ── Direkt erstellen (PROJ-64) ────────────────────────────────────────────
+
+export interface DirektStand {
+  lauf: LaufInfo | null
+  sperre: DirektSperre
+  preis: ModellPreis
+  usdEur: number
+  /** Zeichen je Teil — nur mit `schaetzung` */
+  teile: number[] | null
+}
+
+/** Stand der direkten Erstellung; repariert dabei hängende Teile. Für den Warte-Bildschirm alle paar Sekunden */
+export function ladeDirektStand(id: string, schaetzung = false) {
+  return anfrage<DirektStand>(`/ablaeufe/${encodeURIComponent(id)}/direkt${schaetzung ? '?schaetzung=1' : ''}`)
+}
+
+/**
+ * Startet „Direkt erstellen“. Fehler mit Status 409 = teuer, Bestätigung nötig
+ * (erneut mit `bestaetigt`); 403/429 = gesperrt (Guthaben bzw. Tageslimit).
+ */
+export function starteDirekt(id: string, werkzeug: string, einstellungen: AblaufEinstellungen, bestaetigt = false) {
+  return anfrage<{ lauf: LaufInfo }>(`/ablaeufe/${encodeURIComponent(id)}/direkt`, {
+    method: 'POST',
+    body: JSON.stringify({ werkzeug, einstellungen, ...(bestaetigt ? { bestaetigt } : {}) }),
+  })
+}
+
+export function brichDirektAb(id: string) {
+  return anfrage<{ lauf: LaufInfo }>(`/ablaeufe/${encodeURIComponent(id)}/direkt`, { method: 'DELETE' })
 }
 
 export function downloadHref(id: string) {

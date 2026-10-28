@@ -1,6 +1,6 @@
 # PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-28
 **Last Updated:** 2026-10-28
 
@@ -224,6 +224,36 @@ Ablauf (PROJ-51, bekannter Rahmen)
 - **Datenbank:** zwei neue Tabellen, Einstellungen, Regeln, eine Ergänzung an `werkzeug_ablaeufe`
 - **App-Server:** Lauf starten, Teil bearbeiten, Status abfragen (mit Hänger-Reparatur), Abbrechen, Schätzung
 - **Oberfläche:** Wegwahl in Schritt 2, Warte-Schritt, Kostenzeile in Schritt 5, Hinweis in Schritt 1
+
+## Backend-Umsetzung (2026-10-29)
+
+**Kern** (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`, Commit `5ee253e`)
+- `kern.teilen(einlesung, auswahl)` zerlegt die Auswahl an Abschnitten (Word) bzw. Seiten (PDF/PowerPoint) in gleich große Teile von höchstens ~22.000 Zeichen. Jeder Teil ist eine gewöhnliche Auswahl, kurze Skripte bleiben ein Teil.
+- `kern.zusammenfuegen(antworten)` setzt das Deckblatt des ersten Teils, alle Kapitel in Reihenfolge und **ein** Abschlusskapitel zusammen (Fragen reihum, höchstens 15, Sätze höchstens 12).
+- Schnittstellen `POST /api/teilen` und `POST /api/zusammenfuegen`. Tests: 17 grün (mit echtem PDF: 2 Teile; zwei zusammengefügte Antworten lassen sich prüfen und bauen).
+
+**Datenbank** (`supabase/migrations/20261029_proj64_ki_laeufe.sql`, Rücknahme `_down.sql`)
+- `ki_einstellungen` (eine Zeile): Modell, Preisliste, Kurs (Start 0,86), Warnschwelle, „Guthaben leer seit“, letzte Probe. Lesen nur Super-Admin.
+- `ki_laeufe`: je Klick ein Lauf mit Status, Teilen, Kosten in Dollar und Euro (Kurs zum Zeitpunkt). `owner_id` und `ablauf_id` werden beim Löschen leer (die Abrechnung bleibt). Eindeutiger Index: höchstens ein aktiver Lauf je Ablauf.
+- `ki_lauf_teile`: Verbrauch je Teil (vier Token-Arten, Aufrufe, Dollar), Phase erstellen/nachbessern, Versuche.
+- Trigger `ki_lauf_summen` hält Kosten und „fertig“-Zähler im Lauf aktuell (sperrt erst die Lauf-Zeile, dann summiert).
+- RLS: Lehrkraft liest nur eigene Läufe und Teile, der Super-Admin alle. Geschrieben wird nur vom Server. Teil-Antworten liegen im privaten Speicher, nicht in der Tabelle: Der Super-Admin sieht Kosten, aber keine fremden Inhalte.
+- `werkzeug_ablaeufe.weg` (direkt/kostenlos).
+
+**App-Server**
+- `src/lib/werkzeugkiste-kosten.ts`: Schätzung und genauer Betrag (gemeinsam für Oberfläche und Server), Rückfrage ab 2 €, Tageslimit 20.
+- `src/lib/werkzeugkiste-direkt.ts`: Claude-Aufruf mit Streaming und Prompt-Caching (Anweisungen vor „LEHRTEXT:“ zwischengespeichert), Frist 240 s, höchstens 20.000 Bausteine je Antwort. Teil-Arbeiter: Prompt → Claude → Prüfstelle, unlesbar → einmal neu, Befund „hoch“ → Nachbesserung als eigener Arbeiter-Aufruf. Abschluss-Arbeiter: zusammenfügen, prüfen, bauen. Statusabfrage repariert Hänger (Teil > 330 s still, höchstens 4 Versuche; Abschluss höchstens 2). Verbrauch wird nach **jedem** KI-Aufruf verbucht, auch bei Abbruch (Teilverbrauch aus dem Stream).
+- „Guthaben zu niedrig“ von Anthropic → `guthaben_leer_seit`. Danach höchstens ein Probe-Lauf pro Stunde, ein gelungener Aufruf hebt die Sperre auf.
+- Routen: `GET/POST/DELETE /api/admin/werkzeugkiste/ablaeufe/:id/direkt` (Stand + Schätzung · Start · Abbruch). Interne Arbeiter `POST /api/intern/werkzeugkiste/teil|abschluss`: quittieren mit 202 und arbeiten per `after()` weiter, geschützt mit `CRON_SECRET` im Kopf `x-werkzeugkiste-intern`. `/api/intern/` ist in der Middleware ohne Anmeldung erreichbar.
+- Bauen in `kernBauen()` ausgelagert (gemeinsam für beide Wege), PATCH speichert `weg`.
+- Browser-Aufrufe in `werkzeugkiste-api.ts`: `ladeDirektStand`, `starteDirekt`, `brichDirektAb`.
+- Tests: `direkt.test.ts` (14: Rollen, Start mit Anstoß, Doppelklick, Guthaben-Sperre und Probe, Tageslimit, Rückfrage ab 2 €, Validierung, Abbruch, Stand, Arbeiter-Schutz, Caching-Blöcke, genaue Verbuchung, Guthaben leer, keine Doppelübernahme), `werkzeugkiste-kosten.test.ts` (5), Middleware-Test. Gesamtsuite 1646 grün, Build sauber.
+
+**Abweichungen vom Design**
+- Tageslimit über die letzten **24 Stunden** statt „Kalendertag“ (einfacher, gleiche Wirkung).
+- Der Probe-Lauf bei leerem Guthaben ist ein echter Lauf der Lehrkraft, kein Testaufruf.
+
+**Vor dem Deploy nötig:** Migration in Produktion (ab dann liest der Code die Spalte `weg`), Kern-Deploy (neue Schnittstellen), Anthropic-Konto: automatisches Nachladen aus, Modell `claude-sonnet-5-5` verfügbar, Ratenlimit-Stufe prüfen.
 
 ## QA Test Results
 _To be added by /qa_

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
+  type AblaufErgebnis,
   dateiEndung,
   findeWerkzeug,
   pruefeSkriptDatei,
@@ -80,6 +81,16 @@ export const ablaufAenderungSchema = z
     einstellungen: einstellungenSchema.optional(),
     auswahl: auswahlSchema.optional(),
     schritt: z.number().int().min(1).max(5).optional(),
+    weg: z.enum(['direkt', 'kostenlos']).optional(),
+  })
+  .strict()
+
+/** Start von „Direkt erstellen“ (PROJ-64): Einstellungen aus Schritt 2, Bestätigung bei hohen Kosten */
+export const direktStartSchema = z
+  .object({
+    werkzeug: freigeschaltet,
+    einstellungen: einstellungenSchema,
+    bestaetigt: z.boolean().optional(),
   })
   .strict()
 
@@ -112,11 +123,12 @@ export interface AblaufZeile {
   antwort: string | null
   pruefung: Ablauf['pruefung']
   ergebnis: Ablauf['ergebnis']
+  weg?: Ablauf['weg']
   updated_at: string
 }
 
 export const ABLAUF_SPALTEN =
-  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, updated_at'
+  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at'
 
 export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
   return {
@@ -166,6 +178,7 @@ export function zeileZuAblauf(z: AblaufZeile): Ablauf {
     antwort: z.antwort,
     pruefung: z.pruefung ?? null,
     ergebnis: z.ergebnis ?? null,
+    weg: z.weg ?? null,
     aktualisiertAm: z.updated_at,
   }
 }
@@ -269,4 +282,34 @@ export async function kern<T>(pfad: string, body?: unknown, zeitMs = 100_000): P
 export function kernFehlerAntwort(e: unknown) {
   if (e instanceof KernFehler) return fehler(e.message, e.status, e.hinweis)
   return fehler('Das hat gerade nicht geklappt. Bitte versuche es erneut.', 500)
+}
+
+/**
+ * Datei und Vorschau aus einer geprüften Antwort bauen lassen und im Speicher
+ * ablegen — gemeinsam für den kostenlosen Weg und „Direkt erstellen“ (PROJ-64).
+ */
+export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, antwort: string): Promise<AblaufErgebnis> {
+  const [einlesung, dateiZiel, vorschauZiel] = await Promise.all([
+    leseAdresse(service, einlesungPfad(zeile.owner_id, zeile.id)),
+    schreibAdresse(service, ausgabePfad(zeile.owner_id, zeile.id)),
+    schreibAdresse(service, vorschauPfad(zeile.owner_id, zeile.id)),
+  ])
+  if (!einlesung) throw new KernFehler('Das eingelesene Skript fehlt. Bitte lade es erneut hoch.', 400)
+  if (!dateiZiel || !vorschauZiel) throw new KernFehler('Das Ablegen der Datei konnte nicht vorbereitet werden.', 502)
+  const ablauf = zeileZuAblauf(zeile)
+  const r = await kern<AblaufErgebnis>('/api/bauen', {
+    antwort,
+    werkzeug: ablauf.werkzeug,
+    einstellungen: ablauf.einstellungen,
+    einlesung: { url: einlesung },
+    datei_ziel: dateiZiel,
+    vorschau_ziel: vorschauZiel,
+  })
+  return {
+    titel: String(r.titel),
+    dateiname: String(r.dateiname),
+    format: String(r.format),
+    kapitel: Number(r.kapitel) || 0,
+    aufgaben: Number(r.aufgaben) || 0,
+  }
 }

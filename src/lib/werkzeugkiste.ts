@@ -224,6 +224,24 @@ export interface AblaufErgebnis {
   aufgaben: number
 }
 
+/** Stand einer direkten Erstellung (PROJ-64), wie die Oberfläche ihn sieht */
+export interface LaufInfo {
+  id: string
+  status: 'laeuft' | 'baut' | 'fertig' | 'abgebrochen' | 'fehlgeschlagen'
+  teileGesamt: number
+  teileFertig: number
+  kostenEur: number
+  /** Verständlicher Satz bei Fehlschlag */
+  fehler: string | null
+  /** 'guthaben' = Schulguthaben aufgebraucht → nur noch der kostenlose Weg */
+  fehlerArt: string | null
+  gestartetAm: string
+  beendetAm: string | null
+}
+
+/** Warum „Direkt erstellen“ gerade nicht geht (null = es geht) */
+export type DirektSperre = 'guthaben' | 'tageslimit' | null
+
 export interface Ablauf {
   id: string
   werkzeug: string
@@ -240,6 +258,8 @@ export interface Ablauf {
   antwort: string | null
   pruefung: AblaufPruefung | null
   ergebnis: AblaufErgebnis | null
+  /** Gewählter Weg (PROJ-64); null = noch nicht entschieden */
+  weg: 'direkt' | 'kostenlos' | null
   aktualisiertAm: string
 }
 

@@ -42,7 +42,7 @@ export async function PATCH(request: Request, { params }: Kontext) {
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler(NICHT_DA, 404)
 
-  const { werkzeug, einstellungen, auswahl, schritt } = parsed.data
+  const { werkzeug, einstellungen, auswahl, schritt, weg } = parsed.data
   const felder: Record<string, unknown> = {}
   if (werkzeug) felder.werkzeug = werkzeug
   if (einstellungen) felder.einstellungen = einstellungenFuerWechsel(werkzeug ?? zeile.werkzeug, einstellungen)
@@ -50,6 +50,7 @@ export async function PATCH(request: Request, { params }: Kontext) {
     felder.einstellungen = einstellungenFuerWechsel(werkzeug, { ...zeileZuAblauf(zeile).einstellungen, format: '' })
   }
   if (auswahl) felder.auswahl = auswahl
+  if (weg) felder.weg = weg
   if (schritt && schritt > zeile.schritt && schrittErlaubt(zeileZuAblauf(zeile), schritt as AblaufSchritt)) {
     felder.schritt = schritt
   }
