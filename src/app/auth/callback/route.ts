@@ -28,14 +28,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // E-Mail-Änderung in „Mein Konto“ (PROJ-50): Wird der Link in einem anderen
-  // Browser geöffnet, fehlt hier die Sitzung — die Änderung selbst ist beim
-  // Klick aber schon bestätigt. Statt der Anmelde-Fehlermeldung führt der Weg
-  // zurück nach „Mein Konto“ (ohne Sitzung über die Anmeldung) mit einem Hinweis.
-  if (next.startsWith('/admin/konto')) {
-    return NextResponse.redirect(`${origin}/admin/konto?email=fehler`)
-  }
-
   // If code exchange fails, redirect to login with an error indicator
   return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
 }

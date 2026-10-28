@@ -2,90 +2,98 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { chainMock } from '@/test/supabase-chain-mock'
 
-vi.mock('@/lib/supabase-server', () => ({ createClient: vi.fn() }))
+const signIn = vi.fn()
+const updateUserById = vi.fn()
+vi.mock('@supabase/supabase-js', () => ({ createClient: vi.fn(() => ({ auth: { signInWithPassword: signIn } })) }))
+vi.mock('@/lib/supabase-server', () => ({
+  createClient: vi.fn(),
+  createServiceClient: vi.fn(() => ({ auth: { admin: { updateUserById } } })),
+}))
 
 import { createClient } from '@/lib/supabase-server'
-import { POST, PUT } from './route'
+import { POST } from './route'
 
-const updateUser = vi.fn()
-const resend = vi.fn()
+const emailUser = { id: 'u1', email: 'alt@schule.de', app_metadata: { providers: ['email'] } }
+const googleUser = { id: 'u2', email: 'max@gmail.com', app_metadata: { providers: ['google'] } }
 
 function login(user: unknown, role: string | null = 'teacher') {
-  const mock = chainMock(() => ({ data: role ? { role } : null }), {
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }), updateUser, resend },
-  })
+  const mock = chainMock(() => ({ data: role ? { role } : null }), { auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) } })
   vi.mocked(createClient).mockResolvedValue(mock.client as never)
 }
 const post = (body: unknown) => new NextRequest('https://app.example/api/profile/email', { method: 'POST', body: JSON.stringify(body) })
-const put = () => new NextRequest('https://app.example/api/profile/email', { method: 'PUT' })
 
-describe('/api/profile/email (PROJ-50)', () => {
+describe('POST /api/profile/email (PROJ-50, ohne Bestätigungs-Mail)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    updateUser.mockResolvedValue({ error: null })
-    resend.mockResolvedValue({ error: null })
+    signIn.mockResolvedValue({ error: null })
+    updateUserById.mockResolvedValue({ error: null })
   })
 
   it('antwortet 401 ohne Login und 403 für Azubis', async () => {
     login(null, null)
-    expect((await POST(post({ email: 'neu@schule.de' }))).status).toBe(401)
-    expect((await PUT(put())).status).toBe(401)
-    login({ id: 'u1', email: 'a@b.de' }, 'student')
-    expect((await POST(post({ email: 'neu@schule.de' }))).status).toBe(403)
-    expect(updateUser).not.toHaveBeenCalled()
+    expect((await POST(post({ email: 'neu@schule.de', currentPassword: 'x' }))).status).toBe(401)
+    login(emailUser, 'student')
+    expect((await POST(post({ email: 'neu@schule.de', currentPassword: 'x' }))).status).toBe(403)
+    expect(updateUserById).not.toHaveBeenCalled()
   })
 
-  it('startet die Änderung mit Rücksprung nach „Mein Konto“ (Link geht an die neue Adresse)', async () => {
-    login({ id: 'u1', email: 'alt@schule.de' })
-    const res = await POST(post({ email: '  Neu@Schule.DE ' }))
+  it('ändert die Adresse nach geprüftem Passwort sofort und ohne Bestätigungs-Mail', async () => {
+    login(emailUser)
+    const res = await POST(post({ email: '  Neu@Schule.DE ', currentPassword: 'mein-passwort' }))
     expect(res.status).toBe(200)
-    expect(updateUser).toHaveBeenCalledWith(
-      { email: 'neu@schule.de' },
-      { emailRedirectTo: `https://app.example/auth/callback?next=${encodeURIComponent('/admin/konto?email=bestaetigt')}` },
-    )
+    expect(await res.json()).toEqual({ ok: true, email: 'neu@schule.de' })
+    expect(signIn).toHaveBeenCalledWith({ email: 'alt@schule.de', password: 'mein-passwort' })
+    expect(updateUserById).toHaveBeenCalledWith('u1', { email: 'neu@schule.de', email_confirm: true })
   })
 
-  it('lehnt ungültige und die aktuelle Adresse mit 400 am Feld ab', async () => {
-    login({ id: 'u1', email: 'alt@schule.de' })
+  it('ändert nichts bei falschem Passwort und meldet es am Feld', async () => {
+    login(emailUser)
+    signIn.mockResolvedValue({ error: { status: 400, message: 'Invalid login credentials' } })
+    const res = await POST(post({ email: 'neu@schule.de', currentPassword: 'falsch' }))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ field: 'currentPassword' })
+    expect(updateUserById).not.toHaveBeenCalled()
+  })
+
+  it('verlangt das Passwort und lehnt ungültige sowie die aktuelle Adresse am Feld ab', async () => {
+    login(emailUser)
+    const noPassword = await POST(post({ email: 'neu@schule.de' }))
+    expect(noPassword.status).toBe(400)
+    expect(await noPassword.json()).toMatchObject({ field: 'currentPassword' })
     for (const email of ['keine-adresse', '', 'ALT@schule.de']) {
-      const res = await POST(post({ email }))
+      const res = await POST(post({ email, currentPassword: 'x' }))
       expect(res.status, email).toBe(400)
       expect(await res.json()).toMatchObject({ field: 'email' })
     }
-    expect(updateUser).not.toHaveBeenCalled()
+    expect(signIn).not.toHaveBeenCalled()
+    expect(updateUserById).not.toHaveBeenCalled()
+  })
+
+  it('verweigert Google-/Apple-Konten ohne eigenes Passwort', async () => {
+    login(googleUser)
+    expect((await POST(post({ email: 'neu@gmail.com', currentPassword: 'x' }))).status).toBe(403)
+    expect(updateUserById).not.toHaveBeenCalled()
   })
 
   it('verrät bei einer vergebenen Adresse nicht, wem sie gehört', async () => {
-    login({ id: 'u1', email: 'alt@schule.de' })
-    updateUser.mockResolvedValue({ error: { status: 422, code: 'email_exists', message: 'A user with this email address has already been registered' } })
-    const res = await POST(post({ email: 'besetzt@schule.de' }))
+    login(emailUser)
+    updateUserById.mockResolvedValue({ error: { status: 422, code: 'email_exists', message: 'A user with this email address has already been registered' } })
+    const res = await POST(post({ email: 'besetzt@schule.de', currentPassword: 'x' }))
     expect(res.status).toBe(400)
-    expect(JSON.stringify(await res.json())).not.toMatch(/registered|vergeben|bereits/i)
+    const body = await res.json()
+    expect(body).toMatchObject({ field: 'email' })
+    expect(JSON.stringify(body)).not.toMatch(/registered|vergeben|bereits/i)
   })
 
-  it('meldet bei zu vielen Versuchen 429 und sonst 500', async () => {
-    login({ id: 'u1', email: 'alt@schule.de' })
-    updateUser.mockResolvedValue({ error: { status: 429, message: 'rate' } })
-    expect((await POST(post({ email: 'neu@schule.de' }))).status).toBe(429)
+  it('meldet bei zu vielen Versuchen 429 und sonst 500, ohne das Passwort zu loggen', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    updateUser.mockResolvedValue({ error: { status: 500, message: 'boom' } })
-    expect((await POST(post({ email: 'neu@schule.de' }))).status).toBe(500)
+    login(emailUser)
+    signIn.mockResolvedValue({ error: { status: 429, message: 'rate' } })
+    expect((await POST(post({ email: 'neu@schule.de', currentPassword: 'geheim-123' }))).status).toBe(429)
+    signIn.mockResolvedValue({ error: null })
+    updateUserById.mockResolvedValue({ error: { status: 500, code: 'unexpected_failure', message: 'boom' } })
+    expect((await POST(post({ email: 'neu@schule.de', currentPassword: 'geheim-123' }))).status).toBe(500)
+    expect(JSON.stringify(spy.mock.calls)).not.toContain('geheim-123')
     spy.mockRestore()
-  })
-
-  it('sendet den Link erneut an die ausstehende Adresse', async () => {
-    login({ id: 'u1', email: 'alt@schule.de', new_email: 'neu@schule.de' })
-    expect((await PUT(put())).status).toBe(200)
-    expect(resend).toHaveBeenCalledWith({
-      type: 'email_change',
-      email: 'neu@schule.de',
-      options: { emailRedirectTo: `https://app.example/auth/callback?next=${encodeURIComponent('/admin/konto?email=bestaetigt')}` },
-    })
-  })
-
-  it('verweigert „erneut senden“ ohne ausstehende Änderung', async () => {
-    login({ id: 'u1', email: 'alt@schule.de' })
-    expect((await PUT(put())).status).toBe(400)
-    expect(resend).not.toHaveBeenCalled()
   })
 })

@@ -1,9 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
-import { toast } from 'sonner'
 import { AdminErrorState } from '@/components/admin/admin-states'
 
 /**
@@ -47,25 +45,4 @@ export function KontoCard({
 export function KontoSectionError() {
   const router = useRouter()
   return <AdminErrorState onRetry={() => router.refresh()} />
-}
-
-/**
- * Meldung nach dem Klick auf den Bestätigungslink der E-Mail-Änderung: Der
- * Rücksprung landet auf `/admin/konto?email=bestaetigt`. Der Hinweis erscheint
- * einmal, danach wird der Parameter aus der Adresse entfernt.
- */
-export function KontoEmailHinweis() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const state = searchParams.get('email')
-
-  useEffect(() => {
-    if (!state) return
-    if (state === 'bestaetigt') toast.success('Deine E-Mail-Adresse wurde geändert.')
-    else if (state === 'fehler') toast.error('Die Bestätigung konnte in diesem Browser nicht abgeschlossen werden. Prüfe unter „Anmeldung“, welche Adresse gilt, oder starte die Änderung neu.')
-    router.replace(pathname)
-  }, [state, pathname, router])
-
-  return null
 }

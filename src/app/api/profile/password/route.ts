@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase-server'
 import { PASSWORD_MIN } from '@/lib/konto'
 import { requireTeacherRoleUser } from '../_lib/teacher-user'
+import { accountHasPassword, verifyCurrentPassword } from '../_lib/verify-password'
 
 const schema = z.object({
   currentPassword: z.string().max(200).optional(),
@@ -12,9 +12,8 @@ const schema = z.object({
 
 /**
  * Passwort ändern oder (bei Google/Apple-Konten ohne eigenes Passwort)
- * festlegen (PROJ-50). Das aktuelle Passwort wird auf dem Server geprüft,
- * und zwar mit einem eigenen Wegwerf-Client, damit die laufende Sitzung der
- * Person unberührt bleibt. Erst danach setzt das Service-Konto das neue
+ * festlegen (PROJ-50). Das aktuelle Passwort wird auf dem Server geprüft
+ * (`verifyCurrentPassword`, die laufende Sitzung bleibt unberührt). Erst danach setzt das Service-Konto das neue
  * Passwort; die Person bleibt angemeldet.
  */
 export async function POST(request: NextRequest) {
@@ -34,8 +33,7 @@ export async function POST(request: NextRequest) {
   }
   const { currentPassword, newPassword } = parsed.data
 
-  const providers = (user.app_metadata?.providers as string[] | undefined) ?? [user.app_metadata?.provider as string | undefined]
-  const hasPassword = providers.includes('email')
+  const hasPassword = accountHasPassword(user.app_metadata)
 
   if (hasPassword) {
     if (!currentPassword) {
@@ -43,16 +41,8 @@ export async function POST(request: NextRequest) {
     }
     if (!user.email) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-    const verifier = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-    const { error: verifyError } = await verifier.auth.signInWithPassword({ email: user.email, password: currentPassword })
-    if (verifyError) {
-      if (verifyError.status === 429) {
-        return NextResponse.json({ error: 'Zu viele Versuche. Bitte warte einen Moment.', field: 'currentPassword' }, { status: 429 })
-      }
-      return NextResponse.json({ error: 'Das aktuelle Passwort stimmt nicht.', field: 'currentPassword' }, { status: 400 })
-    }
+    const check = await verifyCurrentPassword(user.email, currentPassword)
+    if (!check.ok) return NextResponse.json({ error: check.error, field: 'currentPassword' }, { status: check.status })
     if (currentPassword === newPassword) {
       return NextResponse.json({ error: 'Das neue Passwort muss sich vom aktuellen unterscheiden.', field: 'newPassword' }, { status: 400 })
     }

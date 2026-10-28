@@ -1,8 +1,7 @@
-import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase-server'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { KontoEmailHinweis, KontoSectionError } from '@/components/admin/konto-card'
+import { KontoSectionError } from '@/components/admin/konto-card'
 import { KontoUeberMich } from '@/components/admin/konto-ueber-mich'
 import { KontoAufgabenKarte } from '@/components/admin/konto-aufgaben'
 import { KontoBeitragKarte } from '@/components/admin/konto-beitrag'
@@ -35,9 +34,6 @@ export default async function KontoPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader title="Mein Konto" description="Wer du in der App bist, was auf dich wartet und wie du dich anmeldest." />
-      <Suspense fallback={null}>
-        <KontoEmailHinweis />
-      </Suspense>
 
       {!data ? (
         <KontoSectionError />

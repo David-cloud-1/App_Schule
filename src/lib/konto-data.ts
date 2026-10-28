@@ -17,8 +17,6 @@ export type Section<T> = { ok: true; data: T } | { ok: false }
 export interface KontoHead {
   displayName: string
   email: string
-  /** Neue Adresse, die noch bestätigt werden muss (Supabase: `new_email`) */
-  pendingEmail: string | null
   /** Konto hat ein eigenes Passwort (E-Mail-Anmeldung); Google/Apple-Konten nicht */
   hasPassword: boolean
   kuerzel: string | null
@@ -225,7 +223,6 @@ export async function loadKontoData(db: Db, user: User): Promise<KontoData | nul
     head: {
       displayName: (profile.display_name as string | null) ?? user.email?.split('@')[0] ?? 'Konto',
       email: user.email ?? '',
-      pendingEmail: user.new_email ?? null,
       hasPassword: providers.includes('email'),
       kuerzel: (profile.kuerzel as string | null) ?? null,
       role: profile.role as TeacherRole,

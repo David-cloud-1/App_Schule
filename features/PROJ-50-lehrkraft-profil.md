@@ -66,10 +66,10 @@ Alle Rollen mit Zugang zum Lehrkräfte-Bereich: Lehrkraft, Bereichs-Admin, Super
 
 ### 5. Einstellungen
 - [ ] **Passwort ändern:** aktuelles Passwort, neues Passwort, Wiederholung. Gleiche Mindestregeln wie bei der Registrierung. Falsches aktuelles Passwort → Meldung am Feld. Erfolg → Toast, Person bleibt angemeldet.
-- [ ] **E-Mail (= Anmeldename) ändern:** Die aktuelle Adresse wird angezeigt; die Lehrkraft gibt eine neue Adresse ein. An die neue Adresse geht ein Bestätigungslink. Erst nach Klick auf den Link gilt die neue Adresse für die Anmeldung; bis dahin bleibt die alte gültig.
-- [ ] Nach dem Absenden zeigt die Seite „Bestätigung ausstehend an <neue Adresse>“ mit der Möglichkeit, den Link erneut zu senden. Wer sich vertippt hat, gibt einfach eine andere Adresse ein; sie ersetzt die ausstehende.
-- [ ] Ungültige Adresse oder eine Adresse, die schon zu einem anderen Konto gehört → verständliche Meldung am Feld (ohne zu verraten, wem sie gehört).
-- [ ] Nach erfolgreicher Bestätigung: Toast „Deine E-Mail-Adresse wurde geändert“, Person bleibt angemeldet.
+- [ ] **E-Mail (= Anmeldename) ändern, ohne Bestätigungs-Mail** (die App verschickt keine; Entscheidung 2026-10-27): Die aktuelle Adresse wird angezeigt. Für die neue Adresse gibt es drei Pflichtfelder: neue Adresse, neue Adresse wiederholen (Einfügen gesperrt), aktuelles Passwort.
+- [ ] Die Änderung gilt **sofort** für die Anmeldung. Ein Hinweis sagt das vorher deutlich; nach dem Speichern erscheint „E-Mail-Adresse geändert. Melde dich ab jetzt mit der neuen Adresse an.“ und die angezeigte Adresse (auch im Konto-Menü) ist aktuell.
+- [ ] Die Adressen sind ungleich, ungültig oder gleich der aktuellen → Meldung am Feld, nichts wird gesendet. Falsches Passwort → Meldung am Passwort-Feld, nichts wird geändert. Eine bereits vergebene Adresse bekommt dieselbe allgemeine Meldung wie eine ungültige (verrät nicht, wem sie gehört).
+- [ ] **Google-/Apple-Konten** (ohne eigenes Passwort) können die Adresse hier nicht ändern; ein Hinweis erklärt, dass das beim Anbieter geschieht.
 - [ ] Der Super-Admin kann E-Mail-Adressen weiterhin in der Nutzerverwaltung ändern.
 - [ ] **Darstellung:** Dunkel / Hell / Wie System, dieselbe Einstellung wie im Konto-Menü (beide Stellen zeigen immer denselben Wert).
 - [ ] **Pseudonym** ändern (Lehrkräfte erscheinen in der Rangliste nur unter Pseudonym, kein Klarname-Schalter).
@@ -95,9 +95,8 @@ Alle Rollen mit Zugang zum Lehrkräfte-Bereich: Lehrkraft, Bereichs-Admin, Super
 - **Sehr viele Nachweise/Änderungen**: Zahlen werden auf dem Server gezählt, Listen auf 5 begrenzt; die Seite bleibt schnell.
 - **Nachweise von früher** (vor diesem Feature geschlossen): gelten als „bereits angesehen“, damit die Liste beim Start nicht überquillt.
 - **Passwort ändern schlägt fehl** (Netzwerk, Server): Fehlermeldung, Felder bleiben ausgefüllt (außer Passwörter werden aus Sicherheitsgründen geleert), Person bleibt angemeldet.
-- **Konto über Google/Apple angemeldet** (kein eigenes Passwort): Statt „Passwort ändern“ steht „Passwort festlegen“ (ohne Feld für das aktuelle Passwort); die E-Mail-Änderung zeigt den Hinweis, dass die Google-/Apple-Anmeldung danach evtl. nicht mehr zum Konto passt.
-- **Bestätigungslink abgelaufen oder in anderem Browser geöffnet**: verständliche Meldung, Änderung kann neu angestoßen werden; die alte Adresse bleibt gültig.
-- **Tippfehler in der neuen Adresse**: Da die alte Adresse bis zur Bestätigung gültig bleibt, sperrt sich niemand aus; wer sich vertippt hat, gibt eine andere Adresse ein.
+- **Konto über Google/Apple angemeldet** (kein eigenes Passwort): Statt „Passwort ändern“ steht „Passwort festlegen“ (ohne Feld für das aktuelle Passwort); die E-Mail-Adresse ist nicht änderbar (Hinweis statt Formular).
+- **Tippfehler in der neuen Adresse**: Weil die Adresse sofort gilt, schützt die doppelte Eingabe (Einfügen gesperrt) davor. Wer es trotzdem falsch hat, meldet sich beim Super-Admin, der die Adresse in der Nutzerverwaltung korrigieren kann.
 - **Pseudonym bereits vergeben / unzulässig**: dieselbe Prüfung und Meldung wie bisher im Spielerprofil.
 - **Kürzel mit Leerzeichen/Ziffern**: Leerzeichen am Rand werden entfernt, Ziffern/Sonderzeichen abgelehnt.
 
@@ -182,23 +181,20 @@ Konto-Menü & Schnellsuche: neuer Eintrag „Mein Konto“ (ganz oben)
 | **Formulare wiederverwenden:** Fächer, Pseudonym, Rangliste, Darstellung | Gleiche Regeln und Meldungen wie bisher; keine zweite Logik, die auseinanderlaufen kann. |
 | **Kürzel über eine eigene kleine Schnittstelle** statt direktem Schreiben ins Profil | Prüft Länge/Zeichen auf dem Server und ändert garantiert nur dieses eine Feld (nie z. B. die Rolle). |
 | **Passwort ändern über den Server:** prüft erst das aktuelle Passwort, setzt dann das neue | Wer an einem offenen Rechner sitzt, kann das Passwort nicht ohne das alte ändern. Bei Google/Apple-Konten ohne Passwort entfällt das alte Passwort („festlegen“). Der Anmeldedienst begrenzt zu viele Fehlversuche. |
-| **E-Mail ändern über den Anmeldedienst (Supabase):** Bestätigungslink **nur an die neue Adresse** (Entscheidung 2026-10-27) | Funktioniert auch, wenn die alte Adresse nicht mehr abrufbar ist. Die alte Adresse gilt bis zum Klick weiter → kein Aussperren durch Tippfehler. Der Link führt über den vorhandenen Anmelde-Rücksprung zurück nach „Mein Konto“ mit Erfolgsmeldung. |
-| **E-Mail: „erneut senden“ über den Server; kein „Abbrechen“-Knopf** (Entscheidung 2026-10-27) | Der Anmeldedienst kennt kein Abbrechen; ein Eingriff in sein Schema wurde abgelehnt. Eine neue Adresse ersetzt die ausstehende. |
+| **E-Mail ändern über den Server, sofort gültig** (Entscheidung 2026-10-27: „es gibt im Moment keine E-Mail-Bestätigung“) | Die App und Supabase verschicken keine Bestätigungs-Mails. Schutz stattdessen durch Passwort-Bestätigung und doppelte Eingabe. Ohne Passwort (Google/Apple) keine Änderung. |
 | **„Angesehen“ wird beim Laden der Auswertung gesetzt**, nur wenn die erstellende Person lädt | Kein eigener Knopf nötig; Admins, die mitschauen, verfälschen nichts. |
 | **Spielstand auf/zu pro Gerät** im Browser gemerkt | Reine Ansichts-Vorliebe, muss nicht synchronisiert werden. |
 
-### D) Einstellung beim Anmeldedienst (einmalig, Super-Admin/Deploy)
-- In Supabase Auth: **„Secure email change“ ausschalten** (sonst muss auch die alte Adresse bestätigen). Das gilt projektweit; Azubis haben in der App aber keine E-Mail-Änderung, und die Änderung durch den Super-Admin in der Nutzerverwaltung ist davon nicht betroffen.
-- Die Vorlage der Bestätigungs-Mail („Change Email Address“) auf Deutsch prüfen.
-- Hinweis: Eine geänderte E-Mail-Adresse ändert **nicht** den Fachbereich (die Zuordnung nach Mail-Domain greift nur bei Konten ohne Fachbereich).
+### D) Einstellung beim Anmeldedienst
+Keine. Da die App keine Bestätigungs-Mails nutzt, ist nichts umzustellen. Eine geänderte E-Mail-Adresse ändert **nicht** den Fachbereich (die Zuordnung nach Mail-Domain greift nur bei Konten ohne Fachbereich).
 
 ### E) Was gebaut wird
 **Datenbank (1 Migration + Rückweg):** Kürzel-Feld im Profil · „angesehen am“ bei Nachweisen (bestehende geschlossene = angesehen) · Zähl-Funktion für „Mein Beitrag“ (nur eigene Einträge).
 
-**Server-Schnittstellen (neu):** Kürzel speichern · Passwort ändern/festlegen · E-Mail ändern / erneut senden.
+**Server-Schnittstellen (neu):** Kürzel speichern · Passwort ändern/festlegen · E-Mail ändern.
 **Server-Schnittstellen (angepasst):** Auswertung eines Nachweises setzt „angesehen“, wenn der Ersteller lädt.
 
-**Oberfläche:** Seite „Mein Konto“ mit den Karten oben · Eintrag im Konto-Menü und in der Schnellsuche · `/profile` für Lehrkräfte verkürzt · Erfolgsmeldung nach bestätigter E-Mail-Änderung.
+**Oberfläche:** Seite „Mein Konto“ mit den Karten oben · Eintrag im Konto-Menü und in der Schnellsuche · `/profile` für Lehrkräfte verkürzt.
 
 **Tests:** Kürzel-Prüfung, Passwort (falsches altes Passwort, Google-Konto), E-Mail (vergeben, ungültig, erneut senden), „angesehen“ nur durch Ersteller, Zahlen nur eigene Einträge, `/profile` Azubi unverändert / Lehrkraft verkürzt.
 
@@ -222,9 +218,9 @@ Keine neuen Pakete.
 1. Migration (vor dem Deploy einspielen, sonst zeigt die Seite einen Fehler): `profiles.kuerzel` (text, optional) und `graded_assessments.creator_viewed_at` (timestamptz). Bestehende geschlossene Nachweise einmalig auf „angesehen“ setzen. Kürzel nur durch die Person selbst oder den Super-Admin änderbar; die Rolle darf dadurch nie änderbar werden.
 2. `PATCH /api/profile/kuerzel` mit `{ kuerzel: string | null }` (Prüfung mit `parseKuerzel` aus `src/lib/konto.ts`).
 3. `POST /api/profile/password` mit `{ currentPassword?, newPassword }`; prüft das aktuelle Passwort, bei Konten ohne Passwort entfällt es. Fehlerform `{ error, field?: 'currentPassword' | 'newPassword' }`.
-4. `POST /api/profile/email` `{ email }` (Bestätigungslink nur an die neue Adresse), `PUT` = Link erneut senden. Rücksprung des Links nach `/admin/konto?email=bestaetigt` (bei Fehler `?email=fehler`).
+4. `POST /api/profile/email` `{ email, currentPassword }`, die Änderung gilt sofort (siehe „Revision“ in den Backend-Notizen).
 5. `creator_viewed_at` setzen, wenn die erstellende Person die Auswertung (`GET /api/admin/assessments/[id]/results`) eines geschlossenen Nachweises lädt; nie bei anderen Personen.
-6. Vor dem Deploy: in Supabase Auth „Secure email change“ ausschalten.
+6. (entfällt) Einstellung „Secure email change“ ist nicht mehr nötig, siehe Revision.
 
 ## Implementation Notes (Backend, 2026-10-27)
 
@@ -235,17 +231,16 @@ Keine neuen Pakete.
 **Schnittstellen** (alle nur für Lehrer-Rollen, Azubis 403):
 - `PATCH /api/profile/kuerzel`, Prüfung mit `parseKuerzel`, schreibt nur die eigene Spalte.
 - `POST /api/profile/password`: aktuelles Passwort per Wegwerf-Client geprüft (Sitzung bleibt unberührt), neues per `admin.updateUserById`; Google/Apple-Konten ohne Passwort dürfen eines festlegen; 429 bei Rate-Limit; Passwörter werden nie geloggt.
-- `POST /api/profile/email` (Link an die neue Adresse; vergebene und ungültige Adresse geben dieselbe Meldung), `PUT` = Link erneut senden. Rücksprung `/auth/callback?next=/admin/konto?email=bestaetigt`.
+- `POST /api/profile/email` `{ email, currentPassword }`: prüft das Passwort, setzt die Adresse sofort per Service-Konto (`email_confirm: true`); vergebene und ungültige Adresse geben dieselbe Meldung; Google/Apple-Konten 403.
 - `GET /api/admin/assessments/[id]/results` setzt `creator_viewed_at`, wenn die erstellende Person eine geschlossene Auswertung öffnet (Regel in `src/lib/assessment-viewed.ts`). Hinweis: Die Detailseite lädt die Auswertung beim Öffnen immer mit; schließt die Lehrkraft einen Nachweis auf dieser Seite, gilt er dadurch sofort als angesehen. Fehler beim Markieren verhindern die Auswertung nie.
-- `/auth/callback`: Schlägt der Austausch bei einem Link aus einem anderen Browser fehl, führt der Weg nach `/admin/konto?email=fehler` statt zur Anmelde-Fehlermeldung (die Änderung ist beim Klick schon bestätigt).
 
 **Tests:** 28 neue Tests (Kürzel, Passwort, E-Mail, „angesehen“, Callback); Gesamtsuite grün.
 
+**Revision 2026-10-27 (E-Mail ohne Bestätigung):** Der Nutzer wies darauf hin, dass es keine E-Mail-Bestätigung gibt. Das ursprünglich geplante Verfahren (Link an die neue Adresse, erneut senden, Rücksprung über `/auth/callback`) wurde komplett entfernt. Stattdessen: sofort gültig, geschützt durch aktuelles Passwort und doppelte Eingabe; Google/Apple-Konten können nicht ändern (Entscheidung „Sofort, mit Schutz“). Der Zusatz im `/auth/callback` und die Hinweis-Komponente wurden zurückgenommen. Hinweis: dass Supabase-Änderungen ohne Bestätigung sofort gelten, ist hier umgesetzt über `email_confirm: true` und unabhängig von der Projekt-Einstellung; im QA an einem Test-Konto bestätigen.
+
 **Vor dem Deploy (Reihenfolge):**
 1. Migration an Produktion anwenden (vor dem Push, sonst zeigt „Mein Konto“ einen Fehler).
-2. Supabase Auth → Email → „Secure email change“ **ausschalten**.
-3. Supabase Auth → URL Configuration: Prüfen, dass `https://spedilern.vercel.app/auth/callback` (mit Query, am besten `/auth/callback**`) in den Redirect-URLs steht, sonst fällt der Bestätigungslink auf die Startseite zurück.
-4. E-Mail-Vorlage „Change Email Address“ auf Deutsch prüfen.
+2. Keine Einstellungen in Supabase Auth nötig.
 
 **Zusammenspiel mit PROJ-58 (Pflichtwechsel):** Setzt PROJ-58 später ein Merkmal „muss Passwort ändern“, muss `POST /api/profile/password` es mit zurücksetzen. Bis dahin berührt PROJ-50 das nicht.
 
