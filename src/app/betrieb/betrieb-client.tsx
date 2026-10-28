@@ -423,9 +423,10 @@ export function BetriebClient() {
           <Link
             href="/shop"
             aria-label="Zum Shop"
-            className="ml-auto flex items-center justify-center w-9 h-9 rounded-full bg-[#374151] hover:bg-[#4B5563] text-[#FFD700]"
+            className="ml-auto flex flex-col items-center justify-center gap-0.5 min-w-16 h-14 px-3 rounded-2xl bg-[#FFD700] hover:bg-[#FFD700]/90 active:scale-95 transition-all duration-200 text-[#111827] font-bold shadow-lg"
           >
-            <Store className="w-4 h-4" />
+            <Store className="size-6" />
+            <span className="text-xs leading-none">Shop</span>
           </Link>
         </div>
       </header>
