@@ -104,7 +104,7 @@ describe('AdminHome (PROJ-40)', () => {
       '/admin/questions',
       '/admin/ai-generator',
       '/admin/users',
-      '/admin/werkzeugkiste',
+      'https://divadl-werkzeugkiste.hf.space',
     ])
   })
 
@@ -123,12 +123,12 @@ describe('AdminHome (PROJ-40)', () => {
     expect(screen.queryByRole('link', { name: /Entwurf|Alt/ })).not.toBeInTheDocument()
   })
 
-  it('öffnet die Werkzeugkiste im selben Tab als Seite der App (PROJ-51)', () => {
+  it('öffnet die Werkzeugkiste in neuem Tab', () => {
     stubAssessments([])
     wrap(<AdminHome />, false)
     const link = screen.getByRole('link', { name: /Werkzeugkiste/ })
-    expect(link).toHaveAttribute('href', '/admin/werkzeugkiste')
-    expect(link).not.toHaveAttribute('target')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 })
 
@@ -177,7 +177,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
       '/admin/leistungsnachweise?neu=1',
       '/admin/questions',
-      '/admin/werkzeugkiste',
+      'https://divadl-werkzeugkiste.hf.space',
     ])
     expect(screen.queryByText(/Trag deine Fächer ein/)).not.toBeInTheDocument()
     vi.unstubAllGlobals()

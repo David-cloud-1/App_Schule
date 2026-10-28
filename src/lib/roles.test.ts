@@ -11,7 +11,6 @@ import {
   safeRedirectTarget,
   START_PATH,
   startPathFor,
-  teacherMayCallApiPath,
 } from './roles'
 
 describe('Rollen-Übersicht (PROJ-44)', () => {
@@ -68,15 +67,6 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(mayOpenAdminPath('department_admin', '/admin/questions')).toBe(true)
     expect(mayOpenAdminPath('admin', '/admin/departments')).toBe(true)
     expect(mayOpenAdminPath('student', '/admin')).toBe(false)
-  })
-
-  it('lässt jede Lehrkraft in die Werkzeugkiste samt Ablauf und deren Schnittstelle (PROJ-51)', () => {
-    for (const path of ['/admin/werkzeugkiste', '/admin/werkzeugkiste/neu', '/admin/werkzeugkiste/ablauf/abc']) {
-      expect(mayOpenAdminPath('teacher', path)).toBe(true)
-    }
-    expect(teacherMayCallApiPath('/api/admin/werkzeugkiste/ablaeufe/abc/einlesen')).toBe(true)
-    expect(teacherMayCallApiPath('/api/admin/werkzeugkiste-fremd')).toBe(false)
-    expect(mayOpenAdminPath('student', '/admin/werkzeugkiste')).toBe(false)
   })
 
   it('nimmt als Login-Ziel nur Pfade innerhalb der App, sonst die Start-Weiche', () => {

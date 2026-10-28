@@ -1,8 +1,8 @@
 # PROJ-51: Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“
 
-## Status: In Progress
+## Status: Architected
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-28
+**Last Updated:** 2026-10-27
 
 ## Kontext
 Teil der „Super-App für Lehrkräfte“ (Gesamtplan siehe PROJ-44). Die Werkzeugkiste ist heute eine eigene Flask-App (`~/Schule/Werkzeugkiste`, live auf Hugging Face) mit eigenen Konten. Sie macht aus einem hochgeladenen Skript Unterrichtsmaterial: Skript hochladen → Prompt kopieren → in die eigene KI einfügen → Antwort zurückkopieren → Prüfstelle → Datei herunterladen. Es gibt keinen API-Schlüssel, und es entstehen keine Kosten.
@@ -319,42 +319,6 @@ Befunde und Folgen für den Bau:
 - **PROJ-54:** weitere Einträge in der Werkzeugliste, der Podcast als Aufruf pro Kapitel, `edge-tts` im Kern.
 - **PROJ-55:** Suchmodell und Rechtsquellen im Kern. Fragen werden nicht gespeichert.
 - **PROJ-56:** Die alte Flask-Oberfläche wird zur reinen Weiterleitung.
-
-## Frontend-Umsetzung (2026-10-28)
-
-**Seiten**
-- `/admin/werkzeugkiste` mit Seitenkopf, Hauptaktion „Skript hochladen“ und drei Reitern (`?tab=materialien|regal`). „Meine Materialien“ und „Regal“ zeigen bis PROJ-52/53 einen Leerzustand „Kommt bald“.
-- `/admin/werkzeugkiste/neu?werkzeug=…`: Schritt 1 eines neuen Ablaufs. Der Ablauf entsteht erst mit der Datei (anlegen → direkt in den Speicher hochladen mit Fortschritt → einlesen). Danach geht es weiter auf die Adresse des Ablaufs.
-- `/admin/werkzeugkiste/ablauf/[id]?schritt=1…5`: der laufende Ablauf. Der Schritt steht in der Adresse, deshalb führt der Zurück-Knopf des Browsers zum vorigen Schritt, und ein Neuladen macht dort weiter. Vorwärts öffnen sich nur vorbereitete Schritte (`schrittErlaubt`).
-- Der Rahmen (`AdminShell`) blendet auf den Ablauf-Seiten Seitenleiste und Kopfzeile aus (`istAblaufPfad`).
-
-**Bausteine** (`src/components/werkzeugkiste/`): `werkzeugkiste-seite`, `werkzeug-uebersicht`, `ablauf-rahmen` (Kopf mit ✕ und Rückfrage, Fortschritt, Fuß), `schritt-skript` (Ablagefläche, Hochlade-Fortschritt, Ergebnis mit Kennzahlen, Hinweise bei 0 Lösungen bzw. altem Format, „Auswahl eingrenzen“ nach Seiten bzw. Word-Abschnitten), `schritt-einstellungen` (Werkzeug, Format-Karten, Niveau-Schalter, „Mehr Optionen“), `schritt-prompt` (`KopierKnopf` mit Rückfall auf markierten Text), `schritt-antwort` (eine Prüf-Box: grün / orange mit Befunden und Nachbesserungs-Prompt / rot bei unlesbarer Antwort), `schritt-fertig` (Download, Vorschau im abgeschotteten `iframe sandbox=""`, zwei Weiter-Vorschläge), `ablauf-neu`, `ablauf-seite`. Alles aus shadcn-Bausteinen, keine neuen Pakete.
-
-**Feste Werkzeugliste und Hilfsfunktionen:** `src/lib/werkzeugkiste.ts` (zwölf Werkzeuge, vier Gruppen, nur `skript` aktiv; Datei-Prüfung; Schritt-Regeln; Typen des Ablaufs).
-
-**Schnittstelle, die `/backend` bauen muss** (`src/lib/werkzeugkiste-api.ts`, alle unter `/api/admin/werkzeugkiste`):
-
-| Aufruf | Zweck | Antwort |
-|---|---|---|
-| `GET /optionen` | Auswahllisten aus dem Kern | `{ niveaus, bildungsgaenge, lernfelder: {bildungsgang: [...]}, umfaenge }` mit je `{key, label}` |
-| `POST /ablaeufe` `{werkzeug, datei:{name, groesse, typ}}` | Ablauf anlegen, Einstellungen aus dem letzten Ablauf vorbelegen | `{ ablauf, upload: {url, method, headers} }` |
-| `GET /ablaeufe/:id` | lesen | `{ ablauf }` |
-| `PATCH /ablaeufe/:id` `{werkzeug?, einstellungen?, auswahl?, schritt?}` | speichern; `schritt` nur erhöhen | `{ ablauf }` |
-| `DELETE /ablaeufe/:id` | abbrechen samt Dateien | `{ ok: true }` |
-| `POST /ablaeufe/:id/einlesen` | Kern liest ein → `kennzahlen`, `gliederung` | `{ ablauf }` |
-| `POST /ablaeufe/:id/prompt` | Kern baut Prompt aus Einstellungen + Auswahl | `{ ablauf }` |
-| `POST /ablaeufe/:id/pruefen` `{antwort}` | Prüfstelle; speichert Antwort und `pruefung` | `{ ablauf }` |
-| `POST /ablaeufe/:id/bauen` | Datei bauen → `ergebnis`, `schritt: 5` | `{ ablauf }` |
-| `GET /ablaeufe/:id/download` | Weiterleitung auf kurzlebigen Download-Link | 302 |
-| `GET /ablaeufe/:id/vorschau` | Vorschau-HTML (eigene CSP, ohne Skripte) | `text/html` |
-
-Fehler kommen als `{ error, hint? }` mit verständlichem Text. Das Format des Ablaufs steht als Typ `Ablauf` in `src/lib/werkzeugkiste.ts`.
-
-**Navigation & Rechte:** Werkzeugkiste-Eintrag in Seitenleiste, Schnellsuche und Startseite zeigt auf `/admin/werkzeugkiste` statt auf Hugging Face (`WERKZEUGKISTE_URL` entfernt). `/admin/werkzeugkiste` und `/api/admin/werkzeugkiste` stehen in den Lehrkraft-Freigaben (`roles.ts`).
-
-**Tests:** `src/lib/werkzeugkiste.test.ts` (13), `src/components/werkzeugkiste/werkzeugkiste.test.tsx` (5), angepasste Navigations- und Rollen-Tests. Gesamtsuite 1598 grün, Build und Lint sauber.
-
-**Noch offen bis `/backend`:** Ohne die Schnittstelle lässt sich der Ablauf nicht durchklicken. Die Startseite funktioniert schon. „Zuletzt gewählte Werte“ belegt der Server beim Anlegen vor.
 
 ## QA Test Results
 _To be added by /qa_

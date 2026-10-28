@@ -11,6 +11,7 @@ import {
   adminNavGroupsFor,
   adminNavLabel,
   isAdminNavActive,
+  WERKZEUGKISTE_URL,
 } from './admin-nav'
 
 describe('Admin-Navigation (PROJ-40)', () => {
@@ -25,15 +26,14 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(items.filter((i) => !i.external).every((i) => i.href.startsWith('/admin/'))).toBe(true)
   })
 
-  it('zeigt die Werkzeugkiste allen Lehrer-Rollen als Seite in der App (PROJ-51)', () => {
+  it('verlinkt die Werkzeugkiste als externen Eintrag für alle Lehrer-Rollen', () => {
     for (const role of ['admin', 'department_admin', 'teacher'] as const) {
       const item = adminNavGroupsFor(role)
         .flatMap((g) => g.items)
         .find((i) => i.label === 'Werkzeugkiste')!
-      expect(item.href).toBe('/admin/werkzeugkiste')
-      expect(item.external).toBeFalsy()
+      expect(item.href).toBe(WERKZEUGKISTE_URL)
+      expect(item.external).toBe(true)
     }
-    expect(adminNavMatch('/admin/werkzeugkiste/ablauf/abc')?.item.label).toBe('Werkzeugkiste')
   })
 
   it('zeigt Super-Admins „Fachbereiche“ und „Zuständigkeiten“, Fachbereichs-Admins keins von beiden', () => {

@@ -64,7 +64,7 @@
 | PROJ-48 | Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Deployed | [PROJ-48-fach-zustaendigkeiten.md](PROJ-48-fach-zustaendigkeiten.md) | 2026-10-26 |
 | PROJ-49 | Lehrkraft und Bereichs-Admin sichtbar trennen | Deployed | [PROJ-49-rollen-sichtbar-trennen.md](PROJ-49-rollen-sichtbar-trennen.md) | 2026-10-27 |
 | PROJ-50 | Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Approved | [PROJ-50-lehrkraft-profil.md](PROJ-50-lehrkraft-profil.md) | 2026-10-27 |
-| PROJ-51 | Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“ | In Progress | [PROJ-51-werkzeugkiste-rahmen-durchstich.md](PROJ-51-werkzeugkiste-rahmen-durchstich.md) | 2026-10-27 |
+| PROJ-51 | Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“ | Architected | [PROJ-51-werkzeugkiste-rahmen-durchstich.md](PROJ-51-werkzeugkiste-rahmen-durchstich.md) | 2026-10-27 |
 | PROJ-52 | Werkzeugkiste – Meine Materialien | Planned | [PROJ-52-werkzeugkiste-meine-materialien.md](PROJ-52-werkzeugkiste-meine-materialien.md) | 2026-10-27 |
 | PROJ-53 | Werkzeugkiste – Regal des Kollegiums | Planned | [PROJ-53-werkzeugkiste-regal.md](PROJ-53-werkzeugkiste-regal.md) | 2026-10-27 |
 | PROJ-54 | Werkzeugkiste – die übrigen 11 Werkzeuge | Planned | [PROJ-54-werkzeugkiste-weitere-werkzeuge.md](PROJ-54-werkzeugkiste-weitere-werkzeuge.md) | 2026-10-27 |

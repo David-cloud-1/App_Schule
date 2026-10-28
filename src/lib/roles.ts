@@ -104,8 +104,6 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/topics',
   '/admin/exam-sets',
   '/admin/papierkorb',
-  // PROJ-51: Werkzeugkiste — jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
-  '/admin/werkzeugkiste',
 ]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
@@ -132,8 +130,6 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/question-prompt',
   '/api/admin/trash',
   '/api/admin/content-history',
-  // PROJ-51: Werkzeugkiste-Abläufe (jede Route prüft requireTeacherOrAdmin, eigene Abläufe per RLS)
-  '/api/admin/werkzeugkiste',
 ]
 
 export function teacherMayCallApiPath(pathname: string): boolean {

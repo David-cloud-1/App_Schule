@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/sidebar'
 import type { WorkspaceTheme } from '@/lib/workspace-theme'
 import { adminNavMatch } from '@/lib/admin-nav'
-import { istAblaufPfad } from '@/lib/werkzeugkiste'
 
 // Schnellsuche erst beim ersten Öffnen laden — die Startseite bleibt schlank
 const AdminCommandPalette = dynamic(() => import('@/components/admin/admin-command-palette'), { ssr: false })
@@ -58,7 +57,6 @@ export function AdminShell({
 
 function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; children: React.ReactNode }) {
   const { theme, commandOpen, setCommandOpen, commandLoaded } = useWorkspace()
-  const pathname = usePathname()
 
   // ⌘K / Strg+K öffnet bzw. schließt die Schnellsuche
   useEffect(() => {
@@ -71,22 +69,6 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [commandOpen, setCommandOpen])
-
-  // Werkzeugkiste-Ablauf (PROJ-51): eigener Rahmen ohne Seitenleiste und Kopfzeile
-  if (istAblaufPfad(pathname)) {
-    return (
-      <div data-ws-theme={theme} className="ws-root min-h-svh bg-ws-bg text-ws-text">
-        <a
-          href="#ws-main"
-          className="sr-only z-50 rounded-xl bg-ws-green px-4 py-3 font-semibold text-ws-on-accent focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-        >
-          Zum Inhalt springen
-        </a>
-        {children}
-        <Toaster theme={theme} />
-      </div>
-    )
-  }
 
   return (
     <div
