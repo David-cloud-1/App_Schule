@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn(() => {
   throw new Error('Das Service-Konto muss in Tests übergeben werden')
 }) }))
 
-import { loadAufgaben, loadBeitrag } from './konto-data'
+import { loadAufgaben, loadBeitrag, loadVerbrauch, VERBRAUCH_LIMIT } from './konto-data'
 
 const ME = 'u1'
 
@@ -89,5 +89,26 @@ describe('loadBeitrag (PROJ-50)', () => {
     expect(result.recent.map((r) => r.key)).toEqual(['exam_question_set:set1', 'question:q1', 'topic:t1'])
     expect(result.recent.find((r) => r.key === 'question:q1')).toMatchObject({ title: 'Was ist CMR?', searchText: 'Was ist CMR?' })
     expect(result).toMatchObject({ questionsCreated: 3, changes: 3, assessments: 3 })
+  })
+})
+
+describe('loadVerbrauch (PROJ-65)', () => {
+  it('fragt nur die eigenen Läufe mit Kosten ab, neueste zuerst und begrenzt', async () => {
+    const db = chainMock((table) =>
+      table === 'ki_laeufe'
+        ? { data: [{ id: 'l1', werkzeug: 'skript', datei_name: 'heft.pdf', status: 'fertig', kosten_eur: '0.130000', gestartet_am: '2026-10-28T08:00:00Z' }] }
+        : { data: [] },
+    )
+    const r = await loadVerbrauch(db.client, ME)
+    expect(r).toEqual([{ id: 'l1', werkzeug: 'skript', dateiName: 'heft.pdf', status: 'fertig', kostenEur: 0.13, gestartetAm: '2026-10-28T08:00:00Z' }])
+    const q = db.queries.find((x) => x.table === 'ki_laeufe')!
+    expect(eqValue(q.calls, 'owner_id')).toBe(ME)
+    expect(q.calls.some((c) => c.method === 'gt' && c.args[0] === 'kosten_eur')).toBe(true)
+    expect(q.calls.find((c) => c.method === 'limit')?.args[0]).toBe(VERBRAUCH_LIMIT)
+  })
+
+  it('wirft bei einem Datenbankfehler, damit nur diese Karte „Erneut versuchen“ zeigt', async () => {
+    const db = chainMock(() => ({ error: { message: 'kaputt' } }))
+    await expect(loadVerbrauch(db.client, ME)).rejects.toBeTruthy()
   })
 })

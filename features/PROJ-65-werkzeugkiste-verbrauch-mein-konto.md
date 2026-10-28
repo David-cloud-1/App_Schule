@@ -1,8 +1,8 @@
 # PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto)
 
-## Status: Architected
+## Status: Approved
 **Created:** 2026-10-28
-**Last Updated:** 2026-10-28
+**Last Updated:** 2026-10-29
 
 ## Kontext
 Mit PROJ-64 kostet „Direkt erstellen“ Geld aus dem Schulguthaben. Jede Lehrkraft soll nachvollziehen können, was sie selbst verbraucht hat. Das soll nicht kontrollieren, sondern Transparenz schaffen, damit jede Person selbst entscheidet, wann sie den kostenlosen Weg nimmt.
@@ -90,8 +90,40 @@ Mein Konto (vorhandene Seite)
 - Kein Backend nötig (nur eine Abfrage in den vorhandenen Ladefunktionen von „Mein Konto“).
 - Oberfläche: eine Karte, eine Monatsauswahl, ein paar Rechenfunktionen mit Tests.
 
-## QA Test Results
-_To be added by /qa_
+## Umsetzung (2026-10-29)
+Kein Backend und keine Migration (wie im Tech Design). Gebaut:
+- `src/lib/werkzeugkiste-verbrauch.ts` (+ Test): Monat nach deutscher Zeit (Sommerzeit eingerechnet), Summe aus den genauen Beträgen, wählbare Monate (laufender + jeder mit Verbrauch), Rückfall auf den laufenden Monat bei unbekanntem Adress-Monat, Läufe ohne Kosten weglassen, „abgebrochen“ kennzeichnen.
+- `loadVerbrauch()` in `src/lib/konto-data.ts`: eigene Läufe mit Kosten, neueste zuerst, höchstens 500. Läuft mit der Anmeldung der Person (nicht mit Sonderrechten). Ein Fehler betrifft nur diese Karte.
+- `src/components/admin/konto-verbrauch.tsx` (Serverkarte) und `konto-verbrauch-ansicht.tsx` (Monatsauswahl, Summe, Liste, „Mehr anzeigen“; ohne Icon-Props über die Server/Client-Grenze). Eingebunden in `src/app/admin/konto/page.tsx`, der Monat steht in `?verbrauch=`.
+
+## QA Test Results (2026-10-29)
+
+**Geprüft ohne Browser** (Regel „kein Dev-Server“): Komponenten-, Rechen- und Abfrage-Tests, Typen, Lint, Build, Datenbank-Regeln.
+
+| Bereich | Ergebnis |
+|---|---|
+| Abschnitt in „Mein Konto“ | ✅ Karte „Werkzeugkiste – mein Verbrauch“ |
+| Monatssumme + Anzahl | ✅ (Test: 0,125 € + 0,50 € = „0,63 €“, „aus 2 direkten Erstellungen“) |
+| Liste: Datum, Werkzeug, Skript, Betrag, neueste zuerst | ✅ |
+| Höchstens 10 Einträge, „Mehr anzeigen“ | ✅ (Test mit 14 Läufen) |
+| Monatsauswahl, frühere Monate | ✅ Monate mit Verbrauch + laufender Monat, Adresse `?verbrauch=` |
+| „abgebrochen“ gekennzeichnet | ✅ |
+| Leerzustand | ✅ mit Hinweis auf den kostenlosen Weg |
+| Nur eigene Läufe | ✅ Abfrage filtert auf die eigene ID; Datenbank-Regel „eigene oder Super-Admin“, **keine** Schreibregeln (geprüft in Produktion), Anmeldung nötig |
+| Beträge „ca.“-Hinweis, zwei Nachkommastellen, „< 0,01 €“ | ✅ |
+| Fehler nur in dieser Karte | ✅ „Erneut versuchen“, andere Karten bleiben |
+
+**Randfälle:** Entwurf nach 7 Tagen gelöscht → Eintrag bleibt (Dateiname steht im Lauf) ✅ · Monatswechsel um Mitternacht nach deutscher Zeit ✅ (Tests mit Winter- und Sommerzeit) · Betrag unter 1 Cent ✅ · Unsinn in der Adresse → laufender Monat ✅ · Super-Admin sieht in „Mein Konto“ nur den eigenen Verbrauch ✅ (Abfrage filtert, Gesamtübersicht ist PROJ-66).
+
+**Sicherheit:** Kein Schreibzugriff aus dem Browser möglich, kein Zugriff auf fremde Läufe, kein Geheimnis im Browser. Der Lesezugriff von `anon` auf Tabellenebene ist der Supabase-Standard; die Zeilenregel liefert ohne Anmeldung nichts.
+
+**Tests:** 7 (Rechenlogik) + 6 (Karte) + 2 (Abfrage). Gesamtsuite 1678 grün, Typen, Lint und Build sauber.
+
+**Fehler:** keine (weder Critical, High, Medium noch Low).
+
+**Nicht geprüft:** Aussehen und Handy (kein Browser). Wird beim ersten Öffnen von „Mein Konto“ nach dem Deploy gesehen. **Hinweis:** Die Karte zeigt erst etwas, wenn ein Lauf mit Kosten existiert, vorher den Leerzustand.
+
+**Entscheidung: Bereit für Produktion.** Kein Critical/High-Fehler. Status **Approved**.
 
 ## Deployment
 _To be added by /deploy_

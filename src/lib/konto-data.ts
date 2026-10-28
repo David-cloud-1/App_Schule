@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { contentSearchTextFromSnapshot, contentTitleFromSnapshot, type KontoContentType } from '@/lib/konto'
 import { createServiceClient } from '@/lib/supabase-server'
 import type { TeacherRole } from '@/lib/roles'
+import type { VerbrauchLauf } from '@/lib/werkzeugkiste-verbrauch'
 
 /**
  * Daten der Seite „Mein Konto“ (PROJ-50), beim Laden auf dem Server
@@ -77,6 +78,8 @@ export interface KontoData {
   head: KontoHead
   aufgaben: Section<KontoAufgaben>
   beitrag: Section<KontoBeitrag>
+  /** Eigene Läufe der direkten Erstellung (PROJ-65) */
+  verbrauch: Section<VerbrauchLauf[]>
   spiel: KontoSpiel
   settings: KontoSettings
 }
@@ -201,6 +204,32 @@ export async function loadBeitrag(db: Db, userId: string, service: Db = createSe
   }
 }
 
+/** So viele Läufe lädt „Mein Konto“ höchstens — bei der erwarteten Nutzung reicht das für Jahre */
+export const VERBRAUCH_LIMIT = 500
+
+/**
+ * Eigene Läufe der direkten Erstellung mit Kosten (PROJ-65). Läuft mit der
+ * Anmeldung der Person: die Datenbank-Regel zeigt ihr nur die eigenen Läufe.
+ */
+export async function loadVerbrauch(db: Db, userId: string): Promise<VerbrauchLauf[]> {
+  const { data, error } = await db
+    .from('ki_laeufe')
+    .select('id, werkzeug, datei_name, status, kosten_eur, gestartet_am')
+    .eq('owner_id', userId)
+    .gt('kosten_eur', 0)
+    .order('gestartet_am', { ascending: false })
+    .limit(VERBRAUCH_LIMIT)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    werkzeug: r.werkzeug as string,
+    dateiName: (r.datei_name as string | null) ?? null,
+    status: r.status as string,
+    kostenEur: Number(r.kosten_eur) || 0,
+    gestartetAm: r.gestartet_am as string,
+  }))
+}
+
 export async function loadKontoData(db: Db, user: User): Promise<KontoData | null> {
   const { data: profile } = await db
     .from('profiles')
@@ -223,9 +252,10 @@ export async function loadKontoData(db: Db, user: User): Promise<KontoData | nul
       return { ok: false }
     }
   }
-  const [aufgaben, beitrag] = await Promise.all([
+  const [aufgaben, beitrag, verbrauch] = await Promise.all([
     settle('aufgaben', () => loadAufgaben(db, user.id)),
     settle('beitrag', () => loadBeitrag(db, user.id)),
+    settle('verbrauch', () => loadVerbrauch(db, user.id)),
   ])
 
   const providers = (user.app_metadata?.providers as string[] | undefined) ?? [user.app_metadata?.provider as string | undefined]
@@ -240,6 +270,7 @@ export async function loadKontoData(db: Db, user: User): Promise<KontoData | nul
     },
     aufgaben,
     beitrag,
+    verbrauch,
     spiel: {
       totalXp: (profile.total_xp as number | null) ?? 0,
       streak: (profile.current_streak as number | null) ?? 0,

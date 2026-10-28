@@ -5,6 +5,7 @@ import { KontoSectionError } from '@/components/admin/konto-section-error'
 import { KontoUeberMich } from '@/components/admin/konto-ueber-mich'
 import { KontoAufgabenKarte } from '@/components/admin/konto-aufgaben'
 import { KontoBeitragKarte } from '@/components/admin/konto-beitrag'
+import { KontoVerbrauchKarte } from '@/components/admin/konto-verbrauch'
 import { KontoFaecher } from '@/components/admin/konto-faecher'
 import { KontoAnmeldung } from '@/components/admin/konto-anmeldung'
 import { KontoDarstellung } from '@/components/admin/konto-darstellung'
@@ -20,7 +21,8 @@ export const metadata = { title: 'Mein Konto' }
  * Zugangsdaten und Einstellungen. Der Spielstand ist nur ein kleiner,
  * aufklappbarer Bereich.
  */
-export default async function KontoPage() {
+export default async function KontoPage({ searchParams }: { searchParams: Promise<{ verbrauch?: string }> }) {
+  const { verbrauch: monat } = await searchParams
   const supabase = await createClient()
   const {
     data: { user },
@@ -43,6 +45,7 @@ export default async function KontoPage() {
             <KontoUeberMich head={data.head} />
             <KontoAufgabenKarte section={data.aufgaben} />
             <KontoBeitragKarte section={data.beitrag} />
+            <KontoVerbrauchKarte section={data.verbrauch} monat={monat} />
           </div>
           <div className="space-y-6">
             <KontoFaecher role={data.head.role} departmentName={data.head.departmentName} />
