@@ -1,6 +1,7 @@
 'use client'
 
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { AblaufPruefung } from '@/lib/werkzeugkiste'
@@ -16,12 +17,14 @@ export function SchrittAntwort({
   pruefung,
   prueftGerade,
   pruefFehler,
+  erneutPruefen,
 }: {
   antwort: string
   setAntwort: (a: string) => void
   pruefung: AblaufPruefung | null
   prueftGerade: boolean
   pruefFehler: string | null
+  erneutPruefen: () => void
 }) {
   return (
     <div className="space-y-6">
@@ -46,7 +49,11 @@ export function SchrittAntwort({
             Wird geprüft …
           </div>
         ) : pruefFehler ? (
-          <Box ton="rot" icon={XCircle} titel={pruefFehler} />
+          <Box ton="rot" icon={XCircle} titel={pruefFehler}>
+            <Button variant="outline" onClick={erneutPruefen} className="min-h-11 rounded-xl border-ws-line">
+              Erneut versuchen
+            </Button>
+          </Box>
         ) : pruefung ? (
           <PruefErgebnis pruefung={pruefung} />
         ) : null}

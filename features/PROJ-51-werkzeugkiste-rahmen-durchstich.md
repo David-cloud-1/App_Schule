@@ -51,7 +51,7 @@ Die abgestimmte Skizze liegt unter https://claude.ai/artifact/NSK5QUStpFTc7tceo4
 ### Zugang & Navigation
 - [ ] Der Eintrag „Werkzeugkiste“ in der Seitenleiste (Gruppe „Mein Unterricht“) führt auf eine Seite **in der App**. Der bisherige externe Link entfällt. Das gilt ebenso für die Schnellsuche (⌘K) und die Startseiten-Kachel.
 - [ ] Alle Rollen des Lehrkräfte-Bereichs (Lehrkraft, Bereichs-Admin, Super-Admin) haben Zugang. Eine Lehrkraft ohne Fachbereich oder Fach-Zuständigkeit hat ebenfalls Zugang.
-- [ ] Azubis sehen die Werkzeugkiste nicht. Alle Seiten und Server-Aufrufe lehnen sie ab, direkte Aufrufe liefern 404.
+- [ ] Azubis sehen die Werkzeugkiste nicht. Alle Seiten und Server-Aufrufe lehnen sie ab, Seiten leiten auf die Startseite um (`/?kein-zugang=1`), Server-Aufrufe liefern 403 — wie im ganzen Lehrkräfte-Bereich.
 - [ ] Die Seite beginnt mit `AdminPageHeader` (Titel „Werkzeugkiste“, ein Satz Beschreibung, rechts die grüne Hauptaktion „Skript hochladen“).
 - [ ] Darunter stehen drei Reiter: **Werkzeuge** (Standard), **Meine Materialien**, **Regal des Kollegiums**. Bis PROJ-52 und PROJ-53 fertig sind, zeigen die beiden letzten einen freundlichen Leerzustand („Kommt bald“).
 - [ ] Der gewählte Reiter steht in der Adresse und bleibt beim Neuladen erhalten.
@@ -438,29 +438,36 @@ Auf Wunsch des Nutzers gilt „kein Dev-Server, kein Playwright“ (beides bring
 
 ### Gefundene Fehler
 
-#### BUG-1: Prüf-Hinweise sind technisch, abgeschnitten und zu viele — Medium
+#### BUG-1: Prüf-Hinweise sind technisch, abgeschnitten und zu viele — Medium — ✅ behoben
 - **Wo:** Schritt 4 (Kern `kern.pruefen` → Anzeige).
 - **Schritte:** Echte Antwort (Heft 2) prüfen lassen.
 - **Ist:** 17 Zeilen, darunter „Aufgabentyp `crossword` wird ersetzt“, „`find_words`“, „`memory_game`“, „`flashcards`“, „`image_sequencing`“, „Überschrift ohne Schul-Design“ und Kapitel-Titel mitten im Wort abgeschnitten („Kapitel 1: 1. Überblick: Frachtführer- und Sp…“). Tipps stehen gleichrangig neben wichtigen Befunden.
 - **Soll:** „kurze Liste in verständlicher Sprache, ohne YAML-Fachbegriffe“ (AC Schritt 4) und das Leitbild „nicht überladen“.
 - **Vorschlag:** Nur Schwere „hoch“ und „mittel“ zeigen (Tipps eingeklappt, wie schon der Nachbesserungs-Prompt), Fachbegriffe in Klartext übersetzen („Kreuzworträtsel wird zu Lernkarten“), Kapitelnummer statt abgeschnittenem Titel. Die Schwere wird vom Kern bereits mitgeliefert.
 
-#### BUG-2: Kaputte Struktur wird als „Alles in Ordnung“ gemeldet — Medium
+#### BUG-2: Kaputte Struktur wird als „Alles in Ordnung“ gemeldet — Medium — ✅ behoben
 - **Schritte:** Antwort `cover: …  chapters: foo` oder Kapitel als einfacher Text einfügen.
 - **Ist:** Die Prüfung ist **grün** („Alles in Ordnung“, 0 Befunde, `lesbar: true`); erst „Material erstellen“ scheitert mit „Die Antwort der KI hat nicht die verlangte Form“.
 - **Soll:** Als nicht lesbar erkennen (roter Satz) und das Bauen sperren.
 - **Vorschlag:** In `kern._antwort_laden` prüfen, dass `chapters` eine Liste von Objekten ist (und `cover` ein Objekt).
 
-#### BUG-3: Technische Fehlertexte bei kaputter Struktur — Low
+#### BUG-3: Technische Fehlertexte bei kaputter Struktur — Low — ✅ behoben
 - **Schritte:** `chapters: 5` bzw. `elements: 7` bauen lassen, oder `cover: hallo`.
 - **Ist:** „Die H5P-Datei konnte nicht erstellt werden: 'int' object …“ (Python-Meldung) bzw. beim Titel ein unbehandelter Fehler → allgemeiner 500-Satz „Im Werkzeugkiste-Kern ist ein Fehler aufgetreten. Bitte versuche es gleich noch einmal“ (Wiederholen hilft nicht).
 - **Vorschlag:** Ein Fehlerauffang in `kern.bauen`, der die verständliche Meldung „nicht die verlangte Form“ liefert. Wird mit BUG-2 mitbehoben.
 
-#### BUG-4: Kein „Erneut versuchen“ in Schritt 2–5 bei Fehlern — Low
+#### BUG-4: Kein „Erneut versuchen“ in Schritt 2–5 bei Fehlern — Low — ✅ behoben
 - **Soll (Randfall):** `AdminErrorState` mit „Erneut versuchen“. **Ist:** Hinweis-Box; wiederholt wird über die Hauptaktion. Nur beim Einlesen (Schritt 1) gibt es den Knopf.
 
-#### BUG-5: Azubis erhalten Umleitung/403, nicht 404 — Low (Spec-Wortlaut)
+#### BUG-5: Azubis erhalten Umleitung/403, nicht 404 — Low (Spec-Wortlaut) — ✅ behoben
 - **Soll:** „direkte Aufrufe liefern 404“. **Ist:** Seiten leiten auf `/?kein-zugang=1`, Schnittstellen antworten 403 — wie bei allen Seiten des Lehrkräfte-Bereichs (PROJ-44). Kein Sicherheitsproblem; entweder Spec anpassen (empfohlen) oder bewusst abweichen.
+
+### Fehlerbehebung (2026-10-28)
+- **BUG-1:** Kern zeigt nur Hinweise der Stufe „hoch“ und „mittel“ (Tipps entfallen), Fachbegriffe in Alltagssprache („Kreuzworträtsel wird ersetzt“), Ort nur noch „Kapitel 3“. Heft 2: 13 kurze Zeilen statt 17 lange.
+- **BUG-2/3:** `_antwort_laden` prüft die Form (`chapters` Liste von Objekten, `cover` Objekt, `elements` Liste) → „nicht lesbar“, Bauen gesperrt. `bauen` fängt Formfehler ab und liefert die verständliche Meldung statt Python-Text.
+- **BUG-4:** „Erneut versuchen“ bei Aktionsfehlern (Schritt 1–4), Prüffehler und Vorschau.
+- **BUG-5:** Spec-Wortlaut angepasst, Verhalten unverändert.
+- Kern-Tests 14 (2 neu), App-Tests 1627 grün, Typen und Lint sauber. Offen: Durchklicken in der Vorschau-Bereitstellung.
 
 ### Weitere Befunde (nicht von diesem Feature)
 - **Podcast (PROJ-54):** Microsofts Sprachdienst weist `edge-tts` 7.2.8 mit **HTTP 403** ab (`WSServerHandshakeError`). Der Podcast funktioniert damit vermutlich auch in der alten Werkzeugkiste nicht mehr. Vor PROJ-54 eine neuere `edge-tts`-Version prüfen.

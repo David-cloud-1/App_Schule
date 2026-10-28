@@ -19,7 +19,7 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
   const [vorschauFehler, setVorschauFehler] = useState(false)
 
   useEffect(() => {
-    if (!vorschauOffen || vorschau !== null) return
+    if (!vorschauOffen || vorschau !== null || vorschauFehler) return
     let aktiv = true
     ladeVorschau(ablaufId)
       .then((html) => aktiv && setVorschau(html))
@@ -27,7 +27,7 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
     return () => {
       aktiv = false
     }
-  }, [vorschauOffen, vorschau, ablaufId])
+  }, [vorschauOffen, vorschau, vorschauFehler, ablaufId])
 
   return (
     <div className="space-y-8">
@@ -97,9 +97,12 @@ export function SchrittFertig({ ablaufId, ergebnis }: { ablaufId: string; ergebn
               className="min-h-0 w-full flex-1 rounded-xl border border-ws-line bg-white"
             />
           ) : vorschauFehler ? (
-            <p role="alert" className="text-sm text-ws-red">
-              Die Vorschau konnte nicht geladen werden. Die Datei kannst du trotzdem herunterladen.
-            </p>
+            <div role="alert" className="space-y-3 text-sm text-ws-red">
+              <p>Die Vorschau konnte nicht geladen werden. Die Datei kannst du trotzdem herunterladen.</p>
+              <Button variant="outline" onClick={() => setVorschauFehler(false)} className={`${NEBENAKTION} min-h-11 px-5`}>
+                Erneut versuchen
+              </Button>
+            </div>
           ) : (
             <p role="status" className="flex items-center gap-2 text-sm text-ws-muted">
               <Loader2 className="size-4 animate-spin" aria-hidden />

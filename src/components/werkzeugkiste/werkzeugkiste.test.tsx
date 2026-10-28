@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { WerkzeugUebersicht } from './werkzeug-uebersicht'
 import { SchrittAntwort } from './schritt-antwort'
 import type { AblaufPruefung } from '@/lib/werkzeugkiste'
@@ -24,7 +24,7 @@ describe('Prüfergebnis in Schritt 4 (PROJ-51)', () => {
   const basis: AblaufPruefung = { lesbar: true, fehler: null, befunde: [], korrekturen: 0, nachbesserungsPrompt: null }
   const zeige = (pruefung: AblaufPruefung | null, extra: Partial<Parameters<typeof SchrittAntwort>[0]> = {}) =>
     render(
-      <SchrittAntwort antwort="title: x" setAntwort={vi.fn()} pruefung={pruefung} prueftGerade={false} pruefFehler={null} {...extra} />,
+      <SchrittAntwort antwort="title: x" setAntwort={vi.fn()} pruefung={pruefung} prueftGerade={false} pruefFehler={null} erneutPruefen={vi.fn()} {...extra} />,
     )
 
   it('meldet eine fehlerfreie Antwort grün, mit automatisch korrigierten Kleinigkeiten', () => {
@@ -38,6 +38,13 @@ describe('Prüfergebnis in Schritt 4 (PROJ-51)', () => {
     expect(screen.getByText('2 Hinweise – die Datei wird trotzdem gebaut')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
     expect(screen.getByRole('button', { name: /Nachbesserungs-Prompt kopieren/ })).toBeInTheDocument()
+  })
+
+  it('bietet bei einem Fehler der Prüfstelle „Erneut versuchen“ an (BUG-4)', () => {
+    const erneut = vi.fn()
+    zeige(null, { pruefFehler: 'Die Prüfung hat gerade nicht geklappt.', erneutPruefen: erneut })
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    expect(erneut).toHaveBeenCalledTimes(1)
   })
 
   it('erklärt eine unlesbare Antwort in einem Satz', () => {

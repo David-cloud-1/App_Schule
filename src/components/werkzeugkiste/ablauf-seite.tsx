@@ -80,6 +80,10 @@ export function AblaufSeite({ id }: { id: string }) {
   const [promptHinweis, setPromptHinweis] = useState<string | null>(null)
   const [beschaeftigt, setBeschaeftigt] = useState(false)
   const [aktionsFehler, setAktionsFehler] = useState<string | null>(null)
+  /** Die zuletzt fehlgeschlagene Aktion — der Knopf „Erneut versuchen“ führt sie noch einmal aus */
+  const [wiederholen, setWiederholen] = useState<(() => Promise<void>) | null>(null)
+  /** Zählt Neuversuche der Prüfstelle hoch, damit sie nach einem Fehler noch einmal läuft */
+  const [pruefVersuch, setPruefVersuch] = useState(0)
   const [prueftGerade, setPrueftGerade] = useState(false)
   const [pruefFehler, setPruefFehler] = useState<string | null>(null)
   /** Antwort, zu der die angezeigte Prüfung gehört */
@@ -111,16 +115,19 @@ export function AblaufSeite({ id }: { id: string }) {
 
   function gehe(n: AblaufSchritt) {
     setAktionsFehler(null)
+    setWiederholen(null)
     router.push(ablaufHref(id, n), { scroll: false })
   }
 
   async function aktion(fn: () => Promise<void>) {
     setBeschaeftigt(true)
     setAktionsFehler(null)
+    setWiederholen(null)
     try {
       await fn()
     } catch (e) {
       setAktionsFehler(e instanceof WerkzeugFehler ? e.message : 'Das hat gerade nicht geklappt. Bitte versuche es erneut.')
+      setWiederholen(() => () => aktion(fn))
     } finally {
       setBeschaeftigt(false)
     }
@@ -145,7 +152,7 @@ export function AblaufSeite({ id }: { id: string }) {
       }
     }, PRUEF_PAUSE_MS)
     return () => clearTimeout(t)
-  }, [antwort, geprueftFuer, ablauf, schritt, id])
+  }, [antwort, geprueftFuer, ablauf, schritt, id, pruefVersuch])
 
   if (ladeFehler) {
     const weg = ladeFehler.status === 404
@@ -297,6 +304,10 @@ export function AblaufSeite({ id }: { id: string }) {
           pruefung={pruefungPasst ? ablauf.pruefung : null}
           prueftGerade={prueftGerade}
           pruefFehler={pruefFehler}
+          erneutPruefen={() => {
+            setPruefFehler(null)
+            setPruefVersuch((n) => n + 1)
+          }}
         />
       )
       fuss = (
@@ -337,6 +348,11 @@ export function AblaufSeite({ id }: { id: string }) {
       {aktionsFehler && (
         <div role="alert">
           <Hinweis ton="warnung">{aktionsFehler}</Hinweis>
+          {wiederholen && !beschaeftigt && (
+            <Button variant="outline" onClick={() => void wiederholen()} className="mt-3 min-h-11 rounded-xl border-ws-line">
+              Erneut versuchen
+            </Button>
+          )}
         </div>
       )}
     </AblaufRahmen>
