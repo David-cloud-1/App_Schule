@@ -79,7 +79,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-47: Änderungsverlauf & Wiederherstellen für Inhalte | Planned |
 | P1 | PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Planned |
 | P1 | PROJ-49: Lehrkraft und Bereichs-Admin sichtbar trennen | Deployed |
-| P1 | PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Planned |
+| P1 | PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Deployed |
 | P1 | PROJ-51: Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“ | Planned |
 | P1 | PROJ-52: Werkzeugkiste – Meine Materialien | Planned |
 | P1 | PROJ-53: Werkzeugkiste – Regal des Kollegiums | Planned |

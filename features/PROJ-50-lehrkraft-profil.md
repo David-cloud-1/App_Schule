@@ -1,8 +1,8 @@
 # PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-10-28
 
 ## Dependencies
 - Requires: PROJ-44 (Lehrkraft-Rolle & Freischaltung): Rollen `teacher`, `department_admin`, `admin`
@@ -368,4 +368,11 @@ Keine neuen Pakete.
 - **Neue Tests (28):** Begrenzer, Konto-Daten (Abgaben, Papierkorb-Prüfung, „angesehen“), Passwort-/E-Mail-Schnittstelle (Sitzung beenden, Begrenzung), Direktlinks, Felder leeren.
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://spedilern.vercel.app/admin/konto
+- **Erstmals live:** 2026-10-28 unbeabsichtigt mit dem Deploy von PROJ-57/58 (`b1f31a3`, Stand bis `c96be8c`, vor der QA)
+- **Fixes live:** 2026-10-28 mit `1473cbe` (BUG-1 bis BUG-6)
+- **Migration:** `20261027_proj50_lehrkraft_konto.sql` liegt in der Produktions-DB (außerhalb dieser Sitzung direkt per SQL angewendet, nicht in `schema_migrations` eingetragen). Nicht erneut ausführen.
+- **Vor dem Push geprüft:** committeter Stand in eigenem Worktree, `tsc`, 1579 Tests, Build grün, Lint ohne Fehler.
+- **Zwischenfall:** Beim Push ging zusätzlich `c80d49f` (PROJ-51 Werkzeugkiste, nur Frontend, ohne Backend) mit live, weil die andere Sitzung zwischen Prüfung und Push committet hatte. Auf Wunsch des Nutzers sofort per Revert zurückgenommen (`revert(PROJ-51)`), damit der Link zur alten Werkzeugkiste wieder funktioniert.
+- **Offen:** Sichtprüfung im Browser (Handy/Laptop, hell/dunkel) und ein echter E-Mail-Wechsel an einem Testkonto durch den Nutzer.
