@@ -92,6 +92,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-60: Konto löschen (DSGVO) | Planned |
 | P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned |
 | P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned |
+| P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

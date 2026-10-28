@@ -76,7 +76,8 @@
 | PROJ-60 | Konto löschen (DSGVO) | Planned | [PROJ-60-konto-loeschen-dsgvo.md](PROJ-60-konto-loeschen-dsgvo.md) | 2026-10-27 |
 | PROJ-61 | Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned | [PROJ-61-nutzer-export-mehrfachauswahl.md](PROJ-61-nutzer-export-mehrfachauswahl.md) | 2026-10-27 |
 | PROJ-62 | Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned | [PROJ-62-konten-anlegen-sammel-anlage.md](PROJ-62-konten-anlegen-sammel-anlage.md) | 2026-10-27 |
+| PROJ-63 | Lehrerzimmer – Forum für den Austausch im Kollegium | Planned | [PROJ-63-lehrerzimmer-forum.md](PROJ-63-lehrerzimmer-forum.md) | 2026-10-28 |
 
 <!-- Add features above this line -->
 
-## Next Available ID: PROJ-63
+## Next Available ID: PROJ-64
