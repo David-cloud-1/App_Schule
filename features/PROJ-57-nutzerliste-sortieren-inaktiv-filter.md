@@ -1,6 +1,6 @@
 # PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -155,4 +155,7 @@ Keine neue Schnittstelle, keine neuen Daten. Namen werden als Text gerendert (ke
 **Production-ready: JA.** Keine Critical/High-Bugs.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app
+- **Deployed:** 2026-10-28 (Push `c96be8c` auf `main`, Vercel-Build „Ready“)
+- **Migration vorab (vom Nutzer im SQL Editor eingespielt):** keine nötig
+- **Rauchtest ohne Login (curl):** `/admin/users` → 307 zum Login; Seite lädt ohne Fehler

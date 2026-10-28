@@ -1,6 +1,6 @@
 # PROJ-58: Passwort neu vergeben (mit Pflichtwechsel)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -204,4 +204,8 @@ Neu: Admin-Route (13), eigene Route (7), Proxy (+4), Vorschlag (5), Pflicht-Seit
 **Production-ready: JA.** Keine Critical/High-Bugs. Vor dem Push muss die Migration `20261027_proj58_revoke_sessions.sql` in die Produktion. Ohne sie funktioniert alles, nur „andere Geräte abmelden“ entfällt, und der Proxy fängt das auf.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app
+- **Deployed:** 2026-10-28 (Push `c96be8c` auf `main`, Vercel-Build „Ready“)
+- **Migration vorab (vom Nutzer im SQL Editor eingespielt):** `20261027_proj58_revoke_sessions.sql` — Funktion `admin_revoke_user_sessions` vorhanden, nur `service_role` darf sie ausführen (`anon`/`authenticated` geprüft: nein)
+- **Rauchtest ohne Login (curl):** `POST /api/account/password` → 401 · `POST /api/admin/users/{id}/password` → 401 · `/passwort-festlegen` → 307 zum Login
+- **Offen:** Der echte Ablauf (Passwort vergeben → Login → Pflichtwechsel) ist mit einem Testkonto einmal von Hand zu prüfen; das war ohne Dev-Server nicht automatisiert möglich.
