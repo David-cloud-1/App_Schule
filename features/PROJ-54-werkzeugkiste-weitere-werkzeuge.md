@@ -332,3 +332,9 @@ Keine Datenbank- und keine Rechteänderung (Einstellungen und Ergebnis sind JSON
 - Live: Kreative Einheit, Differenzierung, Arbeitsblatt, Lernsituation. Keine Datenbankänderung.
 - Tag: `v1.54.0-PROJ-54-paketA`.
 - **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer; Tipps je Werkzeug (BUG-1); Pakete B–E. Das Feature bleibt bis dahin „In Progress“.
+
+### Paket B – 2026-10-29
+- **Kern** (`werkzeugkiste-kern`, Commit 737234e) zuerst per `vercel deploy --prod`, danach **App** per Push auf `main` (`a48bd17`), Production „Ready“. Kern ohne Kennwort: 401; App-Route ohne Login: 401. Es ging nur dieser eine Commit hinaus.
+- Live: Kahoot-Quiz, Moodle-Fragen, LearningApps. Keine Datenbankänderung.
+- Tag: `v1.54.1-PROJ-54-paketB`.
+- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (Kahoot-Import in Kahoot, GIFT-Import in Moodle, Kopieren in den LearningApps-Editor); Tipps je Werkzeug (BUG-1; die parallele Sitzung muss auch die drei neuen Werkzeuge bedenken); Pakete C–E. Das Feature bleibt bis dahin „In Progress“.
