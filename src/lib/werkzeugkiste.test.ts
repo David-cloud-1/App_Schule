@@ -4,6 +4,9 @@ import {
   ablaufKurzinfo,
   auswahlArt,
   einstellungenFuerWerkzeug,
+  feldOptionen,
+  feldSetzen,
+  feldStandards,
   formatiereGroesse,
   istAblaufPfad,
   istAltesFormat,
@@ -27,8 +30,8 @@ describe('Werkzeugliste', () => {
     expect(WERKZEUG_GRUPPEN.map((g) => werkzeugeDerGruppe(g.id).length)).toEqual([3, 4, 3, 2])
   })
 
-  it('schaltet in PROJ-51 nur „Ganzes Skript“ frei, mit H5P vor der Seite', () => {
-    expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual(['skript'])
+  it('schaltet bis Paket A fünf Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
+    expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual(['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation'])
     expect(WERKZEUGE.find((w) => w.id === 'skript')?.formate.map((f) => f.id)).toEqual(['h5p', 'seite'])
   })
 })
@@ -131,5 +134,55 @@ describe('Einstellungen & Kurzinfo', () => {
       ablaufKurzinfo({ werkzeug: 'skript', einstellungen: EINST, datei: { name: 'heft.docx', groesse: 1 } }, 'mittel'),
     ).toBe('heft.docx · Ganzes Skript · H5P für Moodle · mittel')
     expect(ablaufKurzinfo({ werkzeug: 'skript', einstellungen: EINST, datei: null })).toBe('Ganzes Skript · H5P für Moodle')
+  })
+})
+
+describe('Einstellungsfelder (PROJ-54)', () => {
+  it('zeigt je Werkzeug höchstens drei Einstellungen direkt', () => {
+    for (const w of WERKZEUGE) {
+      expect(w.felder.filter((f) => f.ort === 'direkt').length, w.name).toBeLessThanOrEqual(3)
+    }
+  })
+
+  it('hat nur eindeutige Feld-Schlüssel je Werkzeug', () => {
+    for (const w of WERKZEUGE) {
+      const ids = w.felder.map((f) => f.id)
+      expect(new Set(ids).size, w.name).toBe(ids.length)
+    }
+  })
+
+  it('kennt die Standardwerte der alten Werkzeugkiste', () => {
+    expect(feldStandards('arbeitsblatt')).toMatchObject({ niveau: 'mittel', anzahl: '12', dauer: '60' })
+    expect(feldStandards('lernsituation')).toMatchObject({ sozialform: 'auto', dauer: '60' })
+    expect(feldStandards('differenzierung')).toMatchObject({ art: 'lernniveau', stufen: 'leicht,mittel,schwer' })
+  })
+
+  it('Differenzierung zeigt weder Niveau noch Bildungsgang (wirken im Prompt nicht)', () => {
+    const ids = WERKZEUGE.find((w) => w.id === 'differenzierung')!.felder.map((f) => f.id)
+    expect(ids).toEqual(['art', 'stufen'])
+  })
+
+  it('bietet das Format „Seite“ nur Werkzeugen mit Seiten-Ausgabe an', () => {
+    const mitSeite = WERKZEUGE.filter((w) => w.formate.some((f) => f.id === 'seite')).map((w) => w.id)
+    expect(mitSeite).toEqual(['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation'])
+  })
+
+  it('setzt Stufen auf den Standard der neuen Art zurück', () => {
+    const e = { ...feldStandards('differenzierung'), format: 'word', niveau: 'mittel', bildungsgang: 'auto', lernfeld: '', umfang: '' }
+    const cefr = feldSetzen('differenzierung', e, 'art', 'cefr')
+    expect(cefr.stufen).toBe('A2,B1,B2')
+    expect(feldOptionen(WERKZEUGE.find((w) => w.id === 'differenzierung')!.felder[1], cefr, null).map((o) => o.key)).toEqual(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
+  })
+
+  it('leert das Lernfeld beim Wechsel des Bildungsgangs', () => {
+    const e = { ...EINST, lernfeld: '3' }
+    expect(feldSetzen('arbeitsblatt', e, 'bildungsgang', 'x').lernfeld).toBe('')
+  })
+
+  it('übernimmt beim Werkzeugwechsel gemeinsame Felder und verwirft fremde', () => {
+    const von = { ...EINST, format: 'seite', sozialform: 'gruppe', dauer: '90' }
+    const nach = einstellungenFuerWerkzeug('arbeitsblatt', von)
+    expect(nach).toMatchObject({ format: 'word', dauer: '90', anzahl: '12' })
+    expect(nach.sozialform).toBeUndefined()
   })
 })

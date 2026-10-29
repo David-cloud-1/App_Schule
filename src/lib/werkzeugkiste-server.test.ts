@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ablaufAenderungSchema,
   einstellungenFuerWechsel,
+  standardEinstellungen,
   frischStempel,
   kern,
   KernFehler,
@@ -73,6 +74,9 @@ describe('Server-Grundlage der Werkzeugkiste (PROJ-51)', () => {
     const datei = { name: 'heft.docx', groesse: 1000, typ: '' }
     expect(neuerAblaufSchema.safeParse({ werkzeug: 'skript', datei }).success).toBe(true)
     expect(neuerAblaufSchema.safeParse({ werkzeug: 'kahoot', datei }).success).toBe(false)
+    for (const w of ['kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation']) {
+      expect(neuerAblaufSchema.safeParse({ werkzeug: w, datei }).success, w).toBe(true)
+    }
     const bild = neuerAblaufSchema.safeParse({ werkzeug: 'skript', datei: { ...datei, name: 'foto.jpg' } })
     expect(bild.success).toBe(false)
     expect(bild.error?.issues[0].message).toMatch(/Format geht nicht/)
@@ -110,5 +114,25 @@ describe('Server-Grundlage der Werkzeugkiste (PROJ-51)', () => {
     await expect(kern('/api/optionen')).rejects.toMatchObject({ status: 502, message: expect.stringMatching(/nicht erreichbar/) })
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('timeout')))
     await expect(kern('/api/optionen')).rejects.toMatchObject({ status: 504 })
+  })
+})
+
+describe('Werkzeugeigene Einstellungen (PROJ-54)', () => {
+  it('belegt Standardwerte je Werkzeug vor', () => {
+    expect(standardEinstellungen('arbeitsblatt')).toMatchObject({ format: 'word', anzahl: '12', dauer: '60' })
+    expect(standardEinstellungen('differenzierung')).toMatchObject({ format: 'word', art: 'lernniveau', stufen: 'leicht,mittel,schwer' })
+  })
+
+  it('verwirft Felder, die das Werkzeug nicht kennt, und füllt fehlende auf', () => {
+    const e = einstellungenFuerWechsel('lernsituation', {
+      ...standardEinstellungen('skript'),
+      format: 'ungueltig',
+      dauer: '90',
+      stufen: 'A1',
+    })
+    expect(e.format).toBe('word')
+    expect(e.dauer).toBe('90')
+    expect(e.sozialform).toBe('auto')
+    expect(e.stufen).toBeUndefined()
   })
 })

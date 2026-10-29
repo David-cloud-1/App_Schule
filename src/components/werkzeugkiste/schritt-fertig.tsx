@@ -55,9 +55,19 @@ export function SchrittFertig({
             {ergebnis.titel}
           </p>
           <p className="text-sm text-ws-muted">
-            {ergebnis.dateiname} · {ergebnis.kapitel} Kapitel · {ergebnis.aufgaben}{' '}
-            {ergebnis.aufgaben === 1 ? 'Aufgabe' : 'Aufgaben'}
+            {[
+              ergebnis.dateiname,
+              ergebnis.kapitel > 0 ? `${ergebnis.kapitel} Kapitel` : null,
+              ergebnis.einheit
+                ? `${ergebnis.aufgaben} ${ergebnis.einheit}`
+                : `${ergebnis.aufgaben} ${ergebnis.aufgaben === 1 ? 'Aufgabe' : 'Aufgaben'}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
+          {ergebnis.enthaelt && ergebnis.enthaelt.length > 0 && (
+            <p className="text-sm text-ws-muted">Darin: {ergebnis.enthaelt.join(' · ')}</p>
+          )}
         </div>
         <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
           <Button
@@ -69,10 +79,12 @@ export function SchrittFertig({
               Herunterladen
             </a>
           </Button>
-          <Button variant="outline" onClick={() => setVorschauOffen(true)} className={`${NEBENAKTION} min-h-12 px-5`}>
-            <Eye className="mr-2 size-5" aria-hidden />
-            Vorschau ansehen
-          </Button>
+          {ergebnis.hatVorschau !== false && (
+            <Button variant="outline" onClick={() => setVorschauOffen(true)} className={`${NEBENAKTION} min-h-12 px-5`}>
+              <Eye className="mr-2 size-5" aria-hidden />
+              Vorschau ansehen
+            </Button>
+          )}
         </div>
         <p className="text-xs text-ws-faint">
           Der Download steht 7 Tage lang bereit.

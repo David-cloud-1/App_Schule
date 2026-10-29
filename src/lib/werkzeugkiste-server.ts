@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   type AblaufErgebnis,
   dateiEndung,
+  feldIds,
+  feldStandards,
   findeWerkzeug,
   pruefeSkriptDatei,
   type Ablauf,
@@ -50,7 +52,7 @@ export const einstellungenSchema = z.object({
   bildungsgang: schluessel,
   lernfeld: schluessel,
   umfang: schluessel,
-})
+}).catchall(z.string().max(100)) // werkzeugeigene Felder (PROJ-54); welche gelten, entscheidet einstellungenFuerWechsel
 
 export const auswahlSchema = z.object({
   seiten: z.string().max(200),
@@ -137,6 +139,7 @@ export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
     bildungsgang: 'auto',
     lernfeld: '',
     umfang: '',
+    ...feldStandards(werkzeugId),
   }
 }
 
@@ -159,7 +162,11 @@ export function vorbelegung(werkzeugId: string, letzte: Partial<AblaufEinstellun
 /** Eingereichte Einstellungen gegen das Werkzeug prüfen: ein unbekanntes Format wird zum Standardformat */
 export function einstellungenFuerWechsel(werkzeugId: string, e: AblaufEinstellungen): AblaufEinstellungen {
   const formate = findeWerkzeug(werkzeugId)?.formate.map((f) => f.id) ?? []
-  return { ...e, format: formate.includes(e.format) ? e.format : (formate[0] ?? '') }
+  // Nur Felder behalten, die das Werkzeug kennt; fehlende bekommen ihren Standard
+  const kern = ['format', 'niveau', 'bildungsgang', 'lernfeld', 'umfang']
+  const erlaubt = [...kern, ...feldIds(werkzeugId)]
+  const rein = Object.fromEntries(Object.entries(e).filter(([k]) => erlaubt.includes(k)))
+  return { ...feldStandards(werkzeugId), ...rein, format: formate.includes(e.format) ? e.format : (formate[0] ?? '') } as AblaufEinstellungen
 }
 
 export function zeileZuAblauf(z: AblaufZeile): Ablauf {
@@ -173,7 +180,7 @@ export function zeileZuAblauf(z: AblaufZeile): Ablauf {
     kennzahlen: z.kennzahlen ?? null,
     gliederung: Array.isArray(z.gliederung) ? z.gliederung : [],
     auswahl: { seiten: z.auswahl?.seiten ?? '', abschnitte: z.auswahl?.abschnitte ?? [] },
-    einstellungen: { ...standardEinstellungen(z.werkzeug), ...(z.einstellungen ?? {}) },
+    einstellungen: { ...standardEinstellungen(z.werkzeug), ...(z.einstellungen ?? {}) } as AblaufEinstellungen,
     prompt: z.prompt,
     antwort: z.antwort,
     pruefung: z.pruefung ?? null,
@@ -311,5 +318,8 @@ export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, ant
     format: String(r.format),
     kapitel: Number(r.kapitel) || 0,
     aufgaben: Number(r.aufgaben) || 0,
+    ...(Array.isArray(r.enthaelt) ? { enthaelt: r.enthaelt.map(String) } : {}),
+    ...(r.hatVorschau === false ? { hatVorschau: false } : {}),
+    ...(typeof r.einheit === 'string' ? { einheit: r.einheit } : {}),
   }
 }

@@ -45,6 +45,46 @@ export interface WerkzeugFormat {
   hinweis: string
 }
 
+export interface FeldOption {
+  key: string
+  label: string
+}
+
+/** Woher die Auswahl eines Feldes kommt: feste Liste oder Auswahllisten des Kerns */
+export type FeldQuelle = 'niveaus' | 'bildungsgaenge' | 'lernfelder' | 'umfaenge'
+
+/**
+ * Eine Einstellung in Schritt 2 (PROJ-54). Jedes Werkzeug beschreibt seine
+ * Einstellungen hier; die Oberfläche zeichnet sich daraus selbst (kein
+ * Sonderlayout je Werkzeug). Höchstens drei Felder je Werkzeug stehen `direkt`
+ * sichtbar, der Rest unter „Mehr Optionen“.
+ */
+export interface EinstellungsFeld {
+  /** Schlüssel in den Einstellungen (und im Kern) */
+  id: string
+  label: string
+  /** schalter = Knopfleiste (wenige Optionen) · wahl = Auswahlliste · zahl = Zahlenfeld · mehrfach = Häkchen, Werte kommagetrennt */
+  art: 'schalter' | 'wahl' | 'zahl' | 'mehrfach'
+  ort: 'direkt' | 'mehr'
+  standard: string
+  /** Feste Auswahl; alternativ `quelle` */
+  optionen?: FeldOption[]
+  quelle?: FeldQuelle
+  /** Beschriftung für „nichts gewählt“ (nur bei wahl); ohne Angabe gibt es diese Möglichkeit nicht */
+  leer?: string
+  /** zahl */
+  min?: number
+  max?: number
+  schritt?: number
+  einheit?: string
+  /** mehrfach: höchstens so viele Häkchen */
+  hoechstens?: number
+  /** Optionen und Standard hängen vom Wert eines anderen Feldes ab (z. B. Stufen je „Art“) */
+  abhaengigVon?: { feld: string; optionen: Record<string, FeldOption[]>; standard: Record<string, string> }
+  /** Ein Satz unter dem Feld */
+  hinweis?: string
+}
+
 export interface Werkzeug {
   id: string
   name: string
@@ -56,25 +96,192 @@ export interface Werkzeug {
   aktiv: boolean
   /** Mehr als ein Format → Auswahl in Schritt 2; das erste ist vorgewählt */
   formate: WerkzeugFormat[]
+  /** Einstellungen in Schritt 2 (ohne Format) */
+  felder: EinstellungsFeld[]
+  /** Die bisherigen „Tipps je Werkzeug“, aufklappbar in Schritt 2 */
+  tipps?: string[]
 }
 
 const H5P: WerkzeugFormat = { id: 'h5p', label: 'H5P für Moodle', hinweis: 'Ergebnisse zählen im Notenbuch' }
 const SEITE: WerkzeugFormat = { id: 'seite', label: 'Interaktive Seite', hinweis: 'Zum Üben, auch offline und druckbar' }
 
-export const WERKZEUGE: Werkzeug[] = [
-  { id: 'skript', name: 'Ganzes Skript', gruppe: 'selbstlernen', beschreibung: 'Skript vollständig interaktiv', icon: BookOpen, aktiv: true, formate: [H5P, SEITE] },
-  { id: 'kreativ', name: 'Kreative Einheit', gruppe: 'selbstlernen', beschreibung: 'Schüler erarbeiten es selbst', icon: Sparkles, aktiv: false, formate: [H5P, SEITE] },
-  { id: 'differenzierung', name: 'Differenzierung', gruppe: 'selbstlernen', beschreibung: 'Dasselbe in mehreren Stufen', icon: BarChart3, aktiv: false, formate: [] },
-  { id: 'kahoot', name: 'Kahoot-Quiz', gruppe: 'ueben', beschreibung: 'Wiederholung, Stundeneinstieg', icon: Timer, aktiv: false, formate: [] },
-  { id: 'moodle', name: 'Moodle-Fragen', gruppe: 'ueben', beschreibung: 'Tests in der Lernplattform', icon: ListChecks, aktiv: false, formate: [] },
-  { id: 'learningapps', name: 'LearningApps', gruppe: 'ueben', beschreibung: 'Inhalte zum Kopieren', icon: LayoutGrid, aktiv: false, formate: [] },
-  { id: 'youtube', name: 'Video-Fragen', gruppe: 'ueben', beschreibung: 'Arbeitsauftrag zu einem Video', icon: MonitorPlay, aktiv: false, formate: [] },
-  { id: 'arbeitsblatt', name: 'Arbeitsblatt', gruppe: 'unterricht', beschreibung: 'Blatt mit Lösung', icon: FileText, aktiv: false, formate: [] },
-  { id: 'lernsituation', name: 'Lernsituation', gruppe: 'unterricht', beschreibung: 'Betrieblicher Auftrag', icon: Briefcase, aktiv: false, formate: [] },
-  { id: 'pruefung', name: 'Klassenarbeit', gruppe: 'unterricht', beschreibung: 'IHK-Stil, AFB I–III', icon: ClipboardCheck, aktiv: false, formate: [] },
-  { id: 'podcast', name: 'Podcast', gruppe: 'hoeren', beschreibung: 'Lern-Dialog als MP3', icon: Mic, aktiv: false, formate: [] },
-  { id: 'lied', name: 'Lernlied', gruppe: 'hoeren', beschreibung: 'Fachbegriffe als Ohrwurm', icon: Music, aktiv: false, formate: [] },
+// ── Wiederkehrende Einstellungen ────────────────────────────────────────────
+
+const NIVEAU: EinstellungsFeld = { id: 'niveau', label: 'Niveau', art: 'schalter', ort: 'direkt', standard: 'mittel', quelle: 'niveaus' }
+const BILDUNGSGANG: EinstellungsFeld = { id: 'bildungsgang', label: 'Bildungsgang', art: 'wahl', ort: 'mehr', standard: 'auto', quelle: 'bildungsgaenge' }
+const LERNFELD: EinstellungsFeld = { id: 'lernfeld', label: 'Lernfeld', art: 'wahl', ort: 'mehr', standard: '', quelle: 'lernfelder', leer: 'keins' }
+const UMFANG: EinstellungsFeld = { id: 'umfang', label: 'Umfang', art: 'wahl', ort: 'mehr', standard: '', quelle: 'umfaenge', leer: 'nach Skript' }
+const SOZIALFORM: EinstellungsFeld = {
+  id: 'sozialform',
+  label: 'Sozialform',
+  art: 'wahl',
+  ort: 'direkt',
+  standard: 'auto',
+  optionen: [
+    { key: 'auto', label: 'Automatisch (gemischt)' },
+    { key: 'einzel', label: 'Einzelarbeit' },
+    { key: 'partner', label: 'Partnerarbeit' },
+    { key: 'gruppe', label: 'Gruppenarbeit' },
+    { key: 'mix', label: 'Gemischt (Wechsel)' },
+  ],
+}
+const DAUER: EinstellungsFeld = {
+  id: 'dauer',
+  label: 'Bearbeitungszeit',
+  art: 'zahl',
+  ort: 'mehr',
+  standard: '60',
+  min: 10,
+  max: 1350,
+  schritt: 5,
+  einheit: 'Minuten',
+}
+
+/** Felder, die ein noch nicht umgezogenes Werkzeug vorläufig hat (werden in seinem Paket ersetzt) */
+const VORLAEUFIG: EinstellungsFeld[] = [NIVEAU, BILDUNGSGANG, LERNFELD]
+
+const WORD_ZIP = (hinweis: string): WerkzeugFormat => ({ id: 'word', label: 'Word-Dokument', hinweis })
+const WORD: WerkzeugFormat = WORD_ZIP('Zum Ausdrucken und Bearbeiten')
+
+const STUFEN_LERN: FeldOption[] = [
+  { key: 'leichte_sprache', label: 'Leichte Sprache' },
+  { key: 'leicht', label: 'leicht' },
+  { key: 'mittel', label: 'mittel' },
+  { key: 'schwer', label: 'schwer' },
 ]
+const STUFEN_CEFR: FeldOption[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((k) => ({ key: k, label: k }))
+
+export const WERKZEUGE: Werkzeug[] = [
+  { id: 'skript', name: 'Ganzes Skript', gruppe: 'selbstlernen', beschreibung: 'Skript vollständig interaktiv', icon: BookOpen, aktiv: true, formate: [H5P, SEITE], felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG] },
+  { id: 'kreativ', name: 'Kreative Einheit', gruppe: 'selbstlernen', beschreibung: 'Schüler erarbeiten es selbst', icon: Sparkles, aktiv: true, formate: [H5P, SEITE], felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG, { ...SOZIALFORM, ort: 'mehr' }] },
+  {
+    id: 'differenzierung',
+    name: 'Differenzierung',
+    gruppe: 'selbstlernen',
+    beschreibung: 'Dasselbe in mehreren Stufen',
+    icon: BarChart3,
+    aktiv: true,
+    formate: [WORD, H5P, SEITE],
+    // Prompt und Bau kennen weder Niveau noch Bildungsgang noch Lernfeld – sie bleiben hier weg
+    felder: [
+      {
+        id: 'art',
+        label: 'Differenzieren nach',
+        art: 'schalter',
+        ort: 'direkt',
+        standard: 'lernniveau',
+        optionen: [
+          { key: 'lernniveau', label: 'Lernniveau (leicht–schwer)' },
+          { key: 'cefr', label: 'CEFR-Sprachniveau (A1–C2)' },
+        ],
+      },
+      {
+        id: 'stufen',
+        label: 'Stufen',
+        art: 'mehrfach',
+        ort: 'direkt',
+        standard: 'leicht,mittel,schwer',
+        hoechstens: 4,
+        hinweis: 'Alle gewählten Stufen stehen in einer Datei. Höchstens vier.',
+        abhaengigVon: {
+          feld: 'art',
+          optionen: { lernniveau: STUFEN_LERN, cefr: STUFEN_CEFR },
+          standard: { lernniveau: 'leicht,mittel,schwer', cefr: 'A2,B1,B2' },
+        },
+      },
+    ],
+  },
+  { id: 'kahoot', name: 'Kahoot-Quiz', gruppe: 'ueben', beschreibung: 'Wiederholung, Stundeneinstieg', icon: Timer, aktiv: false, formate: [], felder: VORLAEUFIG },
+  { id: 'moodle', name: 'Moodle-Fragen', gruppe: 'ueben', beschreibung: 'Tests in der Lernplattform', icon: ListChecks, aktiv: false, formate: [], felder: VORLAEUFIG },
+  { id: 'learningapps', name: 'LearningApps', gruppe: 'ueben', beschreibung: 'Inhalte zum Kopieren', icon: LayoutGrid, aktiv: false, formate: [], felder: VORLAEUFIG },
+  { id: 'youtube', name: 'Video-Fragen', gruppe: 'ueben', beschreibung: 'Arbeitsauftrag zu einem Video', icon: MonitorPlay, aktiv: false, formate: [], felder: VORLAEUFIG },
+  {
+    id: 'arbeitsblatt',
+    name: 'Arbeitsblatt',
+    gruppe: 'unterricht',
+    beschreibung: 'Blatt mit Lösung',
+    icon: FileText,
+    aktiv: true,
+    formate: [WORD_ZIP('ZIP mit Arbeitsblatt und Lösungsblatt'), SEITE],
+    felder: [
+      NIVEAU,
+      { id: 'anzahl', label: 'Anzahl Aufgaben', art: 'zahl', ort: 'direkt', standard: '12', min: 1, max: 60, schritt: 1 },
+      DAUER,
+      BILDUNGSGANG,
+      LERNFELD,
+    ],
+  },
+  {
+    id: 'lernsituation',
+    name: 'Lernsituation',
+    gruppe: 'unterricht',
+    beschreibung: 'Betrieblicher Auftrag',
+    icon: Briefcase,
+    aktiv: true,
+    formate: [WORD_ZIP('ZIP mit Material und Handreichung'), SEITE],
+    felder: [SOZIALFORM, NIVEAU, DAUER, BILDUNGSGANG, LERNFELD],
+  },
+  { id: 'pruefung', name: 'Klassenarbeit', gruppe: 'unterricht', beschreibung: 'IHK-Stil, AFB I–III', icon: ClipboardCheck, aktiv: false, formate: [], felder: VORLAEUFIG },
+  { id: 'podcast', name: 'Podcast', gruppe: 'hoeren', beschreibung: 'Lern-Dialog als MP3', icon: Mic, aktiv: false, formate: [], felder: VORLAEUFIG },
+  { id: 'lied', name: 'Lernlied', gruppe: 'hoeren', beschreibung: 'Fachbegriffe als Ohrwurm', icon: Music, aktiv: false, formate: [], felder: VORLAEUFIG },
+]
+
+/** Alle Einstellungs-Schlüssel, die ein Werkzeug kennt (Format zählt dazu, wenn es Formate hat) */
+export function feldIds(werkzeugId: string): string[] {
+  const w = findeWerkzeug(werkzeugId)
+  return w ? w.felder.map((f) => f.id) : []
+}
+
+/** Feste oder vom Kern gelieferte Auswahl eines Feldes; bei abhängigen Feldern je nach Wert des Bezugsfeldes */
+export function feldOptionen(
+  feld: EinstellungsFeld,
+  einstellungen: Record<string, string>,
+  kern: { niveaus: FeldOption[]; bildungsgaenge: FeldOption[]; lernfelder: Record<string, FeldOption[]>; umfaenge: FeldOption[] } | null,
+): FeldOption[] {
+  if (feld.abhaengigVon) return feld.abhaengigVon.optionen[einstellungen[feld.abhaengigVon.feld]] ?? []
+  if (feld.optionen) return feld.optionen
+  if (!kern) return []
+  switch (feld.quelle) {
+    case 'niveaus':
+      return kern.niveaus
+    case 'bildungsgaenge':
+      return kern.bildungsgaenge
+    case 'umfaenge':
+      return kern.umfaenge
+    case 'lernfelder':
+      return kern.lernfelder[einstellungen.bildungsgang] ?? []
+    default:
+      return []
+  }
+}
+
+/** Startwerte aller Felder eines Werkzeugs */
+export function feldStandards(werkzeugId: string): Record<string, string> {
+  const w = findeWerkzeug(werkzeugId)
+  const out: Record<string, string> = {}
+  for (const f of w?.felder ?? []) {
+    out[f.id] = f.abhaengigVon ? (f.abhaengigVon.standard[out[f.abhaengigVon.feld] ?? ''] ?? f.standard) : f.standard
+  }
+  return out
+}
+
+/**
+ * Ein Feld ändern. Abhängiges folgt: neuer Bildungsgang → Lernfeld leer,
+ * neue „Art“ → Stufen auf deren Standard.
+ */
+export function feldSetzen(
+  werkzeugId: string,
+  einstellungen: AblaufEinstellungen,
+  feldId: string,
+  wert: string,
+): AblaufEinstellungen {
+  const neu: AblaufEinstellungen = { ...einstellungen, [feldId]: wert }
+  if (feldId === 'bildungsgang') neu.lernfeld = ''
+  for (const f of findeWerkzeug(werkzeugId)?.felder ?? []) {
+    if (f.abhaengigVon?.feld === feldId) neu[f.id] = f.abhaengigVon.standard[wert] ?? f.standard
+  }
+  return neu
+}
 
 export const STANDARD_WERKZEUG = 'skript'
 
@@ -200,6 +407,8 @@ export interface AblaufEinstellungen {
   bildungsgang: string
   lernfeld: string
   umfang: string
+  /** Werkzeugeigene Einstellungen (PROJ-54), z. B. dauer, anzahl, sozialform, art, stufen */
+  [feld: string]: string
 }
 
 export interface AblaufAuswahl {
@@ -230,6 +439,12 @@ export interface AblaufErgebnis {
   format: string
   kapitel: number
   aufgaben: number
+  /** Inhalt eines ZIP, z. B. ['Arbeitsblatt', 'Lösungsblatt'] (PROJ-54) */
+  enthaelt?: string[]
+  /** Was „aufgaben“ zählt, wenn nicht Aufgaben (z. B. „Phasen“, „Versionen“) */
+  einheit?: string
+  /** false = es gibt keine Vorschau (Standard: ja) */
+  hatVorschau?: boolean
 }
 
 /**
@@ -330,8 +545,28 @@ export function ablaufKurzinfo(ablauf: Pick<Ablauf, 'werkzeug' | 'einstellungen'
   return teile.join(' · ')
 }
 
-/** Einstellungen beim Werkzeugwechsel: Format auf den Standard des neuen Werkzeugs, Rest bleibt */
+/**
+ * Einstellungen beim Werkzeugwechsel: Format auf den Standard des neuen
+ * Werkzeugs, Niveau/Bildungsgang/Lernfeld/Umfang bleiben, werkzeugeigene
+ * Felder des alten Werkzeugs entfallen, die des neuen starten mit ihrem Standard
+ * (gleich benannte Felder behalten ihren Wert, wenn der noch erlaubt ist).
+ */
 export function einstellungenFuerWerkzeug(werkzeugId: string, bisher: AblaufEinstellungen): AblaufEinstellungen {
   const werkzeug = findeWerkzeug(werkzeugId)
-  return { ...bisher, format: werkzeug?.formate[0]?.id ?? '' }
+  const kern = ['format', 'niveau', 'bildungsgang', 'lernfeld', 'umfang']
+  const neu: AblaufEinstellungen = {
+    format: werkzeug?.formate[0]?.id ?? '',
+    niveau: bisher.niveau,
+    bildungsgang: bisher.bildungsgang,
+    lernfeld: bisher.lernfeld,
+    umfang: bisher.umfang,
+  }
+  const standards = feldStandards(werkzeugId)
+  for (const f of werkzeug?.felder ?? []) {
+    if (kern.includes(f.id)) continue
+    const alt = bisher[f.id]
+    const erlaubt = alt !== undefined && (!f.optionen || f.optionen.some((o) => o.key === alt))
+    neu[f.id] = f.abhaengigVon ? standards[f.id] : erlaubt ? alt : standards[f.id]
+  }
+  return neu
 }

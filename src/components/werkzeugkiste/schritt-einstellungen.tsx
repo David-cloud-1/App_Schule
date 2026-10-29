@@ -1,6 +1,8 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -8,7 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
-import { findeWerkzeug, WERKZEUGE, type AblaufEinstellungen } from '@/lib/werkzeugkiste'
+import {
+  feldOptionen,
+  feldSetzen,
+  findeWerkzeug,
+  WERKZEUGE,
+  type AblaufEinstellungen,
+  type EinstellungsFeld,
+} from '@/lib/werkzeugkiste'
 import type { WerkzeugOption, WerkzeugOptionen } from '@/lib/werkzeugkiste-api'
 import { Hinweis } from '@/components/werkzeugkiste/schritt-skript'
 
@@ -19,9 +28,11 @@ const FELD = 'min-h-11 rounded-xl border-ws-line bg-ws-surface text-ws-text focu
 const MENUE = 'border-ws-line bg-ws-surface text-ws-text'
 
 /**
- * Schritt 2 (PROJ-51): nur Werkzeug, Format und Niveau sind sichtbar.
- * Bildungsgang, Lernfeld und Umfang stehen unter „Mehr Optionen“. Die
- * Auswahllisten liefert der Kern, damit sie der alten Werkzeugkiste entsprechen.
+ * Schritt 2 (PROJ-51, ab PROJ-54 für alle Werkzeuge): Werkzeug, Format und die
+ * Einstellungen, die das Werkzeug in `felder` beschreibt. Direkt sichtbar sind
+ * höchstens drei, der Rest steht unter „Mehr Optionen“. Die Auswahllisten für
+ * Niveau, Bildungsgang, Lernfeld und Umfang liefert der Kern, damit sie der
+ * alten Werkzeugkiste entsprechen.
  */
 export function SchrittEinstellungen({
   werkzeugId,
@@ -39,8 +50,19 @@ export function SchrittEinstellungen({
   setEinstellungen: (e: AblaufEinstellungen) => void
 }) {
   const werkzeug = findeWerkzeug(werkzeugId)
-  const setze = (teil: Partial<AblaufEinstellungen>) => setEinstellungen({ ...einstellungen, ...teil })
-  const lernfelder = optionen?.lernfelder[einstellungen.bildungsgang] ?? []
+  const setze = (teil: Partial<AblaufEinstellungen>) => setEinstellungen({ ...einstellungen, ...teil } as AblaufEinstellungen)
+  const direkt = werkzeug?.felder.filter((f) => f.ort === 'direkt') ?? []
+  const mehr = werkzeug?.felder.filter((f) => f.ort === 'mehr') ?? []
+  const feld = (f: EinstellungsFeld) => (
+    <FeldAnsicht
+      key={f.id}
+      feld={f}
+      einstellungen={einstellungen}
+      optionen={optionen}
+      optionenFehler={optionenFehler}
+      onChange={(wert) => setEinstellungen(feldSetzen(werkzeugId, einstellungen, f.id, wert))}
+    />
+  )
 
   return (
     <div className="space-y-8">
@@ -95,75 +117,183 @@ export function SchrittEinstellungen({
         </fieldset>
       )}
 
+      {direkt.map(feld)}
+
+      {mehr.length > 0 && (
+        <Collapsible className="border-t border-ws-line pt-4">
+          <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-xl text-sm text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
+            <ChevronDown className="size-4 -rotate-90 transition-transform duration-200 group-data-[state=open]:rotate-0" aria-hidden />
+            Mehr Optionen
+            <span className="text-ws-faint">· {mehr.map((f) => f.label).join(', ')}</span>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <div className="grid gap-4 sm:grid-cols-3">{mehr.map(feld)}</div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {werkzeug?.tipps && werkzeug.tipps.length > 0 && (
+        <Collapsible className="border-t border-ws-line pt-4">
+          <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-xl text-sm text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
+            <ChevronDown className="size-4 -rotate-90 transition-transform duration-200 group-data-[state=open]:rotate-0" aria-hidden />
+            Tipps
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-ws-muted">
+              {werkzeug.tipps.map((t, i) => (
+                <li key={i}>{t}</li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+    </div>
+  )
+}
+
+/** Eine Einstellung — Darstellung nach `feld.art`; Auswahllisten vom Kern solange sie laden als Skelett */
+function FeldAnsicht({
+  feld,
+  einstellungen,
+  optionen,
+  optionenFehler,
+  onChange,
+}: {
+  feld: EinstellungsFeld
+  einstellungen: AblaufEinstellungen
+  optionen: WerkzeugOptionen | null
+  optionenFehler: boolean
+  onChange: (wert: string) => void
+}) {
+  const id = `wk-${feld.id}`
+  const wert = einstellungen[feld.id] ?? feld.standard
+  const liste = feldOptionen(feld, einstellungen, optionen)
+  const brauchtKern = !!feld.quelle && !optionen
+
+  if (feld.art === 'schalter') {
+    return (
       <div className="space-y-2">
-        <span id="wk-niveau-label" className="text-sm font-semibold text-ws-text">
-          Niveau
+        <span id={`${id}-label`} className="text-sm font-semibold text-ws-text">
+          {feld.label}
         </span>
-        {optionen ? (
+        {brauchtKern ? (
+          optionenFehler ? (
+            <Hinweis ton="warnung">Die Auswahllisten konnten nicht geladen werden. Es gelten die Standardwerte ({feld.standard}).</Hinweis>
+          ) : (
+            <Skeleton className="h-14 w-full rounded-2xl bg-ws-raised/70" />
+          )
+        ) : (
           <ToggleGroup
             type="single"
-            value={einstellungen.niveau}
-            onValueChange={(niveau) => niveau && setze({ niveau })}
-            aria-labelledby="wk-niveau-label"
-            className="grid grid-cols-2 gap-1 rounded-2xl border border-ws-line bg-ws-surface p-1 sm:grid-cols-5"
+            value={wert}
+            onValueChange={(v) => v && onChange(v)}
+            aria-labelledby={`${id}-label`}
+            className={cn(
+              'grid grid-cols-2 gap-1 rounded-2xl border border-ws-line bg-ws-surface p-1',
+              liste.length >= 5 ? 'sm:grid-cols-5' : 'sm:grid-cols-2',
+            )}
           >
-            {optionen.niveaus.map((n) => (
+            {liste.map((n) => (
               <ToggleGroupItem
                 key={n.key}
                 value={n.key}
                 title={n.label}
                 className="min-h-11 rounded-xl px-2 text-sm text-ws-muted hover:bg-ws-raised hover:text-ws-text data-[state=on]:bg-ws-raised data-[state=on]:font-semibold data-[state=on]:text-ws-text"
               >
-                {kurzesNiveau(n)}
+                {feld.quelle === 'niveaus' ? kurzesNiveau(n) : n.label}
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
-        ) : optionenFehler ? (
-          <Hinweis ton="warnung">Die Auswahllisten konnten nicht geladen werden. Es gelten die Standardwerte (mittel).</Hinweis>
-        ) : (
-          <Skeleton className="h-14 w-full rounded-2xl bg-ws-raised/70" />
         )}
+        {feld.hinweis && <p className="text-sm text-ws-muted">{feld.hinweis}</p>}
       </div>
+    )
+  }
 
-      <Collapsible className="border-t border-ws-line pt-4">
-        <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-xl text-sm text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
-          <ChevronDown className="size-4 -rotate-90 transition-transform duration-200 group-data-[state=open]:rotate-0" aria-hidden />
-          Mehr Optionen
-          <span className="text-ws-faint">· Bildungsgang, Lernfeld, Umfang</span>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-4">
-          {optionen ? (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Auswahl
-                id="wk-bildungsgang"
-                label="Bildungsgang"
-                wert={einstellungen.bildungsgang}
-                optionen={optionen.bildungsgaenge}
-                onChange={(bildungsgang) => setze({ bildungsgang, lernfeld: '' })}
-              />
-              <Auswahl
-                id="wk-lernfeld"
-                label="Lernfeld"
-                wert={einstellungen.lernfeld}
-                optionen={lernfelder}
-                leer="keins"
-                deaktiviert={lernfelder.length === 0}
-                onChange={(lernfeld) => setze({ lernfeld })}
-              />
-              <Auswahl
-                id="wk-umfang"
-                label="Umfang"
-                wert={einstellungen.umfang}
-                optionen={optionen.umfaenge}
-                leer="nach Skript"
-                onChange={(umfang) => setze({ umfang })}
-              />
-            </div>
-          ) : (
-            <p className="text-sm text-ws-muted">Die Optionen werden geladen …</p>
-          )}
-        </CollapsibleContent>
-      </Collapsible>
+  if (feld.art === 'mehrfach') {
+    const gewaehlt = wert.split(',').filter(Boolean)
+    const voll = feld.hoechstens !== undefined && gewaehlt.length >= feld.hoechstens
+    const umschalten = (key: string, an: boolean) => {
+      const neu = liste.filter((o) => (o.key === key ? an : gewaehlt.includes(o.key))).map((o) => o.key)
+      if (neu.length > 0) onChange(neu.join(','))
+    }
+    return (
+      <fieldset className="space-y-2">
+        <legend className="mb-2 text-sm font-semibold text-ws-text">{feld.label}</legend>
+        <div className="flex flex-wrap gap-2">
+          {liste.map((o) => {
+            const an = gewaehlt.includes(o.key)
+            const gesperrt = (!an && voll) || (an && gewaehlt.length === 1)
+            return (
+              <Label
+                key={o.key}
+                htmlFor={`${id}-${o.key}`}
+                className={cn(
+                  'flex min-h-11 items-center gap-2 rounded-xl border px-3 font-normal transition-colors duration-200',
+                  an ? 'border-ws-green bg-ws-green/10' : 'border-ws-line bg-ws-surface',
+                  gesperrt ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-ws-raised',
+                )}
+              >
+                <Checkbox
+                  id={`${id}-${o.key}`}
+                  checked={an}
+                  disabled={gesperrt}
+                  onCheckedChange={(v) => umschalten(o.key, v === true)}
+                  className="border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green data-[state=checked]:text-ws-on-accent"
+                />
+                {o.label}
+              </Label>
+            )
+          })}
+        </div>
+        {feld.hinweis && <p className="text-sm text-ws-muted">{feld.hinweis}</p>}
+      </fieldset>
+    )
+  }
+
+  if (feld.art === 'zahl') {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={id} className="text-sm text-ws-muted">
+          {feld.label}
+          {feld.einheit && <span className="text-ws-faint"> ({feld.einheit})</span>}
+        </Label>
+        <Input
+          id={id}
+          type="number"
+          inputMode="numeric"
+          min={feld.min}
+          max={feld.max}
+          step={feld.schritt}
+          value={wert}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => {
+            // Außerhalb des erlaubten Bereichs zurück auf den nächsten gültigen Wert
+            const n = Number(wert)
+            const ok = Number.isFinite(n) && wert !== ''
+            const begrenzt = ok ? Math.min(feld.max ?? n, Math.max(feld.min ?? n, Math.round(n))) : Number(feld.standard)
+            if (String(begrenzt) !== wert) onChange(String(begrenzt))
+          }}
+          className={FELD}
+        />
+        {feld.hinweis && <p className="text-sm text-ws-muted">{feld.hinweis}</p>}
+      </div>
+    )
+  }
+
+  // wahl
+  return (
+    <div className="space-y-2">
+      <Auswahl
+        id={id}
+        label={feld.label}
+        wert={wert}
+        optionen={liste}
+        leer={feld.leer}
+        deaktiviert={brauchtKern ? true : feld.quelle === 'lernfelder' && liste.length === 0}
+        onChange={onChange}
+      />
+      {feld.hinweis && <p className="text-sm text-ws-muted">{feld.hinweis}</p>}
     </div>
   )
 }

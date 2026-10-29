@@ -224,6 +224,18 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       expect(body.vorschau_ziel.url).toContain('schreiben')
     })
 
+    it('Bauen: reicht ZIP-Inhalt, Einheit und fehlende Vorschau vom Kern durch (PROJ-54)', async () => {
+      zeile = { ...BASIS_ZEILE, werkzeug: 'arbeitsblatt', schritt: 4, antwort: 'x', pruefung: { lesbar: true } }
+      kernAntwort({
+        titel: 'Haftung', dateiname: 'Haftung.zip', format: 'word', kapitel: 0, aufgaben: 12,
+        enthaelt: ['Arbeitsblatt', 'Lösungsblatt'], hatVorschau: false, einheit: 'Aufgaben', warnungen: 0,
+      })
+      const a = (await (await bauen(new Request('http://t'), ctx)).json()).ablauf
+      expect(a.ergebnis).toMatchObject({ enthaelt: ['Arbeitsblatt', 'Lösungsblatt'], hatVorschau: false, einheit: 'Aufgaben' })
+      const body = JSON.parse(kernFetch.mock.calls[0][1].body)
+      expect(body.werkzeug).toBe('arbeitsblatt')
+    })
+
     it('meldet einen nicht erreichbaren Kern verständlich', async () => {
       zeile = { ...BASIS_ZEILE, kennzahlen: { seiten: 1, loesungen: 1, bilder: 0, tabellen: 0 } }
       kernFetch.mockRejectedValueOnce(new Error('timeout'))
