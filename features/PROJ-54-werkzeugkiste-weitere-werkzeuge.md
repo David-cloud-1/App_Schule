@@ -275,4 +275,9 @@ Keine Datenbank- und keine Rechteänderung: Die Ablauf-Tabelle trägt die neuen 
 
 
 ## Deployment
-_To be added by /deploy_
+
+### Paket A – 2026-10-29
+- **Kern** (`werkzeugkiste-kern`, Commit 61238ed) zuerst per `vercel deploy --prod` (vom Nutzer ausgeführt), danach **App** per Push auf `main` (`93b5f31`), Production „Ready“. Route ohne Login: 401.
+- Live: Kreative Einheit, Differenzierung, Arbeitsblatt, Lernsituation. Keine Datenbankänderung.
+- Tag: `v1.54.0-PROJ-54-paketA`.
+- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer; Tipps je Werkzeug (BUG-1); Pakete B–E. Das Feature bleibt bis dahin „In Progress“.
