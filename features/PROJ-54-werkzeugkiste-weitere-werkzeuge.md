@@ -246,8 +246,33 @@ Keine Datenbank- und keine Rechteänderung: Die Ablauf-Tabelle trägt die neuen 
 
 **Nicht geprüft:** echter Durchlauf mit einer echten KI-Antwort gegen den deployten Kern und Browseransicht (kein Dev-Server). Die Tipps je Werkzeug sind weiter offen.
 
-## QA Test Results
-_To be added by /qa_
+## QA Test Results – Paket A (2026-10-29)
+
+**Umfang:** Kreative Einheit, Differenzierung, Arbeitsblatt, Lernsituation + Gerüst für Schritt 2/5. **Tester:** QA (AI).
+**Wie getestet:** Auf Wunsch des Nutzers ohne Dev-Server und ohne Browser/Playwright (bringt den Rechner zum Absturz). Geprüft: Code gegen die Kriterien, App-Tests (1705 grün), Kern-Tests (30 grün), und der **echte Kern-Code mit den Beispiel-YAMLs aus den echten Prompts** (Prüfen + Bauen für Arbeitsblatt, Lernsituation, Differenzierung). **Nicht geprüft:** Aussehen/Bedienung im Browser, Handybreite, Tastatur/Screenreader, Hell/Dunkel, Zwischenablage.
+
+| Kriterium | Ergebnis |
+|---|---|
+| Karten der 4 Werkzeuge aktiv | ✅ (Test) |
+| Fünf Schritte, Prüfstelle, Vorschau, „anderes Werkzeug“ | ✅ gleicher Ablauf wie PROJ-51 (Code) |
+| Prompts zeichengenau gleich | ✅ Kern-Tests vergleichen mit `build_prompt` (alle Formate) |
+| Dateien inhaltsgleich | ✅ gleiche Bauer wie die alte Oberfläche; echter Bau OK (ZIP 2 Dateien, DOCX) |
+| Auswahlmöglichkeiten wie heute | ✅ Werte aus `oberflaeche.py` übernommen (siehe Abweichungen unten) |
+| Höchstens 3 Einstellungen direkt, Rest „Mehr Optionen“ | ✅ Test über alle Werkzeuge |
+| Eine Zeile Erklärung; **aufklappbare „Tipps“** | ⚠️ Zeile ja, Tipps nein (BUG-1) |
+| ZIP-Hinweis „Darin: …“ | ✅ |
+| „Seite“ nur bei Werkzeugen mit Seiten-Ausgabe | ✅ Test |
+| Überarbeiten (Tippfehler/Kapitel neu) | ➖ Gibt es in der App noch für keines der Werkzeuge (auch PROJ-51 nicht); nicht Teil von Paket A |
+
+**Sicherheit:** Alle Routen prüfen weiter die Lehrer-Rolle und lesen nur eigene Abläufe (Tests aus PROJ-51 grün). Werkzeugeigene Einstellungen: Schema begrenzt jeden Wert auf 100 Zeichen, `einstellungenFuerWechsel` verwirft unbekannte Schlüssel (kein Müll in der Datenbank). Seltsame Werte (`anzahl: "abc"`, `dauer: "-5"`, 7 Stufen, `sozialform: "zzz"`) lassen den Kern nicht abstürzen (geprüft). Freitext-Einstellungen (`stufen`) landen nur im Prompt der eigenen Lehrkraft (kein Dritter betroffen). Keine neuen Geheimnisse, keine neue Tabelle, keine RLS-Änderung.
+
+### Bugs
+- **BUG-1 (Medium):** Die „Tipps je Werkzeug“ fehlen. Sie liegen in der alten Werkzeugkiste in deren (pausierter) Datenbank. Aufklapp-Feld ist fertig, aber leer und erscheint deshalb nicht. Kein Blocker; nachliefern, sobald die Texte da sind.
+- **BUG-2 (Low):** Weicht von der Spec-Tabelle ab, bewusst: Differenzierung ohne Niveau/Bildungsgang/Lernfeld (wirken im Prompt nicht), Arbeitsblatt mit „Anzahl/Zeit“ statt „Umfang“. Spec-Tabelle entsprechend lesen (dokumentiert oben).
+- **Hinweis:** Die beiden alten Befunde von `werkzeugtest.py` (deploy-paket, podcast 403) bestehen unverändert und gehören nicht zu Paket A.
+
+**Entscheidung:** Keine Critical/High-Fehler → **Paket A produktionsreif**, Status Approved (ein Browser-Durchgang durch den Nutzer in Produktion steht aus, wie bei PROJ-51).
+
 
 ## Deployment
 _To be added by /deploy_
