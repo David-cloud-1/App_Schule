@@ -1,8 +1,8 @@
 # PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-28
-**Last Updated:** 2026-10-28
+**Last Updated:** 2026-10-29
 
 ## Kontext
 Lehrkräfte sollen sich in der App austauschen können: Tipps teilen, Fragen stellen, Unterrichtsideen weitergeben. Das „Lehrerzimmer“ ist ein schlichtes Forum im Lehrkräfte-Bereich (`/admin`). Es ist kein Chat und hat keine Echtzeit. Material (Dateien) wird nicht hier geteilt, dafür gibt es das Regal des Kollegiums (PROJ-53).
@@ -130,7 +130,89 @@ Lehrkräfte sollen sich in der App austauschen können: Tipps teilen, Fragen ste
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Bauteile (Komponenten-Struktur)
+
+```
+Seitenleiste (bestehend, AdminNav)
+└── Gruppe „Mein Unterricht“ → neuer Eintrag „Lehrerzimmer“ (für alle Lehrer-Rollen)
+    └── Zähler-Badge (neue Antworten + neue Beiträge; bei Admins zusätzlich offene Meldungen)
+
+Schnellsuche (bestehend, ⌘K) → Eintrag „Lehrerzimmer“
+
+/admin/lehrerzimmer  — Übersicht
+├── AdminPageHeader: „Lehrerzimmer“ + Hauptaktion „Neuer Beitrag“
+├── Reiter (nur Admins): „Alle Beiträge“ | „Gemeldet (N)“
+├── Filterleiste: Kategorie-Chips · Fachbereich · Fach · „Nur offene Fragen“ · „Meine Beiträge“
+│   + Suchfeld + Sortierung (alles in der URL)
+├── Beitragsliste (Karten, volle Breite)
+│   └── Beitragskarte: Kategorie-Pill, „gelöst“-Pill, Punkt für Ungelesenes, Titel,
+│       Textanfang, Fachbereich/Fach, Autor, Zeit, Antworten, Hilfreich
+├── „Mehr laden“
+└── Zustände: Laden / Leer / „Keine Treffer“ / Fehler (admin-states)
+
+/admin/lehrerzimmer/neu  — Beitrag schreiben (schmal, max-w-2xl)
+└── Beitragsformular (wird fürs Bearbeiten wiederverwendet)
+    ├── Kategorie (Tipp · Frage · Idee), Titel, Fachbereich, Fach
+    └── Texteditor: kleine Werkzeugleiste (fett, kursiv, Aufzählung, Link)
+        + Reiter „Schreiben | Vorschau“, Entwurf wird lokal gemerkt
+
+/admin/lehrerzimmer/[id]  — Beitrag ansehen (Brotkrumen = Titel)
+├── Beitrag (formatiert) + Hilfreich-Button + Menü ⋯
+│   (Bearbeiten · Löschen | Melden | Ausblenden/Einblenden für Admins)
+├── Hinweisband „Von der Moderation ausgeblendet“ (nur für Autor/Admins)
+├── Lösungs-Antwort oben (grüner Rahmen)
+├── Antwortliste (chronologisch), je Antwort: Hilfreich, Menü ⋯,
+│   „Als Lösung markieren“ (nur Fragesteller, nur bei Fragen)
+└── Antwortfeld (gleicher Texteditor)
+
+Gemeinsame Bausteine
+├── Formatierte-Text-Anzeige (zeigt nur die erlaubte Formatierung)
+├── Melden-Dialog (Grund + optionaler Satz)
+└── Löschen-Bestätigung (AlertDialog)
+
+Papierkorb (bestehend, /admin/papierkorb) → neuer Reiter „Lehrerzimmer“
+└── Eigene gelöschte Beiträge/Antworten (Super-Admin: alle) mit „Wiederherstellen“
+```
+
+### B) Datenmodell (einfache Sprache)
+
+Alles liegt in der bestehenden Supabase-Datenbank, in fünf neuen Tabellen:
+
+- **Beiträge:** Kategorie (Tipp/Frage/Idee), Titel, Text (mit der einfachen Formatierung), optional Fachbereich und Fach, Autor, angelegt/zuletzt bearbeitet, Zeitpunkt der „letzten Aktivität“ (neuer Beitrag oder neue Antwort; für die Standard-Sortierung), Verweis auf die Lösungs-Antwort, Zähler für Antworten und „hilfreich“, außerdem **gelöscht am** (Papierkorb) und **ausgeblendet am/von** (Moderation).
+- **Antworten:** gehören zu genau einem Beitrag; Text, Autor, Zeiten, Hilfreich-Zähler, gelöscht am, ausgeblendet am/von.
+- **Hilfreich-Markierungen:** wer welchen Beitrag oder welche Antwort markiert hat. Pro Person und Ziel nur einmal. Sichtbar ist nach außen nur die Anzahl.
+- **Meldungen:** gemeldeter Beitrag/Antwort, meldende Person, Grund, optionaler Satz, Status (offen · erledigt durch Ausblenden · verworfen), wer es bearbeitet hat. Nur Admins können sie lesen.
+- **Lesestand:** pro Person „Übersicht zuletzt besucht am“ und pro Person und Beitrag „zuletzt gelesen am“. Daraus entstehen der Punkt für Ungelesenes und der Zähler in der Seitenleiste.
+
+Weitere Regeln:
+- **Konto gelöscht:** Die Verbindung zum Autor wird geleert, die Texte bleiben stehen und erscheinen als „Ehemalige Lehrkraft“.
+- **Papierkorb:** Löschen setzt nur „gelöscht am“. Ein gelöschter Beitrag nimmt seine Antworten mit, beim Wiederherstellen kommen sie gemeinsam zurück. Nach 30 Tagen räumt eine tägliche Aufgabe in der Datenbank endgültig auf.
+- **Ausblenden/Einblenden** wird zusätzlich ins bestehende Änderungsprotokoll (`admin_audit_log`) geschrieben.
+- **Suche:** Volltext-Suchindex mit deutscher Sprache über Titel und Text, damit z. B. „Frachtbrief“ auch „Frachtbriefe“ findet.
+
+### C) Technik-Entscheidungen (und warum)
+
+- **Rechte sitzen in der Datenbank (RLS), die Schnittstellen prüfen zusätzlich die Rolle.** Wie bei allen Lehrkräfte-Funktionen bisher (`requireTeacherOrAdmin`). So sieht ein Azubi das Forum auch dann nicht, wenn jemand direkt die Datenbank abfragt. Ausgeblendete Beiträge sind nur für Autor und Admins lesbar, Meldungen nur für Admins.
+- **Eigene Schnittstellen unter `/api/admin/lehrerzimmer/…`** statt direkter Datenbank-Zugriffe aus dem Browser. Das ist dasselbe Muster wie bei den übrigen Admin-Seiten. Dort werden auch die Anzeigenamen der Autoren dazugeholt, nie die E-Mail-Adressen.
+- **Kein Versionsverlauf wie bei Fragen (PROJ-47), nur der Papierkorb.** Forenbeiträge sind persönliche Texte und kein gemeinsamer Lerninhalt. Ein „bearbeitet“-Hinweis genügt, und eine Versionsgeschichte wäre hier unnötiger Aufwand.
+- **Formatierung als Markdown-Text gespeichert und beim Anzeigen streng gefiltert.** Die Werkzeugleiste setzt nur einfache Zeichen wie `**fett**` ein. Beim Anzeigen werden ausschließlich Absätze, fett, kursiv, Listen und Links dargestellt. Alles andere (HTML, Bilder, Skripte, `javascript:`-Links) wird als normaler Text gezeigt oder entfernt. Das ist deutlich sicherer und leichter als ein „Word-artiger“ Editor.
+- **Zähler werden gespeichert, nicht jedes Mal gezählt.** Antworten- und Hilfreich-Zahlen pflegt die Datenbank selbst mit, wenn etwas dazukommt oder wegfällt. Dadurch bleibt die Liste auch bei 1000 Beiträgen schnell.
+- **Seitenleisten-Zähler über eine einzige kleine Abfrage**, die bei jedem Seitenwechsel im Lehrkräfte-Bereich neu geholt wird. Echtzeit (Supabase Realtime) ist dafür nicht nötig und würde nur Verbindungen kosten.
+- **Flut-Schutz in der Datenbank:** Vor dem Speichern wird gezählt, wie viele Beiträge oder Antworten die Person in der letzten Stunde geschrieben hat (Grenzen 10 / 30). Das braucht keinen Zusatzdienst.
+- **Lösung markieren nur durch den Fragesteller:** wird serverseitig geprüft. Wird die Lösungs-Antwort gelöscht oder ausgeblendet, setzt die Datenbank die Frage automatisch wieder auf „offen“.
+- **Doppeltes Absenden:** Der Button wird während des Sendens gesperrt, zusätzlich verwirft der Server gleiche Texte derselben Person innerhalb weniger Sekunden.
+- **Keine neuen laufenden Kosten:** kein Mail-Versand, kein Realtime, kein Bild-Speicher.
+
+### D) Abhängigkeiten (Pakete)
+
+- **react-markdown:** zeigt den formatierten Text sicher an, ohne HTML einzuschleusen. Erlaubt werden nur Absatz, fett, kursiv, Liste und Link.
+- Sonst nichts Neues: Formulare (react-hook-form + Zod), Dialoge, Tabs und Menüs (shadcn/ui), Toasts (sonner) und Icons (lucide-react) sind schon da.
+
+### E) Umsetzungs-Reihenfolge
+1. `/backend`: Tabellen, Rechte (RLS), Zähler, Flut-Schutz, Aufräum-Aufgabe, Schnittstellen.
+2. `/frontend`: Übersicht, Schreiben, Detailseite, Seitenleisten-Eintrag mit Zähler, Papierkorb-Reiter.
+   (Abweichend vom üblichen Ablauf zuerst das Backend, weil die Oberfläche fast nur aus Datenanzeige besteht.)
 
 ## QA Test Results
 _To be added by /qa_
