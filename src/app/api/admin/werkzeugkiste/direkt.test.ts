@@ -4,7 +4,7 @@ import { chainMock, eqValue, type ChainCall } from '@/test/supabase-chain-mock'
 
 const ki = vi.hoisted(() => ({ stream: vi.fn() }))
 
-vi.mock('@/app/api/admin/_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn() }))
+vi.mock('@/app/api/admin/_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), requireAdmin: vi.fn() }))
 vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn() }))
 vi.mock('next/server', async (orig) => ({ ...(await orig<typeof import('next/server')>()), after: vi.fn() }))
 vi.mock('@anthropic-ai/sdk', () => {
@@ -18,11 +18,12 @@ vi.mock('@anthropic-ai/sdk', () => {
 
 import Anthropic from '@anthropic-ai/sdk'
 import { after } from 'next/server'
-import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
+import { requireAdmin, requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { DELETE as abbrechen, GET as status, POST as starten } from './ablaeufe/[id]/direkt/route'
 import { POST as teilArbeiter } from '../../intern/werkzeugkiste/teil/route'
-import { anfrageFuer, bearbeiteTeil, gekuerztHinweis, guthabenGesperrt, MAX_ANTWORT_BAUSTEINE, promptBloecke } from '@/lib/werkzeugkiste-direkt'
+import { GET as kiTest } from './ki-test/route'
+import { anfrageFuer, bearbeiteTeil, gekuerztHinweis, istAblehnung, guthabenGesperrt, MAX_ANTWORT_BAUSTEINE, promptBloecke } from '@/lib/werkzeugkiste-direkt'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const LAUF = '22222222-2222-4222-8222-222222222222'
@@ -309,7 +310,7 @@ describe('Interne Arbeiter (PROJ-64)', () => {
     expect(ki.stream).not.toHaveBeenCalled()
   })
 
-  it('schaltet das Nachdenken des Modells aus — es zählte als Ausgabe und schnitt die Antwort ab (Praxistest 1)', async () => {
+  it('schaltet das Nachdenken mit dem Wert „between_tools“ aus („disabled“ lehnt die KI mit 400 ab) und deckelt die Antwort (Praxistest 1 und 2)', async () => {
     laeufe.push({ ...LAUF_ZEILE })
     kern({
       '/api/prompt': { prompt: 'REGELN\nLEHRTEXT:\nSkript' },
@@ -321,9 +322,10 @@ describe('Interne Arbeiter (PROJ-64)', () => {
     })
     await bearbeiteTeil(db.client, 'https://app.test', TEIL)
     const gesendet = ki.stream.mock.calls[0][0]
-    expect(gesendet.thinking).toEqual({ type: 'disabled' })
+    expect(gesendet.thinking).toEqual({ type: 'between_tools' })
     expect(gesendet.max_tokens).toBe(MAX_ANTWORT_BAUSTEINE)
-    expect(anfrageFuer('m', []).thinking).toEqual({ type: 'disabled' })
+    expect(anfrageFuer('m', []).thinking).toEqual({ type: 'between_tools' })
+    expect(anfrageFuer('m', [], 50).max_tokens).toBe(50)
   })
 
   const abgeschnitten = () =>
@@ -376,5 +378,69 @@ describe('Interne Arbeiter (PROJ-64)', () => {
     const teil2 = gekuerztHinweis(2, 6, 4, { seiten: '', abschnitte: [5, 6, 7] })
     expect(teil2).toContain('Teil 2 von 6 (Abschnitte 5, 6, 7)')
     expect(gekuerztHinweis(3, 6, 1, { seiten: '10-14', abschnitte: [] })).toContain('Seiten 10-14')
+  })
+
+  it('wiederholt eine endgültige Ablehnung der KI (400) nicht, sondern beendet den Lauf sofort', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    kern({ '/api/prompt': { prompt: 'R\nLEHRTEXT:\nS' } })
+    const abgelehnt = Object.assign(new Error('400 invalid_request_error: thinking'), { status: 400 })
+    ki.stream.mockReturnValue({ finalMessage: async () => Promise.reject(abgelehnt), abort: vi.fn(), currentMessage: undefined })
+    await bearbeiteTeil(db.client, 'https://app.test', TEIL)
+    expect(ki.stream).toHaveBeenCalledTimes(1)
+    expect(laeufe[0]).toMatchObject({ status: 'fehlgeschlagen', fehler_art: 'ki' })
+    expect(teil.status).toBe('fehlgeschlagen')
+    expect(istAblehnung({ status: 400 })).toBe(true)
+    expect(istAblehnung({ status: 429 })).toBe(false)
+    expect(istAblehnung({ status: 500 })).toBe(false)
+    expect(istAblehnung(new Error('Netz'))).toBe(false)
+  })
+
+  it('versucht bei einem vorübergehenden Fehler (Netz, 500) den Teil später noch einmal', async () => {
+    laeufe.push({ ...LAUF_ZEILE })
+    kern({ '/api/prompt': { prompt: 'R\nLEHRTEXT:\nS' } })
+    ki.stream.mockReturnValue({ finalMessage: async () => Promise.reject(Object.assign(new Error('boom'), { status: 500 })), abort: vi.fn(), currentMessage: undefined })
+    await bearbeiteTeil(db.client, 'https://app.test', TEIL)
+    expect(teil.status).toBe('wartet')
+    expect(laeufe[0].status).toBe('laeuft')
+  })
+})
+
+describe('KI-Selbsttest (PROJ-64)', () => {
+  const adminAuth = (isSuperAdmin: boolean) =>
+    vi.mocked(requireAdmin).mockResolvedValue({ error: null, user: { id: 'a1' }, supabase: db.client, isSuperAdmin } as never)
+
+  it('ist nur für den Super-Admin', async () => {
+    adminAuth(false)
+    expect((await kiTest()).status).toBe(403)
+    vi.mocked(requireAdmin).mockResolvedValue({ error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }), user: null } as never)
+    expect((await kiTest()).status).toBe(403)
+  })
+
+  it('schickt eine winzige Anfrage mit denselben Einstellungen und meldet Verbrauch und Kosten', async () => {
+    adminAuth(true)
+    ki.stream.mockReturnValue({
+      finalMessage: async () => ({ content: [{ type: 'text', text: 'OK' }], stop_reason: 'end_turn', usage: { input_tokens: 20, output_tokens: 3 } }),
+      abort: vi.fn(),
+    })
+    const res = await kiTest()
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body).toMatchObject({ ok: true, modell: 'claude-sonnet-5-5', antwort: 'OK' })
+    expect(body.kostenUsd).toBeLessThan(0.001)
+    const gesendet = ki.stream.mock.calls[0][0]
+    expect(gesendet).toMatchObject({ max_tokens: 50, thinking: { type: 'between_tools' } })
+    expect(db.writes.some((w) => w.table === 'ki_laeufe')).toBe(false) // wird nicht als Lauf erfasst
+  })
+
+  it('zeigt bei einer Ablehnung der KI den Grund', async () => {
+    adminAuth(true)
+    ki.stream.mockReturnValue({
+      finalMessage: async () => Promise.reject(Object.assign(new Error('To turn thinking off …'), { status: 400 })),
+      abort: vi.fn(),
+      currentMessage: undefined,
+    })
+    const res = await kiTest()
+    expect(res.status).toBe(502)
+    expect(await res.json()).toMatchObject({ ok: false, status: 400, problem: expect.stringContaining('thinking') })
   })
 })

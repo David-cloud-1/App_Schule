@@ -248,6 +248,12 @@ export function verbrauchAus(u: Partial<Anthropic.Usage> | null | undefined): Ve
 
 export class GuthabenLeer extends Error {}
 
+/** Endgültige Ablehnung durch die KI-Schnittstelle (4xx außer „zu viele Anfragen“, Zeitüberschreitung, Konflikt) */
+export function istAblehnung(e: unknown): boolean {
+  const status = (e as { status?: number } | null)?.status
+  return typeof status === 'number' && status >= 400 && status < 500 && ![408, 409, 429].includes(status)
+}
+
 /** Anthropic meldet leeres Guthaben als 400 mit diesem Wortlaut */
 export function istGuthabenFehler(e: unknown) {
   return e instanceof Anthropic.APIError && /credit balance/i.test(e.message)
@@ -260,16 +266,20 @@ interface KiErgebnis {
 }
 
 /**
- * Die Anfrage an Claude. Das Nachdenken ist bewusst AUS: Die Aufgabe (Text in ein
- * festes Gerüst umformen) braucht es nicht, und es würde als Ausgabe zählen. Mit
- * dem Standard (adaptives Nachdenken) verbrauchten zwei Aufrufe je 20.000 Bausteine,
- * die Antwort wurde abgeschnitten und war unbrauchbar (PROJ-64, erster Praxistest).
+ * Die Anfrage an Claude. Das Nachdenken vor der Antwort ist bewusst AUS: Die Aufgabe
+ * (Text in ein festes Gerüst umformen) braucht es nicht, und es würde als Ausgabe
+ * zählen. Mit dem Standard (adaptives Nachdenken) verbrauchten zwei Aufrufe je 20.000
+ * Bausteine, die Antwort wurde abgeschnitten und war unbrauchbar (Praxistest 1).
+ *
+ * Bei Sonnet 5.5 heißt „aus“ NICHT `disabled` (das lehnt die Schnittstelle mit 400
+ * ab), sondern `between_tools`: kein Nachdenken vor der Antwort. Der SDK-Typ kennt
+ * den Wert noch nicht, daher der Cast (Praxistest 2).
  */
-export function anfrageFuer(modell: string, nachrichten: Anthropic.MessageParam[]) {
+export function anfrageFuer(modell: string, nachrichten: Anthropic.MessageParam[], maxBausteine = MAX_ANTWORT_BAUSTEINE) {
   return {
     model: modell,
-    max_tokens: MAX_ANTWORT_BAUSTEINE,
-    thinking: { type: 'disabled' as const },
+    max_tokens: maxBausteine,
+    thinking: { type: 'between_tools' } as unknown as Anthropic.ThinkingConfigParam,
     messages: nachrichten,
   }
 }
@@ -278,9 +288,9 @@ export function anfrageFuer(modell: string, nachrichten: Anthropic.MessageParam[
  * Ein Aufruf bei Claude mit Streaming. Läuft die Frist ab, wird abgebrochen und
  * der bis dahin gemeldete Verbrauch trotzdem zurückgegeben (bezahlt ist er ja).
  */
-export async function frageKi(modell: string, nachrichten: Anthropic.MessageParam[]): Promise<KiErgebnis> {
+export async function frageKi(modell: string, nachrichten: Anthropic.MessageParam[], maxBausteine?: number): Promise<KiErgebnis> {
   const client = new Anthropic({ maxRetries: 3 })
-  const stream = client.messages.stream(anfrageFuer(modell, nachrichten))
+  const stream = client.messages.stream(anfrageFuer(modell, nachrichten, maxBausteine))
   const frist = setTimeout(() => stream.abort(), KI_FRIST_MS)
   try {
     const m = await stream.finalMessage()
@@ -515,8 +525,14 @@ export async function bearbeiteTeil(service: SupabaseClient, origin: string, tei
       await beendeLauf(service, lauf.id, 'fehlgeschlagen', GUTHABEN_SATZ, 'guthaben')
       return
     }
-    // Nochmal versuchen lassen: Teil wartet, die nächste Statusabfrage stößt an
     console.error('[werkzeugkiste-direkt] Teil fehlgeschlagen', err instanceof Error ? err.message : 'unbekannt')
+    if (istAblehnung(err)) {
+      // Die Schnittstelle hat die Anfrage selbst abgelehnt (z. B. falscher Parameter): Wiederholen ändert nichts
+      await service.from(TEIL_TABELLE).update({ status: 'fehlgeschlagen' }).eq('id', teil.id)
+      await beendeLauf(service, lauf.id, 'fehlgeschlagen', KI_SATZ, 'ki')
+      return
+    }
+    // Sonst nochmal versuchen lassen: Teil wartet, die nächste Statusabfrage stößt an
     await service.from(TEIL_TABELLE).update({ status: 'wartet', gestartet_am: new Date().toISOString() }).eq('id', teil.id)
   }
 }
