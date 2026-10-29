@@ -139,3 +139,98 @@ export function formatForumBadge(count: number): string | null {
 }
 
 export type ForumNavCounts = { new_posts: number; new_replies: number; open_reports: number }
+
+/** Zeile der Beitragsliste (Antwort von GET /api/admin/lehrerzimmer/posts) */
+export interface ForumListItem {
+  id: string
+  category: ForumCategory
+  title: string
+  snippet: string
+  author_name: string | null
+  is_mine: boolean
+  department_id: string | null
+  department_name: string | null
+  subject_id: string | null
+  subject_name: string | null
+  reply_count: number
+  helpful_count: number
+  is_solved: boolean
+  is_hidden: boolean
+  has_unread: boolean
+  my_helpful: boolean
+  created_at: string
+  edited_at: string | null
+  last_activity_at: string
+}
+
+export interface ForumPost {
+  id: string
+  category: ForumCategory
+  title: string
+  body: string
+  author_name: string | null
+  is_mine: boolean
+  department_id: string | null
+  department_name: string | null
+  subject_id: string | null
+  subject_name: string | null
+  reply_count: number
+  helpful_count: number
+  solution_reply_id: string | null
+  is_hidden: boolean
+  my_helpful: boolean
+  created_at: string
+  edited_at: string | null
+}
+
+export interface ForumReply {
+  id: string
+  body: string
+  author_name: string | null
+  is_mine: boolean
+  helpful_count: number
+  is_solution: boolean
+  is_hidden: boolean
+  my_helpful: boolean
+  created_at: string
+  edited_at: string | null
+}
+
+export interface ForumThread {
+  post: ForumPost
+  replies: ForumReply[]
+}
+
+export interface ForumReportItem {
+  target_type: 'post' | 'reply'
+  target_id: string
+  post_id: string
+  title: string
+  snippet: string
+  author_name: string | null
+  report_count: number
+  reasons: ForumReportReason[]
+  notes: string[]
+  first_reported_at: string
+  is_hidden: boolean
+}
+
+export interface ForumTrashItem {
+  kind: 'post' | 'reply'
+  id: string
+  post_id: string
+  title: string
+  snippet: string
+  author_name: string | null
+  deleted_at: string
+}
+
+/** Filter der Übersicht, wie sie in der Adresszeile stehen */
+export const FORUM_FILTER_KEYS = ['category', 'department_id', 'subject_id', 'only_open', 'mine', 'q', 'sort'] as const
+
+/** Zähler fürs Seitenleisten-Badge: neue Hinweise (Beiträge + Antworten) und, nur für Admins, Meldungen */
+export function forumNavTotals(counts: ForumNavCounts | null): { hints: number; reports: number } {
+  if (!counts) return { hints: 0, reports: 0 }
+  const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0)
+  return { hints: n(counts.new_posts) + n(counts.new_replies), reports: n(counts.open_reports) }
+}

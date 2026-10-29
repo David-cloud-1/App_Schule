@@ -57,7 +57,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
     const groups = adminNavGroupsFor('teacher')
     expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte'])
     expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
-      ['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer'],
+      ['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer', 'Lehrerzimmer'],
       ['Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
     ])
   })
@@ -79,7 +79,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
 
   it('zeigt einer Lehrkraft ohne eingetragenes Fach keine (leeren) Inhalts-Seiten', () => {
     const labels = adminNavGroupsFor('teacher', false).flatMap((g) => g.items.map((i) => i.label))
-    expect(labels).toEqual(['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer'])
+    expect(labels).toEqual(['Leistungsnachweise', 'Werkzeugkiste', 'Meine Fächer', 'Lehrerzimmer'])
     // für Admins spielt die Angabe keine Rolle
     expect(adminNavGroupsFor('department_admin', false)).toEqual(adminNavGroupsFor('department_admin'))
   })
@@ -134,9 +134,9 @@ describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
 
   it('zeigt in der Schnellsuche nur Aktionen, deren Seite die Rolle sehen darf', () => {
     const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
-    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'mein-konto', 'lern-app', 'darstellung'])
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
     // PROJ-46: eine Lehrkraft darf jetzt auch eigene Leistungsnachweise anlegen
-    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'mein-konto', 'lern-app', 'darstellung'])
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
   })
 
   it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {

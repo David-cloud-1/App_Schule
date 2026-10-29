@@ -118,3 +118,17 @@ describe('formatForumBadge', () => {
     expect(formatForumBadge(250)).toBe('9+')
   })
 })
+
+import { forumNavTotals } from './forum'
+
+describe('forumNavTotals', () => {
+  it('addiert neue Beiträge und Antworten, Meldungen getrennt', () => {
+    expect(forumNavTotals({ new_posts: 2, new_replies: 3, open_reports: 1 })).toEqual({ hints: 5, reports: 1 })
+  })
+
+  it('ist bei fehlenden oder kaputten Werten 0', () => {
+    expect(forumNavTotals(null)).toEqual({ hints: 0, reports: 0 })
+    expect(forumNavTotals({ new_posts: NaN, new_replies: -4, open_reports: undefined } as never)).toEqual({ hints: 0, reports: 0 })
+    expect(forumNavTotals({ assessments: [] } as never)).toEqual({ hints: 0, reports: 0 })
+  })
+})

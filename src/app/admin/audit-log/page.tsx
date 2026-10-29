@@ -81,6 +81,8 @@ const ACTION_TYPES = [
   { value: 'user.role_change', label: 'Rolle geändert' },
   { value: 'user.move_department', label: 'Bereich gewechselt' },
   { value: 'user.password_set', label: 'Passwort neu vergeben' },
+  { value: 'forum.hide', label: 'Lehrerzimmer: ausgeblendet' },
+  { value: 'forum.unhide', label: 'Lehrerzimmer: eingeblendet' },
 ]
 
 const ACTION_LABEL = new Map(ACTION_TYPES.map((t) => [t.value, t.label]))

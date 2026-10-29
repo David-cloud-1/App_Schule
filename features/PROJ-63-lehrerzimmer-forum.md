@@ -254,6 +254,25 @@ Weitere Regeln:
 
 **Noch nicht geprüft:** Verhalten mit echten Lehrkräften und über die Oberfläche (kommt mit `/frontend` und `/qa`); das tägliche Aufräumen nach 30 Tagen (der Job ist angelegt, gelaufen ist er noch nicht).
 
+## Implementierungs-Notizen (Frontend, 2026-10-29)
+
+**Seiten:** `/admin/lehrerzimmer` (Übersicht), `/neu`, `/[id]` (Beitrag mit Antworten), `/[id]/bearbeiten`. Eintrag „Lehrerzimmer“ in der Gruppe „Mein Unterricht“ (alle Lehrer-Rollen), Aktion „Neuer Beitrag im Lehrerzimmer“ in der Schnellsuche. Papierkorb hat einen Reiter „Lehrerzimmer“ (`?tab=forum`), das Änderungsprotokoll kennt `forum.hide`/`forum.unhide`.
+
+**Komponenten** (`src/components/admin/`): `lehrerzimmer-overview`, `forum-post-card`, `forum-reports-panel`, `forum-post-form`, `forum-thread-view`, `forum-editor`, `forum-markdown`, `forum-report-dialog`, `forum-ui`, Hooks `use-forum-nav-counts` und `use-forum-catalog`. Hilfen in `src/lib/`: `forum-client`, `forum-editor`, `forum-time`.
+
+**Wichtiger Fund beim Bauen:** Der Proxy ließ reine Lehrkräfte nur auf freigegebene Pfade. Ohne Eintrag wären `/admin/lehrerzimmer` und `/api/admin/lehrerzimmer` für sie umgeleitet bzw. mit 403 blockiert gewesen. Beide Pfade stehen jetzt in `src/lib/roles.ts` (mit Test).
+
+**Neu gegenüber dem Backend-Stand:** Schnittstelle `GET /api/admin/lehrerzimmer/catalog` (Fachbereiche, Fächer, eigene Bereiche) für alle Lehrer-Rollen, weil `my-subjects` nur reinen Lehrkräften offen ist. Paket `react-markdown` (^10.1.0) installiert.
+
+**Abweichungen von der Spec:**
+- Der Fach-Filter zeigt alle aktiven Fächer (nach Fachbereich eingegrenzt), nicht nur Fächer, die in Beiträgen vorkommen. Grund: Die Liste wird seitenweise geladen.
+- Eine Lehrkraft ohne eingetragenes Fach sieht den Papierkorb-Eintrag nicht in der Navigation. Deshalb gibt es in der Übersicht die Schaltfläche „Papierkorb“, die direkt zum Reiter führt.
+- Das Formular validiert mit Zod (`safeParse`), aber ohne react-hook-form.
+
+**Sicherheit der Anzeige:** `ForumMarkdown` erlaubt nur Absatz, fett, kursiv, Listen, Umbruch und Links (nur http, https, mailto; neuer Tab, `noopener noreferrer nofollow`). HTML, Bilder, Überschriften und `javascript:`-Links werden nicht dargestellt (Tests).
+
+**Tests:** 25 Oberflächen-Tests (Zähler, Übersicht, Beitragsseite, Formular), 7 für die Markdown-Filterung, dazu Tests für Hilfen, Katalog-Schnittstelle, Pfad-Freigaben und angepasste Navigations-Tests. Gesamte Suite: 1767 von 1768 grün. Der eine Fehler liegt in `src/lib/werkzeugkiste.test.ts` und gehört zu uncommitteter Arbeit an PROJ-54 aus einer anderen Sitzung. `tsc` ohne Befund, ESLint nur Warnungen (Daten in Effekten laden, wie in den bestehenden Seiten).
+
 ## QA Test Results
 _To be added by /qa_
 

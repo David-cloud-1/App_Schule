@@ -5,6 +5,7 @@ import {
   FileText,
   FolderKanban,
   GraduationCap,
+  MessagesSquare,
   Plus,
   ScrollText,
   Settings,
@@ -65,6 +66,9 @@ export interface AdminNavGroup {
 
 export const ADMIN_HOME_HREF = '/admin'
 
+/** Lehrerzimmer (PROJ-63): Forum für den Austausch im Kollegium */
+export const LEHRERZIMMER_HREF = '/admin/lehrerzimmer'
+
 /**
  * Seiten im Lehrkräfte-Bereich, die nicht in der Seitenleiste stehen, aber
  * Titel und Brotkrumen brauchen (PROJ-50: „Mein Konto“ liegt im Konto-Menü).
@@ -101,6 +105,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         // keine Zuständigkeiten (ihre Rechte gelten bereichsweit).
         teacherVisible: true,
         managerVisible: false,
+      },
+      {
+        href: LEHRERZIMMER_HREF,
+        label: 'Lehrerzimmer',
+        description: 'Tipps, Fragen und Ideen mit dem Kollegium austauschen',
+        icon: MessagesSquare,
+        // PROJ-63: jede Lehrer-Rolle, auch ohne Fach
+        teacherVisible: true,
       },
     ],
   },
@@ -293,6 +305,14 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     kind: 'link',
     href: WERKZEUGKISTE_HREF,
     requiresHref: WERKZEUGKISTE_HREF,
+  },
+  {
+    id: 'neuer-beitrag',
+    label: 'Neuer Beitrag im Lehrerzimmer',
+    keywords: ['forum', 'tipp', 'frage', 'idee', 'kollegium', 'schreiben'],
+    kind: 'link',
+    href: `${LEHRERZIMMER_HREF}/neu`,
+    requiresHref: LEHRERZIMMER_HREF,
   },
   {
     id: 'mein-konto',

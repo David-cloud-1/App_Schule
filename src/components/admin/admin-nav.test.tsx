@@ -143,6 +143,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Leistungsnachweise',
       'Werkzeugkiste',
       'Meine Fächer',
+      'Lehrerzimmer',
       'Fragen',
       'Fächer',
       'Themen',
@@ -162,6 +163,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Leistungsnachweise',
       'Werkzeugkiste',
       'Meine Fächer',
+      'Lehrerzimmer',
     ])
     unmount()
     wrap(<AdminHome />, false, { role: 'teacher', hasSubjectAssignments: false })

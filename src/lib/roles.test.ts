@@ -79,6 +79,17 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(mayOpenAdminPath('student', '/admin/werkzeugkiste')).toBe(false)
   })
 
+  it('lässt jede Lehrkraft ins Lehrerzimmer samt Schnittstelle, Azubis nicht (PROJ-63)', () => {
+    for (const path of ['/admin/lehrerzimmer', '/admin/lehrerzimmer/neu', '/admin/lehrerzimmer/abc/bearbeiten']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+    }
+    expect(teacherMayCallApiPath('/api/admin/lehrerzimmer/posts')).toBe(true)
+    expect(teacherMayCallApiPath('/api/admin/lehrerzimmer/nav-counts')).toBe(true)
+    expect(teacherMayCallApiPath('/api/admin/lehrerzimmer-fremd')).toBe(false)
+    expect(mayOpenAdminPath('teacher', '/admin/lehrerzimmer-fremd')).toBe(false)
+    expect(mayOpenAdminPath('student', '/admin/lehrerzimmer')).toBe(false)
+  })
+
   it('nimmt als Login-Ziel nur Pfade innerhalb der App, sonst die Start-Weiche', () => {
     expect(safeRedirectTarget('/pruefung/ABCD')).toBe('/pruefung/ABCD')
     expect(safeRedirectTarget(null)).toBe(START_PATH)

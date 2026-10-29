@@ -20,12 +20,20 @@ import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/component
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 
 type ContentType = 'question' | 'topic' | 'subject' | 'exam_question_set'
+/** PROJ-63: das Lehrerzimmer hat einen eigenen Papierkorb-Reiter (30 Tage) */
+type TabType = ContentType | 'forum'
 
-const TABS: { type: ContentType; label: string; labelField: (item: TrashItem) => string }[] = [
+const TABS: { type: TabType; label: string; labelField: (item: TrashItem) => string }[] = [
   { type: 'question', label: 'Fragen', labelField: (i) => (i.question_text as string) ?? '—' },
   { type: 'topic', label: 'Themen', labelField: (i) => (i.name as string) ?? '—' },
   { type: 'subject', label: 'Fächer', labelField: (i) => `${i.code ?? ''} — ${i.name ?? ''}` },
   { type: 'exam_question_set', label: 'Prüfungssets', labelField: (i) => (i.name as string) ?? '—' },
+  {
+    type: 'forum',
+    label: 'Lehrerzimmer',
+    labelField: (i) =>
+      i.kind === 'reply' ? `Antwort in „${i.title ?? ''}“: ${i.snippet ?? ''}` : `${i.title ?? ''} — ${i.snippet ?? ''}`,
+  },
 ]
 
 type TrashItem = {
@@ -34,6 +42,10 @@ type TrashItem = {
   question_text?: string
   name?: string
   code?: string
+  /** Lehrerzimmer (PROJ-63) */
+  kind?: 'post' | 'reply'
+  title?: string
+  snippet?: string
 }
 
 function formatDate(iso: string) {
@@ -43,12 +55,17 @@ function formatDate(iso: string) {
 export default function PapierkorbPage() {
   const { role } = useAdminRole()
   const isSuperAdmin = role === 'admin'
-  const [activeTab, setActiveTab] = useState<ContentType>('question')
+  const [activeTab, setActiveTab] = useState<TabType>('question')
   const [items, setItems] = useState<TrashItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [purgeTarget, setPurgeTarget] = useState<TrashItem | null>(null)
+
+  // „Gelöschte Beiträge“ im Lehrerzimmer verlinkt hierher (?tab=forum)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('tab') === 'forum') setActiveTab('forum')
+  }, [])
 
   useEffect(() => {
     void load()
@@ -58,7 +75,9 @@ export default function PapierkorbPage() {
     setLoading(true)
     setLoadFailed(false)
     try {
-      const res = await fetch(`/api/admin/trash?type=${activeTab}`)
+      const res = await fetch(
+        activeTab === 'forum' ? '/api/admin/lehrerzimmer/trash' : `/api/admin/trash?type=${activeTab}`,
+      )
       if (!res.ok) throw new Error('load failed')
       const data = await res.json()
       setItems(data.items ?? [])
@@ -71,7 +90,12 @@ export default function PapierkorbPage() {
 
   async function handleRestore(item: TrashItem) {
     setBusyId(item.id)
-    const res = await fetch(`/api/admin/trash/${activeTab}/${item.id}`, { method: 'POST' })
+    const res = await fetch(
+      activeTab === 'forum'
+        ? `/api/admin/lehrerzimmer/${item.kind === 'reply' ? 'replies' : 'posts'}/${item.id}/restore`
+        : `/api/admin/trash/${activeTab}/${item.id}`,
+      { method: 'POST' },
+    )
     const data = await res.json()
     if (!res.ok) {
       toast.error(data.error ?? 'Wiederherstellen fehlgeschlagen.')
@@ -103,10 +127,10 @@ export default function PapierkorbPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Papierkorb"
-        description="Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen."
+        description="Gelöschte Fragen, Themen, Fächer, Prüfungssets und Beiträge im Lehrerzimmer wiederherstellen."
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ContentType)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
         <TabsList className="bg-ws-raised">
           {TABS.map((t) => (
             <TabsTrigger key={t.type} value={t.type}>
@@ -145,7 +169,7 @@ export default function PapierkorbPage() {
                       )}
                       Wiederherstellen
                     </Button>
-                    {isSuperAdmin && (
+                    {isSuperAdmin && activeTab !== 'forum' && (
                       <Button
                         size="sm"
                         variant="ghost"

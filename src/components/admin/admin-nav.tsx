@@ -15,8 +15,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useForumNavCounts } from '@/components/admin/use-forum-nav-counts'
+import { formatForumBadge } from '@/lib/forum'
 import {
   ADMIN_HOME_HREF,
+  LEHRERZIMMER_HREF,
   adminNavGroupHint,
   adminNavGroupsFor,
   adminNavLabel,
@@ -36,6 +39,8 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const idPrefix = useId()
   const groups = adminNavGroupsFor(role, hasSubjects)
+  // PROJ-63: Hinweise fürs Lehrerzimmer; wird bei jedem Seitenwechsel neu geholt
+  const forumCounts = useForumNavCounts(pathname)
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false)
@@ -78,6 +83,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
                     label={adminNavLabel(item, hofShortName)}
                     icon={item.icon}
                     external={item.external}
+                    badge={item.href === LEHRERZIMMER_HREF ? forumCounts : undefined}
                     active={!item.external && isAdminNavActive(pathname, item.href)}
                     onNavigate={handleNavigate}
                   />
@@ -97,6 +103,7 @@ function NavLink({
   icon: Icon,
   active,
   external,
+  badge,
   onNavigate,
 }: {
   href: string
@@ -104,12 +111,43 @@ function NavLink({
   icon: LucideIcon
   active: boolean
   external?: boolean
+  /** Zähler am Eintrag (PROJ-63): neue Hinweise grün, offene Meldungen orange */
+  badge?: { hints: number; reports: number }
   onNavigate: () => void
 }) {
+  const hintsText = badge ? formatForumBadge(badge.hints) : null
+  const reportsText = badge ? formatForumBadge(badge.reports) : null
   const content = (
     <>
-      <Icon className="!size-5" />
+      <span className="relative flex">
+        <Icon className="!size-5" />
+        {/* Eingeklappt (nur Icons) zeigt ein Punkt, dass es etwas Neues gibt */}
+        {(hintsText || reportsText) && (
+          <span
+            aria-hidden
+            className={`absolute -right-1 -top-1 hidden size-2.5 rounded-full group-data-[collapsible=icon]:block ${hintsText ? 'bg-ws-green' : 'bg-ws-orange'}`}
+          />
+        )}
+      </span>
       <span>{label}</span>
+      {hintsText && (
+        <span
+          className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-green/30 bg-ws-green/15 px-1.5 text-xs font-bold text-ws-green group-data-[collapsible=icon]:hidden"
+          title={`${badge!.hints} neue Hinweise`}
+        >
+          <span aria-hidden>{hintsText}</span>
+          <span className="sr-only">{badge!.hints} neue Hinweise</span>
+        </span>
+      )}
+      {reportsText && (
+        <span
+          className={`${hintsText ? '' : 'ml-auto '}inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-orange/30 bg-ws-orange/15 px-1.5 text-xs font-bold text-ws-orange group-data-[collapsible=icon]:hidden`}
+          title={`${badge!.reports} offene Meldungen`}
+        >
+          <span aria-hidden>{reportsText}</span>
+          <span className="sr-only">{badge!.reports} offene Meldungen</span>
+        </span>
+      )}
       {external && (
         <ExternalLink
           className="!size-4 ml-auto group-data-[collapsible=icon]:hidden"
