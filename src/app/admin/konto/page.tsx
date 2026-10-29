@@ -12,6 +12,7 @@ import { KontoDarstellung } from '@/components/admin/konto-darstellung'
 import { KontoSpielstand } from '@/components/admin/konto-spielstand'
 import { loadKontoData } from '@/lib/konto-data'
 import { isTeacherRole } from '@/lib/roles'
+import { DIREKT_ERSTELLEN_AKTIV } from '@/lib/werkzeugkiste'
 
 export const metadata = { title: 'Mein Konto' }
 
@@ -45,7 +46,7 @@ export default async function KontoPage({ searchParams }: { searchParams: Promis
             <KontoUeberMich head={data.head} />
             <KontoAufgabenKarte section={data.aufgaben} />
             <KontoBeitragKarte section={data.beitrag} />
-            <KontoVerbrauchKarte section={data.verbrauch} monat={monat} />
+            {DIREKT_ERSTELLEN_AKTIV && <KontoVerbrauchKarte section={data.verbrauch} monat={monat} />}
           </div>
           <div className="space-y-6">
             <KontoFaecher role={data.head.role} departmentName={data.head.departmentName} />

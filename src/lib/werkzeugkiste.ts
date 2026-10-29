@@ -232,6 +232,14 @@ export interface AblaufErgebnis {
   aufgaben: number
 }
 
+/**
+ * „Direkt erstellen“ (PROJ-64) ist vorerst ausgeblendet (Nutzerentscheidung
+ * 2026-10-29): Die Ausgabe ist ~15× so lang wie das Skript, ein 3-Seiten-Skript
+ * kostet mit Sonnet ~0,30–0,40 € und brauchte mehr als die eingestellte Obergrenze.
+ * Erst nach Überarbeitung (Modell, Teilgröße, Obergrenze, Schätzung) wieder einschalten.
+ */
+export const DIREKT_ERSTELLEN_AKTIV = false
+
 /** Stand einer direkten Erstellung (PROJ-64), wie die Oberfläche ihn sieht */
 export interface LaufInfo {
   id: string

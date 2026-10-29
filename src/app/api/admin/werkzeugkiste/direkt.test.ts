@@ -163,6 +163,7 @@ beforeEach(() => {
   vi.stubEnv('WERKZEUGKISTE_KERN_SECRET', 'geheim')
   vi.stubEnv('CRON_SECRET', 'intern-geheim')
   vi.stubEnv('ANTHROPIC_API_KEY', 'sk-test')
+  vi.stubEnv('WERKZEUGKISTE_DIREKT', '1')
   anmelden()
 })
 
@@ -175,6 +176,15 @@ describe('Direkt erstellen – Start, Sperren, Abbruch (PROJ-64)', () => {
     } as never)
     expect((await starten(json(START), ctx)).status).toBe(403)
     expect((await status(new Request('https://app.test/x'), ctx)).status).toBe(403)
+  })
+
+  it('startet ohne Freischaltung keinen bezahlten Lauf (Funktion vorerst ausgeblendet)', async () => {
+    vi.stubEnv('WERKZEUGKISTE_DIREKT', '')
+    const res = await starten(json(START), ctx)
+    expect(res.status).toBe(404)
+    expect((await res.json()).error).toContain('kostenlosen Weg')
+    expect(db.writes.some((w) => w.table === 'ki_laeufe')).toBe(false)
+    expect(ki.stream).not.toHaveBeenCalled()
   })
 
   it('startet einen Lauf mit den Teilen des Kerns und stößt je Teil einen Arbeiter an', async () => {

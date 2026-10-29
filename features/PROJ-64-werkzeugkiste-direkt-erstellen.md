@@ -1,6 +1,6 @@
 # PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI)
 
-## Status: In Progress
+## Status: In Progress (ausgeblendet)
 **Created:** 2026-10-28
 **Last Updated:** 2026-10-28
 
@@ -262,6 +262,12 @@ Ablauf (PROJ-51, bekannter Rahmen)
 - **Lehre:** Änderungen an Anfragen an die bezahlte KI nie ungeprüft ausliefern. Vor jedem Test mit einem echten Skript zuerst den Selbsttest aufrufen.
 
 - **Offen:** Die Wirkung gegen die echte KI ist noch nicht bestätigt (kein Zugriff auf den Schlüssel von hier). Der Nachtest mit dem 3-Seiten-Skript entscheidet.
+
+**Praxistest 3 (2026-10-29) – vollständig erst ab ~30.000+ Bausteinen; Funktion ausgeblendet**
+- **Befund:** Mit ausgeschaltetem Nachdenken lief der Lauf durch, aber: 3-Seiten-Skript (5.395 Zeichen ≈ 1.600 Bausteine) → **24.000 Ausgabe-Bausteine** (Obergrenze erreicht, gerettet: 3 Kapitel, 25 Aufgaben, 51 KB YAML), **0,26 €**, 2 Minuten. Die Ausgabe ist etwa **15×** so lang wie das Skript (der Prompt verlangt Lehrtext, Begriffe, alle Aufgaben, Quiz, Zusammenfassung). Die Schätzung rechnete mit 1,4× und lag damit um den Faktor ~10 zu niedrig. Hochgerechnet: vollständige 3 Seiten mit Sonnet ~0,30–0,40 €, 117.000 Zeichen ~7–9 €. Teile von 22.000 Zeichen wären mit jeder Obergrenze unter ~100.000 Bausteinen abgeschnitten worden.
+- **Entscheidung Nutzer:** Funktion **ausblenden**, vorerst nicht weiterbauen.
+- **Umsetzung:** Schalter `DIREKT_ERSTELLEN_AKTIV = false` (`src/lib/werkzeugkiste.ts`): Schritt 2 zeigt wieder nur „Prompt erstellen“ (kostenloser Weg, wie PROJ-51), keine Kostenkarte, keine Abfrage. Der Start über die Schnittstelle antwortet mit 404 (zum Testen freischaltbar mit `WERKZEUGKISTE_DIREKT=1`). Die Karte „Mein Verbrauch“ (PROJ-65) ist ebenfalls ausgeblendet. Code, Tabellen und Selbsttest bleiben.
+- **Falls wieder aufgenommen:** Obergrenze ≥ 40.000, Teile ~5.000 Zeichen, Schätzung mit dem gemessenen Faktor (~15× Ausgabe), günstigeres Modell (Haiku 5.5, ~20× billiger) per Selbsttest und einem Testlauf prüfen, fertige Teile erhalten, Höchstbetrag je Lauf.
 
 **Abweichungen vom Design**
 - Tageslimit über die letzten **24 Stunden** statt „Kalendertag“ (einfacher, gleiche Wirkung).

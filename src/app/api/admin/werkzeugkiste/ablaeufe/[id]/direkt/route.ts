@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { DIREKT_ERSTELLEN_AKTIV } from '@/lib/werkzeugkiste'
 import { RUECKFRAGE_AB_EUR, schaetze, TAGESLIMIT, euro } from '@/lib/werkzeugkiste-kosten'
 import {
   aktualisiere,
@@ -77,6 +78,11 @@ export async function GET(request: Request, { params }: Kontext) {
 export async function POST(request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
+  // Vorerst ausgeblendet — auch über die Schnittstelle startet kein bezahlter Lauf.
+  // WERKZEUGKISTE_DIREKT=1 schaltet es zum Testen frei (z. B. in einer Vorschau).
+  if (!DIREKT_ERSTELLEN_AKTIV && process.env.WERKZEUGKISTE_DIREKT !== '1') {
+    return fehler('Die direkte Erstellung ist zurzeit nicht verfügbar. Nutze den kostenlosen Weg mit deiner eigenen KI.', 404)
+  }
   const parsed = direktStartSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return ungueltig(parsed.error)
 

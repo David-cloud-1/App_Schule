@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import {
   ablaufHref,
+  DIREKT_ERSTELLEN_AKTIV,
   ablaufKurzinfo,
   einstellungenFuerWerkzeug,
   neuerAblaufHref,
@@ -176,7 +177,7 @@ export function AblaufSeite({ id }: { id: string }) {
 
   // Schritt 2: Kosten für die Wegwahl holen (die Auswahl steht seit Schritt 1 fest)
   useEffect(() => {
-    if (!ablauf?.kennzahlen || schritt !== 2) return
+    if (!DIREKT_ERSTELLEN_AKTIV || !ablauf?.kennzahlen || schritt !== 2) return
     let aktiv = true
     setWegFehler(false)
     ladeDirektStand(id, true)
@@ -383,30 +384,32 @@ export function AblaufSeite({ id }: { id: string }) {
           setEinstellungen={setEinstellungen}
         />
       )
-      inhalt = (
+      if (DIREKT_ERSTELLEN_AKTIV) {
+        inhalt = (
+          <>
+            {inhalt}
+            <WegKarte daten={wegDaten} fehler={wegFehler} />
+          </>
+        )
+      }
+      const kostenlos = () =>
+        aktion(async () => {
+          await speichereAblauf(id, { werkzeug, einstellungen, weg: 'kostenlos' })
+          const { ablauf: a, hinweis } = await erstellePrompt(id)
+          setAblauf(a)
+          setPromptHinweis(hinweis ?? null)
+          gehe(3)
+        })
+      fuss = !DIREKT_ERSTELLEN_AKTIV ? (
         <>
-          {inhalt}
-          <WegKarte daten={wegDaten} fehler={wegFehler} />
+          {zurueck}
+          {weiter('Prompt erstellen', () => void kostenlos())}
         </>
-      )
-      fuss = (
+      ) : (
         <>
           {zurueck}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
-            <Button
-              variant="outline"
-              disabled={beschaeftigt}
-              onClick={() =>
-                aktion(async () => {
-                  await speichereAblauf(id, { werkzeug, einstellungen, weg: 'kostenlos' })
-                  const { ablauf: a, hinweis } = await erstellePrompt(id)
-                  setAblauf(a)
-                  setPromptHinweis(hinweis ?? null)
-                  gehe(3)
-                })
-              }
-              className={`${NEBENAKTION} min-h-12 px-5`}
-            >
+            <Button variant="outline" disabled={beschaeftigt} onClick={() => void kostenlos()} className={`${NEBENAKTION} min-h-12 px-5`}>
               Kostenlos mit eigener KI
             </Button>
             {weiter('Direkt erstellen', () => void startDirekt(), wegDaten?.sperre != null)}
