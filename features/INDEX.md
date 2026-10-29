@@ -76,7 +76,7 @@
 | PROJ-60 | Konto löschen (DSGVO) | Planned | [PROJ-60-konto-loeschen-dsgvo.md](PROJ-60-konto-loeschen-dsgvo.md) | 2026-10-27 |
 | PROJ-61 | Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned | [PROJ-61-nutzer-export-mehrfachauswahl.md](PROJ-61-nutzer-export-mehrfachauswahl.md) | 2026-10-27 |
 | PROJ-62 | Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned | [PROJ-62-konten-anlegen-sammel-anlage.md](PROJ-62-konten-anlegen-sammel-anlage.md) | 2026-10-27 |
-| PROJ-63 | Lehrerzimmer – Forum für den Austausch im Kollegium | Architected | [PROJ-63-lehrerzimmer-forum.md](PROJ-63-lehrerzimmer-forum.md) | 2026-10-28 |
+| PROJ-63 | Lehrerzimmer – Forum für den Austausch im Kollegium | In Progress | [PROJ-63-lehrerzimmer-forum.md](PROJ-63-lehrerzimmer-forum.md) | 2026-10-28 |
 | PROJ-64 | Werkzeugkiste – Direkt erstellen (bezahlte KI) | In Progress | [PROJ-64-werkzeugkiste-direkt-erstellen.md](PROJ-64-werkzeugkiste-direkt-erstellen.md) | 2026-10-28 |
 | PROJ-65 | Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Approved | [PROJ-65-werkzeugkiste-verbrauch-mein-konto.md](PROJ-65-werkzeugkiste-verbrauch-mein-konto.md) | 2026-10-28 |
 | PROJ-66 | Werkzeugkiste – Kostenübersicht für den Super-Admin | Planned | [PROJ-66-werkzeugkiste-kostenuebersicht-admin.md](PROJ-66-werkzeugkiste-kostenuebersicht-admin.md) | 2026-10-28 |

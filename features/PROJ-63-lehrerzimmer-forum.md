@@ -1,6 +1,6 @@
 # PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-28
 **Last Updated:** 2026-10-29
 
@@ -213,6 +213,32 @@ Weitere Regeln:
 1. `/backend`: Tabellen, Rechte (RLS), Zähler, Flut-Schutz, Aufräum-Aufgabe, Schnittstellen.
 2. `/frontend`: Übersicht, Schreiben, Detailseite, Seitenleisten-Eintrag mit Zähler, Papierkorb-Reiter.
    (Abweichend vom üblichen Ablauf zuerst das Backend, weil die Oberfläche fast nur aus Datenanzeige besteht.)
+
+## Implementierungs-Notizen (Backend, 2026-10-29)
+
+**Stand: Code fertig und getestet, Migration NOCH NICHT auf der Live-Datenbank.** Der Aufruf `apply_migration` wurde abgelehnt, daraufhin wurde nichts an der Datenbank geändert. Die Datenbank-Funktionen sind deshalb noch ungetestet gegen echte Daten. Vor `/qa` muss die Migration angewendet und dort mit zurückgerollten Transaktionen geprüft werden (Rollen, Sichtbarkeit, Zähler, Flut-Schutz, Papierkorb).
+
+**Datenbank** (`supabase/migrations/20261029_proj63_lehrerzimmer.sql`, Rückweg `..._down.sql`):
+- Tabellen `forum_posts`, `forum_replies`, `forum_helpful`, `forum_reports`, `forum_post_reads`, `forum_user_state`, alle mit RLS. Deutsche Volltextsuche (`tsvector`, GIN) über Titel/Text von Beiträgen und Antworten.
+- **Authenticated hat nur SELECT.** Jede Änderung läuft über `SECURITY DEFINER`-Funktionen `forum_*`, die Rolle, Besitz, Längen und Flut-Schutz selbst prüfen. Dadurch lassen sich Zähler, Ausblenden und Lösung nicht per direktem Zugriff verfälschen. Bewusste Abweichung von „Policy je INSERT/UPDATE/DELETE“ aus den Backend-Regeln: Ohne Schreib-Policy ist direktes Schreiben gesperrt.
+- Sichtbarkeit (RLS): nur Lehrer-Rollen (`has_teacher_role()`); ausgeblendet nur für Autor + Admins/Bereichs-Admins; gelöscht nur für Autor + Super-Admin; Hilfreich-Markierungen nur die eigenen; Meldungen nur für Admins/Bereichs-Admins.
+- Zähler (Antworten, Hilfreich, letzte Aktivität) und das Zurücksetzen einer Lösung pflegen Trigger. Wird die Lösungs-Antwort gelöscht oder ausgeblendet, ist die Frage wieder offen. Ein Kategorie-Wechsel weg von „Frage“ entfernt die Lösung.
+- Flut-Schutz: 10 Beiträge, 30 Antworten, 20 Meldungen je Person und Stunde (Fehler `FRM01`). Doppelt Abgesendetes innerhalb von 30 Sekunden wird zusammengefasst.
+- Papierkorb: Löschen setzt `deleted_at`; `pg_cron`-Job `forum-papierkorb-aufraeumen` räumt täglich um 03:15 nach 30 Tagen auf. Antworten, Hilfreich-Markierungen und Lösung kommen beim Wiederherstellen mit zurück, da sie nie angefasst werden.
+- Ausblenden/Einblenden schreibt in `admin_audit_log` (`forum.hide` / `forum.unhide`, Bereich des Beitrags). **Frontend-Aufgabe:** Beschriftungen für diese zwei Aktionstypen in `ACTION_TYPES` von `/admin/audit-log` ergänzen (ohne sie wird der Rohtext angezeigt).
+- Fehlercodes → HTTP: `FRM01` 429, `FRM02` 404, `FRM03` 403, `FRM04` 400, `FRM05` 409.
+
+**Schnittstellen** (`/api/admin/lehrerzimmer/…`, Anmeldung per `requireTeacherOrAdmin`):
+`posts` (GET Liste, POST neu) · `posts/[id]` (GET Beitrag + Antworten und „gelesen“, PATCH, DELETE) · `posts/[id]/restore` · `posts/[id]/replies` (POST) · `posts/[id]/solution` (PUT) · `replies/[id]` (PATCH, DELETE) · `replies/[id]/restore` · `helpful` · `reports` (GET nur Admins, POST melden) · `reports/resolve` · `hide` · `nav-counts` · `visit` · `trash`.
+
+**Gemeinsam:** `src/lib/forum.ts` (Kategorien, Grenzen, Zod-Regeln, Fehler-Zuordnung, Zähler-Format „9+“) für Schnittstellen und die spätere Oberfläche.
+
+**Abweichungen von der Spec / offene Punkte:**
+- Azubis und Abgemeldete bekommen auf den Schnittstellen **403 bzw. 401** (wie alle Admin-Schnittstellen), nicht 404. Die Seiten selbst können später per `notFound()` antworten.
+- Das Paket `react-markdown` aus dem Tech Design ist erst beim Frontend nötig und wurde noch nicht installiert.
+- Das Aufräumen von Meldungen zu endgültig entfernten Beiträgen geschieht über `ON DELETE CASCADE`.
+
+**Tests:** `src/lib/forum.test.ts` und Route-Tests in `src/app/api/admin/lehrerzimmer/` (63 Tests, grün; Anmeldung, Eingabe-Prüfung, Fehler-Zuordnung, Moderation nur für Admins). `tsc` und ESLint ohne Befund für die neuen Dateien. Die Tests mocken die Datenbank; die Rechte-Regeln selbst sind damit noch nicht belegt.
 
 ## QA Test Results
 _To be added by /qa_
