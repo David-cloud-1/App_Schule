@@ -73,7 +73,10 @@ describe('Server-Grundlage der Werkzeugkiste (PROJ-51)', () => {
   it('prüft neue Abläufe: nur freigeschaltete Werkzeuge, erlaubte Dateien bis 50 MB', () => {
     const datei = { name: 'heft.docx', groesse: 1000, typ: '' }
     expect(neuerAblaufSchema.safeParse({ werkzeug: 'skript', datei }).success).toBe(true)
-    expect(neuerAblaufSchema.safeParse({ werkzeug: 'kahoot', datei }).success).toBe(false)
+    expect(neuerAblaufSchema.safeParse({ werkzeug: 'podcast', datei }).success).toBe(false)
+    for (const w of ['kahoot', 'moodle', 'learningapps']) {
+      expect(neuerAblaufSchema.safeParse({ werkzeug: w, datei }).success, w).toBe(true)
+    }
     for (const w of ['kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation']) {
       expect(neuerAblaufSchema.safeParse({ werkzeug: w, datei }).success, w).toBe(true)
     }

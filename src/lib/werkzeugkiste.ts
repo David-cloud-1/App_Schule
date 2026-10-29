@@ -63,8 +63,8 @@ export interface EinstellungsFeld {
   /** Schlüssel in den Einstellungen (und im Kern) */
   id: string
   label: string
-  /** schalter = Knopfleiste (wenige Optionen) · wahl = Auswahlliste · zahl = Zahlenfeld · mehrfach = Häkchen, Werte kommagetrennt */
-  art: 'schalter' | 'wahl' | 'zahl' | 'mehrfach'
+  /** schalter = Knopfleiste (wenige Optionen) · wahl = Auswahlliste · zahl = Zahlenfeld · mehrfach = Häkchen, Werte kommagetrennt · text = kurzer Freitext */
+  art: 'schalter' | 'wahl' | 'zahl' | 'mehrfach' | 'text'
   ort: 'direkt' | 'mehr'
   standard: string
   /** Feste Auswahl; alternativ `quelle` */
@@ -83,6 +83,8 @@ export interface EinstellungsFeld {
   abhaengigVon?: { feld: string; optionen: Record<string, FeldOption[]>; standard: Record<string, string> }
   /** Ein Satz unter dem Feld */
   hinweis?: string
+  /** text: Beispiel im leeren Feld */
+  platzhalter?: string
 }
 
 export interface Werkzeug {
@@ -152,8 +154,38 @@ const STUFEN_LERN: FeldOption[] = [
 const STUFEN_CEFR: FeldOption[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((k) => ({ key: k, label: k }))
 
 export const WERKZEUGE: Werkzeug[] = [
-  { id: 'skript', name: 'Ganzes Skript', gruppe: 'selbstlernen', beschreibung: 'Skript vollständig interaktiv', icon: BookOpen, aktiv: true, formate: [H5P, SEITE], felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG] },
-  { id: 'kreativ', name: 'Kreative Einheit', gruppe: 'selbstlernen', beschreibung: 'Schüler erarbeiten es selbst', icon: Sparkles, aktiv: true, formate: [H5P, SEITE], felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG, { ...SOZIALFORM, ort: 'mehr' }] },
+  {
+    id: 'skript',
+    name: 'Ganzes Skript',
+    gruppe: 'selbstlernen',
+    beschreibung: 'Skript vollständig interaktiv',
+    icon: BookOpen,
+    aktiv: true,
+    formate: [H5P, SEITE],
+    tipps: [
+      'Aus Ihrem Skript wird ein interaktives Lernheft: Die Schülerinnen und Schüler lesen und beantworten zwischendurch Fragen.',
+      'Wählen Sie „Interaktive Seite“, wenn die Datei einfach per Doppelklick im Browser aufgehen soll. „H5P für Moodle“ brauchen Sie nur, wenn die Ergebnisse in Moodle zählen sollen.',
+      'Ist Ihr Skript sehr lang, wählen Sie in Schritt 1 nur einen Teil aus. Die KI kann sonst mittendrin aufhören.',
+      'Wenn Sie unsicher sind, lassen Sie alles so, wie es voreingestellt ist.',
+    ],
+    felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG],
+  },
+  {
+    id: 'kreativ',
+    name: 'Kreative Einheit',
+    gruppe: 'selbstlernen',
+    beschreibung: 'Schüler erarbeiten es selbst',
+    icon: Sparkles,
+    aktiv: true,
+    formate: [H5P, SEITE],
+    tipps: [
+      'Hier arbeiten die Schülerinnen und Schüler den Stoff selbst durch, statt ihn nur zu lesen. Das passt gut für eine Stunde ohne Lehrkraft vorn.',
+      'Wählen Sie bei „Format“ „Interaktive Seite“, wenn Sie das Ergebnis einfach per Doppelklick im Browser öffnen möchten. „H5P für Moodle“ brauchen Sie nur, wenn die Aufgaben in Moodle hochgeladen werden sollen.',
+      'Unter „Mehr Optionen“ stellen Sie ein, wie lange die Klasse daran arbeiten soll (zum Beispiel eine Einzelstunde) und ob alleine, zu zweit oder in Gruppen gearbeitet wird.',
+      'Wenn Sie unsicher sind, lassen Sie alles so, wie es voreingestellt ist. Das passt in den meisten Fällen.',
+    ],
+    felder: [NIVEAU, BILDUNGSGANG, LERNFELD, UMFANG, { ...SOZIALFORM, ort: 'mehr' }],
+  },
   {
     id: 'differenzierung',
     name: 'Differenzierung',
@@ -163,6 +195,12 @@ export const WERKZEUGE: Werkzeug[] = [
     aktiv: true,
     formate: [WORD, H5P, SEITE],
     // Prompt und Bau kennen weder Niveau noch Bildungsgang noch Lernfeld – sie bleiben hier weg
+    tipps: [
+      'Aus einem Text entstehen mehrere Fassungen für verschiedene Leistungsstärken, alle in einer Datei. So müssen Sie nicht mehrmals Material anfertigen.',
+      '„Lernniveau“ eignet sich für Klassen mit unterschiedlicher Leistung. „CEFR-Sprachniveau“ (A1 bis C2) eignet sich für Klassen mit unterschiedlichen Deutschkenntnissen.',
+      'Wählen Sie lieber zwei bis drei Stufen als vier. Das Ergebnis bleibt übersichtlich und die Antwort der KI wird nicht zu lang.',
+      'Das Word-Format ist am einfachsten: Sie können die Datei ausdrucken und in Word noch ändern.',
+    ],
     felder: [
       {
         id: 'art',
@@ -191,9 +229,98 @@ export const WERKZEUGE: Werkzeug[] = [
       },
     ],
   },
-  { id: 'kahoot', name: 'Kahoot-Quiz', gruppe: 'ueben', beschreibung: 'Wiederholung, Stundeneinstieg', icon: Timer, aktiv: false, formate: [], felder: VORLAEUFIG },
-  { id: 'moodle', name: 'Moodle-Fragen', gruppe: 'ueben', beschreibung: 'Tests in der Lernplattform', icon: ListChecks, aktiv: false, formate: [], felder: VORLAEUFIG },
-  { id: 'learningapps', name: 'LearningApps', gruppe: 'ueben', beschreibung: 'Inhalte zum Kopieren', icon: LayoutGrid, aktiv: false, formate: [], felder: VORLAEUFIG },
+  {
+    id: 'kahoot',
+    name: 'Kahoot-Quiz',
+    gruppe: 'ueben',
+    beschreibung: 'Wiederholung, Stundeneinstieg',
+    icon: Timer,
+    aktiv: true,
+    formate: [],
+    felder: [
+      { id: 'anzahl', label: 'Anzahl Fragen', art: 'zahl', ort: 'direkt', standard: '12', min: 1, max: 30, schritt: 1 },
+      NIVEAU,
+      {
+        id: 'zeitlimit',
+        label: 'Zeitlimit pro Frage',
+        art: 'wahl',
+        ort: 'mehr',
+        standard: 'auto',
+        optionen: [
+          { key: 'auto', label: 'Automatisch (KI entscheidet)' },
+          ...[5, 10, 20, 30, 60, 90, 120].map((z) => ({ key: String(z), label: `${z} Sek.` })),
+        ],
+      },
+      BILDUNGSGANG,
+      LERNFELD,
+    ],
+  },
+  {
+    id: 'moodle',
+    name: 'Moodle-Fragen',
+    gruppe: 'ueben',
+    beschreibung: 'Tests in der Lernplattform',
+    icon: ListChecks,
+    aktiv: true,
+    formate: [],
+    felder: [
+      { id: 'anzahl', label: 'Anzahl Fragen', art: 'zahl', ort: 'direkt', standard: '20', min: 1, max: 60, schritt: 1 },
+      {
+        id: 'types',
+        label: 'Fragetypen',
+        art: 'mehrfach',
+        ort: 'direkt',
+        standard: 'mc,tf',
+        optionen: [
+          { key: 'mc', label: 'Multiple Choice' },
+          { key: 'tf', label: 'Wahr/Falsch' },
+          { key: 'short', label: 'Kurzantwort' },
+          { key: 'num', label: 'Rechenergebnis' },
+          { key: 'match', label: 'Zuordnung' },
+          { key: 'cloze', label: 'Lückentext' },
+          { key: 'ms', label: 'Mehrfachauswahl' },
+        ],
+      },
+      NIVEAU,
+      {
+        id: 'kategorie',
+        label: 'Ordner in der Fragensammlung (optional)',
+        art: 'text',
+        ort: 'mehr',
+        standard: '',
+        platzhalter: 'z. B. Speditionsrecht/Haftung',
+      },
+      BILDUNGSGANG,
+      LERNFELD,
+    ],
+  },
+  {
+    id: 'learningapps',
+    name: 'LearningApps',
+    gruppe: 'ueben',
+    beschreibung: 'Inhalte zum Kopieren',
+    icon: LayoutGrid,
+    aktiv: true,
+    formate: [],
+    felder: [
+      {
+        id: 'vorlagen',
+        label: 'Vorlagen',
+        art: 'mehrfach',
+        ort: 'direkt',
+        standard: 'zuordnung,lueckentext',
+        optionen: [
+          { key: 'zuordnung', label: 'Paare zuordnen' },
+          { key: 'lueckentext', label: 'Lückentext' },
+          { key: 'quiz', label: 'Multiple-Choice-Quiz' },
+          { key: 'gruppen', label: 'Gruppen-Zuordnung' },
+        ],
+      },
+      NIVEAU,
+      { id: 'anzahl', label: 'Elemente je Übung', art: 'zahl', ort: 'direkt', standard: '8', min: 4, max: 20, schritt: 1 },
+      BILDUNGSGANG,
+    ],
+  },
   { id: 'youtube', name: 'Video-Fragen', gruppe: 'ueben', beschreibung: 'Arbeitsauftrag zu einem Video', icon: MonitorPlay, aktiv: false, formate: [], felder: VORLAEUFIG },
   {
     id: 'arbeitsblatt',
@@ -203,6 +330,12 @@ export const WERKZEUGE: Werkzeug[] = [
     icon: FileText,
     aktiv: true,
     formate: [WORD_ZIP('ZIP mit Arbeitsblatt und Lösungsblatt'), SEITE],
+    tipps: [
+      'Sie bekommen ein Arbeitsblatt für die Klasse und ein Lösungsblatt nur für sich. Beides steckt in einer ZIP-Datei: Klicken Sie nach dem Herunterladen doppelt darauf, dann erscheinen beide Dateien.',
+      'Geben Sie bei „Anzahl Aufgaben“ ein, wie viele Aufgaben das Blatt haben soll. Zehn bis fünfzehn sind für eine Stunde meist genug.',
+      'Die Bearbeitungszeit finden Sie unter „Mehr Optionen“. Die KI passt den Umfang daran an.',
+      'Kontrollieren Sie das Lösungsblatt kurz, bevor Sie es benutzen. Die KI kann sich verrechnen.',
+    ],
     felder: [
       NIVEAU,
       { id: 'anzahl', label: 'Anzahl Aufgaben', art: 'zahl', ort: 'direkt', standard: '12', min: 1, max: 60, schritt: 1 },
@@ -219,6 +352,12 @@ export const WERKZEUGE: Werkzeug[] = [
     icon: Briefcase,
     aktiv: true,
     formate: [WORD_ZIP('ZIP mit Material und Handreichung'), SEITE],
+    tipps: [
+      'Eine Lernsituation ist ein Auftrag aus dem Berufsalltag, den die Klasse Schritt für Schritt bearbeitet. Sie bekommen ein Material für die Klasse und eine Handreichung für sich.',
+      'Beides steckt in einer ZIP-Datei: Klicken Sie nach dem Herunterladen doppelt darauf, dann erscheinen beide Dateien.',
+      'Bei „Sozialform“ legen Sie fest, ob die Klasse alleine, zu zweit oder in Gruppen arbeitet. „Automatisch“ lässt die KI abwechseln.',
+      'Planen Sie die Bearbeitungszeit realistisch ein (unter „Mehr Optionen“). Lieber etwas knapper, dann bleibt Zeit für die Besprechung.',
+    ],
     felder: [SOZIALFORM, NIVEAU, DAUER, BILDUNGSGANG, LERNFELD],
   },
   { id: 'pruefung', name: 'Klassenarbeit', gruppe: 'unterricht', beschreibung: 'IHK-Stil, AFB I–III', icon: ClipboardCheck, aktiv: false, formate: [], felder: VORLAEUFIG },
@@ -445,6 +584,8 @@ export interface AblaufErgebnis {
   einheit?: string
   /** false = es gibt keine Vorschau (Standard: ja) */
   hatVorschau?: boolean
+  /** Text zum Kopieren je Vorlage (LearningApps, PROJ-54): Schritt 5 zeigt ihn statt eines Downloads */
+  texte?: { titel: string; text: string }[]
 }
 
 /**
@@ -565,8 +706,17 @@ export function einstellungenFuerWerkzeug(werkzeugId: string, bisher: AblaufEins
   for (const f of werkzeug?.felder ?? []) {
     if (kern.includes(f.id)) continue
     const alt = bisher[f.id]
-    const erlaubt = alt !== undefined && (!f.optionen || f.optionen.some((o) => o.key === alt))
-    neu[f.id] = f.abhaengigVon ? standards[f.id] : erlaubt ? alt : standards[f.id]
+    const erlaubt = alt !== undefined && (!f.optionen || f.art === 'mehrfach' || f.optionen.some((o) => o.key === alt))
+    if (f.abhaengigVon) neu[f.id] = standards[f.id]
+    else if (!erlaubt) neu[f.id] = standards[f.id]
+    else if (f.art === 'zahl') {
+      // Ein Zahlenwert des alten Werkzeugs (z. B. 40 Fragen) in den Bereich des neuen holen
+      const n = Number(alt)
+      neu[f.id] = Number.isFinite(n) && alt !== '' ? String(Math.min(f.max ?? n, Math.max(f.min ?? n, Math.round(n)))) : standards[f.id]
+    } else if (f.art === 'mehrfach' && f.optionen) {
+      const gueltig = alt.split(',').filter((k) => f.optionen!.some((o) => o.key === k))
+      neu[f.id] = gueltig.length > 0 ? gueltig.join(',') : standards[f.id]
+    } else neu[f.id] = alt
   }
   return neu
 }

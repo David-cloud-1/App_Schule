@@ -291,6 +291,12 @@ export function kernFehlerAntwort(e: unknown) {
   return fehler('Das hat gerade nicht geklappt. Bitte versuche es erneut.', 500)
 }
 
+/** Ein Textblock aus der Kern-Antwort (LearningApps) — nur Text, nie mehr als nötig */
+function textBlock(t: unknown): { titel: string; text: string } {
+  const o = (t && typeof t === 'object' ? t : {}) as Record<string, unknown>
+  return { titel: String(o.titel ?? '').slice(0, 200), text: String(o.text ?? '').slice(0, 100_000) }
+}
+
 /**
  * Datei und Vorschau aus einer geprüften Antwort bauen lassen und im Speicher
  * ablegen — gemeinsam für den kostenlosen Weg und „Direkt erstellen“ (PROJ-64).
@@ -321,5 +327,6 @@ export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, ant
     ...(Array.isArray(r.enthaelt) ? { enthaelt: r.enthaelt.map(String) } : {}),
     ...(r.hatVorschau === false ? { hatVorschau: false } : {}),
     ...(typeof r.einheit === 'string' ? { einheit: r.einheit } : {}),
+    ...(Array.isArray(r.texte) ? { texte: r.texte.map(textBlock).filter((t) => t.text) } : {}),
   }
 }

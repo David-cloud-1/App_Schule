@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, Download, Eye, Loader2, PencilLine, Repeat } from 'lucide-react'
+import { Check, ClipboardCopy, Download, Eye, Loader2, PencilLine, Repeat } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ablaufHref, type AblaufErgebnis } from '@/lib/werkzeugkiste'
@@ -32,6 +33,8 @@ export function SchrittFertig({
   const [vorschauOffen, setVorschauOffen] = useState(false)
   const [vorschau, setVorschau] = useState<string | null>(null)
   const [vorschauFehler, setVorschauFehler] = useState(false)
+  // Text zum Kopieren (LearningApps): Statt eines Downloads steht je Vorlage ein „Kopieren“-Knopf da
+  const zumKopieren = !!ergebnis.texte && ergebnis.texte.length > 0
 
   useEffect(() => {
     if (!vorschauOffen || vorschau !== null || vorschauFehler) return
@@ -65,20 +68,27 @@ export function SchrittFertig({
               .filter(Boolean)
               .join(' · ')}
           </p>
+          {zumKopieren && (
+            <p className="text-sm text-ws-muted">
+              {ergebnis.texte!.length === 1 ? 'Der Text steht unten zum Kopieren bereit.' : 'Die Texte stehen unten zum Kopieren bereit – je Übung einer.'}
+            </p>
+          )}
           {ergebnis.enthaelt && ergebnis.enthaelt.length > 0 && (
             <p className="text-sm text-ws-muted">Darin: {ergebnis.enthaelt.join(' · ')}</p>
           )}
         </div>
         <div className="flex w-full flex-col justify-center gap-3 sm:w-auto sm:flex-row">
-          <Button
-            asChild
-            className="min-h-12 rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
-          >
-            <a href={downloadHref(ablaufId)} download={ergebnis.dateiname}>
-              <Download className="mr-2 size-5" aria-hidden />
-              Herunterladen
-            </a>
-          </Button>
+          {!zumKopieren && (
+            <Button
+              asChild
+              className="min-h-12 rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
+            >
+              <a href={downloadHref(ablaufId)} download={ergebnis.dateiname}>
+                <Download className="mr-2 size-5" aria-hidden />
+                Herunterladen
+              </a>
+            </Button>
+          )}
           {ergebnis.hatVorschau !== false && (
             <Button variant="outline" onClick={() => setVorschauOffen(true)} className={`${NEBENAKTION} min-h-12 px-5`}>
               <Eye className="mr-2 size-5" aria-hidden />
@@ -87,10 +97,18 @@ export function SchrittFertig({
           )}
         </div>
         <p className="text-xs text-ws-faint">
-          Der Download steht 7 Tage lang bereit.
+          {zumKopieren ? 'Das Ergebnis steht 7 Tage lang bereit.' : 'Der Download steht 7 Tage lang bereit.'}
           {direkt && kostenEur != null && <span className="ml-1 font-medium text-ws-muted">Kosten: {euro(kostenEur)}</span>}
         </p>
       </div>
+
+      {zumKopieren && (
+        <section aria-label="Texte zum Kopieren" className="space-y-3">
+          {ergebnis.texte!.map((t, i) => (
+            <TextZumKopieren key={i} titel={t.titel} text={t.text} />
+          ))}
+        </section>
+      )}
 
       {hinweise && hinweise.length > 0 && (
         <section aria-label="Hinweise zum Material" className="space-y-2 rounded-2xl border border-ws-orange/30 bg-ws-orange/10 p-4 text-sm">
@@ -157,6 +175,40 @@ export function SchrittFertig({
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+/** Ein Text mit eigenem „Kopieren“-Knopf; klappt die Zwischenablage nicht, bleibt der Text zum Markieren stehen */
+function TextZumKopieren({ titel, text }: { titel: string; text: string }) {
+  const [kopiert, setKopiert] = useState(false)
+
+  async function kopieren() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setKopiert(true)
+      toast.success('In die Zwischenablage kopiert')
+      setTimeout(() => setKopiert(false), 2000)
+    } catch {
+      toast.error('Kopieren hat nicht geklappt. Markiere den Text und kopiere ihn selbst.')
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-ws-line bg-ws-surface p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="min-w-0 break-words text-sm font-semibold" title={titel}>
+          {titel}
+        </h2>
+        <Button variant="outline" onClick={kopieren} className={`${NEBENAKTION} min-h-11 px-4`}>
+          {kopiert ? <Check className="mr-2 size-4" aria-hidden /> : <ClipboardCopy className="mr-2 size-4" aria-hidden />}
+          {kopiert ? 'Kopiert' : 'Kopieren'}
+          <span className="sr-only">: {titel}</span>
+        </Button>
+      </div>
+      <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-ws-line bg-ws-bg p-3 text-sm leading-relaxed text-ws-text">
+        {text}
+      </pre>
     </div>
   )
 }

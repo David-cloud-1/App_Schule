@@ -120,7 +120,7 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
     })
 
     it('lehnt gesperrte Werkzeuge und falsche Dateien mit verständlichem Satz ab', async () => {
-      const r1 = await neuerAblauf(json({ werkzeug: 'kahoot', datei: { name: 'a.pdf', groesse: 10, typ: '' } }))
+      const r1 = await neuerAblauf(json({ werkzeug: 'podcast', datei: { name: 'a.pdf', groesse: 10, typ: '' } }))
       expect(r1.status).toBe(400)
       expect((await r1.json()).error).toMatch(/nicht freigeschaltet/)
       const r2 = await neuerAblauf(json({ werkzeug: 'skript', datei: { name: 'a.zip', groesse: 10, typ: '' } }))
@@ -234,6 +234,21 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       expect(a.ergebnis).toMatchObject({ enthaelt: ['Arbeitsblatt', 'Lösungsblatt'], hatVorschau: false, einheit: 'Aufgaben' })
       const body = JSON.parse(kernFetch.mock.calls[0][1].body)
       expect(body.werkzeug).toBe('arbeitsblatt')
+    })
+
+    it('Bauen: reicht den Text zum Kopieren je Übung durch (LearningApps, PROJ-54)', async () => {
+      zeile = {
+        ...BASIS_ZEILE, werkzeug: 'learningapps', schritt: 4, antwort: 'x', pruefung: { lesbar: true },
+        einstellungen: { ...BASIS_ZEILE.einstellungen, format: '' },
+      }
+      kernAntwort({
+        titel: 'Haftung üben', dateiname: 'Haftung.txt', format: 'text', kapitel: 0, aufgaben: 2, einheit: 'Übungen',
+        texte: [{ titel: 'A · Paare zuordnen', text: 'APP 1: A' }, { titel: 'B', text: 42 }, 'kaputt'],
+      })
+      const a = (await (await bauen(new Request('http://t'), ctx)).json()).ablauf
+      // Nur Text kommt an; Leeres fällt weg, Fremdes wird zu Text
+      expect(a.ergebnis.texte).toEqual([{ titel: 'A · Paare zuordnen', text: 'APP 1: A' }, { titel: 'B', text: '42' }])
+      expect(JSON.parse(kernFetch.mock.calls[0][1].body).werkzeug).toBe('learningapps')
     })
 
     it('meldet einen nicht erreichbaren Kern verständlich', async () => {

@@ -281,6 +281,26 @@ function FeldAnsicht({
     )
   }
 
+  if (feld.art === 'text') {
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={id} className="text-sm text-ws-muted">
+          {feld.label}
+        </Label>
+        <Input
+          id={id}
+          type="text"
+          maxLength={100}
+          value={wert}
+          placeholder={feld.platzhalter}
+          onChange={(e) => onChange(e.target.value)}
+          className={FELD}
+        />
+        {feld.hinweis && <p className="text-sm text-ws-muted">{feld.hinweis}</p>}
+      </div>
+    )
+  }
+
   // wahl
   return (
     <div className="space-y-2">

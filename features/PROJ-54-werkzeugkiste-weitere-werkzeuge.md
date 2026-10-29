@@ -274,6 +274,57 @@ Keine Datenbank- und keine Rechteänderung: Die Ablauf-Tabelle trägt die neuen 
 **Entscheidung:** Keine Critical/High-Fehler → **Paket A produktionsreif**, Status Approved (ein Browser-Durchgang durch den Nutzer in Produktion steht aus, wie bei PROJ-51).
 
 
+## Umsetzung Paket B (2026-10-29): Kahoot, Moodle, LearningApps
+
+Keine Datenbank- und keine Rechteänderung (Einstellungen und Ergebnis sind JSON in der Ablauf-Tabelle).
+
+**Kern** (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`, Commit 737234e)
+- `FREIGESCHALTET` um `kahoot`, `moodle`, `learningapps` erweitert. Prompt gibt `types`, `zeitlimit`, `kategorie`, `vorlagen` an `build_prompt` weiter; fehlt `anzahl`, gelten die alten Vorgaben (Kahoot 12, Moodle 20, LearningApps 8) → Prompt zeichengleich.
+- Antwort: eigene Form `questions:` bzw. `apps:`; fehlt sie, dieselben Sätze wie in der alten Werkzeugkiste („Im eingefügten Text wurden keine Fragen gefunden.“). Prüfstelle (`qualitaet`) und Vorschau (`vorschau`) nutzen die bestehenden Prüfer dieser Werkzeuge.
+- Bau: Kahoot → `.xlsx`, Moodle → `.gift.txt`, LearningApps → `.txt`. Für LearningApps liefert der Kern zusätzlich `texte` (ein Block je Übung, aus derselben Funktion wie die Datei; `ausgabe.py` wurde dafür ohne Änderung der Datei umgebaut, byte-gleich geprüft).
+- Tests `kern_test.py`: 52 grün (neu 10: Prompt gleich für alle drei, Dateien gleich wie die Bauer, Blöcke stehen in der Gesamtdatei, falsche Form, zu lange Kahoot-Frage, leere Fragen). `werkzeugtest.py` unverändert 22/24 (die zwei bekannten Altfehler: deploy-paket, podcast 403).
+
+**App**
+- Drei Werkzeuge `aktiv: true`, ohne Formatwahl. Neue Feldart `text` (Ordner in der Fragensammlung). Beim Werkzeugwechsel werden Zahlen in den Bereich des neuen Werkzeugs geholt (60 Fragen aus Moodle → 30 bei Kahoot) und unpassende Häkchen verworfen.
+- Schritt 5: Hat das Ergebnis `texte`, gibt es je Übung einen Block mit eigenem „Kopieren“-Knopf statt „Herunterladen“; klappt die Zwischenablage nicht, bleibt der Text zum Markieren stehen. Die Vorschau bleibt.
+- Tests: Gesamtsuite 1720 grün, tsc und Lint sauber (außer dem noch nicht eingecheckten Tipps-Test einer parallelen Sitzung, siehe unten).
+
+| Werkzeug | Direkt | Mehr Optionen |
+|---|---|---|
+| Kahoot-Quiz | Anzahl Fragen (1–30, Standard 12), Niveau | Zeitlimit je Frage (Automatisch · 5–120 Sek.), Bildungsgang, Lernfeld |
+| Moodle-Fragen | Anzahl Fragen (1–60, Standard 20), Fragetypen (7, Standard MC + W/F), Niveau | Ordner in der Fragensammlung, Bildungsgang, Lernfeld |
+| LearningApps | Vorlagen (4, Standard Zuordnung + Lückentext), Niveau, Elemente je Übung (4–20, Standard 8) | Bildungsgang |
+
+**Abweichungen von der Tabelle oben** (so wirkt es in der alten Werkzeugkiste)
+- Kahoot und Moodle behalten **Lernfeld** (die alte Oberfläche zeigt es dort); LearningApps hat keins.
+- LearningApps: „Elemente je Übung“ steht direkt (die Spec nennt nur Vorlagen und Niveau; die alte Oberfläche hat das Feld).
+- Kahoot-Datei heißt `Kahoot_Quiz.xlsx` (früher nach dem Skript benannt; der Kern kennt den Skriptnamen nach dem Einlesen nicht mehr).
+- Kahoot, Moodle und LearningApps haben eine **Vorschau** (die Spec vermutete keine); sie kostet nichts und stammt aus der alten Werkzeugkiste.
+- Die **Tipps** fehlen weiter (BUG-1 aus Paket A, Texte liegen in der pausierten alten Datenbank). Eine parallele Sitzung arbeitet daran; ihr Test verlangt Tipps für jedes freigeschaltete Werkzeug, also auch für diese drei.
+
+## QA Test Results – Paket B (2026-10-29)
+
+**Wie getestet:** Ohne Dev-Server und ohne Browser (bringt den Rechner zum Absturz). Code gegen die Kriterien, App-Tests, Kern-Tests mit echtem Kern-Code und Beispielantworten im Format der echten Prompts.
+
+| Kriterium | Ergebnis |
+|---|---|
+| Karten der 3 Werkzeuge aktiv | ✅ (Test) |
+| Fünf Schritte, Prüfstelle, Vorschau, „anderes Werkzeug“ | ✅ gleicher Ablauf wie Paket A |
+| Prompts zeichengenau gleich | ✅ Kern-Tests vergleichen mit `build_prompt` (inkl. Standardanzahl) |
+| Dateien inhaltsgleich | ✅ gleiche Bauer; Test vergleicht Bytes mit dem Bauer |
+| Auswahlmöglichkeiten wie heute | ✅ Test (Zeitlimits, 7 Fragetypen, 4 Vorlagen) |
+| Höchstens 3 direkt, Rest „Mehr Optionen“ | ✅ Test |
+| LearningApps: Kopieren je Vorlage statt Download | ✅ Test (Kopieren, Fehlerfall Zwischenablage) |
+| Kahoot-Limit 95/60 Zeichen: Prüfstelle meldet | ✅ Test („Frage wird abgeschnitten“) |
+| Eine Zeile Erklärung; aufklappbare Tipps | ⚠️ Zeile ja, Tipps nein (BUG-1, wie Paket A) |
+| Überarbeiten (Tippfehler/Kapitel neu) | ➖ gibt es in der App für kein Werkzeug (nicht Teil von Paket B) |
+
+**Sicherheit:** Alle Routen prüfen weiter die Lehrer-Rolle und lesen nur eigene Abläufe. Das neue Textfeld „Ordner“ ist auf 100 Zeichen begrenzt (Schema) und landet nur im Prompt der eigenen Lehrkraft. `texte` aus dem Kern wird auf Text und 100.000 Zeichen je Block begrenzt (Test mit Fremdwerten). Der Text wird als Text angezeigt (`<pre>`, kein HTML). Keine neue Tabelle, keine neuen Geheimnisse.
+
+**Nicht geprüft:** Aussehen und Bedienung im Browser, Handybreite, Tastatur/Screenreader, Hell/Dunkel, Zwischenablage im echten Browser, echter Durchlauf mit einer echten KI-Antwort.
+
+**Bugs:** BUG-1 (Medium, Tipps fehlen) besteht fort, kein Blocker. Keine Critical/High-Fehler → Paket B produktionsreif.
+
 ## Deployment
 
 ### Paket A – 2026-10-29

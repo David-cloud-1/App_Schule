@@ -30,8 +30,17 @@ describe('Werkzeugliste', () => {
     expect(WERKZEUG_GRUPPEN.map((g) => werkzeugeDerGruppe(g.id).length)).toEqual([3, 4, 3, 2])
   })
 
-  it('schaltet bis Paket A fünf Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
-    expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual(['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation'])
+  it('schaltet bis Paket B acht Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
+    expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual([
+      'skript',
+      'kreativ',
+      'differenzierung',
+      'kahoot',
+      'moodle',
+      'learningapps',
+      'arbeitsblatt',
+      'lernsituation',
+    ])
     expect(WERKZEUGE.find((w) => w.id === 'skript')?.formate.map((f) => f.id)).toEqual(['h5p', 'seite'])
   })
 })
@@ -121,7 +130,7 @@ describe('Schritte', () => {
 
 describe('Einstellungen & Kurzinfo', () => {
   it('setzt beim Werkzeugwechsel nur das Format zurück', () => {
-    expect(einstellungenFuerWerkzeug('kahoot', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
+    expect(einstellungenFuerWerkzeug('pruefung', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
       ...EINST,
       format: '',
       niveau: 'schwer',

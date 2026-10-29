@@ -238,7 +238,7 @@ describe('Direkt erstellen – Start, Sperren, Abbruch (PROJ-64)', () => {
   })
 
   it('weist ungültige Einstellungen ab', async () => {
-    expect((await starten(json({ werkzeug: 'kahoot', einstellungen: ZEILE.einstellungen }), ctx)).status).toBe(400)
+    expect((await starten(json({ werkzeug: 'podcast', einstellungen: ZEILE.einstellungen }), ctx)).status).toBe(400)
     expect((await starten(json({ ...START, preis: 0 }), ctx)).status).toBe(400)
   })
 
