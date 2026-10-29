@@ -216,7 +216,7 @@ Weitere Regeln:
 
 ## Implementierungs-Notizen (Backend, 2026-10-29)
 
-**Stand: Code fertig und getestet, Migration NOCH NICHT auf der Live-Datenbank.** Der Aufruf `apply_migration` wurde abgelehnt, daraufhin wurde nichts an der Datenbank geändert. Die Datenbank-Funktionen sind deshalb noch ungetestet gegen echte Daten. Vor `/qa` muss die Migration angewendet und dort mit zurückgerollten Transaktionen geprüft werden (Rollen, Sichtbarkeit, Zähler, Flut-Schutz, Papierkorb).
+**Stand: Backend fertig. Migration am 2026-10-29 von David im Supabase-SQL-Editor auf `riqafwijurbxvywzlipx` eingespielt** (der Aufruf über das Werkzeug war abgelehnt worden). Prüfung danach: 6 Tabellen alle mit RLS, 29 Funktionen, Aufräum-Job `forum-papierkorb-aufraeumen` vorhanden, nur SELECT für `anon`/`authenticated` auf den Tabellen, kein `anon`-Zugriff auf `forum_*`-Funktionen. Die Tabellen sind noch leer.
 
 **Datenbank** (`supabase/migrations/20261029_proj63_lehrerzimmer.sql`, Rückweg `..._down.sql`):
 - Tabellen `forum_posts`, `forum_replies`, `forum_helpful`, `forum_reports`, `forum_post_reads`, `forum_user_state`, alle mit RLS. Deutsche Volltextsuche (`tsvector`, GIN) über Titel/Text von Beiträgen und Antworten.
@@ -238,7 +238,21 @@ Weitere Regeln:
 - Das Paket `react-markdown` aus dem Tech Design ist erst beim Frontend nötig und wurde noch nicht installiert.
 - Das Aufräumen von Meldungen zu endgültig entfernten Beiträgen geschieht über `ON DELETE CASCADE`.
 
-**Tests:** `src/lib/forum.test.ts` und Route-Tests in `src/app/api/admin/lehrerzimmer/` (63 Tests, grün; Anmeldung, Eingabe-Prüfung, Fehler-Zuordnung, Moderation nur für Admins). `tsc` und ESLint ohne Befund für die neuen Dateien. Die Tests mocken die Datenbank; die Rechte-Regeln selbst sind damit noch nicht belegt.
+**Tests:** `src/lib/forum.test.ts` und Route-Tests in `src/app/api/admin/lehrerzimmer/` (63 Tests, grün; Anmeldung, Eingabe-Prüfung, Fehler-Zuordnung, Moderation nur für Admins). `tsc` und ESLint ohne Befund für die neuen Dateien. Diese Tests mocken die Datenbank.
+
+**Datenbank-Prüfung (Live-DB, in zurückgerollten Transaktionen; es blieb nichts zurück):** Es gibt noch keine Lehrkraft, deshalb wurden zwei Bereichs-Admins in der Transaktion zeitweise auf „teacher“ gesetzt. Geprüft mit je eigener Anmeldung (`request.jwt.claims` + `SET ROLE authenticated`), 50 Fälle, alle in Ordnung (zwei davon, die „neue Antwort“-Hinweise, bestanden erst im zweiten Durchlauf mit simuliertem Zeitabstand, siehe Hinweis unten):
+- Azubi: kann nicht schreiben (FRM03), sieht keine Namen, Zähler 0, direktes INSERT/UPDATE gesperrt (42501).
+- Doppeltes Absenden = ein Beitrag; zu kurzer Titel abgelehnt; unbekannter Fachbereich abgelehnt.
+- Hilfreich: setzen/zurücknehmen, nicht für Eigenes, fremde Markierungen unsichtbar.
+- Lösung: nur der Fragesteller, nur bei Fragen; Löschen der Lösungs-Antwort macht die Frage wieder offen; Kategorie-Wechsel entfernt die Lösung.
+- Melden: einmal pro Person, nicht für Eigenes; Lehrkräfte sehen weder Meldungen noch dürfen sie ausblenden; Admin sieht Meldung und Zähler.
+- Ausblenden: für andere unsichtbar (Liste und Detail), Antworten darauf abgelehnt, Autor sieht es weiter, Änderungsprotokoll hat 2 Einträge (hide/unhide).
+- Papierkorb: Löschen/Wiederherstellen, Antworten kommen mit zurück, fremder Papierkorb unsichtbar, fremdes Wiederherstellen abgelehnt.
+- Suche: deutsche Wortstämme („Frachtbrief“ findet „Frachtbriefe“), findet auch Text in Antworten.
+- Flut-Schutz greift beim 11. Beitrag je Stunde (FRM01). Konto gelöscht → „Ehemalige Lehrkraft“.
+- Seitenleisten-Zähler (neue Antworten, offene Meldungen) stimmen. Hinweis zum Test: In einer einzigen Transaktion ist `now()` überall gleich, daher musste ein Zeitabstand simuliert werden. In echten Anfragen ist das kein Thema.
+
+**Noch nicht geprüft:** Verhalten mit echten Lehrkräften und über die Oberfläche (kommt mit `/frontend` und `/qa`); das tägliche Aufräumen nach 30 Tagen (der Job ist angelegt, gelaufen ist er noch nicht).
 
 ## QA Test Results
 _To be added by /qa_
