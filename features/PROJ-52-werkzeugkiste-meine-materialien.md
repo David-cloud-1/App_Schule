@@ -395,3 +395,8 @@ Gesamtsuite 1949 grün (vorher 1906); Produktions-Build, `tsc`, Lint (0 Fehler) 
 **Tests:** `ueberarbeiten.test.ts` (11, Routen und Zwei-Tabs-Regel), `werkzeugkiste-ueberarbeiten.test.ts` (4), `ueberarbeiten-hilfen.test.tsx` (5), dazu 2 Download-Tests und 1 Komponententest für BUG-1. Gesamtsuite 1972 grün, `tsc` sauber, Lint 0 Fehler, Produktions-Build sauber.
 
 **Nicht geprüft:** Browser/Handy (kein Dev-Server, Projektregel); ein echter Lauf „Kapitel neu“ mit einer KI gegen den live-Kern; Neubau mit zwei geöffneten Tabs in Produktion.
+
+## Deployment – Nachbesserung BUG-1 und Paket 2 (2026-10-30)
+- **Kern** zuerst: Commit `8484f5e` auf Zweig `vercel-kern` (Werkzeugkiste-Repo, nicht nach GitHub gepusht), per `vercel deploy --prod` als Projekt `werkzeugkiste-kern` live, Status Ready. `/api/gesund` 200; neue Wege ohne Schlüssel 401. Ein Live-Aufruf mit Schlüssel fehlt noch.
+- **App**: Commit `62959f7` auf `main`, gepusht; Production `spedilern` Ready. Ohne Login: neue Routen 401. Keine Migration, keine neuen Umgebungsvariablen.
+- **Noch offen:** Browser-/Handy-Durchgang (Paket 1 und Paket 2, inkl. „Kapitel neu“ mit echter KI und Neubau mit zwei Tabs). Erst danach Status „Deployed“.
