@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import {
   feldOptionen,
   feldSetzen,
+  feldSichtbar,
   findeWerkzeug,
   WERKZEUGE,
   type AblaufEinstellungen,
@@ -51,8 +52,9 @@ export function SchrittEinstellungen({
 }) {
   const werkzeug = findeWerkzeug(werkzeugId)
   const setze = (teil: Partial<AblaufEinstellungen>) => setEinstellungen({ ...einstellungen, ...teil } as AblaufEinstellungen)
-  const direkt = werkzeug?.felder.filter((f) => f.ort === 'direkt') ?? []
-  const mehr = werkzeug?.felder.filter((f) => f.ort === 'mehr') ?? []
+  const sichtbar = werkzeug?.felder.filter((f) => feldSichtbar(f, einstellungen)) ?? []
+  const direkt = sichtbar.filter((f) => f.ort === 'direkt')
+  const mehr = sichtbar.filter((f) => f.ort === 'mehr')
   const feld = (f: EinstellungsFeld) => (
     <FeldAnsicht
       key={f.id}

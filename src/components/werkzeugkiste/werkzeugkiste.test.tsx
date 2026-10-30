@@ -18,9 +18,9 @@ describe('Werkzeug-Übersicht (PROJ-51)', () => {
     ])
     const links = screen.getAllByRole('link')
     expect(links.map((l) => l.getAttribute('href'))).toEqual(
-      ['skript', 'kreativ', 'differenzierung', 'kahoot', 'moodle', 'learningapps', 'arbeitsblatt', 'lernsituation'].map((w) => `/admin/werkzeugkiste/neu?werkzeug=${w}`),
+      ['skript', 'kreativ', 'differenzierung', 'kahoot', 'moodle', 'learningapps', 'arbeitsblatt', 'lernsituation', 'pruefung', 'lied'].map((w) => `/admin/werkzeugkiste/neu?werkzeug=${w}`),
     )
-    expect(screen.getAllByText('kommt bald')).toHaveLength(4)
+    expect(screen.getAllByText('kommt bald')).toHaveLength(2)
   })
 })
 

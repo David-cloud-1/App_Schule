@@ -251,6 +251,27 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       expect(JSON.parse(kernFetch.mock.calls[0][1].body).werkzeug).toBe('learningapps')
     })
 
+    it('Bauen: reicht Klassenarbeit-Einstellungen an den Kern und den Musik-KI-Hinweis des Lernlieds zurück (PROJ-54)', async () => {
+      zeile = {
+        ...BASIS_ZEILE, werkzeug: 'pruefung', schritt: 4, antwort: 'x', pruefung: { lesbar: true },
+        einstellungen: { ...BASIS_ZEILE.einstellungen, format: 'word', noten: 'frei', notengrenzen: '85,70,55,40,20', hilfsmittel: 'Taschenrechner' },
+      }
+      kernAntwort({ titel: 'Haftung', dateiname: 'Haftung.zip', format: 'word', kapitel: 0, aufgaben: 40, einheit: 'Punkte', enthaelt: ['Schülerblatt', 'Lösungen'] })
+      await bauen(new Request('http://t'), ctx)
+      const gesendet = JSON.parse(kernFetch.mock.calls[0][1].body)
+      expect(gesendet.werkzeug).toBe('pruefung')
+      expect(gesendet.einstellungen).toMatchObject({ noten: 'frei', notengrenzen: '85,70,55,40,20', hilfsmittel: 'Taschenrechner' })
+
+      kernFetch.mockClear()
+      zeile = { ...BASIS_ZEILE, werkzeug: 'lied', schritt: 4, antwort: 'x', pruefung: { lesbar: true }, einstellungen: { ...BASIS_ZEILE.einstellungen, format: '' } }
+      kernAntwort({
+        titel: 'Lernlieder', dateiname: 'Lernlieder.zip', format: 'word', kapitel: 0, aufgaben: 3, einheit: 'Lieder',
+        enthaelt: ['Liedtexte', 'Musik-KI-Prompts'], hinweis: 'Im ZIP liegt ein fertiger Prompt für eine Musik-KI (z. B. suno.com).',
+      })
+      const a = (await (await bauen(new Request('http://t'), ctx)).json()).ablauf
+      expect(a.ergebnis).toMatchObject({ einheit: 'Lieder', hinweis: expect.stringContaining('suno.com') })
+    })
+
     it('meldet einen nicht erreichbaren Kern verständlich', async () => {
       zeile = { ...BASIS_ZEILE, kennzahlen: { seiten: 1, loesungen: 1, bilder: 0, tabellen: 0 } }
       kernFetch.mockRejectedValueOnce(new Error('timeout'))

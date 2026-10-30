@@ -85,6 +85,8 @@ export interface EinstellungsFeld {
   hinweis?: string
   /** text: Beispiel im leeren Feld */
   platzhalter?: string
+  /** Das Feld erscheint nur, wenn ein anderes Feld diesen Wert hat (z. B. Notengrenzen bei freiem Notenschlüssel) */
+  sichtbarWenn?: { feld: string; wert: string }
 }
 
 export interface Werkzeug {
@@ -360,9 +362,125 @@ export const WERKZEUGE: Werkzeug[] = [
     ],
     felder: [SOZIALFORM, NIVEAU, DAUER, BILDUNGSGANG, LERNFELD],
   },
-  { id: 'pruefung', name: 'Klassenarbeit', gruppe: 'unterricht', beschreibung: 'IHK-Stil, AFB I–III', icon: ClipboardCheck, aktiv: false, formate: [], felder: VORLAEUFIG },
+  {
+    id: 'pruefung',
+    name: 'Klassenarbeit',
+    gruppe: 'unterricht',
+    beschreibung: 'IHK-Stil, AFB I–III',
+    icon: ClipboardCheck,
+    aktiv: true,
+    formate: [
+      WORD_ZIP('ZIP mit Schülerblatt und Lösungen samt Erwartungshorizont'),
+      { id: 'h5p', label: 'H5P Übungstest', hinweis: 'Zum Üben in Moodle, mit Erwartungshorizont' },
+    ],
+    tipps: [
+      'Sie bekommen ein Schülerblatt zum Austeilen und ein Lösungsblatt mit Erwartungshorizont und Notenschlüssel nur für sich. Beides steckt in einer ZIP-Datei.',
+      'Die Aufgaben sind nach Anforderungsbereichen I bis III geordnet, wie in IHK-Prüfungen. Jede Aufgabe trägt ihre Punkte.',
+      'Unter „Mehr Optionen“ legen Sie den Notenschlüssel fest. „Frei einstellbar“ erwartet fünf Prozentwerte, zum Beispiel 85,70,55,40,20.',
+      'Kontrollieren Sie Erwartungshorizont und Punkte kurz, bevor Sie die Arbeit schreiben lassen. Die KI kann sich verrechnen.',
+    ],
+    felder: [
+      {
+        id: 'dauer',
+        label: 'Bearbeitungszeit',
+        art: 'zahl',
+        ort: 'direkt',
+        standard: '60',
+        min: 15,
+        max: 180,
+        schritt: 5,
+        einheit: 'Minuten',
+      },
+      NIVEAU,
+      {
+        id: 'types',
+        label: 'Aufgabentypen',
+        art: 'mehrfach',
+        ort: 'mehr',
+        standard: 'offen,mc,rechnen',
+        optionen: [
+          { key: 'offen', label: 'Offen (Freitext)' },
+          { key: 'mc', label: 'Multiple Choice / Wahr-Falsch' },
+          { key: 'rechnen', label: 'Rechenaufgaben' },
+          { key: 'fall', label: 'Situations-/Fallaufgabe' },
+        ],
+      },
+      { id: 'mcprozent', label: 'Anteil Multiple Choice', art: 'zahl', ort: 'mehr', standard: '30', min: 0, max: 100, schritt: 10, einheit: '%' },
+      {
+        id: 'noten',
+        label: 'Notenschlüssel',
+        art: 'wahl',
+        ort: 'mehr',
+        standard: 'ihk',
+        optionen: [
+          { key: 'ihk', label: 'IHK-Schlüssel' },
+          { key: 'frei', label: 'Frei einstellbar' },
+        ],
+      },
+      {
+        id: 'notengrenzen',
+        label: 'Grenzen Note 1–5 (Mindestprozent)',
+        art: 'text',
+        ort: 'mehr',
+        standard: '',
+        platzhalter: 'z. B. 85,70,55,40,20',
+        hinweis: 'Fünf fallende Prozentwerte. Sonst gilt der IHK-Schlüssel.',
+        sichtbarWenn: { feld: 'noten', wert: 'frei' },
+      },
+      { id: 'hilfsmittel', label: 'Erlaubte Hilfsmittel (optional)', art: 'text', ort: 'mehr', standard: '', platzhalter: 'z. B. Taschenrechner, Gesetzestexte' },
+      BILDUNGSGANG,
+      LERNFELD,
+    ],
+  },
   { id: 'podcast', name: 'Podcast', gruppe: 'hoeren', beschreibung: 'Lern-Dialog als MP3', icon: Mic, aktiv: false, formate: [], felder: VORLAEUFIG },
-  { id: 'lied', name: 'Lernlied', gruppe: 'hoeren', beschreibung: 'Fachbegriffe als Ohrwurm', icon: Music, aktiv: false, formate: [], felder: VORLAEUFIG },
+  {
+    id: 'lied',
+    name: 'Lernlied',
+    gruppe: 'hoeren',
+    beschreibung: 'Fachbegriffe als Ohrwurm',
+    icon: Music,
+    aktiv: true,
+    formate: [],
+    tipps: [
+      'Die Werkzeugkiste schreibt den Liedtext. Singen muss ihn eine Musik-KI, dafür liegt im ZIP ein fertiger Prompt zum Kopieren (zum Beispiel für suno.com).',
+      'Das Karaoke-Blatt mit Lücken und seine Lösung funktionieren auch ohne Musik: Die Klasse kann den Text gemeinsam sprechen oder singen.',
+      '„Ein Lied je Kapitel“ passt für längere Skripte, „Nur Refrain-Merksprüche“ für kurze Hooks zum Auswendiglernen.',
+      'Prüfen Sie den Liedtext fachlich, bevor Sie ihn austeilen. Ein Reim darf nie eine falsche Aussage rechtfertigen.',
+    ],
+    felder: [
+      {
+        id: 'genre',
+        label: 'Musikrichtung',
+        art: 'wahl',
+        ort: 'direkt',
+        standard: 'electro',
+        optionen: [
+          { key: 'electro', label: 'Electro / Dance' },
+          { key: 'rock', label: 'Rock' },
+          { key: 'schlager', label: 'Schlager / Party' },
+          { key: 'rap', label: 'Deutschrap' },
+          { key: 'pop', label: 'Pop-Ballade' },
+          { key: 'metal', label: 'Metal / Hardrock' },
+          { key: 'reggae', label: 'Reggae' },
+          { key: 'volksmusik', label: 'Volksmusik / Blasmusik' },
+        ],
+      },
+      {
+        id: 'lied_umfang',
+        label: 'Wie viele Lieder',
+        art: 'wahl',
+        ort: 'direkt',
+        standard: 'kapitel',
+        optionen: [
+          { key: 'kapitel', label: 'Ein Lied je Kapitel/Abschnitt' },
+          { key: 'ganz', label: 'Ein Lied fürs ganze Skript' },
+          { key: 'merk', label: 'Nur Refrain-Merksprüche' },
+        ],
+      },
+      { ...NIVEAU, ort: 'mehr' },
+      BILDUNGSGANG,
+    ],
+  },
 ]
 
 /** Alle Einstellungs-Schlüssel, die ein Werkzeug kennt (Format zählt dazu, wenn es Formate hat) */
@@ -392,6 +510,11 @@ export function feldOptionen(
     default:
       return []
   }
+}
+
+/** Ist das Feld gerade sichtbar? Bedingte Felder (sichtbarWenn) erscheinen nur bei passendem Wert des Bezugsfeldes. */
+export function feldSichtbar(feld: EinstellungsFeld, einstellungen: Record<string, string>): boolean {
+  return !feld.sichtbarWenn || einstellungen[feld.sichtbarWenn.feld] === feld.sichtbarWenn.wert
 }
 
 /** Startwerte aller Felder eines Werkzeugs */
@@ -584,6 +707,8 @@ export interface AblaufErgebnis {
   einheit?: string
   /** false = es gibt keine Vorschau (Standard: ja) */
   hatVorschau?: boolean
+  /** Ein Satz unter dem Ergebnis, z. B. der Hinweis zur Musik-KI beim Lernlied (PROJ-54) */
+  hinweis?: string
   /** Text zum Kopieren je Vorlage (LearningApps, PROJ-54): Schritt 5 zeigt ihn statt eines Downloads */
   texte?: { titel: string; text: string }[]
 }

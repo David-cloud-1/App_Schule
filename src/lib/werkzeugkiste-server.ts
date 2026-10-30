@@ -327,6 +327,7 @@ export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, ant
     ...(Array.isArray(r.enthaelt) ? { enthaelt: r.enthaelt.map(String) } : {}),
     ...(r.hatVorschau === false ? { hatVorschau: false } : {}),
     ...(typeof r.einheit === 'string' ? { einheit: r.einheit } : {}),
+    ...(typeof r.hinweis === 'string' && r.hinweis ? { hinweis: r.hinweis.slice(0, 300) } : {}),
     ...(Array.isArray(r.texte) ? { texte: r.texte.map(textBlock).filter((t) => t.text) } : {}),
   }
 }

@@ -73,6 +73,7 @@ export function SchrittFertig({
               {ergebnis.texte!.length === 1 ? 'Der Text steht unten zum Kopieren bereit.' : 'Die Texte stehen unten zum Kopieren bereit – je Übung einer.'}
             </p>
           )}
+          {ergebnis.hinweis && <p className="text-sm text-ws-muted">{ergebnis.hinweis}</p>}
           {ergebnis.enthaelt && ergebnis.enthaelt.length > 0 && (
             <p className="text-sm text-ws-muted">Darin: {ergebnis.enthaelt.join(' · ')}</p>
           )}

@@ -30,7 +30,7 @@ describe('Werkzeugliste', () => {
     expect(WERKZEUG_GRUPPEN.map((g) => werkzeugeDerGruppe(g.id).length)).toEqual([3, 4, 3, 2])
   })
 
-  it('schaltet bis Paket B acht Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
+  it('schaltet bis Paket C zehn Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
     expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual([
       'skript',
       'kreativ',
@@ -40,6 +40,8 @@ describe('Werkzeugliste', () => {
       'learningapps',
       'arbeitsblatt',
       'lernsituation',
+      'pruefung',
+      'lied',
     ])
     expect(WERKZEUGE.find((w) => w.id === 'skript')?.formate.map((f) => f.id)).toEqual(['h5p', 'seite'])
   })
@@ -130,7 +132,7 @@ describe('Schritte', () => {
 
 describe('Einstellungen & Kurzinfo', () => {
   it('setzt beim Werkzeugwechsel nur das Format zurück', () => {
-    expect(einstellungenFuerWerkzeug('pruefung', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
+    expect(einstellungenFuerWerkzeug('youtube', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
       ...EINST,
       format: '',
       niveau: 'schwer',
@@ -147,6 +149,13 @@ describe('Einstellungen & Kurzinfo', () => {
 })
 
 describe('Einstellungsfelder (PROJ-54)', () => {
+  it('hat für jedes freigeschaltete Werkzeug kurze Tipps', () => {
+    for (const w of WERKZEUGE.filter((x) => x.aktiv)) {
+      expect(w.tipps?.length, w.name).toBeGreaterThanOrEqual(3)
+      for (const t of w.tipps ?? []) expect(t.length, t).toBeLessThan(260)
+    }
+  })
+
   it('zeigt je Werkzeug höchstens drei Einstellungen direkt', () => {
     for (const w of WERKZEUGE) {
       expect(w.felder.filter((f) => f.ort === 'direkt').length, w.name).toBeLessThanOrEqual(3)

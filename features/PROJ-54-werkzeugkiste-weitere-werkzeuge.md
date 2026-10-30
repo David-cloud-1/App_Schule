@@ -325,6 +325,54 @@ Keine Datenbank- und keine Rechteänderung (Einstellungen und Ergebnis sind JSON
 
 **Bugs:** BUG-1 (Medium, Tipps fehlen) besteht fort, kein Blocker. Keine Critical/High-Fehler → Paket B produktionsreif.
 
+## Umsetzung Paket C (2026-10-30): Klassenarbeit, Lernlied
+
+Keine Datenbank- und keine Rechteänderung (Einstellungen und Ergebnis sind JSON in der Ablauf-Tabelle).
+
+**Kern** (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`)
+- `FREIGESCHALTET` um `pruefung` und `lied` erweitert. Prompt reicht `mcprozent`, `genre` und `lied_umfang` an `build_prompt` weiter; fehlt der MC-Anteil, gilt wie in der alten Oberfläche 30 %, fehlt die Dauer 60 Minuten → Prompt zeichengleich.
+- **Klassenarbeit:** Format Word (Vorgabe) oder H5P. Word → ZIP aus Schülerblatt und Lösungen (derselbe Bauer `build_pruefung_docx`, Notenschlüssel `ihk`/`frei`, Hilfsmittel); H5P nimmt wie früher die Kapitel-Form. Die Zahl neben dem Titel sind die **Gesamtpunkte** („40 Punkte“). Fehlen Punkte, wird die Datei trotzdem gebaut (wie in der alten Werkzeugkiste).
+- **Lernlied:** immer ZIP (`build_lied_zip`: Liedtexte, Karaoke-Blatt, Karaoke-Lösung, Handreichung, `Musik-KI-Prompts.txt`). Das Ergebnis trägt einen Satz `hinweis` zur Musik-KI.
+- Tests `kern_test.py`: 67 grün (neu 15: Prompt gleich für Word/H5P/Vorgaben/Lied, ZIP-Inhalt gleich wie die Bauer, Notenschlüssel wirkt, Fehlerfälle, Prüfstelle lesbar). `werkzeugtest.py` unverändert 22/24 (die zwei Altfehler: deploy-paket, podcast 403).
+
+**App**
+- Beide Werkzeuge `aktiv: true`. Neu in der Werkzeugliste: `sichtbarWenn` (ein Feld erscheint nur bei passendem Wert eines anderen; genutzt für „Notengrenzen“ beim freien Notenschlüssel) und `hinweis` im Ergebnis (Schritt 5 zeigt den Satz zur Musik-KI).
+- Tipps für beide Werkzeuge sind eingetragen.
+
+| Werkzeug | Direkt | Mehr Optionen |
+|---|---|---|
+| Klassenarbeit | Bearbeitungszeit (15–180 Min., Standard 60), Niveau; Format ZIP/H5P | Aufgabentypen (4, Standard Offen + MC + Rechnen), Anteil Multiple Choice (0–100 %, Standard 30), Notenschlüssel (IHK/frei), Notengrenzen (nur bei „frei“), Erlaubte Hilfsmittel, Bildungsgang, Lernfeld |
+| Lernlied | Musikrichtung (8, Standard Electro), Wie viele Lieder (3, Standard je Kapitel) | Niveau, Bildungsgang |
+
+**Abweichungen / Entscheidungen**
+- Bearbeitungszeit der Klassenarbeit ist auf **15–180 Minuten** begrenzt (die alte Oberfläche ließ 10–1350 zu, der Prompt kürzt aber ohnehin auf 15–180). Beim Werkzeugwechsel wird ein Wert aus der Lernsituation (z. B. 300) in diesen Bereich geholt.
+- „Aufgabentypen“ steht unter „Mehr Optionen“, weil die Spec nur Dauer, Format und Niveau direkt nennt.
+- Lernlied hat keine Lernfeld-Auswahl (Spec: Niveau, Bildungsgang).
+- Eine Vorschau gibt es für beide (Klassenarbeit: Aufgaben mit Punkten und Lösung; Lernlied: Liedübersicht).
+
+## QA Test Results – Paket C (2026-10-30)
+
+**Wie getestet:** Ohne Dev-Server und ohne Browser (bringt den Rechner zum Absturz). Code gegen die Kriterien, App-Tests, Kern-Tests mit echtem Kern-Code und Beispielantworten im Format der echten Prompts.
+
+| Kriterium | Ergebnis |
+|---|---|
+| Karten der 2 Werkzeuge aktiv | ✅ (Test) |
+| Fünf Schritte, Prüfstelle, Vorschau, „anderes Werkzeug“ | ✅ gleicher Ablauf wie Paket A/B |
+| Prompts zeichengenau gleich | ✅ Kern-Tests vergleichen mit `build_prompt` (Word, H5P, Vorgaben, Lied mit und ohne Auswahl) |
+| Dateien inhaltsgleich | ✅ ZIP-Inhalt und Lösungsblatt-Bytes gleich wie die Bauer |
+| Notenschlüssel / Notengrenzen / Hilfsmittel wirken | ✅ Test (freier Schlüssel ändert das Lösungsblatt) |
+| Auswahlmöglichkeiten wie heute | ✅ Test (4 Aufgabentypen, 8 Musikrichtungen, 3 Umfänge) |
+| Höchstens 3 direkt, Rest „Mehr Optionen“ | ✅ Test |
+| Klassenarbeit ohne Punkte / Erwartungshorizont | ✅ Datei wird trotzdem gebaut, Prüfstelle meldet |
+| Lernlied: Satz zur Musik-KI in Schritt 5, Karaoke funktioniert auch ohne Musik | ✅ Test |
+| Eine Zeile Erklärung; aufklappbare Tipps | ✅ |
+
+**Sicherheit:** Alle Routen prüfen weiter die Lehrer-Rolle und lesen nur eigene Abläufe. Neue Textfelder (Notengrenzen, Hilfsmittel) sind auf 100 Zeichen begrenzt (Schema) und landen nur im Dokument bzw. Prompt der eigenen Lehrkraft; falsche Notengrenzen fallen im Kern still auf den IHK-Schlüssel zurück. `hinweis` aus dem Kern wird auf Text und 300 Zeichen begrenzt und als Text angezeigt. Keine neue Tabelle, keine neuen Geheimnisse.
+
+**Nicht geprüft:** Aussehen und Bedienung im Browser, Handybreite, Tastatur/Screenreader, Hell/Dunkel, Öffnen der Word-Dateien in Word, echter Durchlauf mit einer echten KI-Antwort.
+
+**Bugs:** Keine neuen. Hinweis: Der Test „hat für jedes freigeschaltete Werkzeug kurze Tipps“ aus der parallelen Sitzung (noch nicht eingecheckt) schlägt für die Paket-A/B-Werkzeuge ohne Tipps fehl (BUG-1); Klassenarbeit und Lernlied erfüllen ihn. Keine Critical/High-Fehler → Paket C produktionsreif.
+
 ## Deployment
 
 ### Paket A – 2026-10-29
