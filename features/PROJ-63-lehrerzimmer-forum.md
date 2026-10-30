@@ -1,6 +1,6 @@
 # PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-28
 **Last Updated:** 2026-10-29
 
@@ -318,4 +318,16 @@ Gesamte Suite: 1767 von 1768 grün. Der eine Fehler (`werkzeugkiste.test.ts`, ne
 **Produktionsreif: JA, mit Einschränkung.** Keine offenen Critical/High-Fehler. Offen bleiben nur das Anschauen im Browser (Darstellung, Handy, eingeklappte Seitenleiste), die Korrektur-Migration (Low) und der erweiterte Angriffstest. Das Risiko beim Ausrollen ist klein: Die Tabellen sind leer, es gibt noch keine Rolle „teacher“, und nur Admins sehen das Forum.
 
 ## Deployment
-_To be added by /deploy_
+
+**Deployt:** 2026-10-30, Push auf `main` (`39c9333`), Vercel-Production `spedilern`, Deployment `spedilern-ns2rvpbxr`, Status Ready, Build ca. 1 Minute. Davor lief der Produktions-Build des committeten Stands in einem frischen Worktree grün.
+
+**Reihenfolge:** Migration `20261029_proj63_lehrerzimmer.sql` wurde von David vor dem Push im SQL-Editor eingespielt und geprüft (6 Tabellen mit RLS, 29 Funktionen, Aufräum-Job). Beim Push gingen nur PROJ-63-Commits mit.
+
+**Prüfung auf Production (ohne Anmeldung):** Alle 5 getesteten Schnittstellen liefern 401 (auch POST), `/admin/lehrerzimmer` und `/admin/lehrerzimmer/neu` leiten mit 307 zur Anmeldung um.
+
+**Noch offen (nicht blockierend):**
+1. Korrektur-Migration `supabase/migrations/20261030_proj63_author_name_fix.sql` im SQL-Editor einspielen (QA-Fund 4, niedrig).
+2. Angriffstest `supabase/tests/proj63_qa_angriffstest.sql` im SQL-Editor ausführen (rollt sich selbst zurück; erwartet: kein „FAIL“).
+3. Einmal im Browser ansehen: Handy, eingeklappte Seitenleiste, hell/dunkel.
+4. Es gibt noch keine Rolle „teacher“. Bis zur Freischaltung (PROJ-44) nutzen nur Admins und Bereichs-Admins das Forum.
+5. Der Aufräum-Job für den Papierkorb (täglich 03:15) ist angelegt, aber noch nicht gelaufen.

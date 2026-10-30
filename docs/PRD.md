@@ -92,7 +92,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-60: Konto löschen (DSGVO) | Planned |
 | P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned |
 | P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned |
-| P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Planned |
+| P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Deployed |
 | P1 | PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI) | Planned |
 | P1 | PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Planned |
 | P1 | PROJ-66: Werkzeugkiste – Kostenübersicht für den Super-Admin | Planned |
