@@ -85,7 +85,8 @@ describe('Schritt 5 bei LearningApps: Text zum Kopieren (PROJ-54, Paket B)', () 
     expect(screen.getAllByRole('button', { name: /Kopieren/ })).toHaveLength(2)
     expect(screen.queryByRole('link', { name: /Herunterladen/ })).not.toBeInTheDocument()
     expect(screen.getByText(/Speditionsvertrag → § 453 HGB/)).toBeInTheDocument()
-    expect(screen.getByText('Das Ergebnis steht 7 Tage lang bereit.')).toBeInTheDocument()
+    // Ab PROJ-52 bleibt das Material in „Meine Materialien“ (kein 7-Tage-Hinweis mehr)
+    expect(screen.getByRole('link', { name: 'Meine Materialien' })).toHaveAttribute('href', '/admin/werkzeugkiste?tab=materialien')
   })
 
   it('kopiert genau den Text der gewählten Übung', async () => {

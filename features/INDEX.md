@@ -65,7 +65,7 @@
 | PROJ-49 | Lehrkraft und Bereichs-Admin sichtbar trennen | Deployed | [PROJ-49-rollen-sichtbar-trennen.md](PROJ-49-rollen-sichtbar-trennen.md) | 2026-10-27 |
 | PROJ-50 | Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Deployed | [PROJ-50-lehrkraft-profil.md](PROJ-50-lehrkraft-profil.md) | 2026-10-27 |
 | PROJ-51 | Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“ | Deployed | [PROJ-51-werkzeugkiste-rahmen-durchstich.md](PROJ-51-werkzeugkiste-rahmen-durchstich.md) | 2026-10-27 |
-| PROJ-52 | Werkzeugkiste – Meine Materialien | Planned | [PROJ-52-werkzeugkiste-meine-materialien.md](PROJ-52-werkzeugkiste-meine-materialien.md) | 2026-10-27 |
+| PROJ-52 | Werkzeugkiste – Meine Materialien | Approved | [PROJ-52-werkzeugkiste-meine-materialien.md](PROJ-52-werkzeugkiste-meine-materialien.md) | 2026-10-27 |
 | PROJ-53 | Werkzeugkiste – Regal des Kollegiums | Planned | [PROJ-53-werkzeugkiste-regal.md](PROJ-53-werkzeugkiste-regal.md) | 2026-10-27 |
 | PROJ-54 | Werkzeugkiste – die übrigen 11 Werkzeuge | In Progress | [PROJ-54-werkzeugkiste-weitere-werkzeuge.md](PROJ-54-werkzeugkiste-weitere-werkzeuge.md) | 2026-10-27 |
 | PROJ-55 | Schulrecht nachschlagen | Planned | [PROJ-55-schulrecht-nachschlagen.md](PROJ-55-schulrecht-nachschlagen.md) | 2026-10-27 |

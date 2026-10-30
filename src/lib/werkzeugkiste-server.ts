@@ -17,6 +17,7 @@ import {
   type AblaufEinstellungen,
   type AblaufSchritt,
 } from '@/lib/werkzeugkiste'
+import { TITEL_MAX } from '@/lib/werkzeugkiste-materialien'
 
 /**
  * Server-Seite der Werkzeugkiste (PROJ-51): Aufruf des Python-Kerns, Pfade im
@@ -110,6 +111,14 @@ export const ablaufAenderungSchema = z
     auswahl: auswahlSchema.optional(),
     schritt: z.number().int().min(1).max(5).optional(),
     weg: z.enum(['direkt', 'kostenlos']).optional(),
+    // Umbenennen (PROJ-52): nur fertige Materialien, die Route prüft das
+    titel: z
+      .string()
+      .trim()
+      .min(1, 'Der Titel darf nicht leer sein.')
+      .max(TITEL_MAX, `Der Titel ist zu lang (höchstens ${TITEL_MAX} Zeichen).`)
+      .regex(/^[^\u0000-\u001f\u007f]+$/, 'Der Titel enthält ungültige Zeichen.')
+      .optional(),
   })
   .strict()
 
@@ -153,10 +162,14 @@ export interface AblaufZeile {
   ergebnis: Ablauf['ergebnis']
   weg?: Ablauf['weg']
   updated_at: string
+  // PROJ-52: Titel und Aufbewahrung des Skripts (fehlen vor der Migration)
+  titel?: string | null
+  skript_hochgeladen_am?: string | null
+  skript_entfernt_am?: string | null
 }
 
 export const ABLAUF_SPALTEN =
-  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at'
+  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am'
 
 export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
   return {

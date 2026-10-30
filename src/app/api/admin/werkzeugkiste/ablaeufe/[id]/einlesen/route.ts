@@ -14,6 +14,7 @@ import {
   skriptPfad,
   zeileZuAblauf,
 } from '@/lib/werkzeugkiste-server'
+import { aktualisiereSpeicher } from '@/lib/werkzeugkiste-materialien-server'
 
 export const maxDuration = 120
 
@@ -56,6 +57,7 @@ export async function POST(_request: Request, { params }: Kontext) {
       schritt: 1,
     })
     if (!neu) return fehler('Das Ergebnis konnte nicht gespeichert werden.', 500)
+    await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
     return NextResponse.json({ ablauf: zeileZuAblauf(neu) })
   } catch (e) {
     return kernFehlerAntwort(e)

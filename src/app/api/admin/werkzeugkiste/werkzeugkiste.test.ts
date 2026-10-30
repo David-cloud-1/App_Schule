@@ -57,6 +57,8 @@ function anmelden(resolver?: ChainResolver) {
         if (methods.includes('delete')) return { data: null }
         return { data: zeile, count: 0 }
       }),
+    // Speichergrenze (PROJ-52): Verbrauch der Lehrkraft, hier weit unter der Grenze
+    { rpc: vi.fn().mockResolvedValue({ data: 0, error: null }) },
   )
   vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
     error: null,
@@ -310,16 +312,21 @@ describe('Tägliches Aufräumen (PROJ-51)', () => {
     expect((await aufraeumen(new Request('http://t', { headers: { authorization: 'Bearer ' } }))).status).toBe(401)
   })
 
-  it('löscht abgelaufene Abläufe samt Dateien', async () => {
+  it('löscht abgelaufene Entwürfe samt Dateien, nie fertige Materialien', async () => {
     vi.stubEnv('CRON_SECRET', 'zeitplan')
-    const service = chainMock((_t, calls) =>
-      calls.some((c) => c.method === 'delete') ? { data: null } : { data: [{ id: 'a1', owner_id: 'u1' }, { id: 'a2', owner_id: 'u2' }] },
-    )
+    const service = chainMock((_t, calls) => {
+      if (calls.some((c) => c.method === 'delete')) return { data: null }
+      // Die zweite Aufgabe (alte Skripte) fragt nach hochgeladen_am; hier gibt es nichts zu tun
+      if (calls.some((c) => c.args[0] === 'skript_hochgeladen_am')) return { data: [] }
+      return { data: [{ id: 'a1', owner_id: 'u1' }, { id: 'a2', owner_id: 'u2' }] }
+    })
     vi.mocked(createServiceClient).mockReturnValue({ ...service.client, storage: { from: () => speicher } } as never)
     const res = await aufraeumen(new Request('http://t', { headers: { authorization: 'Bearer zeitplan' } }))
-    expect(await res.json()).toEqual({ geloescht: 2, gefunden: 2 })
+    expect(await res.json()).toEqual({ geloescht: 2, gefunden: 2, skripteEntfernt: 0 })
     expect(speicher.remove).toHaveBeenCalledTimes(2)
-    const abfrage = service.queries[0].calls.find((c) => c.method === 'lt')!
-    expect(abfrage.args[0]).toBe('laeuft_ab_am')
+    const abfrage = service.queries[0].calls
+    expect(abfrage.find((c) => c.method === 'lt')!.args[0]).toBe('laeuft_ab_am')
+    // PROJ-52: Fertige Materialien haben keinen Termin und werden hier auch bei einem gesetzten nie angefasst
+    expect(abfrage.find((c) => c.method === 'eq')!.args).toEqual(['status', 'laeuft'])
   })
 })

@@ -1,5 +1,6 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
+import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
 
 /**
  * Aufrufe der Werkzeugkiste aus dem Browser (PROJ-51). Alle Routen liegen
@@ -17,6 +18,12 @@ import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
  *   POST   /ablaeufe/:id/bauen             Kern baut die Datei
  *   GET    /ablaeufe/:id/download          Weiterleitung auf einen kurzlebigen Download-Link
  *   GET    /ablaeufe/:id/vorschau          Vorschau als HTML (abgeschottet angezeigt)
+ *
+ * Meine Materialien (PROJ-52, Paket 1):
+ *   GET    /materialien?suche=&werkzeug=&seite=   Liste der eigenen Materialien und Entwürfe (schmale Zeilen)
+ *   PATCH  /ablaeufe/:id  {titel}          Material umbenennen
+ *   POST   /ablaeufe/:id/kopie             „Gleiches Skript, anderes Werkzeug“: neuer Ablauf mit kopiertem Skript, bei Schritt 2
+ *   GET    /ablaeufe/:id/antwort           gespeicherte KI-Antwort als .yaml
  */
 
 export const WK_API = '/api/admin/werkzeugkiste'
@@ -161,6 +168,31 @@ export function starteDirekt(id: string, werkzeug: string, einstellungen: Ablauf
 
 export function brichDirektAb(id: string) {
   return anfrage<{ lauf: LaufInfo }>(`/ablaeufe/${encodeURIComponent(id)}/direkt`, { method: 'DELETE' })
+}
+
+// ── Meine Materialien (PROJ-52) ───────────────────────────────────────────
+
+export function ladeMaterialien({ suche, werkzeug, seite }: MaterialAbfrage) {
+  const params = new URLSearchParams({ seite: String(seite), je: String(SEITENGROESSE) })
+  if (suche.trim()) params.set('suche', suche.trim())
+  if (werkzeug) params.set('werkzeug', werkzeug)
+  return anfrage<MaterialListe>(`/materialien?${params.toString()}`)
+}
+
+export function benenneMaterialUm(id: string, titel: string) {
+  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ titel }),
+  })
+}
+
+/** Legt einen neuen Ablauf mit dem Skript des Materials an; das Material bleibt unberührt */
+export function kopiereFuerAnderesWerkzeug(id: string) {
+  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/kopie`, { method: 'POST' })
+}
+
+export function antwortHref(id: string) {
+  return `${WK_API}/ablaeufe/${encodeURIComponent(id)}/antwort`
 }
 
 export function downloadHref(id: string) {

@@ -9,6 +9,7 @@ import {
   ladeEigenenAblauf,
   zeileZuAblauf,
 } from '@/lib/werkzeugkiste-server'
+import { aktualisiereSpeicher, titelNachBauen } from '@/lib/werkzeugkiste-materialien-server'
 
 export const maxDuration = 120
 
@@ -28,9 +29,13 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (!zeile.pruefung.lesbar) return fehler('Die Antwort ist unvollständig und lässt sich nicht verarbeiten.', 400)
 
   try {
-    const ergebnis = await kernBauen(createServiceClient(), zeile, zeile.antwort)
-    const neu = await aktualisiere(auth.supabase, zeile.id, { ergebnis, status: 'fertig', schritt: 5 })
+    const service = createServiceClient()
+    const ergebnis = await kernBauen(service, zeile, zeile.antwort)
+    // Fertig = Material (PROJ-52): Titel setzen, der Ablauftermin entfällt (Trigger in der Datenbank)
+    const titel = titelNachBauen(zeile, ergebnis)
+    const neu = await aktualisiere(auth.supabase, zeile.id, { ergebnis, status: 'fertig', schritt: 5, ...(titel ? { titel } : {}) })
     if (!neu) return fehler('Das Ergebnis konnte nicht gespeichert werden.', 500)
+    await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
     return NextResponse.json({ ablauf: zeileZuAblauf(neu) })
   } catch (e) {
     return kernFehlerAntwort(e)

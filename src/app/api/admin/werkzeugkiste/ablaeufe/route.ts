@@ -22,6 +22,7 @@ import {
   zeileZuAblauf,
   type AblaufZeile,
 } from '@/lib/werkzeugkiste-server'
+import { aktualisiereSpeicher, speicherPruefen } from '@/lib/werkzeugkiste-materialien-server'
 
 export const maxDuration = 120
 
@@ -45,13 +46,17 @@ export async function POST(request: Request) {
   if (parsed && !parsed.success) return ungueltig(parsed.error)
   const werkzeug = videoParsed?.data?.werkzeug ?? parsed!.data!.werkzeug
 
+  // Gezählt werden nur Entwürfe: Fertige Materialien begrenzt der Speicher (PROJ-52)
   const { count } = await auth.supabase
     .from(ABLAUF_TABELLE)
     .select('id', { count: 'exact', head: true })
     .eq('owner_id', auth.user.id)
+    .eq('status', 'laeuft')
   if ((count ?? 0) >= MAX_OFFENE_ABLAEUFE) {
     return fehler('Du hast gerade sehr viele offene Abläufe. Schließe ältere ab oder brich sie ab.', 429)
   }
+  const voll = await speicherPruefen(auth.supabase)
+  if (voll) return voll
 
   const { data: letzter } = await auth.supabase
     .from(ABLAUF_TABELLE)
@@ -104,6 +109,7 @@ export async function POST(request: Request) {
       }
       const neu = await aktualisiere(auth.supabase, zeile.id, { kennzahlen, gliederung: [], schritt: 1 })
       if (!neu) throw new Error('nicht gespeichert')
+      await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
       return NextResponse.json({ ablauf: zeileZuAblauf(neu) }, { status: 201 })
     } catch (e) {
       await abbrechen()

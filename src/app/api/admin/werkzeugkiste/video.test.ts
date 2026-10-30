@@ -49,6 +49,8 @@ function anmelden(resolver?: ChainResolver) {
         if (methods.includes('delete')) return { data: null }
         return { data: zeile, count: 0 }
       }),
+    // Speichergrenze (PROJ-52): Verbrauch der Lehrkraft, hier weit unter der Grenze
+    { rpc: vi.fn().mockResolvedValue({ data: 0, error: null }) },
   )
   vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
     error: null,

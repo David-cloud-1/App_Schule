@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
 import { GUTHABEN_TEXT } from '@/lib/werkzeugkiste-texte'
+import { aktualisiereSpeicher, titelNachBauen } from '@/lib/werkzeugkiste-materialien-server'
 import { addiere, kostenUsd, TAGESLIMIT, type ModellPreis, type Verbrauch } from '@/lib/werkzeugkiste-kosten'
 import {
   ABLAUF_SPALTEN,
@@ -590,9 +591,11 @@ export async function schliesseAb(service: SupabaseClient, laufId: string) {
     if ((await ladeLauf(service, laufId))?.status !== 'baut') return // inzwischen abgebrochen
 
     const ergebnis = await kernBauen(service, zeile, antwort)
+    const titel = titelNachBauen(zeile, ergebnis)
     await service
       .from(ABLAUF_TABELLE)
       .update({
+        ...(titel ? { titel } : {}),
         antwort,
         pruefung: {
           lesbar: true,
@@ -609,6 +612,7 @@ export async function schliesseAb(service: SupabaseClient, laufId: string) {
         ...frischStempel(),
       })
       .eq('id', zeile.id)
+    await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
     await beendeLauf(service, laufId, 'fertig', gekuerzt[0], gekuerzt.length ? 'gekuerzt' : undefined)
   } catch (err) {
     console.error('[werkzeugkiste-direkt] Abschluss fehlgeschlagen', err instanceof Error ? err.message : 'unbekannt')

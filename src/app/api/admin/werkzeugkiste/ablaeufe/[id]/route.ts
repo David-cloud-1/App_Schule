@@ -30,7 +30,8 @@ export async function GET(_request: Request, { params }: Kontext) {
 /**
  * PATCH /api/admin/werkzeugkiste/ablaeufe/:id — Werkzeug, Einstellungen,
  * Auswahl oder erreichten Schritt speichern. Der Schritt steigt nur und nur
- * so weit, wie der Ablauf vorbereitet ist.
+ * so weit, wie der Ablauf vorbereitet ist. Mit `titel` (PROJ-52) benennt die
+ * Lehrkraft ein fertiges Material um.
  */
 export async function PATCH(request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
@@ -42,7 +43,10 @@ export async function PATCH(request: Request, { params }: Kontext) {
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler(NICHT_DA, 404)
 
-  const { werkzeug, einstellungen, auswahl, schritt, weg } = parsed.data
+  const { werkzeug, einstellungen, auswahl, schritt, weg, titel } = parsed.data
+  if (titel !== undefined && zeile.status !== 'fertig') {
+    return fehler('Nur fertige Materialien lassen sich umbenennen.', 400)
+  }
   if (werkzeug && !werkzeugWechselErlaubt(zeile.werkzeug, werkzeug)) {
     return fehler('Zwischen Video-Fragen und den anderen Werkzeugen kann man nicht wechseln. Starte dafür einen neuen Ablauf.', 400)
   }
@@ -54,6 +58,7 @@ export async function PATCH(request: Request, { params }: Kontext) {
   }
   if (auswahl) felder.auswahl = auswahl
   if (weg) felder.weg = weg
+  if (titel !== undefined) felder.titel = titel
   if (schritt && schritt > zeile.schritt && schrittErlaubt(zeileZuAblauf(zeile), schritt as AblaufSchritt)) {
     felder.schritt = schritt
   }

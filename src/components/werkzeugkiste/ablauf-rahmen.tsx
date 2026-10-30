@@ -158,7 +158,8 @@ export function SchliessenKnopf({
   rueckfrage,
   beimAbbrechen,
 }: {
-  rueckfrage?: { titel: string; text: string }
+  /** `knopf`: Beschriftung der Bestätigung (Standard „Abbrechen“); `harmlos`: nichts geht verloren, deshalb nicht rot */
+  rueckfrage?: { titel: string; text: string; knopf?: string; harmlos?: boolean }
   beimAbbrechen?: () => Promise<void>
 }) {
   const [offen, setOffen] = useState(false)
@@ -180,7 +181,7 @@ export function SchliessenKnopf({
     try {
       await beimAbbrechen?.()
     } catch {
-      // Zwischenstand wird ohnehin nach 7 Tagen gelöscht — nicht festhalten
+      // Ein Entwurf wird ohnehin nach 7 Tagen gelöscht — nicht festhalten
     } finally {
       window.location.href = WERKZEUGKISTE_HREF
     }
@@ -205,10 +206,14 @@ export function SchliessenKnopf({
                 void abbrechen()
               }}
               disabled={laeuft}
-              className="min-h-11 rounded-xl bg-ws-red font-semibold text-ws-on-accent hover:bg-ws-red-hover"
+              className={
+                rueckfrage.harmlos
+                  ? 'min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover'
+                  : 'min-h-11 rounded-xl bg-ws-red font-semibold text-ws-on-accent hover:bg-ws-red-hover'
+              }
             >
               {laeuft && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
-              Abbrechen
+              {rueckfrage.knopf ?? 'Abbrechen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

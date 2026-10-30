@@ -1,15 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { Check, ClipboardCopy, Download, Eye, Loader2, PencilLine, Repeat } from 'lucide-react'
+import { Check, ClipboardCopy, Download, Eye, Library, Loader2, PencilLine, Repeat } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ablaufHref, type AblaufErgebnis } from '@/lib/werkzeugkiste'
-import { downloadHref, ladeVorschau } from '@/lib/werkzeugkiste-api'
+import { ablaufHref, WERKZEUGKISTE_HREF, type AblaufErgebnis } from '@/lib/werkzeugkiste'
+import { downloadHref, kopiereFuerAnderesWerkzeug, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { euro } from '@/lib/werkzeugkiste-kosten'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
 
 /**
  * Schritt 5 (PROJ-51): Erfolg, eine Hauptaktion „Herunterladen“, daneben die
@@ -21,6 +21,7 @@ export function SchrittFertig({
   direkt,
   kostenEur,
   hinweise,
+  anderesWerkzeug = true,
 }: {
   ablaufId: string
   ergebnis: AblaufErgebnis
@@ -29,23 +30,25 @@ export function SchrittFertig({
   kostenEur?: number | null
   /** Was die Prüfstelle nach dem Lauf noch bemerkt hat — höchstens fünf, kurz */
   hinweise?: string[]
+  /** false bei Video-Fragen: Sie haben ein Transkript statt eines Skripts, das sich für ein anderes Werkzeug nicht kopieren lässt */
+  anderesWerkzeug?: boolean
 }) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
-  const [vorschau, setVorschau] = useState<string | null>(null)
-  const [vorschauFehler, setVorschauFehler] = useState(false)
+  const [kopiert, setKopiert] = useState(false)
   // Text zum Kopieren (LearningApps): Statt eines Downloads steht je Vorlage ein „Kopieren“-Knopf da
   const zumKopieren = !!ergebnis.texte && ergebnis.texte.length > 0
 
-  useEffect(() => {
-    if (!vorschauOffen || vorschau !== null || vorschauFehler) return
-    let aktiv = true
-    ladeVorschau(ablaufId)
-      .then((html) => aktiv && setVorschau(html))
-      .catch(() => aktiv && setVorschauFehler(true))
-    return () => {
-      aktiv = false
+  /** Neuer Ablauf mit kopiertem Skript — das fertige Material bleibt unberührt (PROJ-52) */
+  async function anderesWerkzeugStarten() {
+    setKopiert(true)
+    try {
+      const { ablauf } = await kopiereFuerAnderesWerkzeug(ablaufId)
+      window.location.href = ablaufHref(ablauf.id, 2)
+    } catch (e) {
+      toast.error(e instanceof WerkzeugFehler ? e.message : 'Das hat gerade nicht geklappt. Bitte versuche es erneut.')
+      setKopiert(false)
     }
-  }, [vorschauOffen, vorschau, vorschauFehler, ablaufId])
+  }
 
   return (
     <div className="space-y-8">
@@ -97,8 +100,13 @@ export function SchrittFertig({
             </Button>
           )}
         </div>
-        <p className="text-xs text-ws-faint">
-          {zumKopieren ? 'Das Ergebnis steht 7 Tage lang bereit.' : 'Der Download steht 7 Tage lang bereit.'}
+        <p className="flex flex-wrap items-center justify-center gap-x-1 text-xs text-ws-faint">
+          <Library className="size-3.5" aria-hidden />
+          Automatisch unter{' '}
+          <Link href={`${WERKZEUGKISTE_HREF}?tab=materialien`} className="font-medium text-ws-blue underline-offset-2 hover:underline">
+            Meine Materialien
+          </Link>{' '}
+          gespeichert.
           {direkt && kostenEur != null && <span className="ml-1 font-medium text-ws-muted">Kosten: {euro(kostenEur)}</span>}
         </p>
       </div>
@@ -128,12 +136,17 @@ export function SchrittFertig({
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-ws-muted">Wie geht es weiter?</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>
-            <Link href={ablaufHref(ablaufId, 2)}>
-              <Repeat className="mr-2 size-4 shrink-0" aria-hidden />
+          {anderesWerkzeug && (
+            <Button
+              variant="outline"
+              onClick={() => void anderesWerkzeugStarten()}
+              disabled={kopiert}
+              className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}
+            >
+              {kopiert ? <Loader2 className="mr-2 size-4 shrink-0 animate-spin" aria-hidden /> : <Repeat className="mr-2 size-4 shrink-0" aria-hidden />}
               Gleiches Skript, anderes Werkzeug
-            </Link>
-          </Button>
+            </Button>
+          )}
           {!direkt && (
             <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>
               <Link href={ablaufHref(ablaufId, 4)}>
@@ -145,37 +158,7 @@ export function SchrittFertig({
         </div>
       </div>
 
-      <Dialog open={vorschauOffen} onOpenChange={setVorschauOffen}>
-        <DialogContent className="flex h-svh max-h-svh w-full max-w-none flex-col gap-3 rounded-none border-ws-line bg-ws-surface p-4 text-ws-text sm:h-[90svh] sm:max-w-5xl sm:rounded-2xl sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Vorschau</DialogTitle>
-            <DialogDescription className="text-ws-muted">
-              Jede Aufgabe mit der hinterlegten Lösung – richtige Antworten sind hervorgehoben.
-            </DialogDescription>
-          </DialogHeader>
-          {vorschau !== null ? (
-            // Abgeschottet: Die Vorschau enthält Text aus der KI-Antwort — keine Skripte, kein Zugriff auf die App
-            <iframe
-              srcDoc={vorschau}
-              sandbox=""
-              title={`Vorschau: ${ergebnis.titel}`}
-              className="min-h-0 w-full flex-1 rounded-xl border border-ws-line bg-white"
-            />
-          ) : vorschauFehler ? (
-            <div role="alert" className="space-y-3 text-sm text-ws-red">
-              <p>Die Vorschau konnte nicht geladen werden. Die Datei kannst du trotzdem herunterladen.</p>
-              <Button variant="outline" onClick={() => setVorschauFehler(false)} className={`${NEBENAKTION} min-h-11 px-5`}>
-                Erneut versuchen
-              </Button>
-            </div>
-          ) : (
-            <p role="status" className="flex items-center gap-2 text-sm text-ws-muted">
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-              Vorschau wird geladen …
-            </p>
-          )}
-        </DialogContent>
-      </Dialog>
+      <VorschauDialog ablaufId={ablaufId} titel={ergebnis.titel} offen={vorschauOffen} onOpenChange={setVorschauOffen} />
     </div>
   )
 }

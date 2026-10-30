@@ -1,18 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Library, Upload, UserRoundSearch } from 'lucide-react'
+import { Upload, UserRoundSearch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState } from '@/components/admin/admin-states'
+import { MeineMaterialien } from '@/components/werkzeugkiste/meine-materialien'
 import { WerkzeugUebersicht } from '@/components/werkzeugkiste/werkzeug-uebersicht'
 import {
   neuerAblaufHref,
   reiterAusParam,
   WERKZEUGKISTE_REITER,
-  type WerkzeugkisteReiter,
 } from '@/lib/werkzeugkiste'
 
 export const HAUPTAKTION_KLASSE =
@@ -28,6 +29,9 @@ export function WerkzeugkisteSeite() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const reiter = reiterAusParam(searchParams.get('tab'))
+  // Ist die Ablage ganz leer, steht „Skript hochladen“ nur im Leerzustand (nicht zusätzlich im Kopf)
+  const [materialienLeer, setMaterialienLeer] = useState(false)
+  const hauptaktionZeigen = !(reiter === 'materialien' && materialienLeer)
 
   function wechsle(neu: string) {
     const params = new URLSearchParams(searchParams.toString())
@@ -43,12 +47,14 @@ export function WerkzeugkisteSeite() {
         title="Werkzeugkiste"
         description="Aus einem Skript Unterrichtsmaterial machen – kostenlos, mit der KI deiner Wahl."
         actions={
-          <Button asChild className={HAUPTAKTION_KLASSE}>
-            <Link href={neuerAblaufHref()}>
-              <Upload className="mr-2 size-5" aria-hidden />
-              Skript hochladen
-            </Link>
-          </Button>
+          hauptaktionZeigen ? (
+            <Button asChild className={HAUPTAKTION_KLASSE}>
+              <Link href={neuerAblaufHref()}>
+                <Upload className="mr-2 size-5" aria-hidden />
+                Skript hochladen
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -69,27 +75,18 @@ export function WerkzeugkisteSeite() {
           <WerkzeugUebersicht />
         </TabsContent>
         <TabsContent value="materialien" className="mt-0">
-          <KommtBald reiter="materialien" />
+          <MeineMaterialien onLeer={setMaterialienLeer} />
         </TabsContent>
         <TabsContent value="regal" className="mt-0">
-          <KommtBald reiter="regal" />
+          <KommtBald />
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-/** Platzhalter, bis PROJ-52 (Meine Materialien) und PROJ-53 (Regal) gebaut sind */
-function KommtBald({ reiter }: { reiter: Exclude<WerkzeugkisteReiter, 'werkzeuge'> }) {
-  if (reiter === 'materialien') {
-    return (
-      <AdminEmptyState
-        icon={Library}
-        title="Kommt bald"
-        description="Hier findest du bald alles wieder, was du erstellt hast. Bis dahin lade dein Material am Ende des Ablaufs herunter."
-      />
-    )
-  }
+/** Platzhalter, bis PROJ-53 (Regal) gebaut ist */
+function KommtBald() {
   return (
     <AdminEmptyState
       icon={UserRoundSearch}

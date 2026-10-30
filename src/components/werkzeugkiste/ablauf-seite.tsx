@@ -64,9 +64,12 @@ const TITEL: Record<AblaufSchritt, { titel: string; beschreibung?: string }> = {
 
 const TITEL_VIDEO = { titel: 'Video', beschreibung: 'Link und Transkript, aus denen die Fragen entstehen.' }
 
-const ABBRECHEN = {
-  titel: 'Abbrechen?',
-  text: 'Dein Zwischenstand geht verloren: das hochgeladene Skript, die Einstellungen und eine eingefügte Antwort.',
+// Ab PROJ-52 geht nichts verloren: Der Ablauf bleibt als Entwurf unter „Meine Materialien“ (7 Tage)
+const SCHLIESSEN = {
+  titel: 'Schließen?',
+  text: 'Dein Zwischenstand bleibt 7 Tage unter „Meine Materialien“. Dort kannst du jederzeit weitermachen.',
+  knopf: 'Schließen',
+  harmlos: true,
 }
 
 function gleicheAuswahl(a: AblaufAuswahl, b: AblaufAuswahl) {
@@ -492,6 +495,7 @@ export function AblaufSeite({ id }: { id: string }) {
           ablaufId={id}
           ergebnis={ablauf.ergebnis}
           direkt={direkt}
+          anderesWerkzeug={!istVideo}
           kostenEur={lauf?.status === 'fertig' ? lauf.kostenEur : null}
           hinweise={direkt ? (ablauf.pruefung?.befunde ?? []).map((b) => b.text) : []}
         />
@@ -508,7 +512,7 @@ export function AblaufSeite({ id }: { id: string }) {
       kurzinfo={kurzinfo}
       titel={kopf.titel}
       beschreibung={kopf.beschreibung}
-      schliessen={schritt === 5 ? <SchliessenKnopf /> : <SchliessenKnopf rueckfrage={ABBRECHEN} beimAbbrechen={() => loescheAblauf(id).then(() => {})} />}
+      schliessen={schritt === 5 ? <SchliessenKnopf /> : <SchliessenKnopf rueckfrage={SCHLIESSEN} />}
       fuss={fuss}
     >
       {inhalt}
