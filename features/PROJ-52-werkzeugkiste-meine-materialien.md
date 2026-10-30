@@ -1,6 +1,6 @@
 # PROJ-52: Werkzeugkiste – Meine Materialien
 
-## Status: Approved
+## Status: In Progress
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-30
 
@@ -365,4 +365,10 @@ Gesamtsuite 1949 grün (vorher 1906); Produktions-Build, `tsc`, Lint (0 Fehler) 
 **Keine Critical/High-Fehler → Paket 1 produktionsreif, Status Approved.** Vor dem Live-Gang schon erledigt: Migration angewendet. Nach dem Deploy steht ein Browser-/Handy-Durchgang durch den Nutzer aus (Liste, Menü ⋯, Umbenennen, Löschen, „Fortsetzen“, „anderes Werkzeug“).
 
 ## Deployment
-_To be added by /deploy_
+
+### Paket 1 „Ablage“ – 2026-10-30
+- **Datenbank** zuerst: Migration `20261030_proj52_meine_materialien` vom Nutzer im Supabase-Dashboard angewendet (der Probelauf mit Rollback war nicht freigegeben). Danach lesend geprüft: Spalten, Trigger und Funktion vorhanden, kein fertiges Material mit Ablauftermin.
+- **App** per Push auf `main` (`b5e3d3a`), Production „Ready“ (https://spedilern.vercel.app). Es ging nur dieser eine Commit hinaus. Kern (Python) unverändert, keine neuen Umgebungsvariablen, Zeitplan-Eintrag in `vercel.json` unverändert.
+- Ohne Login: `GET /materialien` 401, `GET …/antwort` 401, `POST …/kopie` 401, Zeitplan-Route 401, Seite leitet auf die Anmeldung um (307).
+- Tag: `v1.52.0-PROJ-52-paket1`.
+- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (Liste, Suche, Menü ⋯, Umbenennen, Löschen, „Fortsetzen“, „Gleiches Skript, anderes Werkzeug“, Schließen mit ✕); Trigger-Regeln mit Schreibzugriff prüfen; BUG-1 (Hinweis bei fehlender Datei); Paket 2 „Überarbeiten“ (Tippfehler, Kapitel neu, Zwei-Tabs-Warnung). Das Feature bleibt bis dahin „In Progress“.
