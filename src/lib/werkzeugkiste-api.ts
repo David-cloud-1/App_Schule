@@ -80,6 +80,14 @@ export function legeAblaufAn(werkzeug: string, datei: { name: string; groesse: n
   })
 }
 
+/** Video-Fragen (PROJ-54, Paket D): Link und Transkript statt einer Datei; der Ablauf ist danach schon eingelesen */
+export function legeVideoAblaufAn(werkzeug: string, video: { url: string; transkript: string }) {
+  return anfrage<{ ablauf: Ablauf }>('/ablaeufe', {
+    method: 'POST',
+    body: JSON.stringify({ werkzeug, video }),
+  })
+}
+
 export function ladeAblauf(id: string) {
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}`)
 }

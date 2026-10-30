@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { RotateCw } from 'lucide-react'
+import { Loader2, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { findeWerkzeug, ablaufHref, STANDARD_WERKZEUG } from '@/lib/werkzeugkiste'
-import { ladeHoch, legeAblaufAn, lieseSkriptEin, loescheAblauf, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { findeWerkzeug, ablaufHref, pruefeTranskript, pruefeVideoLink, STANDARD_WERKZEUG, type Werkzeug } from '@/lib/werkzeugkiste'
+import { ladeHoch, legeAblaufAn, legeVideoAblaufAn, lieseSkriptEin, loescheAblauf, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { AblaufRahmen, HAUPTAKTION, NEBENAKTION, SchliessenKnopf } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { DateiAblage, Hinweis, HochladeFortschritt } from '@/components/werkzeugkiste/schritt-skript'
+import { VideoEingabe } from '@/components/werkzeugkiste/schritt-video'
 
 type Phase = 'wahl' | 'hochladen' | 'lesen' | 'lesefehler'
 
@@ -22,9 +23,74 @@ const ABBRECHEN = {
  * weiter zur Adresse des Ablaufs, wo die Kennzahlen stehen.
  */
 export function AblaufNeu({ werkzeugParam }: { werkzeugParam: string | null }) {
-  const router = useRouter()
   const vorgabe = findeWerkzeug(werkzeugParam)
   const werkzeug = vorgabe?.aktiv ? vorgabe : findeWerkzeug(STANDARD_WERKZEUG)!
+  return werkzeug.eingabe === 'video' ? <VideoNeu werkzeug={werkzeug} /> : <SkriptNeu werkzeug={werkzeug} />
+}
+
+/**
+ * Schritt 1 bei Video-Fragen (PROJ-54, Paket D): kein Hochladen, sondern Link
+ * und Transkript einfügen. Der Ablauf entsteht mit einem Aufruf und ist danach
+ * schon eingelesen.
+ */
+function VideoNeu({ werkzeug }: { werkzeug: Werkzeug }) {
+  const router = useRouter()
+  const [url, setUrl] = useState('')
+  const [transkript, setTranskript] = useState('')
+  const [sendet, setSendet] = useState(false)
+  const [fehler, setFehler] = useState<{ text: string; hinweis?: string } | null>(null)
+
+  const bereit = !pruefeTranskript(transkript) && !pruefeVideoLink(url)
+
+  async function weiter() {
+    setSendet(true)
+    setFehler(null)
+    try {
+      const { ablauf } = await legeVideoAblaufAn(werkzeug.id, { url: url.trim(), transkript: transkript.trim() })
+      router.replace(ablaufHref(ablauf.id, 1))
+    } catch (e) {
+      setFehler(
+        e instanceof WerkzeugFehler
+          ? { text: e.message, hinweis: e.hinweis }
+          : { text: 'Das hat gerade nicht geklappt. Bitte versuche es erneut.' },
+      )
+      setSendet(false)
+    }
+  }
+
+  return (
+    <AblaufRahmen
+      schritt={1}
+      erreicht={1}
+      kurzinfo={werkzeug.name}
+      titel="Video"
+      beschreibung="Die KI sieht das Video nicht, sondern liest sein Transkript. Füge es hier ein."
+      schliessen={<SchliessenKnopf />}
+      fuss={
+        <>
+          <span />
+          <Button onClick={() => void weiter()} disabled={!bereit || sendet} className={HAUPTAKTION}>
+            {sendet && <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />}
+            Weiter
+          </Button>
+        </>
+      }
+    >
+      <VideoEingabe url={url} setUrl={setUrl} transkript={transkript} setTranskript={setTranskript} deaktiviert={sendet} />
+      {fehler && (
+        <div role="alert">
+          <Hinweis ton="warnung">
+            <span className="font-semibold">{fehler.text}</span>
+            {fehler.hinweis && <span className="mt-1 block text-ws-muted">{fehler.hinweis}</span>}
+          </Hinweis>
+        </div>
+      )}
+    </AblaufRahmen>
+  )
+}
+
+function SkriptNeu({ werkzeug }: { werkzeug: Werkzeug }) {
+  const router = useRouter()
 
   const [phase, setPhase] = useState<Phase>('wahl')
   const [datei, setDatei] = useState<File | null>(null)

@@ -37,6 +37,7 @@ const MENUE = 'border-ws-line bg-ws-surface text-ws-text'
  */
 export function SchrittEinstellungen({
   werkzeugId,
+  eingabe = 'skript',
   einstellungen,
   optionen,
   optionenFehler,
@@ -44,6 +45,8 @@ export function SchrittEinstellungen({
   setEinstellungen,
 }: {
   werkzeugId: string
+  /** Was in Schritt 1 eingegeben wurde: Video-Fragen und die anderen Werkzeuge lassen sich nicht tauschen */
+  eingabe?: 'skript' | 'video'
   einstellungen: AblaufEinstellungen
   optionen: WerkzeugOptionen | null
   optionenFehler: boolean
@@ -78,14 +81,22 @@ export function SchrittEinstellungen({
           </SelectTrigger>
           <SelectContent className={MENUE}>
             {WERKZEUGE.map((w) => (
-              <SelectItem key={w.id} value={w.id} disabled={!w.aktiv} className="min-h-11">
+              <SelectItem key={w.id} value={w.id} disabled={!w.aktiv || (w.eingabe ?? 'skript') !== eingabe} className="min-h-11">
                 {w.name}
                 {!w.aktiv && <span className="ml-2 text-xs text-ws-faint">kommt bald</span>}
+                {w.aktiv && (w.eingabe ?? 'skript') !== eingabe && (
+                  <span className="ml-2 text-xs text-ws-faint">{w.eingabe === 'video' ? 'braucht ein Transkript' : 'braucht ein Skript'}</span>
+                )}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {werkzeug && <p className="text-sm text-ws-muted">{werkzeug.beschreibung}</p>}
+        {eingabe === 'video' && (
+          <p className="text-sm text-ws-faint">
+            Video-Fragen brauchen ein Transkript statt eines Skripts. Für ein anderes Werkzeug starte einen neuen Ablauf mit einem Skript.
+          </p>
+        )}
       </div>
 
       {werkzeug && werkzeug.formate.length > 1 && (

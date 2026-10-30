@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { schrittErlaubt, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import { schrittErlaubt, werkzeugWechselErlaubt, type AblaufSchritt } from '@/lib/werkzeugkiste'
 import {
   ABLAUF_TABELLE,
   ablaufAenderungSchema,
@@ -43,6 +43,9 @@ export async function PATCH(request: Request, { params }: Kontext) {
   if (!zeile) return fehler(NICHT_DA, 404)
 
   const { werkzeug, einstellungen, auswahl, schritt, weg } = parsed.data
+  if (werkzeug && !werkzeugWechselErlaubt(zeile.werkzeug, werkzeug)) {
+    return fehler('Zwischen Video-Fragen und den anderen Werkzeugen kann man nicht wechseln. Starte dafür einen neuen Ablauf.', 400)
+  }
   const felder: Record<string, unknown> = {}
   if (werkzeug) felder.werkzeug = werkzeug
   if (einstellungen) felder.einstellungen = einstellungenFuerWechsel(werkzeug ?? zeile.werkzeug, einstellungen)

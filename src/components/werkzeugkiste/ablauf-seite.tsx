@@ -10,6 +10,7 @@ import {
   ablaufHref,
   DIREKT_ERSTELLEN_AKTIV,
   ablaufKurzinfo,
+  eingabeArt,
   einstellungenFuerWerkzeug,
   neuerAblaufHref,
   schrittAusParam,
@@ -36,6 +37,7 @@ import {
 } from '@/lib/werkzeugkiste-api'
 import { AblaufRahmen, HAUPTAKTION, SchliessenKnopf } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { Hinweis, SkriptErgebnis } from '@/components/werkzeugkiste/schritt-skript'
+import { VideoErgebnis } from '@/components/werkzeugkiste/schritt-video'
 import { kurzesNiveau, SchrittEinstellungen } from '@/components/werkzeugkiste/schritt-einstellungen'
 import { SchrittPrompt } from '@/components/werkzeugkiste/schritt-prompt'
 import { SchrittAntwort } from '@/components/werkzeugkiste/schritt-antwort'
@@ -59,6 +61,8 @@ const TITEL: Record<AblaufSchritt, { titel: string; beschreibung?: string }> = {
   4: { titel: 'Antwort der KI einfügen', beschreibung: 'Die App prüft die Antwort automatisch, ganz ohne KI.' },
   5: { titel: 'Dein Material ist fertig' },
 }
+
+const TITEL_VIDEO = { titel: 'Video', beschreibung: 'Link und Transkript, aus denen die Fragen entstehen.' }
 
 const ABBRECHEN = {
   titel: 'Abbrechen?',
@@ -310,7 +314,8 @@ export function AblaufSeite({ id }: { id: string }) {
 
   const niveau = optionen?.niveaus.find((n) => n.key === einstellungen.niveau)
   const kurzinfo = ablaufKurzinfo({ werkzeug, einstellungen, datei: ablauf.datei }, niveau ? kurzesNiveau(niveau) : undefined)
-  const kopf = direkt && schritt === 3 ? TITEL_ERSTELLEN : TITEL[schritt]
+  const istVideo = eingabeArt(ablauf.werkzeug) === 'video'
+  const kopf = direkt && schritt === 3 ? TITEL_ERSTELLEN : istVideo && schritt === 1 ? TITEL_VIDEO : TITEL[schritt]
 
   const zurueck =
     schritt > 1 && schritt < 5 ? (
@@ -338,18 +343,15 @@ export function AblaufSeite({ id }: { id: string }) {
 
   switch (schritt) {
     case 1:
-      inhalt = (
-        <SkriptErgebnis
-          ablauf={ablauf}
-          auswahl={auswahl}
-          setAuswahl={setAuswahl}
-          andereDatei={() =>
-            aktion(async () => {
-              await loescheAblauf(id)
-              router.replace(neuerAblaufHref(werkzeug))
-            })
-          }
-        />
+      const andere = () =>
+        aktion(async () => {
+          await loescheAblauf(id)
+          router.replace(neuerAblaufHref(werkzeug))
+        })
+      inhalt = istVideo ? (
+        <VideoErgebnis ablauf={ablauf} anderesVideo={andere} />
+      ) : (
+        <SkriptErgebnis ablauf={ablauf} auswahl={auswahl} setAuswahl={setAuswahl} andereDatei={andere} />
       )
       fuss = (
         <>
@@ -374,6 +376,7 @@ export function AblaufSeite({ id }: { id: string }) {
       inhalt = (
         <SchrittEinstellungen
           werkzeugId={werkzeug}
+          eingabe={eingabeArt(ablauf.werkzeug)}
           einstellungen={einstellungen}
           optionen={optionen}
           optionenFehler={optionenFehler}

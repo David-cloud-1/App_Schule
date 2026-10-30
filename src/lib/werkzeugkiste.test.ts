@@ -30,7 +30,7 @@ describe('Werkzeugliste', () => {
     expect(WERKZEUG_GRUPPEN.map((g) => werkzeugeDerGruppe(g.id).length)).toEqual([3, 4, 3, 2])
   })
 
-  it('schaltet bis Paket C zehn Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
+  it('schaltet bis Paket D elf Werkzeuge frei; „Ganzes Skript“ bietet H5P vor der Seite', () => {
     expect(WERKZEUGE.filter((w) => w.aktiv).map((w) => w.id)).toEqual([
       'skript',
       'kreativ',
@@ -38,6 +38,7 @@ describe('Werkzeugliste', () => {
       'kahoot',
       'moodle',
       'learningapps',
+      'youtube',
       'arbeitsblatt',
       'lernsituation',
       'pruefung',
@@ -132,7 +133,7 @@ describe('Schritte', () => {
 
 describe('Einstellungen & Kurzinfo', () => {
   it('setzt beim Werkzeugwechsel nur das Format zurück', () => {
-    expect(einstellungenFuerWerkzeug('youtube', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
+    expect(einstellungenFuerWerkzeug('podcast', { ...EINST, format: 'seite', niveau: 'schwer' })).toEqual({
       ...EINST,
       format: '',
       niveau: 'schwer',

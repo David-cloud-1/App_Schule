@@ -104,6 +104,8 @@ export interface Werkzeug {
   felder: EinstellungsFeld[]
   /** Die bisherigen „Tipps je Werkzeug“, aufklappbar in Schritt 2 */
   tipps?: string[]
+  /** Was die Lehrkraft in Schritt 1 gibt: ein Skript (Standard) oder ein Video-Transkript (Video-Fragen) */
+  eingabe?: 'skript' | 'video'
 }
 
 const H5P: WerkzeugFormat = { id: 'h5p', label: 'H5P für Moodle', hinweis: 'Ergebnisse zählen im Notenbuch' }
@@ -239,6 +241,12 @@ export const WERKZEUGE: Werkzeug[] = [
     icon: Timer,
     aktiv: true,
     formate: [],
+    tipps: [
+      'Sie bekommen eine Excel-Datei, die Sie in Kahoot unter „Quiz erstellen“ → „Importieren“ hochladen.',
+      'Kahoot erlaubt höchstens 95 Zeichen je Frage und 60 je Antwort. Zu lange Texte meldet die Prüfstelle, bevor die Datei entsteht.',
+      '„Automatisch“ beim Zeitlimit lässt die KI die Zeit nach der Schwierigkeit der Frage wählen.',
+      'Spielen Sie das Quiz vor dem Unterricht einmal selbst durch. So fallen unklare Fragen auf.',
+    ],
     felder: [
       { id: 'anzahl', label: 'Anzahl Fragen', art: 'zahl', ort: 'direkt', standard: '12', min: 1, max: 30, schritt: 1 },
       NIVEAU,
@@ -265,6 +273,12 @@ export const WERKZEUGE: Werkzeug[] = [
     icon: ListChecks,
     aktiv: true,
     formate: [],
+    tipps: [
+      'Sie bekommen eine GIFT-Textdatei. In Moodle importieren Sie sie in der Fragensammlung unter „Importieren“ mit dem Format „GIFT“.',
+      'Mit dem Ordner unter „Mehr Optionen“ legen Sie fest, in welche Kategorie der Fragensammlung die Fragen kommen.',
+      'Mischen Sie die Fragetypen: Multiple Choice und Wahr/Falsch für Wissen, Kurzantwort und Rechenergebnis für Anwendung.',
+      'Prüfen Sie nach dem Import in Moodle eine Frage von jedem Typ in der Vorschau.',
+    ],
     felder: [
       { id: 'anzahl', label: 'Anzahl Fragen', art: 'zahl', ort: 'direkt', standard: '20', min: 1, max: 60, schritt: 1 },
       {
@@ -304,6 +318,12 @@ export const WERKZEUGE: Werkzeug[] = [
     icon: LayoutGrid,
     aktiv: true,
     formate: [],
+    tipps: [
+      'Zu jeder Übung bekommen Sie einen eigenen Textblock mit „Kopieren“. Den fügen Sie im Editor von learningapps.org in die passende Vorlage ein.',
+      'Wählen Sie unter „Vorlagen“ nur die Übungsarten, die Sie wirklich brauchen. Jede Art ergibt eigene Übungen.',
+      '„Elemente je Übung“ bestimmt, wie viele Paare, Lücken oder Fragen eine Übung hat. Für den Einstieg reichen 6 bis 8.',
+      'Öffnen Sie die fertige Übung in LearningApps einmal und lösen Sie sie selbst, bevor Sie den Link teilen.',
+    ],
     felder: [
       {
         id: 'vorlagen',
@@ -323,7 +343,46 @@ export const WERKZEUGE: Werkzeug[] = [
       BILDUNGSGANG,
     ],
   },
-  { id: 'youtube', name: 'Video-Fragen', gruppe: 'ueben', beschreibung: 'Arbeitsauftrag zu einem Video', icon: MonitorPlay, aktiv: false, formate: [], felder: VORLAEUFIG },
+  {
+    id: 'youtube',
+    name: 'Video-Fragen',
+    gruppe: 'ueben',
+    beschreibung: 'Arbeitsauftrag zu einem Video',
+    icon: MonitorPlay,
+    aktiv: true,
+    eingabe: 'video',
+    formate: [
+      WORD_ZIP('Arbeitsblatt mit Fragen, Zeitmarken und Musterlösung'),
+      { id: 'video', label: 'H5P Interactive Video', hinweis: 'Fragen erscheinen im Video, Ergebnisse zählen in Moodle' },
+      { id: 'quiz', label: 'H5P Quiz', hinweis: 'Fragenset zum Video, ohne eingebettetes Video' },
+    ],
+    tipps: [
+      'Die KI sieht das Video nicht, sondern nur das Transkript. Die Fragen sind also so gut wie das Transkript, das Sie einfügen.',
+      'So kommen Sie an das Transkript: Video auf youtube.com öffnen, die Beschreibung mit „…mehr“ aufklappen und „Transkript anzeigen“ wählen. Dann den Text markieren und kopieren.',
+      'Jede Frage trägt eine Zeitmarke. So finden Sie die Stelle im Video schnell wieder. Prüfen Sie ein, zwei Marken stichprobenartig.',
+      'Ist das Video lang, tragen Sie unter „Mehr Optionen“ die Videolänge ein. Dann verteilt die KI die Fragen über das ganze Video.',
+    ],
+    felder: [
+      NIVEAU,
+      { id: 'anzahl', label: 'Anzahl Fragen', art: 'zahl', ort: 'mehr', standard: '12', min: 1, max: 40, schritt: 1 },
+      {
+        id: 'types',
+        label: 'Fragetypen',
+        art: 'mehrfach',
+        ort: 'mehr',
+        standard: 'mc,cloze,tf',
+        optionen: [
+          { key: 'mc', label: 'Multiple Choice' },
+          { key: 'cloze', label: 'Lückentext' },
+          { key: 'tf', label: 'Wahr/Falsch' },
+          { key: 'open', label: 'Offen (Freitext)' },
+        ],
+      },
+      { id: 'videolen', label: 'Videolänge (optional)', art: 'text', ort: 'mehr', standard: '', platzhalter: 'mm:ss, z. B. 8:30' },
+      BILDUNGSGANG,
+      LERNFELD,
+    ],
+  },
   {
     id: 'arbeitsblatt',
     name: 'Arbeitsblatt',
@@ -572,6 +631,43 @@ export function reiterAusParam(param: string | null | undefined): WerkzeugkisteR
 }
 
 /** Adresse, unter der ein neuer Ablauf beginnt — optional mit vorgewähltem Werkzeug */
+/** Was ein Werkzeug in Schritt 1 braucht: ein Skript (Datei) oder ein Video-Transkript */
+export function eingabeArt(werkzeugId: string): 'skript' | 'video' {
+  return findeWerkzeug(werkzeugId)?.eingabe ?? 'skript'
+}
+
+/** Gilt für Skript-Werkzeuge untereinander und für Video-Fragen für sich – dazwischen gibt es keinen Wechsel */
+export function werkzeugWechselErlaubt(vonId: string, nachId: string): boolean {
+  return eingabeArt(vonId) === eingabeArt(nachId)
+}
+
+export const TRANSKRIPT_MIN_ZEICHEN = 100
+export const TRANSKRIPT_MAX_ZEICHEN = 200_000
+export const VIDEO_LINK_MAX_ZEICHEN = 300
+
+/** Der Link ist freiwillig, wird aber nur als Web-Adresse angenommen (er wird nie abgerufen) */
+export function pruefeVideoLink(link: string): string | null {
+  const l = link.trim()
+  if (!l) return null
+  if (l.length > VIDEO_LINK_MAX_ZEICHEN) return 'Der Link ist zu lang.'
+  try {
+    const u = new URL(l)
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error('kein Web-Link')
+  } catch {
+    return 'Bitte gib den vollständigen Link an, zum Beispiel https://www.youtube.com/watch?v=…'
+  }
+  return null
+}
+
+export function pruefeTranskript(text: string): string | null {
+  const t = text.trim()
+  if (t.length < TRANSKRIPT_MIN_ZEICHEN) {
+    return 'Bitte füge das Transkript des Videos ein (mindestens 100 Zeichen). In YouTube: „…“ → „Transkript anzeigen“ → kopieren.'
+  }
+  if (t.length > TRANSKRIPT_MAX_ZEICHEN) return 'Das Transkript ist zu lang. Bitte kürze es auf den Teil, zu dem Fragen entstehen sollen.'
+  return null
+}
+
 export function neuerAblaufHref(werkzeug?: string): string {
   return werkzeug ? `${WERKZEUGKISTE_HREF}/neu?werkzeug=${encodeURIComponent(werkzeug)}` : `${WERKZEUGKISTE_HREF}/neu`
 }
@@ -661,6 +757,9 @@ export interface AblaufKennzahlen {
   loesungen: number
   bilder: number
   tabellen: number
+  /** Nur bei Video-Fragen: Länge des Transkripts und der Link zum Video (PROJ-54, Paket D) */
+  zeichen?: number
+  videoUrl?: string
 }
 
 export interface AblaufEinstellungen {

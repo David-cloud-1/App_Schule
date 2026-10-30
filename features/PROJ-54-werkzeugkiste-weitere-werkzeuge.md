@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-29
+**Last Updated:** 2026-10-30
 
 ## Kontext
 Teil des Werkzeugkiste-Umzugs (Übersicht in PROJ-51). PROJ-51 baut den Rahmen und den Ablauf am Beispiel „Ganzes Skript“. Dieses Feature schaltet die übrigen 11 Werkzeuge frei. Alle nutzen denselben Fünf-Schritte-Ablauf. Unterschiede gibt es nur bei den werkzeugeigenen Einstellungen (Schritt 2), dem Ergebnis (Schritt 5) und bei zwei Sonderfällen: Video-Fragen (kein Skript, sondern Transkript) und Podcast (Vertonung).
@@ -372,6 +372,56 @@ Keine Datenbank- und keine Rechteänderung (Einstellungen und Ergebnis sind JSON
 **Nicht geprüft:** Aussehen und Bedienung im Browser, Handybreite, Tastatur/Screenreader, Hell/Dunkel, Öffnen der Word-Dateien in Word, echter Durchlauf mit einer echten KI-Antwort.
 
 **Bugs:** Keine neuen. Hinweis: Der Test „hat für jedes freigeschaltete Werkzeug kurze Tipps“ aus der parallelen Sitzung (noch nicht eingecheckt) schlägt für die Paket-A/B-Werkzeuge ohne Tipps fehl (BUG-1); Klassenarbeit und Lernlied erfüllen ihn. Keine Critical/High-Fehler → Paket C produktionsreif.
+
+## Umsetzung Paket D (2026-10-30): Video-Fragen
+
+Keine Datenbank- und keine Rechteänderung (Transkript liegt als Einlesung im privaten Speicher, Link und Länge stehen in den Kennzahlen des Ablaufs).
+
+**Kern** (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`)
+- `FREIGESCHALTET` um `youtube` erweitert. Neu: `POST /api/einlesen-video` (`kern.einlesen_video`) legt das Transkript als Einlesung ab (`text.txt` + `video.json` mit dem Link). Danach laufen Prompt, Prüfstelle und Bau wie bei jedem Werkzeug.
+- Prompt reicht Link, Videolänge und Fragetypen an `build_prompt` weiter; fehlt die Anzahl, gilt wie in der alten Oberfläche 12. Das Transkript braucht mindestens 100 Zeichen (nicht 200 wie ein Skript); Obergrenze 200.000.
+- Ausgaben wie in der alten Oberfläche: **Word** (`build_youtube_docx`, eine `.docx`), **H5P Interactive Video** und **H5P Quiz** (beide über den Kapitel-Bauer, Dateiendung `.h5p`).
+- Tests `kern_test.py`: 80 grün (neu 13: Prompt gleich für Word/Video/Quiz, mit und ohne Link und Anzahl, Word-Bytes gleich wie der Bauer, H5P für Video und Quiz, Prüfstelle meldet fehlende Lösung, zu kurzes/langes Transkript, falsche Form). `werkzeugtest.py` unverändert 22/24 (die zwei Altfehler: deploy-paket, podcast 403).
+
+**App**
+- Neues Merkmal `eingabe: 'video'` an Video-Fragen. Schritt 1 heißt dort **„Video“**: Link (freiwillig, nur http/https, nie abgerufen), großes Transkript-Feld mit Zeichenzähler und aufklappbarer Anleitung („…“ → „Transkript anzeigen“).
+- Der Ablauf entsteht mit **einem** Aufruf (`POST /ablaeufe` mit `video` statt `datei`): anlegen → der Kern legt das Transkript ab → Kennzahlen speichern. Scheitert etwas, wird alles wieder entfernt.
+- **Wechselregel:** Zwischen Video-Fragen und den anderen Werkzeugen gibt es keinen Wechsel. In Schritt 2 sind die jeweils anderen Einträge der Werkzeugliste ausgegraut („braucht ein Transkript“ / „braucht ein Skript“), dazu steht ein Hinweis; der Server lehnt den Wechsel mit einem Satz ab. Statt einen Sprung zu Schritt 1 zu machen (Edge Case der Spec), ist der Wechsel gar nicht erst möglich, wie es die Kriterien verlangen.
+- **Nachgezogen (BUG-1):** Tipps für Kahoot, Moodle und LearningApps ergänzt. Damit ist der Test „hat für jedes freigeschaltete Werkzeug kurze Tipps“ wieder grün.
+
+| Werkzeug | Format | Direkt | Mehr Optionen |
+|---|---|---|---|
+| Video-Fragen | Word · H5P Interactive Video · H5P Quiz | Niveau | Anzahl Fragen (1–40, Standard 12), Fragetypen (4, Standard MC + Lückentext + W/F), Videolänge (optional), Bildungsgang, Lernfeld |
+
+**Abweichungen / Entscheidungen**
+- Die Spec nennt „Format (Word / H5P)“. Die alte Werkzeugkiste hat **drei** Ausgaben (Word, H5P Interactive Video, H5P Quiz); damit „keine Auswahlmöglichkeit wegfällt“, sind es drei.
+- Lernfeld bleibt (die alte Oberfläche zeigt es), die Spec nennt es nicht.
+- Eine Vorschau gibt es für alle drei Ausgaben (aus der alten Werkzeugkiste).
+
+## QA Test Results – Paket D (2026-10-30)
+
+**Wie getestet:** Ohne Dev-Server und ohne Browser (bringt den Rechner zum Absturz). Code gegen die Kriterien, App-Tests, Kern-Tests mit echtem Kern-Code und Beispielantworten im Format der echten Prompts.
+
+| Kriterium | Ergebnis |
+|---|---|
+| Karte aktiv | ✅ (Test) |
+| Schritt 1 heißt „Video“, Feld für Link (freiwillig) und großes Transkript-Feld | ✅ (Test) |
+| Anleitung zum Transkript unter dem Feld | ✅ (Test) |
+| Transkript unter 100 Zeichen wird abgelehnt | ✅ im Browser (Zähler, „Weiter“ gesperrt), im Server und im Kern (Tests) |
+| „Gleiches Skript, anderes Werkzeug“ nicht verfügbar | ✅ Einträge ausgegraut, Hinweis, Server lehnt ab (Tests) |
+| Fünf Schritte, Prüfstelle, Vorschau | ✅ gleicher Ablauf wie Paket A–C |
+| Prompt zeichengenau gleich | ✅ Kern-Tests vergleichen mit `build_prompt` (Word, Video, Quiz, mit/ohne Link, mit/ohne Anzahl) |
+| Dateien inhaltsgleich | ✅ Word-Bytes gleich wie `build_youtube_docx`; H5P über den gewohnten Bauer |
+| Auswahlmöglichkeiten wie heute | ✅ Test (3 Ausgaben, 4 Fragetypen, Anzahl bis 40) |
+| Höchstens 3 direkt, Rest „Mehr Optionen“ | ✅ Test |
+| Eine Zeile Erklärung; aufklappbare Tipps | ✅ |
+| Überarbeiten (Tippfehler/Kapitel neu) | ➖ gibt es in der App für kein Werkzeug (nicht Teil von Paket D) |
+
+**Sicherheit:** Alle Routen prüfen weiter die Lehrer-Rolle und lesen nur eigene Abläufe. Der Link wird per Zod auf http/https und 300 Zeichen begrenzt (`javascript:` u. Ä. wird abgewiesen, Test) und nie abgerufen; das Transkript ist auf 200.000 Zeichen begrenzt und landet nur als Text im Prompt der eigenen Lehrkraft. Video-Fragen lassen sich weder mit einer Datei anlegen noch Skript-Werkzeuge mit einem Transkript (Test). Keine neue Tabelle, keine neuen Geheimnisse.
+
+**Nicht geprüft:** Aussehen und Bedienung im Browser, Handybreite, Tastatur/Screenreader, Hell/Dunkel, Einfügen eines echten YouTube-Transkripts, Öffnen der Word-Datei in Word, Import des H5P in Moodle, echter Durchlauf mit einer echten KI-Antwort.
+
+**Bugs:** Keine neuen. BUG-1 (Tipps) ist behoben. Keine Critical/High-Fehler → Paket D produktionsreif.
 
 ## Deployment
 

@@ -8,6 +8,10 @@ import {
   feldStandards,
   findeWerkzeug,
   pruefeSkriptDatei,
+  pruefeTranskript,
+  pruefeVideoLink,
+  TRANSKRIPT_MAX_ZEICHEN,
+  VIDEO_LINK_MAX_ZEICHEN,
   type Ablauf,
   type AblaufAuswahl,
   type AblaufEinstellungen,
@@ -63,8 +67,30 @@ const freigeschaltet = z.string().refine((id) => !!findeWerkzeug(id)?.aktiv, {
   message: 'Dieses Werkzeug ist noch nicht freigeschaltet.',
 })
 
+/** Werkzeug, das ein Skript als Datei braucht (nicht Video-Fragen) */
+const skriptWerkzeug = freigeschaltet.refine((id) => findeWerkzeug(id)?.eingabe !== 'video', {
+  message: 'Dieses Werkzeug braucht kein Skript, sondern ein Video-Transkript.',
+})
+
+/** Video-Fragen (PROJ-54, Paket D): Transkript und freiwilliger Link statt einer Datei */
+export const neuesVideoSchema = z.object({
+  werkzeug: freigeschaltet.refine((id) => findeWerkzeug(id)?.eingabe === 'video', {
+    message: 'Dieses Werkzeug braucht ein Skript als Datei.',
+  }),
+  video: z.object({
+    url: z.string().max(VIDEO_LINK_MAX_ZEICHEN, 'Der Link ist zu lang.').superRefine((u, ctx) => {
+      const problem = pruefeVideoLink(u)
+      if (problem) ctx.addIssue({ code: 'custom', message: problem })
+    }),
+    transkript: z.string().max(TRANSKRIPT_MAX_ZEICHEN + 1000, 'Das Transkript ist zu lang.').superRefine((t, ctx) => {
+      const problem = pruefeTranskript(t)
+      if (problem) ctx.addIssue({ code: 'custom', message: problem })
+    }),
+  }),
+})
+
 export const neuerAblaufSchema = z.object({
-  werkzeug: freigeschaltet,
+  werkzeug: skriptWerkzeug,
   datei: z
     .object({
       name: z.string().min(1).max(255),
