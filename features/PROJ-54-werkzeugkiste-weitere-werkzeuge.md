@@ -442,3 +442,9 @@ Keine Datenbank- und keine Rechteänderung (Transkript liegt als Einlesung im pr
 - Live: Klassenarbeit, Lernlied. Keine Datenbankänderung.
 - Tag: `v1.54.2-PROJ-54-paketC`.
 - **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (Word-Dateien der Klassenarbeit in Word öffnen, Musik-KI-Prompt in suno.com); Tipps der Pakete A/B (BUG-1, der Tipps-Test in `werkzeugkiste.test.ts` schlägt dafür fehl); Pakete D–E. Das Feature bleibt bis dahin „In Progress“.
+
+### Paket D – 2026-10-30
+- **Kern** (`werkzeugkiste-kern`, Commit 030957a) zuerst per `vercel deploy --prod`, danach **App** per Push auf `main` (`a115567`), Production „Ready“. App-Route ohne Login: 401. Es ging nur dieser eine Commit hinaus.
+- Live: Video-Fragen (Word, H5P Interactive Video, H5P Quiz). Keine Datenbankänderung. Zusätzlich Tipps für Kahoot, Moodle und LearningApps (BUG-1 aus Paket A/B behoben).
+- Tag: `v1.54.3-PROJ-54-paketD`.
+- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (echtes YouTube-Transkript einfügen, Word-Datei in Word öffnen, H5P-Interactive-Video in Moodle); Paket E (Podcast; zuerst prüfen, ob eine neuere `edge-tts`-Version den 403 des Sprachdienstes behebt). Das Feature bleibt bis dahin „In Progress“.
