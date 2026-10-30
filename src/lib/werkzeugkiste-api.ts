@@ -16,6 +16,8 @@ import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/w
  *   POST   /ablaeufe/:id/prompt            Kern baut den Prompt
  *   POST   /ablaeufe/:id/pruefen           Kern prüft die KI-Antwort (Prüfstelle)
  *   POST   /ablaeufe/:id/bauen             Kern baut die Datei
+ *   GET/POST /ablaeufe/:id/kapitel         Kapitel der Antwort · Prompt nur für ein Kapitel (PROJ-52, Paket 2)
+ *   POST   /ablaeufe/:id/kapitel/einsetzen KI-Antwort zu einem Kapitel einsetzen
  *   GET    /ablaeufe/:id/download          Weiterleitung auf einen kurzlebigen Download-Link
  *   GET    /ablaeufe/:id/vorschau          Vorschau als HTML (abgeschottet angezeigt)
  *
@@ -135,8 +137,35 @@ export function pruefeAntwort(id: string, antwort: string) {
   })
 }
 
-export function baueMaterial(id: string) {
-  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/bauen`, { method: 'POST' })
+/**
+ * `stand`: Änderungszeitpunkt, den diese Seite gesehen hat (Zwei-Tabs-Regel, PROJ-52).
+ * Antwortet der Server mit 409, wurde das Material inzwischen geändert; mit `ersetzen` gewinnt dann diese Fassung.
+ */
+export function baueMaterial(id: string, pruefung?: { stand: string; ersetzen?: boolean }) {
+  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/bauen`, {
+    method: 'POST',
+    ...(pruefung ? { body: JSON.stringify(pruefung) } : {}),
+  })
+}
+
+// ── Überarbeiten (PROJ-52, Paket 2) ───────────────────────────────────────
+
+export function ladeKapitel(id: string) {
+  return anfrage<{ kapitel: string[] }>(`/ablaeufe/${encodeURIComponent(id)}/kapitel`)
+}
+
+export function erstelleKapitelPrompt(id: string, index: number, wunsch: string) {
+  return anfrage<{ prompt: string; titel: string }>(`/ablaeufe/${encodeURIComponent(id)}/kapitel`, {
+    method: 'POST',
+    body: JSON.stringify({ index, wunsch }),
+  })
+}
+
+export function setzeKapitelEin(id: string, index: number, antwort: string) {
+  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/kapitel/einsetzen`, {
+    method: 'POST',
+    body: JSON.stringify({ index, antwort }),
+  })
 }
 
 // ── Direkt erstellen (PROJ-64) ────────────────────────────────────────────
@@ -197,6 +226,15 @@ export function antwortHref(id: string) {
 
 export function downloadHref(id: string) {
   return `${WK_API}/ablaeufe/${encodeURIComponent(id)}/download`
+}
+
+/**
+ * Fertige Datei laden (PROJ-52, BUG-1): erst prüfen, ob sie da ist, dann den
+ * kurzlebigen Link öffnen. Fehlt sie, wirft das einen `WerkzeugFehler` mit ruhigem Satz.
+ */
+export async function ladeDatei(id: string): Promise<void> {
+  const { url } = await anfrage<{ url: string }>(`/ablaeufe/${encodeURIComponent(id)}/download?pruefen=1`)
+  window.location.assign(url)
 }
 
 export function vorschauHref(id: string) {

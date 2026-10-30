@@ -4,6 +4,16 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import {
@@ -109,6 +119,8 @@ export function AblaufSeite({ id }: { id: string }) {
   const [wegFehler, setWegFehler] = useState(false)
   const [lauf, setLauf] = useState<LaufInfo | null>(null)
   const [rueckfrage, setRueckfrage] = useState<string | null>(null)
+  /** Zwei-Tabs-Regel (PROJ-52): Das Material wurde inzwischen geändert — ersetzen? */
+  const [ersetzenFrage, setErsetzenFrage] = useState(false)
   const [prueftGerade, setPrueftGerade] = useState(false)
   const [pruefFehler, setPruefFehler] = useState<string | null>(null)
   /** Antwort, zu der die angezeigte Prüfung gehört */
@@ -458,6 +470,8 @@ export function AblaufSeite({ id }: { id: string }) {
     case 4: {
       const pruefungPasst = geprueftFuer === antwort && !prueftGerade
       const lesbar = pruefungPasst && !!ablauf.pruefung?.lesbar && !pruefFehler
+      // Nur ein schon fertiges Material kann inzwischen woanders geändert worden sein
+      const bauStand = ablauf.status === 'fertig' ? { stand: ablauf.aktualisiertAm } : undefined
       inhalt = (
         <SchrittAntwort
           antwort={antwort}
@@ -469,6 +483,14 @@ export function AblaufSeite({ id }: { id: string }) {
             setPruefFehler(null)
             setPruefVersuch((n) => n + 1)
           }}
+          ablaufId={id}
+          hilfenFreigegeben={pruefungPasst && !!ablauf.pruefung?.lesbar}
+          onAblauf={(a) => {
+            // Ein eingesetztes Kapitel ändert die gespeicherte Antwort: Prüfung läuft von selbst neu
+            setAblauf(a)
+            setAntwort(a.antwort ?? '')
+            setGeprueftFuer(null)
+          }}
         />
       )
       fuss = (
@@ -478,9 +500,15 @@ export function AblaufSeite({ id }: { id: string }) {
             'Material erstellen',
             () =>
               aktion(async () => {
-                const { ablauf: a } = await baueMaterial(id)
-                setAblauf(a)
-                gehe(5)
+                try {
+                  const { ablauf: a } = await baueMaterial(id, bauStand)
+                  setAblauf(a)
+                  gehe(5)
+                } catch (e) {
+                  // Zwei-Tabs-Regel: Das Material wurde inzwischen woanders geändert → erst nachfragen
+                  if (e instanceof WerkzeugFehler && e.status === 409) setErsetzenFrage(true)
+                  else throw e
+                }
               }),
             !lesbar,
           )}
@@ -524,6 +552,31 @@ export function AblaufSeite({ id }: { id: string }) {
           if (weiter) void startDirekt(true)
         }}
       />
+      <AlertDialog open={ersetzenFrage} onOpenChange={setErsetzenFrage}>
+        <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Dieses Material wurde inzwischen geändert</AlertDialogTitle>
+            <AlertDialogDescription className="text-ws-muted">
+              Zum Beispiel in einem anderen Fenster. Wenn du jetzt erstellst, ersetzt deine Fassung die andere. Trotzdem ersetzen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11 rounded-xl">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover"
+              onClick={() =>
+                void aktion(async () => {
+                  const { ablauf: a } = await baueMaterial(id, { stand: ablauf.aktualisiertAm, ersetzen: true })
+                  setAblauf(a)
+                  gehe(5)
+                })
+              }
+            >
+              Ja, ersetzen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {aktionsFehler && (
         <div role="alert">
           <Hinweis ton="warnung">{aktionsFehler}</Hinweis>

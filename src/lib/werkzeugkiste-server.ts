@@ -276,6 +276,19 @@ export async function downloadAdresse(service: SupabaseClient, pfad: string, dat
   return roh ? `${roh}&download=${encodeURIComponent(dateiname)}` : null
 }
 
+/**
+ * Liegt die Datei wirklich im Speicher? Eine Adresse allein sagt das nicht:
+ * Der Speicher antwortet bei fehlender Datei erst beim Abruf mit einer Fehlerseite.
+ * Fällt die Abfrage aus, gilt die Datei als vorhanden (der Abruf entscheidet dann).
+ */
+export async function dateiVorhanden(service: SupabaseClient, pfad: string): Promise<boolean> {
+  const i = pfad.lastIndexOf('/')
+  const name = pfad.slice(i + 1)
+  const { data, error } = await service.storage.from(WK_BUCKET).list(pfad.slice(0, i), { limit: 100, search: name })
+  if (error || !data) return true
+  return data.some((f) => f.name === name)
+}
+
 /** Alle Dateien eines Ablaufs entfernen (Ordner <owner>/<id>/) */
 export async function loescheDateien(service: SupabaseClient, ownerId: string, id: string) {
   const ordner = ablaufOrdner(ownerId, id)

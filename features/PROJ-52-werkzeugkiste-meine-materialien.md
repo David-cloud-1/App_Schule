@@ -1,6 +1,6 @@
 # PROJ-52: Werkzeugkiste – Meine Materialien
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-30
 
@@ -345,7 +345,7 @@ Auf Wunsch des Nutzers gilt „kein Dev-Server, kein Playwright“ (beides bring
 ### Bugs
 | ID | Schwere | Beschreibung |
 |---|---|---|
-| BUG-1 | Medium | **Fehlende Datei beim Herunterladen:** „Herunterladen“ ist ein Link auf die Download-Route. Fehlt die Datei im Speicher, antwortet die Route mit 404-JSON bzw. der Speicher mit einer JSON-Fehlerseite. Die Spec verlangt den ruhigen Satz „Die Datei ist nicht mehr vorhanden. Über Überarbeiten neu erstellen.“, ohne technischen Fehler. Die Oberfläche fängt das nicht ab. Kein Blocker (tritt nur bei verlorenen Dateien auf), Nachbesserung vor oder mit Paket 2. |
+| BUG-1 | Medium | ✅ **Behoben (2026-10-30, siehe „Nachbesserung BUG-1“ unten).** **Fehlende Datei beim Herunterladen:** „Herunterladen“ ist ein Link auf die Download-Route. Fehlt die Datei im Speicher, antwortet die Route mit 404-JSON bzw. der Speicher mit einer JSON-Fehlerseite. Die Spec verlangt den ruhigen Satz „Die Datei ist nicht mehr vorhanden. Über Überarbeiten neu erstellen.“, ohne technischen Fehler. Die Oberfläche fängt das nicht ab. Kein Blocker (tritt nur bei verlorenen Dateien auf), Nachbesserung vor oder mit Paket 2. |
 | BUG-2 | Low | Nach „Überarbeiten“ speichert die Prüfung die neue Antwort sofort, die Datei bleibt bis zum Neubau die alte. „KI-Antwort herunterladen“ kann dann von der Datei abweichen. Im Tech Design so vorgesehen, Paket 2 kann es mit der Zwei-Tabs-Regel klären. |
 | BUG-3 | Low | „Erstellt“ zeigt die Anlage des Ablaufs, nicht die Fertigstellung (kein eigenes Feld). Bei Entwürfen, die Tage liegen, steht ein früheres Datum als das Fertigstellen. |
 | BUG-4 | Low | Die Liste hat keine Begrenzung der Anfragen pro Zeit (nur Lehrer-Rolle und 50 Zeilen je Seite). Bei etwa 20 Lehrkräften unkritisch. |
@@ -372,3 +372,26 @@ Gesamtsuite 1949 grün (vorher 1906); Produktions-Build, `tsc`, Lint (0 Fehler) 
 - Ohne Login: `GET /materialien` 401, `GET …/antwort` 401, `POST …/kopie` 401, Zeitplan-Route 401, Seite leitet auf die Anmeldung um (307).
 - Tag: `v1.52.0-PROJ-52-paket1`.
 - **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (Liste, Suche, Menü ⋯, Umbenennen, Löschen, „Fortsetzen“, „Gleiches Skript, anderes Werkzeug“, Schließen mit ✕); Trigger-Regeln mit Schreibzugriff prüfen; BUG-1 (Hinweis bei fehlender Datei); Paket 2 „Überarbeiten“ (Tippfehler, Kapitel neu, Zwei-Tabs-Warnung). Das Feature bleibt bis dahin „In Progress“.
+
+
+## Nachbesserung BUG-1 und Umsetzung Paket 2 „Überarbeiten“ (2026-10-30)
+
+**Noch nicht deployt.** Zuerst den Kern (Python) live nehmen, dann die App pushen (neue App-Routen rufen neue Kern-Wege auf). Keine Datenbank-Migration, keine neuen Umgebungsvariablen, keine neuen Pakete.
+
+### BUG-1 behoben: fehlende Datei beim Herunterladen
+- `GET …/download?pruefen=1` prüft jetzt, ob die Datei im Speicher liegt (`dateiVorhanden` in `werkzeugkiste-server.ts`, Abfrage der Ordnerliste) und liefert dann `{ url }` als JSON. Fehlt sie: 404 mit dem Satz „Die Datei ist nicht mehr vorhanden. Über „Überarbeiten“ neu erstellen.“ Ohne `?pruefen=1` bleibt die Weiterleitung wie vorher.
+- „Herunterladen“ in der Liste und in Schritt 5 ruft das über `ladeDatei` (`werkzeugkiste-api.ts`) auf und zeigt den Satz als Toast, statt eine Fehlerseite zu öffnen. Der Link behält seine Adresse (Rückfall ohne JavaScript).
+- Fällt die Ordnerabfrage selbst aus, gilt die Datei als vorhanden (der Abruf entscheidet dann).
+
+### Paket 2: Überarbeiten
+**Kern** (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`, **nicht committet, nicht deployt**): `kern.py` neu `kapitel_liste`, `kapitel_prompt`, `kapitel_einsetzen`; `app.py` neu `/api/kapitel-liste`, `/api/kapitel-prompt`, `/api/kapitel-einsetzen`. Sie rufen dieselben Funktionen auf wie die alte Oberfläche (`kapitel_text`, `kapitel_ersetzen`, `build_ueberarbeiten_kapitel_prompt`), nichts ist nachgebaut. `kern_test.py`: 4 neue Tests (u. a. Prompt zeichengleich zur alten Funktion, andere Kapitel bleiben nach dem Einsetzen unangetastet); 84 Tests grün.
+
+**App**
+- Routen: `GET/POST …/ablaeufe/:id/kapitel` (Kapitelliste · Prompt für ein Kapitel, Wunsch 1–4000 Zeichen), `POST …/kapitel/einsetzen` (speichert die neue Antwort, leert die Prüfung, lässt Status und fertige Datei unberührt).
+- Zwei-Tabs-Regel: `…/bauen` nimmt `{ stand, ersetzen? }`. Bei einem **fertigen** Material mit anderem Stand antwortet es 409 „…inzwischen geändert“; die Oberfläche fragt per `AlertDialog` „Trotzdem ersetzen?“, bei „Ja“ gewinnt die zuletzt erstellte Fassung. Bei einem ersten Bauen (Entwurf) wird nie nachgefragt.
+- Oberfläche (`ueberarbeiten-hilfen.tsx`, in Schritt 4 unter dem Antwortfeld): „Tippfehler direkt korrigieren“ (Suchen/Ersetzen im Text, ohne KI, Trefferzahl vorab, wörtlich ohne Muster) und „Ein einzelnes Kapitel neu anfragen“ (Kapitelwahl, Wunsch, Prompt zum Kopieren, Antwort einsetzen; erscheint erst bei gespeicherter, geprüfter Antwort, entfällt ohne erkennbare Kapitel, z. B. bei Word-Ergebnissen). Nach dem Einsetzen läuft die Prüfung von selbst neu.
+- Rest-Abweichung (BUG-2) bleibt: Nach „Überarbeiten“ ist die gespeicherte Antwort neu, die Datei bis zum Neubau die alte. Die Zwei-Tabs-Warnung greift erst beim Neubauen.
+
+**Tests:** `ueberarbeiten.test.ts` (11, Routen und Zwei-Tabs-Regel), `werkzeugkiste-ueberarbeiten.test.ts` (4), `ueberarbeiten-hilfen.test.tsx` (5), dazu 2 Download-Tests und 1 Komponententest für BUG-1. Gesamtsuite 1972 grün, `tsc` sauber, Lint 0 Fehler, Produktions-Build sauber.
+
+**Nicht geprüft:** Browser/Handy (kein Dev-Server, Projektregel); ein echter Lauf „Kapitel neu“ mit einer KI gegen den live-Kern; Neubau mit zwei geöffneten Tabs in Produktion.

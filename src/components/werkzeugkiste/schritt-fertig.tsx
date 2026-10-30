@@ -6,7 +6,7 @@ import { Check, ClipboardCopy, Download, Eye, Library, Loader2, PencilLine, Repe
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ablaufHref, WERKZEUGKISTE_HREF, type AblaufErgebnis } from '@/lib/werkzeugkiste'
-import { downloadHref, kopiereFuerAnderesWerkzeug, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { downloadHref, ladeDatei, kopiereFuerAnderesWerkzeug, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { euro } from '@/lib/werkzeugkiste-kosten'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
@@ -87,7 +87,16 @@ export function SchrittFertig({
               asChild
               className="min-h-12 rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
             >
-              <a href={downloadHref(ablaufId)} download={ergebnis.dateiname}>
+              <a
+                href={downloadHref(ablaufId)}
+                download={ergebnis.dateiname}
+                onClick={(e) => {
+                  e.preventDefault()
+                  ladeDatei(ablaufId).catch((err) =>
+                    toast.error(err instanceof WerkzeugFehler ? err.message : 'Das hat gerade nicht geklappt. Bitte versuche es erneut.'),
+                  )
+                }}
+              >
                 <Download className="mr-2 size-5" aria-hidden />
                 Herunterladen
               </a>

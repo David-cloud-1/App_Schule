@@ -4,8 +4,9 @@ import { AlertTriangle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { AblaufPruefung } from '@/lib/werkzeugkiste'
+import type { Ablauf, AblaufPruefung } from '@/lib/werkzeugkiste'
 import { KopierKnopf } from '@/components/werkzeugkiste/schritt-prompt'
+import { UeberarbeitenHilfen } from '@/components/werkzeugkiste/ueberarbeiten-hilfen'
 
 /**
  * Schritt 4 (PROJ-51): Antwortfeld und Prüfergebnis in genau einer Box.
@@ -18,6 +19,9 @@ export function SchrittAntwort({
   prueftGerade,
   pruefFehler,
   erneutPruefen,
+  ablaufId,
+  hilfenFreigegeben = false,
+  onAblauf,
 }: {
   antwort: string
   setAntwort: (a: string) => void
@@ -25,6 +29,11 @@ export function SchrittAntwort({
   prueftGerade: boolean
   pruefFehler: string | null
   erneutPruefen: () => void
+  /** Mit Ablauf-Nummer erscheinen die Überarbeiten-Hilfen (Tippfehler, Kapitel neu) */
+  ablaufId?: string
+  /** Kapitel neu anfragen braucht die gespeicherte, geprüfte Antwort */
+  hilfenFreigegeben?: boolean
+  onAblauf?: (a: Ablauf) => void
 }) {
   return (
     <div className="space-y-6">
@@ -58,6 +67,10 @@ export function SchrittAntwort({
           <PruefErgebnis pruefung={pruefung} />
         ) : null}
       </div>
+
+      {ablaufId && onAblauf && antwort.trim() && (
+        <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} onAblauf={onAblauf} />
+      )}
     </div>
   )
 }

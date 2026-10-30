@@ -81,7 +81,7 @@ beforeEach(() => {
   speicher = {
     createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: 'https://speicher.test/lesen?token=t' } }),
     createSignedUploadUrl: vi.fn().mockResolvedValue({ data: { signedUrl: 'https://speicher.test/schreiben?token=t' } }),
-    list: vi.fn().mockResolvedValue({ data: [{ name: 'skript.pdf' }, { name: 'einlesung.zip' }] }),
+    list: vi.fn().mockResolvedValue({ data: [{ name: 'skript.pdf' }, { name: 'einlesung.zip' }, { name: 'ausgabe' }] }),
     remove: vi.fn().mockResolvedValue({ data: [] }),
     download: vi.fn().mockResolvedValue({ data: new Blob(['<html>Vorschau</html>']), error: null }),
   }
@@ -164,7 +164,7 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       const res = await ablaufLoeschen(new Request('http://t', { method: 'DELETE' }), ctx)
       expect(res.status).toBe(200)
       expect(speicher.list).toHaveBeenCalledWith(`u1/${ID}`, { limit: 100 })
-      expect(speicher.remove).toHaveBeenCalledWith([`u1/${ID}/skript.pdf`, `u1/${ID}/einlesung.zip`])
+      expect(speicher.remove).toHaveBeenCalledWith([`u1/${ID}/skript.pdf`, `u1/${ID}/einlesung.zip`, `u1/${ID}/ausgabe`])
     })
   })
 
@@ -291,6 +291,21 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       expect(res.status).toBe(302)
       expect(res.headers.get('location')).toBe('https://speicher.test/lesen?token=t&download=%C3%9Cbung.h5p')
       expect(speicher.createSignedUrl).toHaveBeenCalledWith(`u1/${ID}/ausgabe`, 120)
+    })
+
+    it('liefert mit ?pruefen=1 den Link als JSON, damit die Oberfläche ihn öffnen kann', async () => {
+      zeile = { ...BASIS_ZEILE, ergebnis: { titel: 'Ü', dateiname: 'Übung.h5p', format: 'h5p', kapitel: 1, aufgaben: 1 } }
+      const res = await download(new Request('http://t/x?pruefen=1'), ctx)
+      expect(res.status).toBe(200)
+      expect((await res.json()).url).toBe('https://speicher.test/lesen?token=t&download=%C3%9Cbung.h5p')
+    })
+
+    it('meldet eine im Speicher fehlende Datei ruhig (404, kein technischer Text)', async () => {
+      zeile = { ...BASIS_ZEILE, ergebnis: { titel: 'Ü', dateiname: 'Übung.h5p', format: 'h5p', kapitel: 1, aufgaben: 1 } }
+      speicher.list.mockResolvedValueOnce({ data: [{ name: 'skript.pdf' }] })
+      const res = await download(new Request('http://t/x?pruefen=1'), ctx)
+      expect(res.status).toBe(404)
+      expect((await res.json()).error).toBe('Die Datei ist nicht mehr vorhanden. Über „Überarbeiten“ neu erstellen.')
     })
 
     it('liefert die Vorschau nur ohne Skripte aus (CSP)', async () => {

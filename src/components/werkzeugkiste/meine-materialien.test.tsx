@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   loescheAblauf: vi.fn(),
   benenneMaterialUm: vi.fn(),
   kopiereFuerAnderesWerkzeug: vi.fn(),
+  ladeDatei: vi.fn(),
 }))
 
 vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
@@ -14,6 +15,7 @@ vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
   ...api,
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+import { toast } from 'sonner'
 
 import { MeineMaterialien } from './meine-materialien'
 
@@ -55,6 +57,7 @@ beforeEach(() => {
   api.loescheAblauf.mockReset()
   api.benenneMaterialUm.mockReset()
   api.kopiereFuerAnderesWerkzeug.mockReset()
+  api.ladeDatei.mockReset()
 })
 afterEach(() => vi.clearAllMocks())
 
@@ -90,6 +93,17 @@ describe('Meine Materialien (PROJ-52)', () => {
     const download = screen.getAllByRole('link', { name: /Herunterladen/ })[0]
     expect(download).toHaveAttribute('href', '/api/admin/werkzeugkiste/ablaeufe/m1/download')
     expect(onLeer).toHaveBeenLastCalledWith(false)
+  })
+
+  it('meldet eine fehlende Datei beim Herunterladen ruhig als Hinweis (BUG-1)', async () => {
+    const { WerkzeugFehler } = await import('@/lib/werkzeugkiste-api')
+    api.ladeMaterialien.mockResolvedValue(liste([zeile({ id: 'm1' })]))
+    api.ladeDatei.mockRejectedValue(new WerkzeugFehler('Die Datei ist nicht mehr vorhanden. Über „Überarbeiten“ neu erstellen.', 404))
+    render(<MeineMaterialien />)
+    await screen.findAllByText('Haftung im Frachtrecht')
+    fireEvent.click(screen.getAllByRole('link', { name: /Herunterladen/ })[0])
+    expect(api.ladeDatei).toHaveBeenCalledWith('m1')
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Die Datei ist nicht mehr vorhanden. Über „Überarbeiten“ neu erstellen.'))
   })
 
   it('führt bei Materialien ohne Datei (reine Texte) zur Ansicht statt zum Download', async () => {

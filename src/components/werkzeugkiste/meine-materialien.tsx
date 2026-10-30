@@ -46,6 +46,7 @@ import {
   antwortHref,
   benenneMaterialUm,
   downloadHref,
+  ladeDatei,
   kopiereFuerAnderesWerkzeug,
   ladeMaterialien,
   loescheAblauf,
@@ -401,7 +402,14 @@ function Hauptknopf({ z, voll }: { z: MaterialZeile; voll?: boolean }) {
   }
   return (
     <Button asChild variant="outline" className={`${NEBENAKTION} ${breite}`}>
-      <a href={downloadHref(z.id)} download>
+      <a
+        href={downloadHref(z.id)}
+        download
+        onClick={(e) => {
+          e.preventDefault()
+          ladeDatei(z.id).catch((err) => toast.error(meldung(err)))
+        }}
+      >
         <Download className="mr-2 size-4" aria-hidden />
         Herunterladen
         <span className="sr-only">: {z.titel}</span>
