@@ -1,6 +1,6 @@
 # PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-28
 **Last Updated:** 2026-10-29
 
@@ -274,7 +274,48 @@ Weitere Regeln:
 **Tests:** 25 Oberflächen-Tests (Zähler, Übersicht, Beitragsseite, Formular), 7 für die Markdown-Filterung, dazu Tests für Hilfen, Katalog-Schnittstelle, Pfad-Freigaben und angepasste Navigations-Tests. Gesamte Suite: 1767 von 1768 grün. Der eine Fehler liegt in `src/lib/werkzeugkiste.test.ts` und gehört zu uncommitteter Arbeit an PROJ-54 aus einer anderen Sitzung. `tsc` ohne Befund, ESLint nur Warnungen (Daten in Effekten laden, wie in den bestehenden Seiten).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-10-30, Stand `fc7c9a6`. **Umfang und Grenzen:** Dev-Server und Playwright laufen auf diesem Rechner nicht (sie bringen den MacBook zum Absturz). Deshalb gab es **keinen Test im Browser**, keinen Cross-Browser- und keinen Responsive-Test und keine Playwright-Datei. Geprüft wurde: Code gegen jedes Kriterium, Komponenten-Tests (jsdom), Schnittstellen-Tests, die Datenbank als Angreifer in zurückgerollten Transaktionen (50 Fälle, siehe Backend-Notizen) und der Produktions-Build des committeten Stands in einem frischen Worktree (grün, alle 4 Seiten und 16 Schnittstellen registriert).
+
+### Akzeptanzkriterien
+| Bereich | Ergebnis |
+|---|---|
+| Navigation & Zugang (Eintrag für alle Lehrer-Rollen, Schnellsuche, Azubi ohne Zugang) | ✅ Eintrag und Schnellaktion getestet; Azubis: Seite leitet um, Schnittstellen 401/403, Datenbank verweigert |
+| Übersicht (Karte, Filter, Suche, Sortierung, URL, 20 + „Mehr laden“, Zustände, Hauptaktion nur einmal) | ✅ per Komponenten-Test. ⚠️ Fach-Filter zeigt alle aktiven Fächer statt nur vorkommender (bewusst, siehe Frontend-Notizen) |
+| Beitrag schreiben (Pflichtfelder, Grenzen, Vorbelegung, Feldfehler, Toast, Entwurf) | ✅ per Komponenten-Test |
+| Beitrag ansehen & antworten (Reihenfolge, Lösung oben, gelesen) | ✅ |
+| Hilfreich (einmal, nicht für Eigenes, aria-pressed) | ✅ |
+| Frage als gelöst markieren | ✅ (Frontend + Datenbank, inkl. Wiederöffnen bei Löschen) |
+| Bearbeiten, Löschen mit Rückfrage, Melden | ✅ |
+| Moderation (Ausblenden, Einblenden, Hinweisband, „Gemeldet“-Reiter, Protokoll) | ✅ Datenbank + Komponenten. Protokolleinträge in der Datenbank bestätigt |
+| Hinweis-Zähler (9+, getrennt für Meldungen, Icon-Modus-Punkt) | ✅ Zähler/9+/Fehlerfall getestet. ⚠️ Der Punkt im eingeklappten Zustand ist nur per CSS (`group-data`) umgesetzt und nicht im Browser gesehen |
+| Papierkorb 30 Tage (Reiter, Wiederherstellen, Aufräum-Job) | ✅ Wiederherstellen getestet. ⚠️ Der Aufräum-Job ist angelegt, aber noch nie gelaufen |
+
+### Edge Cases
+✅ Rollenverlust (Schreiben/Lesen sofort gesperrt, Beiträge bleiben) · ✅ Konto gelöscht → „Ehemalige Lehrkraft“ · ✅ Beitrag während des Antwortens gelöscht (Text bleibt im Feld) · ✅ Doppeltes Absenden · ✅ Kategorie-Wechsel räumt Lösung auf · ✅ Lösungs-Antwort gelöscht → Frage offen · ✅ Wiederherstellen samt Antworten · ✅ Schadcode im Text (Skript, Bild, `javascript:`-Link, rohes HTML) wird nicht ausgeführt · ✅ Flut-Schutz Beiträge · ✅ Lehrkraft ohne Fachbereich · ⚠️ sehr lange Wörter/URLs brechen um (CSS `overflow-wrap:anywhere`, nicht im Browser gesehen).
+
+### Gefundene Fehler
+| # | Schwere | Fund | Stand |
+|---|---|---|---|
+| 1 | **High** | Der Proxy ließ reine Lehrkräfte nur auf freigegebene Pfade. Ohne Eintrag wären Seiten und Schnittstellen des Lehrerzimmers für sie gesperrt gewesen (das Forum hätte nur für Admins funktioniert). | ✅ behoben vor QA (`roles.ts` + Test) |
+| 2 | **High** | Fachbereich/Fach-Auswahl war für Admins leer, weil `my-subjects` nur reinen Lehrkräften offen ist. | ✅ behoben (eigene Schnittstelle `catalog`) |
+| 3 | Medium | Das Formular verschluckte Prüffehler zu Fachbereich/Fach ohne Meldung. | ✅ behoben (sichtbarer Formularfehler) |
+| 4 | Low | `forum_author_name` lieferte den Anzeigenamen zu jeder Kennung, auch zu Azubis, wenn eine Lehrkraft die Funktion direkt aufruft (Kennungen sind nicht erratbar). | 🛠️ Korrektur liegt als Migration `20261030_proj63_author_name_fix.sql` bereit, **muss noch von David im SQL-Editor eingespielt werden**; das Deployment des Codes hängt nicht davon ab |
+| 5 | Low | Der Fach-Filter kann leere Fächer zeigen (siehe oben). | Akzeptiert |
+
+### Sicherheitsprüfung
+- Zugriff nur über die Datenbank-Regeln: Azubis, `anon` und abgemeldete Aufrufe bekommen weder Daten noch Schreibrechte (50 Fälle; Skript für die erweiterte Variante: `supabase/tests/proj63_qa_angriffstest.sql`).
+- Statische Prüfung der Migration: alle 15 Schreib-Funktionen verlangen als Erstes die Lehrer-Rolle, die zwei Moderations-Funktionen zusätzlich den Admin-Status, keine `SECURITY DEFINER`-Funktion ohne festen `search_path`.
+- Eingaben: serverseitig mit Zod und in der Datenbank begrenzt; Such-Eingabe läuft über `websearch_to_tsquery` (kein SQL-Einschleusen); Anzeige ohne HTML.
+- Meldende bleiben für die gemeldete Person verborgen; „Hilfreich“-Markierungen anderer sind unsichtbar.
+- Rate-Limit in der Datenbank (10 Beiträge, 30 Antworten, 20 Meldungen je Stunde).
+- **Nicht ausgeführt:** der erweiterte Angriffstest `proj63_qa_angriffstest.sql` (mein Aufruf wurde abgelehnt). Er prüft zusätzlich die direkte Funktions-Matrix für Azubis, `anon`, ausgeblendete Antworten, Rollenverlust, Grenzen und den Antworten-Flut-Schutz.
+
+### Regression
+Gesamte Suite: 1767 von 1768 grün. Der eine Fehler (`werkzeugkiste.test.ts`, neues Feld `tipps`) gehört zu uncommitteter PROJ-54-Arbeit einer anderen Sitzung und betrifft dieses Feature nicht. Angepasst wurden nur die festen Listen der Navigations-Tests (neuer Eintrag). Papierkorb und Änderungsprotokoll: Seiten bauen, bestehende Reiter unverändert.
+
+### Entscheidung
+**Produktionsreif: JA, mit Einschränkung.** Keine offenen Critical/High-Fehler. Offen bleiben nur das Anschauen im Browser (Darstellung, Handy, eingeklappte Seitenleiste), die Korrektur-Migration (Low) und der erweiterte Angriffstest. Das Risiko beim Ausrollen ist klein: Die Tabellen sind leer, es gibt noch keine Rolle „teacher“, und nur Admins sehen das Forum.
 
 ## Deployment
 _To be added by /deploy_
