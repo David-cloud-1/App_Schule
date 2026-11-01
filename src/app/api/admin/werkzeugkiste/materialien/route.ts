@@ -9,6 +9,7 @@ import {
   zeileZuMaterial,
   type ListenZeile,
 } from '@/lib/werkzeugkiste-materialien-server'
+import { vermerkZuRegal, type RegalVermerkZeile } from '@/lib/werkzeugkiste-regal-server'
 import { ABLAUF_TABELLE, ungueltig, fehler } from '@/lib/werkzeugkiste-server'
 
 /**
@@ -52,6 +53,21 @@ export async function GET(request: Request) {
   if (error) return fehler('Die Liste konnte gerade nicht geladen werden.', 500)
 
   const eintraege = ((data ?? []) as unknown as ListenZeile[]).map(zeileZuMaterial)
+
+  // Freigaben fürs Regal (PROJ-53): nur die eigenen, mit den Zählern der Personen und Bereiche
+  const materialIds = eintraege.filter((e) => e.art === 'material').map((e) => e.id)
+  if (materialIds.length > 0) {
+    const { data: freigaben } = await auth.supabase
+      .from('regal_freigaben')
+      .select('ablauf_id, stufe, entnommen_am, regal_freigabe_personen(count), regal_freigabe_bereiche(count)')
+      .in('ablauf_id', materialIds)
+    const nachId = new Map<string, RegalVermerkZeile>()
+    for (const f of (Array.isArray(freigaben) ? freigaben : []) as unknown as RegalVermerkZeile[]) nachId.set(f.ablauf_id, f)
+    for (const e of eintraege) {
+      const f = nachId.get(e.id)
+      if (f) e.regal = vermerkZuRegal(f)
+    }
+  }
   const gesamt = count ?? eintraege.length
   const antwort: MaterialListe = {
     eintraege,

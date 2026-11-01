@@ -16,6 +16,7 @@ import {
   Repeat,
   Search,
   SearchX,
+  Share2,
   Trash2,
   Upload,
 } from 'lucide-react'
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { HAUPTAKTION, NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { TeilenDialog, type TeilenZiel } from '@/components/werkzeugkiste/teilen-dialog'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
 import { ablaufHref, neuerAblaufHref, WERKZEUGE } from '@/lib/werkzeugkiste'
 import {
@@ -66,6 +68,7 @@ import {
   type MaterialListe,
   type MaterialZeile,
 } from '@/lib/werkzeugkiste-materialien'
+import { regalPill, type MaterialRegal } from '@/lib/werkzeugkiste-regal'
 
 const FELD = 'min-h-11 rounded-xl border-ws-line bg-ws-surface text-ws-text focus:ring-ws-green'
 const MENUE = 'border-ws-line bg-ws-surface text-ws-text'
@@ -101,6 +104,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
   const [vorschau, setVorschau] = useState<MaterialZeile | null>(null)
   const [umbenennen, setUmbenennen] = useState<MaterialZeile | null>(null)
   const [loeschen, setLoeschen] = useState<MaterialZeile | null>(null)
+  const [teilen, setTeilen] = useState<TeilenZiel | null>(null)
 
   // Suchfeld: erst nach kurzer Pause abfragen
   useEffect(() => {
@@ -165,6 +169,10 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
 
   function setzeTitel(id: string, titel: string) {
     setListe((alt) => (alt ? { ...alt, eintraege: alt.eintraege.map((z) => (z.id === id ? { ...z, titel } : z)) } : alt))
+  }
+
+  function setzeRegal(id: string, regal: MaterialRegal | null) {
+    setListe((alt) => (alt ? { ...alt, eintraege: alt.eintraege.map((z) => (z.id === id ? { ...z, regal } : z)) } : alt))
   }
 
   const speicher = liste ? speicherStand(liste.speicher) : null
@@ -262,6 +270,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                   <TableRow className="border-ws-line bg-ws-bg hover:bg-ws-bg">
                     <TableHead className="text-ws-muted">Titel</TableHead>
                     <TableHead className="text-ws-muted">Werkzeug</TableHead>
+                    <TableHead className="text-ws-muted">Regal</TableHead>
                     <TableHead className="text-ws-muted">Erstellt</TableHead>
                     <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
                   </TableRow>
@@ -273,11 +282,14 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                         <TitelZelle z={z} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap align-top text-ws-muted">{werkzeugName(z.werkzeug)}</TableCell>
+                      <TableCell className="whitespace-nowrap align-top">
+                        {z.art === 'material' && <RegalPill regal={z.regal} />}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap align-top text-ws-muted">{relativesDatum(z.erstelltAm)}</TableCell>
                       <TableCell className="align-top">
                         <div className="flex items-center justify-end gap-2">
                           <Hauptknopf z={z} />
-                          <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} />
+                          <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -294,9 +306,10 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                   <p className="text-sm text-ws-muted">
                     {werkzeugName(z.werkzeug)} · {relativesDatum(z.erstelltAm)}
                   </p>
+                  {z.art === 'material' && <RegalPill regal={z.regal} />}
                   <div className="flex items-center gap-2">
                     <Hauptknopf z={z} voll />
-                    <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} />
+                    <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} />
                   </div>
                 </li>
               ))}
@@ -332,6 +345,14 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
           toast.success('Titel geändert')
         }}
       />
+      <TeilenDialog
+        ziel={teilen}
+        schliessen={() => setTeilen(null)}
+        gespeichert={(id, regal) => {
+          setzeRegal(id, regal)
+          setTeilen(null)
+        }}
+      />
       <LoeschenDialog
         key={loeschen?.id ?? 'loeschen'}
         zeile={loeschen}
@@ -344,6 +365,18 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
       />
     </div>
   )
+}
+
+/** Spalte „Regal“: wer das Material sieht (privat · Fachbereich · alle · N Personen) */
+function RegalPill({ regal }: { regal: MaterialRegal | null | undefined }) {
+  const p = regalPill(regal)
+  const ton = {
+    still: 'border-ws-line bg-ws-raised text-ws-muted',
+    gruen: 'border-ws-green/30 bg-ws-green/15 text-ws-green',
+    blau: 'border-ws-blue/30 bg-ws-blue/15 text-ws-blue',
+    rot: 'border-ws-red/30 bg-ws-red/15 text-ws-red',
+  }[p.ton]
+  return <Badge className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold hover:bg-transparent ${ton}`}>{p.text}</Badge>
 }
 
 /** Titel, darunter Format · aus Skript bzw. Stand des Entwurfs */
@@ -423,11 +456,13 @@ function ZeilenMenue({
   setVorschau,
   setUmbenennen,
   setLoeschen,
+  setTeilen,
 }: {
   z: MaterialZeile
   setVorschau: (z: MaterialZeile) => void
   setUmbenennen: (z: MaterialZeile) => void
   setLoeschen: (z: MaterialZeile) => void
+  setTeilen: (ziel: TeilenZiel) => void
 }) {
   const [kopiert, setKopiert] = useState(false)
   const entwurf = z.art === 'entwurf'
@@ -496,6 +531,12 @@ function ZeilenMenue({
               Gleiches Skript, anderes Werkzeug
               {!anderes.erlaubt && <span className="text-xs text-ws-faint">{anderes.grund}</span>}
             </span>
+          </DropdownMenuItem>
+        )}
+        {!entwurf && (
+          <DropdownMenuItem className={punkt} onSelect={() => setTeilen({ id: z.id, titel: z.titel })}>
+            <Share2 className="size-4" aria-hidden />
+            Teilen …
           </DropdownMenuItem>
         )}
         {!entwurf && (
@@ -627,6 +668,7 @@ function LoeschenDialog({
             {entwurf
               ? 'Das hochgeladene Skript und alle Eingaben werden gelöscht.'
               : `„${zeile?.titel ?? ''}“ wird mit allen Dateien gelöscht. Das lässt sich nicht rückgängig machen.`}
+            {!entwurf && zeile?.regal && !zeile.regal.entnommen && ' Das Material verschwindet auch aus dem Regal. Kopien, die andere schon angelegt haben, bleiben bestehen.'}
           </AlertDialogDescription>
           {fehler && (
             <p role="alert" className="text-sm text-ws-red">

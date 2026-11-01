@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Check, ClipboardCopy, Download, Eye, Library, Loader2, PencilLine, Repeat } from 'lucide-react'
+import { Check, ClipboardCopy, Download, Eye, Library, Loader2, PencilLine, Repeat, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ablaufHref, WERKZEUGKISTE_HREF, type AblaufErgebnis } from '@/lib/werkzeugkiste'
 import { downloadHref, ladeDatei, kopiereFuerAnderesWerkzeug, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { euro } from '@/lib/werkzeugkiste-kosten'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { TeilenDialog } from '@/components/werkzeugkiste/teilen-dialog'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
 
 /**
@@ -34,6 +35,7 @@ export function SchrittFertig({
   anderesWerkzeug?: boolean
 }) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
+  const [teilenOffen, setTeilenOffen] = useState(false)
   const [kopiert, setKopiert] = useState(false)
   // Text zum Kopieren (LearningApps): Statt eines Downloads steht je Vorlage ein „Kopieren“-Knopf da
   const zumKopieren = !!ergebnis.texte && ergebnis.texte.length > 0
@@ -156,6 +158,14 @@ export function SchrittFertig({
               Gleiches Skript, anderes Werkzeug
             </Button>
           )}
+          <Button
+            variant="outline"
+            onClick={() => setTeilenOffen(true)}
+            className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}
+          >
+            <Share2 className="mr-2 size-4 shrink-0" aria-hidden />
+            Teilen …
+          </Button>
           {!direkt && (
             <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>
               <Link href={ablaufHref(ablaufId, 4)}>
@@ -168,6 +178,11 @@ export function SchrittFertig({
       </div>
 
       <VorschauDialog ablaufId={ablaufId} titel={ergebnis.titel} offen={vorschauOffen} onOpenChange={setVorschauOffen} />
+      <TeilenDialog
+        ziel={teilenOffen ? { id: ablaufId, titel: ergebnis.titel } : null}
+        schliessen={() => setTeilenOffen(false)}
+        gespeichert={() => setTeilenOffen(false)}
+      />
     </div>
   )
 }

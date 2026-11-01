@@ -1,6 +1,6 @@
 # PROJ-53: Werkzeugkiste – Regal des Kollegiums
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-01
 
@@ -284,6 +284,22 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 ### Modellempfehlung für den Bau
 - **Paket 1 (Teilen & Regal):** Sonnet 5.5. Sicherheitsregeln nach klarem Muster, viel Oberfläche, aber alles bekannt aus PROJ-51 und PROJ-52.
 - **Paket 2 (Anpassen & Moderation):** Sonnet 5.5. Opus nur, wenn der Bilder-Auszug im Bau-Schritt festfährt.
+
+## Umsetzung Paket 1 „Teilen & Regal“ (2026-11-01)
+
+**Stand:** Code fertig und getestet (2052 Tests grün, `tsc` und `npm run build` ohne Fehler). **Die Datenbank-Migration ist noch nicht angewendet.** Der Nutzer wollte sie vor dem Anwenden gemeinsam durchsehen (Entscheidung 2026-11-01). Bis dahin ist die Funktion nicht live. Die Liste „Meine Materialien“ bleibt ohne die neuen Tabellen lauffähig (fehlende Freigaben gelten als „privat“).
+
+### Was gebaut wurde
+- **Migration** [20261101_proj53_regal.sql](../supabase/migrations/20261101_proj53_regal.sql) (Rückweg: `…_down.sql`): Tabellen `regal_freigaben`, `regal_freigabe_bereiche`, `regal_freigabe_personen`, `regal_downloads`. Angemeldete Nutzer dürfen nur ihre **eigenen** Freigaben lesen, nichts direkt schreiben. Alles andere läuft über Funktionen: `regal_darf_sehen` (die eine Sichtbarkeitsregel), `regal_in_bereich`, `regal_liste`, `regal_filterwerte`, `regal_lehrkraefte`, `regal_freigabe_lesen`, `regal_freigabe_setzen`, `regal_freigabe_entfernen`, `regal_download_vorbereiten`. Die Ablauf-Tabelle und ihre Regeln sind **nicht angefasst**.
+- **Schnittstellen** unter `/api/admin/werkzeugkiste`: `GET /regal`, `GET /regal/optionen`, `GET /regal/lehrkraefte`, `GET /regal/:id/download`, `GET/PUT/DELETE /ablaeufe/:id/freigabe`. `GET /materialien` liefert je Material den Vermerk `regal`.
+- **Oberfläche:** `TeilenDialog` (aus dem Menü ⋯ und aus Schritt 5), Spalte „Regal“ mit Pill, Hinweis im Löschen-Fenster, Reiter `RegalReiter` mit Suche, Sortierung, Fach- und Werkzeug-Chips, Raster und „Mehr laden“.
+- **Gemeinsame Hilfen:** `werkzeugkiste-regal.ts` (Typen, Texte), `werkzeugkiste-regal-server.ts` (Eingabeprüfung, Fehlerabbildung).
+
+### Abweichungen und Hinweise
+- **Reine Text-Materialien** (LearningApps) lassen sich teilen, aber nicht herunterladen. Die Karte sagt das. Übernehmen geht erst mit „Anpassen“ (Paket 2).
+- **„Anpassen“ und die Moderationsansicht fehlen noch** (Paket 2). Die Datenbank kennt die Entnahme (`entnommen_*`) und sperrt danach das erneute Teilen schon jetzt.
+- **Notiz-Zeichenprüfung** lässt nur Steuerzeichen außer Zeilenumbruch und Tabulator weg (NUL kann in Text ohnehin nicht vorkommen).
+- **Spec-Auslegung „Fach“:** Auswahl = alle aktiven Fächer, die eigenen Zuständigkeiten stehen oben und sind markiert.
 
 ## QA Test Results
 _To be added by /qa_

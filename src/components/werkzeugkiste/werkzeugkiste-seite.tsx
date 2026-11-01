@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Upload, UserRoundSearch } from 'lucide-react'
+import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { AdminEmptyState } from '@/components/admin/admin-states'
 import { MeineMaterialien } from '@/components/werkzeugkiste/meine-materialien'
+import { RegalReiter } from '@/components/werkzeugkiste/regal-reiter'
 import { WerkzeugUebersicht } from '@/components/werkzeugkiste/werkzeug-uebersicht'
 import {
   neuerAblaufHref,
@@ -78,20 +78,9 @@ export function WerkzeugkisteSeite() {
           <MeineMaterialien onLeer={setMaterialienLeer} />
         </TabsContent>
         <TabsContent value="regal" className="mt-0">
-          <KommtBald />
+          <RegalReiter />
         </TabsContent>
       </Tabs>
     </div>
-  )
-}
-
-/** Platzhalter, bis PROJ-53 (Regal) gebaut ist */
-function KommtBald() {
-  return (
-    <AdminEmptyState
-      icon={UserRoundSearch}
-      title="Kommt bald"
-      description="Hier teilen Kolleginnen und Kollegen bald ihr Material. Du entscheidest dann selbst, wer deins sieht."
-    />
   )
 }

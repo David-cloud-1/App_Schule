@@ -1,6 +1,13 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
+import type {
+  FreigabeEingabe,
+  FreigabeOptionen,
+  FreigabeStand,
+  RegalAbfrage,
+  RegalListe,
+} from '@/lib/werkzeugkiste-regal'
 
 /**
  * Aufrufe der Werkzeugkiste aus dem Browser (PROJ-51). Alle Routen liegen
@@ -26,6 +33,13 @@ import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/w
  *   PATCH  /ablaeufe/:id  {titel}          Material umbenennen
  *   POST   /ablaeufe/:id/kopie             „Gleiches Skript, anderes Werkzeug“: neuer Ablauf mit kopiertem Skript, bei Schritt 2
  *   GET    /ablaeufe/:id/antwort           gespeicherte KI-Antwort als .yaml
+ *
+ * Regal des Kollegiums (PROJ-53, Paket 1):
+ *   GET    /regal?suche=&fach=&werkzeug=&sortierung=&seite=   sichtbare Karten (schmale Felder) und Filterwerte
+ *   GET    /regal/optionen                 Fachbereiche und Fächer für den Teilen-Dialog
+ *   GET    /regal/lehrkraefte?suche=       Personensuche (nur Lehrer-Rollen, Name)
+ *   GET    /regal/:id/download             fertige Datei aus dem Regal (zählt einmal je Person und Tag)
+ *   GET/PUT/DELETE /ablaeufe/:id/freigabe  eigene Freigabe lesen · teilen · zurücknehmen
  */
 
 export const WK_API = '/api/admin/werkzeugkiste'
@@ -218,6 +232,57 @@ export function benenneMaterialUm(id: string, titel: string) {
 /** Legt einen neuen Ablauf mit dem Skript des Materials an; das Material bleibt unberührt */
 export function kopiereFuerAnderesWerkzeug(id: string) {
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/kopie`, { method: 'POST' })
+}
+
+// ── Regal des Kollegiums (PROJ-53) ────────────────────────────────────────
+
+export function ladeRegal({ suche, fach, werkzeug, sortierung, seite }: RegalAbfrage) {
+  const params = new URLSearchParams({ seite: String(seite), sortierung })
+  if (suche.trim()) params.set('suche', suche.trim())
+  if (fach) params.set('fach', fach)
+  if (werkzeug) params.set('werkzeug', werkzeug)
+  return anfrage<RegalListe>(`/regal?${params.toString()}`)
+}
+
+export function ladeFreigabeOptionen() {
+  return anfrage<FreigabeOptionen>('/regal/optionen')
+}
+
+export async function sucheLehrkraefte(suche: string) {
+  const { lehrkraefte } = await anfrage<{ lehrkraefte: { id: string; name: string }[] }>(
+    `/regal/lehrkraefte?suche=${encodeURIComponent(suche)}`,
+  )
+  return lehrkraefte
+}
+
+/** `freigabe: null` heißt „Nur ich“ */
+export function ladeFreigabe(ablaufId: string) {
+  return anfrage<{ freigabe: FreigabeStand | null }>(`/ablaeufe/${encodeURIComponent(ablaufId)}/freigabe`)
+}
+
+/** „Nur ich“ nimmt das Material aus dem Regal, alles andere teilt oder ändert die Freigabe */
+export async function speichereFreigabe(ablaufId: string, eingabe: FreigabeEingabe): Promise<void> {
+  const pfad = `/ablaeufe/${encodeURIComponent(ablaufId)}/freigabe`
+  if (eingabe.stufe === 'privat') {
+    await anfrage<{ ok: true }>(pfad, { method: 'DELETE' })
+    return
+  }
+  await anfrage<{ ok: true }>(pfad, {
+    method: 'PUT',
+    body: JSON.stringify({
+      stufe: eingabe.stufe,
+      fachId: eingabe.fachId,
+      notiz: eingabe.notiz,
+      bereiche: eingabe.stufe === 'fachbereich' ? eingabe.bereiche : [],
+      personen: eingabe.stufe === 'ausgewaehlte' ? eingabe.personen : [],
+    }),
+  })
+}
+
+/** Datei aus dem Regal laden: erst prüfen, dann den kurzlebigen Link öffnen (wie bei den eigenen Materialien) */
+export async function ladeRegalDatei(freigabeId: string): Promise<void> {
+  const { url } = await anfrage<{ url: string }>(`/regal/${encodeURIComponent(freigabeId)}/download?pruefen=1`)
+  window.location.assign(url)
 }
 
 export function antwortHref(id: string) {

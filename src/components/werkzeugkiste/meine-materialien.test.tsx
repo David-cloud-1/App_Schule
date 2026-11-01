@@ -8,6 +8,10 @@ const api = vi.hoisted(() => ({
   benenneMaterialUm: vi.fn(),
   kopiereFuerAnderesWerkzeug: vi.fn(),
   ladeDatei: vi.fn(),
+  ladeFreigabe: vi.fn(),
+  ladeFreigabeOptionen: vi.fn(),
+  speichereFreigabe: vi.fn(),
+  sucheLehrkraefte: vi.fn(),
 }))
 
 vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
@@ -18,6 +22,16 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 import { toast } from 'sonner'
 
 import { MeineMaterialien } from './meine-materialien'
+
+// Radix (Teilen-Dialog) misst Größen per ResizeObserver, den jsdom nicht kennt
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+)
 
 const GB = 1024 * 1024 * 1024
 const morgen = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -58,6 +72,10 @@ beforeEach(() => {
   api.benenneMaterialUm.mockReset()
   api.kopiereFuerAnderesWerkzeug.mockReset()
   api.ladeDatei.mockReset()
+  api.ladeFreigabe.mockReset().mockResolvedValue({ freigabe: null })
+  api.ladeFreigabeOptionen.mockReset().mockResolvedValue({ bereiche: [{ id: 'd1', name: 'Spedition' }], faecher: [] })
+  api.speichereFreigabe.mockReset().mockResolvedValue(undefined)
+  api.sucheLehrkraefte.mockReset().mockResolvedValue([])
 })
 afterEach(() => vi.clearAllMocks())
 
@@ -208,5 +226,74 @@ describe('Meine Materialien (PROJ-52)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
     await waitFor(() => expect(api.benenneMaterialUm).toHaveBeenCalledWith('m1', 'Haftung (neu)'))
     expect((await screen.findAllByText('Haftung (neu)')).length).toBeGreaterThan(0)
+  })
+
+  describe('Regal (PROJ-53)', () => {
+    it('zeigt in der Spalte „Regal“, wer das Material sieht, und „privat“ ohne Freigabe', async () => {
+      api.ladeMaterialien.mockResolvedValue(
+        liste([
+          zeile({ id: 'm1', titel: 'Privat' }),
+          zeile({ id: 'm2', titel: 'Fachbereich', regal: { stufe: 'fachbereich', personen: 0, bereiche: 1, entnommen: false } }),
+          zeile({ id: 'm3', titel: 'Alle', regal: { stufe: 'alle', personen: 0, bereiche: 0, entnommen: false } }),
+          zeile({ id: 'm4', titel: 'Personen', regal: { stufe: 'ausgewaehlte', personen: 3, bereiche: 0, entnommen: false } }),
+          zeile({ id: 'm5', titel: 'Entnommen', regal: { stufe: 'alle', personen: 0, bereiche: 0, entnommen: true } }),
+        ]),
+      )
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Privat')
+      for (const text of ['privat', 'Fachbereich', 'alle', '3 Personen', 'vom Admin aus dem Regal genommen']) {
+        expect(screen.getAllByText(text).length).toBeGreaterThan(0)
+      }
+    })
+
+    it('zeigt für Entwürfe keine Regal-Angabe und kein „Teilen …“', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([zeile({ id: 'e1', art: 'entwurf', titel: 'Entwurf.docx', schritt: 2, format: null, hatDatei: false })]))
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Entwurf.docx')
+      expect(screen.queryByText('privat')).not.toBeInTheDocument()
+      oeffneMenue('Entwurf.docx')
+      await screen.findByRole('menuitem', { name: /Löschen/ })
+      expect(screen.queryByRole('menuitem', { name: /Teilen/ })).not.toBeInTheDocument()
+    })
+
+    it('öffnet „Teilen …“ aus dem Menü und zeigt danach die neue Stufe in der Zeile', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([zeile()]))
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Haftung im Frachtrecht')
+
+      oeffneMenue('Haftung im Frachtrecht')
+      fireEvent.click(await screen.findByRole('menuitem', { name: /Teilen/ }))
+      const dialog = await screen.findByRole('dialog')
+      expect(within(dialog).getByText('Material teilen')).toBeInTheDocument()
+      expect(await within(dialog).findByText('Nur du siehst dieses Material.')).toBeInTheDocument()
+
+      fireEvent.click(within(dialog).getByRole('radio', { name: /^Alle Lehrkräfte/ }))
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+      await waitFor(() => expect(api.speichereFreigabe).toHaveBeenCalledWith('m1', expect.objectContaining({ stufe: 'alle' })))
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(screen.getAllByText('alle').length).toBeGreaterThan(0)
+      expect(screen.queryByText('privat')).not.toBeInTheDocument()
+    })
+
+    it('warnt im Löschen-Fenster, dass das Material auch aus dem Regal verschwindet', async () => {
+      api.ladeMaterialien.mockResolvedValue(
+        liste([
+          zeile({ id: 'm1', regal: { stufe: 'alle', personen: 0, bereiche: 0, entnommen: false } }),
+          zeile({ id: 'm2', titel: 'Zweites Material' }),
+        ]),
+      )
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Haftung im Frachtrecht')
+
+      oeffneMenue('Haftung im Frachtrecht')
+      fireEvent.click(await screen.findByRole('menuitem', { name: /Löschen/ }))
+      expect(await screen.findByText(/verschwindet auch aus dem Regal/)).toBeInTheDocument()
+      fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Abbrechen' }))
+
+      oeffneMenue('Zweites Material')
+      fireEvent.click(await screen.findByRole('menuitem', { name: /Löschen/ }))
+      await screen.findByRole('alertdialog')
+      expect(screen.queryByText(/verschwindet auch aus dem Regal/)).not.toBeInTheDocument()
+    })
   })
 })

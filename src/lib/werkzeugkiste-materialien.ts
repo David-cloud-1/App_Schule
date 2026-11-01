@@ -1,4 +1,5 @@
 import { ABLAUF_SCHRITTE, WERKZEUGE, eingabeArt, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import type { MaterialRegal } from '@/lib/werkzeugkiste-regal'
 
 /**
  * „Meine Materialien“ (PROJ-52, Paket 1) — Typen und reine Hilfsfunktionen.
@@ -41,6 +42,8 @@ export interface MaterialZeile {
   aktualisiertAm: string
   /** Nur Entwürfe: wann der Entwurf gelöscht wird */
   laeuftAbAm: string | null
+  /** Freigabe fürs Regal (PROJ-53); leer = „Nur ich“ */
+  regal?: MaterialRegal | null
 }
 
 export interface MaterialSpeicher {
