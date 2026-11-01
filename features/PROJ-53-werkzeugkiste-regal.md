@@ -1,8 +1,8 @@
 # PROJ-53: Werkzeugkiste – Regal des Kollegiums
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-10-27
-**Last Updated:** 2026-11-01
+**Last Updated:** 2026-11-02
 
 ## Kontext
 Teil des Werkzeugkiste-Umzugs (Übersicht in PROJ-51). In der alten Werkzeugkiste gab es das „Regal des Kollegiums“: Eine Lehrkraft konnte fertiges Material schulweit freigeben, andere konnten es herunterladen. Das hochgeladene Ausgangsskript blieb immer privat, weil es oft aus Verlagsmaterial stammt.
@@ -328,7 +328,7 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 
 ## Umsetzung Paket 2 „Anpassen & Moderation“ (2026-11-02)
 
-**Stand:** Code fertig und getestet (2095 Tests grün, `tsc`, ESLint ohne Fehler, `npm run build` ohne Fehler). **Die zweite Migration ist noch nicht angewendet** und muss **vor dem Push** in die Datenbank, weil die App ab jetzt neue Spalten der Ablauf-Tabelle liest (`herkunft_name`, `auszug_am`). Ohne Migration bricht die ganze Werkzeugkiste.
+**Stand:** Paket 2 ist live (2026-11-02). Code getestet (2095 Tests grün, `tsc`, ESLint ohne Fehler, `npm run build` ohne Fehler). Die zweite Migration musste **vor dem Push** in die Datenbank, weil die App neue Spalten der Ablauf-Tabelle liest (`herkunft_name`, `auszug_am`); sie wurde von der Nutzerin oder dem Nutzer im SQL-Editor angewendet.
 
 ### Was gebaut wurde
 - **Bilder-Auszug ohne Änderung am Kern:** Beim Bauen (und beim ersten Teilen älterer Materialien) legt die App aus der Einlesung eine zweite Datei `auszug.zip` an. Sie enthält denselben Aufbau wie die Einlesung (`text.txt` und `images/…`), aber als Text nur einen Platzhalter und nur die Bilder, deren Dateiname in der Antwort vorkommt. Der Skripttext kommt nie mit. Dafür neues direktes Paket `fflate` (war schon als Unterpaket im Projekt).
@@ -343,3 +343,27 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 - **„Anpassen“ erscheint nur, wenn ein Bilder-Auszug da ist.** Bei Materialien, die vor Paket 2 gebaut wurden, entsteht er beim ersten Teilen (Einlesung muss dann noch vorhanden sein). Ältere, schon geteilte Materialien haben noch keinen; sie lassen sich laden, aber nicht anpassen, bis die Besitzerin oder der Besitzer die Freigabe einmal speichert oder das Material neu baut.
 - Die Kopie trägt zur Speichergrenze der ladenden Lehrkraft bei (Datei, Vorschau, Auszug).
 - Die Entnahme hat für die Besitzerin oder den Besitzer zwei Stellen: Pill in „Meine Materialien“ und Hinweis mit Grund im Teilen-Dialog.
+
+## QA Test Results – Paket 2 „Anpassen & Moderation“ (2026-11-02)
+
+**Ergebnis: bestanden, keine kritischen oder hohen Fehler.** Datenbank mit [supabase/tests/proj53_paket2_probe.sql](../supabase/tests/proj53_paket2_probe.sql) geprüft (Migration und Tests in einem Lauf, am Ende zurückgerollt); der Kern lokal mit dem echten Kern gegengeprüft.
+
+| Bereich | Geprüft | Ergebnis |
+|---|---|---|
+| Anpassen (Datenbank) | „anpassbar“ nur mit Auszug, Antwort und Prüfbericht und nie am eigenen Material · die Quelle bekommt nur, wer das Material sehen darf (Kollege im Bereich oder ausgewählt: ja; Azubi, nicht ausgewählte Lehrkraft, nach Entnahme: nein) · die Antwort geht mit, nie Skript oder Prompt | bestanden |
+| Schutz der Herkunft | Browser-Schlüssel kann `herkunft_name` und `auszug_am` weder beim Anlegen noch nachträglich setzen | bestanden |
+| Moderation | Liste, Entnehmen und Zulassen nur für den Super-Admin (Bereichs-Admin, Azubi, anonym abgelehnt) · Grund Pflicht (3 bis 300 Zeichen, keine Steuerzeichen) · unbekannte Freigabe und doppelte Entnahme abgelehnt · Material bleibt unangetastet · nach Entnahme sieht niemand es, erneutes Teilen gesperrt · nach Zulassen kann neu geteilt werden · nicht gesperrte Freigaben bleiben beim Zulassen | bestanden |
+| Kern-Gegenprobe (lokal) | `bauen` mit dem Bilder-Auszug statt der Einlesung: interaktive Seite **byte-gleich**, H5P-Bilder gleich; Prüfstelle läuft (lesbar) | bestanden |
+| Schnittstellen und Oberfläche | 2095 Tests grün (u. a. Auszug nur mit benutzten Bildern ohne Skripttext, Kopie wird Material der ladenden Lehrkraft ohne Skript, Speicherkopie nur Auszug/Datei/Vorschau, Aufräumen bei Fehler, Moderation nur Super-Admin mit Protokoll, Prüfstelle bei Kopien, Moderationsansicht, Anpassen-Knopf); `tsc`, ESLint, Build ohne Fehler | bestanden |
+
+### Hinweise (keine Fehler)
+- **Probe-Artefakt:** Im ersten Lauf zeigte der „Server setzt Herkunft“-Test eine leere Herkunft, weil die Probe die Rolle „angemeldeter Nutzer“ in der Sitzung stehen ließ. Der Schutz-Trigger hat korrekt blockiert. Das Skript setzt dafür jetzt die Rolle `service_role` (so arbeitet der echte Server).
+- **Nicht geprüft:** ein angemeldeter Durchlauf im Browser (kein Entwicklungsserver), also „Anpassen“ mit echten Dateien im Speicher und die Moderationsansicht auf dem Bildschirm. Der Speicher-Teil von „Anpassen“ (Dateien kopieren) ist nur mit nachgebildetem Speicher getestet.
+- Ältere, schon geteilte Materialien haben keinen Bilder-Auszug und sind nicht anpassbar, bis die Freigabe einmal gespeichert oder das Material neu gebaut wird (steht in der Umsetzung).
+- Es gibt noch kein Konto mit der Rolle „Lehrkraft“ in der Datenbank; die Probe lief mit Bereichs-Admins.
+
+## Deployment – Paket 2 (2026-11-02)
+- Migration `20261102_proj53_paket2.sql` im SQL-Editor angewendet (erster Versuch war der Probe-Text, deshalb mit Fehlermeldung „PROBE-ERGEBNIS“, danach die echte Datei). Geprüft danach: 3 Spalten, 4 neue Funktionen (13 Regal-Funktionen insgesamt), Schutz-Trigger, `regal_liste` mit „anpassbar“, anonym nicht ausführbar.
+- Push auf `main` (Commits 406332d, c7a9c5c, 6cc1fb3), Vercel-Build „Ready“.
+- Ohne Anmeldung liefern alle neuen und geänderten Routen 401 (Regal, Moderation, Meine Materialien, Freigabe, Anpassen, Entnehmen, Zulassen, Prüfen). Vercel-Fehlerprotokoll der letzten 20 Minuten leer.
+- Kern: keine Änderung, kein Deploy.
