@@ -1,8 +1,8 @@
 # PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-28
-**Last Updated:** 2026-10-29
+**Last Updated:** 2026-11-01
 
 ## Kontext
 Mit PROJ-64 kostet „Direkt erstellen“ Geld aus dem Schulguthaben. Jede Lehrkraft soll nachvollziehen können, was sie selbst verbraucht hat. Das soll nicht kontrollieren, sondern Transparenz schaffen, damit jede Person selbst entscheidet, wann sie den kostenlosen Weg nimmt.
@@ -125,5 +125,8 @@ Kein Backend und keine Migration (wie im Tech Design). Gebaut:
 
 **Entscheidung: Bereit für Produktion.** Kein Critical/High-Fehler. Status **Approved**.
 
-## Deployment
-_To be added by /deploy_
+## Deployment (2026-11-01)
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Production, Status Ready)
+- **Code:** Commit `b8e91ff` ist auf `main` und damit im Produktionsstand enthalten. Keine Datenbank-Migration nötig (PROJ-65 ändert keine Tabellen).
+- **Prüfung vor Deploy:** `npm run lint` ohne Fehler (nur bestehende Warnungen), `npm run build` erfolgreich.
+- **Prüfung nach Deploy:** `/admin/konto` leitet ohne Anmeldung auf `/login` weiter. Die Karte mit dem Verbrauch selbst wurde nicht im Browser geprüft (Leerzustand bis zum ersten direkten Lauf mit Kosten).
