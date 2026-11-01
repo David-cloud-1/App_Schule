@@ -357,6 +357,9 @@ BEGIN
     r := r || format('T3 Browser-Schlüssel ändert Herkunft nachträglich: %s, Auszug leer: %s (NULL, true)' || E'\n', coalesce(v_herk, 'NULL'), v_t);
   EXCEPTION WHEN OTHERS THEN r := r || format('T3 Fehler: %s' || E'\n', SQLERRM); END;
   RESET ROLE;
+  -- Der echte Server arbeitet mit dem Service-Schlüssel (Rolle service_role), nicht mit der Rolle angemeldeter Nutzer
+  PERFORM set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+  PERFORM set_config('request.jwt.claim.sub', '', true);
   UPDATE werkzeug_ablaeufe SET herkunft_name = 'Frau Meier', herkunft_am = now() WHERE owner_id = v_kollege AND werkzeug = 'skript';
   SELECT herkunft_name INTO v_herk FROM werkzeug_ablaeufe WHERE owner_id = v_kollege AND werkzeug = 'skript' LIMIT 1;
   r := r || format('T3 Server (ohne Browser-Schlüssel) setzt Herkunft: %s (Frau Meier)' || E'\n', v_herk);
