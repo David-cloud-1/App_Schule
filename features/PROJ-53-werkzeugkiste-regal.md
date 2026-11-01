@@ -287,7 +287,7 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 
 ## Umsetzung Paket 1 „Teilen & Regal“ (2026-11-01)
 
-**Stand:** Code fertig und getestet (2052 Tests grün, `tsc` und `npm run build` ohne Fehler). **Die Datenbank-Migration ist noch nicht angewendet.** Der Nutzer wollte sie vor dem Anwenden gemeinsam durchsehen (Entscheidung 2026-11-01). Bis dahin ist die Funktion nicht live. Die Liste „Meine Materialien“ bleibt ohne die neuen Tabellen lauffähig (fehlende Freigaben gelten als „privat“).
+**Stand:** Paket 1 ist live (2026-11-01). Code getestet (2052 Tests grün, `tsc` und `npm run build` ohne Fehler), Migration von der Nutzerin oder dem Nutzer im SQL-Editor angewendet (der Zugriff auf die Produktions-Datenbank per MCP wurde für Schreibzugriffe abgelehnt).
 
 ### Was gebaut wurde
 - **Migration** [20261101_proj53_regal.sql](../supabase/migrations/20261101_proj53_regal.sql) (Rückweg: `…_down.sql`): Tabellen `regal_freigaben`, `regal_freigabe_bereiche`, `regal_freigabe_personen`, `regal_downloads`. Angemeldete Nutzer dürfen nur ihre **eigenen** Freigaben lesen, nichts direkt schreiben. Alles andere läuft über Funktionen: `regal_darf_sehen` (die eine Sichtbarkeitsregel), `regal_in_bereich`, `regal_liste`, `regal_filterwerte`, `regal_lehrkraefte`, `regal_freigabe_lesen`, `regal_freigabe_setzen`, `regal_freigabe_entfernen`, `regal_download_vorbereiten`. Die Ablauf-Tabelle und ihre Regeln sind **nicht angefasst**.
@@ -301,8 +301,30 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 - **Notiz-Zeichenprüfung** lässt nur Steuerzeichen außer Zeilenumbruch und Tabulator weg (NUL kann in Text ohnehin nicht vorkommen).
 - **Spec-Auslegung „Fach“:** Auswahl = alle aktiven Fächer, die eigenen Zuständigkeiten stehen oben und sind markiert.
 
-## QA Test Results
-_To be added by /qa_
+## QA Test Results – Paket 1 „Teilen & Regal“ (2026-11-01)
 
-## Deployment
-_To be added by /deploy_
+**Ergebnis: bestanden, keine kritischen oder hohen Fehler.** Geprüft wurde die Datenbank mit einem Probe-Skript ([supabase/tests/proj53_regal_probe.sql](../supabase/tests/proj53_regal_probe.sql)), das Migration und Tests in einem Lauf ausführt und am Ende alles zurückrollt. Das Skript lief im SQL-Editor durch, alle Zeilen entsprachen der Erwartung.
+
+| Bereich | Geprüft | Ergebnis |
+|---|---|---|
+| Sichtbarkeit | Stufe Fachbereich: Kollege im Bereich sieht es, fremder Bereich, Azubi und Super-Admin (nicht im Bereich) nicht · Stufe „Alle“: Lehrkräfte ja, Azubi nein · Stufe „Ausgewählte“: nur die Gewählten, Karte meldet „mit dir geteilt“ | bestanden |
+| Grenzen | fremder Bereich, 51 Personen, Azubi als ausgewählte Person, Notiz mit 201 Zeichen, Steuerzeichen: alle abgelehnt · fremdes Material lässt sich weder teilen noch entfernen (Freigabe bleibt) | bestanden |
+| Zähler | zwei Downloads derselben Person am selben Tag zählen einmal · eigene Downloads zählen nicht · Download ohne Berechtigung liefert nichts | bestanden |
+| Liste | Zähler, Filterwerte, Suche; ein einzelnes Prozentzeichen als Suche wirkt wörtlich und findet nichts | bestanden |
+| Rechte | Besitzer liest eigene Freigaben direkt · direktes Schreiben und Lesen der Downloads für angemeldete Nutzer gesperrt · Kollege sieht fremde Freigaben und fremde Abläufe nicht · anonyme Aufrufe der Funktionen abgelehnt · Personensuche liefert Azubis nie | bestanden |
+| Entnahme (Datenbankteil) | nach Entnahme sieht niemand das Material, die Besitzerin oder der Besitzer kann weder erneut teilen noch entfernen und sieht den Grund | bestanden |
+| Rollenverlust, Löschen | Besitzer ohne Lehrer-Rolle: Material verschwindet aus dem Regal · Material löschen nimmt Freigabe und Downloads mit | bestanden |
+| Oberfläche und Schnittstellen | 2052 Tests grün (u. a. Dialog, Regal-Reiter, Spalte „Regal“, alle Routen); `tsc` und `npm run build` ohne Fehler | bestanden |
+
+### Hinweise (keine Fehler)
+- **Nicht geprüft:** ein angemeldeter Durchlauf im Browser. Der Nutzer hat bewusst keinen Entwicklungsserver (stürzt den Rechner ab). Bitte einmal mit einem Lehrkraft-Konto den Reiter „Regal des Kollegiums“, „Teilen …“ im Menü ⋯ und Schritt 5 öffnen.
+- Die Probe lief gegen Bereichs-Admins als Testpersonen, weil es in der Datenbank noch keine Konten mit der Rolle „Lehrkraft“ gibt. Die Regel für eingetragene Lehrkräfte (Zuständigkeit unter „Meine Fächer“) ist durch dieselbe Funktion abgedeckt, aber nicht mit echten Einträgen durchgespielt.
+- Die Entnahme durch den Super-Admin ist nur im Datenbankteil gebaut, die Oberfläche kommt mit Paket 2.
+
+## Deployment – Paket 1 (2026-11-01)
+- Migration `20261101_proj53_regal.sql` im SQL-Editor angewendet. Geprüft danach: 4 Tabellen mit Zeilenschutz, 9 Funktionen, 3 Zugriffsregeln, 0 Freigaben.
+- Push auf `main` (Commits f20011c, 90e6daa, 920b894), Vercel-Build „Ready“.
+- Ohne Anmeldung liefern alle neuen Routen 401 (Lesen, Teilen, Entfernen, Download, Optionen, Personensuche, Meine Materialien). Vercel-Fehlerprotokoll der letzten 15 Minuten leer.
+
+## Paket 2 „Anpassen & Moderation“
+_Noch offen._
