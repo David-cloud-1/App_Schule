@@ -19,6 +19,16 @@ beforeEach(() => {
 })
 
 describe('Überarbeiten-Hilfen in Schritt 4 (PROJ-52, Paket 2)', () => {
+  it('weist bei einem fertigen Material darauf hin, dass die Datei erst nach dem Neubau stimmt (BUG-2)', () => {
+    zeige({ fertig: true })
+    expect(screen.getByText(/Die fertige Datei bleibt die alte/)).toBeInTheDocument()
+  })
+
+  it('zeigt diesen Hinweis bei einem Entwurf nicht', () => {
+    zeige()
+    expect(screen.queryByText(/Die fertige Datei bleibt die alte/)).not.toBeInTheDocument()
+  })
+
   it('ersetzt einen Tippfehler überall und meldet die Zahl der Stellen', () => {
     const p = zeige()
     fireEvent.click(screen.getByRole('button', { name: /Tippfehler direkt korrigieren/ }))

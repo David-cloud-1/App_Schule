@@ -810,6 +810,8 @@ export interface AblaufErgebnis {
   hinweis?: string
   /** Text zum Kopieren je Vorlage (LearningApps, PROJ-54): Schritt 5 zeigt ihn statt eines Downloads */
   texte?: { titel: string; text: string }[]
+  /** Zeitpunkt der Fertigstellung (PROJ-52): „Erstellt“ in Meine Materialien; fehlt bei älteren Materialien */
+  fertigAm?: string
 }
 
 /**

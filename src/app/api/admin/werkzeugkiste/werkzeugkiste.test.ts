@@ -220,7 +220,9 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
       const a = (await res.json()).ablauf
       expect(a.status).toBe('fertig')
       expect(a.schritt).toBe(5)
-      expect(a.ergebnis).toEqual({ titel: 'Haftung', dateiname: 'Haftung.h5p', format: 'h5p', kapitel: 6, aufgaben: 31 })
+      expect(a.ergebnis).toEqual({ titel: 'Haftung', dateiname: 'Haftung.h5p', format: 'h5p', kapitel: 6, aufgaben: 31, fertigAm: expect.any(String) })
+      // „Erstellt“ in Meine Materialien (BUG-3): Zeitpunkt der Fertigstellung, ein gültiges Datum
+      expect(Number.isNaN(Date.parse(a.ergebnis.fertigAm))).toBe(false)
       const body = JSON.parse(kernFetch.mock.calls[0][1].body)
       expect(body.datei_ziel.url).toContain('schreiben')
       expect(body.vorschau_ziel.url).toContain('schreiben')

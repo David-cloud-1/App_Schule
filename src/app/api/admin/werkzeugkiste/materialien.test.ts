@@ -106,7 +106,7 @@ beforeEach(() => {
 const LISTEN_ZEILE = {
   id: ID, werkzeug: 'skript', status: 'fertig', schritt: 5, titel: 'Haftung im Frachtrecht', datei_name: 'Haftung.pdf',
   hat_antwort: true, skript_entfernt_am: null, created_at: '2026-10-29T08:00:00Z', updated_at: '2026-10-29T09:00:00Z',
-  laeuft_ab_am: null, video_url: null, ergebnis_titel: 'Haftung im Frachtrecht', ergebnis_format: 'h5p', ergebnis_vorschau: null, ergebnis_text: null,
+  laeuft_ab_am: null, video_url: null, ergebnis_titel: 'Haftung im Frachtrecht', ergebnis_format: 'h5p', ergebnis_fertig_am: null, ergebnis_vorschau: null, ergebnis_text: null,
 }
 
 function listeAnmelden(zeilen: unknown[], count = zeilen.length, genutzt = 3 * 1024 * 1024) {

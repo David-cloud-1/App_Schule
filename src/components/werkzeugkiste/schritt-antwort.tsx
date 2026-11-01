@@ -21,6 +21,7 @@ export function SchrittAntwort({
   erneutPruefen,
   ablaufId,
   hilfenFreigegeben = false,
+  materialFertig = false,
   onAblauf,
 }: {
   antwort: string
@@ -33,6 +34,8 @@ export function SchrittAntwort({
   ablaufId?: string
   /** Kapitel neu anfragen braucht die gespeicherte, geprüfte Antwort */
   hilfenFreigegeben?: boolean
+  /** Es gibt schon eine fertige Datei, die beim Überarbeiten erst nach dem Neubauen stimmt */
+  materialFertig?: boolean
   onAblauf?: (a: Ablauf) => void
 }) {
   return (
@@ -69,7 +72,7 @@ export function SchrittAntwort({
       </div>
 
       {ablaufId && onAblauf && antwort.trim() && (
-        <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} onAblauf={onAblauf} />
+        <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} fertig={materialFertig} onAblauf={onAblauf} />
       )}
     </div>
   )

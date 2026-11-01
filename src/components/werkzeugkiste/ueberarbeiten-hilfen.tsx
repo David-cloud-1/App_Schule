@@ -44,16 +44,24 @@ export function UeberarbeitenHilfen({
   antwort,
   setAntwort,
   gespeichert,
+  fertig = false,
   onAblauf,
 }: {
   ablaufId: string
   antwort: string
   setAntwort: (a: string) => void
   gespeichert: boolean
+  /** Der Ablauf ist schon ein Material: Die fertige Datei ändert sich erst beim Neubauen */
+  fertig?: boolean
   onAblauf: (a: Ablauf) => void
 }) {
   return (
     <section aria-label="Antwort überarbeiten" className="space-y-3">
+      {fertig && (
+        <p className="text-sm text-ws-muted">
+          Änderungen hier gelten für die Antwort. Die fertige Datei bleibt die alte, bis du unten „Material erstellen“ wählst.
+        </p>
+      )}
       <Tippfehler antwort={antwort} setAntwort={setAntwort} />
       {gespeichert && <KapitelNeu ablaufId={ablaufId} onAblauf={onAblauf} />}
     </section>

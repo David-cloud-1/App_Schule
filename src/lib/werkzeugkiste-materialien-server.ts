@@ -57,6 +57,7 @@ export const LISTEN_SPALTEN = [
   'video_url:kennzahlen->>videoUrl',
   'ergebnis_titel:ergebnis->>titel',
   'ergebnis_format:ergebnis->>format',
+  'ergebnis_fertig_am:ergebnis->>fertigAm',
   'ergebnis_vorschau:ergebnis->>hatVorschau',
   // Erster Text-Block (LearningApps): nur der Titel, um „keine Datei, nur Texte“ zu erkennen
   'ergebnis_text:ergebnis->texte->0->>titel',
@@ -77,6 +78,7 @@ export interface ListenZeile {
   video_url: string | null
   ergebnis_titel: string | null
   ergebnis_format: string | null
+  ergebnis_fertig_am: string | null
   ergebnis_vorschau: string | null
   ergebnis_text: string | null
 }
@@ -110,7 +112,8 @@ export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
     hatVorschau: material && z.ergebnis_vorschau !== 'false',
     hatAntwort: !!z.hat_antwort,
     skriptEntfernt: !!z.skript_entfernt_am,
-    erstelltAm: z.created_at,
+    // Material: Zeitpunkt der Fertigstellung (ältere Materialien: Anlage des Ablaufs)
+    erstelltAm: (material && z.ergebnis_fertig_am) || z.created_at,
     aktualisiertAm: z.updated_at,
     laeuftAbAm: material ? null : z.laeuft_ab_am,
   }

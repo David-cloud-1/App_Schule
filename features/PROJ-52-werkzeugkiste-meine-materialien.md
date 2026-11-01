@@ -346,8 +346,8 @@ Auf Wunsch des Nutzers gilt „kein Dev-Server, kein Playwright“ (beides bring
 | ID | Schwere | Beschreibung |
 |---|---|---|
 | BUG-1 | Medium | ✅ **Behoben (2026-10-30, siehe „Nachbesserung BUG-1“ unten).** **Fehlende Datei beim Herunterladen:** „Herunterladen“ ist ein Link auf die Download-Route. Fehlt die Datei im Speicher, antwortet die Route mit 404-JSON bzw. der Speicher mit einer JSON-Fehlerseite. Die Spec verlangt den ruhigen Satz „Die Datei ist nicht mehr vorhanden. Über Überarbeiten neu erstellen.“, ohne technischen Fehler. Die Oberfläche fängt das nicht ab. Kein Blocker (tritt nur bei verlorenen Dateien auf), Nachbesserung vor oder mit Paket 2. |
-| BUG-2 | Low | Nach „Überarbeiten“ speichert die Prüfung die neue Antwort sofort, die Datei bleibt bis zum Neubau die alte. „KI-Antwort herunterladen“ kann dann von der Datei abweichen. Im Tech Design so vorgesehen, Paket 2 kann es mit der Zwei-Tabs-Regel klären. |
-| BUG-3 | Low | „Erstellt“ zeigt die Anlage des Ablaufs, nicht die Fertigstellung (kein eigenes Feld). Bei Entwürfen, die Tage liegen, steht ein früheres Datum als das Fertigstellen. |
+| BUG-2 | Low | ✅ **Entschärft (2026-11-01):** Bei einem fertigen Material steht in Schritt 4 der Hinweis „Die fertige Datei bleibt die alte, bis du unten „Material erstellen“ wählst.“ Ursprünglich: Nach „Überarbeiten“ speichert die Prüfung die neue Antwort sofort, die Datei bleibt bis zum Neubau die alte. „KI-Antwort herunterladen“ kann dann von der Datei abweichen. Im Tech Design so vorgesehen, Paket 2 kann es mit der Zwei-Tabs-Regel klären. |
+| BUG-3 | Low | ✅ **Behoben (2026-11-01):** Das Ergebnis speichert jetzt `fertigAm`; die Liste zeigt es als „Erstellt“ (ältere Materialien ohne Wert: Anlage des Ablaufs, keine Migration nötig). Ursprünglich: „Erstellt“ zeigt die Anlage des Ablaufs, nicht die Fertigstellung (kein eigenes Feld). Bei Entwürfen, die Tage liegen, steht ein früheres Datum als das Fertigstellen. |
 | BUG-4 | Low | Die Liste hat keine Begrenzung der Anfragen pro Zeit (nur Lehrer-Rolle und 50 Zeilen je Seite). Bei etwa 20 Lehrkräften unkritisch. |
 
 ### Sicherheit (Red Team)
@@ -400,3 +400,9 @@ Gesamtsuite 1949 grün (vorher 1906); Produktions-Build, `tsc`, Lint (0 Fehler) 
 - **Kern** zuerst: Commit `8484f5e` auf Zweig `vercel-kern` (Werkzeugkiste-Repo, nicht nach GitHub gepusht), per `vercel deploy --prod` als Projekt `werkzeugkiste-kern` live, Status Ready. `/api/gesund` 200; neue Wege ohne Schlüssel 401. Ein Live-Aufruf mit Schlüssel fehlt noch.
 - **App**: Commit `62959f7` auf `main`, gepusht; Production `spedilern` Ready. Ohne Login: neue Routen 401. Keine Migration, keine neuen Umgebungsvariablen.
 - **Noch offen:** Browser-/Handy-Durchgang (Paket 1 und Paket 2, inkl. „Kapitel neu“ mit echter KI und Neubau mit zwei Tabs). Erst danach Status „Deployed“.
+
+## Fehlerbehebungen BUG-2 und BUG-3 (2026-11-01)
+- **BUG-3:** `kernBauen` setzt `fertigAm` im Ergebnis (jedes Neubauen aktualisiert es). `GET /materialien` liest `ergebnis->>fertigAm`; für Entwürfe und ältere Materialien bleibt es `created_at`. Keine Datenbank-Migration.
+- **BUG-2:** Neuer Hinweis in den Überarbeiten-Hilfen (`fertig`), nur bei einem schon fertigen Material.
+- Tests: 3 neue (Erstellt-Regel, Hinweis mit/ohne Material), 1 angepasst. Gesamtsuite 1975 grün, `tsc` und Lint sauber.
+- BUG-4 (keine Begrenzung der Listenabfragen) bleibt bewusst offen.

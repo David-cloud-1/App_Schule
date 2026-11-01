@@ -376,6 +376,7 @@ export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, ant
     format: String(r.format),
     kapitel: Number(r.kapitel) || 0,
     aufgaben: Number(r.aufgaben) || 0,
+    fertigAm: new Date().toISOString(),
     ...(Array.isArray(r.enthaelt) ? { enthaelt: r.enthaelt.map(String) } : {}),
     ...(r.hatVorschau === false ? { hatVorschau: false } : {}),
     ...(typeof r.einheit === 'string' ? { einheit: r.einheit } : {}),

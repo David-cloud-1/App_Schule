@@ -13,10 +13,16 @@ import {
 const BASIS: ListenZeile = {
   id: 'a1', werkzeug: 'skript', status: 'fertig', schritt: 5, titel: null, datei_name: null, hat_antwort: false,
   skript_entfernt_am: null, created_at: '2026-10-01T08:00:00Z', updated_at: '2026-10-02T08:00:00Z', laeuft_ab_am: null,
-  video_url: null, ergebnis_titel: null, ergebnis_format: null, ergebnis_vorschau: null, ergebnis_text: null,
+  video_url: null, ergebnis_titel: null, ergebnis_format: null, ergebnis_fertig_am: null, ergebnis_vorschau: null, ergebnis_text: null,
 }
 
 describe('zeileZuMaterial (PROJ-52)', () => {
+  it('„Erstellt“ ist bei Materialien die Fertigstellung, sonst (ältere Materialien, Entwürfe) die Anlage', () => {
+    expect(zeileZuMaterial({ ...BASIS, ergebnis_fertig_am: '2026-10-05T12:00:00Z' }).erstelltAm).toBe('2026-10-05T12:00:00Z')
+    expect(zeileZuMaterial({ ...BASIS }).erstelltAm).toBe(BASIS.created_at)
+    expect(zeileZuMaterial({ ...BASIS, status: 'laeuft', ergebnis_fertig_am: '2026-10-05T12:00:00Z' }).erstelltAm).toBe(BASIS.created_at)
+  })
+
   it('nimmt als Titel zuerst den gespeicherten, dann den aus dem Ergebnis, dann den Skriptnamen, dann das Werkzeug', () => {
     expect(zeileZuMaterial({ ...BASIS, titel: 'Mein Titel', ergebnis_titel: 'KI', datei_name: 'x.pdf' }).titel).toBe('Mein Titel')
     expect(zeileZuMaterial({ ...BASIS, ergebnis_titel: 'KI', datei_name: 'x.pdf' }).titel).toBe('KI')
