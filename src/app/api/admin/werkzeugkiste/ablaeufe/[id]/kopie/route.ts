@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { eingabeArt } from '@/lib/werkzeugkiste'
-import { HINWEIS_SKRIPT_ENTFERNT } from '@/lib/werkzeugkiste-materialien'
+import { HINWEIS_AUS_REGAL, HINWEIS_SKRIPT_ENTFERNT } from '@/lib/werkzeugkiste-materialien'
 import { aktualisiereSpeicher, speicherPruefen } from '@/lib/werkzeugkiste-materialien-server'
 import {
   ABLAUF_SPALTEN,
@@ -36,6 +36,7 @@ export async function POST(_request: Request, { params }: Kontext) {
   const quelle = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!quelle) return fehler('Dieses Material gibt es nicht mehr.', 404)
 
+  if (quelle.herkunft_name) return fehler(`${HINWEIS_AUS_REGAL}. Lade für ein neues Material ein eigenes Skript hoch.`, 409)
   if (quelle.skript_entfernt_am) return fehler(`${HINWEIS_SKRIPT_ENTFERNT}. Lade das Skript für ein neues Material erneut hoch.`, 409)
   if (eingabeArt(quelle.werkzeug) === 'video') {
     return fehler('Video-Fragen brauchen ein eigenes Transkript. Starte dafür einen neuen Ablauf.', 409)

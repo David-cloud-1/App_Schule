@@ -41,6 +41,8 @@ export interface RegalKarte {
   mitMirGeteilt: boolean
   /** false = nur Texte zum Kopieren, keine Datei */
   hatDatei: boolean
+  /** „Anpassen“ ist möglich (nicht das eigene Material, Antwort und Bilder-Auszug sind da) */
+  anpassbar: boolean
   geladen: number
   geteiltAm: string
 }
@@ -57,6 +59,37 @@ export interface RegalListe {
   hatMehr: boolean
   /** Nur bei der ersten Seite */
   filter?: RegalFilterwerte
+  /** Nur der Super-Admin: Er sieht zusätzlich die Moderationsansicht */
+  moderation?: boolean
+}
+
+/** Eine Zeile der Moderationsansicht (nur Super-Admin) */
+export interface ModerationZeile {
+  /** Kennung der Freigabe */
+  id: string
+  titel: string
+  werkzeug: string
+  besitzerName: string
+  stufe: RegalStufe
+  geladen: number
+  geteiltAm: string
+  entnommenAm: string | null
+  entnommenGrund: string | null
+}
+
+export interface ModerationListe {
+  eintraege: ModerationZeile[]
+  gesamt: number
+  hatMehr: boolean
+}
+
+export const GRUND_MIN = 3
+export const GRUND_MAX = 300
+export const MODERATION_SEITE = 50
+
+/** „Fachbereich“, „alle“, „5 Personen“ — Stufe in der Moderationstabelle */
+export function stufeKurz(stufe: RegalStufe): string {
+  return stufe === 'alle' ? 'Alle Lehrkräfte' : stufe === 'fachbereich' ? 'Fachbereich' : 'Ausgewählte'
 }
 
 export type RegalSortierung = 'neueste' | 'geladen'

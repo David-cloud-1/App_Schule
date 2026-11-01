@@ -402,7 +402,7 @@ function TitelZelle({ z }: { z: MaterialZeile }) {
         </p>
       )}
       {frist && <p className="text-sm font-medium text-ws-orange">{frist}</p>}
-      {z.skriptEntfernt && <p className="text-xs text-ws-faint">Skript entfernt</p>}
+      {z.skriptEntfernt && !z.ausRegal && <p className="text-xs text-ws-faint">Skript entfernt</p>}
     </div>
   )
 }

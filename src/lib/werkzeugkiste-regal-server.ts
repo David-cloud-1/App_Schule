@@ -12,6 +12,11 @@ import {
   type RegalStufe,
 } from '@/lib/werkzeugkiste-regal'
 import { fehler } from '@/lib/werkzeugkiste-server'
+import {
+  GRUND_MAX,
+  GRUND_MIN,
+  type ModerationZeile,
+} from '@/lib/werkzeugkiste-regal'
 
 /**
  * Server-Seite des Regals (PROJ-53): Eingabeprüfung, Umwandlung der Zeilen
@@ -62,6 +67,7 @@ export interface RegalZeile {
   von_mir: boolean
   mit_mir_geteilt: boolean
   hat_datei: boolean
+  anpassbar?: boolean
   geladen: number | string
   geteilt_am: string
   gesamt: number | string
@@ -80,6 +86,7 @@ export function zeileZuKarte(z: RegalZeile): RegalKarte {
     vonMir: !!z.von_mir,
     mitMirGeteilt: !!z.mit_mir_geteilt,
     hatDatei: !!z.hat_datei,
+    anpassbar: !!z.anpassbar,
     geladen: Number(z.geladen) || 0,
     geteiltAm: z.geteilt_am,
   }
@@ -133,4 +140,41 @@ export function fehlerAusFunktion(error: { code?: string; message?: string } | n
   if (error?.code === 'P0001' && error.message) return fehler(error.message, 409)
   if (error?.code === 'P0002' || error?.code === '42501') return fehler('Dieses Material gibt es nicht mehr.', 404)
   return fehler('Das hat gerade nicht geklappt. Bitte versuche es erneut.', 500)
+}
+
+/** Grund für die Entnahme durch den Super-Admin */
+export const entnahmeSchema = z.object({
+  grund: z
+    .string()
+    .trim()
+    .min(GRUND_MIN, `Bitte nenne kurz den Grund (mindestens ${GRUND_MIN} Zeichen).`)
+    .max(GRUND_MAX, `Der Grund ist zu lang (höchstens ${GRUND_MAX} Zeichen).`)
+    .regex(KEINE_STEUERZEICHEN, 'Der Grund enthält ungültige Zeichen.'),
+})
+
+export interface ModerationRoh {
+  freigabe_id: string
+  titel: string
+  werkzeug: string
+  besitzer_name: string
+  stufe: RegalStufe
+  geladen: number | string
+  geteilt_am: string
+  entnommen_am: string | null
+  entnommen_grund: string | null
+  gesamt: number | string
+}
+
+export function moderationZeile(z: ModerationRoh): ModerationZeile {
+  return {
+    id: z.freigabe_id,
+    titel: z.titel,
+    werkzeug: z.werkzeug,
+    besitzerName: z.besitzer_name,
+    stufe: z.stufe,
+    geladen: Number(z.geladen) || 0,
+    geteiltAm: z.geteilt_am,
+    entnommenAm: z.entnommen_am,
+    entnommenGrund: z.entnommen_grund,
+  }
 }

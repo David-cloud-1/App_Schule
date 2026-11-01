@@ -42,6 +42,8 @@ export async function GET(request: Request) {
   const gesamt = zeilen.length > 0 ? Number(zeilen[0].gesamt) || eintraege.length : 0
 
   const antwort: RegalListe = { eintraege, gesamt, hatMehr: von + eintraege.length < gesamt }
+  // Nur der Super-Admin bekommt die Moderationsansicht (die Schnittstellen dafür prüfen es selbst noch einmal)
+  if (seite === 1 && auth.isSuperAdmin) antwort.moderation = true
 
   if (seite === 1) {
     const { data: werte } = await auth.supabase.rpc('regal_filterwerte')

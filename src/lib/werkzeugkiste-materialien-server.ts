@@ -51,6 +51,7 @@ export const LISTEN_SPALTEN = [
   'datei_name',
   'hat_antwort',
   'skript_entfernt_am',
+  'herkunft_name',
   'created_at',
   'updated_at',
   'laeuft_ab_am',
@@ -72,6 +73,7 @@ export interface ListenZeile {
   datei_name: string | null
   hat_antwort: boolean | null
   skript_entfernt_am: string | null
+  herkunft_name?: string | null
   created_at: string
   updated_at: string
   laeuft_ab_am: string | null
@@ -112,6 +114,7 @@ export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
     hatVorschau: material && z.ergebnis_vorschau !== 'false',
     hatAntwort: !!z.hat_antwort,
     skriptEntfernt: !!z.skript_entfernt_am,
+    ...(z.herkunft_name ? { ausRegal: z.herkunft_name } : {}),
     // Material: Zeitpunkt der Fertigstellung (ältere Materialien: Anlage des Ablaufs)
     erstelltAm: (material && z.ergebnis_fertig_am) || z.created_at,
     aktualisiertAm: z.updated_at,

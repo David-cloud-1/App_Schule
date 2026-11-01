@@ -17,6 +17,7 @@ export const SPEICHER_HINWEIS_AB = 0.9
 export const TITEL_MAX = 120
 
 export const HINWEIS_SKRIPT_ENTFERNT = 'Skript wurde nach 12 Monaten entfernt'
+export const HINWEIS_AUS_REGAL = 'Stammt aus dem Regal, es gibt kein Skript dazu'
 export const HINWEIS_VIDEO_WERKZEUG = 'Video-Fragen brauchen ein eigenes Transkript'
 
 export interface MaterialZeile {
@@ -42,6 +43,8 @@ export interface MaterialZeile {
   aktualisiertAm: string
   /** Nur Entwürfe: wann der Entwurf gelöscht wird */
   laeuftAbAm: string | null
+  /** Kopie aus dem Regal (PROJ-53): Name der Urheberin oder des Urhebers; solche Materialien haben nie ein Skript */
+  ausRegal?: string | null
   /** Freigabe fürs Regal (PROJ-53); leer = „Nur ich“ */
   regal?: MaterialRegal | null
 }
@@ -121,9 +124,11 @@ export function werkzeugName(id: string): string {
 }
 
 /** Zeile unter dem Titel: „Format · aus Skriptname“ (Entwürfe: nur der Stand) */
-export function untertitel(z: Pick<MaterialZeile, 'format' | 'skriptName' | 'art'>): string {
+export function untertitel(z: Pick<MaterialZeile, 'format' | 'skriptName' | 'art'> & { ausRegal?: string | null }): string {
   if (z.art === 'entwurf') return ''
-  return [formatName(z.format), z.skriptName ? `aus ${z.skriptName}` : null].filter(Boolean).join(' · ')
+  return [formatName(z.format), z.skriptName ? `aus ${z.skriptName}` : null, z.ausRegal ? `aus dem Regal von ${z.ausRegal}` : null]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 // ── Was geht noch? ─────────────────────────────────────────────────────────
@@ -134,13 +139,19 @@ export interface AktionErlaubnis {
   grund?: string
 }
 
-/** „Überarbeiten“ braucht die Einlesung (Bilder des Skripts) */
-export function ueberarbeitenErlaubt(z: Pick<MaterialZeile, 'skriptEntfernt'>): AktionErlaubnis {
+/**
+ * „Überarbeiten“ braucht die Einlesung (Bilder des Skripts). Eine Kopie aus
+ * dem Regal hat statt der Einlesung den Bilder-Auszug und lässt sich deshalb
+ * überarbeiten, auch ohne Skript.
+ */
+export function ueberarbeitenErlaubt(z: Pick<MaterialZeile, 'skriptEntfernt'> & { ausRegal?: string | null }): AktionErlaubnis {
+  if (z.ausRegal) return { erlaubt: true }
   return z.skriptEntfernt ? { erlaubt: false, grund: HINWEIS_SKRIPT_ENTFERNT } : { erlaubt: true }
 }
 
 /** „Anderes Werkzeug“ braucht das Skript; Video-Fragen haben ein Transkript statt eines Skripts */
-export function anderesWerkzeugErlaubt(z: Pick<MaterialZeile, 'skriptEntfernt' | 'werkzeug'>): AktionErlaubnis {
+export function anderesWerkzeugErlaubt(z: Pick<MaterialZeile, 'skriptEntfernt' | 'werkzeug'> & { ausRegal?: string | null }): AktionErlaubnis {
+  if (z.ausRegal) return { erlaubt: false, grund: HINWEIS_AUS_REGAL }
   if (z.skriptEntfernt) return { erlaubt: false, grund: HINWEIS_SKRIPT_ENTFERNT }
   if (eingabeArt(z.werkzeug) === 'video') return { erlaubt: false, grund: HINWEIS_VIDEO_WERKZEUG }
   return { erlaubt: true }

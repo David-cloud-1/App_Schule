@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { strToU8, unzipSync, zipSync } from 'fflate'
 import {
   type AblaufErgebnis,
   dateiEndung,
@@ -46,6 +47,8 @@ export function skriptPfad(ownerId: string, id: string, dateiname: string) {
 export const einlesungPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/einlesung.zip`
 export const ausgabePfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/ausgabe`
 export const vorschauPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/vorschau.html`
+/** Bilder-Auszug (PROJ-53): nur die im Material benutzten Bilder, im Format der Einlesung — ohne Skripttext */
+export const auszugPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/auszug.zip`
 
 // ── Eingaben ──────────────────────────────────────────────────────────────
 
@@ -166,10 +169,13 @@ export interface AblaufZeile {
   titel?: string | null
   skript_hochgeladen_am?: string | null
   skript_entfernt_am?: string | null
+  // PROJ-53: Kopie aus dem Regal (Name der Urheberin oder des Urhebers) und Bilder-Auszug
+  herkunft_name?: string | null
+  auszug_am?: string | null
 }
 
 export const ABLAUF_SPALTEN =
-  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am'
+  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am, herkunft_name, auszug_am'
 
 export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
   return {
@@ -225,6 +231,7 @@ export function zeileZuAblauf(z: AblaufZeile): Ablauf {
     pruefung: z.pruefung ?? null,
     ergebnis: z.ergebnis ?? null,
     weg: z.weg ?? null,
+    herkunft: z.herkunft_name ?? null,
     aktualisiertAm: z.updated_at,
   }
 }
@@ -349,6 +356,54 @@ function textBlock(t: unknown): { titel: string; text: string } {
   return { titel: String(o.titel ?? '').slice(0, 200), text: String(o.text ?? '').slice(0, 100_000) }
 }
 
+// ── Bilder-Auszug (PROJ-53) ───────────────────────────────────────────────
+
+const AUSZUG_PLATZHALTER = 'Auszug aus dem Regal: nur Bilder, kein Skripttext.\n'
+
+/**
+ * Aus der Einlesung (Skripttext + Bilder) die Bilder heraussuchen, die in der
+ * Antwort vorkommen, und als eigene Datei im Format der Einlesung ablegen.
+ * Der Skripttext kommt nie mit. So lässt sich ein Material, das jemand aus dem
+ * Regal übernimmt, neu bauen, ohne dass das Skript weitergegeben wird (E2).
+ * Gibt true zurück, wenn der Auszug jetzt vorliegt. Best effort: Ein Fehler
+ * hier darf nie ein fertiges Material scheitern lassen.
+ */
+export async function erzeugeAuszug(
+  service: SupabaseClient,
+  ownerId: string,
+  id: string,
+  antwort: string,
+  quellePfad: string = einlesungPfad(ownerId, id),
+): Promise<boolean> {
+  try {
+    const speicher = service.storage.from(WK_BUCKET)
+    const { data, error } = await speicher.download(quellePfad)
+    if (error || !data) return false
+    const eintraege = unzipSync(new Uint8Array(await data.arrayBuffer()))
+    const behalten: Record<string, Uint8Array> = { 'text.txt': strToU8(AUSZUG_PLATZHALTER) }
+    for (const [name, inhalt] of Object.entries(eintraege)) {
+      if (name === 'text.txt' || name.endsWith('/')) continue
+      // Die Antwort verweist mit dem Dateipfad (z. B. images/seite3_x42.png) auf ein Bild
+      if (antwort.includes(name)) behalten[name] = inhalt
+    }
+    const zip = zipSync(behalten, { level: 6 })
+    const { error: hochFehler } = await speicher.upload(auszugPfad(ownerId, id), zip, {
+      contentType: 'application/zip',
+      upsert: true,
+    })
+    if (hochFehler) return false
+    await service.from(ABLAUF_TABELLE).update({ auszug_am: new Date().toISOString() }).eq('id', id)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Lesbare Bildnamen des Auszugs (Test und Kontrolle) */
+export function auszugBildnamen(zip: Uint8Array): string[] {
+  return Object.keys(unzipSync(zip)).filter((n) => n !== 'text.txt')
+}
+
 /**
  * Datei und Vorschau aus einer geprüften Antwort bauen lassen und im Speicher
  * ablegen — gemeinsam für den kostenlosen Weg und „Direkt erstellen“ (PROJ-64).
@@ -370,6 +425,8 @@ export async function kernBauen(service: SupabaseClient, zeile: AblaufZeile, ant
     datei_ziel: dateiZiel,
     vorschau_ziel: vorschauZiel,
   })
+  // Bilder-Auszug für das Regal gleich mit ablegen (best effort, blockiert nie)
+  await erzeugeAuszug(service, zeile.owner_id, zeile.id, antwort)
   return {
     titel: String(r.titel),
     dateiname: String(r.dateiname),

@@ -296,4 +296,25 @@ describe('Meine Materialien (PROJ-52)', () => {
       expect(screen.queryByText(/verschwindet auch aus dem Regal/)).not.toBeInTheDocument()
     })
   })
+
+  describe('Kopie aus dem Regal (PROJ-53, Paket 2)', () => {
+    it('nennt die Urheberin oder den Urheber, nicht „Skript entfernt“, und erlaubt Überarbeiten', async () => {
+      api.ladeMaterialien.mockResolvedValue(
+        liste([zeile({ titel: 'Haftung (Kopie)', skriptName: null, skriptEntfernt: true, ausRegal: 'Frau Meier' })]),
+      )
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Haftung (Kopie)')
+      expect(screen.getAllByText('H5P für Moodle · aus dem Regal von Frau Meier').length).toBeGreaterThan(0)
+      expect(screen.queryByText('Skript entfernt')).not.toBeInTheDocument()
+
+      oeffneMenue('Haftung (Kopie)')
+      const ueberarbeiten = await screen.findByRole('menuitem', { name: /Überarbeiten/ })
+      expect(ueberarbeiten).not.toHaveAttribute('aria-disabled', 'true')
+      const anderes = screen.getByRole('menuitem', { name: /anderes Werkzeug/ })
+      expect(anderes).toHaveAttribute('aria-disabled', 'true')
+      expect(anderes).toHaveTextContent('Stammt aus dem Regal, es gibt kein Skript dazu')
+      // Teilen, Umbenennen, Löschen bleiben möglich
+      expect(screen.getByRole('menuitem', { name: /Teilen/ })).not.toHaveAttribute('aria-disabled', 'true')
+    })
+  })
 })

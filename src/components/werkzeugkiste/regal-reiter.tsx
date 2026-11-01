@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Download, Loader2, Search, SearchX, UserRoundSearch, Users } from 'lucide-react'
+import { Copy, Download, Loader2, Search, SearchX, ShieldAlert, UserRoundSearch, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
-import { findeWerkzeug } from '@/lib/werkzeugkiste'
-import { ladeRegal, ladeRegalDatei, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { RegalModeration } from '@/components/werkzeugkiste/regal-moderation'
+import { ablaufHref, findeWerkzeug } from '@/lib/werkzeugkiste'
+import { ladeRegal, ladeRegalDatei, passeAn, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { formatName, relativesDatum, werkzeugName } from '@/lib/werkzeugkiste-materialien'
 import {
   geladenText,
@@ -47,6 +48,8 @@ export function RegalReiter() {
 
   const [liste, setListe] = useState<RegalListe | null>(null)
   const [filter, setFilter] = useState<RegalFilterwerte | null>(null)
+  const [istModerator, setIstModerator] = useState(false)
+  const [ansicht, setAnsicht] = useState<'regal' | 'moderation'>('regal')
   const [laedt, setLaedt] = useState(true)
   const [ladtMehr, setLadtMehr] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -71,6 +74,7 @@ export function RegalReiter() {
       if (nr !== abfrageNr.current) return
       setListe(daten)
       if (daten.filter) setFilter(daten.filter)
+      if (daten.moderation) setIstModerator(true)
     } catch (e) {
       if (nr !== abfrageNr.current) return
       setFehler(meldung(e))
@@ -109,6 +113,39 @@ export function RegalReiter() {
   const gefiltert = suche.trim() !== '' || fach !== ALLE || werkzeug !== ALLE
   const komplettLeer = !laedt && !fehler && !!liste && liste.eintraege.length === 0 && !gefiltert
 
+  const umschalter = istModerator && (
+    <div role="group" aria-label="Ansicht" className="flex gap-2">
+      {(
+        [
+          ['regal', 'Regal', UserRoundSearch],
+          ['moderation', 'Moderation', ShieldAlert],
+        ] as const
+      ).map(([id, label, Icon]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={ansicht === id}
+          onClick={() => setAnsicht(id)}
+          className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green ${
+            ansicht === id ? 'border-ws-green bg-ws-green/15 text-ws-green' : 'border-ws-line text-ws-muted hover:bg-ws-raised hover:text-ws-text'
+          }`}
+        >
+          <Icon className="size-4" aria-hidden />
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (istModerator && ansicht === 'moderation') {
+    return (
+      <div className="space-y-4">
+        {umschalter}
+        <RegalModeration />
+      </div>
+    )
+  }
+
   if (!liste && laedt) return <AdminLoadingState variant="cards" rows={3} label="Das Regal wird geladen …" />
   if (!liste && fehler) return <AdminErrorState message={fehler} onRetry={() => void lade()} />
 
@@ -131,6 +168,7 @@ export function RegalReiter() {
 
   return (
     <div className="space-y-4">
+      {umschalter}
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1 sm:max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ws-faint" aria-hidden />
@@ -263,6 +301,7 @@ function ChipReihe({
 
 function Karte({ karte: k }: { karte: RegalKarte }) {
   const [laedt, setLaedt] = useState(false)
+  const [kopiert, setKopiert] = useState(false)
   const format = formatName(k.format)
   const kopf = [findeWerkzeug(k.werkzeug)?.name ?? k.werkzeug, format].filter(Boolean).join(' · ')
 
@@ -274,6 +313,18 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
       toast.error(meldung(e))
     } finally {
       setLaedt(false)
+    }
+  }
+
+  /** Legt eine Kopie in „Meine Materialien“ an und öffnet sie bei Schritt 4 (das Original bleibt unverändert) */
+  async function anpassen() {
+    setKopiert(true)
+    try {
+      const { ablauf } = await passeAn(k.id)
+      window.location.href = ablaufHref(ablauf.id, 4)
+    } catch (e) {
+      toast.error(meldung(e))
+      setKopiert(false)
     }
   }
 
@@ -305,15 +356,24 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
         {k.vonMir ? 'von dir' : `von ${k.besitzerName}`} · {relativesDatum(k.geteiltAm)} · {geladenText(k.geladen)}
       </p>
 
-      {k.hatDatei ? (
-        <Button variant="outline" onClick={() => void herunterladen()} disabled={laedt} className={`${NEBENAKTION} w-full`}>
-          {laedt ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Download className="mr-2 size-4" aria-hidden />}
-          Herunterladen
-          <span className="sr-only">: {k.titel}</span>
-        </Button>
-      ) : (
-        <p className="text-sm text-ws-muted">Dieses Material besteht nur aus Texten, es gibt keine Datei zum Herunterladen.</p>
-      )}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {k.hatDatei ? (
+          <Button variant="outline" onClick={() => void herunterladen()} disabled={laedt || kopiert} className={`${NEBENAKTION} flex-1`}>
+            {laedt ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Download className="mr-2 size-4" aria-hidden />}
+            Herunterladen
+            <span className="sr-only">: {k.titel}</span>
+          </Button>
+        ) : (
+          <p className="text-sm text-ws-muted">Dieses Material besteht nur aus Texten, es gibt keine Datei zum Herunterladen.</p>
+        )}
+        {k.anpassbar && !k.vonMir && (
+          <Button variant="outline" onClick={() => void anpassen()} disabled={laedt || kopiert} className={`${NEBENAKTION} flex-1`}>
+            {kopiert ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Copy className="mr-2 size-4" aria-hidden />}
+            Anpassen
+            <span className="sr-only">: {k.titel}</span>
+          </Button>
+        )}
+      </div>
     </article>
   )
 }

@@ -858,6 +858,8 @@ export interface Ablauf {
   ergebnis: AblaufErgebnis | null
   /** Gewählter Weg (PROJ-64); null = noch nicht entschieden */
   weg: 'direkt' | 'kostenlos' | null
+  /** Kopie aus dem Regal (PROJ-53): Name der Urheberin oder des Urhebers. Solche Materialien haben nie ein Skript. */
+  herkunft?: string | null
   aktualisiertAm: string
 }
 
@@ -866,9 +868,11 @@ export interface Ablauf {
  * ist: Prompt erst mit Einlesung, Antwort erst mit Prompt, Fertig erst mit Ergebnis.
  */
 export function schrittErlaubt(
-  ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg'>>,
+  ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft'>>,
   schritt: AblaufSchritt,
 ): boolean {
+  // Kopie aus dem Regal (PROJ-53): kein Skript, kein Prompt — nur Antwort überarbeiten (4) und Fertig (5)
+  if (ablauf.herkunft) return schritt === 4 || (schritt === 5 && !!ablauf.ergebnis)
   switch (schritt) {
     case 1:
       return true
@@ -887,7 +891,7 @@ export function schrittErlaubt(
 /** Schritt aus der Adresse, begrenzt auf das, was der Ablauf schon erlaubt */
 export function schrittAusParam(
   param: string | null | undefined,
-  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg'>>,
+  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft'>>,
 ): AblaufSchritt {
   const n = Number(param)
   const gewuenscht: AblaufSchritt = n >= 1 && n <= 5 && Number.isInteger(n) ? (n as AblaufSchritt) : ablauf.schritt
@@ -895,7 +899,8 @@ export function schrittAusParam(
   for (let s = gewuenscht; s >= 1; s--) {
     if (schrittErlaubt(ablauf, s as AblaufSchritt)) return s as AblaufSchritt
   }
-  return 1
+  // Eine Kopie aus dem Regal beginnt bei der Antwort, nie beim Hochladen
+  return ablauf.herkunft ? 4 : 1
 }
 
 /** Kurzinfo im Ablauf-Kopf: „Ganzes Skript · H5P für Moodle · mittel“ */

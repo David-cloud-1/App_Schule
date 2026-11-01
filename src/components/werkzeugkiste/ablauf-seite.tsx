@@ -332,8 +332,9 @@ export function AblaufSeite({ id }: { id: string }) {
   const istVideo = eingabeArt(ablauf.werkzeug) === 'video'
   const kopf = direkt && schritt === 3 ? TITEL_ERSTELLEN : istVideo && schritt === 1 ? TITEL_VIDEO : TITEL[schritt]
 
+  // Eine Kopie aus dem Regal hat keinen Schritt davor (kein Skript, kein Prompt)
   const zurueck =
-    schritt > 1 && schritt < 5 ? (
+    schritt > 1 && schritt < 5 && !(ablauf.herkunft && schritt === 4) ? (
       <Button
         variant="ghost"
         onClick={() => gehe((schritt - 1) as AblaufSchritt)}
@@ -524,7 +525,7 @@ export function AblaufSeite({ id }: { id: string }) {
           ablaufId={id}
           ergebnis={ablauf.ergebnis}
           direkt={direkt}
-          anderesWerkzeug={!istVideo}
+          anderesWerkzeug={!istVideo && !ablauf.herkunft}
           kostenEur={lauf?.status === 'fertig' ? lauf.kostenEur : null}
           hinweise={direkt ? (ablauf.pruefung?.befunde ?? []).map((b) => b.text) : []}
         />

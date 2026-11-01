@@ -118,7 +118,7 @@ Wichtig: Das Regal liest **nie direkt** aus der Ablauf-Tabelle. Sie bleibt „nu
 2. **Eine Kopie ohne Skript lässt sich nicht neu bauen.** Der Bau-Schritt holt die Bilder aus der Einlesung, und die bekommt die Kopie nicht. Gelöst durch Entscheidung 4. Das ist eine kleine Ergänzung im bestehenden Bau-Schritt aus PROJ-52 (sie betrifft also schon ausgelieferten Code).
 3. **Ältere Materialien haben noch keinen Bilder-Auszug.** Er wird beim ersten „Teilen“ aus der Einlesung nachgeholt. Ist die Einlesung schon weg (12 Monate), lässt sich das Material teilen und herunterladen, aber nicht anpassen. Die Karte zeigt „Anpassen“ dann nicht.
 4. **„Ohne Skript“ gibt es nun in zwei Arten.** Bisher hieß das nur „Skript nach 12 Monaten entfernt“ (PROJ-52). Eine Regal-Kopie hat nie ein Skript. Die Ausgrauen-Hinweise in „Meine Materialien“ brauchen deshalb einen zweiten Text: „Dieses Material stammt aus dem Regal, es gibt kein Skript dazu“.
-5. **„Kapitel neu anfragen“ braucht Text aus dem Skript** (PROJ-52 Paket 2). Bei einer Regal-Kopie fällt das weg. „Tippfehler direkt korrigieren“ geht weiter, ebenso das Neubauen. Das ist in der Spec für „Anpassen“ nicht erwähnt und muss in der Oberfläche klar stehen. **Das ist vom Code her noch nicht geprüft** und gehört in die Frontend-/Backend-Phase.
+5. ~~„Kapitel neu anfragen“ braucht Text aus dem Skript~~ — **bei der Umsetzung geprüft und widerlegt (2026-11-01):** Der Kern baut den Kapitel-Prompt nur aus der Antwort, braucht also kein Skript. „Kapitel neu anfragen“ und „Tippfehler direkt korrigieren“ gehen bei einer Regal-Kopie beide. Eingeschränkt ist nur die Prüfstelle (siehe Umsetzung Paket 2).
 6. **Löschen:** Das Löschen-Fenster in „Meine Materialien“ bekommt den Hinweis „verschwindet auch aus dem Regal“ (PROJ-52 hatte ihn für PROJ-53 vorgemerkt). Die Freigabe verschwindet automatisch mit dem Material. Kopien anderer bleiben, weil sie eigene Dateien haben.
 
 ### Component Structure
@@ -326,5 +326,20 @@ Nach einer Entnahme durch den Super-Admin kann die Besitzerin oder der Besitzer 
 - Push auf `main` (Commits f20011c, 90e6daa, 920b894), Vercel-Build „Ready“.
 - Ohne Anmeldung liefern alle neuen Routen 401 (Lesen, Teilen, Entfernen, Download, Optionen, Personensuche, Meine Materialien). Vercel-Fehlerprotokoll der letzten 15 Minuten leer.
 
-## Paket 2 „Anpassen & Moderation“
-_Noch offen._
+## Umsetzung Paket 2 „Anpassen & Moderation“ (2026-11-02)
+
+**Stand:** Code fertig und getestet (2095 Tests grün, `tsc`, ESLint ohne Fehler, `npm run build` ohne Fehler). **Die zweite Migration ist noch nicht angewendet** und muss **vor dem Push** in die Datenbank, weil die App ab jetzt neue Spalten der Ablauf-Tabelle liest (`herkunft_name`, `auszug_am`). Ohne Migration bricht die ganze Werkzeugkiste.
+
+### Was gebaut wurde
+- **Bilder-Auszug ohne Änderung am Kern:** Beim Bauen (und beim ersten Teilen älterer Materialien) legt die App aus der Einlesung eine zweite Datei `auszug.zip` an. Sie enthält denselben Aufbau wie die Einlesung (`text.txt` und `images/…`), aber als Text nur einen Platzhalter und nur die Bilder, deren Dateiname in der Antwort vorkommt. Der Skripttext kommt nie mit. Dafür neues direktes Paket `fflate` (war schon als Unterpaket im Projekt).
+- **Gegenprobe mit dem echten Kern** (lokal, mit Testheft und einer Antwort mit Bild): `bauen` liefert mit dem Auszug eine **byte-gleiche** interaktive Seite und die gleichen H5P-Bilder wie mit der vollen Einlesung; die Prüfstelle läuft mit dem Auszug (lesbar). Deshalb braucht es keine Änderung und keinen neuen Deploy des Kerns.
+- **Anpassen** (`POST /regal/:id/anpassen`): legt ein neues Material der ladenden Lehrkraft an (Titel „… (Kopie)“, gleiche Antwort, Einstellungen, Prüfbericht, fertige Datei und Vorschau), der Auszug wird die „Einlesung“ der Kopie. Kein Skript, kein Prompt, keine Dateiangaben des Originals. Speichergrenze wird am Anfang geprüft, bei fehlender Datei wird alles wieder aufgeräumt. Das Original bleibt unberührt.
+- **Kopie in der App:** Feld `herkunft_name` (nur der Server setzt es, Trigger). Die Kopie beginnt bei Schritt 4 (kein Zurück zu Skript oder Prompt), „Gleiches Skript, anderes Werkzeug“ ist ausgegraut mit „Stammt aus dem Regal, es gibt kein Skript dazu“, in der Liste steht „aus dem Regal von [Name]“. Überarbeiten, Kapitel neu anfragen, Tippfehler und Neubauen gehen.
+- **Prüfstelle bei Kopien:** Sie prüft nur, ob die Antwort lesbar ist. Ihre Befunde vergleichen mit dem Skripttext, den die Kopie nicht hat; sie wären Fehlalarme und entfallen.
+- **Moderation** (nur Super-Admin): Umschalter „Regal | Moderation“ im Reiter, Tabelle aller Freigaben mit Besitzer, Stufe, Ladezahl. „Aus dem Regal nehmen“ verlangt einen Grund (3 bis 300 Zeichen), „Wieder zulassen“ hebt die Sperre auf (die gesperrte Freigabe wird gelöscht, die Besitzerin oder der Besitzer kann neu teilen). Beide Vorgänge stehen im Änderungsprotokoll (`admin_audit_log`: `regal_entnommen`, `regal_wieder_zugelassen`). Das Material selbst fasst die Moderation nie an.
+- **Migration** [20261102_proj53_paket2.sql](../supabase/migrations/20261102_proj53_paket2.sql) (Rückweg `…_down.sql`): neue Felder, Schutz-Trigger, `regal_liste` mit „anpassbar“ (Drop und neu), `regal_anpassen_quelle`, `regal_moderation_liste`, `regal_entnehmen`, `regal_wieder_zulassen`. Probe-Skript: [supabase/tests/proj53_paket2_probe.sql](../supabase/tests/proj53_paket2_probe.sql) (rollt am Ende alles zurück).
+
+### Abweichungen und Hinweise
+- **„Anpassen“ erscheint nur, wenn ein Bilder-Auszug da ist.** Bei Materialien, die vor Paket 2 gebaut wurden, entsteht er beim ersten Teilen (Einlesung muss dann noch vorhanden sein). Ältere, schon geteilte Materialien haben noch keinen; sie lassen sich laden, aber nicht anpassen, bis die Besitzerin oder der Besitzer die Freigabe einmal speichert oder das Material neu baut.
+- Die Kopie trägt zur Speichergrenze der ladenden Lehrkraft bei (Datei, Vorschau, Auszug).
+- Die Entnahme hat für die Besitzerin oder den Besitzer zwei Stellen: Pill in „Meine Materialien“ und Hinweis mit Grund im Teilen-Dialog.

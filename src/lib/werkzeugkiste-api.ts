@@ -5,6 +5,7 @@ import type {
   FreigabeEingabe,
   FreigabeOptionen,
   FreigabeStand,
+  ModerationListe,
   RegalAbfrage,
   RegalListe,
 } from '@/lib/werkzeugkiste-regal'
@@ -40,6 +41,12 @@ import type {
  *   GET    /regal/lehrkraefte?suche=       Personensuche (nur Lehrer-Rollen, Name)
  *   GET    /regal/:id/download             fertige Datei aus dem Regal (zählt einmal je Person und Tag)
  *   GET/PUT/DELETE /ablaeufe/:id/freigabe  eigene Freigabe lesen · teilen · zurücknehmen
+ *
+ * Regal des Kollegiums (PROJ-53, Paket 2):
+ *   POST   /regal/:id/anpassen             Kopie des Materials in „Meine Materialien“ (ohne Skript)
+ *   GET    /regal/moderation?seite=        alle Freigaben (nur Super-Admin)
+ *   POST   /regal/:id/entnehmen {grund}    aus dem Regal nehmen (nur Super-Admin)
+ *   POST   /regal/:id/zulassen             Sperre aufheben (nur Super-Admin)
  */
 
 export const WK_API = '/api/admin/werkzeugkiste'
@@ -283,6 +290,26 @@ export async function speichereFreigabe(ablaufId: string, eingabe: FreigabeEinga
 export async function ladeRegalDatei(freigabeId: string): Promise<void> {
   const { url } = await anfrage<{ url: string }>(`/regal/${encodeURIComponent(freigabeId)}/download?pruefen=1`)
   window.location.assign(url)
+}
+
+/** Legt eine Kopie des Regal-Materials an; die Kopie hat kein Skript und lässt sich überarbeiten */
+export function passeAn(freigabeId: string) {
+  return anfrage<{ ablauf: Ablauf }>(`/regal/${encodeURIComponent(freigabeId)}/anpassen`, { method: 'POST' })
+}
+
+export function ladeModeration(seite: number) {
+  return anfrage<ModerationListe>(`/regal/moderation?seite=${seite}`)
+}
+
+export function entnimmAusRegal(freigabeId: string, grund: string) {
+  return anfrage<{ ok: true }>(`/regal/${encodeURIComponent(freigabeId)}/entnehmen`, {
+    method: 'POST',
+    body: JSON.stringify({ grund }),
+  })
+}
+
+export function lasseWiederZu(freigabeId: string) {
+  return anfrage<{ ok: true }>(`/regal/${encodeURIComponent(freigabeId)}/zulassen`, { method: 'POST' })
 }
 
 export function antwortHref(id: string) {

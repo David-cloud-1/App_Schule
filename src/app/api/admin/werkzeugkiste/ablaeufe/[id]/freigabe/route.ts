@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
-import { fehler, ladeEigenenAblauf, ungueltig } from '@/lib/werkzeugkiste-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { erzeugeAuszug, fehler, ladeEigenenAblauf, ungueltig } from '@/lib/werkzeugkiste-server'
 import { fehlerAusFunktion, freigabeSchema, lesenZuStand } from '@/lib/werkzeugkiste-regal-server'
+
+export const maxDuration = 60
 
 type Kontext = { params: Promise<{ id: string }> }
 
@@ -38,7 +41,8 @@ export async function PUT(request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const id = (await params).id
-  if (!(await eigenesMaterial(auth, id))) return fehler(NICHT_GEFUNDEN, 404)
+  const material = await eigenesMaterial(auth, id)
+  if (!material) return fehler(NICHT_GEFUNDEN, 404)
 
   const roh = await request.json().catch(() => null)
   const parsed = freigabeSchema.safeParse(roh)
@@ -54,6 +58,12 @@ export async function PUT(request: Request, { params }: Kontext) {
     p_personen: personen ?? [],
   })
   if (error) return fehlerAusFunktion(error)
+
+  // Ältere Materialien haben noch keinen Bilder-Auszug: beim ersten Teilen nachholen (best effort).
+  // Ohne ihn lässt sich das Material herunterladen, aber nicht anpassen.
+  if (!material.auszug_am && material.antwort) {
+    await erzeugeAuszug(createServiceClient(), material.owner_id, material.id, material.antwort)
+  }
   return NextResponse.json({ ok: true })
 }
 

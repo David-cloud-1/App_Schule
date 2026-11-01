@@ -5,6 +5,10 @@ import type { RegalKarte, RegalListe } from '@/lib/werkzeugkiste-regal'
 const api = vi.hoisted(() => ({
   ladeRegal: vi.fn(),
   ladeRegalDatei: vi.fn(),
+  passeAn: vi.fn(),
+  ladeModeration: vi.fn(),
+  entnimmAusRegal: vi.fn(),
+  lasseWiederZu: vi.fn(),
 }))
 
 vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
@@ -40,6 +44,7 @@ function karte(extra: Partial<RegalKarte> = {}): RegalKarte {
     vonMir: false,
     mitMirGeteilt: false,
     hatDatei: true,
+    anpassbar: false,
     geladen: 3,
     geteiltAm: new Date().toISOString(),
     ...extra,
@@ -53,6 +58,10 @@ function liste(eintraege: RegalKarte[], extra: Partial<RegalListe> = {}): RegalL
 beforeEach(() => {
   api.ladeRegal.mockReset()
   api.ladeRegalDatei.mockReset().mockResolvedValue(undefined)
+  api.passeAn.mockReset()
+  api.ladeModeration.mockReset()
+  api.entnimmAusRegal.mockReset().mockResolvedValue({ ok: true })
+  api.lasseWiederZu.mockReset().mockResolvedValue({ ok: true })
 })
 afterEach(() => vi.clearAllMocks())
 
@@ -175,5 +184,76 @@ describe('Regal des Kollegiums (PROJ-53)', () => {
     render(<RegalReiter />)
     await screen.findByText('Haftung im Frachtrecht')
     expect(api.ladeRegal).toHaveBeenLastCalledWith(expect.objectContaining({ sortierung: 'neueste' }))
+  })
+})
+
+describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
+  const orig = window.location
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...orig, href: 'http://localhost/' } })
+  })
+  afterEach(() => {
+    Object.defineProperty(window, 'location', { configurable: true, value: orig })
+  })
+
+  it('zeigt „Anpassen“ nur bei anpassbaren Karten anderer Lehrkräfte', async () => {
+    api.ladeRegal.mockResolvedValue(
+      liste([
+        karte({ id: 'a', titel: 'Anpassbar', anpassbar: true }),
+        karte({ id: 'b', titel: 'Ohne Auszug', anpassbar: false }),
+        karte({ id: 'c', titel: 'Eigenes', anpassbar: true, vonMir: true }),
+      ]),
+    )
+    render(<RegalReiter />)
+    await screen.findByText('Anpassbar')
+    expect(screen.getAllByRole('button', { name: /^Anpassen/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /^Anpassen.*Anpassbar/ })).toBeInTheDocument()
+  })
+
+  it('legt eine Kopie an und öffnet sie bei Schritt 4', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte({ id: 'f1', anpassbar: true })]))
+    api.passeAn.mockResolvedValue({ ablauf: { id: 'neu1' } })
+    render(<RegalReiter />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    await waitFor(() => expect(api.passeAn).toHaveBeenCalledWith('f1'))
+    await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/ablauf/neu1?schritt=4'))
+  })
+
+  it('meldet Fehler ruhig und bleibt im Regal', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte({ anpassbar: true })]))
+    api.passeAn.mockRejectedValue(new WerkzeugFehler('Dein Speicher ist voll.', 409))
+    render(<RegalReiter />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Dein Speicher ist voll.'))
+    expect(window.location.href).toBe('http://localhost/')
+    expect(screen.getByRole('button', { name: /^Anpassen/ })).toBeEnabled()
+  })
+})
+
+describe('Regal – Moderationsschalter (PROJ-53, Paket 2)', () => {
+  it('zeigt Lehrkräften keinen Schalter', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte()]))
+    render(<RegalReiter />)
+    await screen.findByText('Haftung im Frachtrecht')
+    expect(screen.queryByRole('group', { name: 'Ansicht' })).not.toBeInTheDocument()
+  })
+
+  it('wechselt für den Super-Admin zwischen Regal und Moderation', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte()], { moderation: true }))
+    api.ladeModeration.mockResolvedValue({
+      eintraege: [{ id: 'f1', titel: 'Geteiltes Material', werkzeug: 'skript', besitzerName: 'Frau Meier', stufe: 'alle', geladen: 2, geteiltAm: new Date().toISOString(), entnommenAm: null, entnommenGrund: null }],
+      gesamt: 1,
+      hatMehr: false,
+    })
+    render(<RegalReiter />)
+    const gruppe = await screen.findByRole('group', { name: 'Ansicht' })
+    expect(within(gruppe).getByRole('button', { name: 'Regal' })).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(gruppe).getByRole('button', { name: 'Moderation' }))
+    expect(await screen.findByText('Geteiltes Material')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Das Regal durchsuchen')).not.toBeInTheDocument()
+
+    fireEvent.click(within(screen.getByRole('group', { name: 'Ansicht' })).getByRole('button', { name: 'Regal' }))
+    expect(await screen.findByLabelText('Das Regal durchsuchen')).toBeInTheDocument()
   })
 })
