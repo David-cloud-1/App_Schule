@@ -271,7 +271,71 @@ Wiederverwendet aus PROJ-51: `AblaufRahmen` (jetzt mit eigenen Schritten, Kopfti
 3. **Reihenfolge beim Deploy:** Migration → Kern (Produktion) → App-Push. Der App-Code greift nur auf neue Routen und die neue Tabelle zu; Bestehendes bleibt unberührt.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Stand:** 2026-11-02 · **Ergebnis: NICHT bereit für Produktion** (1 hohe, 1 mittlere, 4 niedrige Auffälligkeiten)
+
+### Wie getestet wurde (und was nicht)
+- **Automatisch:** Gesamtsuite 2136 grün, Typprüfung, Lint (0 Fehler) und Produktions-Build sauber. Neu: 9 + 11 (Oberfläche), 17 (App-Routen), 19 (Kern).
+- **Produktions-Kern** (live seit 2026-11-02) mit Grenz- und Angriffsfällen von Hand geprüft: Kennwortschutz, ungültige Eingaben, Pfad-/Skript-Zeichen in Parametern, überlange Antwort, Word-Datei.
+- **Datenbank:** Tabelle, RLS (4 Regeln, Wortlaut gelesen), `anon` ohne Recht, pg_cron-Job vorhanden. Die Rechte-Probe (`proj55_schulrecht_probe.sql`) habe ich nicht selbst ausgeführt (schreibende SQL-Aufrufe sind gesperrt) – **bitte einmal im SQL-Editor laufen lassen**.
+- **NICHT getestet:** Browser (Chrome/Firefox/Safari), Responsive (375/768/1440), Tastatur und Screenreader, Playwright-E2E. Grund: Projektregel „kein Dev-Server / kein Playwright“ (stürzt den MacBook ab), und die App-Seite ist noch nicht in Produktion. Es gibt deshalb keine `tests/PROJ-55-*.spec.ts`. **Nach dem Deploy ein Durchlauf im Browser durch den Nutzer** (Checkliste unten).
+
+### Akzeptanzkriterien
+| Bereich | Kriterium | Ergebnis |
+|---|---|---|
+| Seite & Zugang | Eintrag „Schulrecht“ (Gruppe „Mein Unterricht“), Schnellsuche | ✅ (Tests) |
+| | Titel, Beschreibung, Seitenkopf | ✅ (Test) |
+| | Alle Lehrer-Rollen ja, Azubis nie **(404)** | ⚠️ Azubis werden umgeleitet bzw. bekommen 403, nicht 404 – siehe BUG-5 |
+| Fragen | Großes Suchfeld „Was willst du wissen?“, Themen-Chips (10) + „Weitere Themen“ | ✅ (Test; Kern liefert 10 Start-Chips) |
+| | „Quellen eingrenzen“ zugeklappt, Standard alle | ✅ (Test) |
+| | Fundstellen: Vorschrift, Nummer, Überschrift, Stand; Wortlaut aufklappbar, erster offen | ✅ (Test) |
+| | Gleiche Treffer in gleicher Reihenfolge wie heute | ✅ (10 Fragen, Kern-Test) |
+| | „Text kopieren“ mit Quellenangabe | ✅ (Hilfsfunktion getestet; Klick im Browser offen) |
+| | Ergebnis unter 2 Sekunden | ✅ Produktion: 0,1–0,3 s; Kaltstart mit Modell 3,6 s (Ziel < 10 s) |
+| Durchblättern | Rechtsquellen, Inhaltsverzeichnis, Norm aufklappbar | ✅ Kern/Routen getestet · Oberfläche im Browser offen |
+| Aktennotiz | Outline-Aktion, drei Schritte | ✅ (Code/Tests) · Optik offen |
+| | Personenbezüge erkennen, annehmen/ändern/ablehnen | ❌ **BUG-1** (Erkennung lückenhaft) · Bedienung ✅ |
+| | Prompt zeichengenau wie heute | ✅ (Kern-Test) |
+| | Prüfung meldet nicht gelieferte/erfundene Stellen | ✅ (Kern-Test, Route-Test) |
+| | Word mit Sachverhalt, Rechtsgrundlage, Einschätzung, Datum, Haftungshinweis | ✅ inhaltsgleich zur alten Datei |
+| | Haftungshinweis auf Seite und in der Notiz | ✅ |
+| Datenschutz | Nichts dauerhaft gespeichert; Fall übersteht Neuladen, max. 24 h | ✅ (RLS blendet nach Ablauf aus, pg_cron stündlich) |
+| | Fragen/Sachverhalte nicht in Logs oder Fehlerberichten | ✅ nach Codeprüfung (nur POST-Körper, keine Inhalte in Fehlermeldungen, Kern protokolliert nur den Fehlertyp); Vercel-Laufzeitprotokoll nach dem Deploy stichprobenartig prüfen |
+
+### Edge Cases
+- Keine Treffer → Leerzustand + Chips ✅ · Sehr kurze Frage → Hinweis und trotzdem Suche ✅ · Modell nicht verfügbar → Kern fällt auf Themen/Wortstamm zurück (Code vorhanden, in Produktion nicht erzwungen getestet) · Alle Vorschläge abgelehnt → Warnung + ausdrückliche Bestätigung ✅ (Test) · Stand-Datum je Fundstelle ✅.
+
+### Gefundene Fehler
+**BUG-1 (Hoch, Datenschutz) – Die Erkennung von Personenbezügen übersieht Nachnamen, kleingeschriebene Klassen und Datumsangaben in Worten.** Gegen den Produktions-Kern geprüft:
+- „Herr Müller aus der 10b hat am 3. Mai gefehlt.“ → **keine Funde** (weder „Müller“ noch „10b“ noch „3. Mai“).
+- „Der Schüler Kowalski aus SPL 11A …“ → nur „SPL 11A“; „Kowalski“ und „Dr. Berger“ bleiben stehen.
+- „Max Mustermann, …“ → nur „Max“ wird ersetzt; „Schüler A Mustermann“ geht an die KI.
+Das Beispiel „10b → Klasse X“ aus der Spec trifft also nicht zu. Die Erkennung ist dieselbe wie in der alten Werkzeugkiste (Vornamenliste + Muster), die Lücke bestand dort schon; für diese Funktion war Parität gefordert, aber der Zweck (E3) wird verfehlt. Abgefedert wird das durch: Hinweis „Lies den Text trotzdem noch einmal durch“, die Textvorschau „So geht der Text an die KI“ und den Weg, Ersetzungen im Textfeld von Hand zu machen. Empfehlung: Muster für Klassen mit Kleinbuchstaben (`10b`, `11a`), Anrede + Nachname (Herr/Frau/Dr.), „Vorname Nachname“ und Datum mit Monatsnamen in `schulrecht_anonymisierung.py` ergänzen und Tests dazu; danach die alte Oberfläche gleich mitnehmen.
+
+**BUG-2 (Mittel) – Der Hinweis „Namen werden nicht automatisch erkannt“ fehlt bei „keine Funde“ nicht, ist aber zu schwach.** Bei null Funden steht „Es wurden keine Namen … erkannt“ (beruhigend formuliert) – bei BUG-1 trifft das fälschlich zu. Besser: „Es wurden keine Namen erkannt. Das heißt nicht, dass keine drinstehen – bitte lies den Text selbst durch.“ (Texte in `sachverhalt-funde.tsx`).
+
+**BUG-3 (Niedrig) – Eine Auswahl nur aus unbekannten Rechtsquellen durchsucht stillschweigend alles.** `quellen: ["GIBTSNICHT"]` liefert Treffer aus allen Quellen (altes Verhalten von `parse_quellen`). Über die Oberfläche nicht erreichbar, nur direkt gegen die Schnittstelle.
+
+**BUG-4 (Niedrig) – Abgelaufener Fall: Knopf „Erneut versuchen“ führt zur Schulrecht-Seite.** Die Meldung ist richtig („Fälle werden nach 24 Stunden gelöscht“), die Beschriftung passt nicht (`fall-seite.tsx`, `LaufenderFall`).
+
+**BUG-5 (Niedrig, Entscheidung nötig) – Azubis bekommen keine 404.** Die Spec verlangt 404; der Lehrkräfte-Bereich leitet Azubis auf `/?kein-zugang=1` um (Aufrufe: 403). Gilt für den ganzen Bereich einheitlich. Vorschlag: Spec anpassen.
+
+**BUG-6 (Niedrig) – Keine Mengenbremse für die Suche.** Jede Lehrkraft kann beliebig oft suchen (jeder Aufruf kostet Rechenzeit im Kern, aber kein Geld für KI). Nur angemeldete Lehrkräfte; Risiko gering. Die Aktennotiz-Route prüft außerdem nicht, ob die Antwort als lesbar galt; die Oberfläche sperrt das (Spec verlangt nur das).
+
+### Sicherheits-Prüfung (Red Team)
+- **Zugang:** Alle 13 Routen lehnen ohne Lehrer-Rolle mit 403 ab (Test); Kern ohne Kennwort 401 (Produktion bestätigt). Datenbank: RLS mit Besitz **und** Lehrer-Rolle, `anon` ohne Recht, Super-Admin sieht fremde Fälle nicht (Regelwortlaut geprüft; Probe steht zur Ausführung bereit).
+- **Eingaben:** Zod strikt (fremde Felder → 400), Längen 500/5000/60 000, höchstens 30 Fundstellen, `kuerzel`/`nr` nur kurze Zeichenketten; Parameter wie `../../etc` oder `<script>` landen bei „gibt es nicht“ (404). Kein SQL, kein Dateizugriff aus Eingaben. Ausgabe wird als Text gerendert (React), Word-Datei über python-docx.
+- **Datenabfluss:** Frage in keiner Adresse (POST), `no-store` auf allen Antworten mit Nutzereingaben, Word-Datei nirgends gespeichert, Rohtext nur im `sessionStorage` des Tabs. Kein Geheimnis im Browser.
+- **Offen:** Fremde Fälle per ID erraten ist wegen UUID + RLS ausgeschlossen; ein echter Test mit zwei Konten steht noch aus (Probe).
+
+### Regression
+Gesamtsuite grün, darunter Navigation, Rollen, Werkzeugkiste-Ablauf (Rahmen wurde um Schritte/Titel/Ziel erweitert, Verhalten bleibt) und der tägliche Zeitplan. Die bestehenden Kern-Tests laufen weiter (`kern_recht_test.py` 19, vorher bestehende unverändert).
+
+### Checkliste für den Browser-Durchlauf nach dem Deploy
+1. Als Lehrkraft: Schulrecht öffnen, „Handy“ anklicken, Treffer lesen, „Text kopieren“.  2. „Elternabend absagen“ eingeben (Ähnlichkeitssuche, Kennzeichen „ungeprüft“).  3. „Vorschriften durchblättern“ → BSO → Norm öffnen.  4. Aktennotiz: Fall mit Namen, Vorschläge ändern/ablehnen, Prompt kopieren, Antwort einfügen (mit erfundenem „Art. 999 BayEUG“), Word laden.  5. Neuladen in Schritt 2/3.  6. Handy-Breite (375 px): Chips, Karten, Ablauf.  7. Hell/Dunkel, Tastaturbedienung.  8. Azubi-Konto: Seite nicht erreichbar.
+
+### Empfehlung
+**Nicht deployen**, bis BUG-1 (und mit ihm BUG-2) behoben ist: Der Schutz vor Namen an fremde KI ist das Kernversprechen von E3. BUG-3 bis BUG-6 können nach dem Deploy folgen. Danach `/qa` erneut (nur Erkennung + Browser-Durchlauf).
 
 ## Deployment
 _To be added by /deploy_
