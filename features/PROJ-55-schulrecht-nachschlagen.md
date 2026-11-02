@@ -1,6 +1,6 @@
 # PROJ-55: Schulrecht nachschlagen
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-02
 
@@ -347,4 +347,7 @@ Gesamtsuite grün, darunter Navigation, Rollen, Werkzeugkiste-Ablauf (Rahmen wur
 **Nicht deployen**, bis BUG-1 (und mit ihm BUG-2) behoben ist: Der Schutz vor Namen an fremde KI ist das Kernversprechen von E3. BUG-3 bis BUG-6 können nach dem Deploy folgen. Danach `/qa` erneut (nur Erkennung + Browser-Durchlauf).
 
 ## Deployment
-_To be added by /deploy_
+**2026-11-02** · App: Push auf `main` (`fc97eb9`), Vercel-Produktion `spedilern` Ready · Kern: `vercel deploy --prod` im Projekt `werkzeugkiste-kern` (Zweig `vercel-kern`, Commit `df284f6`, weiterhin ungepusht) · Datenbank: Migration `20261103_proj55_schulrecht_faelle.sql` vorher vom Nutzer im SQL-Editor angewendet, Rechte-Probe 14/14.
+- **Geprüft nach dem Deploy:** `/admin/schulrecht` leitet ohne Anmeldung auf die Anmeldung um (307), `/api/admin/schulrecht/themen` und `/faelle` antworten 401, der Kern lehnt ohne Kennwort ab (401) und die neue Regel für unbekannte Quellen greift (400).
+- **Noch offen:** Browser-Durchlauf durch den Nutzer (Checkliste in den QA-Ergebnissen) und eine Stichprobe im Vercel-Laufzeitprotokoll, dass keine Fragen oder Sachverhalte auftauchen.
+- **Rückweg:** Migration `…_down.sql`; die App-Seite lässt sich per Rollback der Vercel-Bereitstellung entfernen, der Kern ist unabhängig (nur zusätzliche Routen).

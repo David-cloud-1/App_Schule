@@ -84,7 +84,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-52: Werkzeugkiste – Meine Materialien | Planned |
 | P1 | PROJ-53: Werkzeugkiste – Regal des Kollegiums | Deployed |
 | P1 | PROJ-54: Werkzeugkiste – die übrigen 11 Werkzeuge | Planned |
-| P1 | PROJ-55: Schulrecht nachschlagen | Planned |
+| P1 | PROJ-55: Schulrecht nachschlagen | Deployed |
 | P2 | PROJ-56: Alte Werkzeugkiste ablösen | Planned |
 | P1 | PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter | Deployed |
 | P1 | PROJ-58: Passwort neu vergeben (mit Pflichtwechsel) | Deployed |
