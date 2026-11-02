@@ -1,6 +1,6 @@
 # PROJ-67: Werkzeugkiste – Öffentlicher Link („Link für alle“)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-02
 **Last Updated:** 2026-11-02 (gebaut, QA)
 
@@ -261,4 +261,10 @@ Es sind **zwei Pakete** möglich: erst Backend + „Fertig“-Schritt + Super-Ad
 6. **(Info)** Vorschau-Karten in Messengern lesen den `<title>` der Seite; das ist der Materialtitel der KI, keine Angabe zur Person.
 
 ## Deployment
-_To be added by /deploy_
+
+> 2026-11-02, Produktion `spedilern` (https://spedilern.vercel.app), Push `3564438` auf `main`.
+
+- **Migration zuerst:** `20261104_proj67_oeffentlicher_link.sql` hat der Nutzer im SQL-Editor eingespielt, danach lief `proj67_links_probe_nur_tests.sql` (Ergebnis durch den Nutzer bestätigt). Lesende Kontrolle danach: Tabelle da, RLS an, 8 Funktionen, Trigger, Index für „ein aktiver Link“; `anon` und `authenticated` dürfen `link_nachschlagen` nicht ausführen, `service_role` darf; `anon` liest die Tabelle nicht; 0 Zeilen.
+- **Live-Prüfung ohne Login:** `/s/<unbekannter Code>` und `/s/kurz` liefern 404 mit der ruhigen Seite, `no-store`, `noindex`, `no-referrer`; alle neuen Routen (`…/link`, `/links`, `/links/:id`, `/materialien?oeffentlich=1`) liefern 401; Vercel-Fehlerprotokoll der letzten 15 Minuten leer.
+- **Mitgeliefert:** PROJ-59 (Nutzer-Detailseite, andere Sitzung, ohne Migration).
+- **Noch offen (Nutzer):** Browser-Durchgang der Sandbox mit einem echten Link (Chrome, Safari iPhone, Firefox: Aufgaben, „Prüfen“, Drucken, Fortschritt bleibt aus) und eine Seite über 4,5 MB. Erst dort zeigt sich, ob eine echte Seite in der Sandbox sauber läuft.
