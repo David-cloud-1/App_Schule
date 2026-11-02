@@ -1,5 +1,6 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
+import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
 import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
 import type {
   FreigabeEingabe,
@@ -47,6 +48,11 @@ import type {
  *   GET    /regal/moderation?seite=        alle Freigaben (nur Super-Admin)
  *   POST   /regal/:id/entnehmen {grund}    aus dem Regal nehmen (nur Super-Admin)
  *   POST   /regal/:id/zulassen             Sperre aufheben (nur Super-Admin)
+ *
+ * Öffentlicher Link „Link für alle“ (PROJ-67):
+ *   GET/POST/DELETE /ablaeufe/:id/link    eigenen Link lesen · erzeugen · abschalten
+ *   GET    /links?seite=                   alle aktiven Links (nur Super-Admin)
+ *   DELETE /links/:id                      fremden Link abschalten (nur Super-Admin)
  */
 
 export const WK_API = '/api/admin/werkzeugkiste'
@@ -222,10 +228,11 @@ export function brichDirektAb(id: string) {
 
 // ── Meine Materialien (PROJ-52) ───────────────────────────────────────────
 
-export function ladeMaterialien({ suche, werkzeug, seite }: MaterialAbfrage) {
+export function ladeMaterialien({ suche, werkzeug, seite, nurOeffentlich }: MaterialAbfrage) {
   const params = new URLSearchParams({ seite: String(seite), je: String(SEITENGROESSE) })
   if (suche.trim()) params.set('suche', suche.trim())
   if (werkzeug) params.set('werkzeug', werkzeug)
+  if (nurOeffentlich) params.set('oeffentlich', '1')
   return anfrage<MaterialListe>(`/materialien?${params.toString()}`)
 }
 
@@ -364,4 +371,30 @@ export function ladeHoch(auftrag: HochladeAuftrag, datei: File, fortschritt: (pr
       reject(new WerkzeugFehler('Das Hochladen wurde unterbrochen. Bitte prüfe dein Internet und versuche es erneut.', 0))
     xhr.send(datei)
   })
+}
+
+// ── Öffentlicher Link (PROJ-67) ─────────────────────────────────────────────
+
+const linkPfad = (ablaufId: string) => `/ablaeufe/${encodeURIComponent(ablaufId)}/link`
+
+/** `link: null` heißt „kein aktiver Link“ */
+export function ladeLink(ablaufId: string) {
+  return anfrage<{ link: LinkStand | null }>(linkPfad(ablaufId))
+}
+
+/** Gibt es schon einen aktiven Link, kommt dieser zurück (kein zweiter) */
+export function erzeugeLink(ablaufId: string) {
+  return anfrage<{ link: LinkStand }>(linkPfad(ablaufId), { method: 'POST' })
+}
+
+export function schalteLinkAb(ablaufId: string) {
+  return anfrage<{ ok: true }>(linkPfad(ablaufId), { method: 'DELETE' })
+}
+
+export function ladeLinkUebersicht(seite: number) {
+  return anfrage<LinkAdminListe>(`/links?seite=${seite}`)
+}
+
+export function schalteLinkAdminAb(linkId: string) {
+  return anfrage<{ ok: true }>(`/links/${encodeURIComponent(linkId)}`, { method: 'DELETE' })
 }

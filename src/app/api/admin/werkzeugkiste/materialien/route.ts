@@ -27,11 +27,12 @@ export async function GET(request: Request) {
   const parsed = listenAbfrageSchema.safeParse({
     suche: params.get('suche') ?? undefined,
     werkzeug: params.get('werkzeug') || undefined,
+    oeffentlich: params.get('oeffentlich') || undefined,
     seite: params.get('seite') ?? undefined,
     je: params.get('je') ?? undefined,
   })
   if (!parsed.success) return ungueltig(parsed.error)
-  const { suche, werkzeug, seite, je } = parsed.data
+  const { suche, werkzeug, seite, je, oeffentlich } = parsed.data
 
   // Zugriff regelt RLS (nur eigene Zeilen); owner_id zusätzlich, damit es auch ohne sie stimmt
   let abfrage = auth.supabase
@@ -41,6 +42,21 @@ export async function GET(request: Request) {
     .not('kennzahlen', 'is', null)
 
   if (werkzeug) abfrage = abfrage.eq('werkzeug', werkzeug)
+  // „Nur öffentliche“ (PROJ-67): zuerst die eigenen aktiven Links, dann nur diese Materialien
+  if (oeffentlich) {
+    const { data: aktive } = await auth.supabase.from('werkzeug_links').select('ablauf_id').is('abgeschaltet_am', null)
+    const ids = ((Array.isArray(aktive) ? aktive : []) as { ablauf_id: string }[]).map((l) => l.ablauf_id)
+    if (ids.length === 0) {
+      const leer: MaterialListe = {
+        eintraege: [],
+        gesamt: 0,
+        hatMehr: false,
+        speicher: { genutztBytes: (await speicherGenutzt(auth.supabase)) ?? 0, grenzeBytes: SPEICHER_GRENZE_BYTES },
+      }
+      return NextResponse.json(leer)
+    }
+    abfrage = abfrage.in('id', ids)
+  }
   const begriff = suchbegriff(suche)
   if (begriff) abfrage = abfrage.or(`titel.ilike.%${begriff}%,datei_name.ilike.%${begriff}%`)
 
@@ -66,6 +82,23 @@ export async function GET(request: Request) {
     for (const e of eintraege) {
       const f = nachId.get(e.id)
       if (f) e.regal = vermerkZuRegal(f)
+    }
+  }
+
+  // Öffentliche Links (PROJ-67): nur die eigenen aktiven (RLS), ohne den Code selbst
+  if (materialIds.length > 0) {
+    const { data: links } = await auth.supabase
+      .from('werkzeug_links')
+      .select('ablauf_id, aufrufe')
+      .in('ablauf_id', materialIds)
+      .is('abgeschaltet_am', null)
+    const nachId = new Map<string, number>()
+    for (const l of (Array.isArray(links) ? links : []) as { ablauf_id: string; aufrufe: number | string }[]) {
+      nachId.set(l.ablauf_id, Number(l.aufrufe) || 0)
+    }
+    for (const e of eintraege) {
+      const aufrufe = nachId.get(e.id)
+      if (aufrufe !== undefined) e.oeffentlich = { aufrufe }
     }
   }
   const gesamt = count ?? eintraege.length

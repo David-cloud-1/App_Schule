@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import type { Ablauf } from '@/lib/werkzeugkiste'
-import { erstelleKapitelPrompt, ladeKapitel, setzeKapitelEin, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { erstelleKapitelPrompt, ladeKapitel, ladeLink, setzeKapitelEin, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { LINK_TEXTE } from '@/lib/werkzeugkiste-links'
 import { ersetzeText, treffersatz, zaehleTreffer } from '@/lib/werkzeugkiste-ueberarbeiten'
 import { KopierKnopf } from '@/components/werkzeugkiste/schritt-prompt'
 
@@ -45,6 +46,7 @@ export function UeberarbeitenHilfen({
   setAntwort,
   gespeichert,
   fertig = false,
+  seitenFormat = false,
   onAblauf,
 }: {
   ablaufId: string
@@ -53,13 +55,28 @@ export function UeberarbeitenHilfen({
   gespeichert: boolean
   /** Der Ablauf ist schon ein Material: Die fertige Datei ändert sich erst beim Neubauen */
   fertig?: boolean
+  /** Das fertige Material ist eine Interaktive Seite: Hat sie einen öffentlichen Link, zeigt er nach dem Neubauen die neue Fassung (PROJ-67) */
+  seitenFormat?: boolean
   onAblauf: (a: Ablauf) => void
 }) {
+  const [oeffentlich, setOeffentlich] = useState(false)
+  useEffect(() => {
+    if (!fertig || !seitenFormat) return
+    let aktiv = true
+    ladeLink(ablaufId)
+      .then((r) => aktiv && setOeffentlich(!!r.link))
+      .catch(() => undefined) // Der Hinweis ist nur eine Zugabe; ohne Antwort bleibt er weg
+    return () => {
+      aktiv = false
+    }
+  }, [ablaufId, fertig, seitenFormat])
+
   return (
     <section aria-label="Antwort überarbeiten" className="space-y-3">
       {fertig && (
         <p className="text-sm text-ws-muted">
           Änderungen hier gelten für die Antwort. Die fertige Datei bleibt die alte, bis du unten „Material erstellen“ wählst.
+          {oeffentlich && ` ${LINK_TEXTE.ueberarbeitenHinweis}`}
         </p>
       )}
       <Tippfehler antwort={antwort} setAntwort={setAntwort} />

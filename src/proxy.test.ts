@@ -46,6 +46,23 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     expect((await call('/api/admin/werkzeugkiste/optionen')).status).toBe(401)
   })
 
+  it('lässt öffentliche Links unter /s/ ohne Anmeldung und ohne Umleitung durch (PROJ-67)', async () => {
+    const code = 'a'.repeat(48)
+    state.user = null
+    const gast = await call(`/s/${code}`)
+    expect(gast.status).toBe(200)
+    expect(locationOf(gast)).toBeNull()
+    // auch für Angemeldete mit Pflicht-Passwortwechsel: keine Umleitung, kein Konto-Zugriff
+    state.user = { id: 'u1', app_metadata: { must_change_password: true } }
+    expect(locationOf(await call(`/s/${code}`))).toBeNull()
+  })
+
+  it('schützt Pfade, die nur ähnlich heißen wie /s/ (PROJ-67)', async () => {
+    state.user = null
+    expect(locationOf(await call('/shop'))).toContain('/login')
+    expect(locationOf(await call('/subjects'))).toContain('/login')
+  })
+
   it('lässt Azubis nicht in den Lehrkräfte-Bereich', async () => {
     state.role = 'student'
     expect(locationOf(await call('/admin'))).toBe('/?kein-zugang=1')

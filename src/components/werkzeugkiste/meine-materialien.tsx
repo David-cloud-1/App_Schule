@@ -8,6 +8,7 @@ import {
   Eye,
   FileDown,
   FilePenLine,
+  Globe,
   Library,
   Loader2,
   MoreHorizontal,
@@ -23,6 +24,7 @@ import {
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -41,6 +43,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { HAUPTAKTION, NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { LinkDialog, type LinkZiel } from '@/components/werkzeugkiste/link-fuer-alle'
 import { TeilenDialog, type TeilenZiel } from '@/components/werkzeugkiste/teilen-dialog'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
 import { ablaufHref, neuerAblaufHref, WERKZEUGE } from '@/lib/werkzeugkiste'
@@ -68,6 +71,7 @@ import {
   type MaterialListe,
   type MaterialZeile,
 } from '@/lib/werkzeugkiste-materialien'
+import { kannLinkHaben, LINK_TEXTE, type LinkStand } from '@/lib/werkzeugkiste-links'
 import { regalPill, type MaterialRegal } from '@/lib/werkzeugkiste-regal'
 
 const FELD = 'min-h-11 rounded-xl border-ws-line bg-ws-surface text-ws-text focus:ring-ws-green'
@@ -91,6 +95,8 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
   const [eingabe, setEingabe] = useState('')
   const [suche, setSuche] = useState('')
   const [werkzeug, setWerkzeug] = useState(ALLE)
+  /** „Nur öffentliche“ (PROJ-67): nur Materialien mit aktivem Link für alle */
+  const [nurOeffentlich, setNurOeffentlich] = useState(false)
 
   const [liste, setListe] = useState<MaterialListe | null>(null)
   const [laedt, setLaedt] = useState(true)
@@ -105,6 +111,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
   const [umbenennen, setUmbenennen] = useState<MaterialZeile | null>(null)
   const [loeschen, setLoeschen] = useState<MaterialZeile | null>(null)
   const [teilen, setTeilen] = useState<TeilenZiel | null>(null)
+  const [linkZiel, setLinkZiel] = useState<LinkZiel | null>(null)
 
   // Suchfeld: erst nach kurzer Pause abfragen
   useEffect(() => {
@@ -119,7 +126,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
     setFehler(null)
     setMehrFehler(null)
     try {
-      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: 1 })
+      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: 1, nurOeffentlich })
       if (nr !== abfrageNr.current) return
       setListe(daten)
     } catch (e) {
@@ -128,7 +135,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
     } finally {
       if (nr === abfrageNr.current) setLaedt(false)
     }
-  }, [suche, werkzeug])
+  }, [suche, werkzeug, nurOeffentlich])
 
   useEffect(() => {
     void lade()
@@ -139,7 +146,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
     setLadtMehr(true)
     setMehrFehler(null)
     try {
-      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: seite.current + 1 })
+      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: seite.current + 1, nurOeffentlich })
       if (nr !== abfrageNr.current) return
       seite.current += 1
       setListe((alt) => (alt ? { ...daten, eintraege: [...alt.eintraege, ...daten.eintraege] } : daten))
@@ -150,7 +157,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
     }
   }
 
-  const gefiltert = suche.trim() !== '' || werkzeug !== ALLE
+  const gefiltert = suche.trim() !== '' || werkzeug !== ALLE || nurOeffentlich
   const komplettLeer = !laedt && !fehler && !!liste && liste.eintraege.length === 0 && !gefiltert
 
   useEffect(() => {
@@ -161,6 +168,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
     setEingabe('')
     setSuche('')
     setWerkzeug(ALLE)
+    setNurOeffentlich(false)
   }
 
   function entferne(id: string) {
@@ -173,6 +181,21 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
 
   function setzeRegal(id: string, regal: MaterialRegal | null) {
     setListe((alt) => (alt ? { ...alt, eintraege: alt.eintraege.map((z) => (z.id === id ? { ...z, regal } : z)) } : alt))
+  }
+
+  /** Link für alle wurde erzeugt oder abgeschaltet: Kennzeichen in der Liste nachziehen */
+  function setzeOeffentlich(id: string, stand: LinkStand | null) {
+    setListe((alt) => {
+      if (!alt) return alt
+      // Im Filter „Nur öffentliche“ verschwindet ein abgeschalteter Link aus der Liste
+      if (stand === null && nurOeffentlich) {
+        return { ...alt, eintraege: alt.eintraege.filter((z) => z.id !== id), gesamt: Math.max(0, alt.gesamt - 1) }
+      }
+      return {
+        ...alt,
+        eintraege: alt.eintraege.map((z) => (z.id === id ? { ...z, oeffentlich: stand ? { aufrufe: stand.aufrufe } : null } : z)),
+      }
+    })
   }
 
   const speicher = liste ? speicherStand(liste.speicher) : null
@@ -239,6 +262,13 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
             ))}
           </SelectContent>
         </Select>
+        <Label
+          htmlFor="wk-nur-oeffentlich"
+          className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-ws-line bg-ws-surface px-3 text-sm font-normal"
+        >
+          <Checkbox id="wk-nur-oeffentlich" checked={nurOeffentlich} onCheckedChange={(an) => setNurOeffentlich(an === true)} />
+          Nur öffentliche
+        </Label>
       </div>
 
       {fehler ? (
@@ -289,7 +319,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                       <TableCell className="align-top">
                         <div className="flex items-center justify-end gap-2">
                           <Hauptknopf z={z} />
-                          <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} />
+                          <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                         </div>
                       </TableCell>
                     </TableRow>
@@ -309,7 +339,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                   {z.art === 'material' && <RegalPill regal={z.regal} />}
                   <div className="flex items-center gap-2">
                     <Hauptknopf z={z} voll />
-                    <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} />
+                    <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                   </div>
                 </li>
               ))}
@@ -345,8 +375,10 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
           toast.success('Titel geändert')
         }}
       />
+      <LinkDialog ziel={linkZiel} schliessen={() => setLinkZiel(null)} geaendert={setzeOeffentlich} />
       <TeilenDialog
         ziel={teilen}
+        linkGeaendert={setzeOeffentlich}
         schliessen={() => setTeilen(null)}
         gespeichert={(id, regal) => {
           setzeRegal(id, regal)
@@ -390,6 +422,15 @@ function TitelZelle({ z }: { z: MaterialZeile }) {
         {entwurf && (
           <Badge className="rounded-full border border-ws-blue/30 bg-ws-blue/15 px-2.5 py-0.5 text-xs font-semibold text-ws-blue hover:bg-ws-blue/15">
             Entwurf
+          </Badge>
+        )}
+        {z.oeffentlich && (
+          <Badge
+            title={`Öffentlicher Link aktiv · ${z.oeffentlich.aufrufe} ${z.oeffentlich.aufrufe === 1 ? 'Aufruf' : 'Aufrufe'}`}
+            className="rounded-full border border-ws-orange/30 bg-ws-orange/15 px-2.5 py-0.5 text-xs font-semibold text-ws-orange hover:bg-ws-orange/15"
+          >
+            <Globe className="mr-1 size-3" aria-hidden />
+            Öffentlich
           </Badge>
         )}
         <span className="min-w-0 truncate font-semibold text-ws-text" title={z.titel}>
@@ -457,12 +498,14 @@ function ZeilenMenue({
   setUmbenennen,
   setLoeschen,
   setTeilen,
+  setLink,
 }: {
   z: MaterialZeile
   setVorschau: (z: MaterialZeile) => void
   setUmbenennen: (z: MaterialZeile) => void
   setLoeschen: (z: MaterialZeile) => void
   setTeilen: (ziel: TeilenZiel) => void
+  setLink: (ziel: LinkZiel) => void
 }) {
   const [kopiert, setKopiert] = useState(false)
   const entwurf = z.art === 'entwurf'
@@ -534,9 +577,15 @@ function ZeilenMenue({
           </DropdownMenuItem>
         )}
         {!entwurf && (
-          <DropdownMenuItem className={punkt} onSelect={() => setTeilen({ id: z.id, titel: z.titel })}>
+          <DropdownMenuItem className={punkt} onSelect={() => setTeilen({ id: z.id, titel: z.titel, linkMoeglich: kannLinkHaben(z.format, z.hatDatei) })}>
             <Share2 className="size-4" aria-hidden />
             Teilen …
+          </DropdownMenuItem>
+        )}
+        {!entwurf && kannLinkHaben(z.format, z.hatDatei) && (
+          <DropdownMenuItem className={punkt} onSelect={() => setLink({ id: z.id, titel: z.titel })}>
+            <Globe className="size-4" aria-hidden />
+            {z.oeffentlich ? 'Öffentlicher Link …' : `${LINK_TEXTE.erzeugen} …`}
           </DropdownMenuItem>
         )}
         {!entwurf && (
@@ -669,6 +718,7 @@ function LoeschenDialog({
               ? 'Das hochgeladene Skript und alle Eingaben werden gelöscht.'
               : `„${zeile?.titel ?? ''}“ wird mit allen Dateien gelöscht. Das lässt sich nicht rückgängig machen.`}
             {!entwurf && zeile?.regal && !zeile.regal.entnommen && ' Das Material verschwindet auch aus dem Regal. Kopien, die andere schon angelegt haben, bleiben bestehen.'}
+            {!entwurf && zeile?.oeffentlich && ` ${LINK_TEXTE.loeschenHinweis}`}
           </AlertDialogDescription>
           {fehler && (
             <p role="alert" className="text-sm text-ws-red">

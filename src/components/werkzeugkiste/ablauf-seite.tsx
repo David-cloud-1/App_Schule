@@ -487,6 +487,7 @@ export function AblaufSeite({ id }: { id: string }) {
           ablaufId={id}
           hilfenFreigegeben={pruefungPasst && !!ablauf.pruefung?.lesbar}
           materialFertig={ablauf.status === 'fertig'}
+          seitenFormat={ablauf.ergebnis?.format === 'seite'}
           onAblauf={(a) => {
             // Ein eingesetztes Kapitel ändert die gespeicherte Antwort: Prüfung läuft von selbst neu
             setAblauf(a)

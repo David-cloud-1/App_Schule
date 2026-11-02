@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { LinkUebersicht } from '@/components/werkzeugkiste/link-uebersicht'
 import { RegalModeration } from '@/components/werkzeugkiste/regal-moderation'
 import { ablaufHref, findeWerkzeug } from '@/lib/werkzeugkiste'
 import { ladeRegal, ladeRegalDatei, passeAn, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
@@ -142,6 +143,9 @@ export function RegalReiter() {
       <div className="space-y-4">
         {umschalter}
         <RegalModeration />
+        <div className="pt-4">
+          <LinkUebersicht />
+        </div>
       </div>
     )
   }

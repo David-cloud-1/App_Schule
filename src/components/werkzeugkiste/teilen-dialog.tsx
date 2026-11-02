@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { HAUPTAKTION, NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { LinkFeld } from '@/components/werkzeugkiste/link-fuer-alle'
 import {
   ladeFreigabe,
   ladeFreigabeOptionen,
@@ -20,6 +21,7 @@ import {
   sucheLehrkraefte,
   WerkzeugFehler,
 } from '@/lib/werkzeugkiste-api'
+import type { LinkStand } from '@/lib/werkzeugkiste-links'
 import {
   HINWEIS_OHNE_FACHBEREICH,
   HINWEIS_SKRIPT_PRIVAT,
@@ -46,6 +48,8 @@ const meldung = (e: unknown) => (e instanceof WerkzeugFehler ? e.message : FEHLE
 export interface TeilenZiel {
   id: string
   titel: string
+  /** Interaktive Seite mit Datei: Der Dialog zeigt zusätzlich „Link für alle“ (PROJ-67) */
+  linkMoeglich?: boolean
 }
 
 /**
@@ -58,16 +62,33 @@ export function TeilenDialog({
   ziel,
   schliessen,
   gespeichert,
+  linkGeaendert,
 }: {
   ziel: TeilenZiel | null
   schliessen: () => void
   /** `regal` ist der neue Vermerk für die Liste (leer = „Nur ich“) */
   gespeichert: (id: string, regal: MaterialRegal | null) => void
+  /** Der öffentliche Link wurde erzeugt oder abgeschaltet (PROJ-67) */
+  linkGeaendert?: (id: string, stand: LinkStand | null) => void
 }) {
   return (
     <Dialog open={!!ziel} onOpenChange={(offen) => !offen && schliessen()}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl border-ws-line bg-ws-surface text-ws-text sm:max-w-lg">
-        {ziel && <TeilenInhalt key={ziel.id} ziel={ziel} schliessen={schliessen} gespeichert={gespeichert} />}
+        {ziel && (
+          <div className="space-y-6">
+            <TeilenInhalt key={ziel.id} ziel={ziel} schliessen={schliessen} gespeichert={gespeichert} />
+            {ziel.linkMoeglich && (
+              // Außerhalb des Formulars: Die Knöpfe hier dürfen „Speichern“ nicht auslösen
+              <section aria-labelledby="teilen-link-titel" className="space-y-3 border-t border-ws-line pt-5">
+                <h3 id="teilen-link-titel" className="text-base font-semibold">
+                  Öffentlicher Link
+                </h3>
+                <p className="text-sm text-ws-muted">Unabhängig vom Regal: für alle, die den Link haben, auch ohne Konto.</p>
+                <LinkFeld key={ziel.id} ablaufId={ziel.id} geaendert={(s) => linkGeaendert?.(ziel.id, s)} />
+              </section>
+            )}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

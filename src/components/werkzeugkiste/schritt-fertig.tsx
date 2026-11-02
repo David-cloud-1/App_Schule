@@ -1,14 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, ClipboardCopy, Download, Eye, Library, Loader2, PencilLine, Repeat, Share2 } from 'lucide-react'
+import { Check, ClipboardCopy, Download, Eye, Globe, Library, Loader2, PencilLine, Repeat, Share2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ablaufHref, WERKZEUGKISTE_HREF, type AblaufErgebnis } from '@/lib/werkzeugkiste'
-import { downloadHref, ladeDatei, kopiereFuerAnderesWerkzeug, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { downloadHref, ladeDatei, kopiereFuerAnderesWerkzeug, ladeLink, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { euro } from '@/lib/werkzeugkiste-kosten'
+import { kannLinkHaben, LINK_TEXTE, type LinkStand } from '@/lib/werkzeugkiste-links'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { aufrufeText, kopiereLinkAdresse, LinkDialog } from '@/components/werkzeugkiste/link-fuer-alle'
 import { TeilenDialog } from '@/components/werkzeugkiste/teilen-dialog'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
 
@@ -39,6 +41,28 @@ export function SchrittFertig({
   const [kopiert, setKopiert] = useState(false)
   // Text zum Kopieren (LearningApps): Statt eines Downloads steht je Vorlage ein „Kopieren“-Knopf da
   const zumKopieren = !!ergebnis.texte && ergebnis.texte.length > 0
+  // Link für alle (PROJ-67): nur bei der Interaktiven Seite. `undefined` = noch unbekannt, `null` = keiner
+  const linkMoeglich = kannLinkHaben(ergebnis.format, !zumKopieren)
+  const [link, setLink] = useState<LinkStand | null | undefined>(undefined)
+  const [linkOffen, setLinkOffen] = useState(false)
+
+  useEffect(() => {
+    if (!linkMoeglich) return
+    let aktiv = true
+    ladeLink(ablaufId)
+      .then((r) => aktiv && setLink(r.link))
+      .catch(() => undefined) // Der Dialog zeigt den Fehler beim Öffnen; hier bleibt es still
+    return () => {
+      aktiv = false
+    }
+  }, [ablaufId, linkMoeglich])
+
+  /** Mit Link: ein Klick kopiert. Ohne Link: Hinweis-Dialog, dort wird erzeugt und kopiert */
+  async function linkKnopf() {
+    if (!link) return setLinkOffen(true)
+    if (await kopiereLinkAdresse(link.code)) toast.success(LINK_TEXTE.kopiert)
+    else setLinkOffen(true)
+  }
 
   /** Neuer Ablauf mit kopiertem Skript — das fertige Material bleibt unberührt (PROJ-52) */
   async function anderesWerkzeugStarten() {
@@ -110,7 +134,22 @@ export function SchrittFertig({
               Vorschau ansehen
             </Button>
           )}
+          {linkMoeglich && (
+            <Button variant="outline" onClick={() => void linkKnopf()} className={`${NEBENAKTION} min-h-12 px-5`}>
+              <Globe className="mr-2 size-5" aria-hidden />
+              {link ? LINK_TEXTE.kopieren : LINK_TEXTE.erzeugen}
+            </Button>
+          )}
         </div>
+        {linkMoeglich && link && (
+          <p className="flex flex-wrap items-center justify-center gap-x-2 text-sm text-ws-muted">
+            <span>Öffentlich · {aufrufeText(link.aufrufe)}</span>
+            <Button variant="link" onClick={() => setLinkOffen(true)} className="h-auto min-h-11 px-1 py-0 text-ws-blue">
+              Link verwalten
+            </Button>
+          </p>
+        )}
+        {!linkMoeglich && !zumKopieren && <p className="text-xs text-ws-faint">Link für alle: {LINK_TEXTE.nurSeite.toLowerCase()}.</p>}
         <p className="flex flex-wrap items-center justify-center gap-x-1 text-xs text-ws-faint">
           <Library className="size-3.5" aria-hidden />
           Automatisch unter{' '}
@@ -178,8 +217,14 @@ export function SchrittFertig({
       </div>
 
       <VorschauDialog ablaufId={ablaufId} titel={ergebnis.titel} offen={vorschauOffen} onOpenChange={setVorschauOffen} />
+      <LinkDialog
+        ziel={linkOffen ? { id: ablaufId, titel: ergebnis.titel } : null}
+        schliessen={() => setLinkOffen(false)}
+        geaendert={(_id, stand) => setLink(stand)}
+      />
       <TeilenDialog
-        ziel={teilenOffen ? { id: ablaufId, titel: ergebnis.titel } : null}
+        ziel={teilenOffen ? { id: ablaufId, titel: ergebnis.titel, linkMoeglich } : null}
+        linkGeaendert={(_id, stand) => setLink(stand)}
         schliessen={() => setTeilenOffen(false)}
         gespeichert={() => setTeilenOffen(false)}
       />

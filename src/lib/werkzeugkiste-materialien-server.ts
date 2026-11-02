@@ -34,6 +34,8 @@ export const listenAbfrageSchema = z.object({
     .max(40)
     .refine((id) => !!findeWerkzeug(id), { message: 'Dieses Werkzeug gibt es nicht.' })
     .optional(),
+  /** „Nur öffentliche“ (PROJ-67) */
+  oeffentlich: z.enum(['1']).optional(),
   seite: z.coerce.number().int().min(1).max(1000).default(1),
   je: z.coerce.number().int().min(1).max(SEITENGROESSE).default(SEITENGROESSE),
 })

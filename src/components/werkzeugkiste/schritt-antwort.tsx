@@ -22,6 +22,7 @@ export function SchrittAntwort({
   ablaufId,
   hilfenFreigegeben = false,
   materialFertig = false,
+  seitenFormat = false,
   onAblauf,
 }: {
   antwort: string
@@ -36,6 +37,8 @@ export function SchrittAntwort({
   hilfenFreigegeben?: boolean
   /** Es gibt schon eine fertige Datei, die beim Überarbeiten erst nach dem Neubauen stimmt */
   materialFertig?: boolean
+  /** Das fertige Material ist eine Interaktive Seite (PROJ-67: Hinweis zum öffentlichen Link) */
+  seitenFormat?: boolean
   onAblauf?: (a: Ablauf) => void
 }) {
   return (
@@ -72,7 +75,7 @@ export function SchrittAntwort({
       </div>
 
       {ablaufId && onAblauf && antwort.trim() && (
-        <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} fertig={materialFertig} onAblauf={onAblauf} />
+        <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} fertig={materialFertig} seitenFormat={seitenFormat} onAblauf={onAblauf} />
       )}
     </div>
   )

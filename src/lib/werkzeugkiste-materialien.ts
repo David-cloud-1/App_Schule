@@ -1,4 +1,5 @@
 import { ABLAUF_SCHRITTE, WERKZEUGE, eingabeArt, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import type { MaterialLink } from '@/lib/werkzeugkiste-links'
 import type { MaterialRegal } from '@/lib/werkzeugkiste-regal'
 
 /**
@@ -47,6 +48,8 @@ export interface MaterialZeile {
   ausRegal?: string | null
   /** Freigabe fürs Regal (PROJ-53); leer = „Nur ich“ */
   regal?: MaterialRegal | null
+  /** Öffentlicher Link „Link für alle“ (PROJ-67); leer = keiner aktiv */
+  oeffentlich?: MaterialLink | null
 }
 
 export interface MaterialSpeicher {
@@ -68,6 +71,8 @@ export interface MaterialAbfrage {
   werkzeug: string
   /** Ab 1 */
   seite: number
+  /** Nur Materialien mit aktivem öffentlichen Link (PROJ-67) */
+  nurOeffentlich?: boolean
 }
 
 // ── Anzeige ────────────────────────────────────────────────────────────────

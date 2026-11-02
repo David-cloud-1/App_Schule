@@ -17,6 +17,10 @@ import {
 } from '@/lib/roles'
 
 export async function proxy(request: NextRequest) {
+  // Öffentliche Links (PROJ-67): `/s/<Code>` zeigt eine Seite ohne Konto. Gar
+  // keine Anmeldung, keine Cookies, keine Umleitung — auch nicht für Angemeldete.
+  if (request.nextUrl.pathname.startsWith('/s/')) return NextResponse.next()
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
