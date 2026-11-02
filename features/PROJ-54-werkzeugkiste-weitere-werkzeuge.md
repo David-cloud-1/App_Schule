@@ -1,8 +1,8 @@
 # PROJ-54: Werkzeugkiste – die übrigen 11 Werkzeuge
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-30
+**Last Updated:** 2026-11-02
 
 ## Kontext
 Teil des Werkzeugkiste-Umzugs (Übersicht in PROJ-51). PROJ-51 baut den Rahmen und den Ablauf am Beispiel „Ganzes Skript“. Dieses Feature schaltet die übrigen 11 Werkzeuge frei. Alle nutzen denselben Fünf-Schritte-Ablauf. Unterschiede gibt es nur bei den werkzeugeigenen Einstellungen (Schritt 2), dem Ergebnis (Schritt 5) und bei zwei Sonderfällen: Video-Fragen (kein Skript, sondern Transkript) und Podcast (Vertonung).
@@ -447,4 +447,8 @@ Keine Datenbank- und keine Rechteänderung (Transkript liegt als Einlesung im pr
 - **Kern** (`werkzeugkiste-kern`, Commit 030957a) zuerst per `vercel deploy --prod`, danach **App** per Push auf `main` (`a115567`), Production „Ready“. App-Route ohne Login: 401. Es ging nur dieser eine Commit hinaus.
 - Live: Video-Fragen (Word, H5P Interactive Video, H5P Quiz). Keine Datenbankänderung. Zusätzlich Tipps für Kahoot, Moodle und LearningApps (BUG-1 aus Paket A/B behoben).
 - Tag: `v1.54.3-PROJ-54-paketD`.
-- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (echtes YouTube-Transkript einfügen, Word-Datei in Word öffnen, H5P-Interactive-Video in Moodle); Paket E (Podcast; zuerst prüfen, ob eine neuere `edge-tts`-Version den 403 des Sprachdienstes behebt). Das Feature bleibt bis dahin „In Progress“.
+- **Noch offen:** Browser-/Handy-Durchgang durch den Nutzer (echtes YouTube-Transkript einfügen, Word-Datei in Word öffnen, H5P-Interactive-Video in Moodle); Paket E (Podcast; zuerst prüfen, ob eine neuere `edge-tts`-Version den 403 des Sprachdienstes behebt).
+
+## Statusänderung auf Deployed (2026-11-02)
+- Auf Wunsch des Nutzers auf „Deployed“ gesetzt. Live sind die Pakete A bis D (10 der 11 Werkzeuge).
+- **Nicht gebaut:** Paket E (Podcast). Er ist der einzige Teil der 11 Werkzeuge, der noch fehlt. Das Feature sollte beim Podcast erneut geöffnet oder der Podcast als eigenes Feature geführt werden.

@@ -1,6 +1,6 @@
 # PROJ-59: Nutzer-Detailseite (Super-Admin)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-27
 **Last Updated:** 2026-10-27
 
@@ -79,7 +79,62 @@ Die Nutzerliste zeigt pro Person nur eine Zeile. Für Support-Fragen („bei mir
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-02. Grundlage: Spec oben und der bestehende Nutzerbereich (PROJ-57 Liste, PROJ-58 Passwort, Änderungsprotokoll PROJ-47).
+
+### Überblick
+Eine Seite pro Person, nur für den Super-Admin. Die Seite besteht aus Lese-Abschnitten und drei Pflege-Aktionen. Die Abschnitte laden unabhängig voneinander, damit ein Ausfall eines Abschnitts (z. B. Leistungsnachweise) die anderen nicht blockiert. Vieles ist schon da und wird nur zusammengeführt. Neue Datenbank-Tabellen sind nicht nötig.
+
+### Component Structure
+```
+Nutzer-Detailseite (/admin/users/[Person])
++-- Kopfzeile (Name, E-Mail, Rolle, Bereich, Status, Brotkrumen)
++-- Lese-Abschnitte (je eigener Lade-, Leer- und Fehlerzustand)
+|   +-- Steckbrief (Anmeldung, letzter Login, E-Mail bestätigt)
+|   +-- Spielstand (XP, Level, Streak, Frachtmünzen)
+|   +-- Lernstand je Fach (Trefferquote, zuletzt gelernt)
+|   +-- Aktivität (Kalenderstreifen 30 Tage)
+|   +-- Badges mit Datum
+|   +-- Leistungsnachweise (Link zur Auswertung)
+|   +-- Protokoll (letzte 20 Einträge, „Alle anzeigen“)
++-- Pflege-Aktionen (Dialoge)
+|   +-- Name ändern
+|   +-- E-Mail ändern / als bestätigt markieren
+|   +-- Passwort neu vergeben (vorhandener Dialog aus PROJ-58)
++-- Gefahrenzone (unten)
+    +-- Fortschritt zurücksetzen (mit Eintippen des Namens)
+    +-- Konto löschen (kommt mit PROJ-60, hier nur Platzhalter)
+```
+
+### Data Model (plain language)
+Es werden keine neuen Tabellen angelegt. Die Daten stammen aus dem Bestand:
+- **Konto-Stammdaten:** Name, Rolle, Bereich, Pseudonym, Zweitaccount-Verknüpfung, Sperr-/Pflichtwechsel-Status. Diese Daten liegen beim Konto-Profil.
+- **Anmeldedaten:** E-Mail, Bestätigungsstatus, letzter Login. Diese liegen beim Anmeldedienst (Supabase Auth).
+- **Spielstand:** XP, Level, aktueller und längster Streak, Frachtmünzen. Liegen beim Profil.
+- **Lernverlauf:** beantwortete Fragen und Treffer je Fach. Kommt aus den Antworten der Lernsitzungen.
+- **Badges:** erhaltene Badges mit Datum.
+- **Leistungsnachweise:** Ergebnisse, Punkte und Fokus-Verluste (PROJ-21/30).
+- **Protokoll:** das bestehende Änderungsprotokoll, gefiltert auf diese Person.
+
+**Zurücksetzen** löscht nicht. Die Lernverläufe, Badges, der Spielstand und die Hof-/Betriebs-Items werden auf den Nullstand gesetzt. Leistungsnachweise bleiben unberührt.
+
+### Tech Decisions (WHY)
+- **Eine Seite, mehrere unabhängige Abschnitte:** Jeder Abschnitt holt seine Daten selbst. So erfüllen wir die Vorgabe „ein Ausfall blockiert nichts“ und die Seite bleibt schnell (< 1 s für den Kopf).
+- **Vorhandene Bausteine wiederverwenden:** Der Passwort-Dialog (PROJ-58), das Protokoll (PROJ-47) und die Sperr-/Rollen-Regeln aus der Nutzerliste bleiben die einzige Quelle. Nichts wird doppelt gebaut.
+- **Alle Schreibwege laufen über den Server:** Der Browser darf die Daten nicht direkt ändern. Die Super-Admin-Prüfung steht bei jedem Aufruf im Server, nicht nur in der Oberfläche. Das ist das Muster der bestehenden Nutzer-Routen.
+- **Jede Pflege-Aktion schreibt ins Protokoll:** Name, E-Mail, Bestätigung und Zurücksetzen erzeugen je einen Eintrag mit den alten und neuen Werten. Das Zurücksetzen speichert die alten Kennzahlen (XP, Streak, Münzen), damit es nachvollziehbar bleibt.
+- **Zurücksetzen als ein Vorgang:** Alle betroffenen Daten werden in einem Schritt zurückgesetzt. Sonst entstünde ein halb zurückgesetzter Stand, falls der Vorgang unterbrochen wird.
+- **Laufende Sitzungen:** Beim Zurücksetzen erhält die Person einen Zeitstempel „Nullstand seit“. Sitzungen, die davor begonnen haben, dürfen beim Abschluss keine alten Werte mehr schreiben. Das ist einfacher und sicherer, als laufende Sitzungen zu beenden.
+- **E-Mail ändern ohne Bestätigungsmail:** Die neue Adresse gilt sofort, wie in der Spec gewünscht. Das ist ein bewusster Vertrauensschritt des Super-Admins. Die Änderung steht im Protokoll.
+- **Eigenes Konto gesperrt:** Die Seite ist für das eigene Konto lesbar. E-Mail-Änderung und Zurücksetzen sind abgeschaltet, wie bei der bestehenden Nutzerverwaltung.
+
+### Dependencies (packages)
+Keine neuen Pakete. Vorhanden sind Dialoge, Tabellen und Toasts aus der Oberfläche sowie der bestehende Anmeldedienst.
+
+### Entscheidungen (Nutzer, 2026-11-02: „wie vorgeschlagen“)
+- **E4:** Zurücksetzen und laufende Lernsitzungen: Zeitstempel „Nullstand seit“. Sitzungen, die davor begonnen haben, schreiben beim Abschluss keine alten Werte zurück. Laufende Sitzungen werden nicht beendet.
+- **E5:** Zweitaccount des Super-Admins: Hinweis „Zweitaccount von {Hauptkonto}“ plus Link auf die Detailseite des Hauptkontos.
+- **E6:** „Konto löschen“ (PROJ-60) bleibt ein leerer Platzhalter in der Gefahrenzone, bis PROJ-60 gebaut ist.
 
 ## QA Test Results
 _To be added by /qa_

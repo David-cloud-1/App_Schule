@@ -1,8 +1,8 @@
 # PROJ-52: Werkzeugkiste – Meine Materialien
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-30
+**Last Updated:** 2026-11-02
 
 ## Kontext
 Teil des Werkzeugkiste-Umzugs (Übersicht in PROJ-51). Die alte Werkzeugkiste hatte „Meine Ablage“. Dort war gespeichert, was eine Lehrkraft erstellt hatte, inklusive Skripttext, KI-Antwort und fertigen Dateien. In der App wird daraus der Reiter **„Meine Materialien“**. Er füllt sich **automatisch**, ohne extra Speichern-Knopf.
@@ -406,3 +406,6 @@ Gesamtsuite 1949 grün (vorher 1906); Produktions-Build, `tsc`, Lint (0 Fehler) 
 - **BUG-2:** Neuer Hinweis in den Überarbeiten-Hilfen (`fertig`), nur bei einem schon fertigen Material.
 - Tests: 3 neue (Erstellt-Regel, Hinweis mit/ohne Material), 1 angepasst. Gesamtsuite 1975 grün, `tsc` und Lint sauber.
 - BUG-4 (keine Begrenzung der Listenabfragen) bleibt bewusst offen.
+
+## Statusänderung auf Deployed (2026-11-02)
+- Auf Wunsch des Nutzers auf „Deployed“ gesetzt. Der Browser-/Handy-Durchgang wurde im Feature nicht dokumentiert. Er bleibt eine Prüfung, die der Nutzer selbst machen kann (Paket 2: „Kapitel neu“ mit echter KI, Neubau mit zwei Tabs).
