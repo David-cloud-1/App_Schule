@@ -1,6 +1,6 @@
 # PROJ-59: Nutzer-Detailseite (Super-Admin)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-02
 
@@ -199,4 +199,10 @@ Keine neuen Pakete. Vorhanden sind Dialoge, Tabellen und Toasts aus der Oberflä
 **Keine Critical/High-Fehler → produktionsreif, Status Approved.** Offen nach dem Deploy: einmal als Super-Admin im Browser und am Handy durchklicken (Liste → Detailseite, Dialoge, Hell/Dunkel).
 
 ## Deployment
-_To be added by /deploy_
+
+**2026-11-02:** Push auf `main` (Commits `e3b9a59` Design, `81d19e6` Umsetzung). Production `spedilern` Ready (Build 2 Min.).
+- **Keine Migration**, keine neuen Umgebungsvariablen, keine neuen Pakete.
+- Vor dem Push: committeter Stand in einem sauberen Worktree geprüft (2202 Tests grün, `tsc` sauber, `npm run build` erfolgreich).
+- Es wurden **nur die PROJ-59-Commits** gepusht. Zwei Commits einer parallelen Sitzung (PROJ-67) lagen lokal schon auf `main` und gingen bewusst nicht mit raus.
+- Nach dem Deploy: alle neuen Routen ohne Login 401, Seite ohne Login Umleitung zur Anmeldung, in den Vercel-Fehlerprotokollen der ersten 15 Minuten nichts.
+- **Noch offen:** Durchgang im Browser und am Handy als Super-Admin (Liste → Detailseite, Name/E-Mail ändern, Zurücksetzen an einem Testkonto, Hell/Dunkel), eingeloggter Aufruf der Seite (die Server/Client-Grenze lässt sich nur dort prüfen, siehe Projekt-Erfahrung PROJ-50).
