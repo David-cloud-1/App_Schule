@@ -70,6 +70,15 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(mayOpenAdminPath('student', '/admin')).toBe(false)
   })
 
+  it('lässt jede Lehrkraft in Schulrecht samt Aktennotiz-Ablauf und deren Schnittstelle (PROJ-55)', () => {
+    for (const path of ['/admin/schulrecht', '/admin/schulrecht/fall', '/admin/schulrecht/fall/abc']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+      expect(mayOpenAdminPath('student', path)).toBe(false)
+    }
+    expect(teacherMayCallApiPath('/api/admin/schulrecht/suche')).toBe(true)
+    expect(teacherMayCallApiPath('/api/admin/schulrecht-fremd')).toBe(false)
+  })
+
   it('lässt jede Lehrkraft in die Werkzeugkiste samt Ablauf und deren Schnittstelle (PROJ-51)', () => {
     for (const path of ['/admin/werkzeugkiste', '/admin/werkzeugkiste/neu', '/admin/werkzeugkiste/ablauf/abc']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(true)

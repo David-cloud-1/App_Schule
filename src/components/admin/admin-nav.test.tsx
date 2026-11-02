@@ -142,6 +142,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Übersicht',
       'Leistungsnachweise',
       'Werkzeugkiste',
+      'Schulrecht',
       'Meine Fächer',
       'Lehrerzimmer',
       'Fragen',
@@ -162,6 +163,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Übersicht',
       'Leistungsnachweise',
       'Werkzeugkiste',
+      'Schulrecht',
       'Meine Fächer',
       'Lehrerzimmer',
     ])

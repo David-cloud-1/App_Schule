@@ -7,6 +7,7 @@ import {
   GraduationCap,
   MessagesSquare,
   Plus,
+  Scale,
   ScrollText,
   Settings,
   Store,
@@ -20,6 +21,8 @@ import {
 import { contentScopeShort, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
 // PROJ-51: Die Werkzeugkiste ist eine Seite im Lehrkräfte-Bereich (vorher Hugging Face)
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
+// PROJ-55: Schulrecht nachschlagen — eigener Eintrag, kein Werkzeug
+import { SCHULRECHT_HREF } from '@/lib/schulrecht'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -94,6 +97,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Werkzeugkiste',
         description: 'Aus einem Skript Unterrichtsmaterial machen – kostenlos, mit deiner KI',
         icon: Wrench,
+        teacherVisible: true,
+      },
+      {
+        href: SCHULRECHT_HREF,
+        label: 'Schulrecht',
+        description: 'Paragraphen zu Fragen aus dem Schulalltag – im Wortlaut, ohne KI',
+        icon: Scale,
+        // PROJ-55: jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
         teacherVisible: true,
       },
       {
@@ -305,6 +316,14 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     kind: 'link',
     href: WERKZEUGKISTE_HREF,
     requiresHref: WERKZEUGKISTE_HREF,
+  },
+  {
+    id: 'schulrecht',
+    label: 'Schulrecht nachschlagen',
+    keywords: ['gesetz', 'paragraph', 'bayeug', 'baysch', 'bso', 'datenschutz', 'handy', 'fehlzeit', 'aufsicht', 'recht'],
+    kind: 'link',
+    href: SCHULRECHT_HREF,
+    requiresHref: SCHULRECHT_HREF,
   },
   {
     id: 'neuer-beitrag',

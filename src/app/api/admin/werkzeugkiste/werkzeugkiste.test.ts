@@ -339,7 +339,7 @@ describe('Tägliches Aufräumen (PROJ-51)', () => {
     })
     vi.mocked(createServiceClient).mockReturnValue({ ...service.client, storage: { from: () => speicher } } as never)
     const res = await aufraeumen(new Request('http://t', { headers: { authorization: 'Bearer zeitplan' } }))
-    expect(await res.json()).toEqual({ geloescht: 2, gefunden: 2, skripteEntfernt: 0 })
+    expect(await res.json()).toEqual({ geloescht: 2, gefunden: 2, skripteEntfernt: 0, faelleGeloescht: 0 })
     expect(speicher.remove).toHaveBeenCalledTimes(2)
     const abfrage = service.queries[0].calls
     expect(abfrage.find((c) => c.method === 'lt')!.args[0]).toBe('laeuft_ab_am')

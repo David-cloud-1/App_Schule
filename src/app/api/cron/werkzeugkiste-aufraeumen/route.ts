@@ -60,5 +60,14 @@ export async function GET(request: Request) {
   } catch {
     // Die zweite Aufgabe darf die erste nicht entwerten; sie läuft morgen wieder
   }
-  return NextResponse.json({ geloescht, gefunden: abgelaufen.length, skripteEntfernt })
+
+  // PROJ-55: abgelaufene Aktennotiz-Fälle (hauptsächlich räumt pg_cron stündlich auf; das hier ist der Rückfall)
+  let faelleGeloescht = 0
+  try {
+    const { data: weg } = await service.from('schulrecht_faelle').delete().lt('laeuft_ab_am', new Date().toISOString()).select('id')
+    faelleGeloescht = weg?.length ?? 0
+  } catch {
+    // morgen wieder
+  }
+  return NextResponse.json({ geloescht, gefunden: abgelaufen.length, skripteEntfernt, faelleGeloescht })
 }

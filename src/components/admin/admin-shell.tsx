@@ -30,6 +30,7 @@ import {
 import type { WorkspaceTheme } from '@/lib/workspace-theme'
 import { adminNavMatch } from '@/lib/admin-nav'
 import { istAblaufPfad } from '@/lib/werkzeugkiste'
+import { istFallPfad } from '@/lib/schulrecht'
 
 // Schnellsuche erst beim ersten Öffnen laden — die Startseite bleibt schlank
 const AdminCommandPalette = dynamic(() => import('@/components/admin/admin-command-palette'), { ssr: false })
@@ -72,8 +73,8 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [commandOpen, setCommandOpen])
 
-  // Werkzeugkiste-Ablauf (PROJ-51): eigener Rahmen ohne Seitenleiste und Kopfzeile
-  if (istAblaufPfad(pathname)) {
+  // Werkzeugkiste-Ablauf (PROJ-51) und Aktennotiz-Ablauf (PROJ-55): eigener Rahmen ohne Seitenleiste und Kopfzeile
+  if (istAblaufPfad(pathname) || istFallPfad(pathname)) {
     return (
       <div data-ws-theme={theme} className="ws-root min-h-svh bg-ws-bg text-ws-text">
         <a

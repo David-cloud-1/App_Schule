@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { ABLAUF_SCHRITTE, DIREKT_SCHRITTE, WERKZEUGKISTE_HREF, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import { ABLAUF_SCHRITTE, DIREKT_SCHRITTE, WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 
 export const HAUPTAKTION =
   'min-h-12 w-full rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green sm:w-auto'
@@ -32,6 +32,8 @@ export function AblaufRahmen({
   schritt,
   erreicht,
   direkt,
+  schritte,
+  kopfTitel = 'Neues Material',
   kurzinfo,
   titel,
   beschreibung,
@@ -39,11 +41,15 @@ export function AblaufRahmen({
   fuss,
   children,
 }: {
-  schritt: AblaufSchritt
+  schritt: number
   /** Weitester erreichter Schritt: davor gilt alles als erledigt */
-  erreicht: AblaufSchritt
+  erreicht: number
   /** Direkter Weg (PROJ-64): vier Schritte statt fünf */
   direkt?: boolean
+  /** Eigene Schrittfolge (PROJ-55: Aktennotiz mit drei Schritten) */
+  schritte?: { nr: number; label: string }[]
+  /** Titel in der Kopfzeile, Standard „Neues Material“ */
+  kopfTitel?: string
   kurzinfo?: string
   titel: string
   beschreibung?: React.ReactNode
@@ -64,7 +70,7 @@ export function AblaufRahmen({
       <header className="sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-ws-line bg-ws-surface px-3 sm:px-6 print:hidden">
         {schliessen}
         <div className="grid min-w-0 leading-tight">
-          <span className="text-sm font-bold sm:text-base">Neues Material</span>
+          <span className="text-sm font-bold sm:text-base">{kopfTitel}</span>
           {kurzinfo && (
             <span className="truncate text-xs text-ws-muted sm:text-sm" title={kurzinfo}>
               {kurzinfo}
@@ -78,7 +84,7 @@ export function AblaufRahmen({
         tabIndex={-1}
         className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8"
       >
-        <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} />
+        <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} schritte={schritte} />
 
         <div className="space-y-2">
           <h1 ref={ueberschrift} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
@@ -100,8 +106,18 @@ export function AblaufRahmen({
 }
 
 /** Fünf Schritte (direkt: vier); auf dem Handy als „Schritt 2 von 5 · Einstellungen“ mit Balken */
-export function Fortschritt({ schritt, erreicht, direkt }: { schritt: AblaufSchritt; erreicht: AblaufSchritt; direkt?: boolean }) {
-  const schritte = direkt ? DIREKT_SCHRITTE : ABLAUF_SCHRITTE
+export function Fortschritt({
+  schritt,
+  erreicht,
+  direkt,
+  schritte: eigene,
+}: {
+  schritt: number
+  erreicht: number
+  direkt?: boolean
+  schritte?: { nr: number; label: string }[]
+}) {
+  const schritte = eigene ?? (direkt ? DIREKT_SCHRITTE : ABLAUF_SCHRITTE)
   const position = Math.max(1, schritte.findIndex((s) => s.nr === schritt) + 1)
   const aktuell = schritte[position - 1]
   return (
@@ -157,7 +173,10 @@ export function Fortschritt({ schritt, erreicht, direkt }: { schritt: AblaufSchr
 export function SchliessenKnopf({
   rueckfrage,
   beimAbbrechen,
+  ziel = WERKZEUGKISTE_HREF,
 }: {
+  /** Wohin der Knopf führt (Standard: Werkzeugkiste; PROJ-55: Schulrecht) */
+  ziel?: string
   /** `knopf`: Beschriftung der Bestätigung (Standard „Abbrechen“); `harmlos`: nichts geht verloren, deshalb nicht rot */
   rueckfrage?: { titel: string; text: string; knopf?: string; harmlos?: boolean }
   beimAbbrechen?: () => Promise<void>
@@ -169,7 +188,7 @@ export function SchliessenKnopf({
   if (!rueckfrage) {
     return (
       <Button asChild variant="ghost" size="icon" className={knopf}>
-        <Link href={WERKZEUGKISTE_HREF} aria-label="Schließen und zurück zur Werkzeugkiste">
+        <Link href={ziel} aria-label="Schließen und zurück">
           <X className="size-5" aria-hidden />
         </Link>
       </Button>
@@ -183,7 +202,7 @@ export function SchliessenKnopf({
     } catch {
       // Ein Entwurf wird ohnehin nach 7 Tagen gelöscht — nicht festhalten
     } finally {
-      window.location.href = WERKZEUGKISTE_HREF
+      window.location.href = ziel
     }
   }
 
