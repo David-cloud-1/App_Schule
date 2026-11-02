@@ -12,6 +12,10 @@ export const HAFTUNGSHINWEIS = 'Keine Rechtsberatung. Im Zweifel Schulleitung od
 
 export const ANONYMISIERUNGS_WARNUNG = 'Der Sachverhalt enthält Namen. Er wird an eine externe KI weitergegeben.'
 
+/** Hinweis über dem Sachverhalt: Namen gar nicht erst eintippen (die automatische Erkennung findet nicht alles) */
+export const OHNE_NAMEN_HINWEIS =
+  'Schreibe den Fall am besten gleich ohne Namen, zum Beispiel „ein Schüler“, „Klasse X“ oder „der Ausbildungsbetrieb“.'
+
 export const KURZE_FRAGE_HINWEIS = 'Mit einer ganzen Frage findest du genauere Stellen.'
 
 export const KEIN_TREFFER_TEXT = 'Dazu wurde nichts gefunden. Formuliere die Frage anders oder wähle ein Thema.'

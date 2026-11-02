@@ -32,7 +32,7 @@ Grundlage ist `Rechtsauskunft-Konzept.md` in der Werkzeugkiste. Dort sind auch d
 
 ### Seite & Zugang
 - [ ] Der Navigationseintrag „Schulrecht“ (Gruppe „Mein Unterricht“) führt auf eine eigene Seite mit `AdminPageHeader` (Titel „Schulrecht“, Beschreibung „Paragraphen zu Fragen aus dem Schulalltag – im Wortlaut, ohne KI.“). Er ist auch in der Schnellsuche (⌘K) zu finden.
-- [ ] Zugang haben alle Lehrer-Rollen, Azubis nie (404).
+- [ ] Zugang haben alle Lehrer-Rollen, Azubis nie (sie werden wie im ganzen Lehrkräfte-Bereich auf die Startseite umgeleitet, Server-Aufrufe liefern 403; Entscheidung 2026-11-02, vorher „404“).
 
 ### Fragen & Fundstellen
 - [ ] Im Mittelpunkt steht ein großes Suchfeld „Was willst du wissen?“.
@@ -272,7 +272,7 @@ Wiederverwendet aus PROJ-51: `AblaufRahmen` (jetzt mit eigenen Schritten, Kopfti
 
 ## QA Test Results
 
-**Stand:** 2026-11-02 · **Ergebnis: NICHT bereit für Produktion** (1 hohe, 1 mittlere, 4 niedrige Auffälligkeiten)
+**Stand:** 2026-11-02 · **Ergebnis: bereit für Produktion** nach Nachbesserung (siehe „Nachbesserung“ unten; Browser-Durchlauf durch den Nutzer steht nach dem Deploy aus)
 
 ### Wie getestet wurde (und was nicht)
 - **Automatisch:** Gesamtsuite 2136 grün, Typprüfung, Lint (0 Fehler) und Produktions-Build sauber. Neu: 9 + 11 (Oberfläche), 17 (App-Routen), 19 (Kern).
@@ -334,7 +334,16 @@ Gesamtsuite grün, darunter Navigation, Rollen, Werkzeugkiste-Ablauf (Rahmen wur
 ### Checkliste für den Browser-Durchlauf nach dem Deploy
 1. Als Lehrkraft: Schulrecht öffnen, „Handy“ anklicken, Treffer lesen, „Text kopieren“.  2. „Elternabend absagen“ eingeben (Ähnlichkeitssuche, Kennzeichen „ungeprüft“).  3. „Vorschriften durchblättern“ → BSO → Norm öffnen.  4. Aktennotiz: Fall mit Namen, Vorschläge ändern/ablehnen, Prompt kopieren, Antwort einfügen (mit erfundenem „Art. 999 BayEUG“), Word laden.  5. Neuladen in Schritt 2/3.  6. Handy-Breite (375 px): Chips, Karten, Ablauf.  7. Hell/Dunkel, Tastaturbedienung.  8. Azubi-Konto: Seite nicht erreichbar.
 
-### Empfehlung
+### Nachbesserung (2026-11-02, nach Rücksprache mit dem Nutzer)
+- **BUG-1 (Nachnamen/„10b“/Datum in Worten nicht erkannt): herabgestuft auf Mittel, bewusst nicht behoben.** Kollegen schreiben in den Sachverhalt keine echten Namen; die Erkennung arbeitet wie in der alten Werkzeugkiste. Stattdessen steht über dem Sachverhalt der Hinweis „Schreibe den Fall am besten gleich ohne Namen …“. Eine bessere Erkennung wäre ein eigenes Folge-Feature.
+- **BUG-2 behoben:** Bei null Funden steht „Es wurden keine Namen erkannt. Das heißt nicht, dass keine drinstehen – bitte lies den Text selbst noch einmal durch.“
+- **BUG-3 behoben (Kern):** Nur unbekannte Rechtsquellen ergeben einen Fehlersatz statt einer Suche über alles (+ Test).
+- **BUG-4 behoben:** Ein abgelaufener Fall zeigt „Dieser Fall ist nicht mehr da“ mit dem Knopf „Zu Schulrecht“.
+- **BUG-5 entschieden:** Spec angepasst (Weiterleitung/403 wie im gesamten Bereich).
+- **BUG-6 behoben:** Mengenbremse für Suche und Erkennen (30 pro Minute und Person, 429 mit Hinweis; Zähler pro Server-Instanz) und die Aktennotiz wird bei einer als unlesbar geprüften Antwort abgelehnt (+ Tests).
+- Tests danach: Gesamtsuite 2138 grün, Kern 20 grün, Build sauber.
+
+### Empfehlung (Stand vor der Nachbesserung, historisch)
 **Nicht deployen**, bis BUG-1 (und mit ihm BUG-2) behoben ist: Der Schutz vor Namen an fremde KI ist das Kernversprechen von E3. BUG-3 bis BUG-6 können nach dem Deploy folgen. Danach `/qa` erneut (nur Erkennung + Browser-Durchlauf).
 
 ## Deployment

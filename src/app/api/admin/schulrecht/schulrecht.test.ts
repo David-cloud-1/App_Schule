@@ -18,6 +18,7 @@ import { GET as fallLesen, PATCH as fallSpeichern, DELETE as fallLoeschen } from
 import { POST as prompt } from './faelle/[id]/prompt/route'
 import { POST as pruefen } from './faelle/[id]/pruefen/route'
 import { POST as aktennotiz } from './faelle/[id]/aktennotiz/route'
+import { bremseZuruecksetzen, SUCHEN_PRO_MINUTE } from '@/lib/schulrecht-limit'
 import { GET as aufraeumen } from '../../cron/werkzeugkiste-aufraeumen/route'
 
 const ID = '11111111-1111-4111-8111-111111111111'
@@ -40,7 +41,7 @@ let zeile: Record<string, unknown> | null
 let anzahl: number
 let db: ReturnType<typeof chainMock>
 let kernFetch: ReturnType<typeof vi.fn>
-let serviceLoeschen: ReturnType<typeof vi.fn>
+let serviceLoeschen: ReturnType<typeof vi.fn<() => void>>
 
 function anmelden() {
   db = chainMock((_t, calls) => {
@@ -72,7 +73,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   zeile = { ...BASIS }
   anzahl = 0
-  serviceLoeschen = vi.fn()
+  bremseZuruecksetzen()
+  serviceLoeschen = vi.fn<() => void>()
   const kette: Record<string, unknown> = {
     lt: vi.fn().mockReturnValue({ select: vi.fn().mockResolvedValue({ data: [{ id: 'x' }] }), then: (f: (v: unknown) => unknown) => Promise.resolve({ error: null }).then(f) }),
   }
@@ -156,6 +158,17 @@ describe('Schulrecht-Schnittstelle (PROJ-55)', () => {
       expect((await norm(new Request('http://t?kuerzel=BSO'))).status).toBe(400)
       kernAntwort({ fundstelle: {} })
       expect((await norm(new Request('http://t?kuerzel=BSO&nr=%C2%A7%201'))).status).toBe(200)
+    })
+
+    it('bremst ein zu schnelles Durchsuchen (429), je Person', async () => {
+      kernFetch.mockImplementation(async () => new Response(JSON.stringify({ fundstellen: [] }), { status: 200 }))
+      for (let i = 0; i < SUCHEN_PRO_MINUTE; i++) expect((await suche(json({ frage: 'Handy' }))).status).toBe(200)
+      const res = await suche(json({ frage: 'Handy' }))
+      expect(res.status).toBe(429)
+      expect((await res.json()).error).toMatch(/schnell/)
+      expect((await erkennen(json({ sachverhalt: 'Ein Fall.' }))).status).toBe(429)
+      vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: null, user: { id: 'u2', email: 'k@schule.de' }, supabase: db.client, role: 'teacher' } as never)
+      expect((await suche(json({ frage: 'Handy' }))).status).toBe(200)
     })
 
     it('wärmt das Modell ohne Inhalt vor', async () => {
@@ -272,6 +285,13 @@ describe('Schulrecht-Schnittstelle (PROJ-55)', () => {
       expect(new Uint8Array(await res.arrayBuffer())[0]).toBe(80)
       expect(JSON.parse(kernFetch.mock.calls[0][1].body)).toMatchObject({ sachverhalt: BASIS.sachverhalt, antwort: 'Einschätzung …' })
       expect(db.writes).toHaveLength(0)
+    })
+
+    it('liefert keine Aktennotiz zu einer als unlesbar geprüften Antwort', async () => {
+      zeile = { ...BASIS, prompt: 'P', antwort: 'zu kurz', pruefung: { lesbar: false, fehler: 'Die Antwort ist leer oder sehr kurz.', befunde: [] } }
+      const res = await aktennotiz(new Request('http://t', { method: 'POST' }), ctx)
+      expect(res.status).toBe(400)
+      expect(kernFetch).not.toHaveBeenCalled()
     })
 
     it('verlangt für die Aktennotiz eine eingefügte Antwort und zeigt Kern-Fehler als Satz', async () => {

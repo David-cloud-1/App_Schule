@@ -17,6 +17,9 @@ export async function POST(_request: Request, { params }: Kontext) {
   const zeile = await ladeEigenenFall(auth.supabase, (await params).id)
   if (!zeile) return fehler(FALL_FEHLT, 404)
   if (!zeile.antwort?.trim()) return fehler('Bitte füge zuerst die Antwort der KI ein.', 400)
+  if ((zeile.pruefung as { lesbar?: boolean } | null)?.lesbar === false) {
+    return fehler('Die Antwort ist leer oder unvollständig.', 400, 'Bitte füge die vollständige Antwort der KI ein.')
+  }
   try {
     const datei = await kernDatei('/api/recht/aktennotiz', {
       sachverhalt: zeile.sachverhalt,

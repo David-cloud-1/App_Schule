@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
+import { bremse } from '@/lib/schulrecht-limit'
 import { kern, kernFehlerAntwort, ungueltig } from '@/lib/werkzeugkiste-server'
 import { ohneZwischenspeicher, sucheSchema } from '@/lib/schulrecht-server'
 import type { SuchErgebnis } from '@/lib/schulrecht'
@@ -15,6 +16,8 @@ export const maxDuration = 60
 export async function POST(request: Request) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
+  const zuSchnell = bremse(auth.user.id)
+  if (zuSchnell) return zuSchnell
   const parsed = sucheSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return ungueltig(parsed.error)
   try {

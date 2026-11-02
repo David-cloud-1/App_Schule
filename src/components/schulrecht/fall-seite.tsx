@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { AlertTriangle, CheckCircle2, Download, Loader2, XCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Download, Loader2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { AblaufRahmen, HAUPTAKTION, NEBENAKTION, SchliessenKnopf } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { SchrittPrompt } from '@/components/werkzeugkiste/schritt-prompt'
 import { Hinweis } from '@/components/werkzeugkiste/schritt-skript'
@@ -33,6 +34,7 @@ import {
   fundstelleKurz,
   HAFTUNGSHINWEIS,
   leseAusTab,
+  OHNE_NAMEN_HINWEIS,
   loescheAusTab,
   SACHVERHALT_ENTWURF_KEY,
   SACHVERHALT_MAX_ZEICHEN,
@@ -185,7 +187,8 @@ function NeuerFall() {
     >
       <Hinweis>{HAFTUNGSHINWEIS}</Hinweis>
       {phase === 'eingabe' ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <Hinweis>{OHNE_NAMEN_HINWEIS}</Hinweis>
           <Label htmlFor="sr-sachverhalt" className="sr-only">
             Sachverhalt
           </Label>
@@ -222,7 +225,6 @@ function NeuerFall() {
 // ── Gespeicherter Fall: Schritte 1–3 ───────────────────────────────────────
 
 function LaufenderFall({ id }: { id: string }) {
-  const router = useRouter()
   const params = useSearchParams()
   const [fall, setFall] = useState<Fall | null>(null)
   const [ladeFehler, setLadeFehler] = useState<{ text: string; status: number } | null>(null)
@@ -247,10 +249,26 @@ function LaufenderFall({ id }: { id: string }) {
     }
   }, [id, versuch])
 
+  if (ladeFehler?.status === 404) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-12">
+        <AdminEmptyState
+          icon={Clock}
+          title="Dieser Fall ist nicht mehr da"
+          description="Fälle werden nach 24 Stunden gelöscht, damit nichts liegen bleibt."
+          action={
+            <Button asChild className={HAUPTAKTION}>
+              <Link href={SCHULRECHT_HREF}>Zu Schulrecht</Link>
+            </Button>
+          }
+        />
+      </div>
+    )
+  }
   if (ladeFehler) {
     return (
       <div className="mx-auto max-w-xl px-4 py-12">
-        <AdminErrorState message={ladeFehler.text} onRetry={ladeFehler.status === 404 ? () => router.replace(SCHULRECHT_HREF) : () => {
+        <AdminErrorState message={ladeFehler.text} onRetry={() => {
                 setLadeFehler(null)
                 setVersuch((v) => v + 1)
               }} />

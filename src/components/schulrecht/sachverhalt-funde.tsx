@@ -42,7 +42,7 @@ export function SachverhaltFunde({
     return (
       <div className="space-y-3">
         <Hinweis>
-          Es wurden keine Namen, Klassen oder Daten erkannt. Lies den Text trotzdem noch einmal durch: Nicht alles lässt sich automatisch finden.
+          Es wurden keine Namen erkannt. Das heißt nicht, dass keine drinstehen – bitte lies den Text selbst noch einmal durch.
         </Hinweis>
         <Vorschau text={sachverhalt} />
       </div>

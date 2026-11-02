@@ -184,7 +184,7 @@ describe('Personenbezüge prüfen (PROJ-55, E3)', () => {
     render(
       <SachverhaltFunde sachverhalt="Ein Fehltag." funde={[]} entscheidungen={{}} setEntscheidung={vi.fn()} bestaetigt={false} setBestaetigt={vi.fn()} />,
     )
-    expect(screen.getByText(/Es wurden keine Namen, Klassen oder Daten erkannt/)).toBeInTheDocument()
+    expect(screen.getByText(/Es wurden keine Namen erkannt\. Das heißt nicht, dass keine drinstehen/)).toBeInTheDocument()
     expect(screen.getByText('Ein Fehltag.')).toBeInTheDocument()
   })
 })
