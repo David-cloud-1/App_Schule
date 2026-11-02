@@ -130,7 +130,7 @@ BEGIN
   UPDATE schulrecht_faelle SET antwort = 'x' WHERE id = v_id; GET DIAGNOSTICS v_n = ROW_COUNT;
   r := r || format('T10 abgelaufenen Fall ändern: %s (0)' || E'\n', v_n);
   DELETE FROM schulrecht_faelle WHERE id = v_id; GET DIAGNOSTICS v_n = ROW_COUNT;
-  r := r || format('T11 abgelaufenen eigenen Fall löschen: %s (1)' || E'\n', v_n);
+  r := r || format('T11 abgelaufenen eigenen Fall löschen: %s (0 – wie sichtbar, das Aufräumen macht pg_cron)' || E'\n', v_n);
 
   -- Grenzen
   BEGIN

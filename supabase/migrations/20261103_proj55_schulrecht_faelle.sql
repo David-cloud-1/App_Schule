@@ -49,7 +49,9 @@ CREATE POLICY "schulrecht_faelle: eigene anlegen" ON public.schulrecht_faelle
 CREATE POLICY "schulrecht_faelle: eigene ändern" ON public.schulrecht_faelle
   FOR UPDATE USING (owner_id = auth.uid() AND public.has_teacher_role() AND laeuft_ab_am > now())
   WITH CHECK (owner_id = auth.uid() AND public.has_teacher_role());
--- Löschen geht auch bei abgelaufenen eigenen Fällen (Aufräumen)
+-- Löschen: Postgres wendet beim Löschen auch die Leseregel an, ein abgelaufener Fall
+-- lässt sich also von der Lehrkraft nicht mehr löschen. Das ist gewollt: Er ist unsichtbar,
+-- und das physische Aufräumen übernehmen pg_cron und der Zeitplan der App (Service-Schlüssel).
 CREATE POLICY "schulrecht_faelle: eigene löschen" ON public.schulrecht_faelle
   FOR DELETE USING (owner_id = auth.uid() AND public.has_teacher_role());
 

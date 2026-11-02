@@ -277,7 +277,7 @@ Wiederverwendet aus PROJ-51: `AblaufRahmen` (jetzt mit eigenen Schritten, Kopfti
 ### Wie getestet wurde (und was nicht)
 - **Automatisch:** Gesamtsuite 2136 grün, Typprüfung, Lint (0 Fehler) und Produktions-Build sauber. Neu: 9 + 11 (Oberfläche), 17 (App-Routen), 19 (Kern).
 - **Produktions-Kern** (live seit 2026-11-02) mit Grenz- und Angriffsfällen von Hand geprüft: Kennwortschutz, ungültige Eingaben, Pfad-/Skript-Zeichen in Parametern, überlange Antwort, Word-Datei.
-- **Datenbank:** Tabelle, RLS (4 Regeln, Wortlaut gelesen), `anon` ohne Recht, pg_cron-Job vorhanden. Die Rechte-Probe (`proj55_schulrecht_probe.sql`) habe ich nicht selbst ausgeführt (schreibende SQL-Aufrufe sind gesperrt) – **bitte einmal im SQL-Editor laufen lassen**.
+- **Datenbank:** Tabelle, RLS (4 Regeln, Wortlaut gelesen), `anon` ohne Recht, pg_cron-Job vorhanden. Die Rechte-Probe (`proj55_schulrecht_probe_nur_tests.sql`) hat der Nutzer am 2026-11-02 im SQL-Editor ausgeführt: **14 von 14 bestanden** (fremde Lehrkraft, Super-Admin und Azubi sehen nichts und ändern nichts, Anlegen für Dritte und Azubi-Anlegen abgelehnt, abgelaufene Fälle unsichtbar, Grenzen und `anon` greifen, Aufräum-Job geplant). Einzige Abweichung: T11 – ein abgelaufener eigener Fall lässt sich von der Lehrkraft nicht mehr löschen (0 statt 1), weil Postgres beim Löschen die Leseregel mitprüft. Das ist unschädlich (unsichtbar, pg_cron und Zeitplan räumen auf, die Route antwortet vorher mit 404); Erwartung und Kommentar wurden angepasst.
 - **NICHT getestet:** Browser (Chrome/Firefox/Safari), Responsive (375/768/1440), Tastatur und Screenreader, Playwright-E2E. Grund: Projektregel „kein Dev-Server / kein Playwright“ (stürzt den MacBook ab), und die App-Seite ist noch nicht in Produktion. Es gibt deshalb keine `tests/PROJ-55-*.spec.ts`. **Nach dem Deploy ein Durchlauf im Browser durch den Nutzer** (Checkliste unten).
 
 ### Akzeptanzkriterien
@@ -326,7 +326,7 @@ Das Beispiel „10b → Klasse X“ aus der Spec trifft also nicht zu. Die Erken
 - **Zugang:** Alle 13 Routen lehnen ohne Lehrer-Rolle mit 403 ab (Test); Kern ohne Kennwort 401 (Produktion bestätigt). Datenbank: RLS mit Besitz **und** Lehrer-Rolle, `anon` ohne Recht, Super-Admin sieht fremde Fälle nicht (Regelwortlaut geprüft; Probe steht zur Ausführung bereit).
 - **Eingaben:** Zod strikt (fremde Felder → 400), Längen 500/5000/60 000, höchstens 30 Fundstellen, `kuerzel`/`nr` nur kurze Zeichenketten; Parameter wie `../../etc` oder `<script>` landen bei „gibt es nicht“ (404). Kein SQL, kein Dateizugriff aus Eingaben. Ausgabe wird als Text gerendert (React), Word-Datei über python-docx.
 - **Datenabfluss:** Frage in keiner Adresse (POST), `no-store` auf allen Antworten mit Nutzereingaben, Word-Datei nirgends gespeichert, Rohtext nur im `sessionStorage` des Tabs. Kein Geheimnis im Browser.
-- **Offen:** Fremde Fälle per ID erraten ist wegen UUID + RLS ausgeschlossen; ein echter Test mit zwei Konten steht noch aus (Probe).
+- **Fremde Fälle:** per ID nicht erreichbar – durch die Probe mit echten Konten bestätigt (T2–T7).
 
 ### Regression
 Gesamtsuite grün, darunter Navigation, Rollen, Werkzeugkiste-Ablauf (Rahmen wurde um Schritte/Titel/Ziel erweitert, Verhalten bleibt) und der tägliche Zeitplan. Die bestehenden Kern-Tests laufen weiter (`kern_recht_test.py` 19, vorher bestehende unverändert).
