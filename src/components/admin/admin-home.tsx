@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ChevronRight, ExternalLink, GraduationCap, Info, UserCog } from 'lucide-react'
 import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
 import { adminHomeActionsFor } from '@/lib/admin-nav'
-import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM } from '@/lib/roles'
+import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM, SUPER_ADMIN_ONLY_MESSAGE } from '@/lib/roles'
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminLoadingState } from '@/components/admin/admin-states'
@@ -78,7 +78,14 @@ function useRunningAssessments(): { data: RunningAssessment[] | null | 'error'; 
  * Startseite des Lehrkräfte-Bereichs: was gerade läuft (offene Nachweise mit
  * Live-Stand), dann Schnellaktionen — keine zweite Kopie der Navigation.
  */
-export function AdminHome({ blocked = false }: { blocked?: boolean }) {
+export function AdminHome({
+  blocked = false,
+  blockedBy = 'admin',
+}: {
+  blocked?: boolean
+  /** Wer die gesperrte Seite verwaltet: Bereichs-Admin (PROJ-49) oder nur der Super-Admin (PROJ-59) */
+  blockedBy?: 'admin' | 'super'
+}) {
   const { role, displayName, showTeacherWelcome } = useAdminRole()
   const hasSubjects = useHasSubjects()
   const isApple = useIsApplePlatform()
@@ -110,7 +117,15 @@ export function AdminHome({ blocked = false }: { blocked?: boolean }) {
         >
           <Info className="mt-0.5 size-5 shrink-0" aria-hidden />
           <span>
-            <span className="font-semibold">Diese Seite ist nur für Admins.</span> {BLOCKED_PAGE_MESSAGE}
+            {blockedBy === 'super' ? (
+              <>
+                <span className="font-semibold">Diese Seite ist nur für den Super-Admin.</span> {SUPER_ADMIN_ONLY_MESSAGE}
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">Diese Seite ist nur für Admins.</span> {BLOCKED_PAGE_MESSAGE}
+              </>
+            )}
           </span>
         </p>
       )}

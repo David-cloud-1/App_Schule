@@ -173,3 +173,18 @@ describe('Nutzerliste – Passwort neu vergeben (PROJ-58)', () => {
     expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeEnabled()
   })
 })
+
+describe('Nutzerliste – Link zur Detailseite (PROJ-59)', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  it('Super-Admin: der Name ist ein Link auf die Detailseite', async () => {
+    await setup('admin')
+    expect(screen.getByRole('link', { name: 'Anna Azubi' })).toHaveAttribute('href', '/admin/users/s1')
+  })
+
+  it('Bereichs-Admin: kein Link, nur der Name', async () => {
+    await setup('department_admin')
+    expect(screen.queryByRole('link', { name: 'Anna Azubi' })).not.toBeInTheDocument()
+    expect(screen.getByText('Anna Azubi')).toBeInTheDocument()
+  })
+})

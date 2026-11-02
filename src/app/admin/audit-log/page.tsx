@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Info, Loader2, Undo2 } from 'lucide-react'
+import { Info, Loader2, Undo2, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -81,6 +81,10 @@ const ACTION_TYPES = [
   { value: 'user.role_change', label: 'Rolle geändert' },
   { value: 'user.move_department', label: 'Bereich gewechselt' },
   { value: 'user.password_set', label: 'Passwort neu vergeben' },
+  { value: 'user.rename', label: 'Name geändert' },
+  { value: 'user.email_change', label: 'E-Mail geändert' },
+  { value: 'user.email_confirm', label: 'E-Mail als bestätigt markiert' },
+  { value: 'user.progress_reset', label: 'Fortschritt zurückgesetzt' },
   { value: 'forum.hide', label: 'Lehrerzimmer: ausgeblendet' },
   { value: 'forum.unhide', label: 'Lehrerzimmer: eingeblendet' },
 ]
@@ -95,6 +99,8 @@ export default function AdminAuditLogPage() {
   const [period, setPeriod] = useState<'7d' | '30d' | 'all'>('30d')
   const [actionType, setActionType] = useState<string>('all')
   const [page, setPage] = useState(1)
+  // Nur Einträge zu einer Person (Link von der Nutzer-Detailseite, PROJ-59); undefined = Adresse noch nicht gelesen
+  const [personId, setPersonId] = useState<string | null | undefined>(undefined)
   const [data, setData] = useState<AuditResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -106,13 +112,28 @@ export default function AdminAuditLogPage() {
     setPage(1)
   }, [period, actionType])
 
+  useEffect(() => {
+    const person = new URLSearchParams(window.location.search).get('person')
+    setPersonId(person && /^[0-9a-f-]{36}$/i.test(person) ? person : null)
+    // Beim Link von einer Person gilt ein längerer Zeitraum, sonst wirkt der Verlauf leer
+    if (person) setPeriod('all')
+  }, [])
+
+  function clearPerson() {
+    window.history.replaceState(null, '', window.location.pathname)
+    setPersonId(null)
+    setPage(1)
+  }
+
   const load = useCallback(async () => {
+    if (personId === undefined) return
     setLoading(true)
     setLoadFailed(false)
     try {
       const params = new URLSearchParams()
       params.set('period', period)
       if (actionType !== 'all') params.set('action_type', actionType)
+      if (personId) params.set('object_id', personId)
       params.set('page', String(page))
 
       const res = await fetch(`/api/admin/audit-log?${params.toString()}`)
@@ -128,7 +149,7 @@ export default function AdminAuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [period, actionType, page])
+  }, [period, actionType, page, personId])
 
   useEffect(() => {
     load()
@@ -187,6 +208,17 @@ export default function AdminAuditLogPage() {
       <AdminPageHeader title="Änderungsprotokoll" description={`${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
 
       <div className="flex flex-wrap gap-3">
+        {personId && (
+          <Button
+            variant="outline"
+            onClick={clearPerson}
+            className="min-h-11 gap-2 rounded-xl border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+          >
+            Nur eine Person
+            <X className="size-4" aria-hidden />
+            <span className="sr-only">Filter auf eine Person aufheben</span>
+          </Button>
+        )}
         <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
           <SelectTrigger className="w-[180px] bg-ws-surface border-ws-line text-ws-text">
             <SelectValue />

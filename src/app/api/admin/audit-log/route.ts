@@ -6,6 +6,8 @@ import { createServiceClient } from '@/lib/supabase-server'
 const QuerySchema = z.object({
   period: z.enum(['7d', '30d', 'all']).default('30d'),
   action_type: z.string().optional(),
+  /** Nur Einträge zu dieser Person (Nutzer-Detailseite, PROJ-59) */
+  object_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
 })
 
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { period, action_type, page } = parsed.data
+  const { period, action_type, object_id, page } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -56,6 +58,9 @@ export async function GET(request: NextRequest) {
     }
     if (action_type) {
       query = query.eq('action_type', action_type)
+    }
+    if (object_id) {
+      query = query.eq('object_type', 'user').eq('object_id', object_id)
     }
 
     const { data, error, count } = await query.range(from, to)

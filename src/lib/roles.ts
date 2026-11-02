@@ -72,6 +72,11 @@ export const BLOCKED_PARAM = 'gesperrt'
 
 export const BLOCKED_PAGE_MESSAGE = 'Das verwaltet dein Bereichs-Admin.'
 
+/** Wert des Hinweis-Parameters, wenn ein Bereichs-Admin eine Seite nur für den Super-Admin öffnen wollte (PROJ-59) */
+export const SUPER_ADMIN_ONLY_VALUE = 'super'
+
+export const SUPER_ADMIN_ONLY_MESSAGE = 'Das verwaltet der Super-Admin.'
+
 export const NO_RIGHTS_MESSAGE = 'Dafür fehlen dir die Rechte. Das kann nur ein Administrator.'
 export const PLAYER_HOME_PATH = '/'
 

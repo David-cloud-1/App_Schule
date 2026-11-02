@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Ban, CheckCircle2, ChevronDown, KeyRound, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -409,7 +410,18 @@ export default function AdminUsersPage() {
                     <TableRow key={u.id} className="border-ws-line hover:bg-ws-bg/40">
                       <TableCell className="text-ws-text font-medium">
                         <div className="flex items-center gap-2">
-                          {u.display_name ?? '—'}
+                          {/* Detailseite nur für den Super-Admin (PROJ-59) */}
+                          {isSuperAdmin ? (
+                            <Link
+                              href={`/admin/users/${u.id}`}
+                              title={`Details zu ${u.display_name ?? u.email ?? 'diesem Konto'}`}
+                              className="inline-flex min-h-11 items-center rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
+                            >
+                              {u.display_name ?? '—'}
+                            </Link>
+                          ) : (
+                            (u.display_name ?? '—')
+                          )}
                           {u.role !== 'student' && (
                             <Badge
                               variant="outline"

@@ -127,4 +127,19 @@ describe('GET /api/admin/audit-log', () => {
     const res = await GET(makeRequest({ action_type: 'question.create' }))
     expect(res.status).toBe(200)
   })
+
+  it('filtert auf eine Person (object_id) und lehnt eine ungültige Id ab', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
+    const service = makeServiceClient()
+    vi.mocked(createServiceClient).mockReturnValue(service as never)
+    const personId = '550e8400-e29b-41d4-a716-446655440099'
+    const res = await GET(makeRequest({ object_id: personId }))
+    expect(res.status).toBe(200)
+    const logBuilder = service.from('admin_audit_log') as { eq: ReturnType<typeof vi.fn> }
+    expect(logBuilder.eq).toHaveBeenCalledWith('object_type', 'user')
+    expect(logBuilder.eq).toHaveBeenCalledWith('object_id', personId)
+
+    const bad = await GET(makeRequest({ object_id: 'nicht-gueltig' }))
+    expect(bad.status).toBe(400)
+  })
 })

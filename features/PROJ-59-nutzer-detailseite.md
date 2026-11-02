@@ -1,8 +1,8 @@
 # PROJ-59: Nutzer-Detailseite (Super-Admin)
 
-## Status: Architected
+## Status: Approved
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-11-02
 
 ## Kontext
 Die Nutzerliste zeigt pro Person nur eine Zeile. Für Support-Fragen („bei mir zählt der Streak nicht“), Gespräche mit Azubis und Pflegearbeiten braucht der Super-Admin eine Seite pro Person, die alles bündelt und die nötigen Korrekturen erlaubt.
@@ -132,12 +132,71 @@ Es werden keine neuen Tabellen angelegt. Die Daten stammen aus dem Bestand:
 Keine neuen Pakete. Vorhanden sind Dialoge, Tabellen und Toasts aus der Oberfläche sowie der bestehende Anmeldedienst.
 
 ### Entscheidungen (Nutzer, 2026-11-02: „wie vorgeschlagen“)
-- **E4:** Zurücksetzen und laufende Lernsitzungen: Zeitstempel „Nullstand seit“. Sitzungen, die davor begonnen haben, schreiben beim Abschluss keine alten Werte zurück. Laufende Sitzungen werden nicht beendet.
+- **E4:** Zurücksetzen und laufende Lernsitzungen: Sitzungen, die davor begonnen haben, schreiben beim Abschluss keine alten Werte zurück. Laufende Sitzungen werden nicht beendet. *(Umsetzung weicht vom Entwurf ab, siehe „Abweichungen“: Es braucht keinen Zeitstempel.)*
 - **E5:** Zweitaccount des Super-Admins: Hinweis „Zweitaccount von {Hauptkonto}“ plus Link auf die Detailseite des Hauptkontos.
-- **E6:** „Konto löschen“ (PROJ-60) bleibt ein leerer Platzhalter in der Gefahrenzone, bis PROJ-60 gebaut ist.
+- **E6:** „Konto löschen“ (PROJ-60) bleibt ein leerer Platzhalter in der Gefahrenzone, bis PROJ-60 gebaut ist. Im Moment ist dort nichts sichtbar.
+
+## Umsetzung (2026-11-02)
+
+**Seite:** `/admin/users/[id]` (`src/app/admin/users/[id]/page.tsx`, Server) prüft die Rolle und leitet alle außer dem Super-Admin mit `?gesperrt=super` zur Übersicht um; dort steht „Das verwaltet der Super-Admin.“ (`AdminHome` hat dafür `blockedBy`). Die Oberfläche liegt in `src/components/admin/user-detail/` (Ansicht, Abschnitte, Dialoge, Lade-Hook).
+
+**Schnittstellen** (alle über `requireSuperAdminTarget`: Super-Admin, UUID, Konto existiert; sonst 401/403/404):
+- `GET /api/admin/users/[id]/detail/[section]` mit `overview`, `learning`, `badges`, `assessments`, `log`. Jeder Abschnitt lädt einzeln.
+- `POST …/rename` (Name 2–50 Zeichen), `POST …/email` (sofort gültig, `email_confirm`), `POST …/email/confirm`, `POST …/reset-progress` (Name muss serverseitig stimmen).
+- `GET /api/admin/audit-log` kennt jetzt `object_id`; die Protokollseite liest `?person=<id>` und zeigt „Nur eine Person“ zum Aufheben.
+- Rein fachliche Regeln und Aufbereitung: `src/lib/user-detail.ts`, Abschnitts-Abfragen: `src/lib/user-detail-server.ts`.
+
+**Keine Datenbankänderung** (keine Migration, keine neuen Umgebungsvariablen, keine neuen Pakete).
+
+**Zurücksetzen löscht:** `quiz_answers`, `quiz_sessions`, `user_badges`, `blitz_rounds`, `blitz_starts`, `betrieb_platzierungen`, `user_shop_items` und Prüfungssimulationen (`exam_sessions` ohne Nachweis-Id). Danach Profil: XP 0, Streak 0, längster Streak 0, letzte Session leer, Münzen 0. Leistungsnachweise (`exam_sessions` mit Nachweis-Id) bleiben. Protokoll `user.progress_reset` mit den alten Werten und den Löschzahlen je Tabelle.
+
+### Abweichungen vom Entwurf
+- **Kein Zeitstempel „Nullstand seit“.** Eine Lernrunde existiert erst beim Abschluss und liest dort den dann aktuellen Stand der Person. Eine Runde, die der Azubi während des Zurücksetzens im Browser offen hat, startet also automatisch vom Nullstand. Das Fenster zwischen Lesen und Schreiben im Abschluss selbst ist wenige Millisekunden groß und wird nicht zusätzlich gesichert. Dafür braucht es keine neue Spalte und keine Migration.
+- **Zurücksetzen ist nicht eine einzige Datenbank-Transaktion**, sondern eine feste Reihenfolge (abhängige Zeilen zuerst, Profil zuletzt). Bricht ein Schritt ab, bleibt das Profil auf dem alten Stand, die Antwort sagt „bitte noch einmal versuchen“, und der zweite Versuch läuft sauber durch (jeder Schritt ist wiederholbar). Das Protokoll entsteht erst nach Erfolg.
+- **Anzeigename-Regeln:** Bei der Registrierung gibt es keinen Namen (er entsteht aus der E-Mail). Deshalb gilt neu: 2 bis 50 Zeichen, keine Steuer- und Zeilenumbruch-Zeichen.
+- **Prüfungssimulationen** werden mit zurückgesetzt, weil sie zum Lernverlauf zählen (Spec nennt sie nicht ausdrücklich).
+- **Passwort neu vergeben** wird bei Zweitaccounts nicht angeboten (die Schnittstelle aus PROJ-58 lehnt sie ab).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Stand:** 2026-11-02 · **Tester:** QA (AI) · **Geprüft:** Spec-Abgleich, Quelltext-Prüfung, automatische Tests, Lesezugriff auf die Produktions-Datenbank. **Nicht geprüft:** Browser, Handy, Hell/Dunkel, Screenreader (Projektregel: kein Dev-Server).
+
+### Automatische Prüfung
+- Neue Tests: `user-detail.test.ts` (12), Schnittstellen `detail`, `rename`, `email` (+`confirm`), `reset-progress` (zusammen 34: detail 12, rename 8, email 8, reset-progress 6), `audit-log` (+1), `user-detail-view.test.tsx` (10), Zugang `[id]/page.test.tsx` (5), Nutzerliste (+2).
+- Gesamtsuite 2241 grün (193 Dateien), `tsc` sauber, ESLint ohne Meldungen in den eigenen Dateien.
+
+### Akzeptanzkriterien
+| Bereich | Ergebnis |
+|---|---|
+| Aufruf: Link in der Liste nur für Super-Admin, Bereichs-Admin kein Link, direkter Aufruf → Übersicht mit „Das verwaltet der Super-Admin.“ | ✅ (Test) |
+| Seitenkopf mit `AdminPageHeader`, Brotkrumen = Name, E-Mail, Rolle, Bereich, Status | ✅ |
+| Steckbrief, Spielstand, Lernstand je Fach (leere Fächer ausgeblendet), Aktivität 30 Tage, Badges, Leistungsnachweise (Punkte/Note/Fokus/Link), Protokoll (20, „Alle anzeigen“) | ✅ (Test) |
+| Eigener Lade-/Leer-/Fehlerzustand je Abschnitt, Ausfall blockiert die anderen nicht | ✅ (Test) |
+| Name ändern: Dialog, Regeln, Toast, Protokoll `user.rename` alt/neu | ✅ (Test). Regeln: siehe Abweichungen |
+| E-Mail ändern: sofort gültig, „schon vergeben“-Satz, „Als bestätigt markieren“, Protokolle, Hinweis zum Fachbereich | ✅ (Test) |
+| Zurücksetzen: Gefahrenzone, `AlertDialog` mit Verlustliste und „Leistungsnachweise bleiben“, Namen eintippen (auch serverseitig), Protokoll mit alten Werten | ✅ (Test) |
+| Rechte: alle Wege 401/403 für Nicht-Super-Admins, eigenes Konto lesbar, E-Mail und Zurücksetzen gesperrt | ✅ (Test). Name ändern am eigenen Konto ist erlaubt (Spec sperrt nur E-Mail und Zurücksetzen) |
+| Edge: Konto gelöscht → „Konto nicht gefunden“ mit Link; Person ohne Aktivität → Leerzustände; Zweitaccount mit Hinweis und Link; Pseudonym wird angezeigt | ✅ (Test) |
+| Edge: Zurücksetzen bei laufender Session | ✅ durch Aufbau (siehe Abweichungen), nicht als Test abbildbar |
+
+### Datenbank (nur lesend gegen Produktion)
+- Alle in den Abfragen verwendeten Tabellen und Spalten existieren (14 Tabellen geprüft).
+- Fremdschlüssel auf die zu leerenden Tabellen sind nur `ON DELETE CASCADE` (Antworten → Sessions, Platzierungen → gekaufte Items, Fokus-Daten → Prüfungssitzungen). Nichts kann das Löschen blockieren.
+- Auf den zu leerenden Tabellen und den Profil-Spalten für XP, Streak und Münzen liegen keine Trigger. Der Trigger „letzter Super-Admin“ betrifft nur die Rolle.
+- Das Löschen selbst wurde **nicht** gegen Produktion ausgeführt (zerstörend, und schreibende Aufrufe laufen über den Nutzer). Es ist per Test mit Mock belegt (Reihenfolge, Filter `assessment_id IS NULL`, Abbruchverhalten).
+
+### Sicherheit
+- Service-Rolle wird erst nach der Super-Admin-Prüfung ausgegeben; Ziel-Id wird als UUID geprüft; alle Eingaben laufen durch Zod; die Bestätigung beim Zurücksetzen wird serverseitig geprüft.
+- Antworten enthalten keine Passwörter, Tokens oder Daten anderer Personen. Protokoll-Details werden in der Oberfläche nur als Text ausgegeben (React-Escaping).
+- Der Protokoll-Eintrag ist „best effort“ (bestehendes Muster der Protokoll-Funktion): Schlägt nur das Schreiben des Eintrags fehl, ist die Änderung trotzdem durchgeführt.
+
+### Bugs
+| ID | Schwere | Beschreibung |
+|---|---|---|
+| BUG-1 | Low ✅ | Passwort-Knopf erschien bei Zweitaccounts, die Schnittstelle lehnt sie aber ab. Behoben: Knopf wird ausgeblendet (Test). |
+| BUG-2 | Low (offen) | Lernstand, Aktivität und Badges laden mit Obergrenzen (5000 Sessions, 200 Badges, 50 Nachweise). Bei außergewöhnlich vielen Runden wären ältere nicht eingerechnet. Für den heutigen Bestand unkritisch. |
+
+**Keine Critical/High-Fehler → produktionsreif, Status Approved.** Offen nach dem Deploy: einmal als Super-Admin im Browser und am Handy durchklicken (Liste → Detailseite, Dialoge, Hell/Dunkel).
 
 ## Deployment
 _To be added by /deploy_
