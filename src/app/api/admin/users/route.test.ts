@@ -122,6 +122,17 @@ describe('GET /api/admin/users', () => {
     expect(profilesBuilder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
   })
 
+  it('liefert „Registriert am“ für den CSV-Export (PROJ-61)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
+    const service = makeServiceClient([{ ...mockProfiles[0], created_at: '2026-09-01T10:00:00Z' }] as never)
+    vi.mocked(createServiceClient).mockReturnValue(service as never)
+
+    const body = await (await GET(makeRequest())).json()
+
+    expect(body.users[0].created_at).toBe('2026-09-01T10:00:00Z')
+    expect(service.from.mock.results[0].value.select).toHaveBeenCalledWith(expect.stringContaining('created_at'))
+  })
+
   it('returns 500 when profiles query fails', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
     vi.mocked(createServiceClient).mockReturnValue(

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, ChevronDown, KeyRound, Loader2, MapPinned, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle2, ChevronDown, Download, KeyRound, Loader2, MapPinned, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
@@ -57,6 +58,10 @@ import { AdminErrorState } from '@/components/admin/admin-states'
 import { SortableTableHead } from '@/components/admin/sortable-table-head'
 import { SetPasswordDialog } from '@/components/admin/set-password-dialog'
 import { DeleteAccountDialog } from '@/components/admin/delete-account-dialog'
+import { SELECT_CHECKBOX_CLASS, UserBulkBar } from '@/components/admin/user-bulk-bar'
+import { UserBulkDetailsDialog, UserBulkDialog, type BulkRequest } from '@/components/admin/user-bulk-dialog'
+import { resultMessage, summarize, type BulkAction, type BulkResultItem } from '@/lib/user-bulk'
+import { buildUsersCsv, usersCsvFilename } from '@/lib/user-csv'
 import {
   ACTIVITY_FILTERS,
   ACTIVITY_LABEL,
@@ -90,6 +95,8 @@ type AdminUserRow = {
   last_sign_in_at?: string | null
   /** Name des Fachbereichs — nur in der Ansicht „Alle Bereiche“ befüllt */
   department_name?: string | null
+  /** Registriert am — nur für den CSV-Export (PROJ-61) */
+  created_at?: string | null
   banned: boolean
 }
 
@@ -119,6 +126,11 @@ export default function AdminUsersPage() {
   const [passwordTarget, setPasswordTarget] = useState<AdminUserRow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Mehrfachauswahl und Export (PROJ-61, nur Super-Admin): die Auswahl lebt nur in dieser Seite
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulk, setBulk] = useState<BulkRequest | null>(null)
+  const [bulkDetails, setBulkDetails] = useState<{ action: BulkAction; results: BulkResultItem[] } | null>(null)
+  const [exporting, setExporting] = useState(false)
   // Sortierung und Aktivitäts-Filter stehen in der Adresse (PROJ-57): Neuladen
   // und geteilte Links zeigen dieselbe Ansicht
   const [view, setView] = useState<UserListView>({ sort: DEFAULT_SORT.key, dir: DEFAULT_SORT.dir, activity: 'all' })
@@ -200,6 +212,145 @@ export default function AdminUsersPage() {
 
   const sortableKeys = SORT_KEYS.filter((k) => k !== 'department' || showAllDepartments)
 
+  // Gelöschte oder nicht mehr geladene Konten fallen aus der Auswahl
+  useEffect(() => {
+    setSelected((prev) => {
+      const known = new Set(users.map((u) => u.id))
+      const next = new Set([...prev].filter((id) => known.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [users])
+
+  const selectable = useMemo(() => (isSuperAdmin ? filtered.filter((u) => u.id !== ownId) : []), [filtered, isSuperAdmin, ownId])
+  // Bei geänderten Filtern bleibt die Auswahl erhalten, zählt und wirkt aber nur auf sichtbare Zeilen
+  const selectedVisible = useMemo(() => selectable.filter((u) => selected.has(u.id)), [selectable, selected])
+  const allVisibleSelected = selectable.length > 0 && selectedVisible.length === selectable.length
+  const someVisibleSelected = selectedVisible.length > 0 && !allVisibleSelected
+
+  function toggleRow(id: string, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  function toggleAllVisible(checked: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const u of selectable) {
+        if (checked) next.add(u.id)
+        else next.delete(u.id)
+      }
+      return next
+    })
+  }
+
+  const nameOf = useCallback(
+    (id: string) => {
+      const u = users.find((x) => x.id === id)
+      return u?.display_name ?? u?.email ?? 'Unbekanntes Konto'
+    },
+    [users],
+  )
+
+  function openBulk(action: BulkAction) {
+    // Schon gesperrte bzw. entsperrte Personen müssen nicht noch einmal bearbeitet werden
+    const relevant =
+      action === 'ban'
+        ? selectedVisible.filter((u) => !u.banned)
+        : action === 'unban'
+          ? selectedVisible.filter((u) => u.banned)
+          : selectedVisible
+    const left = selectedVisible.length - relevant.length
+    setBulk({
+      action,
+      targets: relevant.map((u) => ({ id: u.id, name: u.display_name ?? u.email ?? 'Konto' })),
+      note:
+        left > 0
+          ? `${left} ${left === 1 ? 'ist' : 'sind'} schon ${action === 'ban' ? 'gesperrt' : 'entsperrt'} und ${left === 1 ? 'wird' : 'werden'} ausgelassen.`
+          : undefined,
+    })
+  }
+
+  function handleBulkFinished(action: BulkAction, results: BulkResultItem[], departmentId?: string) {
+    setBulk(null)
+    const { skipped, failed } = summarize(results)
+    // Erledigte Konten sind abgewählt; übersprungene und fehlgeschlagene bleiben markiert
+    setSelected((prev) => {
+      const next = new Set(prev)
+      for (const r of results) if (r.status === 'done') next.delete(r.id)
+      return next
+    })
+    const message = resultMessage(action, results)
+    const failedIds = results.filter((r) => r.status === 'failed').map((r) => r.id)
+    if (failed > 0) {
+      toast.error(message, {
+        duration: 15000,
+        action: { label: 'Details', onClick: () => setBulkDetails({ action, results }) },
+        cancel: {
+          label: 'Erneut versuchen',
+          onClick: () =>
+            setBulk({
+              action,
+              departmentId,
+              autoStart: true,
+              targets: failedIds.map((id) => ({ id, name: nameOf(id) })),
+            }),
+        },
+      })
+    } else if (skipped > 0) {
+      toast.success(message, { action: { label: 'Details', onClick: () => setBulkDetails({ action, results }) } })
+    } else {
+      toast.success(message)
+    }
+    load()
+  }
+
+  async function handleExport(selectionOnly: boolean) {
+    const rows = selectionOnly ? selectedVisible : filtered
+    if (rows.length === 0 || exporting) return
+    setExporting(true)
+    try {
+      // Erst protokollieren, dann herunterladen: kein Export von Personendaten ohne Spur
+      const res = await fetch('/api/admin/users/export-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          count: rows.length,
+          selection_only: selectionOnly,
+          scope: showAllDepartments ? 'all' : 'department',
+          role: roleFilter,
+          activity: view.activity,
+          sort: effectiveSort.key,
+          dir: effectiveSort.dir,
+          has_search: search.trim() !== '',
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        toast.error(data?.error ?? 'Der Export konnte nicht protokolliert werden.')
+        return
+      }
+      const csv = buildUsersCsv(rows)
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = usersCsvFilename(showAllDepartments ? null : rows[0]?.department_name)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      toast.success(`${rows.length} ${rows.length === 1 ? 'Zeile' : 'Zeilen'} exportiert`)
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function handleConfirm() {
     if (!target) return
     setSubmitting(true)
@@ -262,11 +413,51 @@ export default function AdminUsersPage() {
   }
 
   // Name, E-Mail, [Bereich], XP, Streak, Letzte Session, Letzter Login, Status, Aktion
-  const columnCount = showAllDepartments ? 9 : 8
+  const columnCount = (showAllDepartments ? 9 : 8) + (isSuperAdmin ? 1 : 0)
 
   return (
-    <div className="space-y-6">
-      <AdminPageHeader title="Nutzer" description={`${filtered.length} von ${users.length}`} />
+    <div className={selectedVisible.length > 0 ? 'space-y-6 pb-28 sm:pb-0' : 'space-y-6'}>
+      <AdminPageHeader
+        title="Nutzer"
+        description={`${filtered.length} von ${users.length}`}
+        actions={
+          isSuperAdmin ? (
+            selectedVisible.length > 0 ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    disabled={exporting}
+                    className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                  >
+                    <Download className="size-5" />
+                    Exportieren
+                    <ChevronDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-ws-surface border-ws-line text-ws-text">
+                  <DropdownMenuItem onClick={() => handleExport(true)} className="focus:bg-ws-bg focus:text-ws-text">
+                    Nur Auswahl ({selectedVisible.length})
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport(false)} className="focus:bg-ws-bg focus:text-ws-text">
+                    Alle sichtbaren ({filtered.length})
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={exporting || loading || filtered.length === 0}
+                onClick={() => handleExport(false)}
+                className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+              >
+                {exporting ? <Loader2 className="size-5 animate-spin" /> : <Download className="size-5" />}
+                Exportieren
+              </Button>
+            )
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
@@ -351,10 +542,25 @@ export default function AdminUsersPage() {
       {loadFailed ? (
         <AdminErrorState message="Die Nutzer konnten gerade nicht geladen werden." onRetry={load} />
       ) : (
-        <div className="ws-table-scroll ws-table-sticky border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div
+          className={`ws-table-scroll ${isSuperAdmin ? '' : 'ws-table-sticky '}border border-ws-line rounded-2xl overflow-hidden bg-ws-surface`}
+        >
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
+                {isSuperAdmin && (
+                  <TableHead className="w-12 p-0">
+                    <label className="flex size-11 cursor-pointer items-center justify-center">
+                      <Checkbox
+                        aria-label="Alle sichtbaren Nutzer auswählen"
+                        checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                        disabled={loading || selectable.length === 0}
+                        onCheckedChange={(v) => toggleAllVisible(v === true)}
+                        className={SELECT_CHECKBOX_CLASS}
+                      />
+                    </label>
+                  </TableHead>
+                )}
                 {sortableKeys.map((k) => (
                   <SortableTableHead
                     key={k}
@@ -409,7 +615,24 @@ export default function AdminUsersPage() {
                     (u.role === 'student' ||
                       (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
                   return (
-                    <TableRow key={u.id} className="border-ws-line hover:bg-ws-bg/40">
+                    <TableRow
+                      key={u.id}
+                      data-state={selected.has(u.id) ? 'selected' : undefined}
+                      className="border-ws-line hover:bg-ws-bg/40 data-[state=selected]:bg-ws-green/10"
+                    >
+                      {isSuperAdmin && (
+                        <TableCell className="w-12 p-0">
+                          <label className="flex size-11 cursor-pointer items-center justify-center">
+                            <Checkbox
+                              aria-label={`${u.display_name ?? u.email ?? 'Konto'} auswählen`}
+                              checked={selected.has(u.id)}
+                              disabled={isSelf}
+                              onCheckedChange={(v) => toggleRow(u.id, v === true)}
+                              className={SELECT_CHECKBOX_CLASS}
+                            />
+                          </label>
+                        </TableCell>
+                      )}
                       <TableCell className="text-ws-text font-medium">
                         <div className="flex items-center gap-2">
                           {/* Detailseite nur für den Super-Admin (PROJ-59) */}
@@ -606,6 +829,21 @@ export default function AdminUsersPage() {
           </Table>
         </div>
       )}
+
+      {isSuperAdmin && (
+        <UserBulkBar
+          count={selectedVisible.length}
+          busy={bulk !== null || exporting}
+          onBan={() => openBulk('ban')}
+          onUnban={() => openBulk('unban')}
+          onMove={() => openBulk('move')}
+          onExport={() => handleExport(true)}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
+
+      <UserBulkDialog request={bulk} onCancel={() => setBulk(null)} onFinished={handleBulkFinished} />
+      <UserBulkDetailsDialog details={bulkDetails} nameOf={nameOf} onClose={() => setBulkDetails(null)} />
 
       <AlertDialog
         open={roleChange !== null}

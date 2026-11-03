@@ -69,11 +69,16 @@ describe('Nutzerverwaltung – Knöpfe je Rolle (PROJ-44, QA BUG-3/5a)', () => {
   })
 })
 
+// Super-Admin: ganz vorn steht die Checkbox-Spalte (PROJ-61), der Name ist die Zelle danach
 const rowNames = () =>
   screen
     .getAllByRole('row')
     .slice(1)
-    .map((r) => within(r).getAllByRole('cell')[0]?.textContent?.replace(/(Super-Admin|Lehrkraft|Bereichs-Admin)$/, '').trim())
+    .map((r) => {
+      const cells = within(r).getAllByRole('cell')
+      const nameCell = within(cells[0]).queryByRole('checkbox') ? cells[1] : cells[0]
+      return nameCell?.textContent?.replace(/(Super-Admin|Lehrkraft|Bereichs-Admin)$/, '').trim()
+    })
 
 describe('Nutzerliste – Sortieren & Inaktiv-Filter (PROJ-57)', () => {
   beforeEach(() => {
@@ -186,5 +191,244 @@ describe('Nutzerliste – Link zur Detailseite (PROJ-59)', () => {
     await setup('department_admin')
     expect(screen.queryByRole('link', { name: 'Anna Azubi' })).not.toBeInTheDocument()
     expect(screen.getByText('Anna Azubi')).toBeInTheDocument()
+  })
+})
+
+describe('Nutzerliste – Mehrfachauswahl & Export (PROJ-61)', () => {
+  const BULK_URL = '/api/admin/users/bulk'
+  let calls: { url: string; body: unknown }[]
+  let exportLogOk = true
+  let createObjectURL: ReturnType<typeof vi.fn>
+
+  function mockFetch(bulkResults?: (ids: string[]) => unknown[]) {
+    calls = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: { body?: string }) => {
+        const body = init?.body ? JSON.parse(init.body) : undefined
+        calls.push({ url, body })
+        if (url.startsWith('/api/admin/users?') || url === '/api/admin/users') return { ok: true, json: async () => ({ users: USERS }) }
+        if (url === '/api/admin/departments') return { ok: true, json: async () => ({ departments: [{ id: 'd2', name: 'Tourismus' }] }) }
+        if (url === '/api/admin/users/export-log') {
+          return { ok: exportLogOk, json: async () => (exportLogOk ? { ok: true } : { error: 'Der Export konnte nicht protokolliert werden.' }) }
+        }
+        if (url === BULK_URL) {
+          const ids = body.ids as string[]
+          const results = bulkResults ? bulkResults(ids) : ids.map((id) => ({ id, status: 'done' }))
+          return { ok: true, json: async () => ({ results }) }
+        }
+        return { ok: true, json: async () => ({}) }
+      }),
+    )
+  }
+
+  async function setupAs(role: TeacherRole) {
+    mockFetch()
+    render(
+      <AdminRoleProvider value={{ role, isSuperAdmin: role === 'admin' }}>
+        <AdminUsersPage />
+      </AdminRoleProvider>,
+    )
+    await screen.findByText('Anna Azubi')
+  }
+
+  const rowCheckbox = (name: string) => screen.getByRole('checkbox', { name: `${name} auswählen` })
+  const headCheckbox = () => screen.getByRole('checkbox', { name: 'Alle sichtbaren Nutzer auswählen' })
+
+  beforeEach(async () => {
+    vi.unstubAllGlobals()
+    exportLogOk = true
+    window.history.replaceState(null, '', '/admin/users')
+    createObjectURL = vi.fn(() => 'blob:test')
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() })
+    const { toast } = await import('sonner')
+    vi.mocked(toast.success).mockClear()
+    vi.mocked(toast.error).mockClear()
+  })
+
+  it('Bereichs-Admin sieht weder Checkboxen noch Export', async () => {
+    await setupAs('department_admin')
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+    expect(button(/Exportieren/)).not.toBeInTheDocument()
+  })
+
+  it('Super-Admin: Checkbox je Zeile, das eigene Konto ist nicht wählbar, erste Spalte steht nicht fest', async () => {
+    await setupAs('admin')
+    expect(rowCheckbox('Anna Azubi')).toBeEnabled()
+    expect(rowCheckbox('Ich Selbst')).toBeDisabled()
+    expect(document.querySelector('.ws-table-sticky')).toBeNull()
+  })
+
+  it('Kopf-Checkbox wählt alle sichtbaren (ohne das eigene Konto) an und ab, bei Teilauswahl „gemischt“', async () => {
+    await setupAs('admin')
+    fireEvent.click(rowCheckbox('Anna Azubi'))
+    expect(headCheckbox()).toHaveAttribute('aria-checked', 'mixed')
+    expect(screen.getByText('1 ausgewählt')).toBeInTheDocument()
+
+    fireEvent.click(headCheckbox())
+    expect(headCheckbox()).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('3 ausgewählt')).toBeInTheDocument()
+
+    fireEvent.click(headCheckbox())
+    expect(screen.queryByText(/ausgewählt$/)).not.toBeInTheDocument()
+  })
+
+  it('Auswahl bleibt bei neuem Filter erhalten, die Leiste zählt nur Sichtbares', async () => {
+    await setupAs('admin')
+    fireEvent.click(headCheckbox())
+    fireEvent.change(screen.getByLabelText('Name oder E-Mail suchen'), { target: { value: 'anna' } })
+    expect(screen.getByText('1 ausgewählt')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Name oder E-Mail suchen'), { target: { value: '' } })
+    expect(screen.getByText('3 ausgewählt')).toBeInTheDocument()
+  })
+
+  it('„Auswahl aufheben“ leert die Auswahl', async () => {
+    await setupAs('admin')
+    fireEvent.click(headCheckbox())
+    fireEvent.click(screen.getByRole('button', { name: /Auswahl aufheben/ }))
+    expect(screen.queryByText(/ausgewählt$/)).not.toBeInTheDocument()
+  })
+
+  it('Sperren: fragt mit Anzahl und Namen nach, schickt nur die Ids der Auswahl und meldet das Ergebnis', async () => {
+    const { toast } = await import('sonner')
+    await setupAs('admin')
+    fireEvent.click(rowCheckbox('Anna Azubi'))
+    fireEvent.click(rowCheckbox('Petra Lehrkraft'))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /Sperren/ }))
+
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('2 Konten werden gesperrt: Anna Azubi, Petra Lehrkraft')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sperren' }))
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('2 gesperrt'))
+    const bulkCall = calls.find((c) => c.url === BULK_URL)
+    expect(bulkCall?.body).toEqual({ action: 'ban', ids: ['s1', 't1'] })
+    // erledigte Personen sind abgewählt
+    await waitFor(() => expect(screen.queryByText(/ausgewählt$/)).not.toBeInTheDocument())
+  })
+
+  it('Sperren lässt schon gesperrte Personen aus', async () => {
+    mockFetch()
+    USERS[1].banned = true
+    try {
+      render(
+        <AdminRoleProvider value={{ role: 'admin', isSuperAdmin: true }}>
+          <AdminUsersPage />
+        </AdminRoleProvider>,
+      )
+      await screen.findByText('Anna Azubi')
+      fireEvent.click(rowCheckbox('Anna Azubi'))
+      fireEvent.click(rowCheckbox('Petra Lehrkraft'))
+      fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /^Sperren/ }))
+      const dialog = await screen.findByRole('alertdialog')
+      expect(dialog).toHaveTextContent('1 Konto wird gesperrt: Petra Lehrkraft')
+      expect(dialog).toHaveTextContent('1 ist schon gesperrt und wird ausgelassen.')
+    } finally {
+      USERS[1].banned = false
+    }
+  })
+
+  it('Teilergebnis: übersprungene und fehlgeschlagene Konten bleiben markiert, Toast nennt die Zahlen', async () => {
+    const { toast } = await import('sonner')
+    mockFetch((ids) => [
+      { id: ids[0], status: 'done' },
+      { id: ids[1], status: 'skipped', reason: 'super_admin' },
+      { id: ids[2], status: 'failed' },
+    ])
+    render(
+      <AdminRoleProvider value={{ role: 'admin', isSuperAdmin: true }}>
+        <AdminUsersPage />
+      </AdminRoleProvider>,
+    )
+    await screen.findByText('Anna Azubi')
+    fireEvent.click(headCheckbox())
+    fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /Sperren/ }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Sperren' }))
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect(vi.mocked(toast.error).mock.calls[0][0]).toBe('1 von 3 gesperrt, 1 übersprungen, 1 fehlgeschlagen')
+    expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument()
+  })
+
+  it('Bereich ändern: ohne Ziel-Bereich kein Start, Auswahlfeld für den Ziel-Bereich', async () => {
+    await setupAs('admin')
+    fireEvent.click(rowCheckbox('Anna Azubi'))
+    fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /Bereich ändern/ }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(within(dialog).getByRole('button', { name: 'Bereich ändern' })).toBeDisabled()
+    expect(within(dialog).getByRole('combobox', { name: 'Ziel-Bereich' })).toBeInTheDocument()
+  })
+
+  it('Große Auswahl wird in Teilen zu je 100 geschickt', async () => {
+    const many = Array.from({ length: 230 }, (_, i) => ({
+      id: `m${i}`, display_name: `Person ${i}`, email: `p${i}@example.de`, role: 'student', department_id: 'd1',
+      total_xp: i, current_streak: 0, last_session_date: null, banned: false,
+    }))
+    calls = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: { body?: string }) => {
+        const body = init?.body ? JSON.parse(init.body) : undefined
+        calls.push({ url, body })
+        if (url.startsWith('/api/admin/users')) {
+          if (url === BULK_URL) return { ok: true, json: async () => ({ results: body.ids.map((id: string) => ({ id, status: 'done' })) }) }
+          return { ok: true, json: async () => ({ users: many }) }
+        }
+        return { ok: true, json: async () => ({}) }
+      }),
+    )
+    render(
+      <AdminRoleProvider value={{ role: 'admin', isSuperAdmin: true }}>
+        <AdminUsersPage />
+      </AdminRoleProvider>,
+    )
+    await screen.findByText('Person 229')
+    fireEvent.click(headCheckbox())
+    fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /Sperren/ }))
+    const dialog = await screen.findByRole('alertdialog')
+    expect(dialog).toHaveTextContent('230 Konten werden gesperrt')
+    expect(dialog).toHaveTextContent('und 225 weitere')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Sperren' }))
+    const { toast } = await import('sonner')
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('230 gesperrt'))
+    expect(calls.filter((c) => c.url === BULK_URL).map((c) => (c.body as { ids: string[] }).ids.length)).toEqual([100, 100, 30])
+  })
+
+  it('Export ohne Auswahl: protokolliert zuerst, lädt dann alle sichtbaren Zeilen herunter', async () => {
+    const { toast } = await import('sonner')
+    await setupAs('admin')
+    fireEvent.click(screen.getByRole('button', { name: /Exportieren/ }))
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('4 Zeilen exportiert'))
+    const log = calls.find((c) => c.url === '/api/admin/users/export-log')
+    expect(log?.body).toEqual({
+      count: 4, selection_only: false, scope: 'department', role: 'all', activity: 'all', sort: 'xp', dir: 'desc', has_search: false,
+    })
+    expect(createObjectURL).toHaveBeenCalledTimes(1)
+    const blob = createObjectURL.mock.calls[0][0] as Blob
+    expect(blob.type).toBe('text/csv;charset=utf-8')
+  })
+
+  it('Export ohne Protokoll: kein Download, Fehlermeldung', async () => {
+    const { toast } = await import('sonner')
+    exportLogOk = false
+    await setupAs('admin')
+    fireEvent.click(screen.getByRole('button', { name: /Exportieren/ }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Der Export konnte nicht protokolliert werden.'))
+    expect(createObjectURL).not.toHaveBeenCalled()
+  })
+
+  it('Export ist bei leerer Liste deaktiviert', async () => {
+    await setupAs('admin')
+    fireEvent.change(screen.getByLabelText('Name oder E-Mail suchen'), { target: { value: 'gibtsnicht' } })
+    expect(screen.getByRole('button', { name: /Exportieren/ })).toBeDisabled()
+  })
+
+  it('Export mit Auswahl: Menü bietet „Nur Auswahl“ und „Alle sichtbaren“ an', async () => {
+    await setupAs('admin')
+    fireEvent.click(rowCheckbox('Anna Azubi'))
+    const trigger = screen.getAllByRole('button', { name: /Exportieren/ })[0]
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+    expect(await screen.findByRole('menuitem', { name: 'Nur Auswahl (1)' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Alle sichtbaren (4)' })).toBeInTheDocument()
   })
 })

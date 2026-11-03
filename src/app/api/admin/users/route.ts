@@ -10,6 +10,7 @@ type ProfileRow = {
   current_streak: number
   last_session_date: string | null
   department_id: string | null
+  created_at: string | null
 }
 
 export async function GET(request: NextRequest) {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
   let profilesQuery = service
     .from('profiles')
-    .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id')
+    .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id, created_at')
   if (!allDepartments) profilesQuery = profilesQuery.eq('department_id', departmentId)
   const { data: profiles, error: pErr } = await profilesQuery
     // Verknüpftes Zweitkonto des Super-Admins (PROJ-29) ist kein echter Azubi
@@ -77,12 +78,10 @@ export async function GET(request: NextRequest) {
     console.error('[GET /api/admin/users] listUsers threw', err)
   }
 
-  // Bereichsnamen nur für die bereichsübergreifende Ansicht
+  // Bereichsnamen: für die Spalte „Bereich“ in „Alle Bereiche“ und für den CSV-Export (PROJ-61)
   const departmentNames = new Map<string, string>()
-  if (allDepartments) {
-    const { data: departments } = await service.from('departments').select('id, name')
-    for (const d of (departments ?? []) as { id: string; name: string }[]) departmentNames.set(d.id, d.name)
-  }
+  const { data: departments } = await service.from('departments').select('id, name')
+  for (const d of (departments ?? []) as { id: string; name: string }[]) departmentNames.set(d.id, d.name)
 
   const now = Date.now()
   const users = (profiles as ProfileRow[]).map((p) => {
@@ -95,6 +94,7 @@ export async function GET(request: NextRequest) {
       role: p.role,
       department_id: p.department_id,
       department_name: p.department_id ? (departmentNames.get(p.department_id) ?? null) : null,
+      created_at: p.created_at,
       total_xp: p.total_xp,
       current_streak: p.current_streak,
       last_session_date: p.last_session_date,
