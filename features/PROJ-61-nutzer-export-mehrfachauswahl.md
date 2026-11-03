@@ -1,6 +1,6 @@
 # PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-03
 
@@ -220,4 +220,9 @@ Keine Critical/High gefunden. Offene Beobachtungen:
 **Ergebnis: Approved.**
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-11-03 · **URL:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Production, Status Ready nach 1 Minute Build)
+- **Commits:** `7f7a17d` (Code), `48b477d` (Doku/QA) · **Tag:** `v1.61.0-PROJ-61`
+- **Datenbank:** keine Migration nötig (nur neue Protokoll-Einträge in der bestehenden Tabelle).
+- **Prüfung nach dem Deploy:** `POST /api/admin/users/bulk` und `POST /api/admin/users/export-log` antworten ohne Login mit 401, `GET /api/admin/users` ebenfalls; Vercel-Fehlerlog der letzten 15 Minuten leer.
+- **Mit ausgeliefert:** Beim Push fuhren die noch nicht veröffentlichten, reinen Dokumentations-Commits der Specs PROJ-68/69 und der Status-Eintrag PROJ-60 mit (kein Code).
+- **Offen:** Sichtprüfung im Browser durch den Nutzer (Handy und Laptop, Download in Excel), siehe OBS-61-2.
