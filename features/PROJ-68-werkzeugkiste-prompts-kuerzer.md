@@ -1,6 +1,6 @@
 # PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -298,4 +298,7 @@ _To be added by /qa_
 ### Vorab-Fixes aus der Qualitätskontrolle (2026-11-03)
 Kern `werkzeugkiste-kern`, Commit `421f8b9`, per `vercel deploy --prod` vom Nutzer ausgeführt, Deployment `8m178zuvg` Ready, Adresse antwortet 401 ohne Kennwort (wie vorgesehen). Enthalten: PDF-Einlesen verliert keinen Text am Seitenanfang mehr, Rechenlücken nehmen Nullen/Einheit optional, Kahoot-Export mischt die Antworten. Wirkt nur auf neu hochgeladene Skripte; bereits eingelesene behalten ihren alten Text. Browser-/Handytest steht aus (läuft in Produktion durch den Nutzer).
 
-Das eigentliche PROJ-68 (Pakete 1–3) ist noch nicht gebaut.
+### Pakete 1–3 (2026-11-03)
+Kern `werkzeugkiste-kern`, Commit `357ea3d` auf `vercel-kern`, per `vercel deploy --prod` vom Nutzer ausgeführt. Deployment `26y7ns17i` Ready, Adresse antwortet 401 ohne Kennwort (wie vorgesehen). Enthalten: Schuldesign-Kennzeichen statt Inline-CSS, neue Prompts, Prüfstelle nach E4, Kontrolllauf-Korrekturen (Lauf 3/4: Quiz-Feedback, Neuheitsregel, Teilaufgaben ohne fremde Ergebnisse, Prüfung „Aufgabe verrät ein Ergebnis“, Quiz-Warnschwelle 3 Fragen). Abnahme Lauf 4 (Heft 2, echte Einlesung): ~18.800 Token Antwort statt 29.556, besser als Lauf 3, Prüfstelle grün. Bekannte Reste: einzelne Fachfehler je Lauf (Nachbesserungs-Prompt), Wahr/Falsch-Paare je Quiz noch 1:1, Browser-/Handytest durch den Nutzer offen.
+
+**Offen für PROJ-69:** Skript-Antworten bleiben bei langen Heften über dem, was kostenlose KIs am Stück ausgeben.

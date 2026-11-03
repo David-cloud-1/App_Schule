@@ -81,7 +81,7 @@
 | PROJ-65 | Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Deployed | [PROJ-65-werkzeugkiste-verbrauch-mein-konto.md](PROJ-65-werkzeugkiste-verbrauch-mein-konto.md) | 2026-10-28 |
 | PROJ-66 | Werkzeugkiste – Kostenübersicht für den Super-Admin | Planned | [PROJ-66-werkzeugkiste-kostenuebersicht-admin.md](PROJ-66-werkzeugkiste-kostenuebersicht-admin.md) | 2026-10-28 |
 | PROJ-67 | Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed | [PROJ-67-werkzeugkiste-oeffentlicher-link.md](PROJ-67-werkzeugkiste-oeffentlicher-link.md) | 2026-11-02 |
-| PROJ-68 | Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | In Progress | [PROJ-68-werkzeugkiste-prompts-kuerzer.md](PROJ-68-werkzeugkiste-prompts-kuerzer.md) | 2026-11-03 |
+| PROJ-68 | Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed | [PROJ-68-werkzeugkiste-prompts-kuerzer.md](PROJ-68-werkzeugkiste-prompts-kuerzer.md) | 2026-11-03 |
 | PROJ-69 | Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Planned | [PROJ-69-werkzeugkiste-kostenlos-in-teilen.md](PROJ-69-werkzeugkiste-kostenlos-in-teilen.md) | 2026-11-03 |
 
 <!-- Add features above this line -->
