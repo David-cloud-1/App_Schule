@@ -1,6 +1,6 @@
 # PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -98,7 +98,99 @@ Vergleichswert: Heft 2 (Haftung, 9 Kapitel) ergab schon mit dem alten Prompt ohn
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Alles passiert im **Kern** (Repository `~/Schule/Werkzeugkiste`, Zweig `vercel-kern`). Die Lern-App bekommt den Prompt weiterhin fertig vom Kern und ändert sich nicht. Keine Datenbank, keine neuen Pakete, keine Kosten.
+
+Was heute wo passiert und was sich ändert:
+
+| Stelle im Kern | Heute | Mit PROJ-68 |
+|---|---|---|
+| Prompt-Bau (`prompts.py`) | schreibt der KI 6.800 Zeichen Stilangaben vor und wiederholt Regeln in der Selbstprüfung | nennt nur noch die Kennzeichen (je ein Satz), kurze Selbstprüfung, Vorlage ohne verbotene Typen |
+| H5P-Generator | ergänzt Design nur für Überschriften und Tabellen ohne Stil | ergänzt Design auch für alle Boxen, Schritt-Listen, Vergleiche, Zebra-Tabellen |
+| Interaktive Seite (`seite.py`) | übernimmt das HTML der KI unverändert | nutzt **denselben** Design-Übersetzer wie H5P |
+| Prüfstelle (`qualitaet.py`) | meldet Überschrift ohne Stil als Fehler | meldet das nicht mehr, denn der Generator setzt den Stil |
+| Regelwerk `CLAUDE.md` + Agent `prompt-sync` + `prompt_diff.py` | CLAUDE.md ist die „Quelle der Wahrheit“ und hat die alten Langtexte | CLAUDE.md wird mitgezogen, damit der Abgleich die Kürzung nicht zurückholt |
+
+### A) Ablauf (nichts Neues für die Lehrkraft)
+```
+Lehrkraft kopiert Prompt (kürzer)
+   → eigene KI schreibt Antwort (kürzer: Kennzeichen statt Stilangaben)
+   → Antwort zurück in die App
+   → Kern prüft (Prüfstelle) und baut
+        +-- Design-Übersetzer: Kennzeichen → bisheriges Schuldesign
+        |      (vorhandene Stilangaben bleiben unangetastet)
+        +-- H5P-Datei / Interaktive Seite / Vorschau sehen aus wie bisher
+```
+
+### B) Die Kennzeichen (was die KI schreibt)
+Die KI schreibt normales, schlichtes HTML und markiert eine Box nur mit ihrem Namen, z. B. „diese Box ist eine Merke-Box“. Der Generator macht daraus die bisherige Box mit Farben, Rahmen und Überschrift („Merke:“, „Lernziele“, „Ausgangssituation“ …).
+
+| Kennzeichen | Wird zu (wie bisher) |
+|---|---|
+| lernziele | Lernziele-Box mit „Nach diesem Kapitel kannst du…“ |
+| ausgangssituation, arbeitsauftrag | blaue bzw. beige Box mit Titelzeile |
+| merke, tipp, achtung, beispiel | Hinweis-Boxen mit farbigem Rand |
+| mission (PIL-Fallakte), pruefung (IHK-Simulation) | Fall- bzw. Prüfungs-Box |
+| schritte (nummerierte Liste) | Liste mit runden Nummern |
+| vergleich (zwei Spalten, z. B. Vorteile/Nachteile) | Zweispalten-Layout grün/orange |
+| zebra (Tabelle) | Tabelle mit dunklem Kopf und Streifen |
+| Überschriften, normale Tabellen | wie heute schon automatisch |
+
+Regeln des Übersetzers:
+- **Stilangaben der KI haben Vorrang.** Hat ein Element schon einen Stil, bleibt er stehen. Alte Antworten und gemischte Antworten bauen daher unverändert.
+- Gängige Schreibvarianten werden erkannt (Groß/Klein, mit oder ohne Umlaut).
+- Ein unbekanntes Kennzeichen bleibt als normaler Absatz stehen, ohne Fehler.
+- Schreibt die KI einen eigenen Boxtitel (z. B. „⭐ Prüfungsrelevant:“ in der Achtung-Box), wird er übernommen, sonst setzt der Generator den Standardtitel.
+- Die Box-Vorlagen stehen **an einer Stelle** im Kern. H5P, Seite und Vorschau nutzen sie gemeinsam, deshalb kann das Design nicht mehr auseinanderlaufen.
+
+### C) Prompt aufräumen (was im Prompt wegfällt bzw. bleibt)
+- **Weg:** alle ausgeschriebenen Stilangaben (Design-Richtlinien, Beispiel-HTML in der Antwortvorlage, Seiten-Block), `crossword` in der H5P-Vorlage, die Prüfpunkte zu Kreuzwortwörtern und Inline-CSS.
+- **Gekürzt:** Die Selbstprüfung wird eine kurze Liste der Punkte, die die KI erfahrungsgemäß vergisst (jede Skript-Aufgabe, jedes Bild, nichts vorgelöst, eigene Zahlen im Rechenbeispiel, Kapitelaufbau vollständig, YAML-Regeln). Regeln, die nur wiederholt werden, fallen weg.
+- **Bleibt inhaltlich gleich:** alle fachlichen und didaktischen Regeln, die YAML-Regeln, die Typenliste, die Pflicht-Menge je Kapitel (E4 bleibt offen).
+- Die Bausteine, die mehrere Werkzeuge teilen (Design, Aufgabentypen), werden einmal gekürzt und wirken damit in allen Werkzeugen aus der Tabelle oben, auch beim Überarbeiten und beim „Kapitel neu anfragen“ (PROJ-52).
+
+### D) Qualitätsnachweis (Vergleichsbericht)
+Ein kleines Prüfskript im Kern vergleicht zwei Antworten zum selben Skript und gibt eine Tabelle aus:
+- Länge von Prompt und Antwort (Zeichen, geschätzte Token)
+- umgesetzte Skript-Aufgaben, Bilder (Soll aus dem Skript gegen Ist), Kapitel, Elemente je Typ
+- Befunde der Prüfstelle nach Stufe
+- **Anteil der Antwort je Baustein** (Aufwärm-Quiz, Begriffe, Zusammenfassung, Abschluss-Quiz, Abschlusskapitel). Das ist die Grundlage für E4.
+
+**Wer die Antworten schreibt:** Claude (über Claude Code, ohne Zusatzkosten), mit identischen Bedingungen für alt und neu: je Skript und Prompt zwei Durchläufe, bewertet wird der schlechtere (siehe Edge Cases). Skripte: Heft 2 (Haftung) und ein KSK-Heft mit Rechenaufgaben und Tabellen. Dazu kommt die Stichprobe von 15 Aufgaben je Skript, von Hand gelesen. Das Ergebnis steht als Tabelle in dieser Spec. Erst danach wird deployt.
+
+Optional, empfohlen: ein Durchlauf von Heft 2 mit dem neuen Prompt in **ChatGPT Free** durch den Nutzer, um zu sehen, ob die Antwort jetzt vollständig ankommt. Das ist zugleich der Messwert für PROJ-69 (Teilgröße).
+
+### E) Tests
+- **Ersetzt:** die Tests „Prompt zeichengleich mit der alten Werkzeugkiste“. **Neu:** Jeder Prompt enthält die Pflicht-Regeln (Stichwortliste je Regel), enthält keine Stilangaben und zeigt in der Vorlage nur erlaubte Typen.
+- **Neu:** Jedes Kennzeichen ergibt genau das bisherige Design (Vergleich mit den bisherigen Box-Vorlagen); eine Antwort mit Inline-CSS ergibt dieselbe Datei wie vorher; gemischte und unbekannte Kennzeichen bauen ohne Fehler; die Seite bekommt dasselbe Design wie H5P.
+- **Bleibt:** die „Datei gleich“-Tests (H5P inhaltsgleich, Word gleich) und `werkzeugtest.py` (22/24, zwei bekannte Altfehler).
+- **Prüfstelle:** Der Test zu „Überschrift ohne Stil“ wird umgedreht (kein Befund mehr).
+
+### F) Reihenfolge (drei Pakete, je für sich auslieferbar)
+1. **Design-Übersetzer + Prüfstelle:** Der Generator versteht die Kennzeichen, der Prompt ist noch unverändert. Ungefährlich, weil die KI noch Inline-CSS schreibt und das unangetastet bleibt.
+2. **Prompt kürzen** + `CLAUDE.md`, `prompt-sync`, `prompt_diff.py` mitziehen + neue Prompt-Tests.
+3. **Vergleichsbericht** und Messwerte in die Spec, dann die Freigabe durch den Nutzer und das Kern-Deploy.
+
+Paket 1 muss vor Paket 2 live sein. Sonst würden neue, kurze Antworten von einem alten Generator ohne Boxen gebaut.
+
+### G) Entscheidungen und Begründung
+| Entscheidung | Warum |
+|---|---|
+| Design setzt der Generator, nicht die KI | Die KI muss 250–550 Zeichen je Box nicht mehr abschreiben, und Abschreibfehler im Design gibt es dann nicht mehr. Das Aussehen bestimmt der Code, also ist es immer gleich. |
+| Kennzeichen als schlichtes HTML-Merkmal statt neuer YAML-Elementtypen | Der YAML-Aufbau bleibt identisch, also müssen Prüfstelle, Zusammenfügen (PROJ-64) und Überarbeiten (PROJ-52) nicht umgebaut werden. Alte Antworten bleiben gültig. |
+| Ein gemeinsamer Übersetzer für H5P und Seite | Die Seite hatte bisher gar keinen Design-Ausgleich. Eine Stelle verhindert, dass beide auseinanderlaufen. |
+| Vorhandene Stile haben Vorrang | Abwärtskompatibel: Entwürfe, Materialien und Antworten aus der Zeit vor PROJ-68 bauen unverändert. |
+| Vergleich mit Claude statt kostenloser Fremd-KI | Wiederholbar, kostenlos und unter gleichen Bedingungen für alt und neu. Den Praxis-Check in ChatGPT Free macht der Nutzer optional. |
+| Pflicht-Menge je Kapitel bleibt (E4) | Hier geht es um Qualität, deshalb entscheidet der Nutzer. Diese Spec liefert nur die Zahlen. |
+
+### H) Risiken
+- **KI ignoriert die Kennzeichen** und schreibt schlichtes HTML ohne Boxen: Dann fehlen Boxen, die Datei bleibt aber lesbar. Im Vergleich zählen wir die Boxen je Kapitel (alt gegen neu). Fällt die Zahl, wird die Anweisung deutlicher gefasst.
+- **Kürzere Selbstprüfung lässt die KI schludern:** Genau das misst der Vergleich (Skript-Aufgaben, Bilder, Befunde). Fällt ein Wert, kommt der betreffende Prüfpunkt zurück.
+- **PROJ-64-Kostenschätzung** nutzt einen Erfahrungswert „Antwort zu Skript“. Mit kürzeren Antworten wird die Schätzung zu hoch, also auf der sicheren Seite. Den Wert nach dem Vergleich anpassen.
+
+### Abhängigkeiten (Pakete)
+Keine neuen. Alles mit vorhandenem Python (PyYAML) im Kern.
 
 ## QA Test Results
 _To be added by /qa_
