@@ -98,7 +98,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-66: Werkzeugkiste – Kostenübersicht für den Super-Admin | Planned |
 | P1 | PROJ-67: Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed |
 | P1 | PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed |
-| P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Planned |
+| P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

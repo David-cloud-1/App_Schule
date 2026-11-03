@@ -1,6 +1,6 @@
 # PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -371,8 +371,12 @@ Gesamtsuite grün (2.446). Geänderte Bestandsrouten (`prompt`, `pruefen`, `baue
 2. Kern pushen und deployen (`vercel-kern`).
 3. App deployen, danach E4 messen und `TEIL_ZEICHEN_KOSTENLOS` bei Bedarf anpassen.
 
+### Nachbesserung (2026-11-03, Commit 0418d40)
+Alle vier Funde behoben, +5 Tests (Gesamtsuite 2.451 grün): (1) Hinweis „Dein Text lässt sich nicht in kleinere Teile zerlegen …“ aus der Prompt-Route, wenn ein Text länger als die Teilgröße ist und der Kern ihn nicht teilen kann. (2) Fertige Materialien bekommen keine Teil-Liste mehr. (3) Antwort-Route schreibt nur auf dem gelesenen Stand (`aktualisiere(…, erwartet)` über `updated_at`), sonst 409 „Lade die Seite neu“. (4) Beim Weiterschreiben entfällt die Warnung „falscher Teil“.
+
 ### Entscheidung
 **Produktionsreif: JA**, unter den drei Voraussetzungen oben. Keine kritischen oder hohen Fehler; 3 niedrige Funde und 1 Info.
 
 ## Deployment
-_To be added by /deploy_
+- **2026-11-03:** Migration `20261106_proj69_teile.sql` war in der Produktion bereits eingespielt (Spalte `werkzeug_ablaeufe.teile` vorhanden). Kern `vercel-kern` gepusht (89537a4) und per `vercel deploy --prod` ausgerollt (`/api/gesund` ok, `/api/teil-pruefen` ohne Kopf 401). App `main` gepusht (0418d40), Vercel-Build Ready, neue Routen ohne Login 401.
+- **Offen:** Browser- und Handytest durch den Nutzer; E4 (8.000 Zeichen) an Heft 2 in ChatGPT Free messen und `TEIL_ZEICHEN_KOSTENLOS` bei Bedarf anpassen.
