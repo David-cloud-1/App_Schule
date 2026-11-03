@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const service = createServiceClient()
   let query = service
     .from('exam_sessions')
-    .select('id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
+    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
     .eq('assessment_id', id)
   if (sessionId) query = query.eq('id', sessionId)
   const { data: sessions, error } = await query

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getLevelFromXp } from '@/lib/xp-utils'
+import { DELETED_ACCOUNT_LABEL } from '@/lib/konto-loeschen'
 import { fetchAnswerKey } from '@/lib/answer-key'
 import {
   applyGrading,
@@ -276,12 +277,12 @@ export async function loadLog(service: SupabaseClient, target: Target) {
   const entries = (data ?? []) as {
     id: string
     created_at: string
-    admin_id: string
+    admin_id: string | null
     action_type: string
     details: Record<string, unknown> | null
   }[]
 
-  const adminIds = [...new Set(entries.map((e) => e.admin_id).filter(Boolean))]
+  const adminIds = [...new Set(entries.map((e) => e.admin_id).filter((v): v is string => !!v))]
   const adminNames = new Map<string, string | null>()
   if (adminIds.length > 0) {
     const { data: admins } = await service.from('profiles').select('id, display_name').in('id', adminIds)
@@ -297,7 +298,7 @@ export async function loadLog(service: SupabaseClient, target: Target) {
       createdAt: e.created_at,
       actionType: e.action_type,
       label: userActionLabel(e.action_type),
-      adminName: adminNames.get(e.admin_id) ?? null,
+      adminName: e.admin_id ? (adminNames.get(e.admin_id) ?? null) : DELETED_ACCOUNT_LABEL,
       details: e.details,
     })),
   }

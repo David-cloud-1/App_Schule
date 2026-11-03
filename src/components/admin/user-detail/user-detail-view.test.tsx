@@ -4,7 +4,8 @@ import { UserDetailView } from './user-detail-view'
 import { AdminRoleProvider } from '@/components/admin/admin-role-provider'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
-vi.mock('next/navigation', () => ({ usePathname: () => '/admin/users/u1' }))
+const push = vi.fn()
+vi.mock('next/navigation', () => ({ usePathname: () => '/admin/users/u1', useRouter: () => ({ push }) }))
 
 const USER_ID = 'u1'
 const OWN_ID = 'admin-1'
@@ -107,7 +108,10 @@ function setup(ownId = OWN_ID) {
 }
 
 describe('Nutzer-Detailseite (PROJ-59)', () => {
-  beforeEach(() => vi.unstubAllGlobals())
+  beforeEach(() => {
+    vi.unstubAllGlobals()
+    push.mockClear()
+  })
 
   it('zeigt alle Abschnitte mit den Daten der Person', async () => {
     mockFetch()
@@ -179,6 +183,7 @@ describe('Nutzer-Detailseite (PROJ-59)', () => {
     expect(screen.getByRole('button', { name: /E-Mail ändern/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Als bestätigt markieren' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Fortschritt zurücksetzen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Konto löschen' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: /Passwort neu vergeben/ })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Name ändern/ })).toBeEnabled()
   })
@@ -245,5 +250,49 @@ describe('Nutzer-Detailseite (PROJ-59)', () => {
     fireEvent.change(await screen.findByLabelText(/Zur Bestätigung/), { target: { value: 'Anna Azubi' } })
     fireEvent.click(screen.getByRole('button', { name: 'Zurücksetzen' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('noch einmal')
+  })
+  it('Konto löschen: zeigt Vorschau, aktiv erst mit eingetippter E-Mail, danach zurück zur Liste', async () => {
+    const fetchFn = mockFetch({}, (url, init) => {
+      if (!url.endsWith('/delete')) return undefined
+      if (init?.method === 'POST') return { body: { ok: true } }
+      return { body: { email: 'anna@example.de', displayName: 'Anna Azubi', assessments: 2, ownContent: 0 } }
+    })
+    setup()
+    fireEvent.click(await screen.findByRole('button', { name: 'Konto löschen' }))
+    expect(await screen.findByText(/2 benotete Leistungsnachweise/)).toBeInTheDocument()
+    const confirm = screen.getByRole('button', { name: 'Endgültig löschen' })
+    expect(confirm).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Zur Bestätigung/), { target: { value: 'falsch@example.de' } })
+    expect(confirm).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(/Zur Bestätigung/), { target: { value: 'Anna@Example.de' } })
+    expect(confirm).toBeEnabled()
+    fireEvent.click(confirm)
+    await waitFor(() => {
+      const call = fetchFn.mock.calls.find(([url, init]) => String(url).endsWith('/delete') && init?.method === 'POST')
+      expect(JSON.parse(String(call![1]!.body))).toEqual({ confirmEmail: 'Anna@Example.de' })
+      expect(push).toHaveBeenCalledWith('/admin/users')
+    })
+  })
+
+  it('Konto löschen: Fehler bleibt im Dialog, die Seite wechselt nicht', async () => {
+    mockFetch({}, (url, init) => {
+      if (!url.endsWith('/delete')) return undefined
+      if (init?.method === 'POST') return { status: 500, body: { error: 'Löschen fehlgeschlagen – erneut versuchen' } }
+      return { body: { email: 'anna@example.de', displayName: 'Anna Azubi', assessments: 0, ownContent: 0 } }
+    })
+    setup()
+    fireEvent.click(await screen.findByRole('button', { name: 'Konto löschen' }))
+    fireEvent.change(await screen.findByLabelText(/Zur Bestätigung/), { target: { value: 'anna@example.de' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Löschen fehlgeschlagen – erneut versuchen')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('Konto löschen: bei einem Super-Admin-Konto gesperrt, mit Hinweis', async () => {
+    mockFetch({ overview: { body: { ...OVERVIEW, role: 'admin' } } })
+    setup()
+    await screen.findByRole('heading', { name: 'Anna Azubi', level: 1 })
+    expect(screen.getByRole('button', { name: 'Konto löschen' })).toBeDisabled()
+    expect(screen.getByText(/Ändere zuerst die Rolle/)).toBeInTheDocument()
   })
 })

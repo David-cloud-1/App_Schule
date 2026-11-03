@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, ChevronDown, KeyRound, Loader2, MapPinned, Search, ShieldCheck } from 'lucide-react'
+import { Ban, CheckCircle2, ChevronDown, KeyRound, Loader2, MapPinned, Search, ShieldCheck, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -56,6 +56,7 @@ import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { SortableTableHead } from '@/components/admin/sortable-table-head'
 import { SetPasswordDialog } from '@/components/admin/set-password-dialog'
+import { DeleteAccountDialog } from '@/components/admin/delete-account-dialog'
 import {
   ACTIVITY_FILTERS,
   ACTIVITY_LABEL,
@@ -116,6 +117,7 @@ export default function AdminUsersPage() {
   const [roleChange, setRoleChange] = useState<{ user: AdminUserRow; newRole: Role } | null>(null)
   const [moveTarget, setMoveTarget] = useState<AdminUserRow | null>(null)
   const [passwordTarget, setPasswordTarget] = useState<AdminUserRow | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
   // Sortierung und Aktivitäts-Filter stehen in der Adresse (PROJ-57): Neuladen
   // und geteilte Links zeigen dieselbe Ansicht
@@ -537,6 +539,28 @@ export default function AdminUsersPage() {
                             </TooltipProvider>
                           )}
 
+                          {/* Konto löschen (PROJ-60) — nur Super-Admin, nie das eigene oder ein Super-Admin-Konto */}
+                          {isSuperAdmin && !isSelf && u.role !== 'admin' && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteTarget(u)}
+                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} löschen`}
+                                    className="text-ws-red hover:text-ws-red"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
+                                  Konto löschen
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -669,6 +693,18 @@ export default function AdminUsersPage() {
           if (!v) setPasswordTarget(null)
         }}
         user={passwordTarget}
+      />
+
+      <DeleteAccountDialog
+        open={deleteTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null)
+        }}
+        user={deleteTarget}
+        onDeleted={() => {
+          setDeleteTarget(null)
+          load()
+        }}
       />
     </div>
   )

@@ -46,7 +46,7 @@ import { AdminErrorState } from '@/components/admin/admin-states'
 type AuditEntry = {
   id: string
   created_at: string
-  admin_id: string
+  admin_id: string | null
   admin_name: string | null
   action_type: string
   object_type: string
@@ -81,6 +81,7 @@ const ACTION_TYPES = [
   { value: 'user.role_change', label: 'Rolle geändert' },
   { value: 'user.move_department', label: 'Bereich gewechselt' },
   { value: 'user.password_set', label: 'Passwort neu vergeben' },
+  { value: 'user.delete', label: 'Konto gelöscht' },
   { value: 'user.rename', label: 'Name geändert' },
   { value: 'user.email_change', label: 'E-Mail geändert' },
   { value: 'user.email_confirm', label: 'E-Mail als bestätigt markiert' },
@@ -285,7 +286,7 @@ export default function AdminAuditLogPage() {
                       {formatDateTime(e.created_at)}
                     </TableCell>
                     <TableCell className="text-ws-text text-sm">
-                      {e.admin_name ?? e.admin_id.slice(0, 8)}
+                      {e.admin_name ?? (e.admin_id ? e.admin_id.slice(0, 8) : 'Gelöschtes Konto')}
                     </TableCell>
                     <TableCell>
                       <Badge

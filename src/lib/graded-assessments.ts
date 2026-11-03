@@ -2,6 +2,8 @@
 // grading-scale validation and grade computation, used by both the admin and
 // student-facing API routes so the rules stay in exactly one place.
 
+import { DELETED_ACCOUNT_LABEL } from '@/lib/konto-loeschen'
+
 export type GradeBoundary = { grade: 1 | 2 | 3 | 4 | 5 | 6; minPercent: number }
 
 export const IHK_DEFAULT_SCALE: GradeBoundary[] = [
@@ -118,6 +120,8 @@ export type SnapshotQuestion = {
 
 export type SessionRow = {
   id: string
+  /** null nach „Konto löschen“ (PROJ-60): die Abgabe ist dann anonym */
+  user_id?: string | null
   participant_name: string | null
   started_at: string
   ended_at: string | null
@@ -157,7 +161,8 @@ export function buildParticipantRows(
       : null
     return {
       sessionId: s.id,
-      name: s.participant_name ?? 'Unbekannt',
+      // user_id === null: Konto wurde gelöscht (PROJ-60); fehlt das Feld, bleibt es bei „Unbekannt“
+      name: s.participant_name ?? (s.user_id === null ? DELETED_ACCOUNT_LABEL : 'Unbekannt'),
       points: scored?.points ?? null,
       totalPoints: scored?.totalPoints ?? null,
       percent: scored?.percent ?? null,

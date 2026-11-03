@@ -29,7 +29,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const service = createServiceClient()
   const { data: sessions } = await service
     .from('exam_sessions')
-    .select('id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
+    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
     .eq('assessment_id', id)
     .order('participant_name', { ascending: true })
 

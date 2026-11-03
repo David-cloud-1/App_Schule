@@ -452,7 +452,18 @@ export function ProtokollCard({
   )
 }
 
-export function GefahrenzoneCard({ isSelf, onReset }: { isSelf: boolean; onReset: () => void }) {
+export function GefahrenzoneCard({
+  isSelf,
+  onReset,
+  onDelete,
+  deleteBlockedReason,
+}: {
+  isSelf: boolean
+  onReset: () => void
+  onDelete: () => void
+  /** Grund, warum „Konto löschen“ hier nicht geht (Super-Admin-Rolle, Zweitaccount); sonst null */
+  deleteBlockedReason: string | null
+}) {
   return (
     <section aria-labelledby="gefahr-titel" className="space-y-4 rounded-2xl border border-ws-red/40 bg-ws-surface p-5">
       <div className="flex items-start gap-3">
@@ -484,6 +495,25 @@ export function GefahrenzoneCard({ isSelf, onReset }: { isSelf: boolean; onReset
           className="min-h-11 rounded-xl border-ws-red/40 bg-transparent text-ws-red hover:bg-ws-red/15 hover:text-ws-red"
         >
           Fortschritt zurücksetzen
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ws-line bg-ws-bg p-4">
+        <div className="min-w-0 max-w-prose">
+          <p className="text-sm font-medium text-ws-text">Konto löschen</p>
+          <p className="text-sm text-ws-muted">
+            Löscht Login und alle persönlichen Daten endgültig (DSGVO). Benotete Leistungsnachweise bleiben anonym als
+            „Gelöschtes Konto“ erhalten.
+          </p>
+          {isSelf && <p className="mt-1 text-sm text-ws-muted">Du kannst dich nicht selbst bearbeiten.</p>}
+          {!isSelf && deleteBlockedReason && <p className="mt-1 text-sm text-ws-muted">{deleteBlockedReason}</p>}
+        </div>
+        <Button
+          variant="outline"
+          onClick={onDelete}
+          disabled={isSelf || deleteBlockedReason !== null}
+          className="min-h-11 rounded-xl border-ws-red/40 bg-transparent text-ws-red hover:bg-ws-red/15 hover:text-ws-red"
+        >
+          Konto löschen
         </Button>
       </div>
     </section>

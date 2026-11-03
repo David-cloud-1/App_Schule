@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowLeft, KeyRound, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { SetPasswordDialog } from '@/components/admin/set-password-dialog'
+import { DeleteAccountDialog } from '@/components/admin/delete-account-dialog'
+import { deleteBlockReason } from '@/lib/konto-loeschen'
 import { resetConfirmLabel } from '@/lib/user-detail'
 import { useUserSection } from './use-user-section'
 import type { AssessmentsData, BadgesData, LearningData, LogData, UserOverview } from './types'
@@ -34,6 +37,7 @@ const backLink =
  * Abschnitte neu laden.
  */
 export function UserDetailView({ userId, ownId }: { userId: string; ownId: string }) {
+  const router = useRouter()
   const overview = useUserSection<UserOverview>(userId, 'overview')
   const learning = useUserSection<LearningData>(userId, 'learning')
   const badges = useUserSection<BadgesData>(userId, 'badges')
@@ -44,6 +48,7 @@ export function UserDetailView({ userId, ownId }: { userId: string; ownId: strin
   const [emailOpen, setEmailOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
 
   const isSelf = userId === ownId
@@ -166,7 +171,17 @@ export function UserDetailView({ userId, ownId }: { userId: string; ownId: strin
       </div>
       <ProtokollCard userId={userId} state={log.state} retry={log.retry} />
 
-      {person && <GefahrenzoneCard isSelf={isSelf} onReset={() => setResetOpen(true)} />}
+      {person && (
+        <GefahrenzoneCard
+          isSelf={isSelf}
+          onReset={() => setResetOpen(true)}
+          onDelete={() => setDeleteOpen(true)}
+          deleteBlockedReason={deleteBlockReason({
+            role: person.role,
+            linked_main_user_id: person.linkedMain?.id ?? null,
+          })}
+        />
+      )}
 
       {person && (
         <>
@@ -190,6 +205,12 @@ export function UserDetailView({ userId, ownId }: { userId: string; ownId: strin
             userId={userId}
             confirmLabel={resetConfirmLabel(person.displayName, person.email)}
             onDone={reloadAfterReset}
+          />
+          <DeleteAccountDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            user={{ id: person.id, display_name: person.displayName, email: person.email }}
+            onDeleted={() => router.push('/admin/users')}
           />
           <SetPasswordDialog
             open={passwordOpen}

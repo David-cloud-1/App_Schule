@@ -36,6 +36,7 @@ export const USER_ACTION_LABEL: Record<string, string> = {
   'user.email_change': 'E-Mail geändert',
   'user.email_confirm': 'E-Mail als bestätigt markiert',
   'user.progress_reset': 'Fortschritt zurückgesetzt',
+  'user.delete': 'Konto gelöscht',
 }
 
 export function userActionLabel(actionType: string): string {
