@@ -1,6 +1,6 @@
 # PROJ-60: Konto löschen (DSGVO)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-03
 
@@ -156,7 +156,13 @@ Keine neuen Pakete. Die Änderung besteht aus einer Datenbank-Migration (mit Rü
 **Tests:** Schnittstelle (14), Hilfsfunktionen (5), Detailseite/Dialog (+3). Gesamt 2282 Tests grün, `tsc` und ESLint sauber.
 
 ## QA Test Results
-_To be added by /qa_
+Statisch und per Test geprüft (2026-11-03), kein Browser-Durchlauf:
+- Rechte: 403 für Bereichs-Admin, 400 für eigenes Konto, Zweitaccount und Super-Admin-Rolle, 401 ohne Login (live per `curl` bestätigt).
+- Bestätigung wird serverseitig geprüft (E-Mail, Groß-/Kleinschreibung egal). Falsche Eingabe ändert nichts.
+- Reihenfolge und Abbruchverhalten getestet: Fehler bei Datenbank, Dateien oder Auth-Löschung lässt das Konto bestehen und schreibt kein Protokoll.
+- Protokoll `user.delete` enthält weder Konto-Id noch Namen noch E-Mail.
+- Datenbank-Probe in einer zurückgerollten Transaktion bestanden: Abgabe bleibt anonym (ohne Konto, ohne Klarname), Lehrkraft mit Zusammenstellung und Protokollzeile lässt sich löschen, Protokoll nennt die Person nicht mehr, zweiter Lauf harmlos, anon/authenticated dürfen die Funktionen nicht aufrufen.
+- Offen: ein echter Löschlauf mit Wegwerf-Konto im Browser (Nutzer klickt selbst durch), Hinweis auf Backups in der Datenschutzerklärung.
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-03: Migration `20261105_proj60_konto_loeschen.sql` per SQL-Editor auf Produktion (Probe vorher bestanden, danach lesend verifiziert), Push `f72f445` auf `main`, Vercel „Ready“, Routen liefern 401 ohne Login, keine Fehler in den Produktions-Logs.

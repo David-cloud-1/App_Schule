@@ -89,7 +89,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter | Deployed |
 | P1 | PROJ-58: Passwort neu vergeben (mit Pflichtwechsel) | Deployed |
 | P2 | PROJ-59: Nutzer-Detailseite (Super-Admin) | Planned |
-| P1 | PROJ-60: Konto löschen (DSGVO) | Planned |
+| P1 | PROJ-60: Konto löschen (DSGVO) | Deployed |
 | P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned |
 | P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned |
 | P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Deployed |
