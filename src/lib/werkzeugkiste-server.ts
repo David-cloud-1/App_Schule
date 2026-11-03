@@ -259,13 +259,15 @@ export async function aktualisiere(
   supabase: SupabaseClient,
   id: string,
   felder: Record<string, unknown>,
+  /** `updated_at` des gelesenen Stands: Hat sich die Zeile seither geändert, wird nichts geschrieben (null) */
+  erwartet?: string,
 ): Promise<AblaufZeile | null> {
-  const { data, error } = await supabase
+  let abfrage = supabase
     .from(ABLAUF_TABELLE)
     .update({ ...felder, ...frischStempel() })
     .eq('id', id)
-    .select(ABLAUF_SPALTEN)
-    .maybeSingle()
+  if (erwartet) abfrage = abfrage.eq('updated_at', erwartet)
+  const { data, error } = await abfrage.select(ABLAUF_SPALTEN).maybeSingle()
   if (error) return null
   return (data as AblaufZeile | null) ?? null
 }

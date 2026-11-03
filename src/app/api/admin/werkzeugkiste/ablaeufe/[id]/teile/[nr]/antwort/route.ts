@@ -95,10 +95,15 @@ export async function POST(request: Request, { params }: Kontext) {
       if (doppelt) {
         return NextResponse.json({
           uebernommen: false,
-          warnung: { art: 'doppelt', teil: doppelt.nr, satz: `Diese Antwort hast du schon bei Teil ${doppelt.nr} eingefügt.` },
+          warnung: {
+            art: 'doppelt',
+            teil: doppelt.nr,
+            satz: `Diese Antwort hast du schon bei Teil ${doppelt.nr} eingefügt.`,
+          },
         })
       }
-      if (check.eherTeil && check.eherTeil !== nr) {
+      // Eine Fortsetzung deckt nur den Rest des Teils ab: Der Vergleich wäre ein Fehlalarm
+      if (!weiter && check.eherTeil && check.eherTeil !== nr) {
         return NextResponse.json({
           uebernommen: false,
           warnung: {
@@ -129,7 +134,10 @@ export async function POST(request: Request, { params }: Kontext) {
     if (weiter) {
       const basis = await ladeTeilAntwort(service, zeile.owner_id, zeile.id, nr)
       if (!basis) return fehler(`Die bisherige Antwort von Teil ${nr} fehlt. Füge den Teil noch einmal ein.`, 400)
-      const m = await kern<{ antwort: string }>('/api/zusammenfuegen', { antworten: [basis, brauchbar], werkzeug: ablauf.werkzeug })
+      const m = await kern<{ antwort: string }>('/api/zusammenfuegen', {
+        antworten: [basis, brauchbar],
+        werkzeug: ablauf.werkzeug,
+      })
       text = m.antwort
       kapitel = [...teil.kapitel, ...check.kapitel]
       runden += 1
@@ -158,12 +166,24 @@ export async function POST(request: Request, { params }: Kontext) {
     if (!(await speichereTeilAntwort(service, zeile.owner_id, zeile.id, nr, text))) {
       return fehler('Die Antwort konnte nicht gespeichert werden.', 500)
     }
-    const neu = await aktualisiere(auth.supabase, zeile.id, {
-      teile: teilErsetzen(teile, neuerTeil),
-      // Eine frühere Zusammenfügung ist mit der neuen Teil-Antwort veraltet
-      ...(teile.zusammengefuegt ? { antwort: null, pruefung: null, schritt: 3 } : { schritt: Math.max(zeile.schritt, 3) }),
-    })
-    if (!neu) return fehler('Die Antwort konnte nicht gespeichert werden.', 500)
+    const neu = await aktualisiere(
+      auth.supabase,
+      zeile.id,
+      {
+        teile: teilErsetzen(teile, neuerTeil),
+        // Eine frühere Zusammenfügung ist mit der neuen Teil-Antwort veraltet
+        ...(teile.zusammengefuegt
+          ? { antwort: null, pruefung: null, schritt: 3 }
+          : { schritt: Math.max(zeile.schritt, 3) }),
+      },
+      zeile.updated_at,
+    )
+    if (!neu) {
+      return fehler(
+        'Der Ablauf hat sich gerade geändert, vielleicht in einem anderen Fenster. Lade die Seite neu und füge die Antwort noch einmal ein.',
+        409,
+      )
+    }
 
     return NextResponse.json({
       uebernommen: true,

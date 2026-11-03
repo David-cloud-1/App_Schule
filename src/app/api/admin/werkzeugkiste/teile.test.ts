@@ -69,6 +69,7 @@ const fertig = (nr: number, zusatz: Partial<AblaufTeil> = {}) =>
 const teileListe = (...t: AblaufTeil[]): AblaufTeile => ({ groesse: 8000, zusammengefuegt: false, hinweise: [], teile: t })
 
 let zeile: Record<string, unknown>
+let konflikt: boolean
 let updates: Record<string, unknown>[]
 let dateien: Map<string, string>
 let speicher: Record<string, ReturnType<typeof vi.fn>>
@@ -106,11 +107,14 @@ beforeEach(() => {
   vi.clearAllMocks()
   zeile = { ...BASIS }
   updates = []
+  konflikt = false
   dateien = new Map()
   antworten = {}
   kernAufrufe = []
   const db = chainMock((_t, calls) => {
     const upd = calls.find((c) => c.method === 'update')
+    // Optimistische Sperre: Hat sich die Zeile seit dem Lesen geändert, trifft die Bedingung nichts
+    if (upd && konflikt && calls.some((c) => c.method === 'eq' && c.args[0] === 'updated_at')) return { data: null, count: 0 }
     if (upd) {
       updates.push(upd.args[0] as Record<string, unknown>)
       zeile = { ...zeile, ...(upd.args[0] as Record<string, unknown>) }
@@ -210,6 +214,35 @@ describe('Teil-Liste anlegen (Prompt-Route)', () => {
     kernSagt('/api/prompt', { prompt: 'p', hinweis: '', warnung: '' })
     await promptRoute(new Request('http://t'), ctx)
     expect(updates[0]).toMatchObject({ prompt: 'p', teile: null })
+  })
+})
+
+describe('Lange Texte ohne Teilungsmöglichkeit und fertige Materialien (Prompt-Route)', () => {
+  it('gibt einem langen Text, der sich nicht teilen lässt, einen Prompt und den Hinweis auf den Nachhol-Prompt', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', { teile: [{ auswahl: { seiten: '', abschnitte: [] }, zeichen: 40000 }] })
+    kernSagt('/api/prompt', { prompt: 'Du bist …', hinweis: '', warnung: '' })
+    const b = await (await promptRoute(new Request('http://t'), ctx)).json()
+    expect(b.ablauf.prompt).toBe('Du bist …')
+    expect(b.ablauf.teile).toBeNull()
+    expect(b.hinweis).toBe(
+      'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Prompt.',
+    )
+  })
+
+  it('hängt den Hinweis an bestehende Hinweise des Kerns an und lässt ihn bei kurzen Texten weg', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', { teile: [{ auswahl: { seiten: '', abschnitte: [] }, zeichen: 3000 }] })
+    kernSagt('/api/prompt', { prompt: 'p', hinweis: 'Seite 99 gibt es nicht.', warnung: '' })
+    expect((await (await promptRoute(new Request('http://t'), ctx)).json()).hinweis).toBe('Seite 99 gibt es nicht.')
+  })
+
+  it('legt bei einem fertigen Material keine Teil-Liste an', async () => {
+    zeile = { ...BASIS, status: 'fertig', schritt: 5 }
+    kernSagt('/api/prompt', { prompt: 'p', hinweis: '', warnung: '' })
+    const b = await (await promptRoute(new Request('http://t'), ctx)).json()
+    expect(kernPfade()).toEqual(['/api/prompt'])
+    expect(b.ablauf.teile).toBeNull()
   })
 })
 
@@ -345,6 +378,23 @@ describe('Teil-Antwort einfügen', () => {
     expect(b.teil).toMatchObject({ zustand: 'fertig', kapitel: ['A', 'B', 'C'], runden: 1, fingerabdruck: 'x' })
     expect(b.tippKleiner).toBe(false)
     expect(dateien.get(`u1/${ID}/teil-frei-2.yaml`)).toBe('chapters: bisher plus neu')
+  })
+
+  it('warnt bei der Antwort auf den Weiterschreib-Prompt nicht vor einem „falschen Teil“', async () => {
+    zeile = { ...BASIS, teile: teileListe(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['A'], fingerabdruck: 'x' }), teil(3)) }
+    dateien.set(`u1/${ID}/teil-frei-2.yaml`, 'chapters: bisher')
+    kernSagt('/api/teil-pruefen', teilCheck({ kapitel: ['C'], eherTeil: 3 }))
+    kernSagt('/api/zusammenfuegen', { antwort: 'chapters: bisher plus neu' })
+    const b = await (await teilAntwort(json({ antwort: 'chapters: neu', weiter: true }), mitNr(2))).json()
+    expect(b.uebernommen).toBe(true)
+  })
+
+  it('schreibt nur auf dem gelesenen Stand und meldet 409, wenn sich der Ablauf inzwischen geändert hat', async () => {
+    konflikt = true
+    const res = await teilAntwort(json({ antwort: 'cover: x' }), mitNr(2))
+    expect(res.status).toBe(409)
+    expect((await res.json()).error).toContain('Lade die Seite neu')
+    expect(updates).toHaveLength(0)
   })
 
   it('rät bei erneutem Abbruch zu einem kleineren Abschnitt', async () => {

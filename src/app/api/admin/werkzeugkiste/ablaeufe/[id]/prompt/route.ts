@@ -18,6 +18,10 @@ export const maxDuration = 60
 
 type Kontext = { params: Promise<{ id: string }> }
 
+/** Lang, aber ohne Kapitel- oder Seitengrenzen (z. B. .txt): ein Prompt, die Rettung greift bei Abbruch */
+const KEIN_TEILEN_HINWEIS =
+  'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Prompt.'
+
 /**
  * POST /api/admin/werkzeugkiste/ablaeufe/:id/prompt (PROJ-51) — der Kern baut
  * den Prompt aus Einlesung, Auswahl und Einstellungen, zeichengenau wie die
@@ -46,7 +50,9 @@ export async function POST(_request: Request, { params }: Kontext) {
   }
   try {
     const service = createServiceClient()
-    if (hatTeilWeg(ablauf.werkzeug)) {
+    // Ein fertiges Material bekommt keine Teile mehr: Es lässt sich nichts mehr einfügen
+    let zuLang = false
+    if (hatTeilWeg(ablauf.werkzeug) && zeile.status !== 'fertig') {
       const t = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
         einlesung: { url: einlesung },
         auswahl: ablauf.auswahl,
@@ -58,13 +64,16 @@ export async function POST(_request: Request, { params }: Kontext) {
         const neu = await aktualisiere(auth.supabase, zeile.id, {
           teile,
           prompt: null,
-          ...(zeile.status === 'fertig' ? {} : { antwort: null, pruefung: null }),
+          antwort: null,
+          pruefung: null,
           schritt: Math.max(zeile.schritt, 3),
         })
         if (!neu) return fehler('Die Teile konnten nicht gespeichert werden.', 500)
         return NextResponse.json({ ablauf: zeileZuAblauf(neu), hinweis: null })
       }
-      // Ein Teil genügt: Prompt wie bisher; eine alte Teil-Liste entfällt
+      // Ein Teil genügt (oder der Text lässt sich nicht kleiner teilen): Prompt wie bisher;
+      zuLang = (t.teile?.[0]?.zeichen ?? 0) > TEIL_ZEICHEN_KOSTENLOS
+      // eine alte Teil-Liste entfällt
       if (zeile.teile) await loescheTeilDateien(service, zeile.owner_id, zeile.id)
     }
     const r = await kern<{ prompt: string; hinweis?: string; warnung?: string }>('/api/prompt', {
@@ -79,7 +88,7 @@ export async function POST(_request: Request, { params }: Kontext) {
       schritt: Math.max(zeile.schritt, 3),
     })
     if (!neu) return fehler('Der Prompt konnte nicht gespeichert werden.', 500)
-    return NextResponse.json({ ablauf: zeileZuAblauf(neu), hinweis: [r.hinweis, r.warnung].filter(Boolean).join(' ') || null })
+    return NextResponse.json({ ablauf: zeileZuAblauf(neu), hinweis: [r.hinweis, r.warnung, zuLang ? KEIN_TEILEN_HINWEIS : null].filter(Boolean).join(' ') || null })
   } catch (e) {
     return kernFehlerAntwort(e)
   }
