@@ -1,6 +1,6 @@
 # PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -226,6 +226,30 @@ Keine neuen. App: vorhandene shadcn-Bausteine. Kern: vorhandenes Python (PyYAML)
 - **App-Server:** die fünf Schnittstellen oben, Tests.
 - **Oberfläche:** Teil-Liste in Schritt 3, Rettungs-Box (Schritt 3 und 4), Rückfrage in Schritt 2, Tests.
 - **Reihenfolge:** Kern zuerst (die App braucht die neuen Kern-Funktionen), dann Datenbank, dann App.
+
+## Backend-Umsetzung
+
+### Kern (2026-11-03, `~/Schule/Werkzeugkiste`, Zweig `proj69`, Commit `9e66c8a`, noch nicht auf `vercel-kern`, nicht deployt)
+- **`POST /api/teilen`** nimmt `max_zeichen` (begrenzt auf 2.000–40.000). Ohne Angabe gelten wie bisher 22.000 Zeichen, der bezahlte Weg bleibt also unverändert.
+- **`POST /api/prompt`** nimmt `teil: {nr, von, fertig}` (nur `skript`/`kreativ`, sonst Fehler):
+  - `von > 1`: Block **TEILAUFTRAG – TEIL n VON N**. Teil 1 beginnt mit `cover:`, ab Teil 2 ohne. `final_chapter` hat nur `ceil(12/N)` Fragen (2–5) und `ceil(8/N)` Kernaussagen (1–4) zu diesem Teil, damit die zusammengefügte Lernzielkontrolle mindestens 8 Fragen hat.
+  - `fertig: [Kapiteltitel]`: Block **WEITERSCHREIBEN**. Er nennt die fertigen Kapitel, verlangt nur die restlichen, ohne `cover:`, und bei `von = 1` ein Abschlusskapitel über die ganze Einheit.
+  - Beide Blöcke stehen vor `LEHRTEXT:`. Bei Teilen entfällt die Warnung ab 60.000 Zeichen.
+- **Schlusszeile:** Jeder Prompt für „Ganzes Skript“ und „Kreativ“ (auch ohne Teil) verlangt am Ende die Zeile `# ENDE DER ANTWORT`. Das ist ein YAML-Kommentar und stört weder Prüfen noch Bauen.
+- **`POST /api/teil-pruefen`** `{antwort, werkzeug, einlesung?, teile?: [auswahl], nr?}` → `{vollstaendig, lesbar, kapitel: [titel], gerettet: yaml|null, geretteteKapitel, eherTeil: n|null}`.
+  - Vollständig = Schlusszeile vorhanden **oder** `final_chapter` mit `question_set` und `summary`.
+  - Unlesbar, aber mit Schlusszeile = nicht abgeschnitten, sondern fehlerhaft: Das meldet wie bisher die Prüfstelle.
+  - Sonst `retten`. `gerettet = null`, wenn kein Kapitel vollständig ist.
+  - `eherTeil`: Vergleich der Wörter, die nur im Skripttext eines Teils vorkommen. Gemeldet wird nur bei klarem Abstand (mindestens 8 und mindestens doppelt so viele wie beim eigenen Teil). Die Einlesung wird nur geladen, wenn `teile` mitkommt.
+- **`POST /api/zusammenfuegen`** liefert zusätzlich `hinweise`, z. B. „Teil 1 endet und Teil 2 beginnt mit dem Kapitel …“. Das gilt bei gleichem Kapiteltitel an einer Teilgrenze (ohne Nummern verglichen).
+- **Gerettet + Weiterschreiben:** Die App fügt `[gerettet, fortsetzung]` mit `zusammenfuegen` zusammen. Das Deckblatt kommt aus dem geretteten Teil, das Abschlusskapitel aus der Fortsetzung.
+- **Tests:** 14 neu (`KostenlosInTeilen`). Die alten Vergleiche „zeichengleich mit der alten Oberfläche“ gelten für den Prompt ohne den Schlusszeilen-Block (`_ohne_schluss`). Ergebnis: 155 grün, `prompt_diff.py` synchron, `werkzeugtest.py` 22/24 (bekannte Altfehler Podcast, Deploy-Paket).
+- **Heft 2 mit 8.000 Zeichen:** **4 Teile** (Seiten 1–4, 5–9, 10–14, 15–17; 6.301 / 7.203 / 7.519 / 3.901 Zeichen), nicht 3 wie im Design geschätzt. Ein Teil-Prompt hat 23.000–26.500 Zeichen. Eine halb abgeschnittene echte Antwort wird erkannt, 4 Kapitel bleiben erhalten.
+
+### Noch offen (App)
+- Datenbank: Teil-Liste an `werkzeug_ablaeufe`
+- App-Server: Teile anlegen, Teil-Prompt, Teil-Antwort einfügen, Zusammenfügen, Teile verwerfen, Rettung im Ein-Prompt-Weg
+- Kern-Deploy (`proj69` → `vercel-kern`) durch den Nutzer, **vor** dem App-Deploy
 
 ## QA Test Results
 _To be added by /qa_
