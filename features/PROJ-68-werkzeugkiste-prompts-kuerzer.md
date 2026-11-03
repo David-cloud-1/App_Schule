@@ -29,7 +29,21 @@ Vergleichswert: Heft 2 (Haftung, 9 Kapitel) ergab schon mit dem alten Prompt ohn
 - **E1 – Qualität vor Kürze (Nutzer, 2026-11-03):** Ziel ist „effizienter, ohne dass die Qualität leidet“. Jede Kürzung muss im Vorher/Nachher-Vergleich bestehen (siehe unten), sonst wird sie zurückgenommen.
 - **E2 – „Zeichengenau gleich“ endet (Nutzer, 2026-11-03):** Die Gleichwertigkeits-Tests aus PROJ-51/54 („Prompt zeichengleich mit `build_prompt` der alten Werkzeugkiste“) werden bewusst ersetzt. Die Prompts dürfen sich ändern. Die erzeugten **Dateien** müssen weiter gleich aussehen.
 - **E3 – Design macht der Generator (Annahme, Claude 2026-11-03):** Die KI schreibt nur noch kurze Kennzeichen (z. B. eine Box „Merke“), der Generator setzt das bisherige Schuldesign ein. Das Aussehen der fertigen Datei bleibt unverändert.
-- **E4 – Pflicht-Menge je Kapitel (OFFEN, Nutzer entscheidet):** Ob Bausteine je Kapitel wegfallen oder optional werden (z. B. Aufwärm-Quiz, Zusammenfassung mit Fragen), entscheidet der Nutzer nach dem ersten Vergleich. Bis dahin bleibt die Menge unverändert. Diese Spec liefert dafür nur die Messwerte.
+- **E4 – Pflicht-Menge je Kapitel (Nutzer, 2026-11-03, nach der Qualitätskontrolle):** Das Aufwärm-Quiz (`single_choice_set` am Kapitelanfang) und die Zusammenfassung mit Auswahlfragen (`summary` im Kapitel) entfallen. Das Abschluss-Quiz je Kapitel (`question_set`) hat **3–4 Fragen, nur neue Fälle und neue Zahlen**. Die Lernzielkontrolle (`final_chapter`) hat **8 Fragen**. Die Skript-Aufgaben bleiben vollständig. Begründung: Die Abnahme zeigte, dass die Quiz-Bausteine zu etwa zwei Dritteln Wiederholung sind (Kernaussagen bis zu 9-mal abgefragt) und dass das Aufwärm-Quiz Skript-Aufgaben vorwegnimmt.
+- **E5 – Prompt-Fehler gleich mit beheben (Nutzer, 2026-11-03):** PROJ-68 kürzt nicht nur, sondern behebt auch die Fehler, die `prompt-pruefen` und `einheit-abnehmen` in den Prompts gefunden haben (siehe „Erweiterung nach der Qualitätskontrolle“).
+
+### Qualitätskontrolle 2026-11-03 (Ausgangslage)
+Berichte: [docs/qualitaet-werkzeuge/](../docs/qualitaet-werkzeuge/). Fünf Antworten mit den heutigen Prompts (simuliert mit Sonnet), abgenommen mit `einheit-abnehmen`. Alle 11 Werkzeug-Prompts geprüft mit dem neuen Agenten `prompt-pruefen`.
+
+| Einheit | Antwort | Prüfstelle | Abnahme (Kurzfassung) |
+|---|---|---|---|
+| Heft 2 – Ganzes Skript | 29.556 Token (15 % CSS) | grün | Rechnungen korrekt; Vorwegnahme durch Begriffsliste/Aufwärm-Quiz; richtige Antwort meist die längste; Quiz zu ⅔ Wiederholung; 2 Fachfehler in Distraktor-Feedbacks |
+| Seefracht Teil 1 – Ganzes Skript | 12.490 Token (18 % CSS) | grün | vollständig und korrekt; nur 1 Kapitel mit 57 Elementen (Kapitelbildung fehlt); Abschlusstests rechnen nicht |
+| Kahoot Seefracht | 602 Token | grün | richtige Antwort 11 von 12 auf Platz 1 |
+| Klassenarbeit Heft 2 | 2.801 Token | grün | 5 von 6 MC-Antworten „B“; Aufgaben verraten einander; AFB III aus Skriptfällen |
+| Arbeitsblatt Seefracht | 2.280 Token | grün | sauber; richtige MC-Antwort oft die längste; Teile des Stoffs fehlen |
+
+Außerhalb der Prompts behoben (Kern, `fix(PROJ-51)` 421f8b9): PDF-Einlesen verlor Text am Seitenanfang; Rechenlücken nahmen nur die exakte Schreibweise an und sprachen immer von „Euro“; Kahoot-Export mischt jetzt die Antworten.
 
 ## Dependencies
 - Requires: PROJ-51 (Kern, Prüfstelle, Generator), PROJ-54 (übrige Werkzeuge)
@@ -60,9 +74,45 @@ Vergleichswert: Heft 2 (Haftung, 9 Kapitel) ergab schon mit dem alten Prompt ohn
 - [ ] Jede fachliche Regel (Lösungen nicht vorwegnehmen, Bilder vollständig, Tabellen-Umsetzung, Distraktoren, Feedback, Rechenaufgaben, PIL GmbH, Du-Form, YAML-Regeln) bleibt inhaltlich erhalten.
 - [ ] Die werkzeugeigenen Prompts (Kahoot, Moodle, Word-Varianten …) werden nur angefasst, wenn dieselben Bausteine darin vorkommen. Sie sind heute schon kurz.
 
+### Pflicht-Menge je Kapitel (E4)
+- [ ] Prompt (Ganzes Skript, Kreativ, Seite) verlangt kein Aufwärm-Quiz und keine `summary` im Kapitel mehr; `question_set` 3–4 Fragen, nur neue Fälle/Zahlen; `final_chapter` 8 Fragen.
+- [ ] In Rechen-Kapiteln enthält das `question_set` mindestens eine neue, vollständige Rechnung (als `fill_blanks` mit Ergebnislücke), damit der Abschlusstest auch rechnen lässt.
+- [ ] Prüfstelle passt dazu: „Abschlussquiz zu kurz“ erst unter 3 Fragen; fehlende `summary` im Kapitel ist kein Befund; `summary` mit `questions` bleibt erlaubt (alte Antworten).
+- [ ] Zusammenfügen (PROJ-64/69) begrenzt die Lernzielkontrolle auf 8 Fragen.
+
+### Erweiterung nach der Qualitätskontrolle (E5)
+**Fachlich falsch / widersprüchlich**
+- [ ] Feedback-Beispiel „§ 461 HGB bis 5 SDR/kg“ korrigiert (8,33 SZR), auch in `CLAUDE.md` und ähnlichen Stellen.
+- [ ] PIL GmbH: Der Vorrang-Hinweis (kein festes Modellunternehmen) und der Master-Prompt widersprechen sich nicht mehr. Ein Modellunternehmen erscheint nur, wenn das Skript eines nennt. Tourismus/KEP bekommen keine Spedition vorgegeben.
+- [ ] Video-Fragen: Die Fragezahl ist eindeutig (die gewählte Anzahl gilt, nicht zusätzlich „2–3 Fragen“).
+- [ ] Seiten-Block und Master-Prompt widersprechen sich nicht bei den erlaubten Typen (Kreuzworträtsel, Buchstabensalat … nur auf der Seite).
+- [ ] Typenliste „ALLE NUTZEN“ wird je Werkzeug auf die erlaubten Typen zugeschnitten.
+- [ ] Lernsituation: Die Beispielvorlage summiert auf die eingestellte Dauer.
+- [ ] Kreativ: Kein „Lösungsweg“-Akkordeon, das Aufgaben vorwegnimmt.
+
+**Gegen Vorwegnahme und Erratbarkeit** (alle Werkzeuge mit Auswahlfragen)
+- [ ] Regel: Kein Lösungswert und kein Zwischenergebnis steht in einer Frage, einem Lehrtext, einer Begriffsliste (`accordion`), in Karteikarten oder im Feedback einer vorangehenden Aufgabe.
+- [ ] Regel: Die Begriffsliste enthält nur Begriffe, die keine eigene Skript-Aufgabe sind.
+- [ ] Regel: Die richtige Antwort ist nicht systematisch die längste oder genaueste. Wahr/Falsch-Aussagen sind etwa zur Hälfte falsch.
+- [ ] Antwortvorlagen zeigen die richtige Antwort nicht immer an derselben Stelle (Klassenarbeit: Beispiel nicht immer „B“).
+- [ ] Prüfstelle (neu, Stufe Tipp/mittel): richtige Antwort zu über 60 % die längste; Wahr-Anteil über 70 %; MC-Lösungsbuchstabe zu über 60 % derselbe.
+
+**Klassenarbeit und Arbeitsblatt**
+- [ ] Regel: Keine Aufgabe enthält die Antwort einer anderen.
+- [ ] Regel: Jedes Hauptkapitel des Materials kommt vor (Abdeckung).
+- [ ] Klassenarbeit: AFB II/III nutzen neue Fälle und Zahlen (die Regeln stammen aus dem Material); Multiple Choice nur in AFB I/II.
+- [ ] Arbeitsblatt: Distraktor-Regel wie bei Kahoot.
+
+**Kapitelbildung (Ganzes Skript, Kreativ)**
+- [ ] Regel: Jeder Hauptabschnitt des Skripts wird ein Kapitel (höchstens etwa 25 Elemente), innerhalb des Kapitels `<h3>` statt `<h2>`. Prüfstelle meldet Kapitel mit mehr als 25 Elementen. (Wichtig auch für das Retten abgebrochener Antworten, das nur an Kapitelgrenzen schneidet.)
+
+**Fehlalarme der Prüfstelle** (lösen sonst eine komplette Neuausgabe aus)
+- [ ] „Abschlussquiz fehlt“ und „Lernziele fehlen“ nur bei Werkzeugen, deren Prompt das verlangt (nicht bei Video, Lernsituation-Seite, Differenzierung-H5P, Prüfung-H5P).
+- [ ] `bildzuordnung` ohne Koordinaten ist kein Befund (der Prompt sagt „weglassen“).
+
 ### Messbares Ziel
 - [ ] „Ganzes Skript – H5P“: Anweisung um **mindestens 30 %** kürzer (heute 37.100 Zeichen).
-- [ ] Antwort für Heft 2 mit gleichem Inhalt um **mindestens 20 %** kürzer als mit dem heutigen Prompt.
+- [ ] Antwort für Heft 2 mit gleichem Inhalt um **mindestens 30 %** kürzer als mit dem heutigen Prompt (Ausgangswert 29.556 Token; Ziel höchstens ~20.000).
 - [ ] Je Werkzeug aus der Tabelle oben wird die neue Anweisungslänge in dieser Spec festgehalten.
 
 ### Qualitätsnachweis (Pflicht vor Freigabe)
@@ -168,9 +218,12 @@ Optional, empfohlen: ein Durchlauf von Heft 2 mit dem neuen Prompt in **ChatGPT 
 - **Prüfstelle:** Der Test zu „Überschrift ohne Stil“ wird umgedreht (kein Befund mehr).
 
 ### F) Reihenfolge (drei Pakete, je für sich auslieferbar)
-1. **Design-Übersetzer + Prüfstelle:** Der Generator versteht die Kennzeichen, der Prompt ist noch unverändert. Ungefährlich, weil die KI noch Inline-CSS schreibt und das unangetastet bleibt.
-2. **Prompt kürzen** + `CLAUDE.md`, `prompt-sync`, `prompt_diff.py` mitziehen + neue Prompt-Tests.
-3. **Vergleichsbericht** und Messwerte in die Spec, dann die Freigabe durch den Nutzer und das Kern-Deploy.
+1. **Design-Übersetzer + Prüfstelle:** Der Generator versteht die Kennzeichen, der Prompt ist noch unverändert. Ungefährlich, weil die KI noch Inline-CSS schreibt und das unangetastet bleibt. In dasselbe Paket gehören alle Änderungen an der Prüfstelle: Fehlalarme weg, neue Prüfregeln (längste Antwort, Wahr-Anteil, gleicher Lösungsbuchstabe, Kapitel über 25 Elemente), E4-Grenzen. Hinweise von `prompt-pruefen`:
+   - `qualitaet.py` sucht das Wort „lernziel“ im Text. Das Kennzeichen muss „lernziele“ heißen.
+   - Kennzeichen sind HTML-Merkmale, kein Text wie „[MERKE]“, denn die Vorschau entfernt nur Tags.
+   - Standard-Boxtitel ohne „PIL GmbH“, die Fallakte heißt neutral.
+2. **Prompt:** kürzen, E4 und E5 umsetzen, `CLAUDE.md`, `prompt-sync` und `prompt_diff.py` mitziehen, neue Prompt-Tests. Der Seiten-Block bekommt ein eigenes `crossword`-Beispiel, wenn es aus der Master-Vorlage fällt.
+3. **Vergleichsbericht:** derselbe Ablauf wie in der Qualitätskontrolle (gleiche Skripte, Abnahme mit `einheit-abnehmen`, Prompts mit `prompt-pruefen`). Messwerte kommen in die Spec, dann folgen die Freigabe durch den Nutzer und das Kern-Deploy.
 
 Paket 1 muss vor Paket 2 live sein. Sonst würden neue, kurze Antworten von einem alten Generator ohne Boxen gebaut.
 
