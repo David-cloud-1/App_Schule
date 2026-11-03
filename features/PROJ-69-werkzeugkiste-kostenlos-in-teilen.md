@@ -246,10 +246,43 @@ Keine neuen. App: vorhandene shadcn-Bausteine. Kern: vorhandenes Python (PyYAML)
 - **Tests:** 14 neu (`KostenlosInTeilen`). Die alten Vergleiche „zeichengleich mit der alten Oberfläche“ gelten für den Prompt ohne den Schlusszeilen-Block (`_ohne_schluss`). Ergebnis: 155 grün, `prompt_diff.py` synchron, `werkzeugtest.py` 22/24 (bekannte Altfehler Podcast, Deploy-Paket).
 - **Heft 2 mit 8.000 Zeichen:** **4 Teile** (Seiten 1–4, 5–9, 10–14, 15–17; 6.301 / 7.203 / 7.519 / 3.901 Zeichen), nicht 3 wie im Design geschätzt. Ein Teil-Prompt hat 23.000–26.500 Zeichen. Eine halb abgeschnittene echte Antwort wird erkannt, 4 Kapitel bleiben erhalten.
 
-### Noch offen (App)
-- Datenbank: Teil-Liste an `werkzeug_ablaeufe`
-- App-Server: Teile anlegen, Teil-Prompt, Teil-Antwort einfügen, Zusammenfügen, Teile verwerfen, Rettung im Ein-Prompt-Weg
-- Kern-Deploy (`proj69` → `vercel-kern`) durch den Nutzer, **vor** dem App-Deploy
+### Kern, Nachtrag (Commit `89537a4`)
+- `POST /api/pruefen` nimmt `teil: true`: Ein Teil wird nicht für sein kleines oder fehlendes Abschlusskapitel bemängelt („Abschlussquiz zu kurz“, „Abschlusskapitel fehlt“). Ohne `teil` gilt die volle Regel. Kern-Tests: 156 grün.
+
+### Datenbank (`supabase/migrations/20261106_proj69_teile.sql`, Rücknahme `_down.sql`, **noch nicht eingespielt**)
+- Eine neue Spalte `werkzeug_ablaeufe.teile` (jsonb, NULL = kein Teil-Weg, höchstens 200 KB). Keine neue Tabelle und keine neue Regel: Die Zeilen-Regeln von `werkzeug_ablaeufe` gelten für die Spalte von selbst.
+- **Vor dem App-Deploy einspielen**, denn die Spalte steht in der Spaltenliste jeder Abfrage (`ABLAUF_SPALTEN`).
+
+### App-Server (2026-11-03)
+**Typen** (`src/lib/werkzeugkiste.ts`): `AblaufTeile` (Teilgröße, Teile, `zusammengefuegt`, `hinweise`), `AblaufTeil` (Nummer, `inhalt`, Auswahl, Zustand `offen`/`abgeschnitten`/`fertig`, Kapitel, Befund `ok`/`mittel`/`hoch`, Satz, Runden, Fingerabdruck), `AblaufAbbruch` an der Prüfung (`pruefung.abgeschnitten`: Kapitel, rettbar, Runde), Konstanten `TEIL_ZEICHEN_KOSTENLOS` (8.000, E4) und `TEILE_MAX` (40). `Ablauf.teile` ist neu. **Schrittregel:** Schritt 3 ist mit Prompt *oder* Teil-Liste erlaubt, Schritt 4 mit Teil-Liste erst nach dem Zusammenfügen.
+
+**Schnittstellen** (alle: Lehrer-Rolle, nur eigene Abläufe, Zod mit `.strict()`):
+| Route | Aufgabe |
+|---|---|
+| `POST …/ablaeufe/:id/prompt` (geändert) | Bei „Ganzes Skript“ und „Kreativ“ fragt sie den Kern `/api/teilen` mit 8.000 Zeichen. Bei mehr als einem Teil entsteht die Teil-Liste (`prompt: null`, eine alte Antwort entfällt), sonst der eine Prompt wie bisher. Sind schon Teil-Antworten da, bleibt alles unverändert. |
+| `PATCH …/ablaeufe/:id` (geändert) | Ändert sich Auswahl, Einstellung oder Werkzeug wirklich und es gibt eingefügte Teil-Antworten, antwortet sie mit **409** `{code: 'teile_vorhanden', eingefuegt: n}`. Die Oberfläche fragt dann nach (`AlertDialog`) und ruft `DELETE …/teile`. Ohne eingefügte Antwort entfällt die Teil-Liste still. |
+| `DELETE …/ablaeufe/:id/teile` | Teil-Liste, Teil-Dateien und eine zusammengefügte Gesamtantwort verwerfen. |
+| `POST …/teile/:nr/prompt` `{weiter?}` | Prompt dieses Teils, mit `weiter` der Weiterschreib-Prompt. Nichts wird gespeichert. |
+| `POST …/teile/:nr/antwort` `{antwort, weiter?, trotzdem?}` | Teil-Antwort prüfen und speichern. Antwort: `{uebernommen: true, ablauf, teil, geretteteKapitel, nachbesserungsPrompt, tippKleiner}`. Bei Warnung (`doppelt`, `falscher_teil`) oder unlesbarer Antwort: `{uebernommen: false, warnung \| fehler}` ohne Speichern. Mit `trotzdem: true` wird die Warnung übergangen. |
+| `POST …/ablaeufe/:id/zusammenfuegen` `{unvollstaendigOk?}` | Teile zu **einer** Antwort zusammenfügen, prüfen, ablegen. 400 bei offenem Teil oder Befund „hoch“, **409** `{code: 'unvollstaendig', teile}` bei abgeschnittenem Teil ohne Zustimmung. Antwort enthält `hinweise` (Überschneidung, unvollständiger Teil). |
+| `POST …/ablaeufe/:id/weiterschreiben` | Für eine Antwort **ohne Teile**, die die Prüfung als abgeschnitten gemeldet hat: kürzt sie auf die vollständigen Kapitel und liefert den Weiterschreib-Prompt (`prompt`, `kapitel`, `runde`, `tippKleiner`). |
+| `POST …/ablaeufe/:id/fortsetzung` `{antwort}` | Antwort auf diesen Prompt: wird angehängt, die Gesamtantwort geprüft. Bricht auch sie ab, bleiben ihre Kapitel und die nächste Runde folgt. |
+| `POST …/ablaeufe/:id/pruefen` (geändert) | Bei „Ganzes Skript“ und „Kreativ“ fragt sie zusätzlich den Kern, ob die Antwort abgeschnitten wirkt, und legt `pruefung.abgeschnitten` ab. Fällt die Zusatzfrage aus, gilt die Prüfung trotzdem. |
+
+**Abweichungen vom Design**
+- **Fertig bauen räumt auf:** Nach dem Bauen entfallen Teil-Liste und Teil-Dateien (die Gesamtantwort bleibt am Ablauf). Die Spec ließ sie liegen; bei fertigen Materialien sind Teile nicht mehr änderbar (400), „Antwort überarbeiten“ arbeitet auf der Gesamtantwort.
+- **Neu einlesen** verwirft die Teile (sie gehören zum alten Skript).
+- **Weiterschreiben ohne Teile** ist nur freigegeben, wenn die Prüfung einen Abbruch gemeldet hat: Sonst würde eine vollständige Antwort beim Retten ihr Abschlusskapitel verlieren.
+- **Teil-Dateien** heißen `teil-frei-<nr>.yaml` (die des bezahlten Wegs `teil-<nr>.yaml`), damit beide Wege nie kollidieren.
+- **Runden** zählen bei Teilen die eingefügten, ohne Teile die ausgegebenen Weiterschreib-Prompts. Der Tipp „kleineren Abschnitt wählen“ (`tippKleiner`) erscheint, sobald auch die Nachhol-Antwort abbricht (Teile) bzw. ab der zweiten Runde (ohne Teile).
+
+**Tests:** `src/app/api/admin/werkzeugkiste/teile.test.ts` (48: Teil-Liste anlegen, kurzes Skript und kurze Werkzeuge unverändert, eingefügte Teile bleiben, 409 bei Änderung, Teil-Prompt und Weiterschreiben, vollständig/abgeschnitten/Fortsetzung/doppelt/falscher Teil/unlesbar/schwerer Befund, Zusammenfügen mit Sperren und 409, Abbruch ohne Teile, Aufräumen beim Bauen, Hilfsfunktionen). Ein bestehender Test (Prompt-Route) kennt die zusätzliche Frage an den Kern. Gesamtsuite 2.401 grün, Typen, Lint und Build sauber.
+
+**Nicht geprüft:** Echter Lauf gegen den deployten Kern (Kern ist nur lokal getestet), Oberfläche (kommt mit `/frontend`).
+
+### Noch offen
+- **Oberfläche** (`/frontend`): Teil-Liste in Schritt 3, Rettungs-Box (Schritt 3 und 4, mit `pruefung.abgeschnitten`), Rückfrage bei 409 `teile_vorhanden` in Schritt 2, `SchrittAntwort` und `SchrittPrompt` beim Weg mit Teilen, Hinweise in Schritt 4. Der Browser-Aufruf-Teil steht in `werkzeugkiste-api.ts`.
+- **Reihenfolge beim Deploy:** 1) Migration einspielen, 2) Kern `proj69` nach `vercel-kern` und deployen, 3) App deployen. E4 (8.000 Zeichen) vorher oder danach in ChatGPT Free messen.
 
 ## QA Test Results
 _To be added by /qa_

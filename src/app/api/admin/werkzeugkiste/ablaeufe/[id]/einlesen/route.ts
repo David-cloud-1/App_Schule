@@ -15,6 +15,7 @@ import {
   zeileZuAblauf,
 } from '@/lib/werkzeugkiste-server'
 import { aktualisiereSpeicher } from '@/lib/werkzeugkiste-materialien-server'
+import { loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
 
 export const maxDuration = 120
 
@@ -53,10 +54,13 @@ export async function POST(_request: Request, { params }: Kontext) {
       antwort: null,
       pruefung: null,
       ergebnis: null,
+      // PROJ-69: Teile gehören zum alten Skript
+      teile: null,
       status: 'laeuft',
       schritt: 1,
     })
     if (!neu) return fehler('Das Ergebnis konnte nicht gespeichert werden.', 500)
+    if (zeile.teile) await loescheTeilDateien(service, zeile.owner_id, zeile.id)
     await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
     return NextResponse.json({ ablauf: zeileZuAblauf(neu) })
   } catch (e) {

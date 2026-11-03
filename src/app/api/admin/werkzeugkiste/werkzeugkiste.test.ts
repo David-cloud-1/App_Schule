@@ -192,6 +192,8 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
     it('Prompt: erst nach dem Einlesen; speichert den Prompt und meldet Hinweise', async () => {
       expect((await prompt(new Request('http://t'), ctx)).status).toBe(400)
       zeile = { ...BASIS_ZEILE, schritt: 2, kennzahlen: { seiten: 1, loesungen: 1, bilder: 0, tabellen: 0 } }
+      // „Ganzes Skript“ fragt zuerst, ob geteilt wird (PROJ-69): ein Teil = Prompt wie bisher
+      kernAntwort({ teile: [{ auswahl: { seiten: '', abschnitte: [] }, zeichen: 900 }] })
       kernAntwort({ prompt: 'Du bist …', hinweis: 'Die Seitenangabe war nicht lesbar.', warnung: '' })
       const res = await prompt(new Request('http://t'), ctx)
       const body = await res.json()

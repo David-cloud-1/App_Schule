@@ -783,6 +783,19 @@ export interface PruefBefund {
   text: string
 }
 
+/**
+ * Die Antwort der KI scheint mittendrin abgebrochen (PROJ-69, Ganzes Skript und Kreativ).
+ * Vollständige Kapitel lassen sich behalten, der Rest wird mit einem Weiterschreib-Prompt nachgeholt.
+ */
+export interface AblaufAbbruch {
+  /** Titel der Kapitel, die vollständig angekommen sind (leer = nichts zu retten) */
+  kapitel: string[]
+  /** true = mindestens ein vollständiges Kapitel lässt sich behalten */
+  rettbar: boolean
+  /** Wie oft für diese Antwort schon ein Weiterschreib-Prompt ausgegeben wurde */
+  runde: number
+}
+
 export interface AblaufPruefung {
   /** false = Antwort ist nicht lesbar (kein YAML, abgeschnitten) → Bauen gesperrt */
   lesbar: boolean
@@ -792,6 +805,63 @@ export interface AblaufPruefung {
   /** Anzahl automatisch korrigierter Kleinigkeiten */
   korrekturen: number
   nachbesserungsPrompt: string | null
+  /** PROJ-69: gesetzt, wenn die Antwort abgeschnitten wirkt */
+  abgeschnitten?: AblaufAbbruch | null
+}
+
+// ── Kostenloser Weg in Teilen (PROJ-69) ───────────────────────────────────
+
+/** Werkzeuge mit langen Antworten, die in Teilen kommen dürfen (E3); wie `MIT_TEILEN` im Kern */
+export const TEIL_WERKZEUGE = ['skript', 'kreativ'] as const
+
+/** Zeichen Skripttext je Teil im kostenlosen Weg (E4, Startwert, wird in ChatGPT Free gemessen) */
+export const TEIL_ZEICHEN_KOSTENLOS = 8_000
+
+/** Höchstens so viele Teile je Ablauf */
+export const TEILE_MAX = 40
+
+export function hatTeilWeg(werkzeugId: string): boolean {
+  return (TEIL_WERKZEUGE as readonly string[]).includes(werkzeugId)
+}
+
+/**
+ * offen = noch keine Antwort · abgeschnitten = Antwort da, aber nur die vollständigen Kapitel,
+ * der Rest fehlt · fertig = Antwort vollständig
+ */
+export type TeilZustand = 'offen' | 'abgeschnitten' | 'fertig'
+
+export interface AblaufTeil {
+  nr: number
+  /** Was der Teil enthält, kurz: Titel der Abschnitte bzw. „Seiten 1–4“ */
+  inhalt: string[]
+  auswahl: AblaufAuswahl
+  /** Zeichen Skripttext in diesem Teil */
+  zeichen: number
+  zustand: TeilZustand
+  /** Titel der Kapitel in der eingefügten Antwort */
+  kapitel: string[]
+  /** Höchste Stufe der Prüfstelle: ok · mittel · hoch · unlesbar; null = noch keine Antwort */
+  befund: 'ok' | 'mittel' | 'hoch' | 'unlesbar' | null
+  /** Das Ergebnis der Prüfung in einem Satz */
+  satz: string | null
+  /** Wie oft für diesen Teil schon ein Weiterschreib-Prompt ausgegeben wurde */
+  runden: number
+  /** Fingerabdruck der zuerst eingefügten Antwort (erkennt „schon bei Teil X eingefügt“) */
+  fingerabdruck: string | null
+}
+
+export interface AblaufTeile {
+  /** Teilgröße, mit der die Teile entstanden sind */
+  groesse: number
+  teile: AblaufTeil[]
+  /** true = die Teile sind zur Antwort des Ablaufs zusammengefügt */
+  zusammengefuegt: boolean
+  /** Hinweise vom Zusammenfügen (Überschneidung an einer Teilgrenze, unvollständiger Teil) */
+  hinweise: string[]
+}
+
+export function teileEingefuegt(t: Pick<AblaufTeile, 'teile'> | null | undefined): number {
+  return (t?.teile ?? []).filter((x) => x.zustand !== 'offen').length
 }
 
 export interface AblaufErgebnis {
@@ -858,6 +928,8 @@ export interface Ablauf {
   ergebnis: AblaufErgebnis | null
   /** Gewählter Weg (PROJ-64); null = noch nicht entschieden */
   weg: 'direkt' | 'kostenlos' | null
+  /** PROJ-69: Teil-Liste bei langem Skript im kostenlosen Weg; null = ein Prompt wie bisher */
+  teile?: AblaufTeile | null
   /** Kopie aus dem Regal (PROJ-53): Name der Urheberin oder des Urhebers. Solche Materialien haben nie ein Skript. */
   herkunft?: string | null
   aktualisiertAm: string
@@ -868,7 +940,7 @@ export interface Ablauf {
  * ist: Prompt erst mit Einlesung, Antwort erst mit Prompt, Fertig erst mit Ergebnis.
  */
 export function schrittErlaubt(
-  ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft'>>,
+  ablauf: Pick<Ablauf, 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft' | 'teile'>>,
   schritt: AblaufSchritt,
 ): boolean {
   // Kopie aus dem Regal (PROJ-53): kein Skript, kein Prompt — nur Antwort überarbeiten (4) und Fertig (5)
@@ -880,9 +952,10 @@ export function schrittErlaubt(
       return !!ablauf.kennzahlen
     case 3:
       // Direkter Weg (PROJ-64): Schritt 3 ist „Erstellen“ und braucht keinen Prompt
-      return !!ablauf.kennzahlen && (ablauf.weg === 'direkt' || !!ablauf.prompt)
+      return !!ablauf.kennzahlen && (ablauf.weg === 'direkt' || !!ablauf.prompt || !!ablauf.teile)
     case 4:
-      return !!ablauf.kennzahlen && !!ablauf.prompt
+      // Mit Teilen erst, wenn sie zu einer Antwort zusammengefügt sind
+      return !!ablauf.kennzahlen && (ablauf.teile ? ablauf.teile.zusammengefuegt : !!ablauf.prompt)
     case 5:
       return !!ablauf.ergebnis
   }
@@ -891,7 +964,7 @@ export function schrittErlaubt(
 /** Schritt aus der Adresse, begrenzt auf das, was der Ablauf schon erlaubt */
 export function schrittAusParam(
   param: string | null | undefined,
-  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft'>>,
+  ablauf: Pick<Ablauf, 'schritt' | 'kennzahlen' | 'prompt' | 'ergebnis'> & Partial<Pick<Ablauf, 'weg' | 'herkunft' | 'teile'>>,
 ): AblaufSchritt {
   const n = Number(param)
   const gewuenscht: AblaufSchritt = n >= 1 && n <= 5 && Number.isInteger(n) ? (n as AblaufSchritt) : ablauf.schritt

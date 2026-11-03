@@ -17,6 +17,7 @@ import {
   type AblaufAuswahl,
   type AblaufEinstellungen,
   type AblaufSchritt,
+  type AblaufTeile,
 } from '@/lib/werkzeugkiste'
 import { TITEL_MAX } from '@/lib/werkzeugkiste-materialien'
 
@@ -49,6 +50,8 @@ export const ausgabePfad = (ownerId: string, id: string) => `${ablaufOrdner(owne
 export const vorschauPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/vorschau.html`
 /** Bilder-Auszug (PROJ-53): nur die im Material benutzten Bilder, im Format der Einlesung — ohne Skripttext */
 export const auszugPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/auszug.zip`
+/** Teil-Antwort im kostenlosen Weg (PROJ-69); eigener Name, damit sie nie mit den Teilen von „Direkt erstellen“ kollidiert */
+export const teilAntwortPfad = (ownerId: string, id: string, nr: number) => `${ablaufOrdner(ownerId, id)}/teil-frei-${nr}.yaml`
 
 // ── Eingaben ──────────────────────────────────────────────────────────────
 
@@ -172,10 +175,12 @@ export interface AblaufZeile {
   // PROJ-53: Kopie aus dem Regal (Name der Urheberin oder des Urhebers) und Bilder-Auszug
   herkunft_name?: string | null
   auszug_am?: string | null
+  // PROJ-69: Teil-Liste im kostenlosen Weg (fehlt vor der Migration)
+  teile?: AblaufTeile | null
 }
 
 export const ABLAUF_SPALTEN =
-  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am, herkunft_name, auszug_am'
+  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am, herkunft_name, auszug_am, teile'
 
 export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
   return {
@@ -231,6 +236,7 @@ export function zeileZuAblauf(z: AblaufZeile): Ablauf {
     pruefung: z.pruefung ?? null,
     ergebnis: z.ergebnis ?? null,
     weg: z.weg ?? null,
+    teile: z.teile ?? null,
     herkunft: z.herkunft_name ?? null,
     aktualisiertAm: z.updated_at,
   }

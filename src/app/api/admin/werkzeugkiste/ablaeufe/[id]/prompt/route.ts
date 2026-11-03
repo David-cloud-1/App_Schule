@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { hatTeilWeg, TEIL_ZEICHEN_KOSTENLOS, teileEingefuegt, type AblaufAuswahl } from '@/lib/werkzeugkiste'
+import { legeTeileAn, loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
 import {
   aktualisiere,
   einlesungPfad,
@@ -20,6 +22,12 @@ type Kontext = { params: Promise<{ id: string }> }
  * POST /api/admin/werkzeugkiste/ablaeufe/:id/prompt (PROJ-51) — der Kern baut
  * den Prompt aus Einlesung, Auswahl und Einstellungen, zeichengenau wie die
  * alte Werkzeugkiste. `hinweis` meldet z. B. eine unlesbare Seitenangabe.
+ *
+ * PROJ-69: Bei „Ganzes Skript“ und „Kreativ“ teilt der Kern eine lange Auswahl in
+ * Teile (kleiner als im bezahlten Weg). Bei mehr als einem Teil entsteht kein einzelner
+ * Prompt, sondern die Teil-Liste am Ablauf; die Prompts je Teil holt die
+ * Oberfläche einzeln (…/teile/:nr/prompt). Schon eingefügte Teil-Antworten bleiben
+ * dabei unangetastet: Ändert sich die Auswahl, verwirft PATCH die Teile erst nach Rückfrage.
  */
 export async function POST(_request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
@@ -32,7 +40,33 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (!einlesung) return fehler('Das eingelesene Skript fehlt. Bitte lade es erneut hoch.', 400)
 
   const ablauf = zeileZuAblauf(zeile)
+  // Eingefügte Teil-Antworten bleiben; neu geteilt wird nur, solange keine da ist
+  if (zeile.teile && teileEingefuegt(zeile.teile) > 0) {
+    return NextResponse.json({ ablauf, hinweis: null })
+  }
   try {
+    const service = createServiceClient()
+    if (hatTeilWeg(ablauf.werkzeug)) {
+      const t = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
+        einlesung: { url: einlesung },
+        auswahl: ablauf.auswahl,
+        max_zeichen: TEIL_ZEICHEN_KOSTENLOS,
+      })
+      if (Array.isArray(t.teile) && t.teile.length > 1) {
+        const teile = legeTeileAn(t.teile, ablauf.gliederung, TEIL_ZEICHEN_KOSTENLOS)
+        // Prompt und Antwort aus einem früheren Durchgang gelten für die Teile nicht mehr
+        const neu = await aktualisiere(auth.supabase, zeile.id, {
+          teile,
+          prompt: null,
+          ...(zeile.status === 'fertig' ? {} : { antwort: null, pruefung: null }),
+          schritt: Math.max(zeile.schritt, 3),
+        })
+        if (!neu) return fehler('Die Teile konnten nicht gespeichert werden.', 500)
+        return NextResponse.json({ ablauf: zeileZuAblauf(neu), hinweis: null })
+      }
+      // Ein Teil genügt: Prompt wie bisher; eine alte Teil-Liste entfällt
+      if (zeile.teile) await loescheTeilDateien(service, zeile.owner_id, zeile.id)
+    }
     const r = await kern<{ prompt: string; hinweis?: string; warnung?: string }>('/api/prompt', {
       einlesung: { url: einlesung },
       werkzeug: ablauf.werkzeug,
@@ -41,6 +75,7 @@ export async function POST(_request: Request, { params }: Kontext) {
     })
     const neu = await aktualisiere(auth.supabase, zeile.id, {
       prompt: r.prompt,
+      ...(zeile.teile ? { teile: null } : {}),
       schritt: Math.max(zeile.schritt, 3),
     })
     if (!neu) return fehler('Der Prompt konnte nicht gespeichert werden.', 500)

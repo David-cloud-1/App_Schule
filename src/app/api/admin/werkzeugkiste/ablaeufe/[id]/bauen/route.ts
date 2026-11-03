@@ -11,6 +11,7 @@ import {
   zeileZuAblauf,
 } from '@/lib/werkzeugkiste-server'
 import { aktualisiereSpeicher, titelNachBauen } from '@/lib/werkzeugkiste-materialien-server'
+import { loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
 
 export const maxDuration = 120
 
@@ -45,8 +46,16 @@ export async function POST(request: Request, { params }: Kontext) {
     const ergebnis = await kernBauen(service, zeile, zeile.antwort)
     // Fertig = Material (PROJ-52): Titel setzen, der Ablauftermin entfällt (Trigger in der Datenbank)
     const titel = titelNachBauen(zeile, ergebnis)
-    const neu = await aktualisiere(auth.supabase, zeile.id, { ergebnis, status: 'fertig', schritt: 5, ...(titel ? { titel } : {}) })
+    // Fertig: Die Teil-Liste (PROJ-69) wird nicht mehr gebraucht, die Gesamtantwort bleibt am Ablauf
+    const neu = await aktualisiere(auth.supabase, zeile.id, {
+      ergebnis,
+      status: 'fertig',
+      schritt: 5,
+      ...(titel ? { titel } : {}),
+      ...(zeile.teile ? { teile: null } : {}),
+    })
     if (!neu) return fehler('Das Ergebnis konnte nicht gespeichert werden.', 500)
+    if (zeile.teile) await loescheTeilDateien(service, zeile.owner_id, zeile.id)
     await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
     return NextResponse.json({ ablauf: zeileZuAblauf(neu) })
   } catch (e) {

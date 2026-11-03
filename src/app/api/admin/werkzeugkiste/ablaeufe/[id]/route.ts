@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { schrittErlaubt, werkzeugWechselErlaubt, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import { schrittErlaubt, teileEingefuegt, werkzeugWechselErlaubt, type AblaufSchritt } from '@/lib/werkzeugkiste'
 import {
   ABLAUF_TABELLE,
   ablaufAenderungSchema,
@@ -13,6 +13,7 @@ import {
   ungueltig,
   zeileZuAblauf,
 } from '@/lib/werkzeugkiste-server'
+import { auswahlSchluessel, einstellungenSchluessel } from '@/lib/werkzeugkiste-teile-server'
 
 type Kontext = { params: Promise<{ id: string }> }
 
@@ -58,6 +59,37 @@ export async function PATCH(request: Request, { params }: Kontext) {
   }
   if (auswahl) felder.auswahl = auswahl
   if (weg) felder.weg = weg
+
+  // PROJ-69: Teile entstehen aus Auswahl, Einstellungen und Werkzeug. Ändert sich eines davon wirklich,
+  // gelten eingefügte Teil-Antworten nicht mehr: erst nachfragen (409), dann verwirft die Oberfläche sie
+  // über DELETE …/teile. Ohne eingefügte Antwort entfällt die Teil-Liste still und entsteht beim
+  // nächsten Prompt neu.
+  if (zeile.teile) {
+    const bisher = zeileZuAblauf(zeile)
+    const neuesWerkzeug = werkzeug ?? zeile.werkzeug
+    const geaendert =
+      neuesWerkzeug !== zeile.werkzeug ||
+      (auswahl !== undefined && auswahlSchluessel(auswahl) !== auswahlSchluessel(bisher.auswahl)) ||
+      (felder.einstellungen !== undefined &&
+        einstellungenSchluessel(felder.einstellungen as Record<string, string>) !==
+          einstellungenSchluessel(einstellungenFuerWechsel(neuesWerkzeug, bisher.einstellungen)))
+    if (geaendert) {
+      const eingefuegt = teileEingefuegt(zeile.teile)
+      if (eingefuegt > 0) {
+        return NextResponse.json(
+          {
+            error: eingefuegt === 1 ? 'Deine eingefügte Teil-Antwort geht dabei verloren.' : `Deine ${eingefuegt} eingefügten Teil-Antworten gehen dabei verloren.`,
+            code: 'teile_vorhanden',
+            eingefuegt,
+          },
+          { status: 409 },
+        )
+      }
+      felder.teile = null
+      felder.prompt = null
+      felder.schritt = Math.min(zeile.schritt, 2)
+    }
+  }
   if (titel !== undefined) felder.titel = titel
   if (schritt && schritt > zeile.schritt && schrittErlaubt(zeileZuAblauf(zeile), schritt as AblaufSchritt)) {
     felder.schritt = schritt
