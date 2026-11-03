@@ -35,13 +35,17 @@ import {
   baueMaterial,
   brichDirektAb,
   erstellePrompt,
+  fuegeTeileZusammen,
   ladeDirektStand,
   ladeAblauf,
   ladeOptionen,
   loescheAblauf,
   pruefeAntwort,
+  schreibeWeiter,
+  setzeFort,
   speichereAblauf,
   starteDirekt,
+  verwirfTeile,
   WerkzeugFehler,
   type WerkzeugOptionen,
 } from '@/lib/werkzeugkiste-api'
@@ -50,6 +54,9 @@ import { Hinweis, SkriptErgebnis } from '@/components/werkzeugkiste/schritt-skri
 import { VideoErgebnis } from '@/components/werkzeugkiste/schritt-video'
 import { kurzesNiveau, SchrittEinstellungen } from '@/components/werkzeugkiste/schritt-einstellungen'
 import { SchrittPrompt } from '@/components/werkzeugkiste/schritt-prompt'
+import { SchrittTeile, sperrGrund } from '@/components/werkzeugkiste/schritt-teile'
+import { RettungsBox } from '@/components/werkzeugkiste/abbruch-rettung'
+import { TeileVerwerfenDialog, UnvollstaendigDialog } from '@/components/werkzeugkiste/teile-dialoge'
 import { SchrittAntwort } from '@/components/werkzeugkiste/schritt-antwort'
 import { SchrittFertig } from '@/components/werkzeugkiste/schritt-fertig'
 import { SchrittErstellen } from '@/components/werkzeugkiste/schritt-erstellen'
@@ -71,6 +78,8 @@ const TITEL: Record<AblaufSchritt, { titel: string; beschreibung?: string }> = {
   4: { titel: 'Antwort der KI einfügen', beschreibung: 'Die App prüft die Antwort automatisch, ganz ohne KI.' },
   5: { titel: 'Dein Material ist fertig' },
 }
+
+const TITEL_TEILE = { titel: 'Dein Skript in Teilen', beschreibung: 'Teil für Teil in deine KI kopieren, so bricht die Antwort nicht ab.' }
 
 const TITEL_VIDEO = { titel: 'Video', beschreibung: 'Link und Transkript, aus denen die Fragen entstehen.' }
 
@@ -121,6 +130,10 @@ export function AblaufSeite({ id }: { id: string }) {
   const [rueckfrage, setRueckfrage] = useState<string | null>(null)
   /** Zwei-Tabs-Regel (PROJ-52): Das Material wurde inzwischen geändert — ersetzen? */
   const [ersetzenFrage, setErsetzenFrage] = useState(false)
+  /** PROJ-69: Änderung würde eingefügte Teil-Antworten verwerfen — Satz vom Server, `weiter` führt sie nach „Ja“ aus */
+  const [teileFrage, setTeileFrage] = useState<{ satz: string; weiter: () => Promise<void> } | null>(null)
+  /** PROJ-69: „Weiter zur Datei“ trotz abgeschnittenem Teil — Satz vom Server */
+  const [unvollstaendigFrage, setUnvollstaendigFrage] = useState<string | null>(null)
   const [prueftGerade, setPrueftGerade] = useState(false)
   const [pruefFehler, setPruefFehler] = useState<string | null>(null)
   /** Antwort, zu der die angezeigte Prüfung gehört */
@@ -318,6 +331,51 @@ export function AblaufSeite({ id }: { id: string }) {
     })
   }
 
+  /**
+   * Speichert Auswahl/Einstellungen. Würde das eingefügte Teil-Antworten verwerfen (409, PROJ-69),
+   * fragt die Oberfläche erst nach; nach „Ja“ werden die Teile verworfen und die Änderung gespeichert.
+   */
+  async function speichereMitRueckfrage(aenderung: Parameters<typeof speichereAblauf>[1], danach: (a: Ablauf) => void | Promise<void>) {
+    try {
+      const { ablauf: a } = await speichereAblauf(id, aenderung)
+      await danach(a)
+    } catch (e) {
+      if (e instanceof WerkzeugFehler && e.status === 409 && e.code === 'teile_vorhanden') {
+        setTeileFrage({
+          satz: e.message,
+          weiter: async () => {
+            await verwirfTeile(id)
+            const { ablauf: a } = await speichereAblauf(id, aenderung)
+            await danach(a)
+          },
+        })
+        return
+      }
+      throw e
+    }
+  }
+
+  /** Teile zu einer Antwort zusammenfügen und in Schritt 4 prüfen lassen */
+  function fuegeZusammen(unvollstaendigOk = false) {
+    return aktion(async () => {
+      if (ablauf?.teile?.zusammengefuegt) {
+        gehe(4)
+        return
+      }
+      try {
+        const { ablauf: a } = await fuegeTeileZusammen(id, unvollstaendigOk)
+        setAblauf(a)
+        setAntwort(a.antwort ?? '')
+        setGeprueftFuer(a.antwort ?? '')
+        setPruefFehler(null)
+        gehe(4)
+      } catch (e) {
+        if (e instanceof WerkzeugFehler && e.status === 409 && e.code === 'unvollstaendig') setUnvollstaendigFrage(e.message)
+        else throw e
+      }
+    })
+  }
+
   async function brichAb() {
     try {
       const { lauf: neu } = await brichDirektAb(id)
@@ -330,7 +388,14 @@ export function AblaufSeite({ id }: { id: string }) {
   const niveau = optionen?.niveaus.find((n) => n.key === einstellungen.niveau)
   const kurzinfo = ablaufKurzinfo({ werkzeug, einstellungen, datei: ablauf.datei }, niveau ? kurzesNiveau(niveau) : undefined)
   const istVideo = eingabeArt(ablauf.werkzeug) === 'video'
-  const kopf = direkt && schritt === 3 ? TITEL_ERSTELLEN : istVideo && schritt === 1 ? TITEL_VIDEO : TITEL[schritt]
+  const kopf =
+    direkt && schritt === 3
+      ? TITEL_ERSTELLEN
+      : ablauf.teile && schritt === 3
+        ? TITEL_TEILE
+        : istVideo && schritt === 1
+          ? TITEL_VIDEO
+          : TITEL[schritt]
 
   // Eine Kopie aus dem Regal hat keinen Schritt davor (kein Skript, kein Prompt)
   const zurueck =
@@ -375,8 +440,11 @@ export function AblaufSeite({ id }: { id: string }) {
           {weiter('Weiter', () =>
             aktion(async () => {
               if (!gleicheAuswahl(auswahl, ablauf.auswahl)) {
-                const { ablauf: a } = await speichereAblauf(id, { auswahl, schritt: 2 })
-                setAblauf(a)
+                await speichereMitRueckfrage({ auswahl, schritt: 2 }, (a) => {
+                  setAblauf(a)
+                  gehe(2)
+                })
+                return
               } else if (ablauf.schritt < 2) {
                 const { ablauf: a } = await speichereAblauf(id, { schritt: 2 })
                 setAblauf(a)
@@ -413,11 +481,12 @@ export function AblaufSeite({ id }: { id: string }) {
       }
       const kostenlos = () =>
         aktion(async () => {
-          await speichereAblauf(id, { werkzeug, einstellungen, weg: 'kostenlos' })
-          const { ablauf: a, hinweis } = await erstellePrompt(id)
-          setAblauf(a)
-          setPromptHinweis(hinweis ?? null)
-          gehe(3)
+          await speichereMitRueckfrage({ werkzeug, einstellungen, weg: 'kostenlos' }, async () => {
+            const { ablauf: a, hinweis } = await erstellePrompt(id)
+            setAblauf(a)
+            setPromptHinweis(hinweis ?? null)
+            gehe(3)
+          })
         })
       fuss = !DIREKT_ERSTELLEN_AKTIV ? (
         <>
@@ -451,6 +520,17 @@ export function AblaufSeite({ id }: { id: string }) {
         fuss = null
         break
       }
+      if (ablauf.teile) {
+        // Langes Skript im kostenlosen Weg (PROJ-69): Teil-Liste statt eines Prompts
+        inhalt = <SchrittTeile ablauf={ablauf} onAblauf={setAblauf} />
+        fuss = (
+          <>
+            {zurueck}
+            {weiter('Weiter zur Datei', () => void fuegeZusammen(), sperrGrund(ablauf.teile.teile) !== null)}
+          </>
+        )
+        break
+      }
       inhalt = (
         <>
           {promptHinweis && <Hinweis ton="warnung">{promptHinweis}</Hinweis>}
@@ -473,6 +553,37 @@ export function AblaufSeite({ id }: { id: string }) {
       const lesbar = pruefungPasst && !!ablauf.pruefung?.lesbar && !pruefFehler
       // Nur ein schon fertiges Material kann inzwischen woanders geändert worden sein
       const bauStand = ablauf.status === 'fertig' ? { stand: ablauf.aktualisiertAm } : undefined
+      // Abgeschnittene Antwort (PROJ-69): vollständige Kapitel behalten, den Rest nachholen
+      const abbruch = ablauf.pruefung?.abgeschnitten
+      const ersetzeAntwort = (a: Ablauf) => {
+        setAblauf(a)
+        setAntwort(a.antwort ?? '')
+        // Die Prüfung gehört schon zu dieser Antwort, sie läuft nicht noch einmal
+        setGeprueftFuer(a.antwort ?? '')
+      }
+      const rettung = !abbruch ? undefined : !abbruch.rettbar ? (
+        <Hinweis ton="warnung">
+          Die Antwort wurde abgeschnitten, bevor ein Kapitel fertig war. Frage die KI noch einmal oder wähle in Schritt 1 einen kleineren
+          Abschnitt aus.
+        </Hinweis>
+      ) : (
+        <RettungsBox
+          titel="Die Antwort wurde abgeschnitten."
+          fertig={abbruch.kapitel}
+          tippKleiner={abbruch.runde >= 2}
+          ladePrompt={async () => {
+            const r = await schreibeWeiter(id)
+            ersetzeAntwort(r.ablauf)
+            return r.prompt
+          }}
+          senden={async (text) => {
+            const r = await setzeFort(id, text)
+            if (!r.uebernommen) return { ok: false, fehler: r.fehler }
+            ersetzeAntwort(r.ablauf)
+            return { ok: true, tippKleiner: r.tippKleiner }
+          }}
+        />
+      )
       inhalt = (
         <SchrittAntwort
           antwort={antwort}
@@ -488,6 +599,8 @@ export function AblaufSeite({ id }: { id: string }) {
           hilfenFreigegeben={pruefungPasst && !!ablauf.pruefung?.lesbar}
           materialFertig={ablauf.status === 'fertig'}
           seitenFormat={ablauf.ergebnis?.format === 'seite'}
+          hinweise={ablauf.teile?.hinweise ?? []}
+          rettung={pruefungPasst && !ablauf.teile ? rettung : undefined}
           onAblauf={(a) => {
             // Ein eingesetztes Kapitel ändert die gespeicherte Antwort: Prüfung läuft von selbst neu
             setAblauf(a)
@@ -580,6 +693,21 @@ export function AblaufSeite({ id }: { id: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <TeileVerwerfenDialog
+        satz={teileFrage?.satz ?? null}
+        beiAuswahl={(verwerfen) => {
+          const frage = teileFrage
+          setTeileFrage(null)
+          if (verwerfen && frage) void aktion(frage.weiter)
+        }}
+      />
+      <UnvollstaendigDialog
+        satz={unvollstaendigFrage}
+        beiAuswahl={(weiter) => {
+          setUnvollstaendigFrage(null)
+          if (weiter) void fuegeZusammen(true)
+        }}
+      />
       {aktionsFehler && (
         <div role="alert">
           <Hinweis ton="warnung">{aktionsFehler}</Hinweis>

@@ -1,4 +1,4 @@
-import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, AblaufTeil, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
 import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
@@ -49,6 +49,14 @@ import type {
  *   POST   /regal/:id/entnehmen {grund}    aus dem Regal nehmen (nur Super-Admin)
  *   POST   /regal/:id/zulassen             Sperre aufheben (nur Super-Admin)
  *
+ * Kostenloser Weg in Teilen (PROJ-69):
+ *   DELETE /ablaeufe/:id/teile              Teil-Liste samt Teil-Antworten verwerfen
+ *   POST   /ablaeufe/:id/teile/:nr/prompt   Prompt eines Teils (mit weiter: Weiterschreib-Prompt)
+ *   POST   /ablaeufe/:id/teile/:nr/antwort  Teil-Antwort einfügen und prüfen
+ *   POST   /ablaeufe/:id/zusammenfuegen     Teile zu einer Antwort zusammenfügen
+ *   POST   /ablaeufe/:id/weiterschreiben    abgeschnittene Antwort (ohne Teile) kürzen + Weiterschreib-Prompt
+ *   POST   /ablaeufe/:id/fortsetzung        Antwort auf den Weiterschreib-Prompt anhängen
+ *
  * Öffentlicher Link „Link für alle“ (PROJ-67):
  *   GET/POST/DELETE /ablaeufe/:id/link    eigenen Link lesen · erzeugen · abschalten
  *   GET    /links?seite=                   alle aktiven Links (nur Super-Admin)
@@ -82,6 +90,8 @@ export class WerkzeugFehler extends Error {
     message: string,
     readonly status: number,
     readonly hinweis?: string,
+    /** Maschinenlesbarer Grund bei Rückfragen (409), z. B. „teile_vorhanden“, „unvollstaendig“ */
+    readonly code?: string,
   ) {
     super(message)
     this.name = 'WerkzeugFehler'
@@ -100,8 +110,8 @@ async function anfrage<T>(pfad: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new WerkzeugFehler('Keine Verbindung. Bitte prüfe dein Internet und versuche es erneut.', 0)
   }
-  const daten = (await res.json().catch(() => ({}))) as { error?: string; hint?: string } & T
-  if (!res.ok) throw new WerkzeugFehler(daten.error || ALLGEMEINER_FEHLER, res.status, daten.hint)
+  const daten = (await res.json().catch(() => ({}))) as { error?: string; hint?: string; code?: string } & T
+  if (!res.ok) throw new WerkzeugFehler(daten.error || ALLGEMEINER_FEHLER, res.status, daten.hint, daten.code)
   return daten
 }
 
@@ -172,6 +182,69 @@ export function baueMaterial(id: string, pruefung?: { stand: string; ersetzen?: 
   return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/bauen`, {
     method: 'POST',
     ...(pruefung ? { body: JSON.stringify(pruefung) } : {}),
+  })
+}
+
+// ── Kostenloser Weg in Teilen (PROJ-69) ───────────────────────────────────
+
+export interface TeilWarnung {
+  art: 'doppelt' | 'falscher_teil'
+  /** Der andere Teil, zu dem die Antwort schon gehört bzw. eher passt */
+  teil: number
+  satz: string
+}
+
+/** Antwort beim Einfügen: übernommen, oder nicht — dann mit Warnung (Lehrkraft entscheidet) oder Fehlersatz */
+export type TeilAntwortErgebnis =
+  | {
+      uebernommen: true
+      ablauf: Ablauf
+      teil: AblaufTeil
+      geretteteKapitel: number
+      nachbesserungsPrompt: string | null
+      tippKleiner: boolean
+    }
+  | { uebernommen: false; warnung?: TeilWarnung; fehler?: string }
+
+export function ladeTeilPrompt(id: string, nr: number, weiter = false) {
+  return anfrage<{ prompt: string; nr: number; von: number }>(`/ablaeufe/${encodeURIComponent(id)}/teile/${nr}/prompt`, {
+    method: 'POST',
+    body: JSON.stringify(weiter ? { weiter: true } : {}),
+  })
+}
+
+export function sendeTeilAntwort(id: string, nr: number, eingabe: { antwort: string; weiter?: boolean; trotzdem?: boolean }) {
+  return anfrage<TeilAntwortErgebnis>(`/ablaeufe/${encodeURIComponent(id)}/teile/${nr}/antwort`, {
+    method: 'POST',
+    body: JSON.stringify(eingabe),
+  })
+}
+
+/** Fehler mit Status 409 und Code `unvollstaendig`: ein Teil ist abgeschnitten, Zustimmung nötig (`unvollstaendigOk`) */
+export function fuegeTeileZusammen(id: string, unvollstaendigOk = false) {
+  return anfrage<{ ablauf: Ablauf; hinweise: string[] }>(`/ablaeufe/${encodeURIComponent(id)}/zusammenfuegen`, {
+    method: 'POST',
+    body: JSON.stringify(unvollstaendigOk ? { unvollstaendigOk } : {}),
+  })
+}
+
+export function verwirfTeile(id: string) {
+  return anfrage<{ ablauf: Ablauf }>(`/ablaeufe/${encodeURIComponent(id)}/teile`, { method: 'DELETE' })
+}
+
+export function schreibeWeiter(id: string) {
+  return anfrage<{ ablauf: Ablauf; prompt: string; kapitel: string[]; runde: number; tippKleiner: boolean }>(
+    `/ablaeufe/${encodeURIComponent(id)}/weiterschreiben`,
+    { method: 'POST' },
+  )
+}
+
+export type FortsetzungErgebnis = { uebernommen: true; ablauf: Ablauf; tippKleiner: boolean } | { uebernommen: false; fehler: string }
+
+export function setzeFort(id: string, antwort: string) {
+  return anfrage<FortsetzungErgebnis>(`/ablaeufe/${encodeURIComponent(id)}/fortsetzung`, {
+    method: 'POST',
+    body: JSON.stringify({ antwort }),
   })
 }
 

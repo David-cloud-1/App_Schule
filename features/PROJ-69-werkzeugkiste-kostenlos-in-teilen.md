@@ -280,9 +280,29 @@ Keine neuen. App: vorhandene shadcn-Bausteine. Kern: vorhandenes Python (PyYAML)
 
 **Nicht geprüft:** Echter Lauf gegen den deployten Kern (Kern ist nur lokal getestet), Oberfläche (kommt mit `/frontend`).
 
+## Frontend-Umsetzung (2026-11-03)
+
+**Neue Bausteine** (`src/components/werkzeugkiste/`)
+- `schritt-teile.tsx`: **Schritt 3 bei Teilen.** Hinweis „Dein Skript ist lang … in N Teilen“ (ab 8 Teilen mit dem Tipp, in Schritt 1 weniger Kapitel zu wählen), Fortschritt in Worten und als Balken („1 von 3 Teilen eingefügt“), eine aufklappbare Karte je Teil (immer nur eine offen, beim Öffnen der erste unfertige Teil). Je Teil: Kopfzeile mit Inhalt und Zustand als getönte Pill (offen · geprüft · mit Hinweisen · Fehler · abgeschnitten, immer mit Wort), „Prompt kopieren“, Antwortfeld, „Einfügen und prüfen“, Prüfergebnis in einem Satz. Fertige Teile lassen sich ersetzen. Unter der Liste steht, warum „Weiter zur Datei“ noch gesperrt ist.
+  - **Prompt beim Aufklappen holen**, nicht erst beim Kopieren, damit „Kopieren“ auf dem iPhone direkt nach dem Tippen läuft. Prompts und Entwürfe überleben das Zuklappen.
+  - **Warnungen** („schon bei Teil X eingefügt“, „passt eher zu Teil X“) erscheinen mit „Trotzdem bei Teil N übernehmen“ und „Nicht übernehmen“; der Text bleibt im Feld.
+  - Nach dem Einfügen geht die Liste zum nächsten unfertigen Teil, **außer** der Teil hat einen schweren Befund oder ist abgeschnitten. Dann bleibt er offen, damit Satz, Nachbesserungs-Prompt bzw. Rest-Prompt zu sehen sind.
+- `abbruch-rettung.tsx`: **Rettungs-Box** für eine abgeschnittene Antwort. Nennt die fertigen Kapitel, holt den Weiterschreib-Prompt (bei Teilen sofort, ohne Teile auf Knopfdruck, weil das Holen die Antwort kürzt), „Anhängen und prüfen“. Bricht auch das Nachholen ab, erscheint der Tipp „kleineren Abschnitt in Schritt 1 wählen“. Ein abgeschnittener Teil lässt sich alternativ ganz neu anfragen.
+- `teile-dialoge.tsx`: zwei `AlertDialog`: **„Die Teile entstehen neu“** (Auswahl oder Einstellung ändern bei eingefügten Teilen, roter Bestätigungsknopf) und **„Ein Teil ist unvollständig“** (Weiter ohne den Rest, mit „Rest nachholen“ als sichere Wahl).
+
+**Geändert**
+- `ablauf-seite.tsx`: Schritt 3 zeigt bei `ablauf.teile` die Teil-Liste mit eigenem Titel „Dein Skript in Teilen“. „Weiter zur Datei“ (die eine grüne Hauptaktion) ist gesperrt, solange ein Teil fehlt oder einen schweren Befund hat; ist schon zusammengefügt, geht es ohne neuen Kern-Aufruf weiter. Schritt 1 und 2 speichern über `speichereMitRueckfrage`: Antwortet der Server mit 409 `teile_vorhanden`, fragt der Dialog nach, verwirft die Teile und speichert erneut. Schritt 4 zeigt die Hinweise vom Zusammenfügen und, für Antworten ohne Teile, die Rettungs-Box (ist nichts zu retten, steht ein Satz statt eines nutzlosen Knopfs).
+- `schritt-antwort.tsx`: neue Felder `hinweise` und `rettung`.
+- `werkzeugkiste-api.ts`: `WerkzeugFehler` trägt den `code` der Schnittstelle (`teile_vorhanden`, `unvollstaendig`); neue Aufrufe `ladeTeilPrompt`, `sendeTeilAntwort`, `fuegeTeileZusammen`, `verwirfTeile`, `schreibeWeiter`, `setzeFort`.
+- Nur vorhandene Bausteine (Accordion, Badge, Progress, Button, Textarea, AlertDialog) und `ws-*`-Farben; Bedienelemente mindestens 44 px; Zustände nie nur als Farbe.
+
+**Tests:** `teile.test.tsx` (29: Hilfen, Teil-Liste, Einfügen, Warnungen, Fehler, Rettung, Dialoge) und `teile-seite.test.tsx` (16: Schritt 3 mit Sperre, Zusammenfügen, Rückfragen, Rückfrage in Schritt 2, Rettung in Schritt 4). Gesamtsuite 2.446 grün, Typen und Build sauber, Lint ohne neue Meldung. Beim Schreiben der Tests aufgefallen und behoben: Die Liste sprang nach einem schweren Befund zum nächsten Teil und versteckte den Fehlersatz.
+
+**Nicht geprüft:** Aussehen, Handy (insbesondere Kopieren auf dem iPhone), echter Ablauf gegen den deployten Kern. Browser- und Handytest macht der Nutzer in Produktion.
+
 ### Noch offen
-- **Oberfläche** (`/frontend`): Teil-Liste in Schritt 3, Rettungs-Box (Schritt 3 und 4, mit `pruefung.abgeschnitten`), Rückfrage bei 409 `teile_vorhanden` in Schritt 2, `SchrittAntwort` und `SchrittPrompt` beim Weg mit Teilen, Hinweise in Schritt 4. Der Browser-Aufruf-Teil steht in `werkzeugkiste-api.ts`.
-- **Reihenfolge beim Deploy:** 1) Migration einspielen, 2) Kern `proj69` nach `vercel-kern` und deployen, 3) App deployen. E4 (8.000 Zeichen) vorher oder danach in ChatGPT Free messen.
+- **Deploy-Reihenfolge:** 1) Migration `20261106_proj69_teile.sql` im SQL Editor einspielen, 2) Kern `proj69` nach `vercel-kern` und deployen, 3) App deployen. Danach E4 (8.000 Zeichen) an Heft 2 in ChatGPT Free messen und den Wert in `TEIL_ZEICHEN_KOSTENLOS` bei Bedarf anpassen.
+- `/qa`: gegen die Akzeptanzkriterien prüfen.
 
 ## QA Test Results
 _To be added by /qa_

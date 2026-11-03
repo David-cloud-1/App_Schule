@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { Ablauf, AblaufPruefung } from '@/lib/werkzeugkiste'
 import { KopierKnopf } from '@/components/werkzeugkiste/schritt-prompt'
+import { Hinweis } from '@/components/werkzeugkiste/schritt-skript'
 import { UeberarbeitenHilfen } from '@/components/werkzeugkiste/ueberarbeiten-hilfen'
 
 /**
@@ -24,6 +25,8 @@ export function SchrittAntwort({
   materialFertig = false,
   seitenFormat = false,
   onAblauf,
+  hinweise = [],
+  rettung,
 }: {
   antwort: string
   setAntwort: (a: string) => void
@@ -40,9 +43,22 @@ export function SchrittAntwort({
   /** Das fertige Material ist eine Interaktive Seite (PROJ-67: Hinweis zum öffentlichen Link) */
   seitenFormat?: boolean
   onAblauf?: (a: Ablauf) => void
+  /** Hinweise vom Zusammenfügen der Teile (PROJ-69), z. B. gleiche Kapitel an einer Teilgrenze */
+  hinweise?: string[]
+  /** Rettungs-Box für eine abgeschnittene Antwort (PROJ-69), erscheint unter dem Prüfergebnis */
+  rettung?: React.ReactNode
 }) {
   return (
     <div className="space-y-6">
+      {hinweise.length > 0 && (
+        <div className="space-y-2" role="status">
+          {hinweise.map((h, i) => (
+            <Hinweis key={i} ton="warnung">
+              {h}
+            </Hinweis>
+          ))}
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="wk-antwort" className="sr-only">
           Antwort der KI
@@ -73,6 +89,8 @@ export function SchrittAntwort({
           <PruefErgebnis pruefung={pruefung} />
         ) : null}
       </div>
+
+      {rettung}
 
       {ablaufId && onAblauf && antwort.trim() && (
         <UeberarbeitenHilfen ablaufId={ablaufId} antwort={antwort} setAntwort={setAntwort} gespeichert={hilfenFreigegeben} fertig={materialFertig} seitenFormat={seitenFormat} onAblauf={onAblauf} />
