@@ -1,6 +1,6 @@
 # PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -245,8 +245,26 @@ Paket 1 muss vor Paket 2 live sein. Sonst würden neue, kurze Antworten von eine
 ### Abhängigkeiten (Pakete)
 Keine neuen. Alles mit vorhandenem Python (PyYAML) im Kern.
 
+## Umsetzung (Kern, `~/Schule/Werkzeugkiste`, Zweig `vercel-kern`)
+
+### Paket 1 – Design-Übersetzer und Prüfstelle (2026-11-03, Commit `df64496`, noch nicht deployt)
+- **Neu `schuldesign.py`:** Kennzeichen als `class` am Element (`lernziele`, `ausgangssituation`, `arbeitsauftrag`, `merke`, `tipp`, `achtung`, `beispiel`, `mission`, `pruefung`, `schritte`, `vergleich`, `zebra`). Eigener Boxtitel über `data-titel`, bei `vergleich` je Spalte. Schreibvarianten (`Merke-Box`, `Prüfung`, `Fallakte` …) werden erkannt. Eigener `style=` der KI hat Vorrang, Unbekanntes bleibt stehen, bei Fehlern kommt der Text unverändert zurück.
+- **Nachweis:** Alle 12 Boxen ergeben **zeichengleich** das bisherige Inline-Design (Vergleichswerte aus dem alten Prompt liegen in `testdaten/alte_boxen.json`). Antworten mit Inline-CSS bauen unverändert.
+- **H5P und Interaktive Seite** nutzen denselben Baustein (die Seite setzte bisher gar kein Design ein).
+- **Abweichungen von der Spec:** Der neutrale Standardtitel der Fall-Box ist „📁 Neuer Fall“ (kein PIL). „Bildzuordnung ohne Koordinaten“ ist jetzt ein Hinweis (Tipp) statt Befund. „Kapitel zu groß“ ist zunächst ebenfalls nur ein Hinweis; mit Paket 2 (Prompt kennt die Regel) auf MITTEL anheben (`KAPITEL_ZU_GROSS_SCHWERE` in `qualitaet.py`).
+- **Prüfstelle:** Fehlalarme weg (Überschrift ohne Stil entfällt; Lernziele, Kapitel-Aufbau, Accordion nur für Ganzes Skript/Kreativ; Zusammenfassung freiwillig). Grenzen nach E4: Kapitel-Quiz zu kurz unter 3, Lernzielkontrolle unter 8. Neue Regeln: richtige Antwort meist die längste (ab 6 Fragen, über 60 %), Wahr-Anteil über 70 %, fester Lösungsbuchstabe in der Klassenarbeit (mittel), Kapitel über 25 Elemente.
+- **Gegenprobe an den fünf echten Antworten:** Klassenarbeit Heft 2 → Lösungsbuchstabe (mittel) und längste Antwort; Seefracht Ganzes Skript → „Kapitel zu groß“; Heft 2 Ganzes Skript → 19 von 23 Aussagen wahr; Kahoot und Arbeitsblatt grün.
+- **Tests:** 125 grün (`kern_test` + `kern_recht_test`), 14 neu. `werkzeugtest.py` unverändert 22/24 (Altfehler Podcast, Deploy-Paket).
+- **Nicht umgesetzt (Paket 2):** Prüfregel für das Arbeitsblatt (`_pruefe_arbeitsblatt`) zu längster Antwort, da die Distraktor-Regel im Prompt fehlt.
+
+### Paket 2 – Prompt (offen) und Paket 3 – Vergleichsbericht (offen)
+
 ## QA Test Results
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+
+### Vorab-Fixes aus der Qualitätskontrolle (2026-11-03)
+Kern `werkzeugkiste-kern`, Commit `421f8b9`, per `vercel deploy --prod` vom Nutzer ausgeführt, Deployment `8m178zuvg` Ready, Adresse antwortet 401 ohne Kennwort (wie vorgesehen). Enthalten: PDF-Einlesen verliert keinen Text am Seitenanfang mehr, Rechenlücken nehmen Nullen/Einheit optional, Kahoot-Export mischt die Antworten. Wirkt nur auf neu hochgeladene Skripte; bereits eingelesene behalten ihren alten Text. Browser-/Handytest steht aus (läuft in Produktion durch den Nutzer).
+
+Das eigentliche PROJ-68 (Pakete 1–3) ist noch nicht gebaut.
