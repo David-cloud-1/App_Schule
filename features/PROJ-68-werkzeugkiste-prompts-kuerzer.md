@@ -257,7 +257,38 @@ Keine neuen. Alles mit vorhandenem Python (PyYAML) im Kern.
 - **Tests:** 125 grün (`kern_test` + `kern_recht_test`), 14 neu. `werkzeugtest.py` unverändert 22/24 (Altfehler Podcast, Deploy-Paket).
 - **Nicht umgesetzt (Paket 2):** Prüfregel für das Arbeitsblatt (`_pruefe_arbeitsblatt`) zu längster Antwort, da die Distraktor-Regel im Prompt fehlt.
 
-### Paket 2 – Prompt (offen) und Paket 3 – Vergleichsbericht (offen)
+Paket 1 deployt 2026-11-03 (Kern-Deployment `gmy2cz13w`, durch den Nutzer).
+
+### Entscheidungen zur Umsetzung von Paket 2 (Nutzer, 2026-11-03)
+- **E6 – Motivations-Boxen** („Wusstest du?“, Fall-Box, spielerisches Muster): „wo es passt“, nicht mehr Pflicht je Kapitel. „⭐ Prüfungsrelevant“ bleibt, wo der Stoff es ist.
+- **E7 – Logos/Briefkopf** vor der ersten Überschrift entfallen; die Prüfstelle zählt Bilder vor dem ersten richtigen Absatz (≥ 80 Zeichen) nicht.
+- **E8 – Kreativ, dritte Hilfe:** Teillösung, nie das Ergebnis.
+- **E9 – Differenzierung:** je Stufe höchstens ~4.000 Zeichen, Kerninhalte.
+- **Eigene Nachschärfung (Claude, aus dem Vergleich):** Begriffsliste nicht mehr Pflicht je Kapitel, sondern nur bei neuen Fachbegriffen (3–5); Wahr/Falsch 40–60 % wahr.
+
+### Paket 2 – Prompt (2026-11-03, Commits `059b932`, `435ad73`, `c14223e` auf Zweig `proj68-paket1`, noch nicht auf `vercel-kern`, nicht deployt)
+- Master-Prompt 36.259 → ~17.000 Zeichen; alle Abschnittstitel, die andere Werkzeuge ausleihen, bleiben. `_T0_OVERRIDE` und die PIL-Ersetzungen in Kreativ entfallen.
+- Alle Punkte aus E4, E5 und E6–E9 umgesetzt, dazu `_MARKER_KURZ` für alle Werkzeuge ohne die Marker-Abschnitte, YAML-Regeln für Seite-Varianten, Schutzregel beim Überarbeiten (alte `style=` bleiben).
+- Kern: Auswahlfragen in der Kurzform `correct:`/`wrong:` werden beim Laden angeglichen (sonst leere Fragen); Zahl-Lücken in Lückentexten nehmen Schreibvarianten an.
+- Prüfstelle: Bildpflicht nur Ganzes Skript (Kreativ Hinweis), Bilder in `bildzuordnung`/`image_sequencing` zählen, Fragenzahl der Lernzielkontrolle und „fast ohne Aufgaben“ nur, wo der Prompt sie verlangt; „Kapitel zu groß“ jetzt mittel; Wahr-Anteil in beide Richtungen.
+- `CLAUDE.md` nachgezogen (`prompt_diff.py`: synchron). Tests: 137 grün, `werkzeugtest.py` 22/24 (Altfehler).
+
+**Anweisungslänge ohne Skript (alt → neu):** Ganzes Skript H5P 37.107 → 17.316 (−53 %), Seite 45.071 → 24.952 (−45 %), Kreativ H5P 29.013 → 16.307 (−44 %), Video-H5P 18.092 → ~8.000, Prüfung-H5P 19.067 → ~10.800. Kleine Werkzeuge +430–1.800 Zeichen (Marker-Kurzblock, neue Qualitätsregeln).
+
+### Paket 3 – Vorher/Nachher-Vergleich (2026-11-03)
+Gleicher Skripttext, gleiches Erzeuger-Modell (Sonnet, sieht nur den Prompt), Abnahme mit `einheit-abnehmen` (Opus), Gegenprüfung der Prompts mit `prompt-pruefen`. Berichte: `docs/qualitaet-werkzeuge/*_neu.md`.
+
+| Einheit | Antwort vorher → nachher | Urteil der Abnahme |
+|---|---|---|
+| Heft 2 – Ganzes Skript (2 Läufe) | 29.556 → 19.472 / 20.295 Token (−31 bis −34 %), CSS 15 % → 0 % | besser (Lauf 1) / leicht besser (Lauf 2); alle Rechnungen richtig, fehlende Skript-Aufgaben jetzt da, Floskeln fast weg |
+| Seefracht Teil 1 – Ganzes Skript (2 Läufe) | 12.490 → 9.952 / 11.708 Token (−6 bis −20 %), 1 → 5–6 Kapitel | beide besser, fachlich fehlerfrei; Einsparung teils in die Kapitelbildung (rettbar bei Abbruch) |
+| Kahoot Seefracht | 602 → 529 Token | besser (Export mischt), Abdeckung nachgeschärft |
+| Klassenarbeit Heft 2 | 2.801 → 2.821 Token | deutlich besser (Buchstaben verteilt, kein MC in AFB III, mehr Stoff, keine verratenen Aufgaben) |
+| Arbeitsblatt Seefracht | 2.280 → 2.524 Token | besser (Abdeckung, Distraktoren, neue Zahlen) |
+
+**Kein Qualitätsverlust** in einer Einheit. Funde aus dem Vergleich (leere `single_choice`-Fragen durch fehlendes Beispiel, Kreativ-`summary`, `freitext` in H5P, überkorrigiertes Wahr/Falsch, Füllaufgaben, wiederholende Lernzielkontrolle) sind in `435ad73`/`c14223e` behoben; ein zweiter Vergleichslauf danach steht aus.
+
+**Grenze dieser Spec:** Ganzes Skript bleibt bei einem Skript wie Heft 2 (22.000 Zeichen) mit ~20.000 Token Antwort über dem, was kostenlose KIs ausgeben. Das löst erst PROJ-69 (Teile, nach der Gegenprüfung etwa 8.000 Zeichen Skript je Teil). Ebenso offen: Warnschwelle in `kern.py` (60.000 Zeichen) passt nicht zum kostenlosen Weg.
 
 ## QA Test Results
 _To be added by /qa_
