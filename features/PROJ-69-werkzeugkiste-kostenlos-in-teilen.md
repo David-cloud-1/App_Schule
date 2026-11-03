@@ -1,6 +1,6 @@
 # PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-03
 **Last Updated:** 2026-11-03
 
@@ -305,7 +305,74 @@ Keine neuen. App: vorhandene shadcn-Bausteine. Kern: vorhandenes Python (PyYAML)
 - `/qa`: gegen die Akzeptanzkriterien prüfen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-11-03 (QA, Code- und Testebene; Browser, Handy und Cross-Browser bewusst nicht, siehe „Nicht geprüft“)
+
+### Automatische Läufe
+| Lauf | Ergebnis |
+|---|---|
+| App: `vitest run` | 203 Dateien, **2.446 Tests grün** (darunter `teile.test.ts` 48, `teile.test.tsx` 29, `teile-seite.test.tsx` 16) |
+| App: `tsc --noEmit` | sauber |
+| App: ESLint (Werkzeugkiste-Oberfläche, `werkzeugkiste*.ts`, API-Routen) | ohne Meldung |
+| Kern (`~/Schule/Werkzeugkiste`, Zweig `vercel-kern`): `kern_test` | 136 Tests grün |
+| Vertrag App ↔ Kern | Alle von der App aufgerufenen Endpunkte (`teilen` mit `max_zeichen`, `prompt` mit `teil`, `pruefen` mit `teil`, `teil-pruefen`, `retten`, `kapitel-liste`, `zusammenfuegen` mit `hinweise`) und Felder gibt es im Kern. Wichtig, weil die App-Tests den Kern nur nachbilden. |
+
+### Akzeptanzkriterien (nach Code und Tests)
+| Bereich | Kriterium | Ergebnis |
+|---|---|---|
+| Teilen | Kurze Auswahl: ein Prompt, wie heute | ✅ Test „kurzes Skript unverändert“ |
+| Teilen | Lange Auswahl: gleichmäßige Teile an Abschnitts-/Seitengrenzen | ✅ Kern `teilen`, Heft 2 = 4 Teile |
+| Teilen | Satz „Dein Skript ist lang … in X Teilen“ + Inhalt je Teil | ✅ `schritt-teile.tsx` |
+| Teilen | Teil-Prompt nennt „Teil n von N“, ab Teil 2 ohne Deckblatt | ✅ Kern-Tests |
+| Einfügen | Liste mit Zuständen, je Teil Prompt-Knopf und Antwortfeld | ✅ |
+| Einfügen | Sofortprüfung mit Satz | ✅ |
+| Einfügen | Teil jederzeit ersetzbar | ✅ |
+| Einfügen | „Weiter zur Datei“ erst bei allen Teilen und ohne „hoch“ | ✅ UI-Sperre und Server (400) |
+| Einfügen | Zusammenfügen zu **einer** Antwort, danach Prüfen/Vorschau/Bauen wie heute | ✅ |
+| Retten | Abgeschnittene Antwort: vollständige Kapitel bleiben, Satz, was fehlt | ✅ |
+| Retten | Nachhol-(Weiterschreib-)Prompt, Antwort wird angehängt | ✅ |
+| Retten | Auch ohne Teilung (kurzes Skript) | ✅ `weiterschreiben` + `fortsetzung` |
+| Speichern | Teil-Antworten bleiben, Wiederöffnen springt zum nächsten offenen Teil | ✅ (Antworten im Speicher, Liste am Ablauf). Verhalten im Browser nicht gesehen. |
+| Speichern | Rückfrage (`AlertDialog`) bei geänderter Auswahl/Einstellung | ✅ 409 → Dialog → `DELETE …/teile` |
+| Darstellung | Nur vorhandene Bausteine, 44 px, Fortschritt in Worten | ✅ nach Code; Aussehen nicht gesehen |
+
+**Edge Cases:** falscher Teil ✅ (Warnung + „Trotzdem übernehmen“) · doppelt eingefügt ✅ · Deckblatt/Abschluss in Teil 2 ✅ (Kern) · Überschneidung an Teilgrenze ✅ (Hinweis, nichts gelöscht) · Einzelabschnitt größer als Teilgröße ✅ (Kern) · Nachhol-Prompt bricht ab ✅ (Tipp „kleiner wählen“) · Bilder ✅ (Bauen nutzt ganzes Skript) · bezahlter Weg unberührt ✅ (ohne `max_zeichen` gelten 22.000) · **Skript ohne Überschriften: Hinweistext fehlt ❌ (siehe Fund 1).**
+
+### Fehler
+**Kritisch / Hoch: keine.**
+
+| # | Schwere | Fund | Schritte / Auswirkung |
+|---|---|---|---|
+| 1 | Niedrig | Der Hinweis „Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Prompt.“ (Edge Case „Skript ohne Überschriften“, Tech Design) kommt in der App nirgends vor (`grep` ohne Treffer). | .txt hochladen, lange Auswahl: Es bleibt bei einem Prompt (richtig), aber ohne den Hinweis. Die Rettungs-Box in Schritt 4 greift trotzdem, wenn die Antwort abbricht. |
+| 2 | Niedrig | `POST …/ablaeufe/:id/prompt` prüft nicht auf `status = 'fertig'`. Auf einem fertigen Material mit langer Auswahl würde eine Teil-Liste angelegt, in die nichts mehr eingefügt werden kann (die Antwort-Route lehnt mit 400 ab). | Nur durch einen direkten Aufruf erreichbar, die Oberfläche ruft den Prompt bei fertigem Material nicht auf. Folge: verwirrender Zustand, kein Datenverlust (Antwort bleibt). |
+| 3 | Niedrig | Lost Update: Jede Teil-Antwort liest die ganze Teil-Liste und schreibt sie zurück. Werden zwei Teile gleichzeitig (zwei Tabs) eingefügt, kann der zuletzt schreibende den Zustand des anderen überschreiben (Datei ist da, Liste zeigt „offen“). | Praktisch selten; die Lehrkraft fügt nacheinander ein. Beheben mit erneutem Einfügen. |
+| 4 | Info | Bei einer Fortsetzung (Weiterschreiben) kann der Reihenfolge-Vergleich (`eherTeil`) fehlalarmieren, weil die Antwort nur den Rest des Teils abdeckt. | Wird mit „Trotzdem übernehmen“ umgangen, blockiert nie. |
+
+### Sicherheitsprüfung (Red Team, Code)
+- **Zugriff:** Alle neuen Routen (`teile/:nr/antwort`, `teile/:nr/prompt`, `teile`, `zusammenfuegen`, `weiterschreiben`, `fortsetzung`) beginnen mit `requireTeacherOrAdmin()` und laden den Ablauf über den Nutzer-Client (`ladeEigenenAblauf`, Zeilen-Regeln). Fremder Ablauf = 404, kein Super-Admin-Zugriff auf fremde Teile. ✅
+- **Eingaben:** Zod mit `.strict()`, Antwort 1–500.000 Zeichen, gespeichert höchstens 600.000, Gesamtantwort höchstens 2 Mio., höchstens 40 Teile (`TEILE_MAX`), Spalte per `CHECK` auf 200 KB. `nr` aus der URL wird nur gegen die gespeicherte Teil-Liste aufgelöst, in Dateipfade gelangt nur die geprüfte Zahl. Keine Pfad-Einschleusung. ✅
+- **Speicher:** Teil-Dateien (`teil-frei-<nr>.yaml`) im privaten Bucket, Zugriff nur über den Server mit `owner_id` aus der Zeile (nicht aus der Anfrage). Der tägliche Aufräum-Lauf (`loescheDateien`, Grenze 100 Dateien, höchstens ~45 je Ablauf) räumt sie mit ab; Löschen des Ablaufs ebenso. ✅
+- **XSS:** Neue Komponenten ohne `dangerouslySetInnerHTML`. Kapiteltitel und Befund-Sätze aus KI-Antworten werden als Text gerendert. ✅
+- **Geheimnisse:** keine neuen Umgebungsvariablen, Kern-Zugriff wie bisher über das vorhandene Geheimnis. ✅
+- **Datenbank:** Migration fügt nur eine Spalte an; keine neue Tabelle, keine Änderung an Regeln, Rücknahme vorhanden. ✅
+- **Missbrauch:** Kein eigenes Ratenlimit auf den neuen Routen (jeder Aufruf löst Kern-Rechenzeit aus). Gleiche Lage wie bei den bestehenden Werkzeugkiste-Routen, nur für freigeschaltete Lehrkräfte. Kein Fund, Beobachtung.
+
+### Regression
+Gesamtsuite grün (2.446). Geänderte Bestandsrouten (`prompt`, `pruefen`, `bauen`, `PATCH`, `einlesen`) sind durch die bestehenden Tests mit abgedeckt; ein bestehender Test wurde um die zusätzliche Kern-Frage ergänzt. Andere Werkzeuge bleiben bei einem Prompt (`hatTeilWeg` nur für „Ganzes Skript“ und „Kreativ“).
+
+### Nicht geprüft (bewusst)
+- **Browser, Handy (375/768/1440 px), Firefox/Safari, Kopieren auf dem iPhone:** Auf diesem Rechner wird kein Dev-Server und kein Playwright gestartet (Absturzgefahr). Browser- und Handytest macht der Nutzer in Produktion.
+- **E2E-Test (`tests/PROJ-69-*.spec.ts`):** nicht geschrieben, aus demselben Grund und weil der Ablauf Anmeldung, Datei-Upload und den echten Kern braucht. Die Abdeckung liegt in den 93 Unit-/Komponententests.
+- **Echter Lauf gegen den deployten Kern:** Der Kern ist lokal 11 Commits vor `origin/vercel-kern` und nicht deployt.
+- **E4 (Teilgröße 8.000 Zeichen):** noch nicht an Heft 2 in ChatGPT Free gemessen.
+
+### Voraussetzungen vor dem Deploy
+1. Migration `20261106_proj69_teile.sql` im SQL Editor einspielen (die Spalte steht in `ABLAUF_SPALTEN`, ohne sie scheitert **jede** Ablauf-Abfrage).
+2. Kern pushen und deployen (`vercel-kern`).
+3. App deployen, danach E4 messen und `TEIL_ZEICHEN_KOSTENLOS` bei Bedarf anpassen.
+
+### Entscheidung
+**Produktionsreif: JA**, unter den drei Voraussetzungen oben. Keine kritischen oder hohen Fehler; 3 niedrige Funde und 1 Info.
 
 ## Deployment
 _To be added by /deploy_
