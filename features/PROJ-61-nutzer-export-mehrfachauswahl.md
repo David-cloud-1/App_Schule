@@ -1,6 +1,6 @@
 # PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin)
 
-## Status: Architected
+## Status: Approved
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-03
 
@@ -160,8 +160,64 @@ Keine neuen Pakete.
 2. **Übersprungene Super-Admins beim Entsperren.** Die Spec nennt nur Sperren und Verschieben. Ich überspringe sie bei allen drei Aktionen, damit die Regel einheitlich bleibt.
 3. **Zwei Felder mehr in der Nutzerliste** („Registriert am“, Bereichsname immer). Das weicht minimal von „kein zusätzlicher Personendaten-Abruf“ ab, ist aber nötig für die in der Spec geforderten Spalten.
 
+### Umsetzung (2026-11-03)
+- **Logik:** `src/lib/user-csv.ts` (CSV, Injection-Schutz, Datum, Dateiname; 17 Tests) und `src/lib/user-bulk.ts` (Überspringen-Regeln, Teile, Namensliste, Ergebnissatz; 12 Tests).
+- **Schnittstellen:** `POST /api/admin/users/bulk` (Sperren / Entsperren / Bereich ändern, höchstens 500 Ids, 5 Konten gleichzeitig, pro Änderung ein Protokoll-Eintrag mit `details.bulk`) und `POST /api/admin/users/export-log` (Eintrag `user.export` mit Anzahl und Filter; nur ob gesucht wurde, nicht wonach). Beide: 401 ohne Anmeldung, 403 für alles außer Super-Admin.
+- **Nutzerliste:** `GET /api/admin/users` liefert zusätzlich `created_at` und den Bereichsnamen immer.
+- **Oberfläche:** `user-bulk-bar.tsx` (Aktionsleiste; Handy fest unten, ab 640 px über der Tabelle), `user-bulk-dialog.tsx` (Rückfrage mit Namen, Ziel-Bereich, Fortschrittsbalken; „Details“-Dialog), Seite `/admin/users` mit Checkbox-Spalte, Export-Button im Seitenkopf. Für den Super-Admin ist `ws-table-sticky` aus (Regel PROJ-45).
+- **Tests:** 2353 Tests in 200 Dateien grün, `npm run build` grün, ESLint ohne Fehler (45 bestehende Warnungen, keine neuen in den eigenen Dateien).
+- **Abweichungen von Spec und Design:**
+  1. **Schon gesperrt / schon entsperrt** erkennt der Browser (er kennt den Status aus der Liste) und lässt diese Personen aus der Anfrage heraus. Der Dialog sagt „{k} ist schon gesperrt und wird ausgelassen“. Der Server sperrt idempotent. So entstehen keine Protokoll-Einträge ohne Änderung, ohne dass der Server pro Person den Sperr-Status nachschlagen muss.
+  2. **„Exportieren“ in der Aktionsleiste** exportiert immer nur die Auswahl (die Leiste gehört zur Auswahl). Die Frage „Nur Auswahl / Alle sichtbaren“ stellt der Button im Seitenkopf, sobald etwas angekreuzt ist.
+  3. **Dateiname:** Im Bereichs-Modus steht der Name des Bereichs aus den Daten (z. B. `nutzer-tourismus-2026-11-03.csv`), in „Alle Bereiche“ steht `alle`.
+  4. **Level** in der CSV nutzt dieselbe Formel wie die App (`getLevelFromXp`).
+- **Nicht geprüft:** Kein Browsertest (Nutzer-Vorgabe: kein Dev-Server). Die Optik auf 375 / 768 / 1440 px und der echte Download in Excel sind deshalb noch nicht von Hand angesehen.
+
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-11-03 · **Umfang:** Code-Review gegen alle Acceptance Criteria und Edge Cases, Unit-, Schnittstellen- und Komponententests, Build, Lint, Sicherheitsprüfung. **Kein** Browser-/Playwright-Test.
+
+### Acceptance Criteria
+| Bereich | Ergebnis |
+|---|---|
+| Export-Button im Kopf (outline, Download-Icon), nur Super-Admin | ✅ (Test: Bereichs-Admin sieht ihn nicht) |
+| Export = sichtbare Zeilen in sichtbarer Reihenfolge | ✅ |
+| 11 Spalten, Semikolon, UTF-8 mit BOM, `TT.MM.JJJJ` | ✅ (Test) |
+| Dateiname `nutzer-{bereich/alle}-{Datum}.csv` | ✅ (Test, Berliner Datum) |
+| CSV-Injection (`=` `+` `-` `@`, zusätzlich Tab/CR) | ✅ (Test) |
+| Mit Auswahl: „Nur Auswahl (n)“ / „Alle sichtbaren (m)“ | ✅ (Test) |
+| Protokoll `user.export` mit Anzahl und Filter, ohne Personendaten | ✅ (Test: kein Suchtext, keine Namen) |
+| Checkbox-Spalte nur für Super-Admin, erste Spalte steht nicht fest | ✅ |
+| Kopf-Checkbox wählt sichtbare an/ab, Zwischenzustand | ✅ (Test, `aria-checked="mixed"`) |
+| Aktionsleiste mit allen fünf Einträgen, Handy fest unten | ✅ (Optik nicht im Browser gesehen) |
+| `AlertDialog` je Sammelaktion mit Anzahl und bis zu 5 Namen + „und {x} weitere“ | ✅ (Test mit 230 Konten) |
+| „Bereich ändern“ mit Auswahlfeld aller Fachbereiche | ✅ (Start gesperrt ohne Ziel) |
+| Toast „{a} von {n} …“ mit „Details“ | ✅ (Test) |
+| Pro Änderung ein eigener Protokoll-Eintrag | ✅ (Test: nicht für Übersprungene und Fehlgeschlagene) |
+| Auswahl bleibt bei Filterwechsel, Leiste zählt nur Sichtbares | ✅ (Test) |
+| Bereichs-Admin: keine Checkboxen, kein Export, 403 | ✅ (Seite + beide Schnittstellen getestet, auch Lehrkraft und Azubi) |
+| Eigenes Konto und Zweitaccount übersprungen | ✅ (Checkbox gesperrt; Server überspringt zusätzlich) |
+
+### Edge Cases
+- Super-Admin in der Auswahl → übersprungen („Super-Admin“) bei Sperren, Entsperren und Verschieben ✅
+- Bereichs-Admin beim Verschieben → „Rolle zuerst ändern“ ✅
+- > 200 Konten → Teile zu je 100 mit Fortschritt ✅ (Test: 100 / 100 / 30)
+- Leere Liste → „Exportieren“ deaktiviert ✅
+- Netzfehler / Teilfehler → Erledigtes bleibt, Rest als fehlgeschlagen, „Erneut versuchen“ schickt nur diese Ids ✅ (Teilfehler getestet; der Weg „Erneut versuchen“ ist per Code-Review geprüft, nicht per Test)
+- Kein Protokoll möglich → kein Download ✅ (Test)
+
+### Sicherheit
+- Beide Schnittstellen prüfen Anmeldung und Super-Admin **vor** jeder Datenbank-Abfrage; Ids sind per Zod als UUID begrenzt (höchstens 500), Aktion ist eine feste Liste, der Ziel-Bereich muss existieren. Der Service-Schlüssel wird nur nach der Super-Admin-Prüfung benutzt.
+- Der Server erzwingt die Überspringen-Regeln selbst; die Oberfläche ist nur Anzeige. Kein Weg, per direktem Aufruf das eigene Konto, Super-Admins oder einen Zweitaccount zu ändern.
+- Das Protokoll enthält keine Personendaten: weder Namen noch E-Mails noch Suchtext.
+- Keine neue Datenbank-Änderung, also keine neue RLS-Regel und keine Migration.
+
+### Bugs
+Keine Critical/High gefunden. Offene Beobachtungen:
+- **OBS-61-1 (Low):** „Erneut versuchen“ ist nur Teil des Toasts (15 s sichtbar). Danach hilft das erneute Ankreuzen, denn fehlgeschlagene Konten bleiben markiert. Absicht, kein Fehler.
+- **OBS-61-2 (Low):** Browser-Prüfung steht aus (Optik, Download in Excel). Bitte einmal am Handy und am Laptop kurz ansehen.
+
+**Ergebnis: Approved.**
 
 ## Deployment
 _To be added by /deploy_
