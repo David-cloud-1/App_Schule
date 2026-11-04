@@ -1,6 +1,6 @@
 # PROJ-70: Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-04
 **Last Updated:** 2026-11-04
 
@@ -353,4 +353,7 @@ BUG-1 bis BUG-5 behoben und geprüft: 2.509 Tests grün, `tsc`, Lint (0 Fehler),
 - **Tests:** 2.509 grün, `tsc`, Lint (0 Fehler) und `npm run build` sauber. Neue Tests: Leistenmodi je Seite/Rolle, `analyzeVersionData`. Nicht im Browser geprüft.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Vercel-Build Ready, Commit 7610eb0, 2026-11-04)
+- **Reihenfolge eingehalten:** Migrationen `20261107_proj70_inhalte_offen`, `20261107_proj70_auswertung_ruecknahme`, `20261108_proj70_privat_schutz` vorher in Produktion eingespielt, SQL-Probe vollständig bestanden, danach Push.
+- **Prüfung nach dem Deploy:** Routen `context/bereich`, `content-history/people`, `content-history/changes`, `questions`, `audit-log` ohne Login: 401. Keine Browser-Prüfung (Projektregel); Oberfläche (Bereichsleiste bei Nutzer, Nachweisen, Protokoll; Prüfungsset-Dialog mit fremdem Zielbereich; Handy/Tablet/Desktop) prüft der Nutzer selbst.
+- **Rückweg:** Je Migration eine `_down`-Datei; Code über „Promote“ des vorherigen Vercel-Deployments.

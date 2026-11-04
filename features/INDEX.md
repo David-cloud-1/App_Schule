@@ -83,7 +83,7 @@
 | PROJ-67 | Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed | [PROJ-67-werkzeugkiste-oeffentlicher-link.md](PROJ-67-werkzeugkiste-oeffentlicher-link.md) | 2026-11-02 |
 | PROJ-68 | Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed | [PROJ-68-werkzeugkiste-prompts-kuerzer.md](PROJ-68-werkzeugkiste-prompts-kuerzer.md) | 2026-11-03 |
 | PROJ-69 | Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed | [PROJ-69-werkzeugkiste-kostenlos-in-teilen.md](PROJ-69-werkzeugkiste-kostenlos-in-teilen.md) | 2026-11-03 |
-| PROJ-70 | Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert | Approved | [PROJ-70-inhalte-offen-fuer-alle-lehrkraefte.md](PROJ-70-inhalte-offen-fuer-alle-lehrkraefte.md) | 2026-11-04 |
+| PROJ-70 | Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert | Deployed | [PROJ-70-inhalte-offen-fuer-alle-lehrkraefte.md](PROJ-70-inhalte-offen-fuer-alle-lehrkraefte.md) | 2026-11-04 |
 
 <!-- Add features above this line -->
 | PROJ-71 | Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed | [PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md](PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md) | 2026-11-04 |
