@@ -78,6 +78,7 @@ export const ADMIN_MAIN_NAV_HREFS = [
   '/admin/leistungsnachweise',
   '/admin/questions',
   WERKZEUGKISTE_HREF,
+  SCHULRECHT_HREF,
   '/admin/lehrerzimmer',
 ]
 

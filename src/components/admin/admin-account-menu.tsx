@@ -87,22 +87,24 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
       <DropdownMenuContent
         align="end"
         side={variant === 'sidebar' ? 'top' : 'bottom'}
-        className="w-64 rounded-xl border-ws-line bg-ws-surface text-ws-text"
+        collisionPadding={12}
+        className="max-h-[var(--radix-dropdown-menu-content-available-height)] w-72 overflow-y-auto rounded-xl border-ws-line bg-ws-surface p-1.5 text-ws-text"
       >
-        <DropdownMenuLabel className="space-y-0.5 font-normal">
-          <span className="block truncate text-sm font-semibold" title={name}>
-            {name}
+        <DropdownMenuLabel className="flex items-center gap-3 px-2 py-2.5 font-normal">
+          {avatar}
+          <span className="min-w-0 flex-1 space-y-0.5">
+            <span className="block break-words text-sm font-semibold leading-snug">{name}</span>
+            {email && email !== name && (
+              <span className="block break-all text-xs leading-snug text-ws-muted">{email}</span>
+            )}
           </span>
-          {email && email !== name && (
-            <span className="block truncate text-xs text-ws-muted" title={email}>
-              {email}
-            </span>
-          )}
-          <span className="block text-xs font-semibold text-ws-green">{roleLabel}</span>
-          <span className="block text-xs text-ws-muted">{ROLE_DESCRIPTION[role]}</span>
         </DropdownMenuLabel>
+        <div className="mx-2 mb-1.5 rounded-lg border border-ws-green/30 bg-ws-green/15 px-3 py-2">
+          <span className="block text-xs font-semibold text-ws-green">{roleLabel}</span>
+          <span className="block text-xs leading-snug text-ws-muted">{ROLE_DESCRIPTION[role]}</span>
+        </div>
         {role === 'teacher' && subjectCount !== undefined && (
-          <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
+          <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
             <Link href="/admin/my-subjects">
               <UserCog className="text-ws-muted" />
               {subjectCount === 0
@@ -113,52 +115,55 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
             </Link>
           </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator className="bg-ws-line" />
-        <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
+        <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
           <Link href={ADMIN_ACCOUNT_HREF}>
             <IdCard className="text-ws-muted" />
             Mein Konto
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
+        <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
           <Link href="/profile">
             <User className="text-ws-muted" />
             Spielerprofil
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
+          <Link href="/">
+            <Gamepad2 className="text-ws-green" />
+            Zur Lern-App
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-ws-line" />
-        <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wider text-ws-faint">
+        <DropdownMenuLabel className="px-2 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wider text-ws-faint">
           Darstellung
         </DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(parseWorkspaceTheme(value))}>
+        <DropdownMenuRadioGroup
+          value={theme}
+          onValueChange={(value) => setTheme(parseWorkspaceTheme(value))}
+          className="grid grid-cols-3 gap-1 px-1 pb-1"
+        >
           {WORKSPACE_THEMES.map((option) => {
             const Icon = THEME_ICON[option]
             return (
               <DropdownMenuRadioItem
                 key={option}
                 value={option}
-                className="min-h-11 cursor-pointer gap-2 focus:bg-ws-raised focus:text-ws-text"
+                className="min-h-11 cursor-pointer flex-col justify-center gap-0.5 rounded-lg border border-transparent px-1 py-1.5 text-xs focus:bg-ws-raised focus:text-ws-text data-[state=checked]:border-ws-green/30 data-[state=checked]:bg-ws-green/15 data-[state=checked]:text-ws-green [&>span:first-child]:hidden"
               >
-                <Icon className="size-4 text-ws-muted" />
+                <Icon className="size-4" />
                 {WORKSPACE_THEME_LABEL[option]}
               </DropdownMenuRadioItem>
             )
           })}
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator className="bg-ws-line" />
-        <DropdownMenuItem asChild className="min-h-11 cursor-pointer focus:bg-ws-raised focus:text-ws-text">
-          <Link href="/">
-            <Gamepad2 className="text-ws-green" />
-            Zur Lern-App
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) => {
             e.preventDefault()
             handleLogout()
           }}
           disabled={loggingOut}
-          className="min-h-11 cursor-pointer text-ws-red focus:bg-ws-red/10 focus:text-ws-red"
+          className="min-h-11 cursor-pointer rounded-lg text-ws-red focus:bg-ws-red/10 focus:text-ws-red"
         >
           {loggingOut ? <Loader2 className="animate-spin" /> : <LogOut />}
           Abmelden
