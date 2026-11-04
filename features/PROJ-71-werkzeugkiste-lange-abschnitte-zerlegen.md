@@ -1,6 +1,6 @@
 # PROJ-71: Werkzeugkiste – zu lange Abschnitte weiter zerlegen
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-04
 **Last Updated:** 2026-11-04
 
@@ -208,8 +208,30 @@ Keine neuen Pakete, weder im Kern noch in der App.
 - Nicht end-to-end mit einer echten KI-Antwort geprüft: Der Test belegt, dass der Text des Ausschnitts nur seine eigenen Bildmarker enthält, die Prüfstelle selbst läuft unverändert darauf.
 - Der Direkt-Weg (PROJ-64) reicht den Ausschnitt noch nicht weiter (wie im Tech Design vorgesehen).
 
-## QA Test Results
-_To be added by /qa_
+## QA Test Results (2026-11-04)
+**Ergebnis: freigegeben, keine Fehler gefunden.**
+
+| Prüfung | Ergebnis |
+|---|---|
+| Kern-Tests (`python3 -m unittest kern_test`) | 159 grün, davon 23 neu |
+| App-Tests (`vitest run`) | 2465 in 204 Dateien grün |
+| `tsc --noEmit`, `npm run lint` | 0 Fehler (45 alte Warnungen) |
+| `npm run build` im sauberen Worktree des committeten Stands | erfolgreich |
+| Laufzeit 261.000 Zeichen | 0,01 s (Vorgabe: unter 2 s) |
+
+**Akzeptanzkriterien (Außenhandel_SJ_2026_27.docx, Teilgröße 8.000):**
+- Abschnitt „Zusammenfassende Übungsaufgaben“ → 4 Unterteile, größter 7.634 Zeichen (Grenze 10.000) ✓
+- Unterteile ergeben den Abschnitt lückenlos, ohne Überlappung (Positionen schließen aneinander an) ✓
+- `bild001`–`bild018` je in genau einem Teil; `bild016`–`bild018` mit Aufgabe 7 im letzten Teil ✓
+- Abschnitte bis Teilgröße, PDF und Texte ohne Gliederung: Ausgabe zeichengleich zu vorher ✓
+- Gleiche Eingabe → gleiche Teile ✓
+- Schnitt vor „Aufgabe N“; nie in Tabelle, nach Bildmarker, vor a)/b) oder [LÖSUNG]; reiner Fließtext an Absatzgrenzen; riesige Tabelle bleibt ganz und wird als „zu groß“ gemeldet ✓
+- Teil-Prompt enthält nur den Text seines Ausschnitts ✓
+- Karte zeigt „Titel, 2. von 4 (ab Aufgabe 3)“, Tipp zu wenigen Überschriften erscheint nur bei zerlegten Abschnitten ✓
+
+**Sicherheit:** Ausschnitt und Vorspann kommen nur vom Kern, nie aus Nutzereingaben (das Auswahl-Schema der PATCH-Route kennt beide Felder nicht und verwirft sie). Der Kern prüft den Ausschnitt (ganze Zahlen, 0 ≤ von < bis ≤ Länge) und meldet sonst einen Satz an die Lehrkraft. Ungültige Angaben im Kern-Ergebnis verwirft die App.
+
+**Nicht geprüft:** Ablauf mit echter KI-Antwort (Prüfstelle auf einem Ausschnitt) und Anzeige im Browser. Das macht die Lehrkraft nach dem Deploy.
 
 ## Deployment
 _To be added by /deploy_
