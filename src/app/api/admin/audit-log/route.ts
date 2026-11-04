@@ -13,6 +13,15 @@ const QuerySchema = z.object({
 
 const PAGE_SIZE = 50
 
+/** "david.zach@…" → "David Zach" (Ersatz, wenn im Profil kein Anzeigename steht) */
+function nameFromEmail(email: string | undefined): string | null {
+  const local = email?.split('@')[0]
+  if (!local) return null
+  const words = local.split(/[._-]+/).filter((w) => /^\p{L}{2,}$/u.test(w))
+  if (words.length === 0) return local
+  return words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin()
   if (auth.error) return auth.error
@@ -81,7 +90,21 @@ export async function GET(request: NextRequest) {
         .select('id, display_name')
         .in('id', adminIds)
       adminMap = new Map(
-        (admins ?? []).map((a) => [a.id as string, (a.display_name as string) ?? null])
+        (admins ?? []).map((a) => [a.id as string, (a.display_name as string) || null])
+      )
+
+      // Die meisten Admin-Profile haben keinen Anzeigenamen — dann aus der E-Mail ableiten
+      const missing = adminIds.filter((id) => !adminMap.get(id))
+      await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const { data: au } = await service.auth.admin.getUserById(id)
+            const name = nameFromEmail(au?.user?.email)
+            if (name) adminMap.set(id, name)
+          } catch {
+            // Name bleibt leer, die Seite zeigt dann „Gelöschtes Konto“/ID
+          }
+        })
       )
     }
 
