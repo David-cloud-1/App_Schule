@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, Eye, EyeOff, Flag, Loader2, MoreHorizontal, Pencil, SearchX, Trash2 } from 'lucide-react'
+import { CheckCircle2, Eye, EyeOff, Flag, Loader2, MessageSquare, MoreHorizontal, Pencil, SearchX, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -30,6 +30,7 @@ import { ForumEditor } from '@/components/admin/forum-editor'
 import { ForumMarkdown } from '@/components/admin/forum-markdown'
 import { ForumReportDialog } from '@/components/admin/forum-report-dialog'
 import {
+  ForumAvatar,
   ForumCategoryPill,
   ForumHelpfulButton,
   ForumHiddenPill,
@@ -72,7 +73,7 @@ function ItemMenu({
   if (!own && !moderator) {
     // Lehrkräfte können fremde Beiträge nur melden
     return (
-      <Button variant="ghost" onClick={onReport} aria-label={`${label} melden`} title="Melden" className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text">
+      <Button variant="ghost" onClick={onReport} aria-label={`${label} melden`} title="Melden" className="size-9 rounded-full text-ws-muted hover:bg-ws-raised hover:text-ws-text">
         <Flag className="size-4" />
       </Button>
     )
@@ -80,8 +81,8 @@ function ItemMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" aria-label={`Weitere Aktionen: ${label}`} className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text">
-          <MoreHorizontal className="size-5" />
+        <Button variant="ghost" aria-label={`Weitere Aktionen: ${label}`} className="size-9 rounded-full text-ws-muted hover:bg-ws-raised hover:text-ws-text">
+          <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="border-ws-line bg-ws-surface text-ws-text">
@@ -245,7 +246,7 @@ export function ForumThreadView({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6">
         <AdminPageHeader title="Beitrag" breadcrumb="Beitrag" />
         <AdminLoadingState variant="cards" rows={1} label="Beitrag wird geladen …" />
       </div>
@@ -255,7 +256,7 @@ export function ForumThreadView({ id }: { id: string }) {
   if (error && !thread) {
     const notFound = error.status === 404
     return (
-      <div className="space-y-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6">
         <AdminPageHeader title="Beitrag" breadcrumb="Beitrag" />
         {notFound ? (
           <AdminEmptyState
@@ -282,89 +283,92 @@ export function ForumThreadView({ id }: { id: string }) {
   const renderReply = (reply: ForumReply, pinned = false) => {
     const editing = editingId === reply.id
     return (
-      <li
-        key={reply.id}
-        id={`antwort-${reply.id}`}
-        className={cn(
-          'rounded-2xl border bg-ws-surface p-4 sm:p-5',
-          pinned ? 'border-ws-green/40' : 'border-ws-line',
-          reply.is_hidden && 'border-ws-orange/40',
-        )}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {reply.is_solution && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-ws-green/30 bg-ws-green/15 px-2.5 py-0.5 text-xs font-semibold text-ws-green">
-                <CheckCircle2 className="size-3" aria-hidden />
-                Lösung
-              </span>
-            )}
-            {reply.is_hidden && <ForumHiddenPill label="von der Moderation ausgeblendet" />}
-            <ForumMeta author={reply.author_name} createdAt={reply.created_at} editedAt={reply.edited_at} />
-          </div>
-          <ItemMenu
-            own={reply.is_mine}
-            moderator={moderator}
-            hidden={reply.is_hidden}
-            label="Antwort"
-            onEdit={() => {
-              setEditingId(reply.id)
-              setEditText(reply.body)
-            }}
-            onDelete={() => setDeleteTarget({ type: 'reply', id: reply.id })}
-            onReport={() => setReportTarget({ type: 'reply', id: reply.id })}
-            onToggleHidden={() => void toggleHidden({ type: 'reply', id: reply.id }, reply.is_hidden)}
-          />
-        </div>
-
-        {editing ? (
-          <form
-            className="mt-3 space-y-3"
-            onSubmit={(e) => {
-              e.preventDefault()
-              void saveEdit(reply.id)
-            }}
-          >
-            <ForumEditor value={editText} onChange={setEditText} maxLength={FORUM_LIMITS.replyMax} minRows={4} label="Antwort bearbeiten" />
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={busyKey === `edit:${reply.id}` || !editText.trim()} className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover">
-                Speichern
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setEditingId(null)} className={outlineBtn}>Abbrechen</Button>
+      <li key={reply.id} id={`antwort-${reply.id}`} className="flex gap-3">
+        <ForumAvatar name={reply.author_name} className="mt-1" />
+        <div
+          className={cn(
+            'min-w-0 flex-1 rounded-2xl border px-4 py-3 sm:px-5',
+            pinned ? 'border-ws-green/40 bg-ws-green/5' : 'border-ws-line bg-ws-surface',
+            reply.is_hidden && 'border-ws-orange/40',
+          )}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <ForumMeta author={reply.author_name} createdAt={reply.created_at} editedAt={reply.edited_at} />
+              {reply.is_solution && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-ws-green/30 bg-ws-green/15 px-2.5 py-0.5 text-xs font-semibold text-ws-green">
+                  <CheckCircle2 className="size-3" aria-hidden />
+                  Lösung
+                </span>
+              )}
+              {reply.is_hidden && <ForumHiddenPill label="von der Moderation ausgeblendet" />}
             </div>
-          </form>
-        ) : (
-          <ForumMarkdown text={reply.body} className="mt-3" />
-        )}
-
-        {!editing && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <ForumHelpfulButton
-              count={reply.helpful_count}
-              active={reply.my_helpful}
-              own={reply.is_mine || reply.is_hidden}
-              onToggle={() => void toggleHelpful({ type: 'reply', id: reply.id })}
-            />
-            {isQuestion && post.is_mine && !reply.is_mine && !reply.is_hidden && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busyKey === 'solution'}
-                onClick={() => void setSolution(reply.is_solution ? null : reply.id)}
-                className={outlineBtn}
-              >
-                <CheckCircle2 className="mr-2 size-4" aria-hidden />
-                {reply.is_solution ? 'Lösung zurücknehmen' : 'Als Lösung markieren'}
-              </Button>
-            )}
+            <div className="-mr-2 shrink-0">
+              <ItemMenu
+                own={reply.is_mine}
+                moderator={moderator}
+                hidden={reply.is_hidden}
+                label="Antwort"
+                onEdit={() => {
+                  setEditingId(reply.id)
+                  setEditText(reply.body)
+                }}
+                onDelete={() => setDeleteTarget({ type: 'reply', id: reply.id })}
+                onReport={() => setReportTarget({ type: 'reply', id: reply.id })}
+                onToggleHidden={() => void toggleHidden({ type: 'reply', id: reply.id }, reply.is_hidden)}
+              />
+            </div>
           </div>
-        )}
+
+          {editing ? (
+            <form
+              className="mt-2 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault()
+                void saveEdit(reply.id)
+              }}
+            >
+              <ForumEditor value={editText} onChange={setEditText} maxLength={FORUM_LIMITS.replyMax} minRows={4} label="Antwort bearbeiten" />
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={busyKey === `edit:${reply.id}` || !editText.trim()} className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover">
+                  Speichern
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setEditingId(null)} className={outlineBtn}>Abbrechen</Button>
+              </div>
+            </form>
+          ) : (
+            <ForumMarkdown text={reply.body} className="mt-1.5" />
+          )}
+
+          {!editing && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <ForumHelpfulButton
+                count={reply.helpful_count}
+                active={reply.my_helpful}
+                own={reply.is_mine || reply.is_hidden}
+                onToggle={() => void toggleHelpful({ type: 'reply', id: reply.id })}
+              />
+              {isQuestion && post.is_mine && !reply.is_mine && !reply.is_hidden && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={busyKey === 'solution'}
+                  onClick={() => void setSolution(reply.is_solution ? null : reply.id)}
+                  className="h-9 gap-1.5 rounded-full px-3.5 text-sm text-ws-muted hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green"
+                >
+                  <CheckCircle2 className="size-4" aria-hidden />
+                  {reply.is_solution ? 'Lösung zurücknehmen' : 'Als Lösung markieren'}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </li>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-3xl space-y-8">
       <AdminPageHeader title={post.title} breadcrumb={post.title}>
         <div className="flex flex-wrap items-center gap-2">
           <ForumCategoryPill category={post.category} />
@@ -373,72 +377,87 @@ export function ForumThreadView({ id }: { id: string }) {
         </div>
       </AdminPageHeader>
 
-      <article className={cn('rounded-2xl border bg-ws-surface p-4 sm:p-6', post.is_hidden ? 'border-ws-orange/40' : 'border-ws-line')}>
+      <article className={cn('rounded-2xl border bg-ws-surface px-5 py-4 sm:px-6 sm:py-5', post.is_hidden ? 'border-ws-orange/40' : 'border-ws-line')}>
         {post.is_hidden && (
           <p role="status" className="mb-4 flex items-center gap-2 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm text-ws-orange">
             <EyeOff className="size-4 shrink-0" aria-hidden />
             Von der Moderation ausgeblendet. Für andere ist dieser Beitrag nicht sichtbar.
           </p>
         )}
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <ForumMeta author={post.author_name} createdAt={post.created_at} editedAt={post.edited_at} />
-          <ItemMenu
-            own={post.is_mine}
-            moderator={moderator}
-            hidden={post.is_hidden}
-            label="Beitrag"
-            onEdit={() => router.push(`${LEHRERZIMMER_HREF}/${post.id}/bearbeiten`)}
-            onDelete={() => setDeleteTarget({ type: 'post', id: post.id })}
-            onReport={() => setReportTarget({ type: 'post', id: post.id })}
-            onToggleHidden={() => void toggleHidden({ type: 'post', id: post.id }, post.is_hidden)}
-          />
+        <div className="flex items-center justify-between gap-2">
+          <ForumMeta avatar author={post.author_name} createdAt={post.created_at} editedAt={post.edited_at} />
+          <div className="-mr-2 shrink-0">
+            <ItemMenu
+              own={post.is_mine}
+              moderator={moderator}
+              hidden={post.is_hidden}
+              label="Beitrag"
+              onEdit={() => router.push(`${LEHRERZIMMER_HREF}/${post.id}/bearbeiten`)}
+              onDelete={() => setDeleteTarget({ type: 'post', id: post.id })}
+              onReport={() => setReportTarget({ type: 'post', id: post.id })}
+              onToggleHidden={() => void toggleHidden({ type: 'post', id: post.id }, post.is_hidden)}
+            />
+          </div>
         </div>
-        <ForumMarkdown text={post.body} className="mt-4" />
-        <div className="mt-4">
+        <ForumMarkdown text={post.body} className="mt-3 text-[1.0625rem]" />
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-ws-line pt-3">
           <ForumHelpfulButton
             count={post.helpful_count}
             active={post.my_helpful}
             own={post.is_mine || post.is_hidden}
             onToggle={() => void toggleHelpful({ type: 'post', id: post.id })}
           />
+          <span className="flex items-center gap-1.5 text-sm text-ws-muted">
+            <MessageSquare className="size-4" aria-hidden />
+            {thread.replies.length === 1 ? '1 Antwort' : `${thread.replies.length} Antworten`}
+          </span>
         </div>
       </article>
 
-      <section aria-labelledby="forum-antworten" className="space-y-3">
+      <section aria-labelledby="forum-antworten" className="space-y-4">
         <h2 id="forum-antworten" className="text-lg font-semibold text-ws-text">
           {thread.replies.length === 0 ? 'Antworten' : `Antworten (${thread.replies.length})`}
         </h2>
         {thread.replies.length === 0 ? (
-          <p className="text-sm text-ws-muted">Noch keine Antworten. Sei die erste Person.</p>
+          <p className="rounded-2xl border border-dashed border-ws-line p-5 text-center text-sm text-ws-muted">
+            Noch keine Antworten. Sei die erste Person.
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {ordered.solution && renderReply(ordered.solution, true)}
             {ordered.rest.map((r) => renderReply(r))}
           </ul>
         )}
-      </section>
 
-      <form onSubmit={sendReply} noValidate className="space-y-3 rounded-2xl border border-ws-line bg-ws-surface p-4 sm:p-5">
-        <h2 className="text-base font-semibold text-ws-text">Deine Antwort</h2>
-        <ForumEditor
-          value={replyText}
-          onChange={(v) => {
-            setReplyText(v)
-            setReplyError(null)
-          }}
-          maxLength={FORUM_LIMITS.replyMax}
-          minRows={4}
-          label="Deine Antwort"
-          placeholder="Schreibe eine Antwort …"
-          invalid={!!replyError}
-          describedBy={replyError ? 'forum-reply-error' : undefined}
-        />
-        {replyError && <p id="forum-reply-error" role="alert" className="text-sm text-ws-red">{replyError}</p>}
-        <Button type="submit" disabled={busyKey === 'reply'} className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover">
-          {busyKey === 'reply' && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
-          Antworten
-        </Button>
-      </form>
+        <form onSubmit={sendReply} noValidate className="flex gap-3 pt-2">
+          <span className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full bg-ws-raised text-ws-muted" aria-hidden>
+            <Pencil className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-3">
+            <h2 className="sr-only">Deine Antwort</h2>
+            <ForumEditor
+              value={replyText}
+              onChange={(v) => {
+                setReplyText(v)
+                setReplyError(null)
+              }}
+              maxLength={FORUM_LIMITS.replyMax}
+              minRows={3}
+              label="Deine Antwort"
+              placeholder="Schreibe eine Antwort …"
+              invalid={!!replyError}
+              describedBy={replyError ? 'forum-reply-error' : undefined}
+            />
+            {replyError && <p id="forum-reply-error" role="alert" className="text-sm text-ws-red">{replyError}</p>}
+            <div className="flex justify-end">
+              <Button type="submit" disabled={busyKey === 'reply'} className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover">
+                {busyKey === 'reply' && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+                Antworten
+              </Button>
+            </div>
+          </div>
+        </form>
+      </section>
 
       <ForumReportDialog target={reportTarget} onOpenChange={(open) => !open && setReportTarget(null)} />
 

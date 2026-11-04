@@ -157,7 +157,7 @@ export function LehrerzimmerOverview() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <AdminPageHeader
         title="Lehrerzimmer"
         description="Tipps, Fragen und Ideen für den Austausch im Kollegium."
@@ -190,33 +190,21 @@ export function LehrerzimmerOverview() {
       ) : (
         <>
           <section aria-label="Filter" className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ws-muted" aria-hidden />
-              <Input
-                type="search"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Titel, Text und Antworten durchsuchen"
-                aria-label="Beiträge durchsuchen"
-                maxLength={100}
-                className="h-11 rounded-xl border-ws-line bg-ws-surface pl-9 text-ws-text"
-              />
-            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem]">
+              <div className="relative sm:col-span-2 lg:col-span-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ws-muted" aria-hidden />
+                <Input
+                  type="search"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Beiträge durchsuchen"
+                  aria-label="Beiträge durchsuchen"
+                  title="Titel, Text und Antworten durchsuchen"
+                  maxLength={100}
+                  className="h-11 rounded-xl border-ws-line bg-ws-surface pl-9 text-ws-text"
+                />
+              </div>
 
-            <ToggleGroup
-              type="single"
-              value={filters.category ?? ALL}
-              onValueChange={(v) => setParams({ category: !v || v === ALL ? null : v })}
-              className="flex flex-wrap justify-start gap-2"
-              aria-label="Kategorie"
-            >
-              <ToggleGroupItem value={ALL} className={chipClass}>Alle</ToggleGroupItem>
-              {FORUM_CATEGORIES.map((c) => (
-                <ToggleGroupItem key={c} value={c} className={chipClass}>{FORUM_CATEGORY_LABEL[c]}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <Select
                 value={filters.department_id ?? ALL}
                 onValueChange={(v) => setParams({ department_id: v === ALL ? null : v, subject_id: null })}
@@ -247,7 +235,7 @@ export function LehrerzimmerOverview() {
                 value={filters.sort}
                 onValueChange={(v) => setParams({ sort: v === 'activity' ? null : (v as ForumSort) })}
               >
-                <SelectTrigger className={triggerClass} aria-label="Sortierung"><SelectValue /></SelectTrigger>
+                <SelectTrigger className={`${triggerClass} sm:col-span-2 lg:col-span-1`} aria-label="Sortierung"><SelectValue /></SelectTrigger>
                 <SelectContent className={contentClass}>
                   {FORUM_SORTS.map((s) => (
                     <SelectItem key={s} value={s}>{FORUM_SORT_LABEL[s]}</SelectItem>
@@ -256,15 +244,30 @@ export function LehrerzimmerOverview() {
               </Select>
             </div>
 
-            <div className="flex flex-wrap gap-x-6">
-              <Label htmlFor="forum-only-open" className="flex min-h-11 cursor-pointer items-center gap-3 text-ws-text">
-                <Switch id="forum-only-open" checked={filters.only_open} onCheckedChange={(v) => setParams({ only_open: v ? '1' : null })} />
-                Nur offene Fragen
-              </Label>
-              <Label htmlFor="forum-mine" className="flex min-h-11 cursor-pointer items-center gap-3 text-ws-text">
-                <Switch id="forum-mine" checked={filters.mine} onCheckedChange={(v) => setParams({ mine: v ? '1' : null })} />
-                Meine Beiträge
-              </Label>
+            <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+              <ToggleGroup
+                type="single"
+                value={filters.category ?? ALL}
+                onValueChange={(v) => setParams({ category: !v || v === ALL ? null : v })}
+                className="flex flex-wrap justify-start gap-2"
+                aria-label="Kategorie"
+              >
+                <ToggleGroupItem value={ALL} className={chipClass}>Alle</ToggleGroupItem>
+                {FORUM_CATEGORIES.map((c) => (
+                  <ToggleGroupItem key={c} value={c} className={chipClass}>{FORUM_CATEGORY_LABEL[c]}</ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+
+              <div className="flex flex-wrap gap-x-5">
+                <Label htmlFor="forum-only-open" className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-ws-text">
+                  <Switch id="forum-only-open" checked={filters.only_open} onCheckedChange={(v) => setParams({ only_open: v ? '1' : null })} />
+                  Nur offene Fragen
+                </Label>
+                <Label htmlFor="forum-mine" className="flex min-h-11 cursor-pointer items-center gap-2.5 text-sm text-ws-text">
+                  <Switch id="forum-mine" checked={filters.mine} onCheckedChange={(v) => setParams({ mine: v ? '1' : null })} />
+                  Meine Beiträge
+                </Label>
+              </div>
             </div>
           </section>
 

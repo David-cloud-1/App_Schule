@@ -48,27 +48,69 @@ export function ForumScopePills({ department, subject }: { department: string | 
   )
 }
 
-/** „von Name · vor 2 Std.“ — der volle Zeitpunkt steht im title */
+const AVATAR_TINTS = [
+  'bg-ws-green/15 text-ws-green',
+  'bg-ws-blue/15 text-ws-blue',
+  'bg-ws-gold/15 text-ws-gold',
+  'bg-ws-orange/15 text-ws-orange',
+]
+
+function initialsOf(name: string | null): string {
+  const parts = (name ?? '').trim().split(/[\s.@_-]+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0][0] ?? '?'
+  const second = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : ''
+  return (first + second).toUpperCase()
+}
+
+/** Runder Avatar mit Initialen; die Tönung ergibt sich aus dem Namen, damit dieselbe Person immer gleich aussieht */
+export function ForumAvatar({ name, className }: { name: string | null; className?: string }) {
+  const seed = [...(name ?? '')].reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'flex size-9 shrink-0 select-none items-center justify-center rounded-full text-xs font-bold',
+        AVATAR_TINTS[seed % AVATAR_TINTS.length],
+        className,
+      )}
+    >
+      {initialsOf(name)}
+    </span>
+  )
+}
+
+/** „Name · vor 2 Std.“ — der volle Zeitpunkt steht im title */
 export function ForumMeta({
   author,
   createdAt,
   editedAt,
   className,
+  avatar = false,
 }: {
   author: string | null
   createdAt: string
   editedAt?: string | null
   className?: string
+  /** Avatar mit Initialen vor den Namen setzen */
+  avatar?: boolean
 }) {
-  return (
+  const text = (
     <span className={cn('text-sm text-ws-muted', className)}>
-      von <span className="font-medium text-ws-text">{author ?? 'Unbekannt'}</span> ·{' '}
+      <span className="font-semibold text-ws-text">{author ?? 'Unbekannt'}</span> ·{' '}
       <time dateTime={createdAt} title={formatFullDateTime(createdAt)}>
         {formatRelativeTime(createdAt)}
       </time>
       {editedAt && (
         <span title={`Bearbeitet ${formatFullDateTime(editedAt)}`}> · bearbeitet</span>
       )}
+    </span>
+  )
+  if (!avatar) return text
+  return (
+    <span className="flex min-w-0 items-center gap-2.5">
+      <ForumAvatar name={author} className="size-8" />
+      {text}
     </span>
   )
 }
@@ -97,7 +139,7 @@ export function ForumHelpfulButton({
       aria-label={`Hilfreich, ${count} ${count === 1 ? 'Person findet das' : 'Personen finden das'}`}
       title={own ? 'Eigener Beitrag' : active ? 'Markierung zurücknehmen' : 'Als hilfreich markieren'}
       className={cn(
-        'min-h-11 gap-2 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green',
+        'h-9 gap-1.5 rounded-full border-ws-line bg-transparent px-3.5 text-sm text-ws-muted hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green',
         active && 'border-ws-green/30 bg-ws-green/15 text-ws-green hover:bg-ws-green/20 hover:text-ws-green',
       )}
     >
