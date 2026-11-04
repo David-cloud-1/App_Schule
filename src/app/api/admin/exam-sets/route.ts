@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireContentAdmin, assertCanAdminDepartmentContent } from '../_lib/auth'
+import {
+  requireContentAdmin,
+  assertCanAdminDepartmentContent,
+  resolveTargetDepartment,
+  targetDepartmentMissing,
+} from '../_lib/auth'
+import { loadLastChanges } from '@/lib/content-history'
 import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 
 const CreateSetSchema = z.object({
@@ -19,27 +25,38 @@ const CreateSetSchema = z.object({
 export async function GET() {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, departmentIds } = auth
+  const { supabase } = auth
 
-  // Eine Lehrkraft sieht die Sets aller Bereiche, in denen sie mindestens
-  // eine Zuständigkeit hat (PROJ-48) — Admin/Bereichs-Admin wie bisher nur
-  // ihren einen Arbeits-Bereich.
-  const { data, error } = await supabase
+  // Sets des Bereichs der Bereichsleiste, in „Alle Bereiche“ alle (PROJ-70).
+  let query = supabase
     .from('exam_question_sets')
-    .select('*')
-    .in('department_id', departmentIds)
+    .select('*, departments ( name, code )')
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(500)
+  if (auth.scopeDepartmentIds) {
+    query = query.in('department_id', auth.scopeDepartmentIds)
+  }
+  const { data, error } = await query
 
   if (error) return NextResponse.json({ error: 'Failed to fetch exam sets' }, { status: 500 })
-  return NextResponse.json({ sets: data ?? [] })
+
+  const rows = (data ?? []) as { id: string; departments?: { name: string; code: string } | null }[]
+  const lastChanges = await loadLastChanges(supabase, 'exam_question_set', rows.map((r) => r.id))
+  const sets = rows.map(({ departments, ...rest }) => ({
+    ...rest,
+    department_name: departments?.name ?? null,
+    department_code: departments?.code ?? null,
+    last_changed_by: lastChanges.get(rest.id)?.name ?? null,
+    last_changed_at: lastChanges.get(rest.id)?.at ?? null,
+  }))
+  return NextResponse.json({ sets })
 }
 
 export async function POST(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, isTeacher } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -52,10 +69,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request', details: parsed.error.flatten() }, { status: 400 })
   }
 
-  const departmentId = isTeacher ? parsed.data.department_id ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null) : auth.departmentIds[0]
-  if (!departmentId) {
-    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
-  }
+  const departmentId = resolveTargetDepartment(auth, parsed.data.department_id)
+  if (!departmentId) return targetDepartmentMissing()
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

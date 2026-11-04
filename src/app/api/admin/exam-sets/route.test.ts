@@ -33,6 +33,7 @@ function makeSupabaseMock({
   const mock = chainMock(
     (table, calls) => {
       if (table === 'profiles') return { data: { role, department_id: SPED } }
+      if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: SPED }] }
       if (table === 'exam_parts') return { data: EXAM_PARTS }
       if (table === 'exam_question_sets') {
         if (hasCall(calls, 'insert')) return { data: insertedSet, error: dbError }

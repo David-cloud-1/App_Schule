@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { analyzeVersionData } from '@/lib/question-quality'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 
 export type ContentType = 'question' | 'topic' | 'subject' | 'exam_question_set'
@@ -92,6 +93,9 @@ export function ContentHistorySheet({
   const [versions, setVersions] = useState<VersionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [restoreTarget, setRestoreTarget] = useState<VersionRow | null>(null)
   const [restoring, setRestoring] = useState(false)
 
@@ -108,12 +112,34 @@ export function ContentHistorySheet({
       if (!res.ok) throw new Error('load failed')
       const data = await res.json()
       setVersions(data.versions ?? [])
+      setPage(1)
+      setTotalPages(data.totalPages ?? 1)
     } catch {
       setLoadFailed(true)
     } finally {
       setLoading(false)
     }
   }
+
+  // Ältere Versionen seitenweise nachladen (PROJ-70)
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/admin/content-history/${contentType}/${contentId}?page=${page + 1}`)
+      if (!res.ok) throw new Error('load failed')
+      const data = await res.json()
+      setVersions((prev) => [...prev, ...(data.versions ?? [])])
+      setPage(page + 1)
+      setTotalPages(data.totalPages ?? totalPages)
+    } catch {
+      toast.error('Weitere Versionen konnten nicht geladen werden.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const restoreQuality =
+    contentType === 'question' && restoreTarget ? analyzeVersionData(restoreTarget.data) : null
 
   async function handleRestoreConfirmed() {
     if (!restoreTarget) return
@@ -203,6 +229,17 @@ export function ContentHistorySheet({
                 )
               })
             )}
+            {!loading && !loadFailed && page < totalPages && (
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="min-h-11 w-full border-ws-line text-ws-text hover:bg-ws-raised"
+              >
+                {loadingMore && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+                Ältere Versionen laden
+              </Button>
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -214,6 +251,25 @@ export function ContentHistorySheet({
             <AlertDialogDescription className="text-ws-muted">
               {restoreTarget && `Setzt den Inhalt auf den Stand vom ${formatDate(restoreTarget.createdAt)} zurück. `}
               Das ist selbst eine Änderung und lässt sich genauso wieder zurücknehmen.
+              {restoreTarget && versions[0] && versions[0].versionNumber > restoreTarget.versionNumber && (
+                <strong className="mt-2 block font-semibold text-ws-orange">
+                  Danach wurde noch {versions[0].versionNumber - restoreTarget.versionNumber}-mal geändert. Diese
+                  neueren Änderungen werden dabei überschrieben.
+                </strong>
+              )}
+              {restoreQuality && restoreQuality.findings.length > 0 && (
+                <span className="mt-2 block rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-ws-orange">
+                  <strong className="block font-semibold">
+                    Diese Fassung verletzt heutige Qualitätsregeln
+                    {restoreQuality.blockers > 0 ? ` (${restoreQuality.blockers} schwer)` : ''}:
+                  </strong>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                    {restoreQuality.findings.slice(0, 5).map((f) => (
+                      <li key={f.code}>{f.message}</li>
+                    ))}
+                  </ul>
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -99,6 +99,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-67: Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed |
 | P1 | PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed |
 | P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed |
+| P1 | PROJ-70: Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert | Approved |
 | P1 | PROJ-71: Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed |
 
 ## Success Metrics

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, ExternalLink, Info, Plus, UserCog } from 'lucide-react'
+import { ChevronRight, ExternalLink, Info, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { adminHomeActionsFor } from '@/lib/admin-nav'
 import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM, SUPER_ADMIN_ONLY_MESSAGE } from '@/lib/roles'
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
@@ -98,9 +98,8 @@ export function AdminHome({
   blockedBy?: 'admin' | 'super'
 }) {
   const { role, displayName, showTeacherWelcome } = useAdminRole()
-  const hasSubjects = useHasSubjects()
-  const actions = adminHomeActionsFor(role, hasSubjects)
-  const mySubjects = useMySubjectTiles(role === 'teacher' && hasSubjects)
+  const actions = adminHomeActionsFor(role)
+  const mySubjects = useMySubjectTiles(role === 'teacher')
   const running = useRunningAssessments()
 
   // PROJ-49: Hinweis nach der Umleitung einmal zeigen, dann die Markierung aus der Adresse nehmen
@@ -157,18 +156,6 @@ export function AdminHome({
         </p>
       )}
 
-      {!hasSubjects && (
-        <Link href="/admin/my-subjects" className={`${rowLink} rounded-xl border border-ws-green/40 bg-ws-surface`}>
-          <UserCog className="size-5 shrink-0 text-ws-green" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold text-ws-text">Trag deine Fächer ein</span>
-            <span className="block text-sm text-ws-muted">
-              Danach siehst und pflegst du die Fragen, Themen und Prüfungssimulationen deiner Fächer.
-            </span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-ws-muted" aria-hidden />
-        </Link>
-      )}
 
       <section aria-labelledby="home-running" className="space-y-3">
         <h2 id="home-running" className={sectionTitle}>

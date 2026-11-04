@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../_lib/auth'
 import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
+import { groupIntoBatch } from '@/lib/content-history'
 
 const QuestionSchema = z.object({
   question_text: z.string().min(1),
@@ -145,6 +146,9 @@ export async function POST(request: NextRequest) {
     await supabase.from('questions').delete().in('id', insertedIds)
     return NextResponse.json({ error: 'Failed to create exam set' }, { status: 500 })
   }
+
+  // Import = EIN Vorgang (PROJ-70)
+  await groupIntoBatch(supabase, 'question', insertedIds, `Prüfungsset-Import (${insertedIds.length} Fragen)`)
 
   await writeAuditLog(supabase, {
     admin_id: user.id,

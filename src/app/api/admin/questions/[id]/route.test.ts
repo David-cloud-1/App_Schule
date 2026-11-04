@@ -54,6 +54,7 @@ function makeAdminSupabase(opts: {
 
   const { client } = chainMock((table, calls) => {
     if (table === 'profiles') return { data: { role, department_id: departmentId } }
+    if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: departmentId }] }
     if (table === 'admin_audit_log') return {}
     if (table === 'answer_options') return { error: null }
     if (table === 'question_subjects') {
@@ -126,12 +127,12 @@ describe('GET /api/admin/questions/[id] (PROJ-49)', () => {
     expect(res.status).toBe(403)
   })
 
-  it('department_admin gets 404 for a question of a foreign department (PROJ-24)', async () => {
+  it('department_admin can read a question of another department (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
     )
     const res = await GET(makeRequest('GET'), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 
   it('returns question text, difficulty, class level and sorted answer options with the answer key merged in', async () => {
@@ -164,12 +165,12 @@ describe('PATCH /api/admin/questions/[id]', () => {
     expect(res.status).toBe(403)
   })
 
-  it('department_admin gets 404 for an orphaned question with no subject link (fail closed)', async () => {
+  it('department_admin may also edit an orphaned question with no subject link (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ role: 'department_admin', questionDepartmentId: null }) as never
     )
     const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 
   it('super-admin can still reach an orphaned question with no subject link', async () => {
@@ -223,12 +224,12 @@ describe('PATCH /api/admin/questions/[id]', () => {
     expect(res.status).toBe(400)
   })
 
-  it('department_admin gets 404 for a question of a foreign department (PROJ-24)', async () => {
+  it('department_admin may change a question of another department (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
     )
     const res = await PATCH(makeRequest('PATCH', { is_active: false }), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 })
 
@@ -266,11 +267,11 @@ describe('DELETE /api/admin/questions/[id]', () => {
     expect(write?.payload).toMatchObject({ deleted_at: expect.any(String) })
   })
 
-  it('department_admin gets 404 when deleting a question of a foreign department (PROJ-24)', async () => {
+  it('department_admin may move a question of another department to the trash (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ role: 'department_admin', departmentId: 'dept-sped', questionDepartmentId: 'dept-tour' }) as never
     )
     const res = await DELETE(makeRequest('DELETE'), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 })

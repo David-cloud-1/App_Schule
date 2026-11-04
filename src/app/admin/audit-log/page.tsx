@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import {
   Select,
   SelectContent,
@@ -42,6 +42,8 @@ import {
 } from '@/components/ui/pagination'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
+import { ContentChangesPanel } from '@/components/admin/content-changes-panel'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type AuditEntry = {
   id: string
@@ -97,6 +99,8 @@ type BatchPreview = { batchId: string; affectedCount: number; conflicts: { conte
 export default function AdminAuditLogPage() {
   const { role } = useAdminRole()
   const isSuperAdmin = role === 'admin'
+  // Bereichsleiste (PROJ-70): der Super-Admin sieht einen Bereich oder alle
+  const scopeDepartment = useOptionalAdminRole()?.scope?.current ?? null
   const [period, setPeriod] = useState<'7d' | '30d' | 'all'>('30d')
   const [actionType, setActionType] = useState<string>('all')
   const [page, setPage] = useState(1)
@@ -135,6 +139,7 @@ export default function AdminAuditLogPage() {
       params.set('period', period)
       if (actionType !== 'all') params.set('action_type', actionType)
       if (personId) params.set('object_id', personId)
+      if (isSuperAdmin && scopeDepartment) params.set('department_id', scopeDepartment)
       params.set('page', String(page))
 
       const res = await fetch(`/api/admin/audit-log?${params.toString()}`)
@@ -150,7 +155,7 @@ export default function AdminAuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [period, actionType, page, personId])
+  }, [period, actionType, page, personId, isSuperAdmin, scopeDepartment])
 
   useEffect(() => {
     load()
@@ -204,10 +209,8 @@ export default function AdminAuditLogPage() {
     return result
   }, [totalPages, page])
 
-  return (
-    <div className="space-y-6">
-      <AdminPageHeader title="Änderungsprotokoll" description={`${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
-
+  const auditLogBody = (
+    <>
       <div className="flex flex-wrap gap-3">
         {personId && (
           <Button
@@ -398,6 +401,30 @@ export default function AdminAuditLogPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  )
+
+  return (
+    <div className="space-y-6">
+      <AdminPageHeader title="Änderungsprotokoll" description={`${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
+
+      {isSuperAdmin ? (
+        <Tabs defaultValue="verwaltung">
+          <TabsList className="bg-ws-raised">
+            <TabsTrigger value="verwaltung">Verwaltung</TabsTrigger>
+            <TabsTrigger value="inhalte">Inhalte &amp; Personen</TabsTrigger>
+          </TabsList>
+          <TabsContent value="inhalte" className="mt-4">
+            <ContentChangesPanel />
+          </TabsContent>
+          <TabsContent value="verwaltung" className="mt-4 space-y-6">
+            {auditLogBody}
+          </TabsContent>
+        </Tabs>
+      ) : (
+        auditLogBody
+      )}
+
     </div>
   )
 }

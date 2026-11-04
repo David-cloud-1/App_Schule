@@ -212,10 +212,10 @@ describe('GET /api/admin/questions', () => {
       expect.stringContaining('qs_filter:question_subjects!inner'),
       expect.anything()
     )
-    expect(builder.eq).toHaveBeenCalledWith('qs_filter.subjects.department_id', 'dept-sped')
-    // Kein .in('id', [...]) mehr — genau das erzeugte bei ~3800 Fragen eine
-    // zu lange URL und ließ die Anfrage scheitern.
-    expect(builder.in).not.toHaveBeenCalled()
+    expect(builder.in).toHaveBeenCalledWith('qs_filter.subjects.department_id', ['dept-sped'])
+    // Nur die Bereichs-IDs (wenige) — nie eine Liste von Frage-IDs: das erzeugte
+    // bei ~3800 Fragen eine zu lange URL und ließ die Anfrage scheitern.
+    expect(builder.in).not.toHaveBeenCalledWith('id', expect.anything())
   })
 
   it('hides private Nachweis-Fragen from a department admin (PROJ-46)', async () => {

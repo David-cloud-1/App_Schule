@@ -1,5 +1,6 @@
 'use client'
 
+import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 import { useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { toast } from 'sonner'
@@ -92,6 +93,8 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
   const [rows, setRows] = useState<ValidatedRow[]>([])
   const [parsing, setParsing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const needsTarget = useNeedsTargetDepartment()
+  const [targetDepartment, setTargetDepartment] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const subjectCodes = new Set(subjects.map((s) => s.code.toUpperCase()))
@@ -219,12 +222,19 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
       toast.error('Zu viele Zeilen. Maximal 500 Fragen pro Import erlaubt.')
       return
     }
+    if (needsTarget && !targetDepartment) {
+      toast.error('Bitte wähle zuerst den Bereich, in dem importiert wird.')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/admin/questions/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: validRows.map((r) => r.normalized!) }),
+        body: JSON.stringify({
+          rows: validRows.map((r) => r.normalized!),
+          ...(targetDepartment ? { department_id: targetDepartment } : {}),
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -264,6 +274,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
         </DialogHeader>
 
         <div className="space-y-5">
+          <TargetDepartmentField value={targetDepartment} onChange={setTargetDepartment} />
 
           {/* Schritt 1 — Vorlage & Datei */}
           <div className="space-y-3">
@@ -443,7 +454,7 @@ export function CsvImportDialog({ open, onOpenChange, subjects, onSuccess }: Pro
           </Button>
           <Button
             onClick={handleImport}
-            disabled={submitting || validRows.length === 0 || step < 2}
+            disabled={submitting || validRows.length === 0 || step < 2 || (needsTarget && !targetDepartment)}
             className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
           >
             {submitting ? (

@@ -306,3 +306,23 @@ describe('Fehlender Kontext', () => {
     )
   })
 })
+
+describe('analyzeVersionData (PROJ-70)', () => {
+  const version = (texts: string[]) => ({
+    question_text: 'Welche Aussage zum Frachtvertrag ist richtig?',
+    explanation: 'Weil das Gesetz es so regelt.',
+    answer_options: texts.map((t, i) => ({ option_text: t, is_correct: i === 0, display_order: i + 1 })),
+  })
+
+  it('liefert null ohne Antwortoptionen', async () => {
+    const { analyzeVersionData } = await import('./question-quality')
+    expect(analyzeVersionData({ question_text: 'x' })).toBeNull()
+    expect(analyzeVersionData(null)).toBeNull()
+  })
+
+  it('meldet eine Fassung mit zu wenigen Optionen', async () => {
+    const { analyzeVersionData } = await import('./question-quality')
+    const report = analyzeVersionData(version(['Ja', 'Nein']))
+    expect(report?.findings.some((f) => f.code === 'option_count')).toBe(true)
+  })
+})

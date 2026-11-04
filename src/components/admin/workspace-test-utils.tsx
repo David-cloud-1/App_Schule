@@ -1,7 +1,7 @@
 import { vi } from 'vitest'
 import { act, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { AdminRoleProvider } from './admin-role-provider'
+import { AdminRoleProvider, type AdminRoleContextValue } from './admin-role-provider'
 import { WorkspaceProvider } from './workspace-provider'
 import { DepartmentProvider } from '@/components/department-provider'
 import { SidebarProvider } from '@/components/ui/sidebar'
@@ -47,13 +47,13 @@ export function renderInWorkspace(
     theme = 'dark',
     withSidebar = true,
     showTeacherWelcome,
-    hasSubjectAssignments,
+    scope,
   }: {
     role?: TeacherRole
     theme?: WorkspaceTheme
     withSidebar?: boolean
     showTeacherWelcome?: boolean
-    hasSubjectAssignments?: boolean
+    scope?: AdminRoleContextValue['scope']
   } = {},
 ) {
   const content = withSidebar ? <SidebarProvider>{ui}</SidebarProvider> : ui
@@ -66,7 +66,7 @@ export function renderInWorkspace(
           displayName: 'Frau Muster',
           email: 'muster@schule.de',
           showTeacherWelcome,
-          hasSubjectAssignments,
+                scope,
         }}
       >
         <WorkspaceProvider initialTheme={theme}>{content}</WorkspaceProvider>

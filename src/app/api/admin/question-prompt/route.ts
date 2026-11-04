@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireContentAdmin, assertCanAdminDepartmentContent } from '../_lib/auth'
+import {
+  requireContentAdmin,
+  assertCanAdminDepartmentContent,
+  resolveTargetDepartment,
+  targetDepartmentMissing,
+} from '../_lib/auth'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { buildQuestionPrompt } from '@/lib/question-prompt'
@@ -18,22 +23,18 @@ export interface QuestionPromptResponse {
  * GET /api/admin/question-prompt (PROJ-22)
  *
  * Der kopierbare Fragen-Prompt, zusammengesetzt aus einem Fachbereich und
- * dessen aktiven Fächern. Admin/Bereichs-Admin: immer ihr Arbeits-Bereich.
- * Eine Lehrkraft mit Zuständigkeiten in mehreren Bereichen (PROJ-48) gibt den
- * gewünschten Bereich über `?department_id=` an. Kein KI-Aufruf — kostet nichts.
+ * dessen aktiven Fächern. Der Bereich kommt über `?department_id=`, sonst aus
+ * der Bereichsleiste; in „Alle Bereiche“ ist er Pflicht (PROJ-70). Kein
+ * KI-Aufruf — kostet nichts.
  */
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, isTeacher } = auth
+  const { supabase } = auth
 
   const requestedDepartmentId = request.nextUrl.searchParams.get('department_id')
-  const departmentId = isTeacher
-    ? requestedDepartmentId ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null)
-    : auth.departmentIds[0]
-  if (!departmentId) {
-    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
-  }
+  const departmentId = resolveTargetDepartment(auth, requestedDepartmentId)
+  if (!departmentId) return targetDepartmentMissing()
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

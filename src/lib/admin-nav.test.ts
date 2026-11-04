@@ -71,25 +71,22 @@ describe('Admin-Navigation (PROJ-40)', () => {
   it('nennt hinter der Gruppe „Inhalte“ den Umfang der Rolle (PROJ-49)', () => {
     const inhalte = ADMIN_NAV_GROUPS.find((g) => g.id === 'inhalte')!
     const verwaltung = ADMIN_NAV_GROUPS.find((g) => g.id === 'verwaltung')!
-    expect(adminNavGroupHint(inhalte, 'teacher')).toBe('deine Fächer')
+    expect(adminNavGroupHint(inhalte, 'teacher')).toBe('alle Bereiche')
     expect(adminNavGroupHint(inhalte, 'department_admin')).toBe('ganzer Bereich')
     expect(adminNavGroupHint(inhalte, 'admin')).toBe('alle Bereiche')
     expect(adminNavGroupHint(verwaltung, 'admin')).toBeNull()
   })
 
-  it('zeigt einer Lehrkraft ohne eingetragenes Fach keine (leeren) Inhalts-Seiten', () => {
-    const labels = adminNavGroupsFor('teacher', false).flatMap((g) => g.items.map((i) => i.label))
-    expect(labels).toEqual(['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Meine Fächer', 'Lehrerzimmer'])
-    // für Admins spielt die Angabe keine Rolle
-    expect(adminNavGroupsFor('department_admin', false)).toEqual(adminNavGroupsFor('department_admin'))
+  it('zeigt jeder Lehrkraft die Inhalts-Seiten (PROJ-70: keine Fach-Eintragung nötig)', () => {
+    const labels = adminNavGroupsFor('teacher').flatMap((g) => g.items.map((i) => i.label))
+    expect(labels).toEqual(expect.arrayContaining(['Fragen', 'Themen', 'Fächer', 'Prüfungssimulation']))
   })
 
   it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {
-    const ids = (role: 'teacher' | 'department_admin', hasSubjects = true) =>
-      adminHomeActionsFor(role, hasSubjects).map((a) => a.id)
+    const ids = (role: 'teacher' | 'department_admin') =>
+      adminHomeActionsFor(role).map((a) => a.id)
     expect(ids('department_admin')).toEqual(['neuer-nachweis', 'fragen', 'material', 'nutzer', 'werkzeugkiste'])
     expect(ids('teacher')).toEqual(['neuer-nachweis', 'fragen', 'werkzeugkiste'])
-    expect(ids('teacher', false)).toEqual(['neuer-nachweis', 'werkzeugkiste'])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {

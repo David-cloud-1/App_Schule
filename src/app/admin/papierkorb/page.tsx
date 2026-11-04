@@ -18,6 +18,7 @@ import {
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { DepartmentTag } from '@/components/admin/content-meta'
 
 type ContentType = 'question' | 'topic' | 'subject' | 'exam_question_set'
 /** PROJ-63: das Lehrerzimmer hat einen eigenen Papierkorb-Reiter (30 Tage) */
@@ -46,6 +47,10 @@ type TrashItem = {
   kind?: 'post' | 'reply'
   title?: string
   snippet?: string
+  /** PROJ-70: Bereich und löschende Person */
+  department_name?: string | null
+  department_code?: string | null
+  deleted_by?: string | null
 }
 
 function formatDate(iso: string) {
@@ -152,8 +157,15 @@ export default function PapierkorbPage() {
                 {items.map((item) => (
                   <li key={item.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm text-ws-text truncate">{activeTabDef.labelField(item)}</div>
-                      <div className="text-xs text-ws-muted">Gelöscht am {formatDate(item.deleted_at)}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="min-w-0 truncate text-sm text-ws-text" title={activeTabDef.labelField(item)}>
+                          {activeTabDef.labelField(item)}
+                        </div>
+                        <DepartmentTag name={item.department_name} code={item.department_code} />
+                      </div>
+                      <div className="text-xs text-ws-muted">
+                        Gelöscht{item.deleted_by ? ` von ${item.deleted_by}` : ''} am {formatDate(item.deleted_at)}
+                      </div>
                     </div>
                     <Button
                       size="sm"

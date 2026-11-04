@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { resolveSubjectCode } from '@/lib/subjects'
+import { loadLastChanges } from '@/lib/content-history'
 import { requireContentAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 
@@ -43,7 +43,7 @@ const PAGE_SIZE = 20
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, isSuperAdmin, isTeacher } = auth
+  const { supabase, isSuperAdmin } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -65,29 +65,17 @@ export async function GET(request: NextRequest) {
   // vorab geladene ID-Liste: Bei ~3800 Fragen pro Bereich würde eine
   // .in('id', [...]) sonst eine URL weit über jedem Längenlimit erzeugen
   // und die Anfrage scheitern lassen (PROJ-24-Regression, 2026-10-01).
-  let subjectId: string | null = null
+  // Kürzel („KSK“) gibt es in mehreren Bereichen: gesucht wird im Bereich der
+  // Bereichsleiste (PROJ-70), in „Alle Bereiche“ in allen. Die Treffer-IDs sind
+  // wenige, eine kurze .in()-Liste ist hier unbedenklich.
+  let subjectIds: string[] | null = null
   if (subject) {
-    if (isTeacher) {
-      // Kürzel nur unter den eigenen Zuständigkeiten (PROJ-48) — eine
-      // Lehrkraft kann in mehreren Bereichen unterrichten, daher kein
-      // einzelner Bereich wie bei Admin/Bereichs-Admin.
-      const { data: subjectRow } = await supabase
-        .from('subjects')
-        .select('id')
-        .eq('code', subject.trim().toUpperCase())
-        .in('id', auth.subjectIds ?? [])
-        .maybeSingle()
-      if (!subjectRow) {
-        return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
-      }
-      subjectId = (subjectRow as { id: string }).id
-    } else {
-      // Kürzel nur im Bereich des Admins (PROJ-22)
-      const subjectRow = await resolveSubjectCode(supabase, auth.departmentIds[0], subject)
-      if (!subjectRow) {
-        return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
-      }
-      subjectId = subjectRow.id
+    let subjectQuery = supabase.from('subjects').select('id').eq('code', subject.trim().toUpperCase())
+    if (auth.scopeDepartmentIds) subjectQuery = subjectQuery.in('department_id', auth.scopeDepartmentIds)
+    const { data: subjectRows } = await subjectQuery
+    subjectIds = ((subjectRows ?? []) as { id: string }[]).map((r) => r.id)
+    if (subjectIds.length === 0) {
+      return NextResponse.json({ questions: [], total: 0, page, totalPages: 0 })
     }
   }
 
@@ -106,8 +94,9 @@ export async function GET(request: NextRequest) {
         is_private,
         owner_id,
         created_at,
+        version_number,
         answer_options ( id, option_text, display_order ),
-        question_subjects ( subjects ( id, code, name ) ),
+        question_subjects ( subjects ( id, code, name, departments ( name, code ) ) ),
         topics ( id, name ),
         qs_filter:question_subjects!inner ( subject_id, subjects!inner ( department_id ) )
       `,
@@ -116,11 +105,8 @@ export async function GET(request: NextRequest) {
     .is('deleted_at', null)
     .order(sort, { ascending: sort_dir === 'asc' })
 
-  if (isTeacher) {
-    // Außerhalb ihrer Fächer sieht eine Lehrkraft keine Inhalte (PROJ-48 AC).
-    query = query.in('qs_filter.subject_id', auth.subjectIds ?? [])
-  } else {
-    query = query.eq('qs_filter.subjects.department_id', auth.departmentIds[0])
+  if (auth.scopeDepartmentIds) {
+    query = query.in('qs_filter.subjects.department_id', auth.scopeDepartmentIds)
   }
 
   // PROJ-46 (E6): private Nachweis-Fragen gehören nicht in die
@@ -130,8 +116,8 @@ export async function GET(request: NextRequest) {
     query = query.eq('is_private', false)
   }
 
-  if (subjectId) {
-    query = query.eq('qs_filter.subject_id', subjectId)
+  if (subjectIds) {
+    query = query.in('qs_filter.subject_id', subjectIds)
   }
   if (difficulty) {
     query = query.eq('difficulty', difficulty)
@@ -167,26 +153,12 @@ export async function GET(request: NextRequest) {
   // included) no longer has SELECT on that column (PROJ-21).
   const withKey = await attachAnswerKey(data ?? [])
 
-  // "Zuletzt geändert von <Name> am <Datum>" (PROJ-47) — letzte Version je
-  // Frage auf dieser Seite in einer Abfrage statt N+1.
-  const questionIds = withKey.map((q) => q.id as string)
-  const lastChangeMap = new Map<string, { name: string | null; at: string }>()
-  if (questionIds.length > 0) {
-    const { data: versions } = await supabase
-      .from('content_versions')
-      .select('content_id, version_number, created_at, changed_by_label, profiles:changed_by ( display_name )')
-      .eq('content_type', 'question')
-      .in('content_id', questionIds)
-      .order('version_number', { ascending: false })
-    for (const v of versions ?? []) {
-      const row = v as typeof v & { profiles?: { display_name?: string | null } | null }
-      if (lastChangeMap.has(row.content_id as string)) continue
-      lastChangeMap.set(row.content_id as string, {
-        name: row.profiles?.display_name ?? row.changed_by_label ?? null,
-        at: row.created_at as string,
-      })
-    }
-  }
+  // "Zuletzt geändert von <Name> am <Datum>" (PROJ-47): eine Abfrage für die Seite
+  const lastChangeMap = await loadLastChanges(
+    supabase,
+    'question',
+    withKey.map((q) => q.id as string)
+  )
 
   const questions = withKey.map((q) => {
     // qs_filter diente nur dem Bereichsfilter (s. o.) und gehört nicht in die Antwort.

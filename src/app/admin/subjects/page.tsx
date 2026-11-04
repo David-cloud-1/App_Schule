@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Edit, Plus, FolderKanban } from 'lucide-react'
+import { Edit, History, Plus, FolderKanban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
@@ -26,6 +26,8 @@ import {
   type AdminSubjectRow,
 } from '@/components/admin/subject-form-modal'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
 import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
 
 type SubjectListItem = {
@@ -36,6 +38,11 @@ type SubjectListItem = {
   icon_name: string
   is_active: boolean
   active_question_count: number
+  version_number?: number
+  department_name?: string | null
+  department_code?: string | null
+  last_changed_by?: string | null
+  last_changed_at?: string | null
 }
 
 export default function AdminSubjectsPage() {
@@ -44,6 +51,8 @@ export default function AdminSubjectsPage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AdminSubjectRow | null>(null)
+  const [historyTarget, setHistoryTarget] = useState<SubjectListItem | null>(null)
+  const emptyScopeText = useEmptyScopeText('Fächer')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,10 +82,14 @@ export default function AdminSubjectsPage() {
       const res = await fetch(`/api/admin/subjects/${s.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: next }),
+        body: JSON.stringify({ is_active: next, expected_version: s.version_number }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
+        if (showVersionConflict(res, data, () => setHistoryTarget(s))) {
+          load()
+          return
+        }
         toast.error(data?.error ?? 'Status konnte nicht geändert werden.')
         return
       }
@@ -118,7 +131,7 @@ export default function AdminSubjectsPage() {
         <AdminEmptyState
           icon={FolderKanban}
           title="Noch keine Fächer"
-          description="Lege das erste Fach an, damit du Fragen und Themen zuordnen kannst."
+          description={`${emptyScopeText} Lege das erste Fach an, damit du Fragen und Themen zuordnen kannst.`}
           action={
             <Button
               onClick={() => {
@@ -176,7 +189,13 @@ export default function AdminSubjectsPage() {
                   const blockDeactivate = s.is_active && s.active_question_count > 0
                   return (
                     <TableRow key={s.id} className="border-ws-line hover:bg-ws-bg/40">
-                      <TableCell className="text-ws-text font-medium">{s.name}</TableCell>
+                      <TableCell className="text-ws-text font-medium">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span>{s.name}</span>
+                          <DepartmentTag name={s.department_name} code={s.department_code} />
+                        </div>
+                        <LastChangedLine by={s.last_changed_by} at={s.last_changed_at} />
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -213,8 +232,18 @@ export default function AdminSubjectsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setHistoryTarget(s)}
+                          title="Verlauf"
+                          aria-label="Verlauf"
+                        >
+                          <History className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Fach bearbeiten"
                           onClick={() => {
-                            setEditing({ id: s.id, name: s.name, code: s.code })
+                            setEditing({ id: s.id, name: s.name, code: s.code, version_number: s.version_number })
                             setFormOpen(true)
                           }}
                         >
@@ -235,7 +264,22 @@ export default function AdminSubjectsPage() {
         onOpenChange={setFormOpen}
         subject={editing}
         onSuccess={load}
+        onOpenHistory={() => {
+          const target = subjects.find((x) => x.id === editing?.id)
+          if (target) setHistoryTarget(target)
+        }}
       />
+
+      {historyTarget && (
+        <ContentHistorySheet
+          open
+          onOpenChange={(open) => !open && setHistoryTarget(null)}
+          contentType="subject"
+          contentId={historyTarget.id}
+          title={historyTarget.name}
+          onRestored={load}
+        />
+      )}
     </div>
   )
 }

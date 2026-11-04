@@ -34,19 +34,17 @@ function setup({
   width = 1280,
   theme = 'dark',
   sidebarOpen = true,
-  hasSubjectAssignments,
 }: {
   role?: TeacherRole
   width?: number
   theme?: WorkspaceTheme
   sidebarOpen?: boolean
-  hasSubjectAssignments?: boolean
 } = {}) {
   mockViewport(width)
   return render(
     <DepartmentProvider value={{ department: testDepartment, examParts: [] }}>
       <AdminRoleProvider
-        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de', hasSubjectAssignments }}
+        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de' }}
       >
         <AdminShell initialTheme={theme} sidebarOpen={sidebarOpen}>
           <p>Seiteninhalt</p>
@@ -234,22 +232,3 @@ describe('Schnellsuche (PROJ-45)', () => {
   })
 })
 
-describe('AdminShell – Lehrkraft ohne eingetragenes Fach', () => {
-  it('zeigt auf Inhalts-Seiten den Weg zu „Meine Fächer“ statt des Seiteninhalts', () => {
-    mockPath = '/admin/topics'
-    setup({ role: 'teacher', hasSubjectAssignments: false })
-    expect(screen.queryByText('Seiteninhalt')).not.toBeInTheDocument()
-    expect(screen.getByText('Trag zuerst deine Fächer ein')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Meine Fächer öffnen' })).toHaveAttribute('href', '/admin/my-subjects')
-  })
-
-  it('lässt Seiten ohne Fach-Bezug und Lehrkräfte mit Fach durch', () => {
-    mockPath = '/admin/leistungsnachweise'
-    const first = setup({ role: 'teacher', hasSubjectAssignments: false })
-    expect(screen.getByText('Seiteninhalt')).toBeInTheDocument()
-    first.unmount()
-    mockPath = '/admin/topics'
-    setup({ role: 'teacher', hasSubjectAssignments: true })
-    expect(screen.getByText('Seiteninhalt')).toBeInTheDocument()
-  })
-})

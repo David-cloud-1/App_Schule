@@ -31,6 +31,7 @@ function makeAdminClient() {
   const mock = chainMock(
     (table, calls) => {
       if (table === 'profiles') return { data: { role: 'admin', department_id: SPED } }
+      if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: SPED }] }
       if (table === 'departments') return { data: DEPARTMENT_ROW }
       if (table === 'subjects') {
         const department = eqValue(calls, 'department_id')

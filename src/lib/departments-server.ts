@@ -225,6 +225,21 @@ export const getCurrentExamParts = cache(async (): Promise<ExamPart[]> => {
   }
 })
 
+/** Prüfungsaufbau mehrerer Bereiche (Lehrkräfte-Bereich, PROJ-70: Prüfungssets in jedem Bereich anlegen) */
+export async function getExamPartsByDepartment(departmentIds: string[]): Promise<Record<string, ExamPart[]>> {
+  const entries = await Promise.all(
+    departmentIds.map(async (id): Promise<[string, ExamPart[]]> => {
+      try {
+        return [id, await loadExamParts(id)]
+      } catch (err) {
+        console.error('[getExamPartsByDepartment]', err)
+        return [id, []]
+      }
+    })
+  )
+  return Object.fromEntries(entries)
+}
+
 /** Fächer-IDs des Bereichs im aktuellen Seitenaufruf */
 export async function getCurrentDepartmentSubjectIds(): Promise<string[]> {
   const department = await getCurrentDepartment()

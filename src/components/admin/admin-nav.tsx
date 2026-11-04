@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import { ChevronDown, ExternalLink, LayoutDashboard, type LucideIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useDepartment } from '@/components/department-provider'
-import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -41,10 +41,9 @@ import {
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const { hofShortName } = useDepartment()
   const { role } = useAdminRole()
-  const hasSubjects = useHasSubjects()
   const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
-  const groups = adminNavGroupsFor(role, hasSubjects)
+  const groups = adminNavGroupsFor(role)
   // PROJ-63: Hinweise fürs Lehrerzimmer; wird bei jedem Seitenwechsel neu geholt
   const forumCounts = useForumNavCounts(pathname)
 

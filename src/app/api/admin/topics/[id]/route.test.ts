@@ -36,7 +36,11 @@ function makeSupabase(opts: {
     if (table === 'profiles') return { data: { role, department_id: 'dept-sped' } }
     if (table === 'teacher_subject_assignments') return { data: assignments }
     if (table === 'admin_audit_log') return {}
+    if (table === 'content_versions') return { data: { created_at: '2026-11-04T08:00:00Z', changed_by_label: null, profiles: { display_name: 'Frau Muster' } } }
     if (table === 'topics') {
+      if (hasCall(calls, 'maybeSingle') && calls.some((c) => c.method === 'select' && String(c.args[0]) === 'version_number')) {
+        return { data: { version_number: 5 } }
+      }
       if (hasCall(calls, 'maybeSingle')) {
         return { data: { subjects: { id: topicSubjectId, department_id: topicDepartmentId } } }
       }
@@ -52,12 +56,12 @@ function makeSupabase(opts: {
 beforeEach(() => vi.clearAllMocks())
 
 describe('PATCH /api/admin/topics/[id] (PROJ-48)', () => {
-  it('returns 404 for a teacher without responsibility for the topic\'s subject (regression: used to always 403)', async () => {
+  it('lets a teacher rename a topic of a subject she is not entered for (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeSupabase({ role: 'teacher', assignments: [{ department_id: 'dept-sped', subject_id: 'subj-other' }] }).client as never
     )
     const res = await PATCH(makeRequest({ name: 'Neuer Name' }), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 
   it('allows a teacher responsible for the subject to rename the topic', async () => {
@@ -76,12 +80,12 @@ describe('PATCH /api/admin/topics/[id] (PROJ-48)', () => {
 })
 
 describe('DELETE /api/admin/topics/[id] (PROJ-48)', () => {
-  it('returns 404 for a teacher without responsibility for the topic\'s subject', async () => {
+  it('lets a teacher move a topic of a foreign subject to the trash (PROJ-70)', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeSupabase({ role: 'teacher', assignments: [{ department_id: 'dept-sped', subject_id: 'subj-other' }] }).client as never
     )
     const res = await DELETE({} as unknown as NextRequest, makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(200)
   })
 
   it('allows a teacher responsible for the subject to delete (soft-delete) the topic', async () => {
@@ -92,5 +96,28 @@ describe('DELETE /api/admin/topics/[id] (PROJ-48)', () => {
     expect(writes.find((w) => w.table === 'topics' && w.method === 'update')?.payload).toMatchObject({
       deleted_at: expect.any(String),
     })
+  })
+})
+
+describe('PATCH /api/admin/topics/[id] — Konflikt-Schutz (PROJ-70)', () => {
+  it('lehnt das Speichern mit veralteter Zählnummer ab und nennt die Person', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'teacher' }).client as never)
+    const res = await PATCH(makeRequest({ name: 'Neuer Name', expected_version: 3 }), makeCtx())
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toBe('Dieses Thema wurde gerade von Frau Muster geändert.')
+    expect(body.conflict).toBe(true)
+  })
+
+  it('speichert bei passender Zählnummer', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'teacher' }).client as never)
+    const res = await PATCH(makeRequest({ name: 'Neuer Name', expected_version: 5 }), makeCtx())
+    expect(res.status).toBe(200)
+  })
+
+  it('speichert ohne Zählnummer wie bisher', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'teacher' }).client as never)
+    const res = await PATCH(makeRequest({ name: 'Neuer Name' }), makeCtx())
+    expect(res.status).toBe(200)
   })
 })

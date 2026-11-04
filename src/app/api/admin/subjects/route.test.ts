@@ -46,6 +46,7 @@ function makeAdminSupabase(overrides: {
   lastMock = chainMock(
     (table, calls) => {
       if (table === 'profiles') return { data: { role: 'admin', department_id: 'dept-sped' } }
+      if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: 'dept-sped' }] }
       if (table === 'admin_audit_log') return {}
       if (table === 'subjects') {
         // POST: Anlegen
@@ -130,7 +131,7 @@ describe('GET /api/admin/subjects', () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ subjectsData: mockSubjects }) as never)
     await GET()
     const list = lastMock.queries.find((q) => q.table === 'subjects')!
-    expect(eqValue(list.calls, 'department_id')).toBe('dept-sped')
+    expect(list.calls.some((c) => c.method === 'in' && c.args[0] === 'department_id' && JSON.stringify(c.args[1]) === JSON.stringify(['dept-sped']))).toBe(true)
   })
 })
 

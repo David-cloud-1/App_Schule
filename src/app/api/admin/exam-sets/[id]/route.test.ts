@@ -28,6 +28,7 @@ function setup({
   const mock = chainMock(
     (table, calls) => {
       if (table === 'profiles') return { data: { role, department_id: ownDepartment } }
+      if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: ownDepartment }] }
       if (table === 'exam_question_sets') {
         if (hasCall(calls, 'update')) return { data: { id: 'set-1', name: 'Neu', question_ids: [QID_1, QID_2] } }
         if (!setExists) return { data: null }

@@ -24,6 +24,9 @@ import {
   canAdminQuestion,
   requireTeacher,
   ADMIN_DEPARTMENT_COOKIE,
+  ADMIN_SCOPE_COOKIE,
+  SCOPE_ALL,
+  resolveTargetDepartment,
 } from './auth'
 
 function makeCookies(value: string | undefined) {
@@ -166,10 +169,10 @@ describe('canAdminDepartment / assertCanAdminDepartment', () => {
   })
 })
 
-function makeContentSupabase(profile: unknown, assignments: unknown[] = []) {
+function makeContentSupabase(profile: unknown, departments: unknown[] = [{ id: 'dept-a' }, { id: 'dept-b' }]) {
   const { client } = chainMock((table) => {
     if (table === 'profiles') return { data: profile }
-    if (table === 'teacher_subject_assignments') return { data: assignments }
+    if (table === 'departments') return { data: departments }
     return {}
   }, {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1', email: 'u1@example.com' } } }) },
@@ -177,7 +180,17 @@ function makeContentSupabase(profile: unknown, assignments: unknown[] = []) {
   return client
 }
 
-describe('requireContentAdmin (PROJ-48)', () => {
+function makeScopeCookies(scope: string | undefined, department?: string) {
+  return {
+    get: vi.fn((name: string) => {
+      if (name === ADMIN_SCOPE_COOKIE && scope) return { value: scope }
+      if (name === ADMIN_DEPARTMENT_COOKIE && department) return { value: department }
+      return undefined
+    }),
+  }
+}
+
+describe('requireContentAdmin (PROJ-70)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(cookies).mockResolvedValue(makeCookies(undefined) as never)
@@ -195,118 +208,96 @@ describe('requireContentAdmin (PROJ-48)', () => {
     expect(auth.error?.status).toBe(403)
   })
 
-  it('admin gets a single-item departmentIds array and null subjectIds', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeContentSupabase({ role: 'admin', department_id: 'dept-a' }) as never
-    )
+  it.each(['teacher', 'department_admin', 'admin'])('lets %s in and knows every department', async (role) => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role, department_id: 'dept-a' }) as never)
     const auth = await requireContentAdmin()
     expect(auth.error).toBeNull()
     if (auth.error) return
-    expect(auth.departmentIds).toEqual(['dept-a'])
+    expect(auth.departmentIds).toEqual(['dept-a', 'dept-b'])
     expect(auth.subjectIds).toBeNull()
-    expect(auth.isTeacher).toBe(false)
   })
 
-  it('department_admin without an assigned department is rejected (fail closed)', async () => {
-    vi.mocked(getFallbackDepartment).mockResolvedValue({ id: 'dept-fallback' } as never)
-    vi.mocked(createClient).mockResolvedValue(
-      makeContentSupabase({ role: 'department_admin', department_id: null }) as never
-    )
-    const auth = await requireContentAdmin()
-    expect(auth.error?.status).toBe(403)
-  })
-
-  it('a teacher without any assignment is rejected', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher' }, []) as never)
-    const auth = await requireContentAdmin()
-    expect(auth.error?.status).toBe(403)
-  })
-
-  it('a teacher with assignments gets the distinct departments and subjects (dept-only rows excluded from subjectIds)', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeContentSupabase({ role: 'teacher' }, [
-        { department_id: 'dept-a', subject_id: 'subj-1' },
-        { department_id: 'dept-a', subject_id: 'subj-2' },
-        { department_id: 'dept-b', subject_id: null },
-      ]) as never
-    )
+  it('a teacher without any subject entry is no longer rejected', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher', department_id: 'dept-a' }) as never)
     const auth = await requireContentAdmin()
     expect(auth.error).toBeNull()
-    if (auth.error) return
-    expect(auth.isTeacher).toBe(true)
-    expect(auth.departmentIds.sort()).toEqual(['dept-a', 'dept-b'])
-    expect(auth.subjectIds?.sort()).toEqual(['subj-1', 'subj-2'])
+  })
+
+  it('starts a teacher in the profile department', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher', department_id: 'dept-b' }) as never)
+    const auth = await requireContentAdmin()
+    if (auth.error) throw new Error('unexpected')
+    expect(auth.scopeDepartmentIds).toEqual(['dept-b'])
+    expect(auth.departmentId).toBe('dept-b')
+  })
+
+  it('starts a teacher without profile department in "all areas"', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher', department_id: null }) as never)
+    const auth = await requireContentAdmin()
+    if (auth.error) throw new Error('unexpected')
+    expect(auth.scopeDepartmentIds).toBeNull()
+    expect(auth.departmentId).toBeNull()
+  })
+
+  it('follows the scope cookie: "alle" and a concrete department', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher', department_id: 'dept-a' }) as never)
+    vi.mocked(cookies).mockResolvedValue(makeScopeCookies(SCOPE_ALL) as never)
+    const all = await requireContentAdmin()
+    if (all.error) throw new Error('unexpected')
+    expect(all.scopeDepartmentIds).toBeNull()
+
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'teacher', department_id: 'dept-a' }) as never)
+    vi.mocked(cookies).mockResolvedValue(makeScopeCookies('dept-b') as never)
+    const one = await requireContentAdmin()
+    if (one.error) throw new Error('unexpected')
+    expect(one.scopeDepartmentIds).toEqual(['dept-b'])
+  })
+
+  it('falls back to the start department when the cookie names an unknown department', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeContentSupabase({ role: 'department_admin', department_id: 'dept-a' }) as never)
+    vi.mocked(cookies).mockResolvedValue(makeScopeCookies('gibt-es-nicht') as never)
+    const auth = await requireContentAdmin()
+    if (auth.error) throw new Error('unexpected')
+    expect(auth.scopeDepartmentIds).toEqual(['dept-a'])
   })
 })
 
-describe('canAdminSubject / canAdminDepartmentContent (PROJ-48)', () => {
-  const superAdmin = { isSuperAdmin: true, isDepartmentAdmin: false, departmentIds: ['dept-a'], subjectIds: null }
-  const deptAdmin = { isSuperAdmin: false, isDepartmentAdmin: true, departmentIds: ['dept-a'], subjectIds: null }
-  const teacher = { isSuperAdmin: false, isDepartmentAdmin: false, departmentIds: ['dept-a', 'dept-b'], subjectIds: ['subj-1'] }
+describe('resolveTargetDepartment (PROJ-70)', () => {
+  const base = { departmentIds: ['dept-a', 'dept-b'] }
 
-  it('super-admin can admin any subject/department', () => {
-    expect(canAdminSubject(superAdmin as never, 'subj-x', 'dept-z')).toBe(true)
-    expect(canAdminDepartmentContent(superAdmin as never, 'dept-z')).toBe(true)
+  it('prefers an explicit, known department', () => {
+    expect(resolveTargetDepartment({ ...base, departmentId: 'dept-a' } as never, 'dept-b')).toBe('dept-b')
   })
 
-  it('department_admin can only admin subjects/content of their own department', () => {
-    expect(canAdminSubject(deptAdmin as never, 'subj-x', 'dept-a')).toBe(true)
-    expect(canAdminSubject(deptAdmin as never, 'subj-x', 'dept-b')).toBe(false)
-    expect(canAdminDepartmentContent(deptAdmin as never, 'dept-a')).toBe(true)
-    expect(canAdminDepartmentContent(deptAdmin as never, 'dept-b')).toBe(false)
+  it('uses the scope department without an explicit one', () => {
+    expect(resolveTargetDepartment({ ...base, departmentId: 'dept-a' } as never)).toBe('dept-a')
   })
 
-  it('a teacher can only admin a subject she is assigned to, even within an assigned department', () => {
-    expect(canAdminSubject(teacher as never, 'subj-1', 'dept-a')).toBe(true)
-    expect(canAdminSubject(teacher as never, 'subj-2', 'dept-a')).toBe(false)
+  it('has no target in "all areas" without an explicit department', () => {
+    expect(resolveTargetDepartment({ ...base, departmentId: null } as never)).toBeNull()
   })
 
-  it('a teacher can admin department content (e.g. creating a new subject) for any department she has an assignment in', () => {
+  it('rejects an unknown department', () => {
+    expect(resolveTargetDepartment({ ...base, departmentId: 'dept-a' } as never, 'dept-x')).toBeNull()
+  })
+})
+
+describe('Inhalts-Rechte (PROJ-70)', () => {
+  const teacher = { isSuperAdmin: false, isDepartmentAdmin: false, departmentIds: ['dept-a', 'dept-b'], subjectIds: null }
+
+  it('every content role may administer any subject, in any area', () => {
+    expect(canAdminSubject(teacher as never, 'subj-x', 'dept-z')).toBe(true)
+  })
+
+  it('may create content in every known department, but not in an unknown one', () => {
     expect(canAdminDepartmentContent(teacher as never, 'dept-a')).toBe(true)
     expect(canAdminDepartmentContent(teacher as never, 'dept-b')).toBe(true)
     expect(canAdminDepartmentContent(teacher as never, 'dept-c')).toBe(false)
-  })
-})
-
-describe('canAdminQuestion (PROJ-48)', () => {
-  function makeQsSupabase(rows: unknown[]) {
-    const { client } = chainMock((table) => {
-      if (table === 'question_subjects') return { data: rows }
-      return {}
-    })
-    return client
-  }
-
-  it('super-admin can admin any question without querying subjects', async () => {
-    const auth = { isSuperAdmin: true, isDepartmentAdmin: false, departmentIds: ['dept-a'], subjectIds: null, supabase: makeQsSupabase([]) }
-    expect(await canAdminQuestion(auth as never, 'q-1')).toBe(true)
+    expect(canAdminDepartmentContent(teacher as never, null)).toBe(false)
   })
 
-  it('department_admin can admin a question if any linked subject belongs to their department', async () => {
-    const supabase = makeQsSupabase([{ subject_id: 's1', subjects: { department_id: 'dept-a' } }])
-    const auth = { isSuperAdmin: false, isDepartmentAdmin: true, departmentIds: ['dept-a'], subjectIds: null, supabase }
-    expect(await canAdminQuestion(auth as never, 'q-1')).toBe(true)
-  })
-
-  it('a teacher can admin a multi-subject question if she is responsible for at least one linked subject', async () => {
-    const supabase = makeQsSupabase([
-      { subject_id: 's1', subjects: { department_id: 'dept-a' } },
-      { subject_id: 's2', subjects: { department_id: 'dept-a' } },
-    ])
-    const auth = { isSuperAdmin: false, isDepartmentAdmin: false, departmentIds: ['dept-a'], subjectIds: ['s2'], supabase }
-    expect(await canAdminQuestion(auth as never, 'q-1')).toBe(true)
-  })
-
-  it('a teacher cannot admin a question with no matching subject', async () => {
-    const supabase = makeQsSupabase([{ subject_id: 's1', subjects: { department_id: 'dept-a' } }])
-    const auth = { isSuperAdmin: false, isDepartmentAdmin: false, departmentIds: ['dept-a'], subjectIds: ['s2'], supabase }
-    expect(await canAdminQuestion(auth as never, 'q-1')).toBe(false)
-  })
-
-  it('returns false for an orphaned question with no subject links at all', async () => {
-    const supabase = makeQsSupabase([])
-    const auth = { isSuperAdmin: false, isDepartmentAdmin: true, departmentIds: ['dept-a'], subjectIds: null, supabase }
-    expect(await canAdminQuestion(auth as never, 'q-1')).toBe(false)
+  it('may administer any question without querying subjects', async () => {
+    expect(await canAdminQuestion(teacher as never, 'q-1')).toBe(true)
   })
 })
 

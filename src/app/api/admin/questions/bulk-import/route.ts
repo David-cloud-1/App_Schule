@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireContentAdmin, writeAuditLog, assertCanAdminDepartmentContent } from '../../_lib/auth'
+import {
+  requireContentAdmin,
+  writeAuditLog,
+  assertCanAdminDepartmentContent,
+  resolveTargetDepartment,
+  targetDepartmentMissing,
+} from '../../_lib/auth'
 import { checkImportRows, type ImportRow } from '@/lib/question-import'
 import { groupIntoBatch } from '@/lib/content-history'
 import { getDepartmentById } from '@/lib/departments'
@@ -35,7 +41,7 @@ const BodySchema = z.object({
 export async function POST(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, isTeacher } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -52,25 +58,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const departmentId = isTeacher ? parsed.data.department_id ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null) : auth.departmentIds[0]
-  if (!departmentId) {
-    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
-  }
+  const departmentId = resolveTargetDepartment(auth, parsed.data.department_id)
+  if (!departmentId) return targetDepartmentMissing()
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 
   // Fächer und Klassenstufen des Bereichs (PROJ-22): ein Kürzel gilt nur in
-  // seinem Bereich; unbekannte Kürzel werden zeilengenau abgelehnt. Eine
-  // Lehrkraft (PROJ-48) sieht hier nur ihre eigenen Fächer — ein fach_code
-  // außerhalb ihrer Zuständigkeit wird dadurch automatisch wie ein
-  // unbekanntes Kürzel abgelehnt.
+  // seinem Bereich; unbekannte Kürzel werden zeilengenau abgelehnt.
   const department = await getDepartmentById(supabase, departmentId)
   let departmentSubjects
   try {
     departmentSubjects = await fetchDepartmentSubjects(supabase, departmentId, { activeOnly: true })
-    if (isTeacher) {
-      departmentSubjects = departmentSubjects.filter((s) => auth.subjectIds?.includes(s.id))
-    }
   } catch (err) {
     console.error('[bulk-import] subject load', err)
     return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })

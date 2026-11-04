@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../../_lib/auth'
+import { checkVersionConflict, versionConflictBody } from '@/lib/content-history'
 
 const UpdateSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
     code: z.string().min(1).max(10).optional(),
     is_active: z.boolean().optional(),
+    /** Zählnummer, die die Oberfläche beim Öffnen sah (Konflikt-Schutz, PROJ-70) */
+    expected_version: z.number().int().min(1).optional(),
   })
-  .refine((val) => Object.keys(val).length > 0, {
+  .refine((val) => Object.keys(val).some((k) => k !== 'expected_version'), {
     message: 'No fields provided',
   })
 
@@ -42,6 +45,9 @@ export async function PATCH(
   if (!current) return NextResponse.json({ error: 'Fach nicht gefunden.' }, { status: 404 })
   const forbidden = assertCanAdminSubject(auth, id, current.department_id as string)
   if (forbidden) return forbidden
+
+  const conflict = await checkVersionConflict(supabase, 'subject', id, parsed.data.expected_version)
+  if (conflict) return NextResponse.json(versionConflictBody(conflict, 'Dieses Fach'), { status: 409 })
 
   const update: Record<string, unknown> = {}
   if (parsed.data.name !== undefined) update.name = parsed.data.name

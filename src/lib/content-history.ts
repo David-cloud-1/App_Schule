@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { z } from 'zod'
 
 export const CONTENT_TYPES = ['question', 'topic', 'subject', 'exam_question_set'] as const
 export type ContentType = (typeof CONTENT_TYPES)[number]
@@ -97,3 +98,69 @@ export async function checkVersionConflict(
     changedAt: row?.created_at ?? new Date().toISOString(),
   }
 }
+
+export type LastChange = { name: string | null; at: string }
+
+/**
+ * „Zuletzt geändert von <Name> am <Datum>“ (PROJ-47/70) für eine Seite einer
+ * Liste in einer einzigen Abfrage (statt N+1). Gelöschte Konten zeigen
+ * „Gelöschtes Konto“, Läufe ohne Person ihre Quelle. Schlägt die Abfrage
+ * fehl, bleibt die Liste ohne Zusatz — sie darf deswegen nie ausfallen.
+ */
+export async function loadLastChanges(
+  supabase: SupabaseClient,
+  contentType: ContentType,
+  ids: string[]
+): Promise<Map<string, LastChange>> {
+  const result = new Map<string, LastChange>()
+  if (ids.length === 0) return result
+  const { data } = await supabase
+    .from('content_versions')
+    .select('content_id, version_number, created_at, changed_by, changed_by_label, profiles:changed_by ( display_name )')
+    .eq('content_type', contentType)
+    .in('content_id', ids)
+    .order('version_number', { ascending: false })
+  for (const v of data ?? []) {
+    const row = v as unknown as {
+      content_id: string
+      created_at: string
+      changed_by: string | null
+      changed_by_label: string | null
+      profiles?: { display_name?: string | null } | null
+    }
+    if (result.has(row.content_id)) continue
+    result.set(row.content_id, {
+      name: row.profiles?.display_name ?? row.changed_by_label ?? (row.changed_by ? null : 'Gelöschtes Konto'),
+      at: row.created_at,
+    })
+  }
+  return result
+}
+
+/** 409-Antwort für einen Speicher-Konflikt (PROJ-70): nennt die Person, die zuletzt geändert hat. */
+export function versionConflictBody(conflict: VersionConflict, noun: string) {
+  return {
+    error: `${noun} wurde gerade von ${conflict.changedByName ?? 'jemand anderem'} geändert.`,
+    conflict: true as const,
+    currentVersion: conflict.currentVersion,
+    changedBy: conflict.changedByName,
+    changedAt: conflict.changedAt,
+  }
+}
+
+const MAX_PERIOD_MS = 366 * 24 * 60 * 60 * 1000
+
+/** Zeitraum (von/bis) für Auswertung und Sammel-Rücknahme: gültige Zeitpunkte, höchstens ein Jahr */
+export const periodSchema = z
+  .object({
+    from: z.string().datetime({ offset: true }),
+    to: z.string().datetime({ offset: true }),
+  })
+  .refine((v) => new Date(v.to).getTime() > new Date(v.from).getTime(), {
+    message: 'Das Ende muss nach dem Anfang liegen.',
+    path: ['to'],
+  })
+  .refine((v) => new Date(v.to).getTime() - new Date(v.from).getTime() <= MAX_PERIOD_MS, {
+    message: 'Der Zeitraum darf höchstens ein Jahr umfassen.',
+    path: ['to'],
+  })

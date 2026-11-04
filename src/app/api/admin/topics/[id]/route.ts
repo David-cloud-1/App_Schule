@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../../_lib/auth'
+import { checkVersionConflict, versionConflictBody } from '@/lib/content-history'
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100).trim(),
+  /** Zählnummer, die die Oberfläche beim Öffnen sah (Konflikt-Schutz, PROJ-70) */
+  expected_version: z.number().int().min(1).optional(),
 })
 
 export async function PATCH(
@@ -40,6 +43,9 @@ export async function PATCH(
   const existingSubject = existing.subjects as unknown as { id: string; department_id: string }
   const forbidden = assertCanAdminSubject(auth, existingSubject.id, existingSubject.department_id)
   if (forbidden) return forbidden
+
+  const conflict = await checkVersionConflict(supabase, 'topic', id, parsed.data.expected_version)
+  if (conflict) return NextResponse.json(versionConflictBody(conflict, 'Dieses Thema'), { status: 409 })
 
   const { data, error } = await supabase
     .from('topics')

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireContentAdmin, assertCanAdminDepartmentContent } from '../../_lib/auth'
+import { checkVersionConflict, versionConflictBody } from '@/lib/content-history'
 
 const UpdateSchema = z.object({
   is_active: z.boolean().optional(),
@@ -8,6 +9,8 @@ const UpdateSchema = z.object({
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
   // Fragen eines bestehenden Sets austauschen; echte IDs, damit nichts Beliebiges im Set landet
   question_ids: z.array(z.string().uuid()).min(1).max(1000).optional(),
+  /** Zählnummer, die die Oberfläche beim Öffnen sah (Konflikt-Schutz, PROJ-70) */
+  expected_version: z.number().int().min(1).optional(),
 })
 
 export async function PATCH(
@@ -41,9 +44,13 @@ export async function PATCH(
   // Multiple sets may be active per part simultaneously (e.g. different exams
   // for different classes). Activating one no longer deactivates the others.
 
+  const { expected_version, ...changes } = parsed.data
+  const conflict = await checkVersionConflict(supabase, 'exam_question_set', id, expected_version)
+  if (conflict) return NextResponse.json(versionConflictBody(conflict, 'Dieses Prüfungsset'), { status: 409 })
+
   const { data, error } = await supabase
     .from('exam_question_sets')
-    .update(parsed.data)
+    .update(changes)
     .eq('id', id)
     .select()
     .single()

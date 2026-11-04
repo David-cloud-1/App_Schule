@@ -25,11 +25,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useClassLevelOptions } from '@/components/department-provider'
+import { showVersionConflict } from '@/components/admin/content-meta'
+import { useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
 export type AdminSubject = {
   id: string
   code: string
   name: string
+  /** Bereich des Fachs: in „Alle Bereiche“ gibt es gleiche Kürzel in mehreren Bereichen (PROJ-70) */
+  department_name?: string | null
 }
 
 export type AdminAnswerOption = {
@@ -60,6 +64,8 @@ export type AdminQuestion = {
   owner_id?: string | null
   class_level?: number | null
   topic_id?: string | null
+  /** Zählnummer beim Öffnen (Konflikt-Schutz, PROJ-70) */
+  version_number?: number
   answer_options: AdminAnswerOption[]
   question_subjects: { subjects: { id: string; code: string; name: string } | null }[]
 }
@@ -70,6 +76,8 @@ interface Props {
   question?: AdminQuestion | null
   subjects: AdminSubject[]
   onSuccess: () => void
+  /** Öffnet den Verlauf aus dem Konflikt-Hinweis */
+  onOpenHistory?: (question: AdminQuestion) => void
 }
 
 type FormState = {
@@ -112,8 +120,10 @@ export function QuestionFormModal({
   question,
   subjects,
   onSuccess,
+  onOpenHistory,
 }: Props) {
   const classLevelOptions = useClassLevelOptions()
+  const inAllScopes = useNeedsTargetDepartment()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const saveAndNewRef = useRef(false)
@@ -229,6 +239,7 @@ export function QuestionFormModal({
     try {
       const url = isEdit ? `/api/admin/questions/${question!.id}` : '/api/admin/questions'
       const method = isEdit ? 'PATCH' : 'POST'
+      if (isEdit && question?.version_number) payload.expected_version = question.version_number
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -236,6 +247,11 @@ export function QuestionFormModal({
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
+        if (showVersionConflict(res, data, onOpenHistory && question ? () => onOpenHistory(question) : undefined)) {
+          onSuccess()
+          onOpenChange(false)
+          return
+        }
         toast.error(data?.error ?? 'Speichern fehlgeschlagen')
         return
       }
@@ -468,11 +484,17 @@ export function QuestionFormModal({
                           className="border-ws-line"
                         />
                         <span className="font-semibold">{s.code}</span>
+                        {inAllScopes && s.department_name && (
+                          <span className="text-xs text-ws-muted">{s.department_name}</span>
+                        )}
                       </label>
                     )
                   })
                 )}
               </div>
+              {inAllScopes && (
+                <p className="text-xs text-ws-muted">Das Fach bestimmt, in welchem Bereich die Frage liegt.</p>
+              )}
               {errors.subject_ids && (
                 <p className="text-xs text-ws-red">{errors.subject_ids}</p>
               )}

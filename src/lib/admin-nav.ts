@@ -50,11 +50,6 @@ export interface AdminNavItem {
    * bereichsweit zuständig). Standard: sichtbar.
    */
   managerVisible?: boolean
-  /**
-   * Eine Lehrkraft sieht den Eintrag erst, wenn sie unter „Meine Fächer"
-   * mindestens ein Fach eingetragen hat — vorher wäre die Seite leer.
-   */
-  needsSubjects?: boolean
   /** Titel kommt aus dem Fachbereich (z. B. „Hof-Items“) statt aus `label` */
   usesHofName?: boolean
   /** Externe Adresse: öffnet in neuem Tab, nie als „aktiv“ markiert */
@@ -151,7 +146,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: FileText,
         // PROJ-48: welche Fragen eine Lehrkraft sieht, entscheidet ihre Fach-Zuständigkeit
         teacherVisible: true,
-        needsSubjects: true,
       },
       {
         href: '/admin/ai-generator',
@@ -165,7 +159,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Fächer anlegen und ordnen',
         icon: FolderKanban,
         teacherVisible: true,
-        needsSubjects: true,
       },
       {
         href: '/admin/topics',
@@ -173,7 +166,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Themen und Klassenstufen pflegen',
         icon: Tag,
         teacherVisible: true,
-        needsSubjects: true,
       },
       {
         href: '/admin/exam-sets',
@@ -181,7 +173,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Übungsprüfungen, die Azubis selbst ohne Note spielen',
         icon: ClipboardList,
         teacherVisible: true,
-        needsSubjects: true,
       },
       {
         href: '/admin/papierkorb',
@@ -189,7 +180,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Gelöschte Fragen, Themen, Fächer und Prüfungssets wiederherstellen',
         icon: Trash2,
         teacherVisible: true,
-        needsSubjects: true,
       },
     ],
   },
@@ -242,21 +232,20 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 
 /**
  * Darf diese Rolle den Eintrag sehen? Nur Anzeige — die Rechte prüft der Server.
- * `hasSubjects` zählt nur für Lehrkräfte (Standard: true).
  */
-export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole, hasSubjects = true): boolean {
+export function adminNavItemVisibleFor(item: AdminNavItem, role: TeacherRole): boolean {
   if (item.managerVisible === false && role !== 'teacher') return false
   if (role === 'admin') return true
   if (item.superAdminOnly) return false
   if (role === 'department_admin') return true
-  return !!item.teacherVisible && (hasSubjects || !item.needsSubjects)
+  return !!item.teacherVisible
 }
 
 /** Gruppen für eine Rolle; leere Gruppen entfallen */
-export function adminNavGroupsFor(role: TeacherRole, hasSubjects = true): AdminNavGroup[] {
+export function adminNavGroupsFor(role: TeacherRole): AdminNavGroup[] {
   return ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => adminNavItemVisibleFor(item, role, hasSubjects)),
+    items: group.items.filter((item) => adminNavItemVisibleFor(item, role)),
   })).filter((group) => group.items.length > 0)
 }
 
@@ -272,8 +261,8 @@ export function isAdminNavActive(pathname: string, href: string): boolean {
 }
 
 /** Alle Einträge, die eine Rolle sehen darf, in Reihenfolge der Navigation */
-export function adminNavItemsFor(role: TeacherRole, hasSubjects = true): AdminNavItem[] {
-  return adminNavGroupsFor(role, hasSubjects).flatMap((group) => group.items)
+export function adminNavItemsFor(role: TeacherRole): AdminNavItem[] {
+  return adminNavGroupsFor(role).flatMap((group) => group.items)
 }
 
 /**
@@ -357,8 +346,8 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
   { id: 'darstellung', label: 'Darstellung wechseln', keywords: ['hell', 'dunkel', 'beamer', 'farbe', 'theme'], kind: 'theme' },
 ]
 
-export function adminCommandActionsFor(role: TeacherRole, hasSubjects = true): AdminCommandAction[] {
-  const visible = new Set(adminNavItemsFor(role, hasSubjects).map((item) => item.href))
+export function adminCommandActionsFor(role: TeacherRole): AdminCommandAction[] {
+  const visible = new Set(adminNavItemsFor(role).map((item) => item.href))
   return ADMIN_COMMAND_ACTIONS.filter(
     (action) => action.kind !== 'link' || !action.requiresHref || visible.has(action.requiresHref),
   )
@@ -421,7 +410,7 @@ export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
   },
 ]
 
-export function adminHomeActionsFor(role: TeacherRole, hasSubjects = true): AdminHomeAction[] {
-  const visible = new Set(adminNavItemsFor(role, hasSubjects).map((item) => item.href))
+export function adminHomeActionsFor(role: TeacherRole): AdminHomeAction[] {
+  const visible = new Set(adminNavItemsFor(role).map((item) => item.href))
   return ADMIN_HOME_ACTIONS.filter((action) => visible.has(action.requiresHref))
 }

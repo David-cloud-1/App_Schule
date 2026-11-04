@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { chainMock } from '@/test/supabase-chain-mock'
-import { checkVersionConflict, groupIntoBatch, isContentType } from './content-history'
+import {
+  checkVersionConflict,
+  groupIntoBatch,
+  isContentType,
+  loadLastChanges,
+  periodSchema,
+  versionConflictBody,
+} from './content-history'
 
 describe('isContentType', () => {
   it('erkennt gültige Inhaltstypen', () => {
@@ -99,5 +106,57 @@ describe('groupIntoBatch', () => {
     const { client } = chainMock(() => ({ data: null }), { rpc })
     const result = await groupIntoBatch(client, 'question', ['q-1', 'q-2'], 'Bulk-Import')
     expect(result).toBeNull()
+  })
+})
+
+describe('loadLastChanges (PROJ-70)', () => {
+  const rows = [
+    { content_id: 'a', version_number: 3, created_at: '2026-11-03T10:00:00Z', changed_by: 'u1', changed_by_label: null, profiles: { display_name: 'Frau Muster' } },
+    { content_id: 'a', version_number: 2, created_at: '2026-11-02T10:00:00Z', changed_by: 'u2', changed_by_label: null, profiles: { display_name: 'Herr Alt' } },
+    { content_id: 'b', version_number: 1, created_at: '2026-11-01T10:00:00Z', changed_by: null, changed_by_label: null, profiles: null },
+    { content_id: 'c', version_number: 1, created_at: '2026-11-01T11:00:00Z', changed_by: null, changed_by_label: 'Qualitäts-Korrekturlauf', profiles: null },
+  ]
+
+  it('nimmt je Inhalt die neueste Version und fragt nur einmal', async () => {
+    const { client, from } = chainMock(() => ({ data: rows }))
+    const map = await loadLastChanges(client, 'subject', ['a', 'b', 'c'])
+    expect(from).toHaveBeenCalledTimes(1)
+    expect(map.get('a')).toEqual({ name: 'Frau Muster', at: '2026-11-03T10:00:00Z' })
+  })
+
+  it('zeigt „Gelöschtes Konto“ ohne Person und die Quelle bei Läufen', async () => {
+    const { client } = chainMock(() => ({ data: rows }))
+    const map = await loadLastChanges(client, 'question', ['a', 'b', 'c'])
+    expect(map.get('b')?.name).toBe('Gelöschtes Konto')
+    expect(map.get('c')?.name).toBe('Qualitäts-Korrekturlauf')
+  })
+
+  it('fragt bei leerer Liste gar nicht erst', async () => {
+    const { client, from } = chainMock(() => ({ data: [] }))
+    expect((await loadLastChanges(client, 'topic', [])).size).toBe(0)
+    expect(from).not.toHaveBeenCalled()
+  })
+})
+
+describe('versionConflictBody (PROJ-70)', () => {
+  it('nennt die Person, die zuletzt geändert hat', () => {
+    const body = versionConflictBody({ currentVersion: 4, changedByName: 'Frau Muster', changedAt: '2026-11-04T08:00:00Z' }, 'Dieses Thema')
+    expect(body).toMatchObject({ error: 'Dieses Thema wurde gerade von Frau Muster geändert.', conflict: true, currentVersion: 4 })
+  })
+
+  it('bleibt ohne Namen verständlich', () => {
+    const body = versionConflictBody({ currentVersion: 2, changedByName: null, changedAt: '2026-11-04T08:00:00Z' }, 'Dieses Fach')
+    expect(body.error).toBe('Dieses Fach wurde gerade von jemand anderem geändert.')
+  })
+})
+
+describe('periodSchema (PROJ-70)', () => {
+  it('akzeptiert einen gültigen Zeitraum', () => {
+    expect(periodSchema.safeParse({ from: '2026-11-01T00:00:00Z', to: '2026-11-04T00:00:00Z' }).success).toBe(true)
+  })
+  it('lehnt umgekehrte, zu lange und ungültige Zeiträume ab', () => {
+    expect(periodSchema.safeParse({ from: '2026-11-04T00:00:00Z', to: '2026-11-01T00:00:00Z' }).success).toBe(false)
+    expect(periodSchema.safeParse({ from: '2024-01-01T00:00:00Z', to: '2026-01-01T00:00:00Z' }).success).toBe(false)
+    expect(periodSchema.safeParse({ from: 'heute', to: 'morgen' }).success).toBe(false)
   })
 })

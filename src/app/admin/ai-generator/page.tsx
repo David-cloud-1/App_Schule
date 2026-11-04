@@ -40,6 +40,7 @@ import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } fro
 import type { QuestionPromptResponse } from '@/app/api/admin/question-prompt/route'
 import { useAdminSubjectCodes } from '@/hooks/use-admin-subject-codes'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
 export type DraftQuestion = {
   id: string
@@ -127,15 +128,24 @@ function ManualImportSection() {
   const [fixCopied, setFixCopied] = useState(false)
   const [promptInfo, setPromptInfo] = useState<QuestionPromptResponse | null>(null)
   const [promptError, setPromptError] = useState(false)
+  // PROJ-70: in „Alle Bereiche“ bestimmt der Zielbereich Prompt (Fächer) und Import
+  const needsTarget = useNeedsTargetDepartment()
+  const [targetDepartment, setTargetDepartment] = useState('')
 
   useEffect(() => {
+    if (needsTarget && !targetDepartment) {
+      setPromptInfo(null)
+      return
+    }
     let cancelled = false
-    fetch('/api/admin/question-prompt')
+    setPromptError(false)
+    const query = targetDepartment ? `?department_id=${targetDepartment}` : ''
+    fetch(`/api/admin/question-prompt${query}`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((data: QuestionPromptResponse) => { if (!cancelled) setPromptInfo(data) })
       .catch(() => { if (!cancelled) setPromptError(true) })
     return () => { cancelled = true }
-  }, [])
+  }, [needsTarget, targetDepartment])
 
   async function copyPrompt() {
     if (!promptInfo) return
@@ -164,7 +174,11 @@ function ManualImportSection() {
       const res = await fetch('/api/admin/questions/bulk-import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...(parseState.parsed as object), allow_flagged: force }),
+        body: JSON.stringify({
+          ...(parseState.parsed as object),
+          allow_flagged: force,
+          ...(targetDepartment ? { department_id: targetDepartment } : {}),
+        }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -223,6 +237,7 @@ function ManualImportSection() {
   return (
     <div className="rounded-2xl border border-ws-line bg-ws-surface p-5 space-y-5">
       {/* Step 1 */}
+      <TargetDepartmentField value={targetDepartment} onChange={setTargetDepartment} />
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">1</span>
@@ -352,7 +367,7 @@ function ManualImportSection() {
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">3</span>
           <Button
             onClick={() => handleImport(false)}
-            disabled={importing || parseState.status !== 'ready' || parseState.check.clean === 0}
+            disabled={importing || parseState.status !== 'ready' || parseState.check.clean === 0 || (needsTarget && !targetDepartment)}
             className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
           >
             {importing ? (
@@ -383,7 +398,7 @@ function ManualImportSection() {
             hier einsetzen — das kostet nichts.{' '}
             <button
               onClick={() => handleImport(true)}
-              disabled={importing}
+              disabled={importing || (needsTarget && !targetDepartment)}
               className="text-ws-muted underline hover:text-ws-text disabled:opacity-50"
             >
               Alle {parseState.count} trotzdem importieren

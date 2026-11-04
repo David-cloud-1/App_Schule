@@ -400,3 +400,22 @@ export function analyzeBatch(questions: QuestionInput[]): BatchReport {
     ],
   }
 }
+
+/**
+ * Qualitätsprüfung einer gespeicherten Fragen-Version (PROJ-70): Vor dem
+ * Wiederherstellen zeigt der Verlauf, ob die alte Fassung heutige Regeln
+ * verletzt. Ohne lesbare Antwortoptionen gibt es nichts zu prüfen (null).
+ */
+export function analyzeVersionData(data: Record<string, unknown> | null | undefined): QualityReport | null {
+  const raw = data?.answer_options
+  if (!data || !Array.isArray(raw) || raw.length === 0) return null
+  const sorted = [...(raw as { option_text?: unknown; is_correct?: unknown; display_order?: unknown }[])].sort(
+    (a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0)
+  )
+  return analyzeQuestion({
+    question_text: String(data.question_text ?? ''),
+    options: sorted.map((o) => String(o.option_text ?? '')),
+    correct_index: sorted.findIndex((o) => o.is_correct === true),
+    explanation: typeof data.explanation === 'string' ? data.explanation : null,
+  })
+}

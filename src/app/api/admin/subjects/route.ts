@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { requireContentAdmin, writeAuditLog, assertCanAdminDepartmentContent } from '../_lib/auth'
+import {
+  requireContentAdmin,
+  writeAuditLog,
+  assertCanAdminDepartmentContent,
+  resolveTargetDepartment,
+  targetDepartmentMissing,
+} from '../_lib/auth'
+import { loadLastChanges } from '@/lib/content-history'
 import { SUBJECTS_CACHE_TAG } from '@/lib/departments-server'
 
 const CreateSchema = z.object({
@@ -24,6 +31,7 @@ type SubjectWithLinks = {
   created_at: string | null
   is_active: boolean
   department_id: string
+  version_number: number
   departments?: { name: string; code: string } | null
   question_subjects?: {
     questions: { is_active: boolean } | null
@@ -33,16 +41,14 @@ type SubjectWithLinks = {
 export async function GET() {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, isTeacher } = auth
+  const { supabase } = auth
 
-  // Nur Fächer des eigenen Bereichs (PROJ-22). Eine Lehrkraft (PROJ-48)
-  // sieht statt des ganzen Bereichs nur ihre eigenen Fächer — außerhalb
-  // ihrer Zuständigkeit sieht sie laut Spec keine Inhalte.
+  // Fächer des Bereichs der Bereichsleiste, in „Alle Bereiche“ alle (PROJ-70).
   let query = supabase
     .from('subjects')
     .select(
       `
-        id, name, code, color, icon_name, created_at, is_active, department_id,
+        id, name, code, color, icon_name, created_at, is_active, department_id, version_number,
         departments ( name, code ),
         question_subjects ( questions ( is_active ) )
       `
@@ -50,10 +56,8 @@ export async function GET() {
     .is('deleted_at', null)
     .order('code')
 
-  if (isTeacher) {
-    query = query.in('id', auth.subjectIds ?? [])
-  } else {
-    query = query.eq('department_id', auth.departmentIds[0])
+  if (auth.scopeDepartmentIds) {
+    query = query.in('department_id', auth.scopeDepartmentIds)
   }
 
   const { data, error } = await query
@@ -62,6 +66,12 @@ export async function GET() {
     console.error('[GET /api/admin/subjects]', error)
     return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
   }
+
+  const lastChanges = await loadLastChanges(
+    supabase,
+    'subject',
+    ((data ?? []) as unknown as SubjectWithLinks[]).map((s) => s.id)
+  )
 
   const subjects = ((data ?? []) as unknown as SubjectWithLinks[]).map((s) => {
     const activeCount =
@@ -77,6 +87,10 @@ export async function GET() {
       active_question_count: activeCount,
       department_id: s.department_id,
       department_name: s.departments?.name ?? null,
+      department_code: s.departments?.code ?? null,
+      version_number: s.version_number,
+      last_changed_by: lastChanges.get(s.id)?.name ?? null,
+      last_changed_at: lastChanges.get(s.id)?.at ?? null,
     }
   })
 
@@ -86,7 +100,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, isTeacher } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -103,13 +117,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Admin/Bereichs-Admin: immer der eigene Arbeits-Bereich. Lehrkraft
-  // (PROJ-48, E3): der im Body angegebene Bereich, geprüft gegen ihre
-  // eigenen Zuständigkeiten — reicht eine bereichsweite ohne eigenes Fach.
-  const departmentId = isTeacher ? parsed.data.department_id ?? (auth.departmentIds.length === 1 ? auth.departmentIds[0] : null) : auth.departmentIds[0]
-  if (!departmentId) {
-    return NextResponse.json({ error: 'Fachbereich fehlt.' }, { status: 400 })
-  }
+  // Zielbereich: Angabe im Formular, sonst der Bereich der Leiste; in „Alle
+  // Bereiche“ ohne Angabe ist er Pflicht (PROJ-70).
+  const departmentId = resolveTargetDepartment(auth, parsed.data.department_id)
+  if (!departmentId) return targetDepartmentMissing()
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

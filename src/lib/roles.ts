@@ -27,7 +27,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 
 /** Ein Satz, was die Rolle darf (Konto-Menü, PROJ-49) */
 export const ROLE_DESCRIPTION: Record<TeacherRole, string> = {
-  teacher: 'Du pflegst Inhalte deiner Fächer und führst Leistungsnachweise durch.',
+  teacher: 'Du pflegst Inhalte aller Bereiche und führst Leistungsnachweise durch.',
   department_admin: 'Du verwaltest Inhalte, Nutzer und Einstellungen deines Fachbereichs.',
   admin: 'Du verwaltest alle Fachbereiche, Nutzer und Rollen.',
 }
@@ -37,7 +37,7 @@ export const ROLE_DESCRIPTION: Record<TeacherRole, string> = {
  * Reine Anzeige — was sie darf, entscheidet weiterhin der Server.
  */
 export function contentScopeText(role: TeacherRole, departmentName = ''): string {
-  if (role === 'teacher') return 'Du siehst nur Inhalte deiner Fächer.'
+  if (role === 'teacher') return 'Du siehst alle Bereiche und Fächer.'
   if (role === 'department_admin') {
     return departmentName ? `Du siehst den ganzen Bereich ${departmentName}.` : 'Du siehst den ganzen Bereich.'
   }
@@ -46,7 +46,7 @@ export function contentScopeText(role: TeacherRole, departmentName = ''): string
 
 /** Kurzform für die Gruppe „Inhalte“ in der Navigation */
 export function contentScopeShort(role: TeacherRole): string {
-  return role === 'teacher' ? 'deine Fächer' : role === 'department_admin' ? 'ganzer Bereich' : 'alle Bereiche'
+  return role === 'teacher' ? 'alle Bereiche' : role === 'department_admin' ? 'ganzer Bereich' : 'alle Bereiche'
 }
 
 export function isUserRole(role: unknown): role is UserRole {
@@ -141,6 +141,8 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/question-prompt',
   '/api/admin/trash',
   '/api/admin/content-history',
+  // PROJ-70: Bereichsleiste (jede Lehrer-Rolle wählt, was die Inhalts-Seiten zeigen)
+  '/api/admin/context/bereich',
   // PROJ-51: Werkzeugkiste-Abläufe (jede Route prüft requireTeacherOrAdmin, eigene Abläufe per RLS)
   '/api/admin/werkzeugkiste',
   // PROJ-55: Schulrecht (jede Route prüft requireTeacherOrAdmin, Fälle per RLS)

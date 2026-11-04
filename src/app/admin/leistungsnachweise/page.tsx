@@ -17,7 +17,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
 import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { schoolYearFor } from '@/lib/assessment-category'
 import { saveListQuery } from '@/lib/assessment-list-memory'
 import {
@@ -87,6 +87,9 @@ function AssessmentsPageContent() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { isSuperAdmin } = useAdminRole()
+  // Bereichsleiste (PROJ-70): ein Bereich oder „Alle Bereiche“; ohne Leiste bleibt der Arbeitsbereich
+  const barScope = useOptionalAdminRole()?.scope
+  const scopeQuery = !barScope ? 'scope=workspace' : barScope.current ? `departmentId=${barScope.current}` : ''
   const currentSchoolYear = useMemo(() => schoolYearFor(new Date()), [])
   // Filter stehen in der Adresszeile (bleiben beim Wechsel in die Detailansicht erhalten); die Suche bleibt lokal
   const [query, setQuery] = useState('')
@@ -106,7 +109,7 @@ function AssessmentsPageContent() {
     setFailed(false)
     try {
       const [assessmentsRes, setsRes] = await Promise.all([
-        fetch('/api/admin/assessments?scope=workspace'),
+        fetch(`/api/admin/assessments${scopeQuery ? `?${scopeQuery}` : ''}`),
         fetch('/api/admin/exam-sets'),
       ])
       if (!assessmentsRes.ok) {
@@ -126,7 +129,7 @@ function AssessmentsPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [scopeQuery])
 
   useEffect(() => {
     load()

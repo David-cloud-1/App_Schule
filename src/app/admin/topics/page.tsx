@@ -23,10 +23,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 
 type Subject = { id: string; code: string; name: string }
-type Topic = { id: string; name: string; subject_id: string }
+type Topic = {
+  id: string
+  name: string
+  subject_id: string
+  version_number?: number
+  last_changed_by?: string | null
+  last_changed_at?: string | null
+  subjects?: { departments?: { name: string; code: string } | null } | null
+}
 
 /**
  * `?q=` füllt die Suche vor (PROJ-50: Direktlink aus „Mein Konto → Zuletzt
@@ -130,11 +139,20 @@ function TopicsPageContent() {
     const res = await fetch(`/api/admin/topics/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editName.trim() }),
+      body: JSON.stringify({
+        name: editName.trim(),
+        expected_version: topics.find((t) => t.id === id)?.version_number,
+      }),
     })
     const data = await res.json()
     if (!res.ok) {
-      toast.error(data.error ?? 'Fehler beim Speichern')
+      const topic = topics.find((t) => t.id === id)
+      if (showVersionConflict(res, data, topic ? () => setHistoryTarget(topic) : undefined)) {
+        setEditingId(null)
+        loadTopics()
+      } else {
+        toast.error(data.error ?? 'Fehler beim Speichern')
+      }
     } else {
       toast.success('Thema gespeichert')
       setEditingId(null)
@@ -157,6 +175,8 @@ function TopicsPageContent() {
     }
     setDeletingId(null)
   }
+
+  const emptyScopeText = useEmptyScopeText('Themen')
 
   const subjectCode = (id: string) =>
     subjects.find((s) => s.id === id)?.code ?? '—'
@@ -272,7 +292,7 @@ function TopicsPageContent() {
             <AdminEmptyState
               icon={Tag}
               title="Noch keine Themen"
-              description="Lege oben das erste Thema an und ordne es einem Fach zu."
+              description={`${emptyScopeText} Lege oben das erste Thema an und ordne es einem Fach zu.`}
             />
           )
         ) : (
@@ -288,6 +308,12 @@ function TopicsPageContent() {
                   </span>
                   <span className="text-xs text-ws-muted ml-2">
                     · {subTopics.length} {subTopics.length === 1 ? 'Thema' : 'Themen'}
+                  </span>
+                  <span className="ml-2 inline-block align-middle">
+                    <DepartmentTag
+                      name={subTopics[0]?.subjects?.departments?.name}
+                      code={subTopics[0]?.subjects?.departments?.code}
+                    />
                   </span>
                 </div>
                 <ul className="divide-y divide-ws-raised">
@@ -325,7 +351,10 @@ function TopicsPageContent() {
                         </>
                       ) : (
                         <>
-                          <span className="flex-1 text-sm text-ws-text">{topic.name}</span>
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="text-sm text-ws-text">{topic.name}</span>
+                            <LastChangedLine by={topic.last_changed_by} at={topic.last_changed_at} />
+                          </span>
                           <Button
                             size="sm"
                             variant="ghost"

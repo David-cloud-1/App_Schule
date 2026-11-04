@@ -183,12 +183,11 @@ export async function requireTeacher(): Promise<
 }
 
 /**
- * Zugangs-Check für die Fragen-/Themen-/Fächer-/Prüfungsset-Routen (PROJ-48):
- * zusätzlich zu Super-Admin und Bereichs-Admin darf hier eine Lehrkraft mit
- * mindestens einer eigenen Fach-Zuständigkeit herein. Welche konkreten Fächer
- * und Bereiche das sind, steht in `departmentIds`/`subjectIds` — die eigentliche
- * Grenze pro Objekt ziehen `canAdminSubject`/`canAdminDepartmentContent`
- * unten (gespiegelt in der RLS, siehe Migration 20261027_proj48).
+ * Zugangs-Check für die Fragen-/Themen-/Fächer-/Prüfungsset-Routen. Seit
+ * PROJ-70 dürfen alle Lehrer-Rollen (Lehrkraft, Bereichs-Admin, Super-Admin)
+ * Inhalte aller Bereiche sehen und pflegen; eine Fach-Eintragung ist keine
+ * Voraussetzung mehr. Die Datenbank-Regeln (RLS) ziehen dasselbe nach, hier
+ * geht es nur um den Zugang und die Bereichsleiste.
  */
 export type ContentAuthResult =
   | {
@@ -204,20 +203,48 @@ export type ContentAuthResult =
       isSuperAdmin: boolean
       isDepartmentAdmin: boolean
       isTeacher: boolean
-      /**
-       * Bereiche, in denen diese Person Inhalte verwalten darf.
-       * Admin/Bereichs-Admin: genau ihr Arbeits-Bereich (ein Eintrag, wie
-       * bei `departmentId` aus requireAdmin). Lehrkraft: alle Bereiche, in
-       * denen sie mindestens eine Zuständigkeit hat (Fach oder bereichsweit).
-       */
+      /** Alle vorhandenen Bereiche: so viele darf jede Lehrer-Rolle bei Inhalten ansprechen. */
       departmentIds: string[]
       /**
-       * Fächer, für die eine Lehrkraft konkret zuständig ist (ohne
-       * bereichsweite Einträge ohne Fach). `null` für Admin/Bereichs-Admin —
-       * die sind nicht auf einzelne Fächer eingeschränkt.
+       * Bereiche, die die Bereichsleiste gerade zeigt (PROJ-70). `null` =
+       * „Alle Bereiche“, sonst genau ein Bereich. Listen filtern danach.
        */
-      subjectIds: string[] | null
+      scopeDepartmentIds: string[] | null
+      /**
+       * Bereich, in dem neue Inhalte ohne ausdrückliche Angabe landen würden:
+       * der gewählte Bereich der Leiste, sonst `null` (dann ist der Zielbereich
+       * Pflicht, siehe `resolveTargetDepartment`).
+       */
+      departmentId: string | null
+      /** Seit PROJ-70 nie mehr eingeschränkt; bleibt `null` für ältere Aufrufer. */
+      subjectIds: null
     }
+
+/** Cookie der Bereichsleiste (PROJ-70): „alle“ oder die ID eines Fachbereichs. */
+export const ADMIN_SCOPE_COOKIE = 'admin_bereich'
+export const SCOPE_ALL = 'alle'
+
+/**
+ * Bereichsleiste auslesen. Ungültige oder gelöschte Bereiche fallen auf den
+ * Startbereich zurück (Profil-Bereich; Super-Admin: sein gewählter Bereich),
+ * ohne Profil-Bereich auf „Alle Bereiche“.
+ */
+export async function resolveContentScope(
+  supabase: SupabaseClient,
+  isSuperAdmin: boolean,
+  ownDepartmentId: string | null,
+  allDepartmentIds: string[]
+): Promise<string[] | null> {
+  const cookieStore = await cookies()
+  const chosen = cookieStore.get(ADMIN_SCOPE_COOKIE)?.value ?? null
+  if (chosen === SCOPE_ALL) return null
+  if (chosen && allDepartmentIds.includes(chosen)) return [chosen]
+  if (isSuperAdmin) {
+    const id = await resolveSuperAdminDepartment(supabase, ownDepartmentId)
+    return id ? [id] : null
+  }
+  return ownDepartmentId && allDepartmentIds.includes(ownDepartmentId) ? [ownDepartmentId] : null
+}
 
 export async function requireContentAdmin(): Promise<ContentAuthResult> {
   const supabase = await createClient()
@@ -249,101 +276,81 @@ export async function requireContentAdmin(): Promise<ContentAuthResult> {
   }
 
   const isSuperAdmin = role === 'admin'
-  const isDepartmentAdmin = role === 'department_admin'
-  const isTeacher = role === 'teacher'
   const ownDepartmentId = (profile as { department_id?: string | null }).department_id ?? null
 
-  if (!isTeacher) {
-    const departmentId = isSuperAdmin
-      ? await resolveSuperAdminDepartment(supabase, ownDepartmentId)
-      : ownDepartmentId
-    if (!departmentId) {
-      console.error('[requireContentAdmin] no department found', { userId: user.id, role })
-      return {
-        error: NextResponse.json({ error: 'Kein Fachbereich zugeordnet' }, { status: 403 }),
-        user: null,
-        supabase: null,
-      }
-    }
-    return {
-      error: null,
-      user: { id: user.id, email: user.email },
-      supabase: supabase as unknown as SupabaseClient,
-      role,
-      isSuperAdmin,
-      isDepartmentAdmin,
-      isTeacher: false,
-      departmentIds: [departmentId],
-      subjectIds: null,
-    }
-  }
+  const { data: departments } = await supabase.from('departments').select('id')
+  const departmentIds = ((departments ?? []) as { id: string }[]).map((d) => d.id)
 
-  // Lehrkraft: ihre eigenen Zuständigkeiten bestimmen Bereiche und Fächer.
-  const { data: assignments } = await supabase
-    .from('teacher_subject_assignments')
-    .select('department_id, subject_id')
-    .eq('teacher_id', user.id)
-
-  const rows = (assignments ?? []) as { department_id: string; subject_id: string | null }[]
-  if (rows.length === 0) {
-    return {
-      error: NextResponse.json({ error: 'Keine Fach-Zuständigkeit eingetragen' }, { status: 403 }),
-      user: null,
-      supabase: null,
-    }
-  }
-
-  const departmentIds = [...new Set(rows.map((r) => r.department_id))]
-  const subjectIds = [...new Set(rows.filter((r) => r.subject_id).map((r) => r.subject_id as string))]
+  const scopeDepartmentIds = await resolveContentScope(
+    supabase as unknown as SupabaseClient,
+    isSuperAdmin,
+    ownDepartmentId,
+    departmentIds
+  )
 
   return {
     error: null,
     user: { id: user.id, email: user.email },
     supabase: supabase as unknown as SupabaseClient,
-    role: 'teacher',
-    isSuperAdmin: false,
-    isDepartmentAdmin: false,
-    isTeacher: true,
+    role,
+    isSuperAdmin,
+    isDepartmentAdmin: role === 'department_admin',
+    isTeacher: role === 'teacher',
     departmentIds,
-    subjectIds,
+    scopeDepartmentIds,
+    departmentId: scopeDepartmentIds?.length === 1 ? scopeDepartmentIds[0] : null,
+    subjectIds: null,
   }
 }
 
 /**
- * Darf `auth` dieses Fach verwalten (PROJ-48)? Admin: immer. Bereichs-Admin:
- * eigener Bereich. Lehrkraft: NUR mit eigener Zuständigkeit für genau dieses
- * Fach — bloße Mitgliedschaft im Bereich reicht nicht.
+ * Zielbereich für Neues (Fach, Prüfungsset, Import, Kopier-Prompt): die
+ * ausdrückliche Angabe, sonst der Bereich der Leiste. In „Alle Bereiche“
+ * ohne Angabe gibt es keinen Zielbereich (`null`): das Formular verlangt ihn.
+ * Ein unbekannter Bereich ist ebenfalls `null`.
  */
-export function canAdminSubject(
+export function resolveTargetDepartment(
   auth: Extract<ContentAuthResult, { error: null }>,
-  subjectId: string | null | undefined,
-  subjectDepartmentId: string | null | undefined
+  requested?: string | null
+): string | null {
+  if (requested) return auth.departmentIds.includes(requested) ? requested : null
+  return auth.departmentId
+}
+
+/** Antwort für „Zielbereich fehlt“ (400): die Oberfläche markiert das Feld. */
+export function targetDepartmentMissing(): NextResponse {
+  return NextResponse.json(
+    { error: 'Bitte wähle aus, in welchem Bereich das angelegt werden soll.', field: 'department_id' },
+    { status: 400 }
+  )
+}
+
+// Seit PROJ-70 hängen Inhalts-Rechte nicht mehr an Bereich oder Fach: jede
+// Lehrer-Rolle darf alle Inhalte pflegen (gespiegelt in den Datenbank-Regeln
+// `can_admin_subject`, `can_admin_department_content`, `can_admin_question`).
+// Die Funktionen bleiben, damit Aufrufer und Prüfungen an einer Stelle sitzen.
+
+export function canAdminSubject(
+  _auth: Extract<ContentAuthResult, { error: null }>,
+  _subjectId?: string | null,
+  _subjectDepartmentId?: string | null
 ): boolean {
-  if (auth.isSuperAdmin) return true
-  if (auth.isDepartmentAdmin) return !!subjectDepartmentId && subjectDepartmentId === auth.departmentIds[0]
-  return !!subjectId && !!auth.subjectIds?.includes(subjectId)
+  return true
 }
 
 export function assertCanAdminSubject(
   auth: Extract<ContentAuthResult, { error: null }>,
-  subjectId: string | null | undefined,
-  subjectDepartmentId: string | null | undefined
+  subjectId?: string | null,
+  subjectDepartmentId?: string | null
 ): NextResponse | null {
   if (canAdminSubject(auth, subjectId, subjectDepartmentId)) return null
   return NextResponse.json({ error: 'Not found' }, { status: 404 })
 }
 
-/**
- * Darf `auth` in diesem Bereich grundsätzlich etwas anlegen (ein neues Fach,
- * E3, oder ein Prüfungsset des Bereichs)? Für eine Lehrkraft reicht hier
- * jede Zuständigkeit im Bereich, auch eine bereichsweite ohne eigenes Fach.
- */
 export function canAdminDepartmentContent(
   auth: Extract<ContentAuthResult, { error: null }>,
   departmentId: string | null | undefined
 ): boolean {
-  if (auth.isSuperAdmin) return true
-  if (auth.isDepartmentAdmin) return !!departmentId && departmentId === auth.departmentIds[0]
   return !!departmentId && auth.departmentIds.includes(departmentId)
 }
 
@@ -355,24 +362,11 @@ export function assertCanAdminDepartmentContent(
   return NextResponse.json({ error: 'Not found' }, { status: 404 })
 }
 
-/**
- * Darf `auth` diese Frage verwalten? Prüft ALLE verknüpften Fächer — bei
- * einer Frage mit mehreren Fächern reicht die Zuständigkeit für eines davon
- * (gespiegelt in der RLS-Funktion `can_admin_question`).
- */
 export async function canAdminQuestion(
-  auth: Extract<ContentAuthResult, { error: null }>,
-  questionId: string
+  _auth: Extract<ContentAuthResult, { error: null }>,
+  _questionId: string
 ): Promise<boolean> {
-  if (auth.isSuperAdmin) return true
-  const { data } = await auth.supabase
-    .from('question_subjects')
-    .select('subject_id, subjects!inner(department_id)')
-    .eq('question_id', questionId)
-  const rows = (data ?? []) as unknown as { subject_id: string; subjects: { department_id: string } }[]
-  if (rows.length === 0) return false
-  if (auth.isDepartmentAdmin) return rows.some((r) => r.subjects.department_id === auth.departmentIds[0])
-  return rows.some((r) => !!auth.subjectIds?.includes(r.subject_id))
+  return true
 }
 
 export async function assertCanAdminQuestion(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../_lib/auth'
+import { loadLastChanges } from '@/lib/content-history'
 
 const ListQuerySchema = z.object({
   subject_id: z.string().uuid().optional(),
@@ -14,7 +15,7 @@ const CreateSchema = z.object({
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
-  const { supabase, isTeacher } = auth
+  const { supabase } = auth
 
   const parsed = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -26,17 +27,15 @@ export async function GET(request: NextRequest) {
   // topics ist für alle authentifizierten Nutzer lesbar (fachneutrale
   // RLS-Policy) — der Bereichsfilter muss deshalb hier im Code passieren,
   // sonst sieht ein Bereichs-Admin auch Themen anderer Bereiche (PROJ-24).
-  // Eine Lehrkraft (PROJ-48) sieht statt des Bereichs nur ihre eigenen Fächer.
+  // Bereich = Bereichsleiste (PROJ-70); „Alle Bereiche“ filtert nicht.
   let query = supabase
     .from('topics')
-    .select('id, name, subject_id, created_at, subjects!inner(id, code, name, department_id)')
+    .select('id, name, subject_id, created_at, version_number, subjects!inner(id, code, name, department_id, departments(name, code))')
     .is('deleted_at', null)
     .order('name')
 
-  if (isTeacher) {
-    query = query.in('subject_id', auth.subjectIds ?? [])
-  } else {
-    query = query.eq('subjects.department_id', auth.departmentIds[0])
+  if (auth.scopeDepartmentIds) {
+    query = query.in('subjects.department_id', auth.scopeDepartmentIds)
   }
 
   if (parsed.data.subject_id) {
@@ -75,9 +74,17 @@ export async function GET(request: NextRequest) {
     if (!rows || rows.length < pageSize) break
   }
 
+  const lastChanges = await loadLastChanges(
+    supabase,
+    'topic',
+    (data ?? []).map((t) => t.id as string)
+  )
+
   const topics = (data ?? []).map((t) => ({
     ...t,
     class_levels: Array.from(levelsByTopic.get(t.id as string) ?? []).sort(),
+    last_changed_by: lastChanges.get(t.id as string)?.name ?? null,
+    last_changed_at: lastChanges.get(t.id as string)?.at ?? null,
   }))
 
   return NextResponse.json({ topics })

@@ -9,6 +9,7 @@ import {
   ChevronUp,
   FileUp,
   GraduationCap,
+  History,
   Pencil,
   Loader2,
   Plus,
@@ -28,10 +29,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useClassLevelOptions, useExamParts } from '@/components/department-provider'
-import { examPartLabel, examPartSubjectCodes, findExamPart } from '@/lib/exam-parts'
+import { examPartLabel, examPartSubjectCodes, findExamPart, type ExamPart } from '@/lib/exam-parts'
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { toast } from 'sonner'
 import { AdminEmptyState } from '@/components/admin/admin-states'
+import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
+import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
 type ExamSet = {
   id: string
@@ -41,6 +46,14 @@ type ExamSet = {
   is_active: boolean
   created_at: string
   duration_minutes: number | null
+  /** PROJ-70 */
+  version_number?: number
+  department_name?: string | null
+  department_code?: string | null
+  departments?: { name: string; code: string } | null
+  last_changed_by?: string | null
+  last_changed_at?: string | null
+  department_id?: string | null
 }
 
 type Question = {
@@ -78,23 +91,32 @@ type PreviewQuestion = ExtractedQuestion & { _key: string }
 interface Props {
   initialSets: ExamSet[]
   questions: Question[]
+  /** Prüfungsaufbau je Bereich (PROJ-70): Teile richten sich nach dem Zielbereich */
+  examPartsByDepartment?: Record<string, ExamPart[]>
 }
 
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 type ImportStep = 'configure' | 'extracting' | 'preview' | 'importing'
 
-export function ExamSetsClient({ initialSets, questions }: Props) {
-  // Prüfungsaufbau des Bereichs (PROJ-22): Teile, zugehörige Fächer, Beschriftung
-  const examParts = useExamParts()
+export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }: Props) {
+  // Prüfungsaufbau (PROJ-22): Teile, zugehörige Fächer, Beschriftung. Er folgt dem
+  // Bereich des Sets bzw. dem Zielbereich (PROJ-70), nicht dem eigenen Bereich.
+  const ownExamParts = useExamParts()
+  const scopeCurrent = useOptionalAdminRole()?.scope?.current ?? ''
+  const partsFor = (departmentId?: string | null): ExamPart[] =>
+    (departmentId && examPartsByDepartment?.[departmentId]) || ownExamParts
   const classLevelOptions = useClassLevelOptions()
-  const partNumbers = examParts.map((p) => p.partNumber)
-  const partLabel = (n: number) => {
-    const part = findExamPart(examParts, n)
+  const partLabel = (n: number, parts: ExamPart[] = ownExamParts) => {
+    const part = findExamPart(parts, n)
     const codes = part ? examPartSubjectCodes(part).replace(/ \/ /g, '/') : ''
     return codes && part && part.shortLabel !== codes ? `${examPartLabel(part)} (${codes})` : examPartLabel(part, n)
   }
   const [sets, setSets] = useState(initialSets)
+  const [historyTarget, setHistoryTarget] = useState<ExamSet | null>(null)
+  const emptyScopeText = useEmptyScopeText('Prüfungssimulationen')
+  const needsTarget = useNeedsTargetDepartment()
+  const [targetDepartment, setTargetDepartment] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [expandedSet, setExpandedSet] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
@@ -108,6 +130,11 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set())
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newScope, setNewScope] = useState<string | undefined>(undefined)
+  const activeDepartment = editingId
+    ? (sets.find((x) => x.id === editingId)?.department_id ?? '')
+    : targetDepartment || scopeCurrent
+  const examParts = partsFor(activeDepartment)
+  const partNumbers = examParts.map((p) => p.partNumber)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [pickerSearch, setPickerSearch] = useState('')
@@ -193,8 +220,15 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       const res = await fetch(`/api/admin/exam-sets/${set.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !set.is_active }),
+        body: JSON.stringify({ is_active: !set.is_active, expected_version: set.version_number }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        if (showVersionConflict(res, data, () => setHistoryTarget(set))) {
+          window.location.reload()
+          return
+        }
+      }
       if (res.ok) {
         // Multiple sets can be active per part — only flip the toggled one.
         setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, is_active: !set.is_active } : s)))
@@ -225,6 +259,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
   function openCreate() {
     setEditingId(null)
     setNewScope(undefined)
+    setTargetDepartment('')
     setNewName('')
     setNewPart(null)
     setNewDuration('')
@@ -262,10 +297,18 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           name: newName.trim(),
           question_ids: Array.from(selectedQuestionIds),
           duration_minutes: durationVal && durationVal > 0 ? durationVal : null,
+          expected_version: sets.find((x) => x.id === editingId)?.version_number,
         }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
+        const editedSet = sets.find((x) => x.id === editingId)
+        if (showVersionConflict(res, data, editedSet ? () => setHistoryTarget(editedSet) : undefined)) {
+          setShowCreateModal(false)
+          setEditingId(null)
+          window.location.reload()
+          return
+        }
         setCreateError(data.error ?? 'Fehler beim Speichern.')
         return
       }
@@ -286,6 +329,10 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
       setCreateError('Bitte Name, Teil und mindestens eine Frage auswählen.')
       return
     }
+    if (needsTarget && !targetDepartment) {
+      setCreateError('Bitte wähle den Bereich, in dem das Set angelegt wird.')
+      return
+    }
     setIsCreating(true)
     setCreateError(null)
     try {
@@ -298,6 +345,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           part: newPart,
           question_ids: Array.from(selectedQuestionIds),
           is_active: false,
+          ...(targetDepartment ? { department_id: targetDepartment } : {}),
           ...(durationVal && durationVal > 0 ? { duration_minutes: durationVal } : {}),
         }),
       })
@@ -452,7 +500,7 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
         <AdminEmptyState
           icon={Shield}
           title="Noch keine Prüfungssimulationen"
-          description="Stelle ein Fragenset zusammen, das die Azubis als Prüfungssimulation spielen können."
+          description={`${emptyScopeText} Stelle ein Fragenset zusammen, das die Azubis als Prüfungssimulation spielen können.`}
           action={
             <Button
               onClick={openCreate}
@@ -478,13 +526,18 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                       {set.is_active && (
                         <Badge className="text-xs bg-ws-green/20 text-ws-green border-0">Aktiv</Badge>
                       )}
+                      <DepartmentTag
+                        name={set.department_name ?? set.departments?.name}
+                        code={set.department_code ?? set.departments?.code}
+                      />
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-ws-muted">{partLabel(set.part)}</span>
+                      <span className="text-xs text-ws-muted">{partLabel(set.part, partsFor(set.department_id))}</span>
                       <span className="text-xs text-ws-faint">· {set.question_ids.length} Fragen</span>
                       {set.duration_minutes != null && (
                         <span className="text-xs text-ws-blue">· {set.duration_minutes} Min.</span>
                       )}
+                      <LastChangedLine by={set.last_changed_by} at={set.last_changed_at} />
                     </div>
                   </div>
                   {expandedSet === set.id ? <ChevronUp size={16} className="text-ws-muted ml-auto" /> : <ChevronDown size={16} className="text-ws-muted ml-auto" />}
@@ -515,6 +568,16 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
                   >
                     {set.is_active ? <ShieldOff size={14} className="mr-1" /> : <Shield size={14} className="mr-1" />}
                     {set.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setHistoryTarget(set)}
+                    aria-label="Verlauf"
+                    title="Verlauf"
+                    className="rounded-lg border-ws-line text-ws-muted hover:bg-ws-raised px-2"
+                  >
+                    <History size={14} />
                   </Button>
                   <Button
                     size="sm"
@@ -586,6 +649,15 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {!editingId && <TargetDepartmentField
+                value={targetDepartment}
+                onChange={(id) => {
+                  // Prüfungsteile und Fächer sind je Bereich verschieden: Auswahl zurücksetzen
+                  setTargetDepartment(id)
+                  setNewPart(null)
+                  setSelectedQuestionIds(new Set())
+                }}
+              />}
             <div className="space-y-2">
               <Label className="text-ws-muted">Name</Label>
               <Input
@@ -1034,6 +1106,17 @@ export function ExamSetsClient({ initialSets, questions }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      {historyTarget && (
+        <ContentHistorySheet
+          open
+          onOpenChange={(open) => !open && setHistoryTarget(null)}
+          contentType="exam_question_set"
+          contentId={historyTarget.id}
+          title={historyTarget.name}
+          onRestored={() => window.location.reload()}
+        />
+      )}
     </div>
   )
 }

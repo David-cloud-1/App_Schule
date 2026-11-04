@@ -3,9 +3,21 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
-import { AdminScopeNote } from '@/components/admin/admin-scope-note'
+import { AdminScopeBar, type ScopeBarMode } from '@/components/admin/admin-scope-bar'
 import { useOptionalWorkspace } from '@/components/admin/workspace-provider'
 import { adminNavMatch } from '@/lib/admin-nav'
+
+/**
+ * Welche Bereichsleiste gehört auf diese Seite? Inhalts-Seiten (Gruppe
+ * „Inhalte“) und Listen mit Schülerdaten bzw. Nachweisen (nur die Liste,
+ * nicht ihre Detailseiten). Sonst keine.
+ */
+function scopeBarModeFor(pathname: string): ScopeBarMode | null {
+  const path = pathname.replace(/\/+$/, '')
+  if (path === '/admin/users' || path === '/admin/audit-log') return 'people'
+  if (path === '/admin/leistungsnachweise') return 'assessments'
+  return adminNavMatch(path)?.group.id === 'inhalte' ? 'content' : null
+}
 
 /**
  * Einheitlicher Seitenkopf im Lehrkräfte-Bereich (PROJ-45): Titel, optional
@@ -15,8 +27,8 @@ import { adminNavMatch } from '@/lib/admin-nav'
  * `breadcrumb` setzt auf Detailseiten das letzte Glied der Brotkrumen
  * (z. B. den Titel des Nachweises) — sonst nicht angeben.
  *
- * Auf den Inhalts-Seiten (Gruppe „Inhalte“) steht unter dem Titel automatisch
- * eine Zeile zum Umfang der Rolle (PROJ-49).
+ * Auf den Inhalts-Seiten (Gruppe „Inhalte“), bei Nutzern, Leistungsnachweisen
+ * und im Änderungsprotokoll steht unter dem Titel automatisch die Bereichsleiste (PROJ-70, löst die Umfangszeile aus PROJ-49 ab).
  */
 export function AdminPageHeader({
   title,
@@ -35,7 +47,7 @@ export function AdminPageHeader({
   const workspace = useOptionalWorkspace()
   const setDetailCrumb = workspace?.setDetailCrumb
   const pathname = usePathname()
-  const showScope = !!useOptionalAdminRole() && adminNavMatch(pathname ?? '')?.group.id === 'inhalte'
+  const scopeMode = useOptionalAdminRole() ? scopeBarModeFor(pathname ?? '') : null
 
   useEffect(() => {
     if (!setDetailCrumb || breadcrumb === undefined) return
@@ -48,9 +60,9 @@ export function AdminPageHeader({
       <div className="min-w-0">
         <h1 className="break-words text-2xl font-bold tracking-tight text-ws-text">{title}</h1>
         {description && <p className="mt-1 max-w-prose text-sm text-ws-muted">{description}</p>}
-        {showScope && (
+        {scopeMode && (
           <div className="mt-1">
-            <AdminScopeNote />
+            <AdminScopeBar mode={scopeMode} />
           </div>
         )}
         {children && <div className="mt-3">{children}</div>}

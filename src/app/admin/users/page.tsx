@@ -49,7 +49,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { createClient } from '@/lib/supabase-browser'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
 import { roleChangeDescription } from '@/components/admin/role-change-text'
 import { ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
@@ -118,7 +118,9 @@ export default function AdminUsersPage() {
   // Super-Admin: bereichsübergreifend suchen, z. B. um eine Lehrkraft freizuschalten,
   // die sich über eine andere Bereichs-Adresse registriert hat (PROJ-44)
   const [allDepartments, setAllDepartments] = useState(false)
-  const showAllDepartments = isSuperAdmin && allDepartments
+  // Mit Bereichsleiste im Seitenkopf (PROJ-70) entscheidet sie; der Schalter unten ist nur der Ersatz ohne Leiste
+  const barScope = useOptionalAdminRole()?.scope
+  const showAllDepartments = isSuperAdmin && (barScope ? barScope.current === null : allDepartments)
   const [ownId, setOwnId] = useState<string | null>(null)
   const [target, setTarget] = useState<AdminUserRow | null>(null)
   const [roleChange, setRoleChange] = useState<{ user: AdminUserRow; newRole: Role } | null>(null)
@@ -524,7 +526,7 @@ export default function AdminUsersPage() {
             )}
           </SelectContent>
         </Select>
-        {isSuperAdmin && (
+        {isSuperAdmin && !barScope && (
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-ws-line bg-ws-surface px-3">
             <Switch
               id="users-all-departments"

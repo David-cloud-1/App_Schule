@@ -66,10 +66,10 @@ export function DepartmentSwitcher() {
     if (departmentId === current) return
     setSwitching(true)
     try {
-      const res = await fetch('/api/admin/context/department', {
+      const res = await fetch('/api/admin/context/bereich', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ department_id: departmentId }),
+        body: JSON.stringify({ bereich: departmentId }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {

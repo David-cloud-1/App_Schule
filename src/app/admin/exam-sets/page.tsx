@@ -1,6 +1,9 @@
 import { createClient } from '@/lib/supabase-server'
 import { requireContentAdmin } from '@/app/api/admin/_lib/auth'
+import { loadLastChanges } from '@/lib/content-history'
+import { getExamPartsByDepartment } from '@/lib/departments-server'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { ComponentProps } from 'react'
 import { ExamSetsClient } from './exam-sets-client'
 
 const PAGE_SIZE = 1000
@@ -38,24 +41,40 @@ async function fetchAllActiveQuestions(supabase: SupabaseClient): Promise<Questi
 
 export default async function AdminExamSetsPage() {
   const supabase = await createClient()
-  // Wie GET /api/admin/exam-sets: Lehrkräfte sehen die Sets der Bereiche ihrer Zuständigkeiten (PROJ-48)
+  // Wie GET /api/admin/exam-sets: Sets des Bereichs der Bereichsleiste, in „Alle Bereiche“ alle (PROJ-70)
   const auth = await requireContentAdmin()
   if (auth.error) return null
 
-  const [{ data: sets }, questions] = await Promise.all([
-    supabase
-      .from('exam_question_sets')
-      .select('*')
-      .in('department_id', auth.departmentIds)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false }),
+  let setsQuery = supabase
+    .from('exam_question_sets')
+    .select('*, departments ( name, code )')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+  if (auth.scopeDepartmentIds) setsQuery = setsQuery.in('department_id', auth.scopeDepartmentIds)
+
+  const [{ data: sets }, questions, examPartsByDepartment] = await Promise.all([
+    setsQuery,
     fetchAllActiveQuestions(supabase),
+    getExamPartsByDepartment(auth.departmentIds),
   ])
+
+  // „Zuletzt geändert von <Name> am <Datum>“ (PROJ-70)
+  const lastChanges = await loadLastChanges(
+    supabase,
+    'exam_question_set',
+    (sets ?? []).map((x: { id: string }) => x.id)
+  )
+  const setsWithMeta = (sets ?? []).map((x: { id: string }) => ({
+    ...x,
+    last_changed_by: lastChanges.get(x.id)?.name ?? null,
+    last_changed_at: lastChanges.get(x.id)?.at ?? null,
+  }))
 
   return (
     <ExamSetsClient
-      initialSets={sets ?? []}
+      initialSets={setsWithMeta as unknown as ComponentProps<typeof ExamSetsClient>['initialSets']}
       questions={questions}
+      examPartsByDepartment={examPartsByDepartment}
     />
   )
 }

@@ -4,16 +4,14 @@ import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, UserCog } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { AdminEmptyState } from '@/components/admin/admin-states'
+import { Building2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
 import { DepartmentSwitcher } from '@/components/admin/department-switcher'
 import { WorkspaceProvider, useWorkspace } from '@/components/admin/workspace-provider'
-import { useAdminRole, useHasSubjects } from '@/components/admin/admin-role-provider'
+import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useDepartment } from '@/components/department-provider'
 import {
   Sidebar,
@@ -27,7 +25,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import type { WorkspaceTheme } from '@/lib/workspace-theme'
-import { adminNavMatch, LEHRERZIMMER_HREF } from '@/lib/admin-nav'
+import { LEHRERZIMMER_HREF } from '@/lib/admin-nav'
 import { istAblaufPfad } from '@/lib/werkzeugkiste'
 import { istFallPfad } from '@/lib/schulrecht'
 
@@ -108,7 +106,7 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
             tabIndex={-1}
             className="mx-auto w-full min-w-0 max-w-screen-2xl flex-1 overflow-x-clip px-4 py-6 outline-none sm:px-6 lg:px-8 print:max-w-none print:overflow-visible print:p-0"
           >
-            <SubjectsGate>{children}</SubjectsGate>
+            {children}
           </div>
         </SidebarInset>
       </SidebarProvider>
@@ -119,30 +117,6 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
   )
 }
 
-/**
- * Inhalts-Seiten wären für eine Lehrkraft ohne eingetragenes Fach leer bzw.
- * lieferten 403 — statt eines Fehlers erklärt der Rahmen den nächsten Schritt.
- */
-function SubjectsGate({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const hasSubjects = useHasSubjects()
-  if (hasSubjects || !adminNavMatch(pathname)?.item.needsSubjects) return <>{children}</>
-  return (
-    <AdminEmptyState
-      icon={UserCog}
-      title="Trag zuerst deine Fächer ein"
-      description="Trag unter „Meine Fächer“ ein, was du unterrichtest. Danach siehst du hier die Inhalte deiner Fächer."
-      action={
-        <Button
-          asChild
-          className="min-h-11 rounded-2xl bg-ws-green font-bold text-ws-on-accent hover:bg-ws-green-hover"
-        >
-          <Link href="/admin/my-subjects">Meine Fächer öffnen</Link>
-        </Button>
-      }
-    />
-  )
-}
 
 /** Bereich ohne Umschalten (alle außer Super-Admin) */
 function DepartmentLabel() {

@@ -147,7 +147,7 @@ describe('Rollen-Texte (PROJ-49)', () => {
   })
 
   it('nennt den Umfang je Rolle', () => {
-    expect(contentScopeText('teacher', 'Spedition')).toBe('Du siehst nur Inhalte deiner Fächer.')
+    expect(contentScopeText('teacher', 'Spedition')).toBe('Du siehst alle Bereiche und Fächer.')
     expect(contentScopeText('department_admin', 'Spedition')).toBe('Du siehst den ganzen Bereich Spedition.')
     expect(contentScopeText('department_admin')).toBe('Du siehst den ganzen Bereich.')
     expect(contentScopeText('admin', 'Tourismus')).toBe('Du siehst den Bereich Tourismus.')
@@ -155,7 +155,7 @@ describe('Rollen-Texte (PROJ-49)', () => {
   })
 
   it('hat eine Kurzform für die Navigation', () => {
-    expect(contentScopeShort('teacher')).toBe('deine Fächer')
+    expect(contentScopeShort('teacher')).toBe('alle Bereiche')
     expect(contentScopeShort('department_admin')).toBe('ganzer Bereich')
     expect(contentScopeShort('admin')).toBe('alle Bereiche')
   })

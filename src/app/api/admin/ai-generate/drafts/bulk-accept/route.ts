@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
 import { resolveDraftSubject } from '../../_lib/draft-subject'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
+import { groupIntoBatch } from '@/lib/content-history'
 
 const BulkAcceptSchema = z.object({
   draft_ids: z.array(z.string().uuid()).min(1).max(200),
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
   const skipped: string[] = []
   const accepted: string[] = []
   const failed: string[] = []
+  const createdQuestionIds: string[] = []
 
   for (const draft of toProcess) {
     if (draft.status === 'review_required') {
@@ -130,7 +132,11 @@ export async function POST(request: NextRequest) {
 
     await supabase.from('questions_draft').update({ status: 'accepted' }).eq('id', draft.id)
     accepted.push(draft.id)
+    createdQuestionIds.push(question.id as string)
   }
+
+  // Alle angenommenen Entwürfe sind EIN Vorgang und lassen sich gemeinsam zurücknehmen (PROJ-70)
+  await groupIntoBatch(supabase, 'question', createdQuestionIds, `KI-Entwürfe angenommen (${createdQuestionIds.length} Fragen)`)
 
   await writeAuditLog(supabase, {
     admin_id: user.id,

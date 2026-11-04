@@ -15,13 +15,12 @@ beforeEach(() => mockViewport(1280))
 function wrap(
   ui: ReactNode,
   isSuperAdmin: boolean,
-  extra: { role?: TeacherRole; showTeacherWelcome?: boolean; hasSubjectAssignments?: boolean } = {},
+  extra: { role?: TeacherRole; showTeacherWelcome?: boolean} = {},
 ) {
   const role = extra.role ?? (isSuperAdmin ? 'admin' : 'department_admin')
   return renderInWorkspace(ui, {
     role,
     showTeacherWelcome: extra.showTeacherWelcome,
-    hasSubjectAssignments: extra.hasSubjectAssignments,
   })
 }
 
@@ -112,12 +111,12 @@ describe('AdminNav (PROJ-40)', () => {
 })
 
 describe('AdminNav je Rolle (PROJ-49)', () => {
-  it('zeigt einer Lehrkraft keine Gruppe „Verwaltung“ und nennt „deine Fächer“ hinter „Inhalte“', () => {
+  it('zeigt einer Lehrkraft keine Gruppe „Verwaltung“ und nennt „alle Bereiche“ hinter „Inhalte“', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
     openFolds()
     expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('nav-fold-verwaltung')).not.toBeInTheDocument()
-    expect(screen.getByText('· deine Fächer')).toBeInTheDocument()
+    expect(screen.getByText('· alle Bereiche')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Meine Fächer' })).toBeInTheDocument()
   })
 
@@ -195,21 +194,26 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     expect(screen.queryByRole('link', { name: 'Nutzer' })).not.toBeInTheDocument()
   })
 
-  it('zeigt einer Lehrkraft ohne Fach statt leerer Inhalts-Seiten den Weg zu „Meine Fächer“', async () => {
+  it('zeigt Lehrkräften alle Inhalts-Seiten ohne Fach-Eintragung (PROJ-70: Inhalte stehen allen offen)', async () => {
     stubAssessments([])
-    const { unmount } = wrap(<AdminNav />, false, { role: 'teacher', hasSubjectAssignments: false })
+    const { unmount } = wrap(<AdminNav />, false, { role: 'teacher' })
     openFolds()
     expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Übersicht',
       'Leistungsnachweise',
+      'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
       'Lehrerzimmer',
       'Meine Fächer',
+      'Fächer',
+      'Themen',
+      'Prüfungssimulation',
+      'Papierkorb',
     ])
     unmount()
-    wrap(<AdminHome />, false, { role: 'teacher', hasSubjectAssignments: false })
-    expect(screen.getByRole('link', { name: /Trag deine Fächer ein/ })).toHaveAttribute('href', '/admin/my-subjects')
+    wrap(<AdminHome />, false, { role: 'teacher' })
+    expect(screen.queryByRole('link', { name: /Trag deine Fächer ein/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/folgen bald/)).not.toBeInTheDocument()
     vi.unstubAllGlobals()
   })

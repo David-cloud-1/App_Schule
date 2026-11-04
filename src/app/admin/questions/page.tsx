@@ -68,6 +68,7 @@ import {
 import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
 import { useClassLevelOptions } from '@/components/department-provider'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { DepartmentTag, LastChangedLine, useEmptyScopeText } from '@/components/admin/content-meta'
 import { AdminErrorState } from '@/components/admin/admin-states'
 
 type SortColumn = 'created_at' | 'difficulty' | 'question_text'
@@ -145,6 +146,7 @@ function AdminQuestionsPageContent() {
   const [importOpen, setImportOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<QuestionWithTopic | null>(null)
   const [historyTarget, setHistoryTarget] = useState<QuestionWithTopic | null>(null)
+  const emptyScopeText = useEmptyScopeText('Fragen')
   const [deleting, setDeleting] = useState(false)
   const [exporting, setExporting] = useState(false)
 
@@ -200,10 +202,11 @@ function AdminQuestionsPageContent() {
       }
       const json = await res.json()
       setSubjects(
-        (json.subjects ?? []).map((s: { id: string; code: string; name: string }) => ({
+        (json.subjects ?? []).map((s: { id: string; code: string; name: string; department_name?: string | null }) => ({
           id: s.id,
           code: s.code,
           name: s.name,
+          department_name: s.department_name ?? null,
         }))
       )
     } catch (err) {
@@ -596,6 +599,7 @@ function AdminQuestionsPageContent() {
               {subjects.map((s) => (
                 <SelectItem key={s.id} value={s.code}>
                   {s.code} – {s.name}
+                  {s.department_name ? ` (${s.department_name})` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -829,7 +833,7 @@ function AdminQuestionsPageContent() {
                 ? (
                   <TableRow className="border-ws-line">
                     <TableCell colSpan={9} className="text-center text-ws-muted py-10">
-                      Keine Fragen gefunden.
+                      {emptyScopeText}
                     </TableCell>
                   </TableRow>
                 )
@@ -903,6 +907,9 @@ function AdminQuestionsPageContent() {
                                 {c}
                               </Badge>
                             ))}
+                            {departmentsOf(q).map((d) => (
+                              <DepartmentTag key={d.code} name={d.name} code={d.code} />
+                            ))}
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {q.class_level != null ? (
@@ -925,11 +932,9 @@ function AdminQuestionsPageContent() {
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {formatCreatedAt(q)}
-                            {q.last_changed_by && (
-                              <div className="text-ws-faint">
-                                Zuletzt: {q.last_changed_by}
-                              </div>
-                            )}
+                            <div>
+                              <LastChangedLine by={q.last_changed_by} at={q.last_changed_at} />
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
@@ -1106,6 +1111,7 @@ function AdminQuestionsPageContent() {
         question={editingQuestion}
         subjects={subjects}
         onSuccess={fetchQuestions}
+        onOpenHistory={(q) => setHistoryTarget(q as QuestionWithTopic)}
       />
 
       <CsvImportDialog
@@ -1222,6 +1228,16 @@ function AdminQuestionsPageContent() {
       )}
     </div>
   )
+}
+
+/** Bereiche, in denen die Fächer einer Frage liegen (meist einer) */
+function departmentsOf(q: QuestionWithTopic): { name: string; code: string }[] {
+  const seen = new Map<string, { name: string; code: string }>()
+  for (const qs of q.question_subjects as unknown as { subjects?: { departments?: { name: string; code: string } | null } | null }[]) {
+    const d = qs.subjects?.departments
+    if (d) seen.set(d.code, d)
+  }
+  return [...seen.values()]
 }
 
 function formatCreatedAt(q: QuestionWithTopic): string {

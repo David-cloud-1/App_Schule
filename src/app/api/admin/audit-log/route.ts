@@ -8,6 +8,8 @@ const QuerySchema = z.object({
   action_type: z.string().optional(),
   /** Nur Einträge zu dieser Person (Nutzer-Detailseite, PROJ-59) */
   object_id: z.string().uuid().optional(),
+  /** Bereichsleiste (PROJ-70): nur für den Super-Admin, der sonst alle Bereiche sieht */
+  department_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
 })
 
@@ -37,7 +39,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { period, action_type, object_id, page } = parsed.data
+  const { period, action_type, object_id, department_id, page } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -58,6 +60,8 @@ export async function GET(request: NextRequest) {
     // Bereich, Super-Admin bereichsübergreifend (PROJ-24).
     if (!isSuperAdmin) {
       query = query.eq('department_id', departmentId)
+    } else if (department_id) {
+      query = query.eq('department_id', department_id)
     }
 
     if (period !== 'all') {

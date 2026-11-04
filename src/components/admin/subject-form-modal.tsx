@@ -15,11 +15,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { showVersionConflict } from '@/components/admin/content-meta'
+import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
 export type AdminSubjectRow = {
   id: string
   name: string
   code: string
+  /** Zählnummer beim Öffnen (Konflikt-Schutz, PROJ-70) */
+  version_number?: number
 }
 
 interface Props {
@@ -34,6 +38,8 @@ interface Props {
    * Bereich wird serverseitig aus der Sitzung bestimmt).
    */
   departmentId?: string
+  /** Öffnet den Verlauf aus dem Konflikt-Hinweis */
+  onOpenHistory?: () => void
 }
 
 type FormState = {
@@ -44,12 +50,14 @@ type FormState = {
 
 const EMPTY: FormState = { name: '', code: '', description: '' }
 
-export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, departmentId }: Props) {
+export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, departmentId, onOpenHistory }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const isEdit = Boolean(subject)
+  const needsTarget = useNeedsTargetDepartment()
+  const [targetDepartment, setTargetDepartment] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -58,6 +66,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
     } else {
       setForm(EMPTY)
     }
+    setTargetDepartment('')
     setErrors({})
   }, [open, subject])
 
@@ -67,6 +76,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
     if (form.name.length > 100) e.name = 'Max. 100 Zeichen.'
     if (!form.code.trim()) e.code = 'Code ist Pflicht.'
     if (form.code.length > 5) e.code = 'Max. 5 Zeichen.'
+    if (!isEdit && needsTarget && !departmentId && !targetDepartment) e.department_id = 'Bitte wähle den Bereich.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -76,12 +86,13 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
     if (!validate()) return
     setSubmitting(true)
     try {
-      const payload: Record<string, string> = {
+      const payload: Record<string, string | number> = {
         name: form.name.trim(),
         code: form.code.trim().toUpperCase(),
       }
       if (form.description.trim()) payload.description = form.description.trim()
-      if (!isEdit && departmentId) payload.department_id = departmentId
+      if (!isEdit && (departmentId || targetDepartment)) payload.department_id = departmentId ?? targetDepartment
+      if (isEdit && subject?.version_number) payload.expected_version = subject.version_number
 
       const url = isEdit ? `/api/admin/subjects/${subject!.id}` : '/api/admin/subjects'
       const method = isEdit ? 'PATCH' : 'POST'
@@ -92,7 +103,13 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data?.error ?? 'Speichern fehlgeschlagen')
+        if (showVersionConflict(res, data, onOpenHistory)) {
+          onSuccess()
+          onOpenChange(false)
+          return
+        }
+        if (data?.field === 'department_id') setErrors({ department_id: data.error })
+        else toast.error(data?.error ?? 'Speichern fehlgeschlagen')
         return
       }
       toast.success(isEdit ? 'Fach aktualisiert' : 'Fach erstellt')
@@ -119,6 +136,13 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isEdit && !departmentId && (
+            <TargetDepartmentField
+              value={targetDepartment}
+              onChange={setTargetDepartment}
+              error={errors.department_id}
+            />
+          )}
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
             <Input
