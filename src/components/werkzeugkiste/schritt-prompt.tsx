@@ -1,13 +1,47 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronDown, Copy } from 'lucide-react'
+import { Check, ChevronDown, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Textarea } from '@/components/ui/textarea'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 import { cn } from '@/lib/utils'
 import { Hinweis } from '@/components/werkzeugkiste/schritt-skript'
+import { AIS_CHAT_URL } from '@/lib/werkzeugkiste-texte'
+
+/**
+ * Große, nicht zu übersehende Karte mit dem Link zur Schul-KI (AIS.chat, BayernCloud Schule):
+ * kostenlos, ohne eigenes Konto bei einem KI-Anbieter. Claude und ChatGPT stehen leise darunter.
+ */
+export function KiOeffnenLink({ className }: { className?: string }) {
+  return (
+    <div className={cn('w-full space-y-3 rounded-2xl border border-ws-blue/30 bg-ws-blue/10 p-4 text-center sm:p-5', className)}>
+      <Button
+        asChild
+        className="min-h-14 w-full rounded-2xl bg-ws-blue px-6 text-base font-bold text-ws-on-accent hover:bg-ws-blue-hover focus-visible:ring-ws-green"
+      >
+        <a href={AIS_CHAT_URL} target="_blank" rel="noopener noreferrer">
+          <ExternalLink className="mr-2 size-5" aria-hidden />
+          Bayerncloud KI öffnen
+          <span className="sr-only"> (Schul-KI AIS.chat) – öffnet in einem neuen Tab</span>
+        </a>
+      </Button>
+      <p className="text-sm leading-relaxed text-ws-text">Kostenlos. Anmeldung mit deinem BayernCloud-Zugang.</p>
+      <p className="text-sm text-ws-muted">
+        Du nutzt lieber eine andere KI? Auch{' '}
+        <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" className="font-medium text-ws-blue underline underline-offset-2 hover:text-ws-blue-hover">
+          Claude
+        </a>{' '}
+        und{' '}
+        <a href="https://chatgpt.com" target="_blank" rel="noopener noreferrer" className="font-medium text-ws-blue underline underline-offset-2 hover:text-ws-blue-hover">
+          ChatGPT
+        </a>{' '}
+        funktionieren.
+      </p>
+    </div>
+  )
+}
 
 /**
  * Kopierknopf für lange Prompts. Verweigert der Browser die Zwischenablage,
@@ -92,6 +126,7 @@ export function SchrittPrompt({ prompt }: { prompt: string }) {
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-ws-line bg-ws-surface px-5 py-8 text-center">
         <KopierKnopf text={prompt} label="Prompt kopieren" gross className="w-full sm:w-auto" />
         <span className="text-sm text-ws-faint">ca. {zeichen} Zeichen</span>
+        <KiOeffnenLink className="w-full sm:w-auto" />
         <Collapsible className="w-full">
           <CollapsibleTrigger className="group mx-auto flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm text-ws-blue hover:text-ws-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
             Prompt ansehen
@@ -110,7 +145,7 @@ export function SchrittPrompt({ prompt }: { prompt: string }) {
 
       <ol className="space-y-4">
         {[
-          'Öffne Claude, ChatGPT oder die schulische KI in einem neuen Tab.',
+          'Öffne die Bayerncloud KI (großer blauer Knopf) in einem neuen Tab.',
           'Füge den Prompt ein und schicke ihn ab.',
           'Kopiere die ganze Antwort und komm hierher zurück.',
         ].map((text, i) => (

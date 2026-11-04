@@ -12,7 +12,7 @@ import { teileEingefuegt, type Ablauf, type AblaufTeil } from '@/lib/werkzeugkis
 import { ladeTeilPrompt, sendeTeilAntwort, WerkzeugFehler, type TeilWarnung } from '@/lib/werkzeugkiste-api'
 import { cn } from '@/lib/utils'
 import { RettungsBox } from '@/components/werkzeugkiste/abbruch-rettung'
-import { KopierKnopf } from '@/components/werkzeugkiste/schritt-prompt'
+import { KiOeffnenLink, KopierKnopf } from '@/components/werkzeugkiste/schritt-prompt'
 import { Hinweis } from '@/components/werkzeugkiste/schritt-skript'
 
 /** Ab so vielen Teilen empfehlen wir, weniger Kapitel auszuwählen */
@@ -98,11 +98,24 @@ export function SchrittTeile({ ablauf, onAblauf }: { ablauf: Ablauf; onAblauf: (
 
   return (
     <div className="space-y-6">
-      <Hinweis>
-        Dein Skript ist lang. Damit die Antwort deiner KI nicht abbricht, bekommst du es in {von} Teilen. Kopiere jeden Teil einzeln in
-        deine KI und füge die Antwort hier ein. Die App prüft jeden Teil sofort und setzt am Ende alles zu einer Datei zusammen.
-        {von >= VIELE_TEILE && ' Tipp: Wähle in Schritt 1 nur die Kapitel für die nächsten Wochen aus, dann sind es weniger Teile.'}
-      </Hinweis>
+      <div className="space-y-3">
+        <p className="leading-relaxed text-ws-text">
+          Dein Skript ist lang, deshalb bekommst du es in <strong>{von} Teilen</strong>. So geht es, für jeden Teil gleich:
+        </p>
+        <ol className="space-y-2 text-ws-text">
+          {['Prompt kopieren', 'In der KI einfügen und abschicken', 'Antwort der KI hier einfügen'].map((text, i) => (
+            <li key={i} className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ws-raised text-sm font-bold">{i + 1}</span>
+              <span className="leading-relaxed">{text}</span>
+            </li>
+          ))}
+        </ol>
+        {von >= VIELE_TEILE && (
+          <Hinweis>Tipp: Wähle in Schritt 1 nur die Kapitel für die nächsten Wochen aus, dann sind es weniger Teile.</Hinweis>
+        )}
+      </div>
+
+      <KiOeffnenLink />
 
       <div className="space-y-2">
         <p className="text-sm font-semibold text-ws-text" aria-live="polite">
@@ -271,6 +284,7 @@ function TeilKarte({
             </Button>
           )}
           <div className="space-y-2">
+            <p className="text-sm font-semibold text-ws-text">1. Prompt kopieren, in der KI einfügen und abschicken</p>
             {prompt !== null ? (
               <>
                 <KopierKnopf text={prompt} label={`Prompt für Teil ${teil.nr} kopieren`} className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
@@ -291,6 +305,9 @@ function TeilKarte({
           </div>
 
           <div className="space-y-2">
+            <p className="text-sm font-semibold text-ws-text" aria-hidden>
+              2. Die ganze Antwort der KI hier einfügen
+            </p>
             <Label htmlFor={`wk-teil-${teil.nr}`} className="sr-only">
               Antwort der KI zu Teil {teil.nr}
             </Label>

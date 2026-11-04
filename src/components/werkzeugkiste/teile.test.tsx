@@ -78,7 +78,9 @@ describe('Hilfen der Teil-Liste', () => {
 describe('Schritt 3 in Teilen (PROJ-69)', () => {
   it('erklärt, warum es Teile sind, und zeigt den Fortschritt in Worten', () => {
     render(<SchrittTeile ablauf={ablaufMit(fertig(1), teil(2), teil(3))} onAblauf={vi.fn()} />)
-    expect(screen.getByText(/Dein Skript ist lang\. Damit die Antwort deiner KI nicht abbricht, bekommst du es in 3 Teilen/)).toBeInTheDocument()
+    expect(screen.getByText(/Dein Skript ist lang, deshalb bekommst du es in/)).toBeInTheDocument()
+    expect(screen.getByText('Antwort der KI hier einfügen')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Bayerncloud KI öffnen/ })).toBeInTheDocument()
     expect(screen.getByText('1 von 3 Teilen eingefügt')).toBeInTheDocument()
     expect(screen.getByRole('progressbar', { name: '1 von 3 Teilen eingefügt' })).toBeInTheDocument()
     expect(screen.getByText('Es fehlen noch die Teile 2, 3.')).toBeInTheDocument()
