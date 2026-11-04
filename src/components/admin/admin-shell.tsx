@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Shield, UserCog } from 'lucide-react'
+import { Building2, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminEmptyState } from '@/components/admin/admin-states'
 import { Toaster } from '@/components/ui/sonner'
@@ -25,10 +25,9 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
-  useSidebar,
 } from '@/components/ui/sidebar'
 import type { WorkspaceTheme } from '@/lib/workspace-theme'
-import { adminNavMatch } from '@/lib/admin-nav'
+import { adminNavMatch, LEHRERZIMMER_HREF } from '@/lib/admin-nav'
 import { istAblaufPfad } from '@/lib/werkzeugkiste'
 import { istFallPfad } from '@/lib/schulrecht'
 
@@ -145,37 +144,44 @@ function SubjectsGate({ children }: { children: React.ReactNode }) {
   )
 }
 
-function AdminSidebar() {
-  const { name: departmentName } = useDepartment()
-  const { isSuperAdmin } = useAdminRole()
-  const { isMobile } = useSidebar()
+/** Bereich ohne Umschalten (alle außer Super-Admin) */
+function DepartmentLabel() {
+  const { name } = useDepartment()
+  if (!name) return null
+  return (
+    <div className="flex min-h-11 items-center gap-3 rounded-xl border border-ws-line bg-ws-surface px-3 py-2 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
+      <Building2 className="size-5 shrink-0 text-ws-muted" aria-hidden />
+      <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+        <span className="text-xs text-ws-muted">Bereich</span>
+        <span className="truncate font-semibold text-ws-text" title={name}>
+          {name}
+        </span>
+      </span>
+    </div>
+  )
+}
 
+function AdminSidebar() {
+  const { isSuperAdmin } = useAdminRole()
   return (
     <Sidebar collapsible="icon" className="border-ws-line">
-      <SidebarHeader className="border-b border-ws-line px-3 py-3">
-        <div className="flex h-10 min-w-0 items-center gap-3 px-1">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-ws-green/15 text-ws-green">
-            <Shield className="size-5" aria-hidden />
-          </span>
-          <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="truncate text-sm font-bold text-ws-text">Lehrkräfte</span>
-            {departmentName && (
-              <span className="truncate text-xs text-ws-muted" title={departmentName}>
-                {departmentName}
-              </span>
-            )}
-          </span>
-        </div>
-        {isSuperAdmin && isMobile && (
-          <div className="pt-2 sm:hidden">
-            <DepartmentSwitcher />
-          </div>
-        )}
+      <SidebarHeader className="px-3 pt-4">
+        {isSuperAdmin ? <DepartmentSwitcher /> : <DepartmentLabel />}
       </SidebarHeader>
       <SidebarContent>
         <AdminNav />
       </SidebarContent>
-      <SidebarFooter className="border-t border-ws-line">
+      <SidebarFooter className="gap-3 border-t border-ws-line">
+        <div className="rounded-xl bg-ws-raised p-3 text-sm text-ws-muted group-data-[collapsible=icon]:hidden">
+          <p className="font-semibold text-ws-text">Du brauchst Hilfe?</p>
+          <p>
+            Frag das Kollegium im{' '}
+            <Link href={LEHRERZIMMER_HREF} className="font-semibold text-ws-green hover:underline">
+              Lehrerzimmer
+            </Link>
+            .
+          </p>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <AdminAccountMenu variant="sidebar" />

@@ -1,5 +1,5 @@
 /**
- * Darstellung des Lehrkräfte-Bereichs (PROJ-45): dunkel (Standard), hell oder
+ * Darstellung des Lehrkräfte-Bereichs (PROJ-45): hell (Standard), dunkel oder
  * wie das System. Gemerkt als Cookie, damit der Server die Seite gleich in der
  * richtigen Farbe ausliefert (kein Aufblitzen). Die Farben selbst stehen als
  * Tokens in `globals.css`; der Rahmen setzt nur `data-ws-theme`.
@@ -9,7 +9,7 @@ export type WorkspaceTheme = 'dark' | 'light' | 'system'
 
 export const WORKSPACE_THEMES: readonly WorkspaceTheme[] = ['dark', 'light', 'system']
 
-export const DEFAULT_WORKSPACE_THEME: WorkspaceTheme = 'dark'
+export const DEFAULT_WORKSPACE_THEME: WorkspaceTheme = 'light'
 
 export const WORKSPACE_THEME_COOKIE = 'ws_theme'
 

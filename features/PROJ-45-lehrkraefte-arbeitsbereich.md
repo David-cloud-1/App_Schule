@@ -459,3 +459,15 @@ Ergebnis einer Durchsicht des Bereichs aus Sicht einer Lehrkraft (Punkte A1–A6
   - `/admin/exam-sets` prüfte serverseitig mit `requireAdmin()`. Eine Lehrkraft sah deshalb eine leere Seite. Die Seite nutzt jetzt wie die Schnittstelle `requireContentAdmin()` mit den Bereichen der Zuständigkeiten.
   - Die Seite zeigte außerdem Sets aus dem Papierkorb. Neu ist der Filter `deleted_at is null`.
 - **Geprüft:** `tsc` sauber, Vitest 125 Dateien / 1.437 Tests grün (neue Tests für Fach-Bedingung, Schnellaktionen, laufende Nachweise und den Rahmen-Hinweis), Build grün, keine neuen Lint-Warnungen. Im Browser nicht geprüft (kein Dev-Server).
+
+## Nachbesserung „ruhiger Stil“ (2026-11-04, Vorschau v2)
+
+Nach Rückmeldung („nach KI aussehend“, Startseite unübersichtlich) umgebaut nach `docs/vorschau/admin-uebersicht-v2.html`:
+
+- **Startseite (`admin-home.tsx`):** Begrüßung mit Vornamen (aus der Mail-Adresse abgeleitet), eine grüne Hauptaktion im Seitenkopf, „Läuft gerade“ als schlanke Zeilen, „Das kannst du als Nächstes tun“ als Textliste ohne Icon-Kacheln, Inhalt `max-w-3xl`.
+- **Seitenleiste (`admin-nav.tsx`):** immer sichtbar nur Übersicht, Leistungsnachweise, Fragen, Werkzeugkiste, Lehrerzimmer (`ADMIN_MAIN_NAV_HREFS`). Alles andere unter eingeklapptem „Weitere Seiten“ und „Verwaltung“; der Block mit der aktuellen Seite ist offen, bei nur-Icon-Leiste ist alles offen. Hinweis zum Umfang („· deine Fächer“) bleibt bei „Inhalte“.
+- **Farben/Schrift:** neue Tokens in `globals.css` (warmes Beige hell, grünliches Dunkel), Schrift Figtree im Lehrkräfte-Bereich. **Standard-Darstellung ist jetzt Hell** (`DEFAULT_WORKSPACE_THEME`); bereits gewählte Cookies bleiben. Helles Grün auf `#26640C` abgedunkelt, damit der Kontrasttest bei 20 % Tönung besteht.
+- **Sidebar-Kopf/-Fuß:** Oben steht ein Kasten „Bereich“ (Super-Admin: Umschalter, sonst nur Anzeige), unten ein Hilfe-Kasten mit Link ins Lehrerzimmer (eine echte Anleitung gibt es noch nicht). Der alte Schild-Kopf „Lehrkräfte“ und der Umschalter in der Kopfzeile sind entfallen.
+- **Kopfzeile:** Suchfeld ohne ⌘K-Kennzeichen (Kürzel steht im Tooltip und funktioniert weiter), „Zur Lern-App“ als ruhiger Textlink statt neongrüner Knopf (am Handy nur noch im Konto-Menü).
+- **Offen:** Leerzustand der Startseite nur als gestrichelter Hinweis; die ~30 übrigen Admin-Seiten (Tabellen, Dialoge) nicht einzeln nachgezogen.
+- **Geprüft:** `tsc`, Lint, Vitest 204 Dateien / 2.455 Tests grün. Im Browser nicht geprüft (kein Dev-Server).

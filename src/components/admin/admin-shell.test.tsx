@@ -102,6 +102,21 @@ describe('AdminShell – Grundgerüst (PROJ-45)', () => {
   })
 })
 
+describe('AdminShell – Seitenleiste im ruhigen Stil', () => {
+  it('zeigt einen Hilfe-Kasten mit Weg ins Lehrerzimmer', () => {
+    setup()
+    expect(screen.getByText('Du brauchst Hilfe?')).toBeInTheDocument()
+    const links = screen.getAllByRole('link', { name: 'Lehrerzimmer' })
+    expect(links.some((a) => a.getAttribute('href') === '/admin/lehrerzimmer')).toBe(true)
+  })
+
+  it('zeigt Nicht-Super-Admins den Bereich als Anzeige statt als Umschalter', () => {
+    setup()
+    expect(screen.getByText('Bereich')).toBeInTheDocument()
+    expect(screen.queryByTestId('department-switcher')).not.toBeInTheDocument()
+  })
+})
+
 describe('AdminShell – Handy (PROJ-45)', () => {
   it('öffnet das Menü als Schublade und schließt es nach Auswahl eines Eintrags', () => {
     setup({ width: 390 })

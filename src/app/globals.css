@@ -95,59 +95,64 @@
    ------------------------------------------------------------------------ */
 @layer base {
   :root {
-    --ws-bg: 17 24 39; /* #111827 */
-    --ws-surface: 31 41 55; /* #1F2937 */
-    --ws-raised: 55 65 81; /* #374151 */
-    --ws-line: 75 85 99; /* #4B5563 */
-    --ws-faint: 139 147 161; /* #8B93A1 */
-    --ws-muted: 166 172 183; /* #A6ACB7 */
-    --ws-text: 249 250 251; /* #F9FAFB */
-    --ws-green: 88 204 2; /* #58CC02 */
-    --ws-green-hover: 76 173 2; /* #4CAD02 */
+    --ws-bg: 20 23 20; /* #141714 */
+    --ws-surface: 27 31 27; /* #1B1F1B */
+    --ws-raised: 36 41 36; /* #242924 */
+    --ws-line: 52 59 52; /* #343B34 */
+    --ws-faint: 142 151 143; /* #8E978F */
+    --ws-muted: 163 172 164; /* #A3ACA4 */
+    --ws-text: 241 243 239; /* #F1F3EF */
+    --ws-green: 126 211 60; /* #7ED33C */
+    --ws-green-hover: 107 187 47; /* #6BBB2F */
     --ws-blue: 62 188 247; /* #3EBCF7 */
     --ws-blue-hover: 28 176 246; /* #1CB0F6 */
     --ws-red: 255 123 123; /* #FF7B7B */
     --ws-red-hover: 255 92 92; /* #FF5C5C */
     --ws-orange: 255 150 0; /* #FF9600 */
     --ws-gold: 255 215 0; /* #FFD700 */
-    --ws-on-accent: 17 24 39; /* #111827 */
+    --ws-on-accent: 20 23 20; /* #141714 */
+  }
+
+  /* Lehrkräfte-Bereich: freundlichere Schrift, 16 px Fließtext */
+  html:has(.ws-root) body {
+    font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
   }
 
   /* shadcn-Variablen im Lehrkräfte-Bereich auf die Palette abbilden (dunkel) */
   html:has(.ws-root) {
     color-scheme: dark;
-    --background: 220.9 39.3% 11%;
-    --foreground: 210 20% 98%;
-    --card: 215 27.9% 16.9%;
-    --card-foreground: 210 20% 98%;
-    --popover: 215 27.9% 16.9%;
-    --popover-foreground: 210 20% 98%;
-    --primary: 94.5 98.1% 40.4%;
-    --primary-foreground: 220.9 39.3% 11%;
-    --secondary: 216.9 19.1% 26.7%;
-    --secondary-foreground: 210 20% 98%;
-    --muted: 216.9 19.1% 26.7%;
-    --muted-foreground: 218.8 10.6% 68.4%;
-    --accent: 216.9 19.1% 26.7%;
-    --accent-foreground: 210 20% 98%;
+    --background: 120 7% 8.4%;
+    --foreground: 90 14.3% 94.5%;
+    --card: 120 6.9% 11.4%;
+    --card-foreground: 90 14.3% 94.5%;
+    --popover: 120 6.9% 11.4%;
+    --popover-foreground: 90 14.3% 94.5%;
+    --primary: 93.8 63.2% 53.1%;
+    --primary-foreground: 120 7% 8.4%;
+    --secondary: 120 6.5% 15.1%;
+    --secondary-foreground: 90 14.3% 94.5%;
+    --muted: 120 6.5% 15.1%;
+    --muted-foreground: 126.7 5.1% 65.7%;
+    --accent: 120 6.5% 15.1%;
+    --accent-foreground: 90 14.3% 94.5%;
     --destructive: 0 100% 74.1%;
     --destructive-foreground: 220.9 39.3% 11%;
-    --border: 215 13.8% 34.1%;
-    --input: 215 13.8% 34.1%;
-    --ring: 94.5 98.1% 40.4%;
+    --border: 120 6.3% 21.8%;
+    --input: 120 6.3% 21.8%;
+    --ring: 93.8 63.2% 53.1%;
   }
 
   html:has(.ws-root[data-ws-theme="light"]) {
     color-scheme: light;
-    --ws-bg: 244 245 247; /* #F4F5F7 */
+    --ws-bg: 247 246 242; /* #F7F6F2 */
     --ws-surface: 255 255 255; /* #FFFFFF */
-    --ws-raised: 235 237 240; /* #EBEDF0 */
-    --ws-line: 209 213 219; /* #D1D5DB */
-    --ws-faint: 95 102 115; /* #5F6673 */
-    --ws-muted: 75 85 99; /* #4B5563 */
-    --ws-text: 17 24 39; /* #111827 */
-    --ws-green: 45 104 0; /* #2D6800 */
-    --ws-green-hover: 36 84 0; /* #245400 */
+    --ws-raised: 239 237 231; /* #EFEDE7 */
+    --ws-line: 221 217 207; /* #DDD9CF */
+    --ws-faint: 106 114 108; /* #6A726C */
+    --ws-muted: 92 101 95; /* #5C655F */
+    --ws-text: 29 36 32; /* #1D2420 */
+    --ws-green: 38 100 12; /* #26640C */
+    --ws-green-hover: 31 82 10; /* #1F520A */
     --ws-blue: 9 95 144; /* #095F90 */
     --ws-blue-hover: 7 78 119; /* #074E77 */
     --ws-red: 170 34 34; /* #AA2222 */
@@ -155,39 +160,39 @@
     --ws-orange: 141 71 0; /* #8D4700 */
     --ws-gold: 113 89 0; /* #715900 */
     --ws-on-accent: 255 255 255; /* #FFFFFF */
-    --background: 220 15.8% 96.3%;
-    --foreground: 220.9 39.3% 11%;
+    --background: 48 23.8% 95.9%;
+    --foreground: 145.7 10.8% 12.7%;
     --card: 0 0% 100%;
-    --card-foreground: 220.9 39.3% 11%;
+    --card-foreground: 145.7 10.8% 12.7%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220.9 39.3% 11%;
-    --primary: 94 100% 20.4%;
+    --popover-foreground: 145.7 10.8% 12.7%;
+    --primary: 105.6 78.2% 21.6%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 216 14.3% 93.1%;
-    --secondary-foreground: 220.9 39.3% 11%;
-    --muted: 216 14.3% 93.1%;
-    --muted-foreground: 215 13.8% 34.1%;
-    --accent: 216 14.3% 93.1%;
-    --accent-foreground: 220.9 39.3% 11%;
+    --secondary: 45 20% 92.2%;
+    --secondary-foreground: 145.7 10.8% 12.7%;
+    --muted: 45 20% 92.2%;
+    --muted-foreground: 140 4.7% 37.8%;
+    --accent: 45 20% 92.2%;
+    --accent-foreground: 145.7 10.8% 12.7%;
     --destructive: 0 66.7% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 216 12.2% 83.9%;
-    --input: 216 12.2% 83.9%;
-    --ring: 94 100% 20.4%;
+    --border: 42.9 17.1% 83.9%;
+    --input: 42.9 17.1% 83.9%;
+    --ring: 105.6 78.2% 21.6%;
   }
 
   @media (prefers-color-scheme: light) {
     html:has(.ws-root[data-ws-theme="system"]) {
       color-scheme: light;
-      --ws-bg: 244 245 247; /* #F4F5F7 */
+      --ws-bg: 247 246 242; /* #F7F6F2 */
       --ws-surface: 255 255 255; /* #FFFFFF */
-      --ws-raised: 235 237 240; /* #EBEDF0 */
-      --ws-line: 209 213 219; /* #D1D5DB */
-      --ws-faint: 95 102 115; /* #5F6673 */
-      --ws-muted: 75 85 99; /* #4B5563 */
-      --ws-text: 17 24 39; /* #111827 */
-      --ws-green: 45 104 0; /* #2D6800 */
-      --ws-green-hover: 36 84 0; /* #245400 */
+      --ws-raised: 239 237 231; /* #EFEDE7 */
+      --ws-line: 221 217 207; /* #DDD9CF */
+      --ws-faint: 106 114 108; /* #6A726C */
+      --ws-muted: 92 101 95; /* #5C655F */
+      --ws-text: 29 36 32; /* #1D2420 */
+      --ws-green: 38 100 12; /* #26640C */
+      --ws-green-hover: 31 82 10; /* #1F520A */
       --ws-blue: 9 95 144; /* #095F90 */
       --ws-blue-hover: 7 78 119; /* #074E77 */
       --ws-red: 170 34 34; /* #AA2222 */
@@ -195,25 +200,25 @@
       --ws-orange: 141 71 0; /* #8D4700 */
       --ws-gold: 113 89 0; /* #715900 */
       --ws-on-accent: 255 255 255; /* #FFFFFF */
-      --background: 220 15.8% 96.3%;
-      --foreground: 220.9 39.3% 11%;
+      --background: 48 23.8% 95.9%;
+      --foreground: 145.7 10.8% 12.7%;
       --card: 0 0% 100%;
-      --card-foreground: 220.9 39.3% 11%;
+      --card-foreground: 145.7 10.8% 12.7%;
       --popover: 0 0% 100%;
-      --popover-foreground: 220.9 39.3% 11%;
-      --primary: 94 100% 20.4%;
+      --popover-foreground: 145.7 10.8% 12.7%;
+      --primary: 105.6 78.2% 21.6%;
       --primary-foreground: 0 0% 100%;
-      --secondary: 216 14.3% 93.1%;
-      --secondary-foreground: 220.9 39.3% 11%;
-      --muted: 216 14.3% 93.1%;
-      --muted-foreground: 215 13.8% 34.1%;
-      --accent: 216 14.3% 93.1%;
-      --accent-foreground: 220.9 39.3% 11%;
+      --secondary: 45 20% 92.2%;
+      --secondary-foreground: 145.7 10.8% 12.7%;
+      --muted: 45 20% 92.2%;
+      --muted-foreground: 140 4.7% 37.8%;
+      --accent: 45 20% 92.2%;
+      --accent-foreground: 145.7 10.8% 12.7%;
       --destructive: 0 66.7% 40%;
       --destructive-foreground: 0 0% 100%;
-      --border: 216 12.2% 83.9%;
-      --input: 216 12.2% 83.9%;
-      --ring: 94 100% 20.4%;
+      --border: 42.9 17.1% 83.9%;
+      --input: 42.9 17.1% 83.9%;
+      --ring: 105.6 78.2% 21.6%;
     }
   }
 
@@ -221,15 +226,15 @@
   @media print {
     html:has(.ws-root) {
       color-scheme: light;
-      --ws-bg: 244 245 247; /* #F4F5F7 */
+      --ws-bg: 247 246 242; /* #F7F6F2 */
       --ws-surface: 255 255 255; /* #FFFFFF */
-      --ws-raised: 235 237 240; /* #EBEDF0 */
-      --ws-line: 209 213 219; /* #D1D5DB */
-      --ws-faint: 95 102 115; /* #5F6673 */
-      --ws-muted: 75 85 99; /* #4B5563 */
-      --ws-text: 17 24 39; /* #111827 */
-      --ws-green: 45 104 0; /* #2D6800 */
-      --ws-green-hover: 36 84 0; /* #245400 */
+      --ws-raised: 239 237 231; /* #EFEDE7 */
+      --ws-line: 221 217 207; /* #DDD9CF */
+      --ws-faint: 106 114 108; /* #6A726C */
+      --ws-muted: 92 101 95; /* #5C655F */
+      --ws-text: 29 36 32; /* #1D2420 */
+      --ws-green: 38 100 12; /* #26640C */
+      --ws-green-hover: 31 82 10; /* #1F520A */
       --ws-blue: 9 95 144; /* #095F90 */
       --ws-blue-hover: 7 78 119; /* #074E77 */
       --ws-red: 170 34 34; /* #AA2222 */
@@ -237,25 +242,25 @@
       --ws-orange: 141 71 0; /* #8D4700 */
       --ws-gold: 113 89 0; /* #715900 */
       --ws-on-accent: 255 255 255; /* #FFFFFF */
-      --background: 220 15.8% 96.3%;
-      --foreground: 220.9 39.3% 11%;
+      --background: 48 23.8% 95.9%;
+      --foreground: 145.7 10.8% 12.7%;
       --card: 0 0% 100%;
-      --card-foreground: 220.9 39.3% 11%;
+      --card-foreground: 145.7 10.8% 12.7%;
       --popover: 0 0% 100%;
-      --popover-foreground: 220.9 39.3% 11%;
-      --primary: 94 100% 20.4%;
+      --popover-foreground: 145.7 10.8% 12.7%;
+      --primary: 105.6 78.2% 21.6%;
       --primary-foreground: 0 0% 100%;
-      --secondary: 216 14.3% 93.1%;
-      --secondary-foreground: 220.9 39.3% 11%;
-      --muted: 216 14.3% 93.1%;
-      --muted-foreground: 215 13.8% 34.1%;
-      --accent: 216 14.3% 93.1%;
-      --accent-foreground: 220.9 39.3% 11%;
+      --secondary: 45 20% 92.2%;
+      --secondary-foreground: 145.7 10.8% 12.7%;
+      --muted: 45 20% 92.2%;
+      --muted-foreground: 140 4.7% 37.8%;
+      --accent: 45 20% 92.2%;
+      --accent-foreground: 145.7 10.8% 12.7%;
       --destructive: 0 66.7% 40%;
       --destructive-foreground: 0 0% 100%;
-      --border: 216 12.2% 83.9%;
-      --input: 216 12.2% 83.9%;
-      --ring: 94 100% 20.4%;
+      --border: 42.9 17.1% 83.9%;
+      --input: 42.9 17.1% 83.9%;
+      --ring: 105.6 78.2% 21.6%;
       --ws-bg: 255 255 255;
       --background: 0 0% 100%;
     }

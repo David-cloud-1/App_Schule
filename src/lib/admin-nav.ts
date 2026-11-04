@@ -69,6 +69,18 @@ export interface AdminNavGroup {
 
 export const ADMIN_HOME_HREF = '/admin'
 
+/**
+ * Die Seiten, die in der Seitenleiste immer sichtbar sind (neben „Übersicht“).
+ * Alles andere steht eingeklappt unter „Weitere Seiten“ bzw. „Verwaltung“.
+ * Fehlt einer Rolle die Seite (z. B. Fragen ohne eingetragenes Fach), entfällt sie.
+ */
+export const ADMIN_MAIN_NAV_HREFS = [
+  '/admin/leistungsnachweise',
+  '/admin/questions',
+  WERKZEUGKISTE_HREF,
+  '/admin/lehrerzimmer',
+]
+
 /** Lehrerzimmer (PROJ-63): Forum für den Austausch im Kollegium */
 export const LEHRERZIMMER_HREF = '/admin/lehrerzimmer'
 

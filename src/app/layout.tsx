@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Figtree, Inter } from "next/font/google";
 import "./globals.css";
 import { DepartmentProvider, type DepartmentContextValue } from "@/components/department-provider";
 import { getCurrentDepartment, getDepartmentContextValue } from "@/lib/departments-server";
@@ -9,6 +9,8 @@ import { BottomNav } from "@/components/bottom-nav";
 import { betriebSpriteSchluessel } from "@/lib/betrieb-sprites";
 
 const inter = Inter({ subsets: ["latin"] });
+// Schrift des Lehrkräfte-Bereichs; die Schülerseite bleibt bei Inter (siehe globals.css)
+const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree", preload: false });
 
 // Titel und Beschreibung kommen aus dem Fachbereich — vor dem Login aus der
 // aufgerufenen Adresse, danach aus dem Profil (PROJ-22).
@@ -33,7 +35,7 @@ export default async function RootLayout({
   const hatBetrieb = betriebSpriteSchluessel(department.code).length > 0;
 
   return (
-    <html lang="de" className="dark">
+    <html lang="de" className={`dark ${figtree.variable}`}>
       <body className={`${inter.className} antialiased`}>
         <DepartmentProvider value={value}>
           <WrongAddressBanner />

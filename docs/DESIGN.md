@@ -123,21 +123,21 @@ Small: text-sm text-muted
 ### Farben nur über Tokens
 Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-white`, `green-500` …). Jede Farbe kommt aus der Farb-Schicht in `src/app/globals.css` und heißt in Tailwind `ws-*` (Deckkraft geht: `bg-ws-green/15`).
 
-| Token | Zweck | Dunkel (Standard) | Hell |
+| Token | Zweck | Dunkel | Hell (Standard) |
 |---|---|---|---|
-| `ws-bg` | Seitenhintergrund | #111827 | #F4F5F7 |
-| `ws-surface` | Karten, Tabellen, Dialoge, Seitenleiste | #1F2937 | #FFFFFF |
-| `ws-raised` | Hover, erhöhte Flächen | #374151 | #EBEDF0 |
-| `ws-line` | Rahmen, Trennlinien | #4B5563 | #D1D5DB |
-| `ws-text` | Haupttext | #F9FAFB | #111827 |
-| `ws-muted` | Nebentext, Labels | #A6ACB7 | #4B5563 |
-| `ws-faint` | Hinweise, Gruppentitel | #8B93A1 | #5F6673 |
-| `ws-green` / `-hover` | Hauptaktion, Erfolg, aktiv | #58CC02 / #4CAD02 | #2D6800 / #245400 |
+| `ws-bg` | Seitenhintergrund | #141714 | #F7F6F2 |
+| `ws-surface` | Karten, Tabellen, Dialoge, Seitenleiste | #1B1F1B | #FFFFFF |
+| `ws-raised` | Hover, erhöhte Flächen | #242924 | #EFEDE7 |
+| `ws-line` | Rahmen, Trennlinien | #343B34 | #DDD9CF |
+| `ws-text` | Haupttext | #F1F3EF | #1D2420 |
+| `ws-muted` | Nebentext, Labels | #A3ACA4 | #5C655F |
+| `ws-faint` | Hinweise, Gruppentitel | #8E978F | #6A726C |
+| `ws-green` / `-hover` | Hauptaktion, Erfolg, aktiv | #7ED33C / #6BBB2F | #26640C / #1F520A |
 | `ws-blue` / `-hover` | Info, Links | #3EBCF7 / #1CB0F6 | #095F90 / #074E77 |
 | `ws-red` / `-hover` | Fehler, Löschen | #FF7B7B / #FF5C5C | #AA2222 / #8E1C1C |
 | `ws-orange` | Warnung, „läuft noch“ | #FF9600 | #8D4700 |
 | `ws-gold` | Auszeichnungen, „episch“ | #FFD700 | #715900 |
-| `ws-on-accent` | Schrift auf gefüllten Farbflächen | #111827 | #FFFFFF |
+| `ws-on-accent` | Schrift auf gefüllten Farbflächen | #141714 | #FFFFFF |
 
 - **Gefüllte Buttons:** `bg-ws-green hover:bg-ws-green-hover text-ws-on-accent`. Im dunklen Modus ist die Schrift darauf fast schwarz, im hellen weiß. So erreichen beide Modi WCAG AA (Entscheidung 2026-10-26).
 - **Getönte Pills/Hinweise:** `bg-ws-<farbe>/15 text-ws-<farbe> border-ws-<farbe>/30`. Die Tönung hinter gleichfarbigem Text beträgt **höchstens /20, bei Rot höchstens /15**. Sonst reicht der Kontrast nicht, und der Test schlägt fehl.
@@ -145,7 +145,7 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - Neue Tokens immer in **beiden** Modi (und im Block „Wie System“) anlegen. Der Test `src/lib/workspace-theme.test.ts` prüft die Kontraste (Text ≥ 4,5 : 1).
 
 ### Darstellung
-- Wählbar im Konto-Menü und in der Schnellsuche: **Dunkel** (Standard), **Hell**, **Wie System**. Gemerkt als Cookie `ws_theme`, deshalb erscheint die Seite ohne Aufblitzen.
+- Wählbar im Konto-Menü und in der Schnellsuche: **Hell** (Standard, warmes Beige), **Dunkel**, **Wie System**. Schrift im Bereich: Figtree (Schülerseite bleibt Inter). Gemerkt als Cookie `ws_theme`, deshalb erscheint die Seite ohne Aufblitzen.
 - Der Rahmen setzt `data-ws-theme` an `.ws-root`. Über `html:has(.ws-root…)` gelten die Werte auch für Dialoge, Menüs und Toasts.
 - Druck ist immer hell auf weiß, ohne Navigation und Kopfzeile.
 

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vorschau Lehrkräfte-Start (Variante 2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F7F6F2; --surface:#FFFFFF; --soft:#EFEDE7; --line:#E3E0D8;
+  --text:#1D2420; --muted:#5C655F; --green:#2F7A12; --green-soft:#E5F1DC; --on-accent:#fff;
+}
+:root[data-theme="dark"]{
+  --bg:#141714; --surface:#1B1F1B; --soft:#242924; --line:#2E342E;
+  --text:#F1F3EF; --muted:#A3ACA4; --green:#7ED33C; --green-soft:#22301A; --on-accent:#141714;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.55 Figtree,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:264px 1fr;min-height:100vh}
+svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* Seitenleiste */
+aside{padding:20px 14px;display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--line)}
+.bereich{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);cursor:pointer}
+.bereich small{display:block;color:var(--muted);font-size:13px;line-height:1.2}
+.bereich b{font-weight:600;line-height:1.3}
+.item{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:var(--text);text-decoration:none;font-weight:500}
+.item svg{color:var(--muted)}
+.item:hover{background:var(--soft)}
+.item.on{background:var(--green-soft);color:var(--green);font-weight:600}
+.item.on svg{color:var(--green)}
+details{margin-top:6px}
+summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:var(--muted);font-weight:500}
+summary::-webkit-details-marker{display:none}
+summary:hover{background:var(--soft)}
+summary .ch{margin-left:auto;transition:transform .2s}
+details[open] summary .ch{transform:rotate(180deg)}
+details .item{padding-left:44px;color:var(--muted);font-weight:400}
+.help{margin-top:auto;padding:14px;border-radius:12px;background:var(--soft);font-size:14px;color:var(--muted)}
+.help b{display:block;color:var(--text);font-weight:600;margin-bottom:2px}
+.help a{color:var(--green);font-weight:600;text-decoration:none}
+/* Hauptbereich */
+main{min-width:0}
+.top{display:flex;align-items:center;gap:10px;padding:16px 40px}
+.sp{flex:1}
+.search{display:flex;align-items:center;gap:10px;height:44px;width:280px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.btn{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 15px Figtree,sans-serif;display:inline-flex;align-items:center;gap:8px;cursor:pointer;text-decoration:none}
+.btn:hover{background:var(--soft)}
+.btn.pri{background:var(--green);border-color:transparent;color:var(--on-accent)}
+.btn.pri:hover{filter:brightness(.92)}
+.btn.link{border:0;background:none;color:var(--muted);padding:0 10px}
+.wrap{max-width:820px;padding:16px 40px 64px}
+.head{display:flex;align-items:flex-end;gap:16px;margin-bottom:32px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+.head p{color:var(--muted);margin-top:6px}
+h2{font-size:18px;font-weight:600;margin-bottom:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:36px}
+.run{display:flex;align-items:center;gap:8px;color:var(--green);font-weight:600;font-size:14px;margin-bottom:6px}
+.run:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--green)}
+.card h3{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.card .meta{color:var(--muted);margin-top:2px}
+.facts{display:flex;gap:32px;margin:20px 0}
+.facts div{color:var(--muted);font-size:15px}
+.facts b{display:block;font-size:28px;font-weight:700;color:var(--text);line-height:1.2}
+.code{display:flex;align-items:center;gap:16px;padding:16px 18px;border-radius:12px;background:var(--soft)}
+.code small{display:block;color:var(--muted);font-size:14px}
+.code strong{font:700 26px/1.2 ui-monospace,Menlo,monospace;letter-spacing:.08em}
+.code .sp{flex:1}
+.actions{display:flex;gap:10px;margin-top:20px}
+.mini{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;margin-bottom:32px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.mini .d{width:8px;height:8px;border-radius:50%;background:var(--green);flex:none}
+.mini .t b{display:block;font-weight:600;line-height:1.3}
+.mini .t span{color:var(--muted);font-size:14px}
+.btn.sm{min-height:44px;padding:0 14px;font-size:14px}
+.rows{border-top:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:16px;padding:18px 4px;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}
+.row:hover{background:var(--soft)}
+.row b{display:block;font-weight:600}
+.row span{color:var(--muted);font-size:15px}
+.row svg:last-child{margin-left:auto;color:var(--muted)}
+.note{margin-top:28px;color:var(--muted);font-size:13px}
+@media(max-width:900px){.app{grid-template-columns:1fr}aside{display:none}.top,.wrap{padding-left:20px;padding-right:20px}.search{width:auto;flex:1}.head{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+<svg style="display:none">
+  <symbol id="home" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8M5 10v10h14V10"/></symbol>
+  <symbol id="cap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="tool" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-2-2.4Z"/></symbol>
+  <symbol id="chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12Z"/></symbol>
+  <symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></symbol>
+  <symbol id="down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z"/></symbol>
+</svg>
+
+<div class="app">
+  <aside>
+    <div class="bereich"><div><small>Bereich</small><b>Speditionskaufleute</b></div><svg><use href="#down"/></svg></div>
+    <a class="item on"><svg><use href="#home"/></svg>Start</a>
+    <a class="item"><svg><use href="#cap"/></svg>Leistungsnachweise</a>
+    <a class="item"><svg><use href="#doc"/></svg>Fragen</a>
+    <a class="item"><svg><use href="#tool"/></svg>Werkzeugkiste</a>
+    <a class="item"><svg><use href="#chat"/></svg>Lehrerzimmer</a>
+    <details>
+      <summary><svg><use href="#more"/></svg>Weitere Seiten<svg class="ch"><use href="#down"/></svg></summary>
+      <a class="item">Fächer</a><a class="item">Themen</a><a class="item">Prüfungssimulation</a><a class="item">Papierkorb</a>
+    </details>
+    <details>
+      <summary><svg><use href="#gear"/></svg>Verwaltung<svg class="ch"><use href="#down"/></svg></summary>
+      <a class="item">Nutzer</a><a class="item">Fachbereich</a><a class="item">Änderungsprotokoll</a>
+    </details>
+    <div class="help"><b>Du brauchst Hilfe?</b>Eine kurze Anleitung zeigt dir die ersten Schritte. <a href="#">Anleitung öffnen</a></div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <div class="search"><svg><use href="#search"/></svg>Suchen</div>
+      <span class="sp"></span>
+      <a class="btn link">Zur Lern-App</a>
+      <button class="btn" id="t"><svg><use href="#moon"/></svg><span id="tl">Dunkel</span></button>
+    </div>
+
+    <div class="wrap">
+      <div class="head">
+        <div><h1>Guten Morgen, David</h1><p>Ein Leistungsnachweis läuft gerade.</p></div>
+        <span class="sp"></span>
+        <button class="btn pri"><svg><use href="#plus"/></svg>Neuer Leistungsnachweis</button>
+      </div>
+
+      <h2>Läuft gerade</h2>
+      <div class="mini">
+        <span class="d"></span>
+        <div class="t"><b>Ex Heft 2</b><span>Klasse SP10C · 0 schreiben, 0 abgegeben</span></div>
+        <span class="sp"></span>
+        <button class="btn sm" id="c" title="Code für die Klasse kopieren"><svg><use href="#copy"/></svg><span id="cl">K4EV-TG</span></button>
+        <button class="btn sm">Öffnen</button>
+      </div>
+
+      <h2>Das kannst du als Nächstes tun</h2>
+      <div class="rows">
+        <a class="row"><div><b>Fragen aus einem Skript erstellen</b><span>Lade ein Skript hoch und bekomme passende Fragen.</span></div><svg><use href="#right"/></svg></a>
+        <a class="row"><div><b>Unterrichtsmaterial erstellen</b><span>Aus einem Skript Arbeitsblätter und Übungen machen.</span></div><svg><use href="#right"/></svg></a>
+        <a class="row"><div><b>Fragen ansehen und prüfen</b><span>Vorhandene Fragen lesen, ändern oder löschen.</span></div><svg><use href="#right"/></svg></a>
+      </div>
+      <p class="note">Vorschau mit Beispielinhalt. Nur Ex Heft 2, SP10C und der Code stammen aus der echten App.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const r=document.documentElement,l=document.getElementById('tl');
+function set(d){r.dataset.theme=d?'dark':'light';l.textContent=d?'Hell':'Dunkel'}
+set(false);
+document.getElementById('t').onclick=()=>set(r.dataset.theme!=='dark');
+document.getElementById('c').onclick=()=>{const s=document.getElementById('cl');s.textContent='Kopiert';setTimeout(()=>s.textContent='K4EV-TG',1500)};
+</script>
+</body>
+</html>

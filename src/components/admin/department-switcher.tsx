@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Building2, Loader2 } from 'lucide-react'
+import { useDepartment } from '@/components/department-provider'
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ type DepartmentOption = { id: string; name: string; code: string }
  * Admin-Seiten ihre Daten für den neu gewählten Bereich frisch laden.
  */
 export function DepartmentSwitcher() {
+  const { name: departmentName } = useDepartment()
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
   const [current, setCurrent] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,23 +87,44 @@ export function DepartmentSwitcher() {
     }
   }
 
-  if (loading || departments.length <= 1) return null
+  // Bei nur einem Bereich (oder beim Laden) steht der Bereich als ruhige, nicht klickbare Anzeige da
+  if (loading || departments.length <= 1) {
+    return departmentName ? (
+      <div className={boxClass}>
+        <Building2 className="size-5 shrink-0 text-ws-muted" aria-hidden />
+        <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+          <span className="text-xs text-ws-muted">Bereich</span>
+          <span className="truncate font-semibold text-ws-text" title={departmentName}>
+            {departmentName}
+          </span>
+        </span>
+      </div>
+    ) : null
+  }
 
   return (
     <Select value={current ?? undefined} onValueChange={handleChange} disabled={switching}>
-      <SelectTrigger className="h-9 w-36 sm:w-[180px] bg-ws-bg border-ws-line text-ws-text text-sm">
-        <div className="flex items-center gap-2 truncate">
+      <SelectTrigger
+        aria-label="Bereich wechseln"
+        className="h-auto min-h-11 w-full justify-between rounded-xl border-ws-line bg-ws-surface px-3 py-2 text-left text-ws-text focus:ring-ws-green group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:[&>svg:last-child]:hidden"
+      >
+        <span className="flex min-w-0 items-center gap-3">
           {switching ? (
-            <Loader2 className="w-4 h-4 shrink-0 animate-spin text-ws-muted" />
+            <Loader2 className="size-5 shrink-0 animate-spin text-ws-muted" aria-hidden />
           ) : (
-            <Building2 className="w-4 h-4 shrink-0 text-ws-muted" />
+            <Building2 className="size-5 shrink-0 text-ws-muted" aria-hidden />
           )}
-          <SelectValue placeholder="Fachbereich" />
-        </div>
+          <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="text-xs text-ws-muted">Bereich</span>
+            <span className="truncate font-semibold">
+              <SelectValue placeholder="Fachbereich" />
+            </span>
+          </span>
+        </span>
       </SelectTrigger>
-      <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+      <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
         {departments.map((d) => (
-          <SelectItem key={d.id} value={d.id} className="focus:bg-ws-bg focus:text-ws-text">
+          <SelectItem key={d.id} value={d.id} className="focus:bg-ws-raised focus:text-ws-text">
             {d.name}
           </SelectItem>
         ))}
@@ -109,3 +132,6 @@ export function DepartmentSwitcher() {
     </Select>
   )
 }
+
+const boxClass =
+  'flex min-h-11 items-center gap-3 rounded-xl border border-ws-line bg-ws-surface px-3 py-2 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0'

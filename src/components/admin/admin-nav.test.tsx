@@ -25,6 +25,14 @@ function wrap(
   })
 }
 
+/** Klappt „Weitere Seiten“ und „Verwaltung“ auf (sie sind standardmäßig zu) */
+function openFolds() {
+  for (const id of ['weitere', 'verwaltung']) {
+    const trigger = screen.queryByTestId(`nav-fold-${id}`)
+    if (trigger) fireEvent.click(trigger)
+  }
+}
+
 function stubAssessments(assessments: unknown[]) {
   vi.stubGlobal(
     'fetch',
@@ -38,9 +46,24 @@ function stubAssessments(assessments: unknown[]) {
 }
 
 describe('AdminNav (PROJ-40)', () => {
-  it('zeigt die drei Gruppen mit ihren Einträgen', () => {
+  it('zeigt oben nur die Hauptseiten, den Rest eingeklappt', () => {
     wrap(<AdminNav />, false)
-    for (const name of ['Mein Unterricht', 'Inhalte', 'Verwaltung']) {
+    expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
+      'Übersicht',
+      'Leistungsnachweise',
+      'Fragen',
+      'Werkzeugkiste',
+      'Lehrerzimmer',
+    ])
+    expect(screen.getByTestId('nav-fold-weitere')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('nav-fold-verwaltung')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('link', { name: 'Hof-Items' })).not.toBeInTheDocument()
+  })
+
+  it('zeigt nach dem Aufklappen Weitere Seiten und Verwaltung mit ihren Einträgen', () => {
+    wrap(<AdminNav />, false)
+    openFolds()
+    for (const name of ['Inhalte', 'Verwaltung']) {
       expect(screen.getByRole('list', { name })).toBeInTheDocument()
     }
     // Gruppentitel sind keine Überschriften (sonst stünden sie vor der h1 jeder Seite)
@@ -48,13 +71,25 @@ describe('AdminNav (PROJ-40)', () => {
     expect(screen.getByRole('link', { name: 'Übersicht' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Hof-Items' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Änderungsprotokoll' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Schulrecht' })).toBeInTheDocument()
+  })
+
+  it('klappt den Block auf, in dem die aktuelle Seite liegt', () => {
+    mockPath = '/admin/audit-log'
+    wrap(<AdminNav />, false)
+    expect(screen.getByTestId('nav-fold-verwaltung')).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('link', { name: 'Änderungsprotokoll' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByTestId('nav-fold-weitere')).toHaveAttribute('aria-expanded', 'false')
+    mockPath = '/admin'
   })
 
   it('blendet „Fachbereiche“ für Fachbereichs-Admins aus, für Super-Admins nicht', () => {
     const { unmount } = wrap(<AdminNav />, false)
+    openFolds()
     expect(screen.queryByRole('link', { name: 'Fachbereiche' })).not.toBeInTheDocument()
     unmount()
     wrap(<AdminNav />, true)
+    openFolds()
     expect(screen.getByRole('link', { name: 'Fachbereiche' })).toBeInTheDocument()
   })
 
@@ -78,14 +113,16 @@ describe('AdminNav (PROJ-40)', () => {
 describe('AdminNav je Rolle (PROJ-49)', () => {
   it('zeigt einer Lehrkraft keine Gruppe „Verwaltung“ und nennt „deine Fächer“ hinter „Inhalte“', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
+    openFolds()
     expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'Mein Unterricht' })).toBeInTheDocument()
+    expect(screen.queryByTestId('nav-fold-verwaltung')).not.toBeInTheDocument()
     expect(screen.getByText('· deine Fächer')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Meine Fächer' })).toBeInTheDocument()
   })
 
   it('nennt dem Bereichs-Admin „ganzer Bereich“', () => {
     wrap(<AdminNav />, false)
+    openFolds()
     expect(screen.getByText('· ganzer Bereich')).toBeInTheDocument()
   })
 })
@@ -137,15 +174,16 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
 
   it('zeigt in der Navigation auch Inhalts-Seiten und Meine Fächer (PROJ-46/48)', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
+    openFolds()
     const names = screen.getAllByRole('link').map((a) => a.textContent)
     expect(names).toEqual([
       'Übersicht',
       'Leistungsnachweise',
+      'Fragen',
       'Werkzeugkiste',
+      'Lehrerzimmer',
       'Schulrecht',
       'Meine Fächer',
-      'Lehrerzimmer',
-      'Fragen',
       'Fächer',
       'Themen',
       'Prüfungssimulation',
@@ -159,13 +197,14 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
   it('zeigt einer Lehrkraft ohne Fach statt leerer Inhalts-Seiten den Weg zu „Meine Fächer“', async () => {
     stubAssessments([])
     const { unmount } = wrap(<AdminNav />, false, { role: 'teacher', hasSubjectAssignments: false })
+    openFolds()
     expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Übersicht',
       'Leistungsnachweise',
       'Werkzeugkiste',
+      'Lehrerzimmer',
       'Schulrecht',
       'Meine Fächer',
-      'Lehrerzimmer',
     ])
     unmount()
     wrap(<AdminHome />, false, { role: 'teacher', hasSubjectAssignments: false })

@@ -139,10 +139,10 @@ describe('parseWorkspaceTheme', () => {
     expect(parseWorkspaceTheme('dark')).toBe('dark')
   })
 
-  it('fällt bei fehlendem oder fremdem Wert auf dunkel zurück', () => {
-    expect(DEFAULT_WORKSPACE_THEME).toBe('dark')
-    expect(parseWorkspaceTheme(undefined)).toBe('dark')
-    expect(parseWorkspaceTheme('pink')).toBe('dark')
+  it('fällt bei fehlendem oder fremdem Wert auf hell zurück', () => {
+    expect(DEFAULT_WORKSPACE_THEME).toBe('light')
+    expect(parseWorkspaceTheme(undefined)).toBe('light')
+    expect(parseWorkspaceTheme('pink')).toBe('light')
   })
 })
 

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vorschau Lehrkräfte-Übersicht</title>
+<style>
+:root{
+  --bg:#FAFAFA; --surface:#FFFFFF; --hover:#F3F4F6; --line:#E6E7EA;
+  --text:#111214; --muted:#6B7078; --faint:#8A8F98;
+  --green:#2D6800; --green-bg:#2D6800; --on-accent:#FFFFFF;
+  --orange:#8D4700; --blue:#095F90; --active:#EDEEF0;
+}
+:root[data-theme="dark"]{
+  --bg:#0C0D10; --surface:#121418; --hover:#1A1D22; --line:#23262C;
+  --text:#ECEDEF; --muted:#8E939C; --faint:#6F747D;
+  --green:#6FD21F; --green-bg:#58CC02; --on-accent:#0C0D10;
+  --orange:#FF9F1A; --blue:#4DB8F5; --active:#1A1D22;
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 Inter,system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* Sidebar */
+aside{border-right:1px solid var(--line);background:var(--surface);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 12px;margin-bottom:4px}
+.logo{width:24px;height:24px;border-radius:6px;background:var(--text);color:var(--bg);display:grid;place-items:center;font-weight:600;font-size:12px}
+.brand b{font-weight:600;display:block;line-height:1.2}
+.brand span{color:var(--muted);font-size:12px}
+.grp{font-size:12px;color:var(--faint);padding:14px 8px 4px;font-weight:500}
+.item{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:6px;color:var(--muted);text-decoration:none;font-weight:500}
+.item:hover{background:var(--hover);color:var(--text)}
+.item.on{background:var(--active);color:var(--text)}
+.item.on svg{color:var(--green)}
+.user{margin-top:auto;border-top:1px solid var(--line);padding:12px 8px 4px;display:flex;gap:10px;align-items:center}
+.av{width:24px;height:24px;border-radius:50%;background:var(--active);display:grid;place-items:center;font-size:11px;font-weight:600}
+.user small{display:block;color:var(--muted);font-size:12px;line-height:1.2}
+/* Main */
+main{min-width:0}
+.top{height:48px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 24px;background:var(--surface)}
+.crumb{color:var(--muted)} .crumb b{color:var(--text);font-weight:500}
+.sp{flex:1}
+.search{display:flex;align-items:center;gap:8px;height:30px;width:240px;padding:0 10px;border:1px solid var(--line);border-radius:6px;color:var(--faint);background:var(--bg)}
+.search kbd{margin-left:auto;font:11px inherit;font-family:inherit;border:1px solid var(--line);border-radius:4px;padding:0 5px}
+.btn{height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:500 13px inherit;font-family:inherit;display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.btn:hover{background:var(--hover)}
+.btn.pri{background:var(--green-bg);border-color:transparent;color:var(--on-accent)}
+.btn.pri:hover{filter:brightness(.94)}
+.wrap{padding:28px 24px 48px;max-width:1280px}
+.head{display:flex;align-items:flex-start;gap:16px;margin-bottom:24px}
+h1{font-size:20px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.head p{color:var(--muted);margin-top:2px}
+/* Kennzahlen */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:24px}
+.stat{padding:16px 20px;border-right:1px solid var(--line)}
+.stat:last-child{border:0}
+.stat span{color:var(--muted);font-size:13px}
+.stat strong{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:2px;line-height:1.3}
+.stat em{font-style:normal;font-size:12px;color:var(--faint)}
+/* Inhalt */
+.cols{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.card{border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.card header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.card header h2{font-size:14px;font-weight:600}
+.card header a{margin-left:auto;color:var(--muted);font-size:13px;text-decoration:none}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:var(--faint);font-size:12px;padding:8px 16px;border-bottom:1px solid var(--line)}
+td{padding:11px 16px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+tr:last-child td{border:0}
+tbody tr:hover{background:var(--hover)}
+td.n{font-weight:500} td small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.r{text-align:right}
+.dot{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.dot:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.dot.run{color:var(--green)} .dot.draft{color:var(--faint)} .dot.wait{color:var(--orange)}
+.bar{height:4px;border-radius:2px;background:var(--active);width:72px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px}
+.bar i{display:block;height:100%;background:var(--text);opacity:.7}
+ul{list-style:none;padding:0}
+li{display:flex;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line)}
+li:last-child{border:0}
+li svg{color:var(--faint);margin-top:3px}
+li small{display:block;color:var(--muted);font-size:12px}
+.note{margin-top:20px;color:var(--faint);font-size:12px}
+@media(max-width:1000px){.app{grid-template-columns:1fr}aside{display:none}.cols{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<svg style="display:none">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></symbol>
+  <symbol id="i-cap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></symbol>
+  <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8-1.3-1.3a4 4 0 0 0-2-2.4Z"/><path d="m5 17 2 2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L3 21l1.8-5.5A8 8 0 1 1 21 12Z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8L3 12Z"/><circle cx="7.5" cy="8.5" r="1"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2 .6 3.2 2.3 3.5 5.2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="3"/><path d="M7 10v4M5 12h4M15.5 11h.01M18 13h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10Z"/></symbol>
+</svg>
+
+<div class="app">
+  <aside>
+    <div class="brand"><div class="logo">L</div><div><b>Lehrkräfte</b><span>Speditionskaufleute</span></div></div>
+    <a class="item on"><svg><use href="#i-grid"/></svg>Übersicht</a>
+    <div class="grp">Mein Unterricht</div>
+    <a class="item"><svg><use href="#i-cap"/></svg>Leistungsnachweise</a>
+    <a class="item"><svg><use href="#i-tool"/></svg>Werkzeugkiste</a>
+    <a class="item"><svg><use href="#i-chat"/></svg>Lehrerzimmer</a>
+    <div class="grp">Inhalte</div>
+    <a class="item"><svg><use href="#i-doc"/></svg>Fragen</a>
+    <a class="item"><svg><use href="#i-book"/></svg>Fächer</a>
+    <a class="item"><svg><use href="#i-tag"/></svg>Themen</a>
+    <div class="grp">Verwaltung</div>
+    <a class="item"><svg><use href="#i-users"/></svg>Nutzer</a>
+    <div class="user"><div class="av">D</div><div><b style="font-weight:500">David Zach</b><small>Super-Admin</small></div></div>
+  </aside>
+
+  <main>
+    <div class="top">
+      <span class="crumb"><b>Übersicht</b></span>
+      <span class="sp"></span>
+      <div class="search"><svg><use href="#i-search"/></svg>Suchen<kbd>⌘K</kbd></div>
+      <button class="btn"><svg><use href="#i-play"/></svg>Lern-App</button>
+      <button class="btn" id="t" aria-label="Darstellung wechseln"><svg><use href="#i-moon"/></svg><span id="tl">Dunkel</span></button>
+    </div>
+
+    <div class="wrap">
+      <div class="head">
+        <div><h1>Guten Morgen, David</h1><p>Drei Nachweise laufen, einer wartet auf Auswertung.</p></div>
+        <span class="sp"></span>
+        <button class="btn pri"><svg><use href="#i-plus"/></svg>Neuer Leistungsnachweis</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span>Laufende Nachweise</span><strong>3</strong><em>2 Klassen</em></div>
+        <div class="stat"><span>Abgegeben heute</span><strong>14</strong><em>von 52 Schüler:innen</em></div>
+        <div class="stat"><span>Fragen zu prüfen</span><strong>27</strong><em>seit letzter Woche +9</em></div>
+        <div class="stat"><span>Aktive Azubis (7 Tage)</span><strong>118</strong><em>von 164</em></div>
+      </div>
+
+      <div class="cols">
+        <div class="card">
+          <header><h2>Laufende Leistungsnachweise</h2><a href="#">Alle anzeigen</a></header>
+          <table>
+            <thead><tr><th>Nachweis</th><th>Status</th><th>Fortschritt</th><th class="r">Schreiben</th><th class="r">Abgegeben</th></tr></thead>
+            <tbody>
+              <tr><td class="n">Ex Heft 2<small>SP10C · Code K4EV-TG</small></td><td><span class="dot run">Läuft</span></td><td><span class="bar"><i style="width:0%"></i></span>0 %</td><td class="r">0</td><td class="r">0</td></tr>
+              <tr><td class="n">Kurztest Incoterms<small>SP11A · Code M7QD-2X</small></td><td><span class="dot run">Läuft</span></td><td><span class="bar"><i style="width:62%"></i></span>62 %</td><td class="r">9</td><td class="r">14</td></tr>
+              <tr><td class="n">Ex Lagerlogistik<small>SP11B · Code R2LP-9W</small></td><td><span class="dot wait">Auswertung offen</span></td><td><span class="bar"><i style="width:100%"></i></span>100 %</td><td class="r">0</td><td class="r">23</td></tr>
+              <tr><td class="n">Probe Zollrecht<small>SP12A · Entwurf</small></td><td><span class="dot draft">Entwurf</span></td><td><span class="bar"><i style="width:0%"></i></span>–</td><td class="r">–</td><td class="r">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <header><h2>Zuletzt bearbeitet</h2></header>
+          <ul>
+            <li><svg><use href="#i-doc"/></svg><div>Frage „Gefahrgutklassen“ geändert<small>Vor 12 Min. · Thema Gefahrgut</small></div></li>
+            <li><svg><use href="#i-cap"/></svg><div>Kurztest Incoterms gestartet<small>Vor 1 Std. · SP11A</small></div></li>
+            <li><svg><use href="#i-tool"/></svg><div>Skript „Lager 2“ aufbereitet<small>Gestern · Werkzeugkiste</small></div></li>
+            <li><svg><use href="#i-users"/></svg><div>3 neue Azubis in SP10C<small>Gestern · Nutzer</small></div></li>
+          </ul>
+        </div>
+      </div>
+      <p class="note">Vorschau mit Beispieldaten. Nur „Ex Heft 2“, „SP10C“ und der Code stammen aus der echten App.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const r=document.documentElement,b=document.getElementById('t'),l=document.getElementById('tl');
+function set(d){r.dataset.theme=d?'dark':'light';l.textContent=d?'Hell':'Dunkel'}
+set(true);
+b.onclick=()=>set(r.dataset.theme!=='dark');
+</script>
+</body>
+</html>

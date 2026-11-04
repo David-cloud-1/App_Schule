@@ -3,11 +3,9 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Gamepad2, Menu, PanelLeft, Search } from 'lucide-react'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
+import { Menu, PanelLeft, Search } from 'lucide-react'
 import { useWorkspace } from '@/components/admin/workspace-provider'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
-import { DepartmentSwitcher } from '@/components/admin/department-switcher'
 import { useDepartment } from '@/components/department-provider'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
@@ -47,7 +45,6 @@ const iconButton =
  */
 export function AdminTopbar() {
   const pathname = usePathname()
-  const { isSuperAdmin } = useAdminRole()
   const { hofShortName } = useDepartment()
   const { detailCrumb, setCommandOpen } = useWorkspace()
   const { toggleSidebar, isMobile } = useSidebar()
@@ -111,30 +108,20 @@ export function AdminTopbar() {
         type="button"
         onClick={() => setCommandOpen(true)}
         aria-keyshortcuts="Meta+K Control+K"
-        className="hidden h-10 w-56 shrink-0 items-center gap-2 rounded-xl border border-ws-line bg-ws-surface px-3 text-sm text-ws-faint transition-colors duration-200 hover:border-ws-faint hover:text-ws-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green lg:flex"
+        title={`Schnellsuche (${mod}K)`}
+        className="hidden h-11 w-64 shrink-0 items-center gap-2 rounded-xl border border-ws-line bg-ws-surface px-3 text-ws-muted transition-colors duration-200 hover:border-ws-faint hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green lg:flex"
       >
-        <Search className="size-4" />
-        <span className="flex-1 text-left">Suchen …</span>
-        <kbd className="rounded-md border border-ws-line bg-ws-raised px-1.5 py-0.5 text-[11px] font-semibold text-ws-muted">
-          {isApple ? '⌘K' : 'Strg K'}
-        </kbd>
+        <Search className="size-5" />
+        <span className="flex-1 text-left">Suchen</span>
       </button>
 
       <Link
         href="/"
-        aria-label="Zur Lern-App"
         title="Zur Lern-App"
-        className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-ws-green/30 bg-ws-green/15 px-3 text-ws-green transition-all duration-200 hover:bg-ws-green/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green active:scale-95"
+        className="hidden h-11 shrink-0 items-center rounded-xl px-3 text-sm sm:flex font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
       >
-        <Gamepad2 className="size-5" />
-        <span className="hidden text-sm font-semibold sm:inline">Zur Lern-App</span>
+        Zur Lern-App
       </Link>
-
-      {isSuperAdmin && (
-        <div className="hidden sm:block">
-          <DepartmentSwitcher />
-        </div>
-      )}
 
       <div className="lg:hidden">
         <AdminAccountMenu variant="avatar" />
