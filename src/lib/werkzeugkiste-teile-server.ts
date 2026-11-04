@@ -7,6 +7,7 @@ import {
   type AblaufPruefung,
   type AblaufTeil,
   type AblaufTeile,
+  type TeilAuswahl,
   type TeilZustand,
   TEILE_MAX,
 } from '@/lib/werkzeugkiste'
@@ -111,17 +112,47 @@ function seitenKurz(seiten: string): string {
 }
 
 /** Was ein Teil enthält, kurz: Titel der Word-Abschnitte bzw. „Seiten 1–4“ */
-export function beschreibeTeil(auswahl: AblaufAuswahl, gliederung: { nr: number; titel: string }[]): string[] {
-  if (auswahl.abschnitte.length > 0) {
-    const titel = auswahl.abschnitte.map((nr) => gliederung.find((g) => g.nr === nr)?.titel || `Abschnitt ${nr}`)
+export function beschreibeTeil(
+  auswahl: AblaufAuswahl & { vorspann?: boolean },
+  gliederung: { nr: number; titel: string }[],
+  unterteil?: { nr: number; von: number } | null,
+  beginnt?: string | null,
+): string[] {
+  if (auswahl.abschnitte.length > 0 || auswahl.vorspann) {
+    const titel = [
+      ...(auswahl.vorspann ? ['Einstieg (Text vor der ersten Überschrift)'] : []),
+      ...auswahl.abschnitte.map((nr) => gliederung.find((g) => g.nr === nr)?.titel || `Abschnitt ${nr}`),
+    ]
+    if (unterteil && titel.length === 1) {
+      // Zerlegter Abschnitt (PROJ-71): „Übungsaufgaben, 2. von 4 (ab Aufgabe 3)“; der erste Teil beginnt mit dem Titel selbst
+      const ab = unterteil.nr > 1 && beginnt ? ` (ab ${beginnt.replace(/\s+/g, ' ').trim()})` : ''
+      return kuerzeListe([`${kuerzeListe(titel, 1, 60)[0]}, ${unterteil.nr}. von ${unterteil.von}${ab}`], 1, 100)
+    }
     return kuerzeListe(titel, 6, 80)
   }
   const kurz = seitenKurz(auswahl.seiten)
   return kurz ? [`${kurz.includes(',') || kurz.includes('–') ? 'Seiten' : 'Seite'} ${kurz}`] : []
 }
 
+/** Ein Teil, wie der Kern ihn liefert; die Angaben zum Unterteil gibt es nur bei zerlegten Abschnitten (PROJ-71) */
+export interface KernTeil {
+  auswahl: TeilAuswahl
+  zeichen: number
+  unterteil?: { nr: number; von: number }
+  beginnt?: string
+  zuGross?: boolean
+}
+
+/** Ausschnitt aus der Antwort des Kerns übernehmen; ungültige Angaben entfallen (dann gilt der ganze Abschnitt) */
+function auswahlAusKern(a: TeilAuswahl | undefined): TeilAuswahl {
+  const von = Number(a?.ausschnitt?.von)
+  const bis = Number(a?.ausschnitt?.bis)
+  const ausschnitt = Number.isInteger(von) && Number.isInteger(bis) && von >= 0 && bis > von ? { ausschnitt: { von, bis } } : {}
+  return { seiten: a?.seiten ?? '', abschnitte: a?.abschnitte ?? [], ...(a?.vorspann ? { vorspann: true } : {}), ...ausschnitt }
+}
+
 export function legeTeileAn(
-  kernTeile: { auswahl: AblaufAuswahl; zeichen: number }[],
+  kernTeile: KernTeil[],
   gliederung: { nr: number; titel: string }[],
   groesse: number,
 ): AblaufTeile {
@@ -129,18 +160,29 @@ export function legeTeileAn(
     groesse,
     zusammengefuegt: false,
     hinweise: [],
-    teile: kernTeile.slice(0, TEILE_MAX).map((t, i) => ({
-      nr: i + 1,
-      inhalt: beschreibeTeil(t.auswahl, gliederung),
-      auswahl: { seiten: t.auswahl?.seiten ?? '', abschnitte: t.auswahl?.abschnitte ?? [] },
-      zeichen: Number(t.zeichen) || 0,
-      zustand: 'offen' as TeilZustand,
-      kapitel: [],
-      befund: null,
-      satz: null,
-      runden: 0,
-      fingerabdruck: null,
-    })),
+    teile: kernTeile.slice(0, TEILE_MAX).map((t, i) => {
+      const auswahl = auswahlAusKern(t.auswahl)
+      // Die Angaben zum Unterteil gelten nur mit gültigem Ausschnitt; sonst wäre die Beschriftung falsch
+      const zerlegt = !!auswahl.ausschnitt && Number.isInteger(t.unterteil?.nr) && Number.isInteger(t.unterteil?.von)
+      const unterteil = zerlegt ? { nr: Number(t.unterteil?.nr), von: Number(t.unterteil?.von) } : undefined
+      const beginnt = zerlegt && t.beginnt ? String(t.beginnt).replace(/\s+/g, ' ').trim().slice(0, 60) : undefined
+      return {
+        nr: i + 1,
+        inhalt: beschreibeTeil(auswahl, gliederung, unterteil, beginnt),
+        auswahl,
+        ...(unterteil ? { unterteil } : {}),
+        ...(beginnt ? { beginnt } : {}),
+        ...(t.zuGross ? { zuGross: true } : {}),
+        zeichen: Number(t.zeichen) || 0,
+        zustand: 'offen' as TeilZustand,
+        kapitel: [],
+        befund: null,
+        satz: null,
+        runden: 0,
+        fingerabdruck: null,
+
+      }
+    }),
   }
 }
 

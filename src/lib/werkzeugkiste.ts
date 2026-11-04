@@ -779,6 +779,14 @@ export interface AblaufAuswahl {
   abschnitte: number[]
 }
 
+/** Auswahl eines Teils (PROJ-71): wie die Auswahl der Lehrkraft, bei zerlegten Abschnitten mit Ausschnitt */
+export interface TeilAuswahl extends AblaufAuswahl {
+  /** Zeichenpositionen im Text des (einen) Abschnitts; der Kern schneidet einmal, die App speichert nur */
+  ausschnitt?: { von: number; bis: number }
+  /** true = der Text vor der ersten Überschrift gehört zu diesem Teil */
+  vorspann?: boolean
+}
+
 export interface PruefBefund {
   text: string
 }
@@ -834,9 +842,15 @@ export interface AblaufTeil {
   nr: number
   /** Was der Teil enthält, kurz: Titel der Abschnitte bzw. „Seiten 1–4“ */
   inhalt: string[]
-  auswahl: AblaufAuswahl
+  auswahl: TeilAuswahl
   /** Zeichen Skripttext in diesem Teil */
   zeichen: number
+  /** Nur bei zerlegten Abschnitten (PROJ-71): „Teil 2 von 4 dieses Abschnitts“ */
+  unterteil?: { nr: number; von: number }
+  /** Nur bei zerlegten Abschnitten: die ersten Worte des Ausschnitts, z. B. „Aufgabe 3“ */
+  beginnt?: string
+  /** Nur wenn der Teil trotz Zerlegung deutlich größer bleibt als die Teilgröße (z. B. eine riesige Tabelle) */
+  zuGross?: boolean
   zustand: TeilZustand
   /** Titel der Kapitel in der eingefügten Antwort */
   kapitel: string[]

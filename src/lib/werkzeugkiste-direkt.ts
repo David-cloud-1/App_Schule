@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { timingSafeEqual } from 'node:crypto'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import type { AblaufAuswahl, AblaufEinstellungen, DirektSperre, LaufInfo, TeilAuswahl } from '@/lib/werkzeugkiste'
 import { GUTHABEN_TEXT } from '@/lib/werkzeugkiste-texte'
 import { aktualisiereSpeicher, titelNachBauen } from '@/lib/werkzeugkiste-materialien-server'
 import { addiere, kostenUsd, TAGESLIMIT, type ModellPreis, type Verbrauch } from '@/lib/werkzeugkiste-kosten'
@@ -680,7 +680,7 @@ export async function letzterLauf(supabase: SupabaseClient, ablaufId: string): P
 export async function legeLaufAn(
   service: SupabaseClient,
   zeile: AblaufZeile,
-  teile: { auswahl: AblaufAuswahl; zeichen: number }[],
+  teile: { auswahl: TeilAuswahl; zeichen: number }[],
   e: KiEinstellungen,
 ): Promise<{ lauf: LaufZeile; teilIds: string[] } | { laufend: true }> {
   const { data, error } = await service
@@ -727,13 +727,18 @@ export async function brichAb(service: SupabaseClient, laufId: string) {
 export async function teileFuer(service: SupabaseClient, zeile: AblaufZeile, auswahl: AblaufAuswahl) {
   const einlesung = await leseAdresse(service, einlesungPfad(zeile.owner_id, zeile.id))
   if (!einlesung) throw new KernFehler('Das eingelesene Skript fehlt. Bitte lade es erneut hoch.', 400)
-  const r = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
+  const r = await kern<{ teile: { auswahl: TeilAuswahl; zeichen: number }[] }>('/api/teilen', {
     einlesung: { url: einlesung },
     auswahl,
   })
   if (!Array.isArray(r.teile) || r.teile.length === 0 || r.teile.length > 100) throw new KernFehler('Das Skript ließ sich nicht aufteilen.', 502)
   return r.teile.map((t) => ({
-    auswahl: { seiten: String(t.auswahl?.seiten ?? ''), abschnitte: (t.auswahl?.abschnitte ?? []).map(Number) },
+    auswahl: {
+      seiten: String(t.auswahl?.seiten ?? ''),
+      abschnitte: (t.auswahl?.abschnitte ?? []).map(Number),
+      // Sonst würde ein Teil mit Vorspann ohne Abschnitte als „ganzes Skript“ gelesen
+      ...(t.auswahl?.vorspann ? { vorspann: true } : {}),
+    },
     zeichen: Number(t.zeichen) || 0,
   }))
 }

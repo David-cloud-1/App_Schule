@@ -217,6 +217,94 @@ describe('Teil-Liste anlegen (Prompt-Route)', () => {
   })
 })
 
+describe('Zu große Abschnitte zerlegen (PROJ-71)', () => {
+  const zerlegt = {
+    teile: [
+      { auswahl: { seiten: '', abschnitte: [1] }, zeichen: 6000 },
+      { auswahl: { seiten: '', abschnitte: [2], ausschnitt: { von: 0, bis: 6046 } }, zeichen: 6044, unterteil: { nr: 1, von: 2 }, beginnt: 'Haftung' },
+      { auswahl: { seiten: '', abschnitte: [2], ausschnitt: { von: 6046, bis: 13148 } }, zeichen: 7100, unterteil: { nr: 2, von: 2 }, beginnt: 'Aufgabe 3:' },
+      { auswahl: { seiten: '', abschnitte: [3] }, zeichen: 5000 },
+    ],
+  }
+
+  it('bittet den Kern um die Zerlegung und speichert Ausschnitt, Unterteil und Beschriftung', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', zerlegt)
+    const a = (await (await promptRoute(new Request('http://t'), ctx)).json()).ablauf
+    expect(letzter('/api/teilen')).toMatchObject({ max_zeichen: 8000, zerlegen: true })
+    const liste = a.teile.teile as AblaufTeil[]
+    expect(liste).toHaveLength(4)
+    expect(liste[1]).toMatchObject({ auswahl: { abschnitte: [2], ausschnitt: { von: 0, bis: 6046 } }, unterteil: { nr: 1, von: 2 }, beginnt: 'Haftung' })
+    expect(liste[2].inhalt).toEqual(['Haftung, 2. von 2 (ab Aufgabe 3:)'])
+    expect(liste[1].inhalt).toEqual(['Haftung, 1. von 2'])
+    // ganze Abschnitte bleiben ohne die neuen Angaben, wie bisher
+    expect(liste[0].auswahl).toEqual({ seiten: '', abschnitte: [1] })
+    expect(liste[0]).not.toHaveProperty('unterteil')
+    expect(liste[3].inhalt).toEqual(['Lagerung'])
+  })
+
+  it('verwirft einen unsinnigen Ausschnitt, statt falsch zu beschriften', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', {
+      teile: [
+        { auswahl: { seiten: '', abschnitte: [1], ausschnitt: { von: 9, bis: 3 } }, zeichen: 6000, unterteil: { nr: 1, von: 2 }, beginnt: 'x' },
+        { auswahl: { seiten: '', abschnitte: [2], ausschnitt: { von: 'a', bis: 3 } }, zeichen: 6000, unterteil: { nr: 2, von: 2 } },
+      ],
+    })
+    const liste = (await (await promptRoute(new Request('http://t'), ctx)).json()).ablauf.teile.teile as AblaufTeil[]
+    for (const t of liste) {
+      expect(t.auswahl).not.toHaveProperty('ausschnitt')
+      expect(t).not.toHaveProperty('unterteil')
+    }
+    expect(liste[0].inhalt).toEqual(['Frachtvertrag'])
+  })
+
+  it('behält den Vorspann (Text vor der ersten Überschrift) und beschriftet ihn', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', {
+      teile: [
+        { auswahl: { seiten: '', abschnitte: [], vorspann: true }, zeichen: 7700 },
+        { auswahl: { seiten: '', abschnitte: [1, 2] }, zeichen: 7000 },
+      ],
+    })
+    const liste = (await (await promptRoute(new Request('http://t'), ctx)).json()).ablauf.teile.teile as AblaufTeil[]
+    expect(liste[0].auswahl).toEqual({ seiten: '', abschnitte: [], vorspann: true })
+    expect(liste[0].inhalt).toEqual(['Einstieg (Text vor der ersten Überschrift)'])
+    expect(liste[1].auswahl).not.toHaveProperty('vorspann')
+  })
+
+  it('merkt sich einen zu großen Teil', async () => {
+    zeile = { ...BASIS, schritt: 2 }
+    kernSagt('/api/teilen', {
+      teile: [
+        { auswahl: { seiten: '', abschnitte: [1] }, zeichen: 6000 },
+        { auswahl: { seiten: '', abschnitte: [2] }, zeichen: 30000, zuGross: true },
+      ],
+    })
+    const liste = (await (await promptRoute(new Request('http://t'), ctx)).json()).ablauf.teile.teile as AblaufTeil[]
+    expect(liste[1].zuGross).toBe(true)
+    expect(liste[0]).not.toHaveProperty('zuGross')
+  })
+
+  it('gibt dem Kern beim Prompt, bei der Antwortprüfung die Auswahl samt Ausschnitt', async () => {
+    const ausschnitt = { von: 100, bis: 5000 }
+    zeile = {
+      ...BASIS,
+      teile: teileListe(teil(1), teil(2, { auswahl: { seiten: '', abschnitte: [2], ausschnitt }, unterteil: { nr: 1, von: 2 } }), teil(3)),
+    }
+    kernSagt('/api/prompt', { prompt: 'Teilprompt' })
+    await teilPrompt(json({}), mitNr(2))
+    expect(letzter('/api/prompt').auswahl).toEqual({ seiten: '', abschnitte: [2], ausschnitt })
+
+    kernSagt('/api/teil-pruefen', teilCheck())
+    kernSagt('/api/pruefen', pruefOk())
+    await teilAntwort(json({ antwort: 'chapters: x' }), mitNr(2))
+    expect(letzter('/api/pruefen').auswahl).toEqual({ seiten: '', abschnitte: [2], ausschnitt })
+    // der Vergleich „falscher Teil“ bekommt alle Auswahlen, mit Ausschnitten
+    expect((letzter('/api/teil-pruefen').teile as { ausschnitt?: unknown }[])[1].ausschnitt).toEqual(ausschnitt)
+  })
+})
+
 describe('Lange Texte ohne Teilungsmöglichkeit und fertige Materialien (Prompt-Route)', () => {
   it('gibt einem langen Text, der sich nicht teilen lässt, einen Prompt und den Hinweis auf den Nachhol-Prompt', async () => {
     zeile = { ...BASIS, schritt: 2 }
@@ -680,6 +768,15 @@ describe('Hilfen', () => {
     expect(beschreibeTeil({ seiten: '5', abschnitte: [] }, g)).toEqual(['Seite 5'])
     expect(beschreibeTeil({ seiten: '1,2,4,7,8', abschnitte: [] }, g)).toEqual(['Seiten 1–2, 4, 7–8'])
     expect(beschreibeTeil({ seiten: '', abschnitte: [] }, g)).toEqual([])
+  })
+
+  it('beschreibt Unterteile eines zerlegten Abschnitts mit Beginn (PROJ-71)', () => {
+    const g = [{ nr: 2, titel: 'Zusammenfassende Übungsaufgaben' }]
+    const a = { seiten: '', abschnitte: [2] }
+    expect(beschreibeTeil(a, g, { nr: 1, von: 4 }, 'Zusammenfassende Übungsaufgaben')).toEqual(['Zusammenfassende Übungsaufgaben, 1. von 4'])
+    expect(beschreibeTeil(a, g, { nr: 2, von: 4 }, 'Aufgabe 3')).toEqual(['Zusammenfassende Übungsaufgaben, 2. von 4 (ab Aufgabe 3)'])
+    expect(beschreibeTeil(a, g, { nr: 3, von: 4 }, '')).toEqual(['Zusammenfassende Übungsaufgaben, 3. von 4'])
+    expect(beschreibeTeil(a, g)).toEqual(['Zusammenfassende Übungsaufgaben'])
   })
 
   it('hält die Teil-Liste klein und begrenzt die Zahl der Teile', () => {

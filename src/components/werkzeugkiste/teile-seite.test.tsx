@@ -92,6 +92,29 @@ describe('Ablauf in Teilen: Schritt 3', () => {
     expect(screen.queryByRole('button', { name: 'Ich habe die Antwort' })).not.toBeInTheDocument()
   })
 
+  it('zeigt bei zerlegten Abschnitten die Beschriftung mit Beginn und den Tipp zu wenigen Überschriften (PROJ-71)', async () => {
+    const teile = [
+      teil(1, { inhalt: ['Übungen, 1. von 2'], unterteil: { nr: 1, von: 2 }, beginnt: 'Übungen' }),
+      teil(2, { inhalt: ['Übungen, 2. von 2 (ab Aufgabe 3)'], unterteil: { nr: 2, von: 2 }, beginnt: 'Aufgabe 3' }),
+    ]
+    api.ladeAblauf.mockResolvedValue({ ablauf: ablauf({ teile: { groesse: 8000, zusammengefuegt: false, hinweise: [], teile } }) })
+    render(<AblaufSeite id="a1" />)
+    expect(await screen.findByText('Übungen, 2. von 2 (ab Aufgabe 3)')).toBeInTheDocument()
+    expect(screen.getByText(/nur wenige Überschriften/)).toBeInTheDocument()
+    expect(screen.queryByText(/bleibt größer als die anderen/)).not.toBeInTheDocument()
+  })
+
+  it('zeigt den Tipp nicht, wenn nichts zerlegt wurde, und warnt vor einem zu großen Teil', async () => {
+    api.ladeAblauf.mockResolvedValue({ ablauf: ablauf() })
+    const { unmount } = render(<AblaufSeite id="a1" />)
+    await screen.findByText('Dein Skript in Teilen')
+    expect(screen.queryByText(/nur wenige Überschriften/)).not.toBeInTheDocument()
+    unmount()
+    api.ladeAblauf.mockResolvedValue({ ablauf: ablauf({ teile: { groesse: 8000, zusammengefuegt: false, hinweise: [], teile: [teil(1), teil(2, { zuGross: true })] } }) })
+    render(<AblaufSeite id="a1" />)
+    expect(await screen.findByText(/bleibt größer als die anderen/)).toBeInTheDocument()
+  })
+
   it('sperrt „Weiter zur Datei“, solange ein Teil fehlt, und nennt den Grund', async () => {
     api.ladeAblauf.mockResolvedValue({ ablauf: ablauf({ teile: { groesse: 8000, zusammengefuegt: false, hinweise: [], teile: [teil(1), teil(2, { zustand: 'offen', kapitel: [], befund: null, satz: null }), teil(3)] } }) })
     render(<AblaufSeite id="a1" />)

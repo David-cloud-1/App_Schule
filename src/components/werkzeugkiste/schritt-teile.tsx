@@ -110,6 +110,17 @@ export function SchrittTeile({ ablauf, onAblauf }: { ablauf: Ablauf; onAblauf: (
             </li>
           ))}
         </ol>
+        {liste.some((t) => t.unterteil) && (
+          <Hinweis>
+            Dein Skript hat nur wenige Überschriften. Die App teilt deshalb mitten in den Abschnitten, am liebsten vor einer Aufgabe. Mit
+            Überschriften in Word wird die Aufteilung genauer.
+          </Hinweis>
+        )}
+        {liste.some((t) => t.zuGross) && (
+          <Hinweis>
+            Ein Teil bleibt größer als die anderen, zum Beispiel wegen einer sehr großen Tabelle. Falls die KI dort abbricht, hilft der Weg über „Weiterschreiben“.
+          </Hinweis>
+        )}
         {von >= VIELE_TEILE && (
           <Hinweis>Tipp: Wähle in Schritt 1 nur die Kapitel für die nächsten Wochen aus, dann sind es weniger Teile.</Hinweis>
         )}

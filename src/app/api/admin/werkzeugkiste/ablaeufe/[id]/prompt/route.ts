@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { hatTeilWeg, TEIL_ZEICHEN_KOSTENLOS, teileEingefuegt, type AblaufAuswahl } from '@/lib/werkzeugkiste'
-import { legeTeileAn, loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
+import { hatTeilWeg, TEIL_ZEICHEN_KOSTENLOS, teileEingefuegt } from '@/lib/werkzeugkiste'
+import { type KernTeil, legeTeileAn, loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
 import {
   aktualisiere,
   einlesungPfad,
@@ -53,10 +53,11 @@ export async function POST(_request: Request, { params }: Kontext) {
     // Ein fertiges Material bekommt keine Teile mehr: Es lässt sich nichts mehr einfügen
     let zuLang = false
     if (hatTeilWeg(ablauf.werkzeug) && zeile.status !== 'fertig') {
-      const t = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
+      const t = await kern<{ teile: KernTeil[] }>('/api/teilen', {
         einlesung: { url: einlesung },
         auswahl: ablauf.auswahl,
         max_zeichen: TEIL_ZEICHEN_KOSTENLOS,
+        zerlegen: true, // PROJ-71: zu große Word-Abschnitte weiter zerlegen (ein älterer Kern ignoriert das)
       })
       if (Array.isArray(t.teile) && t.teile.length > 1) {
         const teile = legeTeileAn(t.teile, ablauf.gliederung, TEIL_ZEICHEN_KOSTENLOS)
