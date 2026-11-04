@@ -1,6 +1,6 @@
 # PROJ-71: Werkzeugkiste – zu lange Abschnitte weiter zerlegen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-04
 **Last Updated:** 2026-11-04
 
@@ -234,4 +234,7 @@ Keine neuen Pakete, weder im Kern noch in der App.
 **Nicht geprüft:** Ablauf mit echter KI-Antwort (Prüfstelle auf einem Ausschnitt) und Anzeige im Browser. Das macht die Lehrkraft nach dem Deploy.
 
 ## Deployment
-_To be added by /deploy_
+- **Kern:** `werkzeugkiste-kern` per `vercel deploy --prod` (2026-11-04, durch den Nutzer), Commit `256c13f` im Zweig `vercel-kern`. https://werkzeugkiste-kern.vercel.app/api/gesund antwortet.
+- **App:** Push von `3bdf00c` auf `main` (2026-11-04), Vercel-Production Ready. https://spedilern.vercel.app
+- Keine Migration. Routen ohne Login geben 401. Reihenfolge war egal: Ein Kern ohne die Neuerung ignoriert `zerlegen`.
+- Offen: Praxistest durch die Lehrkraft mit `Außenhandel_SJ_2026_27.docx` (echte KI-Antwort, Anzeige im Browser).
