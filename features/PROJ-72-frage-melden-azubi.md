@@ -1,6 +1,6 @@
 # PROJ-72: Frage melden (Azubi-Seite)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -108,4 +108,6 @@ Neue Tabelle mit Zeilenschutz (RLS) und Datenbankfunktionen. Nach Projektregel b
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-10: Migration `20261110_proj72_73_fragen_meldungen.sql` von Hand im SQL-Editor eingespielt, Probe `proj72_73_meldungen_probe.sql` bestanden (26 von 26 Zeilen wie erwartet). Danach lesend geprüft: Tabelle, Ansicht, 4 Funktionen, RLS an, `anon` ohne Zugriff, keine Probe-Reste.
+- Push von `5ee19eb` auf `main`, Vercel-Production Ready nach 1m. Routen ohne Login: API 401, `/admin/gemeldete-fragen` 307 auf den Login, keine Fehler in den Production-Logs.
+- **Nicht im Browser geprüft** (kein Dev-Server erlaubt): Melde-Sheet im Quiz, Inbox-Oberfläche, Rückmeldungskarte. Bitte einmal als Azubi melden und als Lehrkraft abschließen.
