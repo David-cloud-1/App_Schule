@@ -1,8 +1,8 @@
 # PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-10-27
-**Last Updated:** 2026-10-27
+**Last Updated:** 2026-11-05
 
 ## Kontext
 Konten entstehen heute nur durch Selbst-Registrierung. Zu Schuljahresbeginn kostet das eine Unterrichtsstunde: Mails kommen nicht an, Adressen sind falsch geschrieben, Azubis landen im falschen Bereich. Der Super-Admin soll Konten vorab anlegen und den Azubis Zugangsdaten auf Papier geben können.
@@ -69,7 +69,88 @@ Konten entstehen heute nur durch Selbst-Registrierung. Zu Schuljahresbeginn kost
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-05 · **Backend nötig:** ja (Konten anlegen geht nur auf dem Server), **neue Datenbank-Tabelle:** nein
+
+### Abweichung von der Spec (bitte bestätigen)
+Die Spec schlägt den Bereich „anhand der E-Mail-Domain wie bei der Registrierung“ vor. Die Registrierung ordnet aber nach der **Web-Adresse der App** zu, nicht nach der E-Mail. Eine Zuordnung nach E-Mail-Domain gibt es nicht. Deshalb gilt: **Der Super-Admin wählt den Bereich immer selbst** (beim Einzelkonto im Formular, bei der Liste einmal für alle oder je Zeile in der CSV). Voreingestellt ist der Bereich, in dem der Super-Admin gerade arbeitet (PROJ-29, Bereichs-Umschalter).
+
+### A) Oberfläche (Baumstruktur)
+```
+Nutzerliste (bestehende Seite)
++-- Seitenkopf
+|   +-- „Konto anlegen“ (grün, nur Super-Admin) mit Menü
+|       +-- „Einzeln“
+|       +-- „Aus CSV-Liste“
+|
++-- Dialog „Konto anlegen“ (einzeln)
+|   +-- Formular: Name, E-Mail, Rolle, Bereich, Start-Passwort (Vorschlag, änderbar)
+|   +-- Bestätigung bei Admin-Rollen
+|   +-- Ergebnis: Zugangsdaten mit „Kopieren“ und „Zettel drucken“
+|
++-- Neue Seite „Konten aus Liste anlegen“ (3 Schritte)
+|   +-- 1. Datei wählen
+|   |   +-- Vorlage herunterladen
+|   |   +-- Bereich für alle Zeilen (wenn die Datei keinen enthält)
+|   +-- 2. Vorschau
+|   |   +-- Zusammenfassung: x OK · y Warnungen · z Fehler
+|   |   +-- Tabelle: Zeile, Name, E-Mail, Bereich, Rolle, Status, Begründung
+|   |   +-- Spalten-Zuordnung (nur wenn die Kopfzeile unklar ist)
+|   |   +-- Knopf „{n} Konten anlegen“
+|   +-- 3. Ergebnis (einmalig sichtbar)
+|       +-- Warnhinweis: einzige Gelegenheit, Passwörter zu sehen
+|       +-- „Zugangszettel drucken“ · „Liste als CSV“
+|       +-- Liste der nicht angelegten Zeilen zum erneuten Hochladen
+|       +-- Rückfrage beim Verlassen der Seite
+|
++-- Druckansicht „Zugangszettel“ (A4, hell auf weiß, 8 Zettel je Seite, Schnittlinien)
+```
+Im Stil von `/admin` (DESIGN.md): Tokens `ws-*`, Bedienelemente mindestens 44 px, nur eine grüne Hauptaktion je Seite. Die Druckansicht ist die erlaubte Papier-Ausnahme und folgt dem Muster der Leistungsnachweis-Bögen (PROJ-28).
+
+### B) Daten
+Es kommt **keine neue Tabelle** dazu. Jedes Konto besteht aus dem, was die Registrierung ohnehin anlegt:
+- Anmeldekonto (E-Mail, Passwort, als **bestätigt** markiert, Merker „Passwort beim ersten Login ändern“)
+- Profil (Anzeigename, Rolle, Bereich, bei Lehrkraft/Admin ein Pseudonym)
+
+**Wird nicht gespeichert:** die hochgeladene Datei und die Start-Passwörter im Klartext. Passwörter gibt es nur in der Antwort an den anlegenden Super-Admin und danach nicht mehr. Die Ergebnisseite hält sie nur im Arbeitsspeicher des Browsers (kein Zwischenspeicher, kein Cookie).
+
+**Protokoll (bestehendes Änderungsprotokoll):**
+- ein Eintrag „Konto angelegt“ je Konto (ohne Passwort)
+- ein Eintrag „Sammel-Anlage“ mit Anzahl angelegt, übersprungen und fehlerhaft
+
+### C) Ablauf der Sammel-Anlage
+1. **Einlesen im Browser:** Die Datei wird im Browser gelesen (Komma oder Semikolon, UTF-8 oder Windows-1252, Spalten an der Kopfzeile erkannt). Sie verlässt den Rechner nicht.
+2. **Prüfen auf dem Server:** Der Browser schickt nur die erkannten Zeilen. Der Server prüft Namen, E-Mail-Format, Dubletten in der Datei, Bereich und Rolle und fragt ab, welche E-Mails schon ein Konto haben. Das Ergebnis ist die Vorschau. Es wird noch nichts angelegt.
+3. **Anlegen:** Erst der Klick auf „{n} Konten anlegen“ legt die OK-Zeilen an. Der Server prüft dabei alles **noch einmal**, weil zwischen Vorschau und Klick jemand ein Konto angelegt haben kann. Passwörter erzeugt der Server selbst (derselbe Vorschlags-Generator wie bei PROJ-58).
+4. **Abbruch mittendrin:** Bereits angelegte Konten bleiben. Die Antwort enthält alle angelegten Konten mit Passwort und die fehlenden Zeilen. Beim erneuten Hochladen werden die schon vorhandenen als „existiert schon“ übersprungen.
+5. **Große Listen:** Bis 300 Zeilen. Der Server arbeitet sie in kleinen Päckchen ab, damit die Zeitgrenze von Vercel nicht reißt. Der Browser zeigt einen Fortschrittsbalken.
+
+### D) Technische Entscheidungen (mit Begründung)
+| Entscheidung | Warum |
+|---|---|
+| **Wiederverwenden statt neu bauen:** Passwort-Vorschlag, Pflichtwechsel-Merker, Pseudonym-Anlage, Änderungsprotokoll, CSV-Hilfen und Druck-Stil gibt es schon (PROJ-58/61/28/44) | Weniger neuer Code, gleiches Verhalten wie überall sonst, schon getestet |
+| **Vorschau und Anlegen sind zwei getrennte Server-Schritte** | Nichts wird angelegt, bevor der Super-Admin die Fehler gesehen hat. Die zweite Prüfung beim Anlegen fängt Wettläufe ab. |
+| **Nur Super-Admin, serverseitig geprüft** | Die Oberfläche blendet die Aktion für andere aus. Die eigentliche Sperre ist der Server (403). |
+| **Sammel-Anlage nur Azubi und Lehrkraft** | Wer Admin-Rechte vergibt, soll das einzeln und bewusst tun, mit Bestätigung. |
+| **Höchstens 3 Sammel-Anlagen pro Stunde** | Gezählt im Änderungsprotokoll, wie das Limit bei PROJ-58. Das braucht keine neue Technik. |
+| **Passwörter nie in Logs, Protokoll oder Datenbank-Klartext** | Datenschutz. Die Ergebnisseite ist deshalb einmalig, mit Rückfrage beim Verlassen. |
+| **Keine Einladungs-Mail** | Entscheidung E2. Das vermeidet falsch geschriebene oder nicht ankommende Adressen. |
+| **Bereich immer ausdrücklich wählen** | Siehe Abweichung oben. Verhindert Azubis im falschen Bereich. |
+
+### E) Neue Bausteine (Überblick, ohne Code)
+- **Server:** eine Aktion „Einzelnes Konto anlegen“, eine „Liste prüfen“ (Vorschau), eine „Liste anlegen“
+- **Gemeinsame Logik:** CSV einlesen und Spalten erkennen, Zeilen prüfen, Zugangsliste als CSV
+- **Oberfläche:** Menü im Seitenkopf, Dialog „Einzeln“, Seite „Aus Liste“ mit drei Schritten, Druckansicht der Zugangszettel
+- **Tests:** Einlesen und Prüfen (Randfälle aus der Spec), Rechte (403 für alle außer Super-Admin), Wiederholung nach Abbruch, Passwörter nie im Protokoll
+
+### F) Pakete
+Keine neuen Pakete. Die vorhandenen CSV-Hilfen aus PROJ-61 werden erweitert, und die Zeichensatz-Erkennung (Windows-1252) läuft über die Standard-Funktionen des Browsers.
+
+### G) Abhängigkeiten und Risiken
+- **Voraussetzungen sind alle live:** PROJ-58, PROJ-22/23, PROJ-44
+- **Zeitgrenze:** 300 Konten in einem Aufruf könnten zu lang dauern. Darum die kleinen Päckchen. Das wird mit einer echten 300er-Datei geprüft.
+- **Mehrere Bereiche in einer Datei:** Eine Bereichs-Spalte (Kürzel oder Name) ist erlaubt. Unbekannte Werte sind Zeilenfehler.
+
 
 ## QA Test Results
 _To be added by /qa_
