@@ -315,3 +315,39 @@ describe('buildStudentReports', () => {
     expect(reports.map((r) => r.name)).toEqual(['Änne', 'Bernd', 'Zoe'])
   })
 })
+
+describe('PROJ-75: aus der Wertung genommene Fragen', () => {
+  const mc = (id: string, ok: boolean, excluded = false) => ({ type: 'multiple_choice', is_correct: ok, excluded, id })
+
+  it('zählen weder bei den Punkten noch beim Maximum', async () => {
+    const { scoreAssessmentQuestions, IHK_DEFAULT_SCALE } = await import('./graded-assessments')
+    const qs = [mc('a', true), mc('b', true), mc('c', false, true), mc('d', false)]
+    const r = scoreAssessmentQuestions(qs, IHK_DEFAULT_SCALE)
+    expect(r).toMatchObject({ points: 2, totalPoints: 3, percent: 67 })
+  })
+
+  it('gradeSnapshot markiert die ausgenommenen Fragen und wertet sie nicht', async () => {
+    const { gradeSnapshot, IHK_DEFAULT_SCALE } = await import('./graded-assessments')
+    const snapshot = ['a', 'b'].map((id) => ({
+      id,
+      question_text: id,
+      type: 'multiple_choice',
+      difficulty: 'mittel',
+      part: 1,
+      answer_options: [
+        { id: `${id}1`, option_text: '1', display_order: 1 },
+        { id: `${id}2`, option_text: '2', display_order: 2 },
+      ],
+    }))
+    const key = new Map(
+      ['a', 'b'].map((id) => [
+        id,
+        { explanation: null, sampleAnswer: null, options: new Map([[`${id}1`, true], [`${id}2`, false]]) },
+      ]),
+    )
+    const { part, scored } = gradeSnapshot(snapshot, { a: 'a1', b: 'b2' }, key, IHK_DEFAULT_SCALE, ['b'])
+    expect(part.questions.find((q) => q.id === 'b')?.excluded).toBe(true)
+    expect(part.questions.find((q) => q.id === 'a')?.excluded).toBeUndefined()
+    expect(scored).toMatchObject({ points: 1, totalPoints: 1, percent: 100, grade: 1 })
+  })
+})

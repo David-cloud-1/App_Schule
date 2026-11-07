@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: assessment } = await supabase
     .from('graded_assessments')
-    .select('title, part, grading_scale, department_id, created_by, shared_with_department, access_code, opens_at, closes_at, status')
+    .select('title, part, grading_scale, department_id, created_by, shared_with_department, access_code, opens_at, closes_at, status, excluded_question_ids')
     .eq('id', id)
     .maybeSingle()
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const scale = assessment.grading_scale as GradeBoundary[]
   const key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
-  const graded = applyGrading(rawRows, assessment.part, key, scale)
+  const graded = applyGrading(rawRows, assessment.part, key, scale, (assessment.excluded_question_ids as string[] | null) ?? [])
 
   return NextResponse.json({
     assessment: {

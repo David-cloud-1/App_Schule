@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
     topic: null,
     subject_codes: [codeById.get(subjectIdFor(i)) ?? ''].filter(Boolean),
     isPrivate,
+    blocked: false,
   }))
   return NextResponse.json({ questions: result, skippedDuplicates: parsed.data.questions.length - questions.length }, { status: 201 })
 }

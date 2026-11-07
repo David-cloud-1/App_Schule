@@ -15,6 +15,8 @@ export type PickerQuestion = {
   subject_codes: string[]
   /** Eigene Nachweis-Frage (PROJ-46) — trägt in der Auswahl das Schild „Meine Frage“. */
   isPrivate: boolean
+  /** PROJ-75: für künftige Nachweise gesperrt — in der Auswahl mit Warnung markiert */
+  blocked: boolean
 }
 
 type QuestionRow = {
@@ -22,6 +24,7 @@ type QuestionRow = {
   question_text: string
   difficulty: string
   class_level: number | null
+  blocked_for_assessments?: boolean | null
   topics: { name: string } | null
   question_subjects: { subject_id: string }[]
 }
@@ -38,7 +41,7 @@ async function loadQuestionRows(
   for (let from = 0; ; from += PAGE_SIZE) {
     let query = supabase
       .from('questions')
-      .select('id, question_text, difficulty, class_level, topics(name), question_subjects!inner(subject_id)')
+      .select('id, question_text, difficulty, class_level, blocked_for_assessments, topics(name), question_subjects!inner(subject_id)')
       .eq('is_active', true)
       .eq('type', 'multiple_choice')
       .eq('is_private', isPrivate)
@@ -80,6 +83,7 @@ export async function fetchSelectableQuestions(
       topic: q.topics?.name ?? null,
       subject_codes: q.question_subjects.map((qs) => codeById.get(qs.subject_id)).filter((c): c is string => !!c),
       isPrivate,
+      blocked: !!q.blocked_for_assessments,
     }))
 
   const pool = toPicker(await loadQuestionRows(supabase, subjectIds, false, null), false)

@@ -150,7 +150,9 @@ export function StudentReportSheet({
               <div className="flex items-start justify-between gap-3">
                 <p className="font-medium leading-snug">{q.text}</p>
                 <span className="text-xs font-bold border border-gray-500 rounded px-2 py-0.5 whitespace-nowrap">
-                  {q.result === 'correct' ? '✓' : q.result === 'wrong' ? '✗' : '–'} {RESULT_LABEL[q.result]}
+                  {q.notScored
+                    ? 'nicht gewertet'
+                    : `${q.result === 'correct' ? '✓' : q.result === 'wrong' ? '✗' : '–'} ${RESULT_LABEL[q.result]}`}
                 </span>
               </div>
               <ul className="mt-1.5 space-y-0.5 text-sm">

@@ -60,6 +60,7 @@ import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
+import { AssessmentItemAnalysis } from '@/components/admin/assessment-item-analysis'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
 
@@ -642,42 +643,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsContent>
 
         <TabsContent value="questions" className="mt-4">
-          <div className="space-y-3">
-            {!results || results.questions.length === 0 ? (
-              <div className="bg-ws-surface border border-ws-line rounded-2xl p-8 text-center text-ws-muted">
-                Noch keine Abgaben zur Auswertung.
-              </div>
-            ) : (
-              [...results.questions]
-                .sort((a, b) => (a.correctCount / a.totalCount || 0) - (b.correctCount / b.totalCount || 0))
-                .map((q) => {
-                  const pct = q.totalCount > 0 ? Math.round((q.correctCount / q.totalCount) * 100) : 0
-                  return (
-                    <div key={q.id} className="bg-ws-surface border border-ws-line rounded-2xl p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <p className="text-sm text-ws-text leading-snug flex-1">{q.text}</p>
-                        <span className={cn(
-                          'text-sm font-bold flex-shrink-0',
-                          pct >= 70 ? 'text-ws-green' : pct >= 40 ? 'text-ws-orange' : 'text-ws-red',
-                        )}>
-                          {pct}%
-                        </span>
-                      </div>
-                      <div className="space-y-1">
-                        {q.options.map((opt) => (
-                          <div key={opt.id} className="flex items-center gap-2 text-xs">
-                            <span className={cn('flex-1', opt.isCorrect ? 'text-ws-green' : 'text-ws-muted')}>
-                              {opt.isCorrect ? '✓ ' : '  '}{opt.text}
-                            </span>
-                            <span className="text-ws-faint">{opt.selectedCount}×</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })
-            )}
-          </div>
+          <AssessmentItemAnalysis assessmentId={id} onChanged={() => void load()} />
         </TabsContent>
       </Tabs>
 

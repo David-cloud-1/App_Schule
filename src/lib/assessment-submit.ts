@@ -78,7 +78,7 @@ export async function finishAssessmentAttempt(params: {
   const service = createServiceClient()
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('title, access_code, part, grading_scale, results_released_at, focus_tracking')
+    .select('title, access_code, part, grading_scale, results_released_at, focus_tracking, excluded_question_ids')
     .eq('id', session.assessment_id!)
     .single()
 
@@ -96,7 +96,13 @@ export async function finishAssessmentAttempt(params: {
   // Straggler: results were released while this attempt was still running.
   if (assessment.results_released_at) {
     const key = await fetchAnswerKey(snapshot.map((q) => q.id))
-    const { part, scored } = gradeSnapshot(snapshot, submittedAnswers, key, assessment.grading_scale as GradeBoundary[])
+    const { part, scored } = gradeSnapshot(
+      snapshot,
+      submittedAnswers,
+      key,
+      assessment.grading_scale as GradeBoundary[],
+      (assessment.excluded_question_ids as string[] | null) ?? [],
+    )
     nextResults = {
       ...nextResults,
       parts: { [partKey]: part },

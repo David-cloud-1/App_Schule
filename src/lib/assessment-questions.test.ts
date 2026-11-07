@@ -52,8 +52,8 @@ describe('fetchSelectableQuestions', () => {
   it('maps rows of all subjects to picker questions with subject codes', async () => {
     const res = await fetchSelectableQuestions(makeSupabase([row('a'), row('b', 's2')]), 'dept')
     expect(res).toEqual([
-      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false },
-      { id: 'b', question_text: 'Frage b', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['KSK'], isPrivate: false },
+      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false, blocked: false },
+      { id: 'b', question_text: 'Frage b', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['KSK'], isPrivate: false, blocked: false },
     ])
   })
 
@@ -65,8 +65,8 @@ describe('fetchSelectableQuestions', () => {
   it('with ownerId appends the owner\'s own private questions, marked isPrivate (PROJ-46)', async () => {
     const res = await fetchSelectableQuestions(makeSupabase([row('a')], [row('priv')]), 'dept', 'owner-1')
     expect(res).toEqual([
-      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false },
-      { id: 'priv', question_text: 'Frage priv', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: true },
+      { id: 'a', question_text: 'Frage a', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: false, blocked: false },
+      { id: 'priv', question_text: 'Frage priv', difficulty: 'mittel', class_level: 10, topic: 'Thema', subject_codes: ['BGP'], isPrivate: true, blocked: false },
     ])
   })
 })

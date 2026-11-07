@@ -180,7 +180,7 @@ export async function loadAssessments(service: SupabaseClient, target: Target) {
   const assessmentIds = [...new Set(sessions.map((s) => s.assessment_id))]
   const { data: assessmentRows } = await service
     .from('graded_assessments')
-    .select('id, title, part, grading_scale, focus_tracking')
+    .select('id, title, part, grading_scale, focus_tracking, excluded_question_ids')
     .in('id', assessmentIds)
   const assessments = new Map(
     (
@@ -190,6 +190,7 @@ export async function loadAssessments(service: SupabaseClient, target: Target) {
         part: number
         grading_scale: GradeBoundary[]
         focus_tracking: boolean
+        excluded_question_ids: string[] | null
       }[]
     ).map((a) => [a.id, a]),
   )
@@ -241,7 +242,7 @@ export async function loadAssessments(service: SupabaseClient, target: Target) {
       continue
     }
     const key = await fetchAnswerKey(snapshotQuestionIds(own, assessment.part))
-    const graded = applyGrading(own, assessment.part, key, assessment.grading_scale)
+    const graded = applyGrading(own, assessment.part, key, assessment.grading_scale, assessment.excluded_question_ids ?? [])
     const participants = buildParticipantRows(graded, assessment.part, assessment.grading_scale)
     graded.forEach((s, i) => {
       const p = participants[i]

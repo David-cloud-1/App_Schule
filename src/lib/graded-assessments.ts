@@ -99,10 +99,11 @@ export function gradeForPercent(percent: number, scale: GradeBoundary[]): number
  * non-MC question ever ends up in a snapshot.
  */
 export function scoreAssessmentQuestions(
-  questions: { type: string; is_correct?: boolean }[],
+  questions: { type: string; is_correct?: boolean; excluded?: boolean }[],
   scale: GradeBoundary[],
 ): { points: number; totalPoints: number; percent: number; grade: number } {
-  const mcQuestions = questions.filter((q) => q.type === 'multiple_choice')
+  // PROJ-75: Fragen, die die Lehrkraft aus der Wertung genommen hat, zählen weder bei Punkten noch beim Maximum
+  const mcQuestions = questions.filter((q) => q.type === 'multiple_choice' && !q.excluded)
   const totalPoints = mcQuestions.length
   const points = mcQuestions.filter((q) => q.is_correct).length
   const percent = totalPoints > 0 ? Math.round((points / totalPoints) * 100) : 0
@@ -114,6 +115,8 @@ export type SnapshotQuestion = {
   type: string
   student_answer?: string | null
   is_correct?: boolean
+  /** PROJ-75: aus der Wertung genommen */
+  excluded?: boolean
   question_text?: string
   answer_options?: { id: string; option_text: string; is_correct: boolean }[]
 }
@@ -191,6 +194,8 @@ export type GradedQuestion = RedactedQuestion & {
   student_answer: string | null
   is_correct: boolean
   correct_option_id: string | undefined
+  /** PROJ-75: aus der Wertung genommen — wird angezeigt, zählt aber nicht */
+  excluded?: boolean
   answer_options: { id: string; option_text: string; display_order: number; is_correct: boolean }[]
 }
 
@@ -208,7 +213,9 @@ export function gradeSnapshot(
   answers: Record<string, string>,
   key: Map<string, KeyEntry>,
   scale: GradeBoundary[],
+  excludedQuestionIds: string[] = [],
 ): { part: { questions: GradedQuestion[]; score: number; passed: boolean }; scored: ReturnType<typeof scoreAssessmentQuestions> } {
+  const excluded = new Set(excludedQuestionIds)
   const questions: GradedQuestion[] = []
   for (const q of snapshot) {
     const entry = key.get(q.id)
@@ -222,6 +229,7 @@ export function gradeSnapshot(
       student_answer: studentAnswer,
       is_correct: q.type === 'multiple_choice' && studentAnswer != null && studentAnswer === correctOptionId,
       correct_option_id: correctOptionId,
+      ...(excluded.has(q.id) ? { excluded: true } : {}),
       answer_options: q.answer_options.map((o) => ({ ...o, is_correct: entry.options.get(o.id) ?? false })),
     })
   }
@@ -239,6 +247,7 @@ export function applyGrading(
   part: number,
   key: Map<string, KeyEntry>,
   scale: GradeBoundary[],
+  excludedQuestionIds: string[] = [],
 ): SessionRow[] {
   const partKey = String(part)
   return rows.map((row) => {
@@ -250,7 +259,7 @@ export function applyGrading(
     const stored = results?.parts?.[partKey]
     // Released rows already hold graded questions in { questions }; unreleased ones the raw snapshot array.
     const snapshot = Array.isArray(stored) ? stored : (stored?.questions ?? [])
-    const { part: graded } = gradeSnapshot(snapshot, results?.submitted_answers ?? {}, key, scale)
+    const { part: graded } = gradeSnapshot(snapshot, results?.submitted_answers ?? {}, key, scale, excludedQuestionIds)
     return { ...row, results_json: { ...(row.results_json ?? {}), parts: { [partKey]: { questions: graded.questions } } } }
   })
 }
@@ -292,6 +301,8 @@ export type StudentReportQuestion = {
   id: string
   text: string
   result: 'correct' | 'wrong' | 'unanswered'
+  /** PROJ-75: aus der Wertung genommen — wird gedruckt, zählt aber nicht */
+  notScored?: boolean
   explanation: string | null
   options: { id: string; text: string; isCorrect: boolean; selected: boolean }[]
 }
@@ -349,6 +360,7 @@ export function buildStudentReports(
         id: q.id,
         text: q.question_text,
         result: q.student_answer == null ? 'unanswered' : q.is_correct ? 'correct' : 'wrong',
+        ...(q.excluded ? { notScored: true } : {}),
         explanation: q.explanation ?? null,
         options: [...q.answer_options]
           .sort((a, b) => a.display_order - b.display_order)

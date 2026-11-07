@@ -18,6 +18,8 @@ export type PickerQuestion = {
   subject_codes: string[]
   /** Eigene Nachweis-Frage (PROJ-46) — trägt das Schild „Meine Frage“ und ist bearbeitbar/löschbar */
   isPrivate?: boolean
+  /** PROJ-75: für künftige Nachweise gesperrt */
+  blocked?: boolean
 }
 
 type PickerSort = 'newest' | 'class' | 'subject' | 'topic' | 'difficulty' | 'text'
@@ -210,6 +212,14 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
                     </span>
                     {q.isPrivate && (
                       <Badge className="ml-2 border-0 bg-ws-gold/15 text-ws-gold text-[10px]">Meine Frage</Badge>
+                    )}
+                    {q.blocked && (
+                      <Badge
+                        className="ml-2 border-0 bg-ws-orange/15 text-ws-orange text-[10px]"
+                        title="Wurde nach einem früheren Nachweis als auffällig gesperrt"
+                      >
+                        Für Nachweise gesperrt
+                      </Badge>
                     )}
                   </div>
                 </label>

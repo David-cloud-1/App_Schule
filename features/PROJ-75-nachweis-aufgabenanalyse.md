@@ -1,6 +1,6 @@
 # PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -58,7 +58,40 @@ PROJ-28 zeigt je Frage die Lösungsquote. Diese Spec ergänzt eine echte **Aufga
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Aufbau der Oberfläche
+```
+/admin/leistungsnachweise/[id] → Reiter „Fragenanalyse“ (ersetzt die bisherige Liste)
++-- Kopf: Anzahl gewerteter Abgaben, Zwischenstand-Hinweis, Hinweis „Trennschärfe ab 8 Abgaben“
++-- Filter „Nur auffällige“, Sortierung (Ampel, Lösungsquote, Trennschärfe, Position)
++-- Karte je Frage
+    +-- Ampel-Chip (Prüfen / Auffällig / Unauffällig), Chips „Nicht gewertet“ / „Für Nachweise gesperrt“
+    +-- Lösungsquote, Trennschärfe, nicht beantwortet
+    +-- Hinweistexte zur Ampel
+    +-- Antwortverteilung (Balken je Option)
+    +-- Aktionen: Aus der Wertung nehmen / Wieder in die Wertung, Für Nachweise sperren / Sperre aufheben
+```
+
+### B) Daten
+- Neue Spalte `graded_assessments.excluded_question_ids` (Liste von Fragen-Kennungen, Standard leer): die aus der Wertung genommenen Fragen dieses Nachweises.
+- Neue Spalte `questions.blocked_for_assessments` (Ja/Nein, Standard nein): für künftige Nachweise gesperrt.
+- Beides ohne neue Zugriffsregeln: es gelten die bestehenden Regeln der beiden Tabellen. Die Sperre steht damit automatisch im Änderungsverlauf (PROJ-47).
+
+### C) Rechnen
+- Die Bewertung läuft schon heute bei jedem Aufruf neu aus dem Snapshot (`applyGrading`). Die Ausnahme wird dort an einer zentralen Stelle berücksichtigt: Eine ausgenommene Frage trägt die Markierung „excluded“ und zählt weder bei Punkten noch beim Maximum. Alle Stellen (Teilnehmerliste, Notenspiegel, Export, Druck, Nutzer-Detailseite, Freigabe, späte Abgabe) reichen die Liste durch.
+- Die Analyse (Lösungsquote, Trennschärfe nach dem Vergleich der besten und schwächsten 27 %, Antwortverteilung, Ampel) ist eine reine Rechenfunktion ohne Datenbankzugriff.
+
+### D) Tech-Entscheidungen
+- **Ausnehmen nur bis zur Freigabe.** Nach der Freigabe stehen Noten bereits fest in den Sitzungen der Azubis; ein nachträgliches Umschreiben wäre ein eigener, riskanter Eingriff. Der Knopf ist dann gesperrt und erklärt warum. (Abweichung von der ersten Spec, die „Auswertung angepasst“ nach Freigabe vorsah.)
+- **Eine gemeinsame Ampel für beide Fehlerarten:** Alle zutreffenden Gründe werden gesammelt, die Farbe richtet sich nach dem schwersten (rot vor gelb).
+- **Keine KI, keine neue Bibliothek, keine laufenden Kosten.**
+
+## Implementation Notes (2026-11-10)
+- Migration `20261111_proj75_aufgabenanalyse.sql` (+ `_down`, Probe `supabase/tests/proj75_aufgabenanalyse_probe.sql`). **Muss vor dem Push in Produktion sein:** mehrere bestehende Abfragen lesen `excluded_question_ids` und die Fragenauswahl liest `blocked_for_assessments`.
+- Bewertung: `graded-assessments.ts` (`scoreAssessmentQuestions`, `gradeSnapshot`, `applyGrading` kennen `excluded`), durchgereicht in Ergebnisse, Export, Einzel-/Klassendruck, Freigabe, späte Abgabe und Nutzer-Detailseite.
+- Neu: `lib/assessment-analysis.ts`, `GET /api/admin/assessments/[id]/analysis`, `PUT …/[id]/exclude-question`, `PUT /api/admin/questions/[id]/assessment-block`, `AssessmentItemAnalysis` im Reiter „Fragenanalyse“, Warn-Chip in der Fragenauswahl (PROJ-27), „nicht gewertet“ in der Einzelauswertung (PROJ-28).
+- **Abweichungen von der Spec:** (1) Ausnehmen ist nur bis zur Freigabe möglich (siehe Tech Design D). (2) „Zur Prüfung markieren“ (Anlage einer Meldung in der Inbox) ist nicht gebaut; es hätte eine Nachweis-Meldung ohne Azubi als Melder gebraucht. (3) Die Sperre wirkt in der Auswahl als Warnung; der automatische Ausschluss in Vorschlägen kommt mit PROJ-78.
+- Tests: `assessment-analysis.test.ts` (10), `exclude-question/route.test.ts` (9), Ergänzungen in `graded-assessments.test.ts`; Gesamtstand 2553 Tests grün, Build grün.
 
 ## QA Test Results
 _To be added by /qa_

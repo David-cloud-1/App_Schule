@@ -229,6 +229,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         resultsJson.submitted_answers ?? {},
         key,
         assessment.grading_scale as GradeBoundary[],
+        (assessment.excluded_question_ids as string[] | null) ?? [],
       )
       await service
         .from('exam_sessions')
