@@ -113,7 +113,7 @@ Lehrkräfte sollen sich in der App austauschen können: Tipps teilen, Fragen ste
 
 ## Technical Requirements
 - **Sicherheit:** Zugangs- und Bearbeitungsrechte werden in der Datenbank (RLS) bzw. serverseitig durchgesetzt, nicht nur in der Oberfläche. Ausgeblendete Beiträge sind für Unbefugte auch über direkte Abfragen nicht lesbar.
-- **Datenschutz:** Angezeigt wird der Anzeigename, nie die E-Mail-Adresse. Wer „hilfreich“ gegeben hat, sieht man nicht, nur die Anzahl. Meldungen sind nur für Admins sichtbar. Wer gemeldet hat, bleibt für die gemeldete Person verborgen.
+- **Datenschutz:** Angezeigt wird der Anzeigename, nie die E-Mail-Adresse. Hat eine Lehrkraft keinen Anzeigenamen, wird er aus dem Namensteil vor dem „@“ gebildet („david.zach@…“ wird zu „David Zach“, Migration `20261109_proj63_author_name_aus_email`). Erst wenn auch das fehlt, steht „Lehrkraft“. Wer „hilfreich“ gegeben hat, sieht man nicht, nur die Anzahl. Meldungen sind nur für Admins sichtbar. Wer gemeldet hat, bleibt für die gemeldete Person verborgen.
 - **Design:** Nur `ws-*`-Tokens, hell und dunkel, höchstens eine grüne Hauptaktion pro Seite, Zustände aus `admin-states.tsx` (siehe docs/DESIGN.md, Lehrkräfte-Bereich).
 - **Leistung:** Die erste Seite der Übersicht lädt bei 1000 Beiträgen in unter einer Sekunde. Der Zähler in der Seitenleiste bremst den Seitenwechsel nicht spürbar.
 - **Kosten:** Keine bezahlten Dienste. Supabase Free Tier reicht, kein Realtime, kein Mail-Versand.
