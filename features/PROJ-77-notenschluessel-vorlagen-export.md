@@ -1,6 +1,6 @@
 # PROJ-77: Notenschlüssel-Vorlagen & Notenlisten-Export
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -147,8 +147,9 @@ Keine neuen Pakete. Neu: eine Datenbank-Migration (Tabelle mit Zugriffsregeln, p
 **Stand 2026-11-07 (statisch + automatisiert, kein Browser):**
 - Unit-/Schnittstellen-Tests: 2613 grün (neu: Vorlagen-Prüfung, Export inkl. BOM, Maskierung =+-@, Sortierung, Namensteilung, Dateiname, 401/403/400/404/409/200, Besitzer wird serverseitig gesetzt). `tsc` ohne neue Fehler, `npm run build` grün.
 - Sicherheit: Besitzer nie aus dem Client übernommen; Export prüft Zugriff über die bestehende Regel am Nachweis; E-Mail-Adressen werden nie angezeigt (nur Anzeigename).
-- **Offen:** Probe `supabase/tests/proj77_vorlagen_probe.sql` gegen die Produktions-DB (nach Migration) und Klick-Prüfung im Browser durch den Nutzer.
+- Probe `supabase/tests/proj77_vorlagen_probe.sql` gegen die Produktions-DB am 2026-11-07: alle Werte wie erwartet (T1–T7).
+- **Offen:** Klick-Prüfung im Browser durch den Nutzer.
 - Bekannte Grenzen: Namensteilung ist eine Näherung (letztes Wort = Nachname), deshalb Standard aus.
 
 ## Deployment
-_To be added by /deploy_
+Live seit 2026-11-07 (Commit 1e3a0a1). Migration `20261112_proj77_notenschluessel_vorlagen.sql` vorab von Hand im SQL-Editor angewendet, Probe grün. Routen ohne Login: 401.
