@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { GradingScaleTemplatePicker } from './grading-scale-template-picker'
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
 import { useExamPartLabel } from '@/components/department-provider'
 import { AssessmentQuestionSelector } from './assessment-question-selector'
@@ -422,6 +423,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
             </p>
           </div>
 
+          <GradingScaleTemplatePicker scale={scale} onApply={setScale} disabled={submitting} />
           <GradingScaleEditor scale={scale} onChange={setScale} error={errors.scale} />
 
           <FocusSettingsFields value={focus} onChange={setFocus} error={errors.focus} />

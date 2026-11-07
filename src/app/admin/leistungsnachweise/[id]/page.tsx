@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { NotenlisteExportDialog } from '@/components/admin/notenliste-export-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -162,6 +163,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const [failed, setFailed] = useState(false)
   const [actionPending, setActionPending] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
   const [expandedFocus, setExpandedFocus] = useState<string | null>(null)
 
@@ -379,6 +381,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                         <Download className="text-ws-muted" />
                         Ergebnisse als CSV
                       </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!hasSubmissions}
+                      onSelect={() => setExportOpen(true)}
+                      className={menuItemClass}
+                    >
+                      <Download className="text-ws-muted" />
+                      {hasSubmissions ? 'Notenliste exportieren' : 'Notenliste (noch keine Abgaben)'}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -711,6 +721,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <NotenlisteExportDialog assessmentId={id} open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   )
 }

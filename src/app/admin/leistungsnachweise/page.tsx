@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { GraduationCap, Plus } from 'lucide-react'
+import { GraduationCap, Plus, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -191,16 +191,24 @@ function AssessmentsPageContent() {
         description="Benotete Tests für deine Klasse: Die Azubis treten per Code bei, du siehst Noten und Auswertung. Nicht zu verwechseln mit der Prüfungssimulation, die Azubis ohne Note selbst üben."
         actions={
           showEmpty ? undefined : (
-            <Button
-              onClick={() => {
-                setPreselectedSetId(null)
-                setCreateOpen(true)
-              }}
-              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Neu erstellen
-            </Button>
+            <>
+              <Button asChild variant="outline" className="rounded-xl">
+                <Link href="/admin/leistungsnachweise/schluessel">
+                  <Ruler className="w-4 h-4 mr-2" />
+                  Notenschlüssel
+                </Link>
+              </Button>
+              <Button
+                onClick={() => {
+                  setPreselectedSetId(null)
+                  setCreateOpen(true)
+                }}
+                className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Neu erstellen
+              </Button>
+            </>
           )
         }
       />
