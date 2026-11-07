@@ -25,6 +25,7 @@ import {
   toBerlinDateStr,
 } from '@/lib/home-today'
 import { cn } from '@/lib/utils'
+import { ReportFeedbackCard } from '@/components/my-question-reports'
 import { Zap, Flame, Target, ShieldAlert } from 'lucide-react'
 
 export default async function HomePage({
@@ -205,6 +206,8 @@ export default async function HomePage({
             </AlertDescription>
           </Alert>
         )}
+        {/* Rückmeldung auf gemeldete Fragen (PROJ-72/73), nur wenn es etwas Neues gibt */}
+        <ReportFeedbackCard />
         {/* Begrüßung & Woche */}
         <section className="space-y-4">
           <div>

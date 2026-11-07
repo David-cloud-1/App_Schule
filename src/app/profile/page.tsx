@@ -14,6 +14,7 @@ import { isTeacherRole } from '@/lib/roles'
 import { AreaSwitcher } from '@/components/area-switcher'
 import { getLinkContext, LINKED_DEPARTMENT_CODE } from '@/lib/linked-account'
 import { OverallStatsRow } from '@/components/overall-stats-row'
+import { MyQuestionReportsList } from '@/components/my-question-reports'
 import { WeekActivityDots } from '@/components/week-activity-dots'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { buildLast7Days, toBerlinDateStr } from '@/lib/home-today'
@@ -182,6 +183,9 @@ export default async function ProfilePage() {
         <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5">
           <BetriebVorschau />
         </div>
+
+        {/* Gemeldete Fragen und ihr Stand (PROJ-72) */}
+        <MyQuestionReportsList />
 
         {/* Privacy settings — bei Lehrer-Rollen unter „Mein Konto“ */}
         {!isTeacher && (

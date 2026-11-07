@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress'
 import { LevelUpDialog } from '@/components/level-up-dialog'
 import { BadgeUnlockModal } from '@/components/badge-unlock-modal'
 import { XpLevelBadge } from '@/components/xp-level-badge'
+import { ReportQuestionButton } from '@/components/report-question-button'
 import { getLevelFromXp } from '@/lib/xp-utils'
 import type { BadgeDisplay } from '@/lib/badges'
 import { cn } from '@/lib/utils'
@@ -544,6 +545,14 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
               ) : (
                 <p className="text-[#4B5563] text-xs mt-1 italic">Noch keine Erklärung hinterlegt.</p>
               )}
+            </div>
+
+            <div className="mb-2 flex justify-end">
+              <ReportQuestionButton
+                key={currentQuestion.id}
+                questionId={currentQuestion.id}
+                selectedOptionId={selectedOptionId}
+              />
             </div>
 
             <Button

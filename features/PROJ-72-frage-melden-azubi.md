@@ -1,6 +1,6 @@
 # PROJ-72: Frage melden (Azubi-Seite)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -55,7 +55,54 @@ Azubis können eine Frage, die ihnen falsch, missverständlich oder doppelt rich
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+_Gemeinsam mit PROJ-73 entworfen, weil beide dieselbe Tabelle nutzen. Gebaut wird zuerst PROJ-72._
+
+### A) Aufbau der Oberfläche
+```
+Quiz / Blitzrunde / Lücken schließen (Feedback-Bildschirm)
++-- Knopf „Frage melden“ (kleines Flaggen-Icon, 44 px)
+|   +-- Bottom-Sheet „Was stimmt nicht?“ (vorhandenes shadcn-Sheet)
+|       +-- Grund-Auswahl (5 Gründe)
+|       +-- Freitext (optional, 500 Zeichen, Zähler)
+|       +-- Knopf „Melden“
++-- Toast „Danke! Wir schauen es uns an.“
+
+Profil
++-- Bereich „Meine Meldungen“ (Liste: Frage, Datum, Status, ggf. Kurztext)
+
+„Heute“-Screen
++-- Hinweiskarte „Deine Meldung wurde bearbeitet“ (einmalig, mit Gelesen-Marker)
+```
+Das Sheet ist eine eigene, wiederverwendbare Komponente. Quiz, Blitzrunde und Lücken schließen binden sie nur ein.
+
+### B) Daten
+Eine neue Tabelle **Fragen-Meldungen** (für PROJ-72 und 73 gemeinsam). Pro Meldung wird gespeichert:
+- wer gemeldet hat (ohne Verweis, der beim Löschen des Kontos hängen bleibt), welche Frage, Fachbereich der Frage
+- Grund, Freitext, gewählte Antwort, Fragetext zum Meldezeitpunkt (Kopie)
+- Status (offen, in Prüfung, korrigiert, nicht übernommen, Frage entfällt), Bearbeiter und Zeitpunkt, Kurztext der Lehrkraft
+- ob die Rückmeldung schon gelesen wurde, ob die Belohnung schon vergeben wurde
+
+Regeln direkt in der Datenbank (nicht nur in der Oberfläche):
+- höchstens eine **offene** Meldung je Azubi und Frage
+- höchstens 10 Meldungen je Azubi und Tag
+- Azubis sehen und erstellen nur ihre eigenen Meldungen; Lehrkräfte sehen die ihres Fachbereichs
+
+### C) Wie gemeldet wird
+Der Azubi schreibt nicht direkt in die Tabelle, sondern ruft eine **Datenbankfunktion** auf, die Konto, Tageslimit und Doppelmeldung prüft und die Kopie des Fragetextes selbst einträgt. So kann niemand fremde Texte oder falsche Fachbereiche einschleusen. Das ist dasselbe Muster wie im Lehrerzimmer (PROJ-63).
+
+### D) Tech-Entscheidungen
+- **Kein Melden im laufenden Nachweis oder in der Prüfungssimulation:** Der Knopf wird dort nicht eingebaut; die Funktion lehnt Meldungen aus laufenden Sitzungen zusätzlich ab.
+- **Keine neue Bibliothek.** Sheet, Toast und Auswahl kommen aus shadcn/ui.
+- **Freitext wird nur als Text angezeigt**, nie als HTML.
+
+### E) Sicherheit (Freigabe nötig)
+Neue Tabelle mit Zeilenschutz (RLS) und Datenbankfunktionen. Nach Projektregel brauchen RLS-Änderungen deine ausdrückliche Freigabe. Die Migration spielst du wie bisher selbst im SQL-Editor ein; ich liefere Migration, Rückweg und Probe-Skript als getrennte Dateien.
+
+## Implementation Notes (2026-11-10)
+- Migration `20261110_proj72_73_fragen_meldungen.sql` (+ `_down`, Probe `supabase/tests/proj72_73_meldungen_probe.sql`): Tabelle `question_reports`, Funktionen `report_question`, `claim_question_reports`, `close_question_reports`, `mark_question_reports_read`, Ansicht `question_report_groups`, Trigger für gelöschte Fragen. **Muss vor dem Push in Produktion eingespielt sein.**
+- Azubi: `ReportQuestionButton` (Bottom-Sheet) im Feedback-Bildschirm des Quiz (gilt auch für „Lücken schließen“, das nutzt denselben Client); `/api/question-reports` (POST/GET) und `/api/question-reports/read`; „Meine Meldungen“ im Profil; Rückmeldungskarte im „Heute“-Screen.
+- **Abweichungen von der Spec:** (1) Die **Blitzrunde** hat keinen Feedback-Bildschirm (Zeitdruck, automatisches Weiterschalten), dort gibt es bewusst keinen Melde-Knopf. (2) Statt Toast erscheint im Sheet eine kurze Bestätigung „Danke!“ (im Schüler-Layout ist kein Toaster eingebunden). (3) Meldungen aus laufenden Prüfungen lehnt die Funktion ab, wenn der Azubi eine „in_progress“-Sitzung hat, die höchstens 12 Stunden alt ist.
+- Tests: `question-reports.test.ts`, `api/question-reports/route.test.ts`, `api/admin/question-reports/[questionId]/close/route.test.ts`; Gesamtstand 2531 Tests grün, Build grün.
 
 ## QA Test Results
 _To be added by /qa_

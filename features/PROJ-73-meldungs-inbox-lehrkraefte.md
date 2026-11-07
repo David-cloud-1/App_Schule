@@ -1,6 +1,6 @@
 # PROJ-73: Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -62,7 +62,52 @@ Lehrkräfte und Bereichs-Admins sehen alle gemeldeten Fragen ihres Fachbereichs 
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+_Siehe auch PROJ-72 (gemeinsame Tabelle „Fragen-Meldungen“)._
+
+### A) Aufbau der Oberfläche
+```
+/admin/gemeldete-fragen
++-- AdminPageHeader (Titel, ein Satz Beschreibung)
++-- Filterleiste (Status, Fach, Thema, Grund)
++-- Tabelle (gebündelt je Frage, ws-table-scroll, sticky erste Spalte)
+|   +-- aufklappbare Einzelmeldungen
+|   +-- Aktionen: Frage öffnen / Korrigiert / Nicht übernommen
++-- Dialog „Meldung abschließen“ (Korrigiert oder Nicht übernommen + Kurztext aus Vorlagen)
++-- AlertDialog bei Sammel-Schließen
++-- Zustände: AdminLoadingState / AdminEmptyState / AdminErrorState
+Navigation: neuer Eintrag „Gemeldete Fragen“ unter Inhalte
+```
+
+### B) Daten
+Keine zweite Tabelle. PROJ-73 nutzt die Tabelle aus PROJ-72 und ergänzt Datenbankfunktionen für Lehrkräfte:
+- **Übernehmen:** setzt „in Prüfung“ und trägt den Bearbeiter ein (Hinweis, 24 Stunden gültig)
+- **Abschließen:** setzt Ergebnis und Kurztext für alle offenen Meldungen derselben Frage; bei „korrigiert“ wird die Belohnung vergeben
+- Beide prüfen, ob die Person Lehrkraft oder Admin mit Zugriff auf den Fachbereich der Frage ist
+
+### C) Belohnung
+- Frachtmünzen werden in **derselben Datenbankfunktion** gutgeschrieben, die die Meldung abschließt. Dadurch kann nichts doppelt vergeben werden, auch bei gleichzeitigem Klick.
+- Höhe: **15 Frachtmünzen** je berechtigter Meldung, **kein XP** (XP bestimmt die Rangliste und soll nicht durch Melden beeinflusst werden). Wochenlimit: 5 belohnte Meldungen je Azubi.
+- Die Belohnung wird je Meldung genau einmal vergeben und bei Rücknahme der Korrektur nicht zurückgenommen.
+
+### D) Änderungsverlauf
+Beim Abschluss wird der Eintrag mit Verweis auf die Änderung im Verlauf (PROJ-47) geschrieben. Der Abschluss steht außerdem im Audit-Protokoll.
+
+### E) Tech-Entscheidungen
+- **Gebündelte Liste** statt Einzelzeilen: Eine fehlerhafte Frage mit 12 Meldungen soll eine Zeile sein, nicht zwölf.
+- **Serverseitige Seiten und Filter:** Die Inbox lädt nie alle Meldungen in den Browser.
+- **Bearbeiter-Hinweis statt harter Sperre:** Wer sich nicht an die Markierung hält, richtet keinen Schaden an, und eine vergessene Sperre blockiert niemanden.
+- **Rückmeldung an den Azubi** kommt aus derselben Tabelle (Status + Kurztext + Gelesen-Marker), ohne Namen der Lehrkraft.
+- Keine neue Bibliothek, keine KI, keine laufenden Kosten.
+
+### F) Abhängigkeiten
+Die Lösungsquote in der Inbox-Zeile kommt aus PROJ-74. Solange PROJ-74 fehlt, bleibt die Spalte leer und wird ausgeblendet.
+
+## Implementation Notes (2026-11-10)
+- Gemeinsame Migration mit PROJ-72 (siehe dort). Oberfläche: `/admin/gemeldete-fragen` mit `QuestionReportsInbox` (Reiter Offen/Korrigiert/Nicht übernommen/Frage entfällt, Filter Grund und Fachbereich, gebündelte Zeilen, aufklappbare Einzelmeldungen, Abschließen-Dialog, Sammel-Schließen mit AlertDialog). Navigation: Eintrag „Gemeldete Fragen“ unter Inhalte, für alle Lehrer-Rollen.
+- Schnittstellen: `GET /api/admin/question-reports`, `GET …/[questionId]`, `POST …/[questionId]/claim`, `POST …/[questionId]/close`, `POST …/bulk-close`; Abschlüsse stehen im Audit-Protokoll.
+- Belohnung: 15 Frachtmünzen (kein XP), nie an sich selbst, nie doppelt, höchstens 5 belohnte Meldungen je Melder in 7 Tagen; alles in `close_question_reports`.
+- **Abweichungen von der Spec:** (1) „Frage öffnen“ führt in die Fragenliste, vorgefiltert auf den Fragetext (`?q=`), nicht direkt in den Editor; die Meldungen werden dabei als „in Prüfung“ übernommen. (2) Die Inbox ist für alle Lehrer-Rollen lesbar (Inhalte sind offen, PROJ-70); der Fachbereich ist ein Filter, keine Sperre. (3) Die Lösungsquote in der Zeile folgt mit PROJ-74.
+- „Zurückgenommene Korrektur nimmt die Belohnung nicht zurück“: umgesetzt, weil die Münzen nie angefasst werden.
 
 ## QA Test Results
 _To be added by /qa_

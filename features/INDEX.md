@@ -87,8 +87,8 @@
 
 <!-- Add features above this line -->
 | PROJ-71 | Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed | [PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md](PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md) | 2026-11-04 |
-| PROJ-72 | Frage melden (Azubi-Seite) | Planned | [PROJ-72-frage-melden-azubi.md](PROJ-72-frage-melden-azubi.md) | 2026-11-07 |
-| PROJ-73 | Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Planned | [PROJ-73-meldungs-inbox-lehrkraefte.md](PROJ-73-meldungs-inbox-lehrkraefte.md) | 2026-11-07 |
+| PROJ-72 | Frage melden (Azubi-Seite) | In Progress | [PROJ-72-frage-melden-azubi.md](PROJ-72-frage-melden-azubi.md) | 2026-11-07 |
+| PROJ-73 | Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | In Progress | [PROJ-73-meldungs-inbox-lehrkraefte.md](PROJ-73-meldungs-inbox-lehrkraefte.md) | 2026-11-07 |
 | PROJ-74 | „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned | [PROJ-74-schwierigste-fragen.md](PROJ-74-schwierigste-fragen.md) | 2026-11-07 |
 | PROJ-75 | Leistungsnachweis – Aufgabenanalyse & Ausreißer | Planned | [PROJ-75-nachweis-aufgabenanalyse.md](PROJ-75-nachweis-aufgabenanalyse.md) | 2026-11-07 |
 | PROJ-76 | Leistungsnachweis – Gruppen A/B | Planned | [PROJ-76-nachweis-gruppen-a-b.md](PROJ-76-nachweis-gruppen-a-b.md) | 2026-11-07 |

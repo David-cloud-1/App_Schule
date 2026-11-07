@@ -3,6 +3,7 @@ import {
   Building2,
   ClipboardList,
   FileText,
+  Flag,
   FolderKanban,
   GraduationCap,
   MessagesSquare,
@@ -145,6 +146,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Die Lernfragen der Azubis ansehen, bearbeiten und importieren',
         icon: FileText,
         // PROJ-48: welche Fragen eine Lehrkraft sieht, entscheidet ihre Fach-Zuständigkeit
+        teacherVisible: true,
+      },
+      {
+        href: '/admin/gemeldete-fragen',
+        label: 'Gemeldete Fragen',
+        description: 'Fragen, die Azubis als fehlerhaft gemeldet haben, prüfen und abschließen',
+        icon: Flag,
+        // PROJ-73: jede Lehrer-Rolle (Inhalte sind offen, PROJ-70)
         teacherVisible: true,
       },
       {

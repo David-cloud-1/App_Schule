@@ -101,8 +101,8 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed |
 | P1 | PROJ-70: Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert | Deployed |
 | P1 | PROJ-71: Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed |
-| P1 | PROJ-72: Frage melden (Azubi-Seite) | Planned |
-| P1 | PROJ-73: Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Planned |
+| P1 | PROJ-72: Frage melden (Azubi-Seite) | In Progress |
+| P1 | PROJ-73: Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | In Progress |
 | P1 | PROJ-74: „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned |
 | P1 | PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer | Planned |
 | P2 | PROJ-76: Leistungsnachweis – Gruppen A/B | Planned |
