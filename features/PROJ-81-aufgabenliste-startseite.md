@@ -1,6 +1,6 @@
 # PROJ-81: Aufgabenliste für Lehrkräfte auf der Startseite
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -98,4 +98,6 @@ Lehrkraft: nur eigene Nachweise. Bereichs-Admin und Super-Admin: der eigene bzw.
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-10: Keine Migration nötig. Push von `6b371ec` auf `main`, Vercel-Production Ready nach 2m. `/api/admin/tasks` ohne Login 401, `/admin` leitet auf den Login (307), keine Fehler in den Production-Logs.
+- Die Zähl-Abfragen laufen gegen die Produktions-DB sauber (Ansicht und Spalten vorhanden). Stand zum Zeitpunkt des Deploys: 0 offene Meldungen, 0 Entwürfe mit Termin, 0 Fragen-Entwürfe, 2 beendete Nachweise ohne Freigabe (davon zählen nur die mit Abgaben).
+- **Nicht im Browser geprüft:** Karte „Zu erledigen“ auf `/admin`, Zähler in der Seitenleiste. Bitte einmal als Lehrkraft und als Admin öffnen.
