@@ -286,7 +286,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text w-[95vw] max-w-6xl max-h-[92vh] overflow-y-auto p-5 sm:p-8">
         <DialogHeader>
           <DialogTitle>Neuer Leistungsnachweis</DialogTitle>
           <DialogDescription className="text-ws-muted">
@@ -294,11 +294,13 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
+         <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+          <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="zielbereich">Zielbereich</Label>
+            <Label htmlFor="zielbereich" className="text-base">Zielbereich</Label>
             <Select value={departmentId} onValueChange={handleDepartmentChange} disabled={departmentsLoading}>
-              <SelectTrigger id="zielbereich" className="bg-ws-bg border-ws-line text-ws-text">
+              <SelectTrigger id="zielbereich" className="bg-ws-bg border-ws-line text-ws-text h-11 text-base">
                 <SelectValue placeholder={departmentsLoading ? 'Wird geladen…' : 'Bitte wählen…'} />
               </SelectTrigger>
               <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
@@ -307,7 +309,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-ws-faint">
+            <p className="text-sm text-ws-faint">
               Bestimmt den Fragenpool und wer per Code beitreten kann. Nach dem Öffnen nicht mehr änderbar.
             </p>
             {errors.departmentId && <p className="text-xs text-ws-red">{errors.departmentId}</p>}
@@ -317,9 +319,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
             <>
               {visibleSets.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="startSet">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
+                  <Label htmlFor="startSet" className="text-base">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
                   <Select value={startSetId} onValueChange={handleStartSetChange}>
-                    <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text">
+                    <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text h-11 text-base">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
@@ -331,7 +333,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-ws-faint">
+                  <p className="text-sm text-ws-faint">
                     Die Fragen werden kopiert und sind danach unabhängig vom Set.
                   </p>
                   {skippedFromSet > 0 && (
@@ -342,26 +344,16 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Label>Fragen</Label>
-                <AssessmentQuestionSelector
-                  departmentId={departmentId}
-                  selectedIds={selectedIds}
-                  onChange={setSelectedIds}
-                  onLoaded={handleLoaded}
-                />
-                {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
-              </div>
             </>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="title">Titel</Label>
+            <Label htmlFor="title" className="text-base">Titel</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-ws-bg border-ws-line text-ws-text"
+              className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
               placeholder="z. B. LN 2 – Verkehrsträger Straße"
               maxLength={100}
             />
@@ -381,33 +373,33 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="opensAt">Beitritt ab</Label>
+              <Label htmlFor="opensAt" className="text-base">Beitritt ab</Label>
               <Input
                 id="opensAt"
                 type="datetime-local"
                 value={opensAt}
                 onChange={(e) => setOpensAt(e.target.value)}
-                className="bg-ws-bg border-ws-line text-ws-text"
+                className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
               />
               {errors.opensAt && <p className="text-xs text-ws-red">{errors.opensAt}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="closesAt">Beitritt bis</Label>
+              <Label htmlFor="closesAt" className="text-base">Beitritt bis</Label>
               <Input
                 id="closesAt"
                 type="datetime-local"
                 value={closesAt}
                 onChange={(e) => setClosesAt(e.target.value)}
-                className="bg-ws-bg border-ws-line text-ws-text"
+                className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
               />
               {errors.closesAt && <p className="text-xs text-ws-red">{errors.closesAt}</p>}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="duration">Bearbeitungszeit je Teilnehmer (Minuten)</Label>
+            <Label htmlFor="duration" className="text-base">Bearbeitungszeit je Teilnehmer (Minuten)</Label>
             <Input
               id="duration"
               type="number"
@@ -415,13 +407,33 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
               max={600}
               value={durationMinutes}
               onChange={(e) => setDurationMinutes(e.target.value)}
-              className="bg-ws-bg border-ws-line text-ws-text w-32"
+              className="bg-ws-bg border-ws-line text-ws-text w-32 h-11 text-base"
             />
             {errors.durationMinutes && <p className="text-xs text-ws-red">{errors.durationMinutes}</p>}
-            <p className="text-xs text-ws-faint">
+            <p className="text-sm text-ws-faint">
               Zählt ab dem individuellen Start — ein späterer Beitritt verkürzt die Zeit nicht.
             </p>
           </div>
+
+          </div>
+
+          <section className="space-y-3 rounded-2xl border border-ws-line bg-ws-bg/40 p-4 sm:p-5">
+            {departmentId ? (
+              <div className="space-y-2">
+                <Label className="text-base">Fragen</Label>
+                <AssessmentQuestionSelector
+                  departmentId={departmentId}
+                  selectedIds={selectedIds}
+                  onChange={setSelectedIds}
+                  onLoaded={handleLoaded}
+                />
+                {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
+              </div>
+            ) : (
+              <p className="text-sm text-ws-muted">Wähle zuerst einen Zielbereich, dann erscheinen hier die Fragen.</p>
+            )}
+          </section>
+         </div>
 
           <GradingScaleTemplatePicker scale={scale} onApply={setScale} disabled={submitting} />
           <GradingScaleEditor scale={scale} onChange={setScale} error={errors.scale} />

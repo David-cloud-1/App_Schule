@@ -184,7 +184,7 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
         </button>
       </div>
 
-      <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3">
+      <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3 lg:max-h-[52vh]">
         {visible.length === 0 ? (
           <p className="py-6 text-center text-sm text-ws-muted">
             {questions.length === 0 ? 'Keine passenden Fragen vorhanden.' : 'Keine Frage passt zu den Filtern.'}
