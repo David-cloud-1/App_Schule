@@ -90,7 +90,7 @@
 | PROJ-72 | Frage melden (Azubi-Seite) | Deployed | [PROJ-72-frage-melden-azubi.md](PROJ-72-frage-melden-azubi.md) | 2026-11-07 |
 | PROJ-73 | Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Deployed | [PROJ-73-meldungs-inbox-lehrkraefte.md](PROJ-73-meldungs-inbox-lehrkraefte.md) | 2026-11-07 |
 | PROJ-74 | „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned | [PROJ-74-schwierigste-fragen.md](PROJ-74-schwierigste-fragen.md) | 2026-11-07 |
-| PROJ-75 | Leistungsnachweis – Aufgabenanalyse & Ausreißer | In Progress | [PROJ-75-nachweis-aufgabenanalyse.md](PROJ-75-nachweis-aufgabenanalyse.md) | 2026-11-07 |
+| PROJ-75 | Leistungsnachweis – Aufgabenanalyse & Ausreißer | Deployed | [PROJ-75-nachweis-aufgabenanalyse.md](PROJ-75-nachweis-aufgabenanalyse.md) | 2026-11-07 |
 | PROJ-76 | Leistungsnachweis – Gruppen A/B | Planned | [PROJ-76-nachweis-gruppen-a-b.md](PROJ-76-nachweis-gruppen-a-b.md) | 2026-11-07 |
 | PROJ-77 | Notenschlüssel-Vorlagen & Notenlisten-Export | Planned | [PROJ-77-notenschluessel-vorlagen-export.md](PROJ-77-notenschluessel-vorlagen-export.md) | 2026-11-07 |
 | PROJ-78 | Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Planned | [PROJ-78-nachweis-vorschlag-zusammenstellung.md](PROJ-78-nachweis-vorschlag-zusammenstellung.md) | 2026-11-07 |

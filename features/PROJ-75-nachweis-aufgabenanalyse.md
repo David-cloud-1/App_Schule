@@ -1,6 +1,6 @@
 # PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -97,4 +97,6 @@ PROJ-28 zeigt je Frage die Lösungsquote. Diese Spec ergänzt eine echte **Aufga
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-10: Migration `20261111_proj75_aufgabenanalyse.sql` im SQL-Editor eingespielt, Probe bestanden (7 von 7 Zeilen wie erwartet; Version der Frage wird bei der Sperre angehoben). Lesend geprüft: beide Spalten vorhanden, keine Probe-Reste.
+- Push von `a5f398a` auf `main`, Vercel-Production Ready nach 2m. Neue und geänderte Routen ohne Login: 401, keine Fehler in den Production-Logs.
+- **Nicht im Browser geprüft:** Reiter „Fragenanalyse“ mit Ampel, Aus-der-Wertung-nehmen mit Neuberechnung der Noten, Sperre mit Warn-Chip in der Fragenauswahl. Bitte an einem echten Nachweis mit Abgaben einmal durchklicken.

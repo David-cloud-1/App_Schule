@@ -104,7 +104,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-72: Frage melden (Azubi-Seite) | Deployed |
 | P1 | PROJ-73: Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Deployed |
 | P1 | PROJ-74: „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned |
-| P1 | PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer | In Progress |
+| P1 | PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer | Deployed |
 | P2 | PROJ-76: Leistungsnachweis – Gruppen A/B | Planned |
 | P2 | PROJ-77: Notenschlüssel-Vorlagen & Notenlisten-Export | Planned |
 | P1 | PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Planned |
