@@ -1,0 +1,398 @@
+diff --git a/docs/PRD.md b/docs/PRD.md
+index a65de17..a5cdaea 100644
+--- a/docs/PRD.md
++++ b/docs/PRD.md
+@@ -35,70 +35,71 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
+ 
+ | Priority | Feature | Status |
+ |----------|---------|--------|
+-| P0 (MVP) | PROJ-1: User Authentication | Planned |
+-| P0 (MVP) | PROJ-2: Subject & Question Structure | Planned |
+-| P0 (MVP) | PROJ-3: Daily Learning Session / Quiz | Planned |
+-| P0 (MVP) | PROJ-4: XP & Level System | Planned |
+-| P0 (MVP) | PROJ-5: Streak System | Planned |
+-| P1 | PROJ-6: Learning Progress Dashboard | Planned |
+-| P1 | PROJ-7: Achievements & Badges | Planned |
+-| P1 | PROJ-8: Leaderboard | Planned |
+-| P1 | PROJ-9: Admin Content Management Panel | Planned |
+-| P2 | PROJ-10: AI Question Generation | Planned |
+-| P2 | PROJ-11: Exam Simulation Mode | Planned |
+-| P1 | PROJ-14: Lücken schließen | Planned |
+-| P0 | PROJ-18: Rückkehr-Erinnerung per Web-Push | Planned |
+-| P0 | PROJ-19: Blitzrunde & Frachtmünzen | Planned |
+-| P0 | PROJ-20: Speditionshof & Shop | Planned |
+-| P1 | PROJ-21: Benotete Leistungsnachweise | Planned |
+-| P1 | PROJ-22: Fachbereich als Datenbasis | Planned |
+-| P1 | PROJ-23: Fachbereichs-Zuordnung für Azubis | Planned |
+-| P1 | PROJ-24: Fachbereichs-Admins & Rechtetrennung | Planned |
+-| P1 | PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst) | Planned |
+-| P1 | PROJ-26: Visuelle Hof-Szene & kategorisierter Item-Katalog | Planned |
+-| P1 | PROJ-27: Leistungsnachweis – eigene Fragen-Zusammenstellung | Planned |
+-| P1 | PROJ-28: Leistungsnachweis – Druck & Klassenauswertung | Planned |
+-| P1 | PROJ-29: Bereichs-Umschalter für den Super-Admin | Planned |
+-| P1 | PROJ-30: Fokus-Verlust-Protokoll bei Leistungsnachweisen | Planned |
+-| P1 | PROJ-31: Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene | Planned |
+-| P2 | PROJ-32: Hof-Ausbau – Effekte für teure Items & mehr Grafiken | Planned |
+-| P1 | PROJ-33: Echte Hof-Illustration (Spedition & Tourismus) | Planned |
+-| P1 | PROJ-34: „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | Planned |
+-| P1 | PROJ-35: „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Planned |
+-| P1 | PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Planned |
+-| P1 | PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Planned |
+-| P1 | PROJ-38: Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Planned |
+-| P1 | PROJ-39: Leistungsnachweis – Kategorisierung & Filter | Planned |
++| P0 (MVP) | PROJ-1: User Authentication | Deployed |
++| P0 (MVP) | PROJ-2: Subject & Question Structure | Deployed |
++| P0 (MVP) | PROJ-3: Daily Learning Session / Quiz | Deployed |
++| P0 (MVP) | PROJ-4: XP & Level System | Deployed |
++| P0 (MVP) | PROJ-5: Streak System | Deployed |
++| P1 | PROJ-6: Learning Progress Dashboard | Deployed |
++| P1 | PROJ-7: Achievements & Badges | Deployed |
++| P1 | PROJ-8: Leaderboard | Deployed |
++| P1 | PROJ-9: Admin Content Management Panel | Deployed |
++| P2 | PROJ-10: AI Question Generation | Deployed |
++| P2 | PROJ-11: Exam Simulation Mode | Deployed |
++| P1 | PROJ-14: Lücken schließen | Deployed |
++| P0 | PROJ-18: Rückkehr-Erinnerung per Web-Push | Architected |
++| P0 | PROJ-19: Blitzrunde & Frachtmünzen | Deployed |
++| P0 | PROJ-20: Speditionshof & Shop | Deployed |
++| P1 | PROJ-21: Benotete Leistungsnachweise | Deployed |
++| P1 | PROJ-22: Fachbereich als Datenbasis | Deployed |
++| P1 | PROJ-23: Fachbereichs-Zuordnung für Azubis | Deployed |
++| P1 | PROJ-24: Fachbereichs-Admins & Rechtetrennung | Deployed |
++| P1 | PROJ-25: Onboarding Tourismus (Touristiklern-Grundgerüst) | Deployed |
++| P1 | PROJ-26: Visuelle Hof-Szene & kategorisierter Item-Katalog | Deployed |
++| P1 | PROJ-27: Leistungsnachweis – eigene Fragen-Zusammenstellung | Deployed |
++| P1 | PROJ-28: Leistungsnachweis – Druck & Klassenauswertung | Deployed |
++| P1 | PROJ-29: Bereichs-Umschalter für den Super-Admin | Deployed |
++| P1 | PROJ-30: Fokus-Verlust-Protokoll bei Leistungsnachweisen | Deployed |
++| P1 | PROJ-31: Tourismus-Reisebüro – Grafikset, Startkatalog & eigene Szene | Deployed |
++| P2 | PROJ-32: Hof-Ausbau – Effekte für teure Items & mehr Grafiken | Deployed |
++| P1 | PROJ-33: Echte Hof-Illustration (Spedition & Tourismus) | Deployed |
++| P1 | PROJ-34: „Mein Betrieb“ – isometrische Ansicht & Selbst-Platzieren (Spedition) | Deployed |
++| P1 | PROJ-35: „Mein Resort“ – Tourismus-Hotelkomplex (isometrisch) | Deployed |
++| P1 | PROJ-36: Mehr Deko für „Mein Betrieb“ und „Mein Resort“ | Deployed |
++| P1 | PROJ-37: Belebte Welt – Tiere, Gäste und Arbeiter laufen herum | Deployed |
++| P1 | PROJ-38: Leistungsnachweis – Fragen-Import per Kopier-Prompt (kostenlos) | Deployed |
++| P1 | PROJ-39: Leistungsnachweis – Kategorisierung & Filter | Deployed |
+ | P1 | PROJ-40: Lehrkräfte-Bereich übersichtlicher (Startseite & gruppierte Navigation) | Deployed |
+ | P1 | PROJ-41: Bottom-Navigation für Spieler & Umzug der Startseiten-Inhalte | Deployed |
+ | P1 | PROJ-42: „Heute“-Screen – aufgeräumte Spieler-Startseite | Deployed |
+ | P1 | PROJ-43: Lernbibliothek – Tab „Lernen“ & Fachseite mit Themenpfad | Deployed |
+ | P1 | PROJ-44: Lehrkraft-Rolle & Freischaltung | Deployed |
+ | P1 | PROJ-45: Lehrkräfte-Arbeitsbereich – modernes Layout für Desktop & Handy | Deployed |
+-| P1 | PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich | Planned |
+-| P1 | PROJ-47: Änderungsverlauf & Wiederherstellen für Inhalte | Planned |
+-| P1 | PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Planned |
++| P1 | PROJ-46: Leistungsnachweise für Lehrkräfte ohne Fachbereich | Deployed |
++| P1 | PROJ-47: Änderungsverlauf & Wiederherstellen für Inhalte | Deployed |
++| P1 | PROJ-48: Fach-Zuständigkeiten für Lehrkräfte (selbst eingetragen) | Deployed |
+ | P1 | PROJ-49: Lehrkraft und Bereichs-Admin sichtbar trennen | Deployed |
+ | P1 | PROJ-50: Lehrkraft-Profil („Mein Konto“) & verkürzte Spielansicht | Deployed |
+ | P1 | PROJ-51: Werkzeugkiste – Rahmen & Durchstich „Ganzes Skript“ | Deployed |
+-| P1 | PROJ-52: Werkzeugkiste – Meine Materialien | Planned |
++| P1 | PROJ-52: Werkzeugkiste – Meine Materialien | Deployed |
+ | P1 | PROJ-53: Werkzeugkiste – Regal des Kollegiums | Deployed |
+-| P1 | PROJ-54: Werkzeugkiste – die übrigen 11 Werkzeuge | Planned |
++| P1 | PROJ-54: Werkzeugkiste – die übrigen 11 Werkzeuge | Deployed |
+ | P1 | PROJ-55: Schulrecht nachschlagen | Deployed |
+ | P2 | PROJ-56: Alte Werkzeugkiste ablösen | Planned |
+ | P1 | PROJ-57: Nutzerliste – Sortieren & Inaktiv-Filter | Deployed |
+ | P1 | PROJ-58: Passwort neu vergeben (mit Pflichtwechsel) | Deployed |
+-| P2 | PROJ-59: Nutzer-Detailseite (Super-Admin) | Planned |
++| P2 | PROJ-59: Nutzer-Detailseite (Super-Admin) | Deployed |
+ | P1 | PROJ-60: Konto löschen (DSGVO) | Deployed |
+-| P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Planned |
++| P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Deployed |
+ | P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned |
+ | P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Deployed |
+-| P1 | PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI) | Planned |
+-| P1 | PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Planned |
++| P1 | PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI) | In Progress |
++| P1 | PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Deployed |
+ | P1 | PROJ-66: Werkzeugkiste – Kostenübersicht für den Super-Admin | Planned |
+ | P1 | PROJ-67: Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed |
+ | P1 | PROJ-68: Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed |
+ | P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed |
++| P1 | PROJ-70: Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Planned |
+ 
+ ## Success Metrics
+ - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
+diff --git a/features/INDEX.md b/features/INDEX.md
+index de9f649..18f0625 100644
+--- a/features/INDEX.md
++++ b/features/INDEX.md
+@@ -83,7 +83,8 @@
+ | PROJ-67 | Werkzeugkiste – Öffentlicher Link („Link für alle“) | Deployed | [PROJ-67-werkzeugkiste-oeffentlicher-link.md](PROJ-67-werkzeugkiste-oeffentlicher-link.md) | 2026-11-02 |
+ | PROJ-68 | Werkzeugkiste – kürzere Prompts und Antworten ohne Qualitätsverlust | Deployed | [PROJ-68-werkzeugkiste-prompts-kuerzer.md](PROJ-68-werkzeugkiste-prompts-kuerzer.md) | 2026-11-03 |
+ | PROJ-69 | Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed | [PROJ-69-werkzeugkiste-kostenlos-in-teilen.md](PROJ-69-werkzeugkiste-kostenlos-in-teilen.md) | 2026-11-03 |
++| PROJ-70 | Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Planned | [PROJ-70-werkzeugkiste-lange-abschnitte-zerlegen.md](PROJ-70-werkzeugkiste-lange-abschnitte-zerlegen.md) | 2026-11-04 |
+ 
+ <!-- Add features above this line -->
+ 
+-## Next Available ID: PROJ-70
++## Next Available ID: PROJ-71
+diff --git a/features/PROJ-64-werkzeugkiste-direkt-erstellen.md b/features/PROJ-64-werkzeugkiste-direkt-erstellen.md
+index 1b1eab8..5d04aad 100644
+--- a/features/PROJ-64-werkzeugkiste-direkt-erstellen.md
++++ b/features/PROJ-64-werkzeugkiste-direkt-erstellen.md
+@@ -295,6 +295,14 @@ Ablauf (PROJ-51, bekannter Rahmen)
+ 
+ **Vor dem ersten Einsatz nötig:** `ANTHROPIC_API_KEY` in Vercel (Production) eintragen — fehlt dort bisher. Ohne ihn meldet „Direkt erstellen“ „noch nicht eingerichtet“ (503), der kostenlose Weg bleibt unberührt.
+ 
++## Überarbeitung vor neuem Praxistest (2026-11-04, nicht deployt)
++Vorbereitung, der Schalter `DIREKT_ERSTELLEN_AKTIV` bleibt auf `false`. Ergebnis des Praxistests steht noch aus.
++- **Teilgröße:** Der Direkt-Weg schickt `max_zeichen: 5.000` an `/api/teilen` (`DIREKT_TEIL_ZEICHEN`). Der Kern nimmt die Angabe seit PROJ-69 an (`teil_groesse`, Grenzen 2.000–40.000). Ohne Angabe galt bisher 22.000.
++- **Obergrenze je Teil:** 24.000 → 40.000 Bausteine (`MAX_ANTWORT_BAUSTEINE`).
++- **Schätzung:** Faktor Ausgabe/Skript von 1,4 auf 15 (gemessen in Praxistest 3). Folge: ein Skript mit 25.000 Zeichen wird auf rund 1,15 € geschätzt (vorher 0,15 €), ein 117.000-Zeichen-Skript auf rund 7 bis 9 €. Die Rückfrage ab 2 € greift damit bei größeren Skripten. Das ist eine fachliche Änderung und sollte mit dem Nutzer bestätigt werden.
++- **Tests:** `werkzeugkiste-kosten.test.ts` auf die neuen Bereiche angepasst. Die Tests für Kosten, Direkt-Weg, Teile und Werkzeugkiste laufen grün (104), `tsc` ohne Fehler. Nicht getestet: dass die Teil-Anfrage den Wert tatsächlich an den Kern sendet.
++- **Offen vor dem Praxistest:** Selbsttest `ki-test`, dann ein echtes Skript. Die Zahlen (5.000 Zeichen, 40.000 Bausteine, Faktor 15) sind aus einer einzigen Messung und müssen im Lauf bestätigt werden. Die Ratenlimit-Stufe ist bei vielen parallelen Teilen wichtiger geworden (117.000 Zeichen ergeben rund 24 Teile).
++
+ ## QA Test Results
+ _To be added by /qa_
+ 
+diff --git a/src/app/api/admin/werkzeugkiste/ablaeufe/[id]/prompt/route.ts b/src/app/api/admin/werkzeugkiste/ablaeufe/[id]/prompt/route.ts
+index 3a56d52..d005e66 100644
+--- a/src/app/api/admin/werkzeugkiste/ablaeufe/[id]/prompt/route.ts
++++ b/src/app/api/admin/werkzeugkiste/ablaeufe/[id]/prompt/route.ts
+@@ -1,8 +1,8 @@
+ import { NextResponse } from 'next/server'
+ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
+ import { createServiceClient } from '@/lib/supabase-server'
+-import { hatTeilWeg, TEIL_ZEICHEN_KOSTENLOS, teileEingefuegt, type AblaufAuswahl } from '@/lib/werkzeugkiste'
+-import { legeTeileAn, loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
++import { hatTeilWeg, TEIL_ZEICHEN_KOSTENLOS, teileEingefuegt } from '@/lib/werkzeugkiste'
++import { type KernTeil, legeTeileAn, loescheTeilDateien } from '@/lib/werkzeugkiste-teile-server'
+ import {
+   aktualisiere,
+   einlesungPfad,
+@@ -53,10 +53,11 @@ export async function POST(_request: Request, { params }: Kontext) {
+     // Ein fertiges Material bekommt keine Teile mehr: Es lässt sich nichts mehr einfügen
+     let zuLang = false
+     if (hatTeilWeg(ablauf.werkzeug) && zeile.status !== 'fertig') {
+-      const t = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
++      const t = await kern<{ teile: KernTeil[] }>('/api/teilen', {
+         einlesung: { url: einlesung },
+         auswahl: ablauf.auswahl,
+         max_zeichen: TEIL_ZEICHEN_KOSTENLOS,
++        zerlegen: true, // PROJ-70: zu große Word-Abschnitte weiter zerlegen (ein älterer Kern ignoriert das)
+       })
+       if (Array.isArray(t.teile) && t.teile.length > 1) {
+         const teile = legeTeileAn(t.teile, ablauf.gliederung, TEIL_ZEICHEN_KOSTENLOS)
+diff --git a/src/components/werkzeugkiste/direkt.test.tsx b/src/components/werkzeugkiste/direkt.test.tsx
+index f794695..4a0be28 100644
+--- a/src/components/werkzeugkiste/direkt.test.tsx
++++ b/src/components/werkzeugkiste/direkt.test.tsx
+@@ -24,7 +24,7 @@ describe('Direkt erstellen – Oberfläche (PROJ-64)', () => {
+   describe('Wegwahl', () => {
+     it('nennt beim direkten Weg die geschätzten Kosten und die Dauer', () => {
+       render(<WegKarte daten={DATEN} fehler={false} />)
+-      expect(screen.getByText(/^ca\. 0,\d\d € · etwa \d+(–\d+)? Minuten$/)).toBeInTheDocument()
++      expect(screen.getByText(/^ca\. \d+,\d\d € · etwa \d+(–\d+)? Minuten$/)).toBeInTheDocument()
+       expect(screen.getByText('Kostenlos mit eigener KI')).toBeInTheDocument()
+     })
+ 
+diff --git a/src/lib/werkzeugkiste-direkt.ts b/src/lib/werkzeugkiste-direkt.ts
+index 362c1b5..20c2840 100644
+--- a/src/lib/werkzeugkiste-direkt.ts
++++ b/src/lib/werkzeugkiste-direkt.ts
+@@ -49,10 +49,16 @@ const PROBE_ABSTAND_MS = 60 * 60 * 1000
+ /** Claude muss vor der Zeitgrenze fertig sein, sonst ist der Verbrauch nicht mehr messbar */
+ const KI_FRIST_MS = 240_000
+ /**
+- * Obergrenze der Antwort. Ein Teil (≤ ~22.000 Zeichen Skript) braucht im Normalfall
+- * 6.000–12.000 Bausteine; die Grenze deckelt zugleich die Kosten eines Aufrufs (~0,24 $).
++ * Teilgröße des direkten Wegs (Skripttext je Teil). Praxistest 3: Die Ausgabe ist ~15× so lang
++ * wie das Skript, ein Teil von 22.000 Zeichen wäre an jeder Obergrenze abgeschnitten.
++ * Startwert laut PROJ-64-Spec; wird im Praxistest gemessen.
+  */
+-export const MAX_ANTWORT_BAUSTEINE = 24_000
++export const DIREKT_TEIL_ZEICHEN = 5_000
++/**
++ * Obergrenze der Antwort je Teil. Ein 5.000-Zeichen-Teil braucht nach Praxistest 3 bis zu
++ * ~24.000 Bausteine; 40.000 gibt Luft. Die Grenze deckelt zugleich die Kosten eines Aufrufs.
++ */
++export const MAX_ANTWORT_BAUSTEINE = 40_000
+ 
+ export const GUTHABEN_SATZ = GUTHABEN_TEXT
+ const KI_SATZ = 'Die KI hat gerade nicht geantwortet. Bitte versuche es erneut oder mach kostenlos mit deiner eigenen KI weiter.'
+@@ -730,6 +736,7 @@ export async function teileFuer(service: SupabaseClient, zeile: AblaufZeile, aus
+   const r = await kern<{ teile: { auswahl: AblaufAuswahl; zeichen: number }[] }>('/api/teilen', {
+     einlesung: { url: einlesung },
+     auswahl,
++    max_zeichen: DIREKT_TEIL_ZEICHEN,
+   })
+   if (!Array.isArray(r.teile) || r.teile.length === 0 || r.teile.length > 100) throw new KernFehler('Das Skript ließ sich nicht aufteilen.', 502)
+   return r.teile.map((t) => ({
+diff --git a/src/lib/werkzeugkiste-kosten.test.ts b/src/lib/werkzeugkiste-kosten.test.ts
+index 5b4fe1d..e65d10b 100644
+--- a/src/lib/werkzeugkiste-kosten.test.ts
++++ b/src/lib/werkzeugkiste-kosten.test.ts
+@@ -16,13 +16,13 @@ describe('Kosten der direkten Erstellung (PROJ-64)', () => {
+     expect(addiere(a, a)).toEqual({ ein: 2, aus: 4, cacheSchreiben: 6, cacheLesen: 8 })
+   })
+ 
+-  it('schätzt ein normales Skript auf etwa 15 Cent und ein sehr langes auf unter einen Euro', () => {
++  it('schätzt ein normales Skript auf etwa einen Euro und ein sehr langes auf rund 7 bis 9 Euro (Praxistest 3)', () => {
+     const normal = schaetze([25_000], SONNET, 0.86)
+-    expect(normal.eur).toBeGreaterThan(0.08)
+-    expect(normal.eur).toBeLessThan(0.3)
++    expect(normal.eur).toBeGreaterThan(0.8)
++    expect(normal.eur).toBeLessThan(1.5)
+     const lang = schaetze(Array(6).fill(19_500), SONNET, 0.86)
+-    expect(lang.eur).toBeGreaterThan(0.4)
+-    expect(lang.eur).toBeLessThan(1.2)
++    expect(lang.eur).toBeGreaterThan(5)
++    expect(lang.eur).toBeLessThan(10)
+     // Teile laufen parallel: Die Dauer hängt am längsten Teil, nicht an der Summe
+     expect(lang.minutenBis).toBeLessThanOrEqual(normal.minutenBis + 1)
+   })
+diff --git a/src/lib/werkzeugkiste-kosten.ts b/src/lib/werkzeugkiste-kosten.ts
+index c057f75..514db7c 100644
+--- a/src/lib/werkzeugkiste-kosten.ts
++++ b/src/lib/werkzeugkiste-kosten.ts
+@@ -31,8 +31,8 @@ export const TAGESLIMIT = 20
+ const BAUSTEINE_JE_ZEICHEN = 0.3
+ /** Die festen Anweisungen des Prompts (~37.000 Zeichen) */
+ const ANWEISUNG_BAUSTEINE = 11_000
+-/** Die Antwort (YAML) ist etwas länger als der Skripttext, mindestens aber eine Grundmenge */
+-const ANTWORT_JE_SKRIPT_BAUSTEIN = 1.4
++/** Die Antwort ist ~15× so lang wie der Skripttext (Praxistest 3, 2026-10-29), mindestens aber eine Grundmenge */
++const ANTWORT_JE_SKRIPT_BAUSTEIN = 15
+ const ANTWORT_MINDESTENS = 5_000
+ /** Zuschlag für gelegentliche Nachbesserungen */
+ const NACHBESSERUNG_ZUSCHLAG = 1.15
+diff --git a/src/lib/werkzeugkiste-teile-server.ts b/src/lib/werkzeugkiste-teile-server.ts
+index 0fdfba0..409913e 100644
+--- a/src/lib/werkzeugkiste-teile-server.ts
++++ b/src/lib/werkzeugkiste-teile-server.ts
+@@ -7,6 +7,7 @@ import {
+   type AblaufPruefung,
+   type AblaufTeil,
+   type AblaufTeile,
++  type TeilAuswahl,
+   type TeilZustand,
+   TEILE_MAX,
+ } from '@/lib/werkzeugkiste'
+@@ -111,17 +112,44 @@ function seitenKurz(seiten: string): string {
+ }
+ 
+ /** Was ein Teil enthält, kurz: Titel der Word-Abschnitte bzw. „Seiten 1–4“ */
+-export function beschreibeTeil(auswahl: AblaufAuswahl, gliederung: { nr: number; titel: string }[]): string[] {
++export function beschreibeTeil(
++  auswahl: AblaufAuswahl,
++  gliederung: { nr: number; titel: string }[],
++  unterteil?: { nr: number; von: number } | null,
++  beginnt?: string | null,
++): string[] {
+   if (auswahl.abschnitte.length > 0) {
+     const titel = auswahl.abschnitte.map((nr) => gliederung.find((g) => g.nr === nr)?.titel || `Abschnitt ${nr}`)
++    if (unterteil && titel.length === 1) {
++      // Zerlegter Abschnitt (PROJ-70): „Übungsaufgaben, 2. von 4 (ab Aufgabe 3)“; der erste Teil beginnt mit dem Titel selbst
++      const ab = unterteil.nr > 1 && beginnt ? ` (ab ${beginnt.replace(/\s+/g, ' ').trim()})` : ''
++      return kuerzeListe([`${kuerzeListe(titel, 1, 60)[0]}, ${unterteil.nr}. von ${unterteil.von}${ab}`], 1, 100)
++    }
+     return kuerzeListe(titel, 6, 80)
+   }
+   const kurz = seitenKurz(auswahl.seiten)
+   return kurz ? [`${kurz.includes(',') || kurz.includes('–') ? 'Seiten' : 'Seite'} ${kurz}`] : []
+ }
+ 
++/** Ein Teil, wie der Kern ihn liefert; die Angaben zum Unterteil gibt es nur bei zerlegten Abschnitten (PROJ-70) */
++export interface KernTeil {
++  auswahl: TeilAuswahl
++  zeichen: number
++  unterteil?: { nr: number; von: number }
++  beginnt?: string
++  zuGross?: boolean
++}
++
++/** Ausschnitt aus der Antwort des Kerns übernehmen; ungültige Angaben entfallen (dann gilt der ganze Abschnitt) */
++function auswahlAusKern(a: TeilAuswahl | undefined): TeilAuswahl {
++  const von = Number(a?.ausschnitt?.von)
++  const bis = Number(a?.ausschnitt?.bis)
++  const ausschnitt = Number.isInteger(von) && Number.isInteger(bis) && von >= 0 && bis > von ? { ausschnitt: { von, bis } } : {}
++  return { seiten: a?.seiten ?? '', abschnitte: a?.abschnitte ?? [], ...ausschnitt }
++}
++
+ export function legeTeileAn(
+-  kernTeile: { auswahl: AblaufAuswahl; zeichen: number }[],
++  kernTeile: KernTeil[],
+   gliederung: { nr: number; titel: string }[],
+   groesse: number,
+ ): AblaufTeile {
+@@ -129,18 +157,29 @@ export function legeTeileAn(
+     groesse,
+     zusammengefuegt: false,
+     hinweise: [],
+-    teile: kernTeile.slice(0, TEILE_MAX).map((t, i) => ({
+-      nr: i + 1,
+-      inhalt: beschreibeTeil(t.auswahl, gliederung),
+-      auswahl: { seiten: t.auswahl?.seiten ?? '', abschnitte: t.auswahl?.abschnitte ?? [] },
+-      zeichen: Number(t.zeichen) || 0,
+-      zustand: 'offen' as TeilZustand,
+-      kapitel: [],
+-      befund: null,
+-      satz: null,
+-      runden: 0,
+-      fingerabdruck: null,
+-    })),
++    teile: kernTeile.slice(0, TEILE_MAX).map((t, i) => {
++      const auswahl = auswahlAusKern(t.auswahl)
++      // Die Angaben zum Unterteil gelten nur mit gültigem Ausschnitt; sonst wäre die Beschriftung falsch
++      const zerlegt = !!auswahl.ausschnitt && Number.isInteger(t.unterteil?.nr) && Number.isInteger(t.unterteil?.von)
++      const unterteil = zerlegt ? { nr: Number(t.unterteil?.nr), von: Number(t.unterteil?.von) } : undefined
++      const beginnt = zerlegt && t.beginnt ? String(t.beginnt).replace(/\s+/g, ' ').trim().slice(0, 60) : undefined
++      return {
++        nr: i + 1,
++        inhalt: beschreibeTeil(auswahl, gliederung, unterteil, beginnt),
++        auswahl,
++        ...(unterteil ? { unterteil } : {}),
++        ...(beginnt ? { beginnt } : {}),
++        ...(t.zuGross ? { zuGross: true } : {}),
++        zeichen: Number(t.zeichen) || 0,
++        zustand: 'offen' as TeilZustand,
++        kapitel: [],
++        befund: null,
++        satz: null,
++        runden: 0,
++        fingerabdruck: null,
++
++      }
++    }),
+   }
+ }
+ 
+diff --git a/src/lib/werkzeugkiste.ts b/src/lib/werkzeugkiste.ts
+index 15770a8..475d11f 100644
+--- a/src/lib/werkzeugkiste.ts
++++ b/src/lib/werkzeugkiste.ts
+@@ -779,6 +779,12 @@ export interface AblaufAuswahl {
+   abschnitte: number[]
+ }
+ 
++/** Auswahl eines Teils (PROJ-70): wie die Auswahl der Lehrkraft, bei zerlegten Abschnitten mit Ausschnitt */
++export interface TeilAuswahl extends AblaufAuswahl {
++  /** Zeichenpositionen im Text des (einen) Abschnitts; der Kern schneidet einmal, die App speichert nur */
++  ausschnitt?: { von: number; bis: number }
++}
++
+ export interface PruefBefund {
+   text: string
+ }
+@@ -834,9 +840,15 @@ export interface AblaufTeil {
+   nr: number
+   /** Was der Teil enthält, kurz: Titel der Abschnitte bzw. „Seiten 1–4“ */
+   inhalt: string[]
+-  auswahl: AblaufAuswahl
++  auswahl: TeilAuswahl
+   /** Zeichen Skripttext in diesem Teil */
+   zeichen: number
++  /** Nur bei zerlegten Abschnitten (PROJ-70): „Teil 2 von 4 dieses Abschnitts“ */
++  unterteil?: { nr: number; von: number }
++  /** Nur bei zerlegten Abschnitten: die ersten Worte des Ausschnitts, z. B. „Aufgabe 3“ */
++  beginnt?: string
++  /** Nur wenn der Teil trotz Zerlegung deutlich größer bleibt als die Teilgröße (z. B. eine riesige Tabelle) */
++  zuGross?: boolean
+   zustand: TeilZustand
+   /** Titel der Kapitel in der eingefügten Antwort */
+   kapitel: string[]
