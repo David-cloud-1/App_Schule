@@ -75,7 +75,7 @@
 | PROJ-59 | Nutzer-Detailseite (Super-Admin) | Deployed | [PROJ-59-nutzer-detailseite.md](PROJ-59-nutzer-detailseite.md) | 2026-10-27 |
 | PROJ-60 | Konto löschen (DSGVO) | Deployed | [PROJ-60-konto-loeschen-dsgvo.md](PROJ-60-konto-loeschen-dsgvo.md) | 2026-10-27 |
 | PROJ-61 | Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Deployed | [PROJ-61-nutzer-export-mehrfachauswahl.md](PROJ-61-nutzer-export-mehrfachauswahl.md) | 2026-10-27 |
-| PROJ-62 | Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned | [PROJ-62-konten-anlegen-sammel-anlage.md](PROJ-62-konten-anlegen-sammel-anlage.md) | 2026-10-27 |
+| PROJ-62 | Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Architected | [PROJ-62-konten-anlegen-sammel-anlage.md](PROJ-62-konten-anlegen-sammel-anlage.md) | 2026-10-27 |
 | PROJ-63 | Lehrerzimmer – Forum für den Austausch im Kollegium | Deployed | [PROJ-63-lehrerzimmer-forum.md](PROJ-63-lehrerzimmer-forum.md) | 2026-10-28 |
 | PROJ-64 | Werkzeugkiste – Direkt erstellen (bezahlte KI) | In Progress | [PROJ-64-werkzeugkiste-direkt-erstellen.md](PROJ-64-werkzeugkiste-direkt-erstellen.md) | 2026-10-28 |
 | PROJ-65 | Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Deployed | [PROJ-65-werkzeugkiste-verbrauch-mein-konto.md](PROJ-65-werkzeugkiste-verbrauch-mein-konto.md) | 2026-10-28 |
@@ -87,5 +87,15 @@
 
 <!-- Add features above this line -->
 | PROJ-71 | Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed | [PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md](PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md) | 2026-11-04 |
+| PROJ-72 | Frage melden (Azubi-Seite) | Planned | [PROJ-72-frage-melden-azubi.md](PROJ-72-frage-melden-azubi.md) | 2026-11-07 |
+| PROJ-73 | Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Planned | [PROJ-73-meldungs-inbox-lehrkraefte.md](PROJ-73-meldungs-inbox-lehrkraefte.md) | 2026-11-07 |
+| PROJ-74 | „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned | [PROJ-74-schwierigste-fragen.md](PROJ-74-schwierigste-fragen.md) | 2026-11-07 |
+| PROJ-75 | Leistungsnachweis – Aufgabenanalyse & Ausreißer | Planned | [PROJ-75-nachweis-aufgabenanalyse.md](PROJ-75-nachweis-aufgabenanalyse.md) | 2026-11-07 |
+| PROJ-76 | Leistungsnachweis – Gruppen A/B | Planned | [PROJ-76-nachweis-gruppen-a-b.md](PROJ-76-nachweis-gruppen-a-b.md) | 2026-11-07 |
+| PROJ-77 | Notenschlüssel-Vorlagen & Notenlisten-Export | Planned | [PROJ-77-notenschluessel-vorlagen-export.md](PROJ-77-notenschluessel-vorlagen-export.md) | 2026-11-07 |
+| PROJ-78 | Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Planned | [PROJ-78-nachweis-vorschlag-zusammenstellung.md](PROJ-78-nachweis-vorschlag-zusammenstellung.md) | 2026-11-07 |
+| PROJ-79 | Nachweis duplizieren & schwache Fragen ersetzen | Planned | [PROJ-79-nachweis-duplizieren-ersetzen.md](PROJ-79-nachweis-duplizieren-ersetzen.md) | 2026-11-07 |
+| PROJ-80 | Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned | [PROJ-80-nachteilsausgleich-nachschreiber.md](PROJ-80-nachteilsausgleich-nachschreiber.md) | 2026-11-07 |
+| PROJ-81 | Aufgabenliste für Lehrkräfte auf der Startseite | Planned | [PROJ-81-aufgabenliste-startseite.md](PROJ-81-aufgabenliste-startseite.md) | 2026-11-07 |
 
-## Next Available ID: PROJ-72
+## Next Available ID: PROJ-82

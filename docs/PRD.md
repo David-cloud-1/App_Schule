@@ -91,7 +91,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-59: Nutzer-Detailseite (Super-Admin) | Deployed |
 | P1 | PROJ-60: Konto löschen (DSGVO) | Deployed |
 | P2 | PROJ-61: Nutzer – CSV-Export & Mehrfachauswahl (Super-Admin) | Deployed |
-| P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Planned |
+| P2 | PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin) | Architected |
 | P1 | PROJ-63: Lehrerzimmer – Forum für den Austausch im Kollegium | Deployed |
 | P1 | PROJ-64: Werkzeugkiste – Direkt erstellen (bezahlte KI) | In Progress |
 | P1 | PROJ-65: Werkzeugkiste – Mein Verbrauch (im eigenen Konto) | Deployed |
@@ -101,6 +101,16 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-69: Werkzeugkiste – kostenloser Weg in Teilen (lange Skripte) | Deployed |
 | P1 | PROJ-70: Lehrkräfte-Bereich – Inhalte offen für alle, lückenlos protokolliert | Deployed |
 | P1 | PROJ-71: Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed |
+| P1 | PROJ-72: Frage melden (Azubi-Seite) | Planned |
+| P1 | PROJ-73: Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Planned |
+| P1 | PROJ-74: „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Planned |
+| P1 | PROJ-75: Leistungsnachweis – Aufgabenanalyse & Ausreißer | Planned |
+| P2 | PROJ-76: Leistungsnachweis – Gruppen A/B | Planned |
+| P2 | PROJ-77: Notenschlüssel-Vorlagen & Notenlisten-Export | Planned |
+| P1 | PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Planned |
+| P2 | PROJ-79: Nachweis duplizieren & schwache Fragen ersetzen | Planned |
+| P2 | PROJ-80: Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned |
+| P1 | PROJ-81: Aufgabenliste für Lehrkräfte auf der Startseite | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
