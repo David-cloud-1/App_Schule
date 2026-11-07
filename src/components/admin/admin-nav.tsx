@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/sidebar'
 import { useForumNavCounts } from '@/components/admin/use-forum-nav-counts'
 import { formatForumBadge } from '@/lib/forum'
+import { assessmentNavCount, formatTaskBadge } from '@/lib/teacher-tasks'
+import { useTaskCounts } from '@/components/admin/use-task-counts'
 import {
   ADMIN_HOME_HREF,
   type AdminNavItem,
@@ -46,6 +48,8 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const groups = adminNavGroupsFor(role)
   // PROJ-63: Hinweise fürs Lehrerzimmer; wird bei jedem Seitenwechsel neu geholt
   const forumCounts = useForumNavCounts(pathname)
+  // PROJ-81: offene Aufgaben als Zähler an „Leistungsnachweise“ und „Gemeldete Fragen“
+  const { counts: taskCounts } = useTaskCounts(pathname)
 
   const allItems = groups.flatMap((g) => g.items)
   const mainItems = ADMIN_MAIN_NAV_HREFS.map((href) => allItems.find((i) => i.href === href)).filter(
@@ -72,6 +76,13 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
           icon={item.icon}
           external={item.external}
           badge={item.href === LEHRERZIMMER_HREF ? forumCounts : undefined}
+          count={
+            item.href === '/admin/gemeldete-fragen'
+              ? (taskCounts.openReports ?? 0)
+              : item.href === '/admin/leistungsnachweise'
+                ? assessmentNavCount(taskCounts)
+                : undefined
+          }
           active={!item.external && isAdminNavActive(pathname, item.href)}
           onNavigate={handleNavigate}
         />
@@ -200,6 +211,7 @@ function NavLink({
   active,
   external,
   badge,
+  count,
   onNavigate,
 }: {
   href: string
@@ -209,8 +221,11 @@ function NavLink({
   external?: boolean
   /** Zähler am Eintrag (PROJ-63): neue Hinweise grün, offene Meldungen orange */
   badge?: { hints: number; reports: number }
+  /** Zähler offener Aufgaben (PROJ-81), orange */
+  count?: number
   onNavigate: () => void
 }) {
+  const countText = formatTaskBadge(count)
   const hintsText = badge ? formatForumBadge(badge.hints) : null
   const reportsText = badge ? formatForumBadge(badge.reports) : null
   const content = (
@@ -218,7 +233,7 @@ function NavLink({
       <span className="relative flex">
         <Icon className="!size-5" />
         {/* Eingeklappt (nur Icons) zeigt ein Punkt, dass es etwas Neues gibt */}
-        {(hintsText || reportsText) && (
+        {(hintsText || reportsText || countText) && (
           <span
             aria-hidden
             className={`absolute -right-1 -top-1 hidden size-2.5 rounded-full group-data-[collapsible=icon]:block ${hintsText ? 'bg-ws-green' : 'bg-ws-orange'}`}
@@ -242,6 +257,15 @@ function NavLink({
         >
           <span aria-hidden>{reportsText}</span>
           <span className="sr-only">{badge!.reports} offene Meldungen</span>
+        </span>
+      )}
+      {countText && (
+        <span
+          className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-orange/30 bg-ws-orange/15 px-1.5 text-xs font-bold text-ws-orange group-data-[collapsible=icon]:hidden"
+          title={`${count} offen`}
+        >
+          <span aria-hidden>{countText}</span>
+          <span className="sr-only">{count} offen</span>
         </span>
       )}
       {external && (

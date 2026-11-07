@@ -10,6 +10,7 @@ import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM, SUPER_ADMIN_ONLY_MESSAGE } from '@
 import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminLoadingState } from '@/components/admin/admin-states'
+import { AdminTasksCard } from '@/components/admin/admin-tasks-card'
 
 type MySubjectTile = {
   id: string
@@ -156,6 +157,9 @@ export function AdminHome({
         </p>
       )}
 
+
+      {/* PROJ-81: was gerade auf dich wartet */}
+      <AdminTasksCard />
 
       <section aria-labelledby="home-running" className="space-y-3">
         <h2 id="home-running" className={sectionTitle}>

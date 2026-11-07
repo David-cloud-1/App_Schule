@@ -1,6 +1,6 @@
 # PROJ-81: Aufgabenliste für Lehrkräfte auf der Startseite
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -61,7 +61,38 @@ Auf der Startseite des Lehrkräfte-Bereichs steht „Zu erledigen“: eine kurze
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### A) Aufbau der Oberfläche
+```
+/admin (Startseite)
++-- „Zu erledigen“ (neue Karte, vor „Läuft gerade“)
+|   +-- Aktualisieren-Knopf
+|   +-- Zeilen: Icon, ein Satz mit Anzahl, Link (nur Quellen mit offenen Punkten)
+|   +-- „Alles erledigt“, wenn nichts ansteht
+|   +-- Lade- und Fehlerzustand (Skeleton, „Erneut versuchen“)
+Seitenleiste
++-- Zähler (orange) an „Leistungsnachweise“ und „Gemeldete Fragen“
+```
+
+### B) Daten
+Keine neuen Tabellen, keine Migration. Eine Schnittstelle `GET /api/admin/tasks` liefert nur Zahlen. Jede Quelle wird einzeln und mit dem Zeilenschutz der fragenden Person gelesen; fällt eine aus, fehlt nur ihre Zeile.
+- gemeldete Fragen (PROJ-73): Ansicht „question_report_groups“, ohne die Meldungen, die die Person gerade selbst prüft
+- Nachweise: Entwürfe mit Termin in den nächsten 7 Tagen; beendete Nachweise mit mindestens einer Abgabe und ohne Freigabe (nur der letzten 90 Tage)
+- Fragen-Entwürfe (KI/Import), nur für Admins
+
+### C) Geltungsbereich
+Lehrkraft: nur eigene Nachweise. Bereichs-Admin und Super-Admin: der eigene bzw. mit dem Umschalter gewählte Fachbereich.
+
+### D) Tech-Entscheidungen
+- **Zähler statt Listen:** Die Karte lädt nur Zahlen, keine Namen oder Inhalte. Das ist schnell und gibt nichts preis.
+- **Beim Seitenwechsel neu holen**, wie der Hinweis-Zähler des Lehrerzimmers; Echtzeit ist nicht nötig.
+- **Modular:** Neue Quellen (Nachschreiber, Auffälligkeiten) lassen sich später als eine Zeile in `teacher-tasks.ts` und eine Abfrage in der Schnittstelle ergänzen.
+- Keine KI, keine neue Bibliothek, keine laufenden Kosten.
+
+## Implementation Notes (2026-11-10)
+- Neu: `lib/teacher-tasks.ts` (Sätze, Reihenfolge, Zähler-Format, Antwort-Prüfung), `GET /api/admin/tasks`, `use-task-counts.ts`, `AdminTasksCard` (auf der Startseite), Zähler an den Seitenleisten-Einträgen. **Keine Migration nötig.**
+- **Abweichungen von der Spec:** (1) Die Einträge „Nachschreiber“ (PROJ-80) und „auffällige Fragen in Nachweisen“ (PROJ-75) fehlen vorerst; PROJ-80 ist nicht gebaut, und die Auffälligkeiten bräuchten eine Analyse über alle Nachweise. Beide lassen sich später als Zeile ergänzen. (2) Beendete Nachweise ohne Freigabe zählen nur 90 Tage lang, damit alte Test-Nachweise nicht dauerhaft mahnen. (3) „Entwürfe mit Termin“ rechnet fortlaufend 7 Tage ab jetzt (nicht nach Kalendertagen). (4) Der Zähler an „Gemeldete Fragen“ ist sichtbar, sobald der Eintrag sichtbar ist; er steht in „Weitere Seiten“ und ist erst nach dem Aufklappen zu sehen.
+- Tests: `teacher-tasks.test.ts` (10), `api/admin/tasks/route.test.ts` (8), `admin-tasks-card.test.tsx` (5); Gesamtstand 2573 Tests grün, Build grün.
 
 ## QA Test Results
 _To be added by /qa_
