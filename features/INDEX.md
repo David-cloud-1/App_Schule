@@ -89,7 +89,7 @@
 | PROJ-71 | Werkzeugkiste – zu lange Abschnitte weiter zerlegen | Deployed | [PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md](PROJ-71-werkzeugkiste-lange-abschnitte-zerlegen.md) | 2026-11-04 |
 | PROJ-72 | Frage melden (Azubi-Seite) | Deployed | [PROJ-72-frage-melden-azubi.md](PROJ-72-frage-melden-azubi.md) | 2026-11-07 |
 | PROJ-73 | Meldungs-Inbox für Lehrkräfte (mit Rückmeldung & Belohnung) | Deployed | [PROJ-73-meldungs-inbox-lehrkraefte.md](PROJ-73-meldungs-inbox-lehrkraefte.md) | 2026-11-07 |
-| PROJ-74 | „Was fällt allen schwer?“ – schwierigste Fragen und Themen | In Progress | [PROJ-74-schwierigste-fragen.md](PROJ-74-schwierigste-fragen.md) | 2026-11-07 |
+| PROJ-74 | „Was fällt allen schwer?“ – schwierigste Fragen und Themen | Deployed | [PROJ-74-schwierigste-fragen.md](PROJ-74-schwierigste-fragen.md) | 2026-11-07 |
 | PROJ-75 | Leistungsnachweis – Aufgabenanalyse & Ausreißer | Deployed | [PROJ-75-nachweis-aufgabenanalyse.md](PROJ-75-nachweis-aufgabenanalyse.md) | 2026-11-07 |
 | PROJ-76 | Leistungsnachweis – Gruppen A/B | Planned | [PROJ-76-nachweis-gruppen-a-b.md](PROJ-76-nachweis-gruppen-a-b.md) | 2026-11-07 |
 | PROJ-77 | Notenschlüssel-Vorlagen & Notenlisten-Export | Deployed | [PROJ-77-notenschluessel-vorlagen-export.md](PROJ-77-notenschluessel-vorlagen-export.md) | 2026-11-07 |

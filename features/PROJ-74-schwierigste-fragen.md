@@ -1,6 +1,6 @@
 # PROJ-74: „Was fällt allen schwer?“ – schwierigste Fragen und Themen
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-08
 
@@ -127,7 +127,7 @@ Keine.
 - Tests: 6 Rechenlogik, 4 Route, 4 Komponente; Gesamtlauf 2627 grün, Build grün. Datenbank-Rechenkern gegen Produktion lesend geprüft (7673 Übungsfragen, 2532 mit Antworten).
 
 ## QA Test Results
-_To be added by /qa_
+Selbstprüfung 2026-11-08: Rechenlogik, Route und Komponente getestet (2627 Tests grün), Build grün, Rechte der Funktion in Produktion geprüft (anon nein, angemeldet ja, SECURITY DEFINER). Die Datenbank-Probe wurde nach der Migration nicht erneut ausgeführt; Browserprüfung eingeloggt steht aus.
 
 ## Deployment
-_To be added by /deploy_
+2026-11-08: Migration vom Nutzer im SQL-Editor eingespielt (erster Versuch landete nicht im richtigen Projekt, zweiter wirkte), Push 064d888, Vercel Ready, API ohne Login 401, Seite leitet auf Login um, keine Fehler in den Logs.
