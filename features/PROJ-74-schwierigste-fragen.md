@@ -1,8 +1,8 @@
 # PROJ-74: „Was fällt allen schwer?“ – schwierigste Fragen und Themen
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-07
-**Last Updated:** 2026-11-07
+**Last Updated:** 2026-11-08
 
 ## Dependencies
 - Requires: PROJ-3 (Quiz-Antworten in `quiz_answers`), PROJ-22 (Fachbereich als Datenbasis), PROJ-12 (Klassenstufe & Thema)
@@ -51,7 +51,80 @@ Eine Auswertung über alle Azubis eines Fachbereichs: Welche Fragen und Themen w
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-08 (Design freigegeben, siehe Umsetzung unten)
+
+### Ausgangslage (geprüft)
+- Jede Antwort im freien Üben (Quiz, Blitzrunde, Lücken schließen) wird bereits einzeln gespeichert: welche Frage, richtig/falsch, welche Antwort gewählt, wann. Die Daten sind also vorhanden — **es muss nichts Neues erfasst werden**.
+- Leistungsnachweise und Prüfungssimulation speichern ihre Antworten an anderer Stelle. Die Regel „nur freies Üben“ ist damit von selbst erfüllt, es braucht keine Markierung an den Antworten.
+- Heute gibt es nur eine Einzel-Statistik je Frage (im Frage-Editor). Eine Auswertung über alle Fragen fehlt.
+
+### A) Seitenaufbau
+```
+/admin/schwierigste-fragen  (neue Seite, Navigation: Mein Unterricht → „Schwierigste Fragen“)
++-- Seitenkopf (Titel, ein Satz Beschreibung)
++-- Hinweis-Zeile: „So entsteht die Quote …“ (nur Üben, keine Nachweise)
++-- Filterleiste
+|   +-- Fach
+|   +-- Klassenstufe (10 / 11 / 12 / alle)
+|   +-- Zeitraum (30 Tage / 90 Tage / gesamt)
+|   +-- Mindestanzahl Antworten (Standard 20)
++-- Reiter „Themen“
+|   +-- Tabelle: Thema | Lösungsquote (Balken) | Antworten | Fragen
+|   +-- Klick auf Thema → wechselt zu „Fragen“, gefiltert auf dieses Thema
+|   +-- Abschnitt „Zu wenige Antworten“ (getrennt, nicht gerankt)
++-- Reiter „Fragen“
+|   +-- Tabelle: Frage (gekürzt) | Thema | Lösungsquote | Antworten
+|   |            | häufigste falsche Antwort in % | Meldungen | Ampel
+|   +-- Ampel: „Antwort prüfen“, wenn eine falsche Antwort häufiger
+|   |   gewählt wird als die richtige
+|   +-- Klick auf Frage → Frage-Editor
+|   +-- Abschnitt „Zu wenige Antworten“
++-- Leerzustand („Sobald Azubis üben, erscheinen hier Auswertungen“)
++-- Ladezustand / Fehlerzustand (die bestehenden Admin-Bausteine)
+```
+Gebaut aus vorhandenen Bausteinen: Seitenkopf, Tabs, Tabelle mit Scroll-Rahmen, Auswahlfelder, Lade-/Leer-/Fehlerzustand, Fortschrittsbalken. Keine neuen Basis-Komponenten.
+
+### B) Daten (Klartext)
+Es wird **nichts Neues gespeichert**. Die Auswertung ist eine Berechnung über die vorhandenen Antworten:
+- Je Frage: Anzahl Antworten, Anzahl richtig, Lösungsquote, häufigste falsche Antwort mit Anteil.
+- Je Thema: dasselbe, zusammengefasst über alle Fragen des Themas.
+- Gezählt werden je Azubi und Frage nur die **ersten 3 Versuche**, damit Dauerübende nichts verzerren.
+- Das Ergebnis enthält nur Zahlen je Frage/Thema, **keine Namen, keine Konten, keine Einzelverläufe**. Die Zuordnung zu Personen verlässt die Datenbank nie.
+- Fachbereich: Nur Fragen des eigenen Fachbereichs (Super-Admin: über den Bereichs-Umschalter). Lehrkräfte ohne Fachbereich sehen alle Bereiche lesend (PROJ-70).
+- „Meldungen“: Anzahl offener Meldungen je Frage aus PROJ-72 (vorhanden, deployt). Bleibt leer, wo keine Meldung vorliegt.
+
+### C) Technische Entscheidungen (mit Begründung)
+1. **Berechnung in der Datenbank, nicht im Browser.** Bei vielen tausend Antworten wäre Laden und Zählen im Browser langsam und würde Einzeldaten übertragen. Die Datenbank liefert nur die fertigen Zeilen („Frage X: 41 % bei 63 Antworten“). Das erfüllt zugleich die Vorgabe „unter 1 Sekunde“ und „keine personenbezogenen Daten in der Antwort“.
+2. **Eine Datenbank-Funktion statt offener Tabellenabfrage.** Normale Lehrkräfte dürfen die Rohantworten der Azubis nicht lesen (Datenschutz). Eine geschützte Funktion darf zählen, gibt aber nur Summen heraus und prüft selbst, dass nur Lehrkräfte/Admins sie aufrufen und nur den erlaubten Fachbereich sehen. Gleiche Technik wie bei den bisherigen Auswertungen.
+3. **Mindestanzahl wird in der Anzeige angewendet, nicht beim Zählen.** Die Funktion liefert alle Zeilen; die Seite trennt „gerankt“ und „zu wenige Antworten“. So lässt sich die Schwelle ohne neue Abfrage ändern. Die Schwelle darf bis 5 gesenkt werden, mit Hinweis „kleine Zahlen schwanken“.
+4. **Eine Seite mit zwei Reitern, Daten einmal geladen.** Themen-Reiter und Fragen-Reiter nutzen dieselbe Antwort; ein Klick auf ein Thema filtert nur lokal.
+5. **„Frage seit … geändert“ (PROJ-47):** Liegt für eine Frage eine Änderung im Verlauf vor, die jünger ist als ein Teil der Antworten, erscheint der Hinweis an der Zeile. Die Quote wird trotzdem gezeigt (nicht verfälscht), nur gekennzeichnet.
+6. **Keine KI, keine Kosten, kein Zwischenspeicher.** Die Zahl der Antworten bleibt überschaubar; falls die Abfrage später zu langsam wird, kann eine vorberechnete Zusammenfassung nachgerüstet werden — jetzt unnötig.
+7. **Navigation:** Eintrag in „Mein Unterricht“, sichtbar für Lehrkräfte, Bereichs-Admins und Super-Admin. Die Rechteprüfung bleibt serverseitig.
+
+### D) Wirkung auf andere Features
+- **PROJ-73 (Meldungs-Inbox):** Die leere Spalte „Lösungsquote“ wird mit denselben Zahlen gefüllt.
+- **PROJ-78 (Nachweis-Vorschlag):** Kann die Schwierigkeit künftig aus diesen Quoten ableiten.
+- Keine Änderung am Üben, an Punkten, Serien oder an Azubi-Seiten.
+
+### E) Neue Pakete
+Keine.
+
+### F) Umfang für den Bau
+- `/backend`: eine Datenbank-Funktion (Migration + Rückgängig-Datei + Probe-Skript) und eine Abfrage-Route für Lehrkräfte.
+- `/frontend`: Seite mit Filtern, zwei Reitern, Ampel, Navigationseintrag.
+- Reihenfolge: erst Backend (Zahlen prüfen), dann Frontend.
+
+### Offene Punkte
+- Keine fachlichen. Annahme: Die „3 Versuche“-Regel zählt über den gewählten Zeitraum hinweg (die ersten 3 Versuche im Zeitraum).
+
+## Umsetzung (2026-11-08)
+- Migration `20261113_proj74_schwierigste_fragen.sql`: Funktion `question_difficulty_stats(Bereiche, Klassenstufe, Tage, Fach)` (SECURITY DEFINER, nur Lehrer-Rollen, anon/PUBLIC entzogen) und Index auf `quiz_answers (question_id, answered_at)`. Rückweg: `_down.sql`. Probe: `supabase/tests/proj74_schwierigste_fragen_probe.sql`.
+- Route `GET /api/admin/schwierigste-fragen` (Bereich folgt der Bereichsleiste, Filter Klassenstufe 10/11/12 und Zeitraum 30/90 Tage, Zod-geprüft; nur Fragen mit Antworten, Text auf 200 Zeichen gekürzt).
+- Rechenlogik `src/lib/difficulty.ts` (Ranking, Themen-Zusammenfassung, Ampel, „geändert seit“). Seite `/admin/schwierigste-fragen`, Komponente `difficult-questions.tsx`, Navigationseintrag unter „Inhalte“ (nicht „Mein Unterricht“, weil die Bereichsleiste dort automatisch erscheint).
+- Abweichungen vom Design: Fach, Thema und Mindestanzahl (5/10/20/50) wirken im Browser, Klassenstufe und Zeitraum auf dem Server. Der Klick auf eine Frage öffnet die Fragenliste mit Suchtext (wie in der Meldungs-Inbox), nicht direkt den Editor.
+- Tests: 6 Rechenlogik, 4 Route, 4 Komponente; Gesamtlauf 2627 grün, Build grün. Datenbank-Rechenkern gegen Produktion lesend geprüft (7673 Übungsfragen, 2532 mit Antworten).
 
 ## QA Test Results
 _To be added by /qa_

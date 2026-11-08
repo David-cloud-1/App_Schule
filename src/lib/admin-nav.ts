@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Bot,
   Building2,
   ClipboardList,
@@ -154,6 +155,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Fragen, die Azubis als fehlerhaft gemeldet haben, prüfen und abschließen',
         icon: Flag,
         // PROJ-73: jede Lehrer-Rolle (Inhalte sind offen, PROJ-70)
+        teacherVisible: true,
+      },
+      {
+        href: '/admin/schwierigste-fragen',
+        label: 'Schwierigste Fragen',
+        description: 'Welche Fragen und Themen fallen den Azubis insgesamt am schwersten – ohne Namen',
+        icon: BarChart3,
+        // PROJ-74: jede Lehrer-Rolle (Inhalte sind offen, PROJ-70)
         teacherVisible: true,
       },
       {
