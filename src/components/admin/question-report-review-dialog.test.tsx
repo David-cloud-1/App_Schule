@@ -107,7 +107,12 @@ const closeCalls = () => calls.filter((c) => c.url.endsWith('/close'))
 const patchCalls = () => calls.filter((c) => c.method === 'PATCH')
 
 async function ready() {
-  await screen.findByText('Unklar formuliert')
+  await screen.findByText('„Unklar formuliert“')
+}
+
+async function startEdit() {
+  await ready()
+  fireEvent.click(screen.getByRole('button', { name: 'Frage korrigieren' }))
   await screen.findByDisplayValue(question.question_text)
 }
 
@@ -115,27 +120,51 @@ function edit() {
   fireEvent.change(screen.getByDisplayValue(question.question_text), { target: { value: 'Neuer Fragetext ungefähr?' } })
 }
 
+const saveBtn = () => screen.getByRole('button', { name: /Speichern & abschließen|Abschließen wiederholen/ })
+
 describe('QuestionReportReviewDialog', () => {
-  it('zeigt Meldung, gewählte Antwort und Fortschritt und übernimmt die Meldung', async () => {
+  it('zeigt erst die Ansicht: Meldung, Frage einmal, Richtig und gewählte Antwort, Fortschritt', async () => {
     renderDialog()
     await ready()
     expect(screen.getByText('3 von 12')).toBeTruthy()
-    expect(screen.getByText('Vom Melder gewählt')).toBeTruthy()
+    expect(screen.getByText('Richtig')).toBeTruthy()
+    expect(screen.getByText('Gewählt')).toBeTruthy()
+    expect(screen.queryByDisplayValue(question.question_text)).toBeNull() // noch kein Formular
     expect(calls.some((c) => c.url.endsWith('/claim') && c.method === 'POST')).toBe(true)
+  })
+
+  it('„Frage ist korrekt“ schließt sofort, ohne Pflichttext und ohne Speichern', async () => {
+    const { onClosed } = renderDialog()
+    await ready()
+    expect(screen.getByText('„Geprüft, keine Änderung.“')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Frage ist korrekt' }))
+    await waitFor(() => expect(onClosed).toHaveBeenCalled())
+    expect(closeCalls()[0].body).toMatchObject({ result: 'nicht_uebernommen', report_ids: ['r1'] })
+    expect(patchCalls()).toHaveLength(0)
+  })
+
+  it('Ergänzung per Textbaustein wird mitgeschickt und in der Vorschau gezeigt', async () => {
+    const { onClosed } = renderDialog()
+    await ready()
+    fireEvent.click(screen.getByRole('button', { name: 'Ergänzen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Die Frage ist korrekt, siehe Erklärung.' }))
+    expect(screen.getByText('„Geprüft, keine Änderung. Die Frage ist korrekt, siehe Erklärung.“')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Frage ist korrekt' }))
+    await waitFor(() => expect(onClosed).toHaveBeenCalled())
+    expect(closeCalls()[0].body).toMatchObject({ response: 'Die Frage ist korrekt, siehe Erklärung.' })
   })
 
   it('„Speichern & abschließen“ ist ohne Änderung gesperrt', async () => {
     renderDialog()
-    await ready()
-    const btn = screen.getByRole('button', { name: /Speichern & als korrigiert abschließen/ })
-    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    await startEdit()
+    expect((saveBtn() as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('speichert zuerst und schließt danach als „korrigiert“ (nur offene Meldungen)', async () => {
     const { onClosed } = renderDialog()
-    await ready()
+    await startEdit()
     edit()
-    fireEvent.click(screen.getByRole('button', { name: /Speichern & als korrigiert abschließen/ }))
+    fireEvent.click(saveBtn())
     await waitFor(() => expect(onClosed).toHaveBeenCalled())
     const order = calls.filter((c) => c.method !== 'GET' && !c.url.endsWith('/claim')).map((c) => c.method + ' ' + c.url)
     expect(order).toEqual([`PATCH /api/admin/questions/${Q}`, `POST /api/admin/question-reports/${Q}/close`])
@@ -145,9 +174,9 @@ describe('QuestionReportReviewDialog', () => {
   it('schließt NIE, wenn das Speichern fehlschlägt', async () => {
     patchStatus = 400
     const { onClosed } = renderDialog()
-    await ready()
+    await startEdit()
     edit()
-    fireEvent.click(screen.getByRole('button', { name: /Speichern & als korrigiert abschließen/ }))
+    fireEvent.click(saveBtn())
     await waitFor(() => expect(patchCalls()).toHaveLength(1))
     await new Promise((r) => setTimeout(r, 20))
     expect(closeCalls()).toHaveLength(0)
@@ -158,11 +187,12 @@ describe('QuestionReportReviewDialog', () => {
   it('wiederholt nach fehlgeschlagenem Abschluss nur den Abschluss, nicht das Speichern', async () => {
     closeStatus = 500
     const { onClosed } = renderDialog()
-    await ready()
+    await startEdit()
     edit()
-    fireEvent.click(screen.getByRole('button', { name: /Speichern & als korrigiert abschließen/ }))
+    fireEvent.click(saveBtn())
     await screen.findByText(/Die Frage ist gespeichert, die Meldung ist aber noch offen/)
     expect(onClosed).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull()
 
     closeStatus = 200
     fireEvent.click(screen.getByRole('button', { name: 'Abschließen wiederholen' }))
@@ -171,23 +201,10 @@ describe('QuestionReportReviewDialog', () => {
     expect(closeCalls()).toHaveLength(2)
   })
 
-  it('„Frage ist korrekt“ braucht eine Begründung oder still schließen', async () => {
-    const { onClosed } = renderDialog()
-    await ready()
-    const btn = screen.getByRole('button', { name: 'Frage ist korrekt' }) as HTMLButtonElement
-    expect(btn.disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Die Frage ist korrekt, siehe Erklärung.' }))
-    expect(btn.disabled).toBe(false)
-    fireEvent.click(btn)
-    await waitFor(() => expect(onClosed).toHaveBeenCalled())
-    expect(closeCalls()[0].body).toMatchObject({ result: 'nicht_uebernommen', response: 'Die Frage ist korrekt, siehe Erklärung.' })
-    expect(patchCalls()).toHaveLength(0)
-  })
-
   it('„Frage entfällt“ deaktiviert erst die Frage, dann wird geschlossen', async () => {
     const { onClosed } = renderDialog()
     await ready()
-    fireEvent.click(screen.getByRole('button', { name: 'Frage entfällt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Frage entfällt …' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Frage deaktivieren und schließen' }))
     await waitFor(() => expect(onClosed).toHaveBeenCalled())
     expect(patchCalls()[0].body).toEqual({ is_active: false })
@@ -198,7 +215,7 @@ describe('QuestionReportReviewDialog', () => {
     patchStatus = 500
     const { onClosed } = renderDialog()
     await ready()
-    fireEvent.click(screen.getByRole('button', { name: 'Frage entfällt' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Frage entfällt …' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Frage deaktivieren und schließen' }))
     await waitFor(() => expect(patchCalls()).toHaveLength(1))
     await new Promise((r) => setTimeout(r, 20))
@@ -206,30 +223,29 @@ describe('QuestionReportReviewDialog', () => {
     expect(onClosed).not.toHaveBeenCalled()
   })
 
-  it('fragt bei ungespeicherten Änderungen vor „Später“ nach', async () => {
-    const { onExit } = renderDialog()
-    await ready()
+  it('fragt bei ungespeicherten Änderungen vor „Zurück“ nach und zeigt dann wieder die Ansicht', async () => {
+    renderDialog()
+    await startEdit()
     edit()
-    fireEvent.click(screen.getByRole('button', { name: 'Später' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
     await screen.findByText('Änderungen verwerfen?')
-    expect(onExit).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Verwerfen' }))
-    expect(onExit).toHaveBeenCalled()
+    await screen.findByRole('button', { name: 'Frage korrigieren' })
+    expect(screen.queryByDisplayValue('Neuer Fragetext ungefähr?')).toBeNull()
   })
 
-  it('zeigt bei fehlender Frage nur „Frage ist korrekt“ und „Frage entfällt“ ohne Formular', async () => {
+  it('zeigt bei fehlender Frage kein „Frage korrigieren“', async () => {
     reviewStatus = 404
     renderDialog()
     await screen.findByText('Diese Frage gibt es nicht mehr.')
-    expect(screen.queryByRole('button', { name: /Speichern & als korrigiert/ })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Frage entfällt' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Frage korrigieren' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Frage entfällt …' })).toBeTruthy()
   })
 
   it('ist im Nur-Lesen-Modus ohne Abschluss-Leiste und ohne Übernehmen', async () => {
     renderDialog({ readOnly: true, position: null })
-    await screen.findByText('Unklar formuliert')
-    expect(screen.queryByRole('button', { name: 'Später' })).toBeNull()
-    expect(screen.queryByText('Du prüfst')).toBeNull()
+    await ready()
+    expect(screen.queryByRole('button', { name: 'Frage ist korrekt' })).toBeNull()
     expect(calls.some((c) => c.url.endsWith('/claim'))).toBe(false)
   })
 

@@ -159,6 +159,15 @@ Keine neuen Pakete. Vorhanden sind Dialog, AlertDialog, Tabs, Textarea, ScrollAr
 - Beim Öffnen wird die Meldung wie bisher automatisch übernommen („Du prüfst“); der Hinweis „Wird gerade von … geprüft“ erscheint, wenn eine andere Person sie hält.
 - „Frage entfällt“ löscht die Frage nicht, sie wird nur deaktiviert.
 
+## Überarbeitung 2026-11-09: zwei Schritte statt Nebeneinander
+Rückmeldung nach dem ersten Test im Browser: Der Dialog war zu voll (Frage doppelt, Rückmeldungsfeld nahm fast die halbe Höhe ein).
+- **Schritt 1 „Meldung prüfen“** (eine Spalte, `max-w-3xl`): Meldung (Grund, Text), darunter die Frage **einmal** mit „Richtig“ und „Gewählt“. Knöpfe: „Frage ist korrekt“, „Frage korrigieren“ (grün), unauffällig links „Frage entfällt …“.
+- **Schritt 2 „Frage korrigieren“**: Formular an Stelle der Ansicht, Knöpfe „Zurück“ (mit Verwerfen-Rückfrage) und „Speichern & abschließen“.
+- **Rückmeldung als Einzeiler** „Azubi liest: „Geprüft, keine Änderung.““ bzw. „„Danke, deine Meldung hat die Frage verbessert.“ + 15 Frachtmünzen“; „Ergänzen“ klappt Textfeld, Textbausteine und „Still schließen“ auf.
+- „Frage ist korrekt“ braucht **keine** Pflicht-Begründung mehr: Der Azubi bekommt ohnehin „Geprüft, keine Änderung.“.
+- „Später“ entfällt als Knopf (Schließen-Kreuz / Escape tun dasselbe).
+- **Bugfix:** Im Browser war „Speichern & abschließen“ ohne Änderung aktiv. Ursache: Die Auswahlfelder (Schwierigkeit, Klasse, Thema) melden beim Befüllen kurz einen leeren Wert, das Formular galt dadurch als geändert. Leere Werte werden jetzt ignoriert (betrifft auch das normale Bearbeiten in der Fragenliste, wo ein leeres Thema sonst beim Speichern abgelehnt werden konnte).
+
 ## QA Test Results
 
 **Stand:** 2026-11-09, statische Prüfung + automatische Tests. Kein Browser-Test (kein Dev-Server auf diesem Rechner), siehe offene Punkte.

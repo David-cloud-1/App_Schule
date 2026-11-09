@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, UserCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Flag, Loader2, MessageSquare, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -31,7 +31,6 @@ import {
   REPORT_RESPONSE_MAX,
   REPORT_RESPONSE_TEMPLATES,
   REPORT_REWARD_COINS,
-  REPORT_STATUS_LABEL,
   type ReportReason,
   type ReportStatus,
 } from '@/lib/question-reports'
@@ -94,6 +93,9 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
   /** Frage ist gespeichert, der Abschluss steht noch aus (Abschluss war fehlgeschlagen) */
   const [savedPending, setSavedPending] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
+  /** Schritt 1 ansehen, Schritt 2 korrigieren */
+  const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [responseOpen, setResponseOpen] = useState(false)
 
   const open = questionId !== null
   const openReportIds = useMemo(
@@ -141,6 +143,8 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
     setResponse('')
     setSilent(false)
     setSavedPending(false)
+    setMode('view')
+    setResponseOpen(false)
     void (async () => {
       try {
         const [detailsRes, reviewRes] = await Promise.all([
@@ -271,34 +275,44 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
     }
   }
 
-  function onCorrectClick() {
-    if (dirty && !savedPending) setPending({ kind: 'discard', run: () => void closeAsCorrect() })
-    else void closeAsCorrect()
+  /** Was der Azubi im „Heute“-Screen liest (Texte wie in my-question-reports) */
+  const azubiPreview =
+    mode === 'edit'
+      ? `Danke, deine Meldung hat die Frage verbessert.${trimmed ? ` ${trimmed}` : ''}`
+      : `Geprüft, keine Änderung.${trimmed ? ` ${trimmed}` : ''}`
+
+  /** Schritt wechseln. Die Ergänzung passt nur zu einem Schritt (Textbausteine = „keine Änderung“) und wird geleert. */
+  function switchMode(next: 'view' | 'edit') {
+    setMode(next)
+    setResponse('')
+    setDirty(false)
   }
 
-  const correctNeedsText = !silent && trimmed.length === 0
+  function backToView() {
+    if (dirty && !savedPending) {
+      setPending({ kind: 'discard', run: () => switchMode('view') })
+      return
+    }
+    switchMode('view')
+  }
 
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && requestExit()}>
-        <DialogContent className="flex h-[92vh] w-[calc(100%-1rem)] max-w-6xl flex-col gap-0 border-ws-line bg-ws-surface p-0 text-ws-text sm:max-w-6xl">
+        <DialogContent className="flex max-h-[92vh] w-[calc(100%-1rem)] max-w-3xl flex-col gap-0 border-ws-line bg-ws-surface p-0 text-ws-text sm:max-w-3xl">
           <DialogHeader className="border-b border-ws-line px-4 py-3 text-left sm:px-6">
             <div className="flex flex-wrap items-center gap-2 pr-8">
-              <DialogTitle className="text-lg">{readOnly ? 'Meldung ansehen' : 'Meldung prüfen'}</DialogTitle>
+              <DialogTitle className="text-lg">
+                {readOnly ? 'Meldung ansehen' : mode === 'edit' ? 'Frage korrigieren' : 'Meldung prüfen'}
+              </DialogTitle>
               {position && position.total > 1 && !readOnly && (
                 <Badge variant="outline" className="border-ws-line text-ws-muted">
                   {position.index + 1} von {position.total}
                 </Badge>
               )}
-              {!readOnly && !claimedByOther && (
-                <Badge className="border-ws-blue/30 bg-ws-blue/15 text-ws-blue">
-                  <UserCheck className="mr-1 size-3" />
-                  Du prüfst
-                </Badge>
-              )}
             </div>
-            <DialogDescription className="text-ws-muted">
-              Lies die Meldung, ändere die Frage bei Bedarf und schließe alles hier ab.
+            <DialogDescription className="sr-only">
+              Meldung lesen, Frage bei Bedarf korrigieren und die Meldung abschließen.
             </DialogDescription>
             {claimedByOther && (
               <p className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 px-3 py-2 text-sm text-ws-orange">
@@ -307,7 +321,7 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
             )}
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
             {phase === 'loading' && (
               <div className="flex h-40 items-center justify-center">
                 <Loader2 className="size-6 animate-spin text-ws-muted" aria-label="Wird geladen" />
@@ -316,106 +330,98 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
             {phase === 'error' && (
               <AdminErrorState message="Die Meldung konnte nicht geladen werden." onRetry={reload} />
             )}
+
             {phase === 'ready' && (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-4">
-                  <section aria-label="Meldungen" className="space-y-2">
-                    <h3 className="text-sm font-semibold text-ws-muted">
-                      Meldung{reports.length === 1 ? '' : 'en'} ({reports.length})
-                    </h3>
-                    <ul className="space-y-2">
-                      {reports.map((d) => (
-                        <li key={d.id} className="rounded-xl border border-ws-line bg-ws-bg p-3 text-sm">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline" className="border-ws-line text-ws-muted">
-                              {REPORT_REASON_LABEL[d.reason]}
-                            </Badge>
-                            <span className="text-xs text-ws-faint">
-                              {formatDate(d.created_at)} · {REPORT_STATUS_LABEL[d.status]}
-                            </span>
-                          </div>
-                          {d.note && <p className="mt-2 whitespace-pre-wrap text-ws-text">{d.note}</p>}
-                          {d.chosen_option_text && (
-                            <p className="mt-1 text-xs text-ws-muted">Gewählte Antwort: {d.chosen_option_text}</p>
-                          )}
-                          {d.response_text && (
-                            <p className="mt-1 text-xs text-ws-muted">Rückmeldung: {d.response_text}</p>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-
-                  {question && (
-                    <details className="group rounded-xl border border-ws-line bg-ws-bg" open>
-                      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold text-ws-muted">
-                        Frage mit Antworten
-                        <ChevronDown className="size-4 transition-transform duration-200 group-open:rotate-180" />
-                      </summary>
-                      <div className="space-y-2 border-t border-ws-line p-3 text-sm">
-                        <p className="font-medium text-ws-text">{question.question_text}</p>
-                        <ul className="space-y-1.5">
-                          {question.answer_options.map((o, i) => (
-                            <li
-                              key={o.id ?? i}
-                              className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${
-                                o.is_correct ? 'border-ws-green/30 bg-ws-green/15 text-ws-green' : 'border-ws-line text-ws-text'
-                              }`}
-                            >
-                              <span className="font-semibold">{String.fromCharCode(65 + i)}</span>
-                              <span className="flex-1">{o.option_text}</span>
-                              {o.is_correct && <CheckCircle2 className="size-4 shrink-0" aria-label="Richtig" />}
-                              {chosenTexts.has(o.option_text) && (
-                                <Badge variant="outline" className="border-ws-orange/30 text-ws-orange">
-                                  Vom Melder gewählt
-                                </Badge>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                        {question.explanation && (
-                          <p className="rounded-lg bg-ws-surface p-3 text-xs text-ws-muted">
-                            <span className="font-semibold">Erklärung: </span>
-                            {question.explanation}
-                          </p>
-                        )}
+              <>
+                {/* Was gemeldet wurde */}
+                <section aria-label="Meldungen" className="space-y-2">
+                  {reports.map((d) => (
+                    <div key={d.id} className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <Flag className="size-4 shrink-0 text-ws-orange" aria-hidden />
+                        <span className="font-semibold text-ws-orange">{REPORT_REASON_LABEL[d.reason]}</span>
+                        <span className="text-xs text-ws-muted">{formatDate(d.created_at)}</span>
                       </div>
-                    </details>
-                  )}
-                  {questionNote && (
-                    <p className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm text-ws-orange">
-                      {questionNote}
-                    </p>
-                  )}
-                </div>
+                      {d.note && <p className="mt-1.5 whitespace-pre-wrap text-ws-text">„{d.note}“</p>}
+                      {mode === 'edit' && d.chosen_option_text && (
+                        <p className="mt-1 text-xs text-ws-muted">Gewählt: {d.chosen_option_text}</p>
+                      )}
+                      {readOnly && d.response_text && (
+                        <p className="mt-1 text-xs text-ws-muted">Rückmeldung: {d.response_text}</p>
+                      )}
+                    </div>
+                  ))}
+                </section>
 
-                <div>
-                  {canEdit ? (
-                    <QuestionFormBody
-                      ref={formRef}
-                      active
-                      question={question}
-                      subjects={subjects}
-                      hideFooter
-                      quietSuccess
-                      onSaved={() => {}}
-                      onConflict={reload}
-                      onDirtyChange={setDirty}
-                    />
-                  ) : (
-                    <p className="text-sm text-ws-muted">
-                      {readOnly
-                        ? 'In dieser Ansicht lässt sich nichts mehr ändern.'
-                        : 'Die Frage kann hier nicht bearbeitet werden.'}
-                    </p>
-                  )}
-                </div>
-              </div>
+                {questionNote && (
+                  <p className="rounded-xl border border-ws-line bg-ws-bg p-3 text-sm text-ws-muted">{questionNote}</p>
+                )}
+
+                {/* Schritt 1: Frage ansehen */}
+                {question && mode === 'view' && (
+                  <section aria-label="Frage" className="space-y-2">
+                    <p className="font-semibold leading-relaxed text-ws-text">{question.question_text}</p>
+                    <ul className="space-y-1.5">
+                      {question.answer_options.map((o, i) => {
+                        const chosen = chosenTexts.has(o.option_text)
+                        return (
+                          <li
+                            key={o.id ?? i}
+                            className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm ${
+                              o.is_correct
+                                ? 'border-ws-green/30 bg-ws-green/15 text-ws-green'
+                                : chosen
+                                  ? 'border-ws-orange/30 text-ws-text'
+                                  : 'border-ws-line text-ws-text'
+                            }`}
+                          >
+                            <span className="w-4 font-semibold">{String.fromCharCode(65 + i)}</span>
+                            <span className="flex-1">{o.option_text}</span>
+                            {o.is_correct && (
+                              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                                <CheckCircle2 className="size-4" aria-hidden />
+                                Richtig
+                              </span>
+                            )}
+                            {chosen && !o.is_correct && (
+                              <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-ws-orange">
+                                <Flag className="size-3.5" aria-hidden />
+                                Gewählt
+                              </span>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {question.explanation && (
+                      <p className="rounded-xl bg-ws-bg p-3 text-sm text-ws-muted">
+                        <span className="font-semibold text-ws-text">Erklärung: </span>
+                        {question.explanation}
+                      </p>
+                    )}
+                  </section>
+                )}
+
+                {/* Schritt 2: Frage korrigieren */}
+                {canEdit && mode === 'edit' && (
+                  <QuestionFormBody
+                    ref={formRef}
+                    active
+                    question={question}
+                    subjects={subjects}
+                    hideFooter
+                    quietSuccess
+                    onSaved={() => {}}
+                    onConflict={reload}
+                    onDirtyChange={setDirty}
+                  />
+                )}
+              </>
             )}
           </div>
 
           {!readOnly && phase === 'ready' && (
-            <div className="space-y-3 border-t border-ws-line bg-ws-surface px-4 py-3 sm:px-6">
+            <div className="space-y-3 border-t border-ws-line px-4 py-3 sm:px-6">
               {savedPending && (
                 <div
                   role="alert"
@@ -425,85 +431,120 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
                   Die Frage ist gespeichert, die Meldung ist aber noch offen. Schließe sie jetzt ab.
                 </div>
               )}
-              <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-                <div className="space-y-2">
-                  <Label htmlFor="review-response" className="text-xs text-ws-muted">
-                    Kurze Rückmeldung an die Melder ({trimmed.length} / {REPORT_RESPONSE_MAX})
-                  </Label>
-                  <Textarea
-                    id="review-response"
-                    value={response}
-                    onChange={(e) => setResponse(e.target.value.slice(0, REPORT_RESPONSE_MAX))}
-                    rows={2}
-                    maxLength={REPORT_RESPONSE_MAX}
-                    disabled={silent}
-                    className="border-ws-line bg-ws-bg text-ws-text"
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    {REPORT_RESPONSE_TEMPLATES.map((t) => (
-                      <Button
-                        key={t}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={silent}
-                        onClick={() => setResponse(t)}
-                        className={`${OUTLINE} text-xs`}
-                      >
-                        {t}
-                      </Button>
-                    ))}
-                    <div className="flex min-h-11 items-center gap-2">
-                      <Switch id="review-silent" checked={silent} onCheckedChange={setSilent} />
-                      <Label htmlFor="review-silent" className="text-xs">
-                        Still schließen (keine Rückmeldung, keine Belohnung)
-                      </Label>
+
+              {/* Was der Azubi liest – als Einzeiler, aufklappbar */}
+              <div className="text-sm">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <MessageSquare className="size-4 shrink-0 text-ws-muted" aria-hidden />
+                  <span className="text-ws-muted">Azubi liest:</span>
+                  <span className="min-w-0 flex-1 truncate text-ws-text" title={silent ? undefined : azubiPreview}>
+                    {silent ? 'nichts (still geschlossen)' : `„${azubiPreview}“`}
+                    {!silent && mode === 'edit' && (
+                      <span className="text-ws-gold"> + {REPORT_REWARD_COINS} Frachtmünzen</span>
+                    )}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setResponseOpen((o) => !o)}
+                    aria-expanded={responseOpen}
+                    className="min-h-11 rounded-xl px-2 text-ws-blue hover:bg-ws-raised hover:text-ws-blue"
+                  >
+                    {responseOpen ? 'Fertig' : 'Ergänzen'}
+                  </Button>
+                </div>
+                {responseOpen && (
+                  <div className="mt-2 space-y-2">
+                    <Textarea
+                      id="review-response"
+                      aria-label="Ergänzung an die Melder"
+                      placeholder="Optional: kurzer Satz an die Melder"
+                      value={response}
+                      onChange={(e) => setResponse(e.target.value.slice(0, REPORT_RESPONSE_MAX))}
+                      rows={2}
+                      maxLength={REPORT_RESPONSE_MAX}
+                      disabled={silent}
+                      className="border-ws-line bg-ws-bg text-ws-text"
+                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      {mode === 'view' &&
+                        REPORT_RESPONSE_TEMPLATES.map((t) => (
+                          <Button
+                            key={t}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={silent}
+                            onClick={() => setResponse(t)}
+                            className={`${OUTLINE} text-xs`}
+                          >
+                            {t}
+                          </Button>
+                        ))}
+                      <div className="flex min-h-11 items-center gap-2">
+                        <Switch id="review-silent" checked={silent} onCheckedChange={setSilent} />
+                        <Label htmlFor="review-silent" className="text-xs">
+                          Still schließen (keine Nachricht, keine Belohnung)
+                        </Label>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className="flex flex-wrap gap-2 lg:justify-end">
-                  <Button type="button" variant="outline" onClick={requestExit} disabled={busy} className={OUTLINE}>
-                    Später
-                  </Button>
+              {mode === 'view' ? (
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setPending({ kind: 'entfaellt' })}
                     disabled={busy}
-                    className={OUTLINE}
+                    className="min-h-11 rounded-xl px-3 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
                   >
-                    Frage entfällt
+                    Frage entfällt …
                   </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onCorrectClick}
-                    disabled={busy || correctNeedsText}
-                    title={correctNeedsText ? 'Bitte kurz begründen oder still schließen.' : undefined}
-                    className={OUTLINE}
-                  >
-                    Frage ist korrekt
-                  </Button>
-                  {canEdit && (
+                  <div className="flex flex-1 flex-wrap justify-end gap-2">
                     <Button
                       type="button"
-                      onClick={() => void saveAndClose()}
-                      disabled={busy || (!dirty && !savedPending)}
-                      title={!dirty && !savedPending ? 'Noch nichts geändert.' : undefined}
-                      className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+                      variant="outline"
+                      onClick={() => void closeAsCorrect()}
+                      disabled={busy}
+                      className={`${OUTLINE} flex-1 sm:flex-none`}
                     >
                       {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-                      {savedPending ? 'Abschließen wiederholen' : 'Speichern & als korrigiert abschließen'}
+                      Frage ist korrekt
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        onClick={() => switchMode('edit')}
+                        disabled={busy}
+                        className="min-h-11 flex-1 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover sm:flex-none"
+                      >
+                        <Pencil className="mr-2 size-4" />
+                        Frage korrigieren
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {!savedPending && (
+                    <Button type="button" variant="outline" onClick={backToView} disabled={busy} className={OUTLINE}>
+                      Zurück
                     </Button>
                   )}
+                  <Button
+                    type="button"
+                    onClick={() => void saveAndClose()}
+                    disabled={busy || (!dirty && !savedPending)}
+                    title={!dirty && !savedPending ? 'Ändere zuerst die Frage.' : undefined}
+                    className="min-h-11 flex-1 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover sm:flex-none"
+                  >
+                    {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+                    {savedPending ? 'Abschließen wiederholen' : 'Speichern & abschließen'}
+                  </Button>
                 </div>
-              </div>
-              {canEdit && !dirty && !savedPending && (
-                <p className="text-xs text-ws-faint">
-                  Noch nichts geändert. Ohne Änderung schließt du mit „Frage ist korrekt“.
-                  {` Bei „Korrigiert“ erhalten die Melder ${REPORT_REWARD_COINS} Frachtmünzen.`}
-                </p>
               )}
             </div>
           )}

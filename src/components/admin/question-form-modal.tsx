@@ -498,7 +498,8 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
               <Select
                 value={form.difficulty}
                 onValueChange={(v) =>
-                  setForm({ ...form, difficulty: v as 'leicht' | 'mittel' | 'schwer' })
+                  // Radix meldet beim Befüllen kurz '' (Option noch nicht bekannt) — ignorieren
+                  v && setForm({ ...form, difficulty: v as 'leicht' | 'mittel' | 'schwer' })
                 }
               >
                 <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
@@ -519,7 +520,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
               <Select
                 value={form.class_level}
                 onValueChange={(v) =>
-                  setForm({ ...form, class_level: v as FormState['class_level'] })
+                  v && setForm({ ...form, class_level: v as FormState['class_level'] })
                 }
               >
                 <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
@@ -577,7 +578,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
               <Label>Thema (optional)</Label>
               <Select
                 value={form.topic_id}
-                onValueChange={(v) => setForm({ ...form, topic_id: v })}
+                onValueChange={(v) => v && setForm({ ...form, topic_id: v })}
                 disabled={form.subject_ids.length === 0}
               >
                 <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
