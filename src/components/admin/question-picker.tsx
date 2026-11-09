@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Search, Trash2 } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { Eye, Pencil, Search, Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
@@ -53,6 +53,14 @@ interface Props {
   onDeletePrivate?: (question: PickerQuestion) => void
   /** Darf die anfragende Person Pool-Fragen dieses Zielbereichs bearbeiten? (Bereichs-/Super-Admin) */
   canEditPool?: boolean
+  /**
+   * Kompakter Modus für den Anlegen-Dialog: Die Liste füllt die verfügbare Höhe
+   * des Elternelements (das muss `flex flex-col min-h-0` sein), der Zähler
+   * entfällt (steht dann in der Dialog-Fußzeile) und `actions` erscheint oben.
+   */
+  fill?: boolean
+  /** Aktionsleiste über den Filtern (nur im kompakten Modus sinnvoll) */
+  actions?: ReactNode
 }
 
 /**
@@ -61,7 +69,7 @@ interface Props {
  * Klassenstufen-Filter kommt aus den geladenen Fragen selbst (nicht aus dem
  * Bereich der anfragenden Person) — richtig auch für einen fremden Zielbereich.
  */
-export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onOpenQuestion, onDeletePrivate, canEditPool = false }: Props) {
+export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onOpenQuestion, onDeletePrivate, canEditPool = false, fill = false, actions }: Props) {
   const classLevelOptions = useMemo(() => {
     const levels = [...new Set(questions.map((q) => q.class_level).filter((l): l is number => l != null))]
     return levels.sort((a, b) => a - b).map((l) => ({ value: String(l), label: `Klasse ${l}` }))
@@ -124,15 +132,18 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
   const enough = selectedIds.size >= minSelection
 
   return (
-    <div className="space-y-2">
-      <div className="sticky top-0 z-10 flex items-center justify-between rounded-xl bg-ws-bg px-3 py-2 text-sm">
-        <span className="text-ws-muted">Gewählte Fragen</span>
-        <span className={enough ? 'font-semibold text-ws-green' : 'font-semibold text-ws-orange'}>
-          {selectedIds.size} (min. {minSelection})
-        </span>
-      </div>
+    <div className={fill ? 'flex min-h-0 flex-1 flex-col gap-2' : 'space-y-2'}>
+      {actions}
+      {!fill && (
+        <div className="flex items-center justify-between rounded-xl bg-ws-bg px-3 py-2 text-sm">
+          <span className="text-ws-muted">Gewählte Fragen</span>
+          <span className={enough ? 'font-semibold text-ws-green' : 'font-semibold text-ws-orange'}>
+            {selectedIds.size} (min. {minSelection})
+          </span>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-3">
         <Select value={classLevel} onValueChange={(v) => { setClassLevel(v); setTopic('all') }}>
           <SelectTrigger className={TRIGGER} aria-label="Klasse"><SelectValue /></SelectTrigger>
           <SelectContent className={CONTENT}>
@@ -156,7 +167,7 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ws-muted" />
           <Input
@@ -177,14 +188,20 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
         </Select>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-ws-muted">
+      <div className="flex shrink-0 items-center justify-between text-xs text-ws-muted">
         <span>{visible.length} von {questions.length} Fragen</span>
         <button type="button" className="min-h-11 px-2 text-ws-blue hover:underline" onClick={toggleVisible}>
           {allVisibleSelected ? 'Angezeigte abwählen' : 'Alle angezeigten wählen'}
         </button>
       </div>
 
-      <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3 lg:max-h-[52vh]">
+      <div
+        className={
+          fill
+            ? 'min-h-48 flex-1 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3'
+            : 'max-h-72 space-y-1 overflow-y-auto rounded-xl bg-ws-bg p-3 lg:max-h-[52vh]'
+        }
+      >
         {visible.length === 0 ? (
           <p className="py-6 text-center text-sm text-ws-muted">
             {questions.length === 0 ? 'Keine passenden Fragen vorhanden.' : 'Keine Frage passt zu den Filtern.'}
@@ -201,8 +218,8 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
                     className="mt-0.5 border-ws-line data-[state=checked]:border-ws-green data-[state=checked]:bg-ws-green"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs leading-snug text-ws-text">
-                      {q.question_text.slice(0, 100)}{q.question_text.length > 100 ? '…' : ''}
+                    <p className="line-clamp-2 text-sm leading-snug text-ws-text" title={q.question_text}>
+                      {q.question_text}
                     </p>
                     <span className="text-xs text-ws-blue">
                       {q.difficulty}
@@ -229,12 +246,13 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
                       <Button
                         type="button"
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         onClick={() => onOpenQuestion(q, editable)}
                         aria-label={`„${q.question_text.slice(0, 40)}“ ${editable ? 'bearbeiten' : 'ansehen'}`}
-                        className="h-9 px-2 text-ws-muted hover:text-ws-text"
+                        title={editable ? 'Bearbeiten' : 'Ansehen'}
+                        className="size-9 text-ws-muted hover:text-ws-text"
                       >
-                        {editable ? 'Bearbeiten' : 'Ansehen'}
+                        {editable ? <Pencil size={14} /> : <Eye size={14} />}
                       </Button>
                     )}
                     {q.isPrivate && onDeletePrivate && (

@@ -94,4 +94,16 @@ describe('QuestionPicker – PROJ-46', () => {
     fireEvent.click(screen.getByRole('checkbox'))
     expect(onChange).toHaveBeenCalledWith(new Set(['a']))
   })
+
+  it('zeigt den Zähler im Normalmodus, im kompakten Modus (Dialog-Fußleiste) nicht — Aktionen erscheinen dort oben', () => {
+    const questions = [q({ id: 'a' })]
+    const { rerender } = render(<QuestionPicker questions={questions} selectedIds={new Set()} onChange={() => {}} />)
+    expect(screen.getByText('Gewählte Fragen')).toBeInTheDocument()
+
+    rerender(
+      <QuestionPicker questions={questions} selectedIds={new Set()} onChange={() => {}} fill actions={<button>Vorschlag</button>} />,
+    )
+    expect(screen.queryByText('Gewählte Fragen')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Vorschlag' })).toBeInTheDocument()
+  })
 })

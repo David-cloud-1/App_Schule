@@ -2,18 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { GradingScaleTemplatePicker } from './grading-scale-template-picker'
 import { GradingScaleEditor, IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from './grading-scale-editor'
@@ -90,6 +92,10 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
   const [category, setCategory] = useState<CategoryValue>({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
+  // Auf kleinen Bildschirmen zeigt der Dialog Einstellungen und Fragen als zwei Reiter
+  const [mobileTab, setMobileTab] = useState<'settings' | 'questions'>('settings')
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [gradingOpen, setGradingOpen] = useState(false)
 
   // Startauswahl aus der Prüfungssimulation gibt es nur für den eigenen
   // Arbeitsbereich — die geladenen Sets gehören zu diesem, nicht zum
@@ -141,6 +147,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
     setFocus(DEFAULT_FOCUS_FORM)
     setCategory({ schoolYear: schoolYearFor(new Date()), className: '', subjectId: null })
     setErrors({})
+    setMobileTab('settings')
+    setCategoryOpen(false)
+    setGradingOpen(false)
 
     setDepartmentsLoading(true)
     fetch('/api/admin/assessments/departments')
@@ -243,6 +252,10 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
     const focusError = validateFocusForm(focus)
     if (focusError) e.focus = focusError
     setErrors(e)
+    if (e.scale || e.focus) setGradingOpen(true)
+    const settingsError = e.departmentId || e.title || e.opensAt || e.closesAt || e.durationMinutes || e.scale || e.focus
+    if (settingsError) setMobileTab('settings')
+    else if (e.questions) setMobileTab('questions')
     return Object.keys(e).length === 0
   }
 
@@ -284,44 +297,73 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
     }
   }
 
+  const scaleIsDefault = JSON.stringify(scale) === JSON.stringify(IHK_DEFAULT_SCALE)
+  const gradingSummary = [
+    scaleIsDefault ? 'IHK-Standard' : 'Eigener Schlüssel',
+    !focus.tracking ? 'Fokus-Protokoll aus' : focus.autoEnabled ? `Fokus-Protokoll an, Auto-Abgabe ab ${focus.autoAfter}` : 'Fokus-Protokoll an',
+  ].join(' · ')
+  const categorySubject = categorySubjects.find((x) => x.id === category.subjectId)
+  const categorySummary = [category.schoolYear, category.className.trim(), categorySubject?.name].filter(Boolean).join(' · ')
+  const enoughQuestions = selectedIds.size >= MIN_QUESTIONS
+
+  const field = 'bg-ws-bg border-ws-line text-ws-text h-11 text-base'
+  const foldTrigger =
+    'group flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-ws-line bg-ws-bg px-4 py-2 text-left hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ws-surface border-ws-line text-ws-text w-[95vw] max-w-6xl max-h-[92vh] overflow-y-auto p-5 sm:p-8">
-        <DialogHeader>
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text flex h-[92vh] w-[95vw] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="shrink-0 px-5 pb-3 pt-5 pr-12 sm:px-8 sm:pt-6">
           <DialogTitle>Neuer Leistungsnachweis</DialogTitle>
           <DialogDescription className="text-ws-muted">
             Ein einmaliger, benoteter Durchlauf mit selbst zusammengestellten Fragen — mit eigenem Beitrittscode.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-         <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-          <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="zielbereich" className="text-base">Zielbereich</Label>
-            <Select value={departmentId} onValueChange={handleDepartmentChange} disabled={departmentsLoading}>
-              <SelectTrigger id="zielbereich" className="bg-ws-bg border-ws-line text-ws-text h-11 text-base">
-                <SelectValue placeholder={departmentsLoading ? 'Wird geladen…' : 'Bitte wählen…'} />
-              </SelectTrigger>
-              <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-sm text-ws-faint">
-              Bestimmt den Fragenpool und wer per Code beitreten kann. Nach dem Öffnen nicht mehr änderbar.
-            </p>
-            {errors.departmentId && <p className="text-xs text-ws-red">{errors.departmentId}</p>}
-          </div>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          {/* Handy / Tablet hochkant: zwei Reiter statt zwei Spalten */}
+          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as 'settings' | 'questions')} className="shrink-0 px-5 pb-3 lg:hidden">
+            <TabsList className="grid h-11 w-full grid-cols-2 bg-ws-bg">
+              <TabsTrigger value="settings" className="min-h-9 data-[state=active]:bg-ws-surface data-[state=active]:text-ws-text">
+                Einstellungen
+              </TabsTrigger>
+              <TabsTrigger value="questions" className="min-h-9 data-[state=active]:bg-ws-surface data-[state=active]:text-ws-text">
+                Fragen ({selectedIds.size})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
-          {departmentId && (
-            <>
-              {visibleSets.length > 0 && (
+          <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] border-t border-ws-line lg:grid-cols-[2fr_3fr]">
+            {/* Linke Spalte: Einstellungen */}
+            <div
+              className={cn(
+                'min-h-0 space-y-5 overflow-y-auto px-5 py-5 sm:px-8 lg:border-r lg:border-ws-line',
+                mobileTab === 'settings' ? 'block' : 'hidden lg:block',
+              )}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="zielbereich" className="text-base">Zielbereich</Label>
+                <Select value={departmentId} onValueChange={handleDepartmentChange} disabled={departmentsLoading}>
+                  <SelectTrigger id="zielbereich" className={field}>
+                    <SelectValue placeholder={departmentsLoading ? 'Wird geladen…' : 'Bitte wählen…'} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-ws-faint">
+                  Bestimmt den Fragenpool und wer per Code beitreten kann. Nach dem Öffnen nicht mehr änderbar.
+                </p>
+                {errors.departmentId && <p className="text-xs text-ws-red">{errors.departmentId}</p>}
+              </div>
+
+              {departmentId && visibleSets.length > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="startSet" className="text-base">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
                   <Select value={startSetId} onValueChange={handleStartSetChange}>
-                    <SelectTrigger id="startSet" className="bg-ws-bg border-ws-line text-ws-text h-11 text-base">
+                    <SelectTrigger id="startSet" className={field}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
@@ -344,115 +386,145 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                 </div>
               )}
 
-            </>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-base">Titel</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
-              placeholder="z. B. LN 2 – Verkehrsträger Straße"
-              maxLength={100}
-            />
-            {errors.title && <p className="text-xs text-ws-red">{errors.title}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label>Ablage <span className="font-normal text-ws-faint">— nur zum Sortieren, ändert nichts am Zugang</span></Label>
-            <AssessmentCategoryFields
-              idPrefix="neu"
-              value={category}
-              onChange={setCategory}
-              subjects={categorySubjects}
-              classSuggestions={categoryClasses.length > 0 ? categoryClasses : classSuggestions}
-              schoolYears={schoolYearChoices(usedSchoolYears, schoolYearFor(new Date()))}
-              disabled={submitting}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="opensAt" className="text-base">Beitritt ab</Label>
-              <Input
-                id="opensAt"
-                type="datetime-local"
-                value={opensAt}
-                onChange={(e) => setOpensAt(e.target.value)}
-                className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
-              />
-              {errors.opensAt && <p className="text-xs text-ws-red">{errors.opensAt}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="closesAt" className="text-base">Beitritt bis</Label>
-              <Input
-                id="closesAt"
-                type="datetime-local"
-                value={closesAt}
-                onChange={(e) => setClosesAt(e.target.value)}
-                className="bg-ws-bg border-ws-line text-ws-text h-11 text-base"
-              />
-              {errors.closesAt && <p className="text-xs text-ws-red">{errors.closesAt}</p>}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="duration" className="text-base">Bearbeitungszeit je Teilnehmer (Minuten)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min={5}
-              max={600}
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(e.target.value)}
-              className="bg-ws-bg border-ws-line text-ws-text w-32 h-11 text-base"
-            />
-            {errors.durationMinutes && <p className="text-xs text-ws-red">{errors.durationMinutes}</p>}
-            <p className="text-sm text-ws-faint">
-              Zählt ab dem individuellen Start — ein späterer Beitritt verkürzt die Zeit nicht.
-            </p>
-          </div>
-
-          </div>
-
-          <section className="space-y-3 rounded-2xl border border-ws-line bg-ws-bg/40 p-4 sm:p-5">
-            {departmentId ? (
               <div className="space-y-2">
-                <Label className="text-base">Fragen</Label>
+                <Label htmlFor="title" className="text-base">Titel</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className={field}
+                  placeholder="z. B. LN 2 – Verkehrsträger Straße"
+                  maxLength={100}
+                />
+                {errors.title && <p className="text-xs text-ws-red">{errors.title}</p>}
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="opensAt" className="text-base">Beitritt ab</Label>
+                    <Input
+                      id="opensAt"
+                      type="datetime-local"
+                      value={opensAt}
+                      onChange={(e) => setOpensAt(e.target.value)}
+                      className={field}
+                    />
+                    {errors.opensAt && <p className="text-xs text-ws-red">{errors.opensAt}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="closesAt" className="text-base">Beitritt bis</Label>
+                    <Input
+                      id="closesAt"
+                      type="datetime-local"
+                      value={closesAt}
+                      onChange={(e) => setClosesAt(e.target.value)}
+                      className={field}
+                    />
+                    {errors.closesAt && <p className="text-xs text-ws-red">{errors.closesAt}</p>}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="duration" className="text-base">Bearbeitungszeit je Teilnehmer (Minuten)</Label>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <Input
+                      id="duration"
+                      type="number"
+                      min={5}
+                      max={600}
+                      value={durationMinutes}
+                      onChange={(e) => setDurationMinutes(e.target.value)}
+                      className={cn(field, 'w-28')}
+                    />
+                    <p className="min-w-0 flex-1 text-sm text-ws-faint">
+                      Zählt ab dem individuellen Start — ein späterer Beitritt verkürzt die Zeit nicht.
+                    </p>
+                  </div>
+                  {errors.durationMinutes && <p className="text-xs text-ws-red">{errors.durationMinutes}</p>}
+                </div>
+              </div>
+
+              <Collapsible open={categoryOpen} onOpenChange={setCategoryOpen}>
+                <CollapsibleTrigger type="button" className={foldTrigger}>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">Ablage <span className="font-normal text-ws-faint">— nur zum Sortieren</span></span>
+                    <span className="block truncate text-xs text-ws-muted">{categorySummary}</span>
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 text-ws-muted transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3">
+                  <AssessmentCategoryFields
+                    idPrefix="neu"
+                    value={category}
+                    onChange={setCategory}
+                    subjects={categorySubjects}
+                    classSuggestions={categoryClasses.length > 0 ? categoryClasses : classSuggestions}
+                    schoolYears={schoolYearChoices(usedSchoolYears, schoolYearFor(new Date()))}
+                    disabled={submitting}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible open={gradingOpen} onOpenChange={setGradingOpen}>
+                <CollapsibleTrigger type="button" className={foldTrigger}>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">Bewertung &amp; Aufsicht</span>
+                    <span className="block truncate text-xs text-ws-muted">{gradingSummary}</span>
+                  </span>
+                  <ChevronDown className="size-4 shrink-0 text-ws-muted transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-5 pt-4">
+                  <GradingScaleTemplatePicker scale={scale} onApply={setScale} disabled={submitting} />
+                  <GradingScaleEditor scale={scale} onChange={setScale} error={errors.scale} />
+                  <FocusSettingsFields value={focus} onChange={setFocus} error={errors.focus} />
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+
+            {/* Rechte Spalte: Fragen — Liste füllt die Höhe und scrollt allein */}
+            <section
+              className={cn(
+                'min-h-0 flex-col gap-2 bg-ws-bg/40 px-5 py-5 sm:px-8 lg:px-6',
+                mobileTab === 'questions' ? 'flex' : 'hidden lg:flex',
+              )}
+            >
+              {departmentId ? (
                 <AssessmentQuestionSelector
+                  compact
                   departmentId={departmentId}
                   selectedIds={selectedIds}
                   onChange={setSelectedIds}
                   onLoaded={handleLoaded}
                 />
-                {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
-              </div>
-            ) : (
-              <p className="text-sm text-ws-muted">Wähle zuerst einen Zielbereich, dann erscheinen hier die Fragen.</p>
-            )}
-          </section>
-         </div>
+              ) : (
+                <p className="text-sm text-ws-muted">Wähle zuerst einen Zielbereich, dann erscheinen hier die Fragen.</p>
+              )}
+            </section>
+          </div>
 
-          <GradingScaleTemplatePicker scale={scale} onApply={setScale} disabled={submitting} />
-          <GradingScaleEditor scale={scale} onChange={setScale} error={errors.scale} />
-
-          <FocusSettingsFields value={focus} onChange={setFocus} error={errors.focus} />
-
-          <DialogFooter className="gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
-              Abbrechen
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-            >
-              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Als Entwurf anlegen
-            </Button>
-          </DialogFooter>
+          {/* Fußleiste: Zähler und Speichern sind immer sichtbar */}
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-ws-line bg-ws-surface px-5 py-3 sm:px-8">
+            <div aria-live="polite" className="text-sm">
+              <span className={cn('font-semibold', enoughQuestions ? 'text-ws-green' : 'text-ws-orange')}>
+                {selectedIds.size} {selectedIds.size === 1 ? 'Frage' : 'Fragen'} gewählt
+              </span>
+              <span className="text-ws-muted"> (min. {MIN_QUESTIONS})</span>
+              {errors.questions && <p className="text-xs text-ws-red">{errors.questions}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+                Abbrechen
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+              >
+                {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Als Entwurf anlegen
+              </Button>
+            </div>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

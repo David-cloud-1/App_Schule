@@ -28,13 +28,18 @@ interface Props {
   onChange: (next: Set<string>) => void
   /** Wird nach jedem Laden der Fragenliste aufgerufen (z. B. um übersprungene Set-Fragen zu zählen) */
   onLoaded?: (questions: PickerQuestion[]) => void
+  /**
+   * Kompakter Modus (Anlegen-Dialog): Aktionen stehen oben, die Liste füllt die
+   * Höhe des Elternelements (`flex flex-col min-h-0`), der Zähler entfällt.
+   */
+  compact?: boolean
 }
 
 /**
  * Lädt die wählbaren Fragen eines Zielbereichs (aktiv, Multiple-Choice, Bereichs-Pool
  * + eigene private Nachweis-Fragen) und zeigt die Fragenauswahl samt Datei-Import.
  */
-export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange, onLoaded }: Props) {
+export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange, onLoaded, compact = false }: Props) {
   const [questions, setQuestions] = useState<PickerQuestion[]>([])
   const [canEditPool, setCanEditPool] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -145,8 +150,43 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
     )
   }
 
+  const actions = (
+    <div className="flex shrink-0 flex-wrap gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setSuggestOpen(true)}
+        className="min-h-11 rounded-xl border-ws-line text-ws-text hover:text-ws-text"
+      >
+        <Sparkles size={14} className="mr-1.5" />
+        Vorschlag erstellen
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setCreateOpen(true)}
+        className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+      >
+        <Plus size={14} className="mr-1.5" />
+        Neue Frage
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setImportOpen(true)}
+        className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+      >
+        <FileUp size={14} className="mr-1.5" />
+        Aus Aufgabenblatt
+      </Button>
+    </div>
+  )
+
   return (
-    <div className="space-y-2">
+    <div className={compact ? 'flex min-h-0 flex-1 flex-col gap-2' : 'space-y-2'}>
       <QuestionPicker
         questions={questions}
         selectedIds={selectedIds}
@@ -154,39 +194,10 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
         onOpenQuestion={(q, editable) => setEditing({ id: q.id, isPrivate: !!q.isPrivate, editable })}
         onDeletePrivate={setDeleting}
         canEditPool={canEditPool}
+        fill={compact}
+        actions={compact ? actions : undefined}
       />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setSuggestOpen(true)}
-          className="min-h-11 rounded-xl border-ws-line text-ws-text hover:text-ws-text"
-        >
-          <Sparkles size={14} className="mr-1.5" />
-          Vorschlag erstellen
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-          className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-        >
-          <Plus size={14} className="mr-1.5" />
-          Neue Frage erstellen
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setImportOpen(true)}
-          className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-        >
-          <FileUp size={14} className="mr-1.5" />
-          Fragen aus Aufgabenblatt erzeugen
-        </Button>
-      </div>
+      {!compact && actions}
       <AssessmentSuggestDialog
         open={suggestOpen}
         onOpenChange={setSuggestOpen}

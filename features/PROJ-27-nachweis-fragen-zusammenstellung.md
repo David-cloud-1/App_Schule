@@ -227,3 +227,16 @@ Auf Wunsch zeigt die Fragenauswahl im Entwurf jetzt pro Frage einen Knopf „Ans
 - **Kurzer Check nach Deploy:** Startseite erreichbar (Weiterleitung), neue Fragen-Schnittstelle antwortet ohne Login mit 401.
 - **Offen:** Manueller Klick-Test im Browser (Anlegen, Set-Start, Import, Entwurf bearbeiten, Öffnen) steht aus; Bug 1 ist nur per Code-Review behoben.
 - Bewusst nicht mit deployt/committet: unfertige Arbeit anderer Features (PROJ-26/28/29) im selben Arbeitsverzeichnis.
+
+## Erweiterung: Anlegen-Dialog übersichtlicher (2026-11-09)
+Der Dialog „Neuer Leistungsnachweis“ war lang, scrollte doppelt (Dialog + Fragenliste) und hatte Zähler und Speichern erst am Ende.
+
+- **Feste Höhe, Spalten scrollen einzeln:** Links Einstellungen (40 %), rechts Fragen (60 %). Kopf und Fußleiste bleiben stehen.
+- **Fußleiste:** Zähler „N Fragen gewählt (min. 5)“, Fehlermeldung zur Fragenzahl, „Abbrechen“ und „Als Entwurf anlegen“ immer sichtbar. Der Zähler im Picker entfällt im kompakten Modus.
+- **Eingeklappt:** „Ablage“ und „Bewertung & Aufsicht“ (Vorlage, Notenschlüssel, Fokus-Einstellungen) mit Kurzfassung in der Kopfzeile. Bei Validierungsfehlern klappt „Bewertung & Aufsicht“ automatisch auf.
+- **Zeitraum:** Beitritt ab/bis in einer Zeile, Dauer mit Hinweis daneben.
+- **Fragenauswahl:** Aktionen (Vorschlag, Neue Frage, Aus Aufgabenblatt) stehen oben. „Bearbeiten“/„Ansehen“ sind Icons (aria-label unverändert), Fragetext bis zu zwei Zeilen.
+- **Handy/Tablet hochkant:** Reiter „Einstellungen“ / „Fragen (N)“, bei Fehlern springt der Dialog zum passenden Reiter.
+- Der Dialog „Fragen bearbeiten“ (Entwurf) nutzt weiter den Normalmodus der Auswahl (mit Zähler, Aktionen unten).
+- **Geändert:** `create-assessment-modal.tsx`, `question-picker.tsx` (+ Test), `assessment-question-selector.tsx`. Keine Logik-, API- oder Datenbankänderung, keine Migration.
+- **Tests:** tsc, 2761 Tests und `npm run build` grün. **Nicht geprüft:** Browser (kein Dev-Server laut Projektregel).
