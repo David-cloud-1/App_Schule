@@ -1,6 +1,6 @@
 # PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-09
 
@@ -169,4 +169,7 @@ Keine neuen Pakete nötig. Das Ziehen der Vorschläge nutzt, was der Editor bere
 Keine kritischen oder hohen Fehler offen → **Approved**.
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-09** (Commits 8cc567f, 7833018; Vercel-Deployment `spedilern-o1zscamd6`, Production, Ready).
+- Keine Datenbank-Migration nötig; die Funktion `question_difficulty_stats` (PROJ-74) lief schon in Produktion.
+- Prüfung nach dem Deploy: `POST /api/admin/assessments/suggest` ohne Login → 401.
+- Noch offen: Klick-Test eingeloggt (Anlegen-Dialog → Fragen → „Vorschlag erstellen"), dabei besonders prüfen, ob die Lösungsquoten ankommen (Hinweis „Lösungsquoten nicht verfügbar" darf nicht erscheinen).
