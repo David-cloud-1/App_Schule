@@ -1,6 +1,6 @@
 # PROJ-79: Nachweis duplizieren & schwache Fragen ersetzen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-09
 
@@ -162,4 +162,6 @@ Keine.
 **Nicht im Browser geprüft:** Zeilenmenü, Dialog, Prüfkarte und Vorschau. Bitte einmal an einem ausgewerteten Nachweis durchklicken.
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-09: Migration `20261114_proj79_nachweis_kopie.sql` im SQL-Editor eingespielt, Probe bestanden (T1 = 2, T2 = 0, T3a = true, T3b = NULL/true). Lesend geprüft: beide Spalten vorhanden (uuid/text, nullable), keine Probe-Reste.
+- Push von `af70227` auf `main`, Vercel-Production Ready nach 1m. Neue Routen (`duplicate`, `copy-review`, `replace`) ohne Login: 401, keine Fehler in den Production-Logs.
+- **Nicht im Browser geprüft:** Zeilenmenü „Duplizieren“, Dialog, Prüfkarte mit Ampel, „Ersetzen“ und „Alle auffälligen ersetzen“ mit Vorschau. Bitte an einem ausgewerteten Nachweis einmal durchklicken.

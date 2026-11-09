@@ -94,7 +94,7 @@
 | PROJ-76 | Leistungsnachweis – Gruppen A/B | Planned | [PROJ-76-nachweis-gruppen-a-b.md](PROJ-76-nachweis-gruppen-a-b.md) | 2026-11-07 |
 | PROJ-77 | Notenschlüssel-Vorlagen & Notenlisten-Export | Deployed | [PROJ-77-notenschluessel-vorlagen-export.md](PROJ-77-notenschluessel-vorlagen-export.md) | 2026-11-07 |
 | PROJ-78 | Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Deployed | [PROJ-78-nachweis-vorschlag-zusammenstellung.md](PROJ-78-nachweis-vorschlag-zusammenstellung.md) | 2026-11-07 |
-| PROJ-79 | Nachweis duplizieren & schwache Fragen ersetzen | Approved | [PROJ-79-nachweis-duplizieren-ersetzen.md](PROJ-79-nachweis-duplizieren-ersetzen.md) | 2026-11-07 |
+| PROJ-79 | Nachweis duplizieren & schwache Fragen ersetzen | Deployed | [PROJ-79-nachweis-duplizieren-ersetzen.md](PROJ-79-nachweis-duplizieren-ersetzen.md) | 2026-11-07 |
 | PROJ-80 | Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned | [PROJ-80-nachteilsausgleich-nachschreiber.md](PROJ-80-nachteilsausgleich-nachschreiber.md) | 2026-11-07 |
 | PROJ-81 | Aufgabenliste für Lehrkräfte auf der Startseite | Deployed | [PROJ-81-aufgabenliste-startseite.md](PROJ-81-aufgabenliste-startseite.md) | 2026-11-07 |
 | PROJ-82 | Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Deployed | [PROJ-82-meldungen-direkt-pruefen.md](PROJ-82-meldungen-direkt-pruefen.md) | 2026-11-09 |
