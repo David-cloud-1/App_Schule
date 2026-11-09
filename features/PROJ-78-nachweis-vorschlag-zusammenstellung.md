@@ -1,8 +1,8 @@
 # PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit
 
-## Status: Architected
+## Status: Approved
 **Created:** 2026-11-07
-**Last Updated:** 2026-11-07
+**Last Updated:** 2026-11-09
 
 ## Dependencies
 - Requires: PROJ-27 (Fragen-Zusammenstellung / Editor), PROJ-39 (Kategorisierung), PROJ-12 (Thema, Klassenstufe)
@@ -125,8 +125,48 @@ Die Lösungsquote bleibt in der Lehrkräfte-Ansicht. Azubis bekommen sie nie zu 
 ### F) Pakete
 Keine neuen Pakete nötig. Das Ziehen der Vorschläge nutzt, was der Editor bereits hat. Falls dort noch kein Ziehen existiert, reicht ein einfaches Hoch/Runter statt Drag-and-drop (Entscheidung bei `/frontend`).
 
+## Implementation Notes (Frontend + Backend)
+
+**Gebaut (2026-11-09), keine Migration nötig:**
+- `src/lib/assessment-suggest.ts` – reine Auswahl-Logik: Einstufung nach Lösungsquote, Mix → Stückzahlen (Größter-Rest-Verfahren), Ziehen reihum über Themen, Fast-Dubletten meiden, „Neu würfeln" meidet frühere Vorschläge, Tauschkandidaten, Zeitschätzung, Zusammenfassung.
+- `POST /api/admin/assessments/suggest` – Aktionen `suggest` und `alternatives`. Nutzt die Zulässigkeitsregel aus `fetchSelectableQuestions`, die Funktion `question_difficulty_stats` (PROJ-74), gesperrte Fragen (PROJ-75), offene Meldungen (PROJ-73) und die letzten N eigenen Nachweise (`question_ids_snapshot`, sonst `draft_question_ids`). Speichert nichts.
+- `assessment-suggest-dialog.tsx` + `assessment-suggest-preview.tsx` – Dialog mit Angaben, Vorschau, Fixieren/Tauschen/Entfernen/Neu würfeln/Übernehmen. Eingebunden über den Knopf „Vorschlag erstellen" in `assessment-question-selector.tsx` (wirkt damit im Anlege- und im Bearbeiten-Dialog).
+- Tests: 20 (Logik) + 13 (Route) + 9 (Dialog), gesamte Suite 226 Dateien / 2671 Tests grün, `tsc`, ESLint und `npm run build` ohne neue Fehler.
+
+**Abweichungen von der Spec:**
+- **Kein Verschieben per Ziehen.** Die Auswahl ist eine Menge ohne Reihenfolge, Verschieben hätte keine Wirkung.
+- **Zeitschätzung nur nach Textlänge** (über 200 Zeichen = 1,5 ×), weil Nachweis-Fragen keine Bilder haben. Grundwert 1 Minute pro Frage.
+- **Fehlbeträge je Schwierigkeitsstufe** statt je Thema („Zu wenige schwere Fragen: es fehlen 3"); zusätzlich werden gewählte Themen ohne jede passende Frage genannt. Es wird nie mit anderen Stufen aufgefüllt.
+- Voreinstellung für „letzte Nachweise ausschließen" ist 3.
+- Fragen ohne Auswertung (eigene private Nachweis-Fragen, „nur für Nachweise") haben keine Lösungsquote und gelten als „mittel".
+- Die Lösungsquoten werden seitenweise (je 1000) und nur für Fragen mit Antworten geladen, weil der Pool 7673 Fragen umfasst und PostgREST bei 1000 Zeilen kappt.
+- Fällt die Quoten-Funktion aus, funktioniert der Vorschlag weiter (alle Fragen „mittel") und zeigt einen Hinweis.
+
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am 2026-11-09 (Code-Review, Tests, Build, DB-Lesecheck; kein Browser – siehe Regel „kein Dev-Server").**
+
+| Bereich | Ergebnis |
+|---|---|
+| Eingaben (Fach/Thema mehrfach, Klasse, Anzahl 5–60, Mix inkl. eigener Verteilung mit Rest-Anzeige) | bestanden |
+| Schwierigkeit 75/40-Grenzen, unter 20 Antworten = mittel mit Hinweis | bestanden (Unit-Tests) |
+| Ausschlüsse gesperrt / offene Meldung / letzte N Nachweise | bestanden (Route-Tests) |
+| Vorschau: Chip, Quote, Zusammenfassung, Zeit | bestanden (Dialog-Tests) |
+| Entfernen, Tauschen (max. 3, gleiches Thema + Stufe), Fixieren, Neu würfeln | bestanden |
+| Zu wenige Fragen: so viel wie möglich, Fehlbetrag genannt, kein Auffüllen | bestanden |
+| Übernehmen: ergänzen oder ersetzen | bestanden |
+| Leerzustand mit Weg zum Fragen-Import | bestanden |
+| Sicherheit: nur Lehrkräfte/Admins (401/403), Zod-Prüfung aller Eingaben, nichts gespeichert, Quoten nur an Lehrkräfte | bestanden |
+| Bedienelemente 44 px, Tastatur/Beschriftung, nur `ws-*`-Farben | bestanden (Code-Review) |
+
+**Gefunden und behoben:** Lösungsquoten wären bei über 1000 Fragen stillschweigend abgeschnitten worden (alle übrigen als „mittel"). Jetzt seitenweise geladen, mit Test.
+
+**Offen / nicht geprüft:**
+- Keine Browserprüfung eingeloggt (Layout auf Handy/Laptop, Popover-Bedienung per Touch).
+- Der Seitenabruf der Funktion mit Filter (`attempts > 0`) und Sortierung wurde gegen die echte Datenbank nicht ausgeführt (nur gemockt); bei Fehlschlag zeigt der Dialog den Hinweis „Lösungsquoten nicht verfügbar" und arbeitet weiter.
+- Antwortzeit bei 5000+ Fragen nicht gemessen (Ziel < 1 s).
+
+Keine kritischen oder hohen Fehler offen → **Approved**.
 
 ## Deployment
 _To be added by /deploy_
