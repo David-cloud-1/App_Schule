@@ -36,6 +36,7 @@ describe('reportCreateSchema', () => {
 describe('reportCloseSchema und Co.', () => {
   it('erlaubt nur die beiden Abschlussarten', () => {
     expect(reportCloseSchema.safeParse({ result: 'korrigiert' }).success).toBe(true)
+    expect(reportCloseSchema.safeParse({ result: 'entfaellt' }).success).toBe(true)
     expect(reportCloseSchema.safeParse({ result: 'offen' }).success).toBe(false)
   })
 

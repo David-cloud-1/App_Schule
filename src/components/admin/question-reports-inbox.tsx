@@ -3,13 +3,10 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Flag, Loader2, UserCheck } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Eye, Flag, Loader2, UserCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,17 +20,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { QuestionReportReviewDialog } from '@/components/admin/question-report-review-dialog'
 import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { questionSearchLink } from '@/lib/difficulty'
 import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
   REPORT_REASON_SHORT,
-  REPORT_RESPONSE_MAX,
   REPORT_RESPONSE_TEMPLATES,
-  REPORT_REWARD_COINS,
   REPORT_STATUS_LABEL,
   type ReportReason,
   type ReportStatus,
@@ -100,7 +95,7 @@ export function QuestionReportsInbox() {
   const [details, setDetails] = useState<Record<string, Detail[] | 'error' | 'loading'>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const [closing, setClosing] = useState<Group | null>(null)
+  const [review, setReview] = useState<{ queue: string[]; index: number } | null>(null)
   const [bulkOpen, setBulkOpen] = useState(false)
 
   const load = useCallback(async () => {
@@ -152,14 +147,23 @@ export function QuestionReportsInbox() {
     if (!details[id] || details[id] === 'error') void loadDetails(id)
   }
 
-  async function claim(g: Group) {
+  /** Prüf-Dialog öffnen (PROJ-82). Im Reiter „Offen“ als Durchlauf über alle offenen Zeilen der Seite. */
+  function openReview(g: Group) {
     if (!g.question_id) return
-    const res = await fetch(`/api/admin/question-reports/${g.question_id}/claim`, { method: 'POST' })
-    if (!res.ok) {
-      toast.error('Das hat nicht geklappt. Bitte versuche es erneut.')
+    if (!isOpenTab) {
+      setReview({ queue: [g.question_id], index: 0 })
       return
     }
-    void load()
+    const queue = items
+      .filter((x) => x.question_id && (x.status === 'offen' || x.status === 'in_pruefung'))
+      .map((x) => x.question_id as string)
+    setReview({ queue, index: Math.max(0, queue.indexOf(g.question_id)) })
+  }
+
+  async function onReviewClosed() {
+    const next = review ? review.index + 1 : 0
+    await load()
+    setReview((r) => (r && next < r.queue.length ? { queue: r.queue, index: next } : null))
   }
 
   const items = useMemo(() => data?.items ?? [], [data])
@@ -172,6 +176,12 @@ export function QuestionReportsInbox() {
     if (!g.claimed_at || g.claimed_by_me || g.status !== 'in_pruefung') return false
     return Date.now() - new Date(g.claimed_at).getTime() < CLAIM_HINT_HOURS * 3_600_000
   }
+
+  const reviewGroup = review ? items.find((g) => g.question_id === review.queue[review.index]) : undefined
+  const reviewClaimedBy =
+    reviewGroup && claimedByOther(reviewGroup)
+      ? (reviewGroup.handled_by_name ?? 'einer Kollegin oder einem Kollegen')
+      : null
 
   return (
     <div className="space-y-4">
@@ -357,25 +367,22 @@ export function QuestionReportsInbox() {
                       <TableCell className="whitespace-nowrap text-sm text-ws-muted">{formatDate(g.oldest_at)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap justify-end gap-2">
-                          {id && (
+                          {id && isOpenTab && (
                             <Button
-                              asChild
-                              variant="outline"
-                              className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
-                              onClick={() => g.status === 'offen' && void claim(g)}
-                            >
-                              <Link href={questionSearchLink(g.question_text)}>
-                                <ExternalLink className="mr-1.5 size-4" />
-                                Frage öffnen
-                              </Link>
-                            </Button>
-                          )}
-                          {isOpenTab && id && (
-                            <Button
-                              onClick={() => setClosing(g)}
+                              onClick={() => openReview(g)}
                               className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
                             >
-                              Abschließen
+                              Prüfen
+                            </Button>
+                          )}
+                          {id && !isOpenTab && (
+                            <Button
+                              variant="outline"
+                              onClick={() => openReview(g)}
+                              className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+                            >
+                              <Eye className="mr-1.5 size-4" />
+                              Ansehen
                             </Button>
                           )}
                         </div>
@@ -396,6 +403,20 @@ export function QuestionReportsInbox() {
                             <AdminErrorState message="Die Einzelmeldungen konnten nicht geladen werden." onRetry={() => id && void loadDetails(id)} />
                           ) : (
                             <ul className="space-y-2">
+                              {id && (
+                                <li>
+                                  <Button
+                                    asChild
+                                    variant="ghost"
+                                    className="min-h-11 rounded-xl px-2 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
+                                  >
+                                    <Link href={questionSearchLink(g.question_text)}>
+                                      <ExternalLink className="mr-1.5 size-4" />
+                                      In der Fragenliste öffnen
+                                    </Link>
+                                  </Button>
+                                </li>
+                              )}
                               {detail.map((d) => (
                                 <li key={d.id} className="rounded-xl border border-ws-line bg-ws-surface p-3 text-sm">
                                   <div className="flex flex-wrap items-center gap-2">
@@ -452,15 +473,17 @@ export function QuestionReportsInbox() {
         </div>
       )}
 
-      <CloseDialog
-        group={closing}
-        onClose={() => setClosing(null)}
-        onDone={() => {
-          setClosing(null)
+      <QuestionReportReviewDialog
+        questionId={review ? review.queue[review.index] : null}
+        position={review ? { index: review.index, total: review.queue.length } : null}
+        readOnly={!isOpenTab}
+        claimedByOther={reviewClaimedBy}
+        onClosed={() => void onReviewClosed()}
+        onExit={() => {
+          setReview(null)
           void load()
         }}
       />
-
       <BulkCloseDialog
         open={bulkOpen}
         questionIds={[...selected]}
@@ -472,158 +495,6 @@ export function QuestionReportsInbox() {
         }}
       />
     </div>
-  )
-}
-
-function CloseDialog({
-  group,
-  onClose,
-  onDone,
-}: {
-  group: Group | null
-  onClose: () => void
-  onDone: () => void
-}) {
-  const [result, setResult] = useState<'korrigiert' | 'nicht_uebernommen'>('korrigiert')
-  const [response, setResponse] = useState('')
-  const [silent, setSilent] = useState(false)
-  const [sending, setSending] = useState(false)
-
-  useEffect(() => {
-    if (group) {
-      setResult(group.changed_since_report ? 'korrigiert' : 'nicht_uebernommen')
-      setResponse('')
-      setSilent(false)
-    }
-  }, [group])
-
-  async function submit() {
-    if (!group?.question_id) return
-    setSending(true)
-    try {
-      const res = await fetch(`/api/admin/question-reports/${group.question_id}/close`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result, response: response.trim() || undefined, silent }),
-      })
-      const body = (await res.json().catch(() => null)) as { error?: string; closed?: number; rewarded?: number } | null
-      if (!res.ok) {
-        toast.error(body?.error ?? 'Das hat nicht geklappt. Bitte versuche es erneut.')
-        return
-      }
-      toast.success(
-        body?.closed
-          ? `${body.closed} Meldung${body.closed === 1 ? '' : 'en'} abgeschlossen${body.rewarded ? `, ${body.rewarded} belohnt` : ''}.`
-          : 'Es gab nichts mehr abzuschließen.',
-      )
-      onDone()
-    } catch {
-      toast.error('Keine Verbindung. Bitte versuche es erneut.')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  return (
-    <Dialog open={!!group} onOpenChange={(open) => !open && !sending && onClose()}>
-      <DialogContent className="max-w-lg border-ws-line bg-ws-surface text-ws-text">
-        <DialogHeader>
-          <DialogTitle>Meldung abschließen</DialogTitle>
-          <DialogDescription className="line-clamp-3 text-ws-muted" title={group?.question_text}>
-            {group?.question_text}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Ergebnis">
-            {(
-              [
-                ['korrigiert', 'Korrigiert', `Frage wurde geändert. Melder erhalten ${REPORT_REWARD_COINS} Frachtmünzen.`],
-                ['nicht_uebernommen', 'Nicht übernommen', 'Frage bleibt, wie sie ist. Keine Belohnung.'],
-              ] as const
-            ).map(([value, label, hint]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={result === value}
-                onClick={() => setResult(value)}
-                className={`min-h-11 rounded-xl border p-3 text-left transition-colors duration-200 ${
-                  result === value ? 'border-ws-green bg-ws-green/15' : 'border-ws-line hover:bg-ws-raised'
-                }`}
-              >
-                <span className="block text-sm font-semibold">{label}</span>
-                <span className="block text-xs text-ws-muted">{hint}</span>
-              </button>
-            ))}
-          </div>
-
-          {group?.changed_since_report ? null : result === 'korrigiert' ? (
-            <p className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm text-ws-orange">
-              Seit der Meldung wurde die Frage nicht geändert. Wähle „Korrigiert“ nur, wenn du sie angepasst hast.
-            </p>
-          ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="report-response">Kurze Rückmeldung an die Melder (optional)</Label>
-            <Textarea
-              id="report-response"
-              value={response}
-              onChange={(e) => setResponse(e.target.value.slice(0, REPORT_RESPONSE_MAX))}
-              rows={2}
-              maxLength={REPORT_RESPONSE_MAX}
-              className="border-ws-line bg-ws-bg text-ws-text"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap gap-1.5">
-                {result === 'nicht_uebernommen' &&
-                  REPORT_RESPONSE_TEMPLATES.map((t) => (
-                    <Button
-                      key={t}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setResponse(t)}
-                      className="min-h-11 rounded-xl border-ws-line bg-transparent text-xs text-ws-text hover:bg-ws-raised hover:text-ws-text"
-                    >
-                      {t}
-                    </Button>
-                  ))}
-              </div>
-              <span className="text-xs text-ws-faint">
-                {response.length} / {REPORT_RESPONSE_MAX}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex min-h-11 items-center gap-3">
-            <Switch id="report-silent" checked={silent} onCheckedChange={setSilent} />
-            <Label htmlFor="report-silent" className="text-sm">
-              Still schließen (keine Rückmeldung, keine Belohnung)
-            </Label>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={sending}
-            className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
-          >
-            Abbrechen
-          </Button>
-          <Button
-            onClick={submit}
-            disabled={sending}
-            className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
-          >
-            {sending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Abschließen
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 

@@ -97,5 +97,6 @@
 | PROJ-79 | Nachweis duplizieren & schwache Fragen ersetzen | Planned | [PROJ-79-nachweis-duplizieren-ersetzen.md](PROJ-79-nachweis-duplizieren-ersetzen.md) | 2026-11-07 |
 | PROJ-80 | Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned | [PROJ-80-nachteilsausgleich-nachschreiber.md](PROJ-80-nachteilsausgleich-nachschreiber.md) | 2026-11-07 |
 | PROJ-81 | Aufgabenliste für Lehrkräfte auf der Startseite | Deployed | [PROJ-81-aufgabenliste-startseite.md](PROJ-81-aufgabenliste-startseite.md) | 2026-11-07 |
+| PROJ-82 | Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Approved | [PROJ-82-meldungen-direkt-pruefen.md](PROJ-82-meldungen-direkt-pruefen.md) | 2026-11-09 |
 
-## Next Available ID: PROJ-82
+## Next Available ID: PROJ-83

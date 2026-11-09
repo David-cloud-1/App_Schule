@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import {
@@ -80,6 +80,33 @@ interface Props {
   onOpenHistory?: (question: AdminQuestion) => void
 }
 
+/** Ergebnis von `save()` am Formular-Körper (PROJ-82). */
+export type QuestionSaveResult = 'ok' | 'invalid' | 'conflict' | 'error'
+
+/** Zugriff auf den Formular-Körper von außen (Prüf-Dialog der Meldungs-Inbox, PROJ-82). */
+export interface QuestionFormHandle {
+  save: () => Promise<QuestionSaveResult>
+}
+
+interface BodyProps {
+  /** Formular mit den Werten der Frage befüllen (beim Dialog: solange er offen ist) */
+  active: boolean
+  question?: AdminQuestion | null
+  subjects: AdminSubject[]
+  /** Nach erfolgreichem Speichern über die Knöpfe des Formulars */
+  onSaved: (opts: { andNew: boolean }) => void
+  /** Jemand anderes hat zwischenzeitlich gespeichert (Konflikt-Hinweis wurde gezeigt) */
+  onConflict?: () => void
+  onOpenHistory?: (question: AdminQuestion) => void
+  /** Knöpfe am Formularende ausblenden (Prüf-Dialog hat eine eigene Leiste) */
+  hideFooter?: boolean
+  /** Kein eigener Erfolgs-Toast (der Aufrufer meldet das Gesamtergebnis) */
+  quietSuccess?: boolean
+  onCancel?: () => void
+  /** Meldet, ob das Formular gegenüber dem Ausgangsstand verändert ist */
+  onDirtyChange?: (dirty: boolean) => void
+}
+
 type FormState = {
   question_text: string
   type: 'multiple_choice' | 'open'
@@ -122,6 +149,49 @@ export function QuestionFormModal({
   onSuccess,
   onOpenHistory,
 }: Props) {
+  const isEdit = Boolean(question)
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-ws-text">
+            {isEdit ? 'Frage bearbeiten' : 'Neue Frage erstellen'}
+          </DialogTitle>
+          <DialogDescription className="text-ws-muted">
+            {isEdit
+              ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
+              : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
+          </DialogDescription>
+        </DialogHeader>
+        <QuestionFormBody
+          active={open}
+          question={question}
+          subjects={subjects}
+          onOpenHistory={onOpenHistory}
+          onCancel={() => onOpenChange(false)}
+          onSaved={({ andNew }) => {
+            onSuccess()
+            if (!andNew) onOpenChange(false)
+          }}
+          onConflict={() => {
+            onSuccess()
+            onOpenChange(false)
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * Das Fragenformular ohne Dialog-Hülle. Wird im Frage-Dialog der Fragenliste
+ * und im Prüf-Dialog der Meldungs-Inbox (PROJ-82) verwendet, damit beide
+ * dieselben Felder, Prüfungen und denselben Konflikt-Schutz haben.
+ */
+export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(function QuestionFormBody(
+  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange },
+  ref
+) {
   const classLevelOptions = useClassLevelOptions()
   const inAllScopes = useNeedsTargetDepartment()
   const [form, setForm] = useState<FormState>(EMPTY)
@@ -132,6 +202,7 @@ export function QuestionFormModal({
   const [loadingTopics, setLoadingTopics] = useState(false)
 
   const isEdit = Boolean(question)
+  const initialRef = useRef<string>('')
 
   const loadTopicsForSubjects = useCallback(async (subjectIds: string[]) => {
     if (subjectIds.length === 0) { setTopics([]); return }
@@ -168,7 +239,7 @@ export function QuestionFormModal({
       const subjectIds = question.question_subjects
         .map((qs) => qs.subjects?.id)
         .filter((id): id is string => Boolean(id))
-      setForm({
+      const seeded: FormState = {
         question_text: question.question_text,
         type: question.type ?? 'multiple_choice',
         sample_answer: question.sample_answer ?? '',
@@ -183,9 +254,12 @@ export function QuestionFormModal({
         subject_ids: subjectIds,
         class_level: question.class_level ? String(question.class_level) as '10' | '11' | '12' : '_all',
         topic_id: question.topic_id ?? '_none',
-      })
+      }
+      initialRef.current = JSON.stringify(seeded)
+      setForm(seeded)
       loadTopicsForSubjects(subjectIds)
     } else {
+      initialRef.current = JSON.stringify(EMPTY)
       setForm(EMPTY)
       setTopics([])
     }
@@ -193,6 +267,10 @@ export function QuestionFormModal({
   }, [open, question, loadTopicsForSubjects])
 
   const remaining = useMemo(() => 1000 - form.question_text.length, [form.question_text])
+
+  useEffect(() => {
+    onDirtyChange?.(open && JSON.stringify(form) !== initialRef.current)
+  }, [form, open, onDirtyChange])
 
   function validate(): boolean {
     const e: Record<string, string> = {}
@@ -210,9 +288,8 @@ export function QuestionFormModal({
     return Object.keys(e).length === 0
   }
 
-  async function handleSubmit(ev: React.FormEvent) {
-    ev.preventDefault()
-    if (!validate()) return
+  async function save(): Promise<QuestionSaveResult> {
+    if (!validate()) return 'invalid'
     setSubmitting(true)
 
     const payload: Record<string, unknown> = {
@@ -248,28 +325,37 @@ export function QuestionFormModal({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         if (showVersionConflict(res, data, onOpenHistory && question ? () => onOpenHistory(question) : undefined)) {
-          onSuccess()
-          onOpenChange(false)
-          return
+          onConflict?.()
+          return 'conflict'
         }
         toast.error(data?.error ?? 'Speichern fehlgeschlagen')
-        return
+        return 'error'
       }
-      toast.success(isEdit ? 'Frage aktualisiert' : 'Frage erstellt')
-      onSuccess()
-      if (saveAndNewRef.current) {
-        saveAndNewRef.current = false
-        setForm(EMPTY)
-        setTopics([])
-        setErrors({})
-      } else {
-        onOpenChange(false)
-      }
+      if (!quietSuccess) toast.success(isEdit ? 'Frage aktualisiert' : 'Frage erstellt')
+      return 'ok'
     } catch (err) {
       console.error(err)
       toast.error('Netzwerkfehler')
+      return 'error'
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({ save }))
+
+  async function handleSubmit(ev: React.FormEvent) {
+    ev.preventDefault()
+    const result = await save()
+    if (result !== 'ok') return
+    const andNew = saveAndNewRef.current
+    onSaved({ andNew })
+    if (andNew) {
+      saveAndNewRef.current = false
+      setForm(EMPTY)
+      initialRef.current = JSON.stringify(EMPTY)
+      setTopics([])
+      setErrors({})
     }
   }
 
@@ -284,19 +370,6 @@ export function QuestionFormModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-ws-text">
-            {isEdit ? 'Frage bearbeiten' : 'Neue Frage erstellen'}
-          </DialogTitle>
-          <DialogDescription className="text-ws-muted">
-            {isEdit
-              ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
-              : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
-          </DialogDescription>
-        </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Question type selector */}
           <div className="space-y-2">
@@ -527,11 +600,12 @@ export function QuestionFormModal({
             </div>
           </div>
 
+          {!hideFooter && (
           <DialogFooter className="gap-2 pt-2 flex-wrap">
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onOpenChange(false)}
+              onClick={() => onCancel?.()}
               disabled={submitting}
             >
               Abbrechen
@@ -558,8 +632,7 @@ export function QuestionFormModal({
               {isEdit ? 'Speichern' : 'Erstellen'}
             </Button>
           </DialogFooter>
+          )}
         </form>
-      </DialogContent>
-    </Dialog>
   )
-}
+})

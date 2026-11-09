@@ -75,7 +75,7 @@ export const reportReadSchema = z.object({
 })
 
 export const reportCloseSchema = z.object({
-  result: z.enum(['korrigiert', 'nicht_uebernommen']),
+  result: z.enum(['korrigiert', 'nicht_uebernommen', 'entfaellt']),
   response: z.string().trim().max(REPORT_RESPONSE_MAX, `Höchstens ${REPORT_RESPONSE_MAX} Zeichen.`).optional(),
   silent: z.boolean().optional(),
   report_ids: z.array(uuid).min(1).max(200).optional(),
