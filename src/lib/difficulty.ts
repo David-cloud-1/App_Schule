@@ -127,8 +127,19 @@ export function rankTopics(rows: DifficultyRow[], minAttempts: number): RankedTo
   }
 }
 
-/** Suchlink in die Fragenliste (wie in der Meldungs-Inbox) */
+/**
+ * Suchlink in die Fragenliste. Die Suche vergleicht Teiltext exakt (ilike), deshalb
+ * darf der Suchtext nichts enthalten, was im Original anders steht: Wir nehmen das
+ * längste Stück der Frage am Stück, ohne Zeichen, die den Filter stören oder die
+ * der Text unterbrochen hat (Komma, Klammern, Prozent, Stern, Backslash, Zeilenumbruch).
+ */
 export function questionSearchLink(text: string): string {
-  const q = text.replace(/[,()%*]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
+  const parts = text.split(/[,()%*\\\r\n]/)
+  let best = ''
+  for (const part of parts) {
+    const t = part.trim()
+    if (t.length > best.length) best = t
+  }
+  const q = best.slice(0, 60).trim()
   return `/admin/questions?q=${encodeURIComponent(q)}`
 }

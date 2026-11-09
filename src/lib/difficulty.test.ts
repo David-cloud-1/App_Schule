@@ -3,6 +3,7 @@ import {
   changedAfterAnswers,
   filterRows,
   needsAnswerCheck,
+  questionSearchLink,
   rankQuestions,
   rankTopics,
   solveRate,
@@ -72,5 +73,21 @@ describe('difficulty', () => {
     expect(filterRows(rows, { subjectId: 's2' })).toHaveLength(1)
     expect(filterRows(rows, { topicKey: 'ohne-thema' })).toHaveLength(1)
     expect(filterRows(rows, {})).toHaveLength(3)
+  })
+})
+
+describe('questionSearchLink', () => {
+  it('nimmt den Anfang der Frage unverändert', () => {
+    expect(questionSearchLink('Welche Autobahn verbindet Dortmund und Kassel?')).toBe(
+      '/admin/questions?q=' + encodeURIComponent('Welche Autobahn verbindet Dortmund und Kassel?')
+    )
+  })
+  it('bricht am Komma ab und nimmt das längste Stück, damit die Suche den Originaltext trifft', () => {
+    const url = questionSearchLink('Welche Autobahn, die Dortmund mit Kassel und Frankfurt am Main verbindet, ist gemeint?')
+    expect(decodeURIComponent(url.split('q=')[1])).toBe('die Dortmund mit Kassel und Frankfurt am Main verbindet')
+  })
+  it('kürzt auf höchstens 60 Zeichen', () => {
+    const q = decodeURIComponent(questionSearchLink('a'.repeat(100)).split('q=')[1])
+    expect(q.length).toBe(60)
   })
 })

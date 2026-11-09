@@ -26,6 +26,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
+import { questionSearchLink } from '@/lib/difficulty'
 import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
@@ -76,12 +77,6 @@ const CLAIM_HINT_HOURS = 24
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-/** Suchtext für die Fragenliste: Anfang der Frage ohne Zeichen, die den Filter stören */
-function questionSearchLink(text: string): string {
-  const q = text.replace(/[,()%*]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60)
-  return `/admin/questions?q=${encodeURIComponent(q)}`
 }
 
 /**
