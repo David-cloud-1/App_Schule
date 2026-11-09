@@ -1,6 +1,6 @@
 # PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-07
 
@@ -52,7 +52,78 @@ Statt Fragen einzeln zusammenzusuchen, gibt die Lehrkraft Thema, Anzahl und Schw
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Ergebnis der Bestandsprüfung:** Vieles ist schon da und wird wiederverwendet:
+- Der Zusammenstell-Editor (`assessment-question-selector`, `question-picker`) mit der Auswahl als Menge von Frage-IDs.
+- Die Regel „welche Fragen sind für einen Nachweis zulässig" (aktiv, Multiple-Choice, richtiger Fachbereich, eigene private Fragen). Sie steckt in `assessment-questions.ts` und gilt auch beim Speichern. Der Vorschlag nutzt dieselbe Regel, damit er nie etwas vorschlägt, das beim Speichern abgelehnt würde.
+- Die Lösungsquoten pro Frage aus PROJ-74 (Datenbank-Funktion `question_difficulty_stats`). Sie liefert nur Summen und keine Nutzerdaten. Lehrkräfte dürfen die Rohantworten nicht lesen, die Funktion darf es.
+- Gesperrte Fragen (PROJ-75) und offene Meldungen (PROJ-73) sind bereits als Kennzeichen an den Fragen bzw. als Zähler in der PROJ-74-Funktion vorhanden.
+- Jeder Nachweis speichert seine Fragen (Entwurf bzw. eingefroren beim Öffnen) und den Ersteller. Daraus lässt sich „in meinen letzten N Nachweisen verwendet" ableiten.
+
+### A) Bausteine (Oberfläche)
+```
+Zusammenstell-Editor (besteht)
++-- Knopf „Vorschlag erstellen"  (neu)
+|
++-- Dialog „Vorschlag erstellen"  (neu)
+|   +-- Auswahl Fach (mehrere), Thema (mehrere, optional), Klassenstufe
+|   +-- Anzahl Fragen (5–60)
+|   +-- Schwierigkeitsmix
+|   |   +-- Voreinstellungen: ausgewogen / eher leicht / eher schwer
+|   |   +-- „eigene Verteilung": drei Regler, Rest-Anzeige bis 100 %
+|   +-- Ausschlüsse (alle an): gesperrte Fragen, Fragen mit offener Meldung,
+|   |   zuletzt verwendete (1 / 3 / 5 / nie)
+|   +-- Schalter „Zu meiner Auswahl hinzufügen" statt „ersetzen"
+|   +-- Knopf „Vorschlag erstellen"
+|
++-- Vorschau des Vorschlags  (neu, im Dialog, vor dem Übernehmen)
+|   +-- Zusammenfassung: Anzahl je Schwierigkeit, Verteilung je Thema,
+|   |   geschätzte Bearbeitungszeit, Hinweis „x Fragen mangels Daten als mittel eingestuft"
+|   +-- Hinweis, was fehlt („Für Thema X nur 4 von 7 Fragen")
+|   +-- Liste der Vorschläge
+|   |   +-- Frage (gekürzt), Thema, Schwierigkeits-Chip, Lösungsquote
+|   |   +-- Aktionen: Schloss (fixieren), Tauschen (3 Alternativen), Entfernen, Ziehen
+|   +-- Knöpfe: „Neu würfeln" (Fixierte bleiben) und „Übernehmen"
+|
++-- Leerzustand: Thema ohne Fragen → Link zum Fragen-Import (besteht)
+```
+Der Dialog nutzt vorhandene shadcn-Bausteine (Dialog, Select, Slider, Switch, Badge). Es gibt keine neue Seite, alles bleibt im bekannten Editor.
+
+### B) Daten (in Alltagssprache)
+**Es wird nichts Neues dauerhaft gespeichert.** Der Vorschlag ist ein Entwurf im Dialog. Erst „Übernehmen" legt die gewählten Fragen in die normale Auswahl des Nachweis-Entwurfs. Danach läuft alles wie bisher (Speichern, Prüfung, Öffnen).
+
+Pro Frage wird für den Vorschlag kurz berechnet und angezeigt:
+- Schwierigkeit: leicht ab 75 % Lösungsquote, mittel 40–74 %, schwer unter 40 %.
+- Bei weniger als 20 Antworten gilt „mittel", und diese Fragen werden gezählt (für den Hinweis).
+- Geschätzte Bearbeitungszeit: Grundwert pro Frage, mit dem Faktor 1,5 bei Bild oder langem Text.
+
+Die Lösungsquote bleibt in der Lehrkräfte-Ansicht. Azubis bekommen sie nie zu sehen, weil der Vorschlag nur über Lehrkräfte-Wege läuft.
+
+**Backend nötig? Ja, ein kleines.** Die Auswahl muss auf dem Server laufen. Der Pool kann 5000 Fragen groß sein, und die Lösungsquoten dürfen nicht im Browser landen. Geplant ist eine neue Lehrkräfte-Route für den Vorschlag mit drei Aufgaben: erstellen/neu würfeln, Alternativen zum Tauschen liefern und die Lösungsquoten mitgeben. **Keine neue Tabelle.** Eine kleine Datenbank-Erweiterung ist wahrscheinlich nur nötig, falls die vorhandene Quoten-Funktion nicht für beliebige Fragen-Listen (statt nur Bereichs-Pool) taugt. Das klärt `/backend` anhand des Codes.
+
+### C) Wie der Vorschlag ausgewählt wird (regelbasiert, ohne KI)
+1. Zulässigen Pool bilden (gleiche Regel wie beim Speichern), dann nach Fach, Thema und Klassenstufe filtern.
+2. Ausschlüsse anwenden: gesperrte Fragen, offene Meldungen, in den letzten N eigenen Nachweisen verwendete Fragen sowie bereits fixierte oder schon gewählte Fragen.
+3. Jede Frage nach Lösungsquote einer Stufe zuordnen.
+4. Die Wunschverteilung in Stückzahlen umrechnen. Rundungsreste gehen an die mittlere Stufe.
+5. Pro Stufe zufällig ziehen, dabei möglichst gleichmäßig über die gewählten Themen verteilen und Fast-Dubletten (gleicher Textanfang im selben Thema) meiden.
+6. Gibt es zu wenig Fragen, wird so viel wie möglich vorgeschlagen und der Fehlbetrag benannt. Es wird nie mit unpassenden Fragen aufgefüllt.
+7. „Neu würfeln" meidet die zuvor vorgeschlagenen Fragen, solange Alternativen da sind. „Tauschen" nimmt Fragen gleichen Themas und gleicher Stufe.
+
+### D) Technische Entscheidungen (und warum)
+- **Auswahl auf dem Server:** schnell (Ziel unter 1 Sekunde) und die Quoten verlassen die Lehrkräfte-Seite nicht.
+- **Keine neue Tabelle, kein Speichern des Vorschlags:** weniger Fehlerquellen. Der Nachweis bleibt die einzige Quelle der Wahrheit, und die bestehende Prüfung beim Speichern fängt alles Unzulässige ab.
+- **Vorhandene Quoten-Funktion wiederverwenden:** dieselben Zählregeln wie bei „Was fällt allen schwer?", also keine zweite, abweichende Definition von „schwer".
+- **Rein regelbasiert:** keine KI-Kosten, vorhersehbares Verhalten, leicht zu erklären.
+- **Vorschau vor dem Übernehmen:** die Lehrkraft behält die Kontrolle, bereits gewählte Fragen bleiben auf Wunsch erhalten.
+- **Tauschen und Fixieren nur im Dialog:** der Editor bleibt unverändert, sodass bestehende Abläufe nicht gestört werden.
+
+### E) Abhängigkeit und Hinweis
+- PROJ-74 ist laut Memory pausiert, die Quoten-Funktion existiert aber im Code (Migration 20261113). **Vor dem Bauen prüfen:** Ist diese Migration in Produktion eingespielt? Falls nicht, muss sie für PROJ-78 live gehen, sonst gelten alle Fragen als „mittel".
+- Bis genug Antworten gesammelt sind, werden viele Fragen als „mittel" eingestuft. Der Hinweis im Ergebnis macht das für die Lehrkraft sichtbar.
+
+### F) Pakete
+Keine neuen Pakete nötig. Das Ziehen der Vorschläge nutzt, was der Editor bereits hat. Falls dort noch kein Ziehen existiert, reicht ein einfaches Hoch/Runter statt Drag-and-drop (Entscheidung bei `/frontend`).
 
 ## QA Test Results
 _To be added by /qa_
