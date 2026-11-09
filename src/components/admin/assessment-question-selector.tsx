@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { FileUp, Plus } from 'lucide-react'
+import { FileUp, Plus, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -19,6 +19,7 @@ import { QuestionPicker, type PickerQuestion } from './question-picker'
 import { AssessmentImportDialog } from './assessment-import-dialog'
 import { EditQuestionDialog, type EditableQuestion } from './edit-question-dialog'
 import { CreateQuestionDialog } from './create-question-dialog'
+import { AssessmentSuggestDialog } from './assessment-suggest-dialog'
 
 interface Props {
   /** Zielbereich des Nachweises — die Fragenauswahl zeigt dessen Pool + eigene private Fragen (PROJ-46) */
@@ -40,6 +41,7 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
   const [failed, setFailed] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [suggestOpen, setSuggestOpen] = useState(false)
   const [editing, setEditing] = useState<(EditableQuestion & { editable: boolean }) | null>(null)
   const [deleting, setDeleting] = useState<PickerQuestion | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
@@ -88,6 +90,11 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
     const next = new Set(selectedIds)
     imported.forEach((q) => next.add(q.id))
     onChange(next)
+  }
+
+  /** PROJ-78: Vorschlag übernehmen — ergänzt die Auswahl oder ersetzt sie */
+  function handleSuggestionApplied(ids: string[], mode: 'add' | 'replace') {
+    onChange(mode === 'add' ? new Set([...selectedIds, ...ids]) : new Set(ids))
   }
 
   function handleCreated(created: PickerQuestion) {
@@ -153,6 +160,16 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
           type="button"
           variant="outline"
           size="sm"
+          onClick={() => setSuggestOpen(true)}
+          className="min-h-11 rounded-xl border-ws-line text-ws-text hover:text-ws-text"
+        >
+          <Sparkles size={14} className="mr-1.5" />
+          Vorschlag erstellen
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
           onClick={() => setCreateOpen(true)}
           className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
         >
@@ -170,6 +187,15 @@ export function AssessmentQuestionSelector({ departmentId, selectedIds, onChange
           Fragen aus Aufgabenblatt erzeugen
         </Button>
       </div>
+      <AssessmentSuggestDialog
+        open={suggestOpen}
+        onOpenChange={setSuggestOpen}
+        departmentId={departmentId}
+        questions={questions}
+        selectedIds={selectedIds}
+        onApply={handleSuggestionApplied}
+        onOpenImport={() => setImportOpen(true)}
+      />
       <AssessmentImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
