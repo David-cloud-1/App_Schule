@@ -15,6 +15,7 @@ import { finalizeOverdueAttempts } from '@/lib/assessment-submit'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { fetchUsedClassNames } from '@/lib/assessment-category'
 import { findUnavailableIds } from '@/lib/assessment-copy'
+import { buildGroupOrders, newMixSeed, type MixQuestion } from '@/lib/assessment-groups'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
@@ -30,6 +31,8 @@ const EditSchema = z.object({
   })).length(6).optional(),
   focusTracking: z.boolean().optional(),
   focusAutoSubmitAfter: z.number().int().nullable().optional(),
+  groupsEnabled: z.boolean().optional(),
+  remixGroups: z.boolean().optional(),
 })
 
 async function loadAssessment(supabase: Awaited<ReturnType<typeof requireTeacherOrAdmin>>['supabase'], id: string) {
@@ -112,6 +115,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     gradingScale: assessment.grading_scale,
     focusTracking: assessment.focus_tracking ?? false,
     focusAutoSubmitAfter: assessment.focus_auto_submit_after ?? null,
+    groupsEnabled: assessment.groups_enabled ?? false,
     resultsReleasedAt: assessment.results_released_at,
     schoolYear: assessment.school_year as string,
     className: assessment.class_name ?? null,
@@ -202,6 +206,32 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // future (e.g. the create-dialog default of now + 5 min) would
       // otherwise keep reporting "noch nicht freigegeben" to students.
       const update: Record<string, unknown> = { status: 'open', question_ids_snapshot: frozenSnapshot }
+      // PROJ-76: Reihenfolge je Gruppe jetzt fest berechnen und mit dem Snapshot einfrieren
+      if (assessment.groups_enabled) {
+        const mix: MixQuestion[] = []
+        for (let i = 0; i < frozenSnapshot.length; i += 100) {
+          const { data, error: mixError } = await supabase
+            .from('questions')
+            .select('id, answer_options(id, option_text, display_order)')
+            .in('id', frozenSnapshot.slice(i, i + 100))
+          if (mixError) {
+            console.error('[PATCH /api/admin/assessments/[id]] open groups', mixError)
+            return NextResponse.json({ error: 'Gruppen konnten nicht vorbereitet werden. Bitte erneut versuchen.' }, { status: 500 })
+          }
+          for (const row of data ?? []) {
+            mix.push({
+              id: row.id as string,
+              options: ((row.answer_options ?? []) as { id: string; option_text: string; display_order: number }[]).map((o) => ({
+                id: o.id, text: o.option_text, order: o.display_order,
+              })),
+            })
+          }
+        }
+        const byId = new Map(mix.map((m) => [m.id, m]))
+        const ordered = frozenSnapshot.map((qid) => byId.get(qid)).filter((m): m is MixQuestion => !!m)
+        update.group_orders = buildGroupOrders(ordered, (assessment.group_mix_seed as number | null) ?? newMixSeed())
+        update.group_join_counter = 0
+      }
       if (new Date(assessment.opens_at).getTime() > Date.now()) {
         update.opens_at = new Date().toISOString()
       }
@@ -333,6 +363,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
     update.draft_question_ids = check.ids
     update.part = check.part
+  }
+  if (patch.groupsEnabled !== undefined) {
+    update.groups_enabled = patch.groupsEnabled
+    update.group_mix_seed = patch.groupsEnabled ? (assessment.group_mix_seed ?? newMixSeed()) : null
+  }
+  if (patch.remixGroups) {
+    if (!(patch.groupsEnabled ?? assessment.groups_enabled)) {
+      return NextResponse.json({ error: 'Gruppen sind nicht aktiv.' }, { status: 400 })
+    }
+    update.group_mix_seed = newMixSeed()
   }
   if (patch.title !== undefined) update.title = patch.title
   if (patch.opensAt !== undefined) update.opens_at = patch.opensAt

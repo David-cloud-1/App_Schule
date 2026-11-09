@@ -57,6 +57,9 @@ import { listHref } from '@/lib/assessment-list-memory'
 import { AssessmentCategoryCard } from '@/components/admin/assessment-category-card'
 import { EditAssessmentQuestionsDialog } from '@/components/admin/edit-assessment-questions-dialog'
 import { ChangeAssessmentDepartmentDialog } from '@/components/admin/change-assessment-department-dialog'
+import { AssessmentGroupsCard } from '@/components/admin/assessment-groups-card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { groupDistribution } from '@/lib/assessment-groups'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
@@ -104,6 +107,7 @@ type AssessmentDetail = {
   unavailableQuestionIds?: string[]
   /** Entwurfs-Fragenliste (nur im Status Entwurf) */
   draftQuestionIds?: string[]
+  groupsEnabled?: boolean
   live: { joined: number; inProgress: number; submitted: number }
 }
 
@@ -118,6 +122,8 @@ type Participant = {
   submittedAt: string | null
   excluded: boolean
   status: 'in_progress' | 'completed'
+  /** PROJ-76 */
+  group?: 'A' | 'B' | null
   /** PROJ-30: null, wenn der Nachweis das Verlassen nicht protokolliert */
   focus: ParticipantFocus | null
 }
@@ -244,6 +250,26 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       toast.error('Netzwerkfehler')
     } finally {
       setActionPending(false)
+    }
+  }
+
+  async function changeGroup(sessionId: string, group: 'A' | 'B') {
+    try {
+      const res = await fetch(`/api/admin/assessments/${id}/participants/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ group }),
+      })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: string } | null
+        toast.error(err?.error ?? 'Gruppe konnte nicht geändert werden')
+        return
+      }
+      toast.success(`Gruppe ${group}`)
+      load()
+    } catch (err) {
+      console.error(err)
+      toast.error('Netzwerkfehler')
     }
   }
 
@@ -384,6 +410,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                         Alle Einzelauswertungen drucken
                       </Link>
                     </DropdownMenuItem>
+                    {detail.groupsEnabled && (
+                      <DropdownMenuItem asChild className={menuItemClass}>
+                        <Link href={`/admin/leistungsnachweise/${id}/druck/loesung`}>
+                          <Printer className="text-ws-muted" />
+                          Lösungsschlüssel drucken
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator className="bg-ws-line" />
                     <DropdownMenuItem asChild className={menuItemClass}>
                       <a href={`/api/admin/assessments/${id}/export`} download>
@@ -507,6 +541,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <AssessmentCopyReview assessmentId={id} onChanged={() => void load()} />
       )}
 
+      {/* PROJ-76: Gruppen A/B */}
+      <AssessmentGroupsCard
+        key={`${detail.status}-${detail.groupsEnabled}`}
+        assessmentId={id}
+        status={detail.status}
+        groupsEnabled={Boolean(detail.groupsEnabled)}
+        onChanged={load}
+      />
+
       {/* PROJ-30: Fokus-Verlust-Protokoll — im Entwurf einstellbar, danach nur als Hinweis */}
       {detail.status === 'draft' ? (
         <div className="bg-ws-surface border border-ws-line rounded-2xl p-4">
@@ -546,6 +589,12 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </TabsList>
 
         <TabsContent value="participants" className="mt-4">
+          {detail.groupsEnabled && (results?.participants.length ?? 0) > 0 && (
+            <p className="mb-2 text-xs text-ws-muted">
+              Verteilung: Gruppe A {groupDistribution((results?.participants ?? []).map((p) => p.group)).A} · Gruppe B{' '}
+              {groupDistribution((results?.participants ?? []).map((p) => p.group)).B}
+            </p>
+          )}
           {showFocus && conspicuousCount > 0 && (
             <div role="status" className="mb-3 flex items-start gap-3 rounded-2xl border border-ws-orange/30 bg-ws-orange/5 p-4">
               <AlertTriangle size={18} className="text-ws-orange flex-shrink-0 mt-0.5" aria-hidden="true" />
@@ -562,6 +611,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               <TableHeader>
                 <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
                   <TableHead className="text-ws-muted">Name</TableHead>
+                  {detail.groupsEnabled && <TableHead className="text-ws-muted">Gruppe</TableHead>}
                   <TableHead className="text-ws-muted">Punkte</TableHead>
                   <TableHead className="text-ws-muted">%</TableHead>
                   <TableHead className="text-ws-muted">Note</TableHead>
@@ -575,7 +625,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               <TableBody>
                 {!results || results.participants.length === 0 ? (
                   <TableRow className="border-ws-line">
-                    <TableCell colSpan={showFocus ? 9 : 8} className="text-center text-ws-muted py-10 flex flex-col items-center gap-2">
+                    <TableCell colSpan={(showFocus ? 9 : 8) + (detail.groupsEnabled ? 1 : 0)} className="text-center text-ws-muted py-10 flex flex-col items-center gap-2">
                       <Users size={28} className="text-ws-raised" />
                       Noch niemand beigetreten.
                     </TableCell>
@@ -585,6 +635,23 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                     <Fragment key={p.sessionId}>
                     <TableRow className={cn('border-ws-line', p.excluded && 'opacity-50')}>
                       <TableCell className="text-ws-text font-medium">{p.name}</TableCell>
+                      {detail.groupsEnabled && (
+                        <TableCell>
+                          {p.status === 'in_progress' ? (
+                            <Select value={p.group ?? undefined} onValueChange={(v) => void changeGroup(p.sessionId, v as 'A' | 'B')}>
+                              <SelectTrigger className="w-24 rounded-xl border-ws-line bg-ws-bg text-ws-text" aria-label={`Gruppe von ${p.name}`}>
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
+                                <SelectItem value="A">Gruppe A</SelectItem>
+                                <SelectItem value="B">Gruppe B</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-ws-text font-semibold">{p.group ?? '—'}</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="text-ws-text">{p.points}/{p.totalPoints}</TableCell>
                       <TableCell className="text-ws-text">{p.percent}%</TableCell>
                       <TableCell className="text-ws-text font-bold">{p.grade ?? '—'}</TableCell>
@@ -622,7 +689,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                     </TableRow>
                     {showFocus && expandedFocus === p.sessionId && (
                       <TableRow className="border-ws-line bg-ws-bg/60 hover:bg-ws-bg/60">
-                        <TableCell colSpan={9} className="py-3">
+                        <TableCell colSpan={detail.groupsEnabled ? 10 : 9} className="py-3">
                           <FocusDetailPanel assessmentId={id} sessionId={p.sessionId} />
                         </TableCell>
                       </TableRow>

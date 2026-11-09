@@ -30,6 +30,8 @@ interface Props {
   initialAnswers: Record<string, string>
   /** Titel des Leistungsnachweises (PROJ-21) — nur gesetzt, wenn diese Session zu einem benoteten Nachweis gehört. */
   assessmentTitle?: string | null
+  /** PROJ-76: Gruppe A/B, nur bei Nachweisen mit Gruppen */
+  assessmentGroup?: 'A' | 'B' | null
   /** PROJ-30: Verlassen der Prüfung wird protokolliert (nur Leistungsnachweise). */
   focusTracking?: boolean
   /** PROJ-30: Automatische Abgabe ab dieser Zahl zählender Wechsel; null = keine. */
@@ -45,6 +47,7 @@ export function ExamSessionClient({
   partsSelected,
   initialAnswers,
   assessmentTitle,
+  assessmentGroup = null,
   focusTracking = false,
   focusAutoSubmitAfter = null,
   initialFocusCount = 0,
@@ -259,6 +262,11 @@ export function ExamSessionClient({
               <span className="truncate">
                 {assessmentTitle ?? partsSelected.map((p) => partLabel(p)).join(' → ')}
               </span>
+              {assessmentGroup && (
+                <span className="flex-shrink-0 rounded-full border border-[#FF9600]/40 px-2 py-0.5 text-[#FF9600] font-semibold">
+                  Gruppe {assessmentGroup}
+                </span>
+              )}
             </span>
             {saveState !== 'idle' && (
               <span className="text-xs text-[#6B7280] flex items-center gap-1">

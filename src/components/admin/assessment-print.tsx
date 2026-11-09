@@ -121,6 +121,7 @@ export function StudentReportSheet({
         <div>
           <p className="text-xs text-gray-600">Name</p>
           <p className="text-xl font-semibold">{report.name}</p>
+          {report.group && <p className="text-sm text-gray-700">Gruppe {report.group}</p>}
         </div>
         {report.excluded ? (
           <p className="border border-gray-500 rounded px-3 py-2 text-sm font-semibold">Von der Wertung ausgeschlossen</p>

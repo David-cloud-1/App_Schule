@@ -1,3 +1,4 @@
+import { newMixSeed } from '@/lib/assessment-groups'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin, writeAuditLog } from '../../../_lib/auth'
@@ -121,6 +122,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         closes_at: window.closesAt,
         grading_scale: original.grading_scale,
         shuffle: original.shuffle,
+        // PROJ-76: Einstellung übernehmen, Reihenfolge neu mischen
+        groups_enabled: original.groups_enabled ?? false,
+        group_mix_seed: original.groups_enabled ? newMixSeed() : null,
         focus_tracking: original.focus_tracking ?? false,
         focus_auto_submit_after: original.focus_auto_submit_after ?? null,
         ...category.columns,

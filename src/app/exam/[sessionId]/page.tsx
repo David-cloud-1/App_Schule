@@ -109,6 +109,7 @@ export default async function ExamSessionPage({
       partsSelected={parts}
       initialAnswers={initialAnswers}
       assessmentTitle={resultsJson?.assessment?.title ?? null}
+      assessmentGroup={(session.group_label as 'A' | 'B' | null) ?? null}
       focusTracking={focusTracking}
       focusAutoSubmitAfter={focusAutoSubmitAfter}
       initialFocusCount={initialFocusCount}

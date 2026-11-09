@@ -9,7 +9,7 @@ import { requireTeacherOrAdmin } from '../../_lib/auth'
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `q${i}`)
 
-function setup(draftIds: string[], questionsImpl: (chunk: string[]) => { data?: unknown; error?: unknown }) {
+function setup(draftIds: string[], questionsImpl: (chunk: string[]) => { data?: unknown; error?: unknown }, extra: Record<string, unknown> = {}) {
   const inCalls: string[][] = []
   const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
   const supabase = {
@@ -22,7 +22,7 @@ function setup(draftIds: string[], questionsImpl: (chunk: string[]) => { data?: 
             data: {
               id: 'a1', status: 'draft', title: 'LN', part: 1, department_id: 'dept',
               opens_at: new Date(Date.now() - 1000).toISOString(),
-              draft_question_ids: draftIds, exam_question_sets: null,
+              draft_question_ids: draftIds, exam_question_sets: null, ...extra,
             },
           }),
           update,
@@ -89,5 +89,36 @@ describe('PATCH /api/admin/assessments/[id] – open', () => {
     const res = await open()
     expect((await res.json()).removedCount).toBe(1)
     expect(update).toHaveBeenCalledWith(expect.objectContaining({ question_ids_snapshot: ids(8).slice(1) }))
+  })
+})
+
+describe('PATCH /api/admin/assessments/[id] – open mit Gruppen (PROJ-76)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('friert die Reihenfolge beider Gruppen beim Öffnen ein und setzt den Zähler zurück', async () => {
+    const all = ids(6)
+    const { update } = setup(
+      all,
+      (chunk) => ({
+        data: chunk.map((id) => ({
+          id, type: 'multiple_choice', is_active: true,
+          answer_options: [1, 2, 3].map((n) => ({ id: `${id}-o${n}`, option_text: `Option ${n}`, display_order: n })),
+        })),
+      }),
+      { groups_enabled: true, group_mix_seed: 123 },
+    )
+    const res = await open()
+    expect(res.status).toBe(200)
+    const payload = update.mock.calls[0][0] as { group_orders: { A: { questionOrder: string[] }; B: { questionOrder: string[] } }; group_join_counter: number }
+    expect(payload.group_orders.A.questionOrder).toEqual(all)
+    expect([...payload.group_orders.B.questionOrder].sort()).toEqual([...all].sort())
+    expect(payload.group_orders.B.questionOrder).not.toEqual(all)
+    expect(payload.group_join_counter).toBe(0)
+  })
+
+  it('ohne Gruppen entsteht keine gespeicherte Reihenfolge', async () => {
+    const { update } = setup(ids(6), (chunk) => ({ data: chunk.map((id) => ({ id, type: 'multiple_choice', is_active: true })) }))
+    await open()
+    expect(update.mock.calls[0][0]).not.toHaveProperty('group_orders')
   })
 })

@@ -130,6 +130,8 @@ export type SessionRow = {
   ended_at: string | null
   status: string
   excluded_from_grading: boolean
+  /** PROJ-76: Gruppe A/B; fehlt bzw. null bei Nachweisen ohne Gruppen */
+  group_label?: 'A' | 'B' | null
   results_json: { parts?: Record<string, { questions: SnapshotQuestion[] }> } | null
 }
 
@@ -144,6 +146,7 @@ export type ParticipantRow = {
   submittedAt: string | null
   excluded: boolean
   status: 'in_progress' | 'completed'
+  group?: 'A' | 'B' | null
 }
 
 /** Shared by the admin results and CSV-export routes so scoring logic lives in one place. */
@@ -174,6 +177,7 @@ export function buildParticipantRows(
       submittedAt: s.ended_at,
       excluded: s.excluded_from_grading,
       status: s.status === 'in_progress' ? 'in_progress' : 'completed',
+      group: s.group_label ?? null,
     }
   })
 }
@@ -312,6 +316,8 @@ export type StudentReport = {
   name: string
   submittedAt: string | null
   excluded: boolean
+  /** PROJ-76 */
+  group?: 'A' | 'B' | null
   points: number | null
   totalPoints: number | null
   percent: number | null
@@ -344,6 +350,7 @@ export function buildStudentReports(
         name: p.name,
         submittedAt: p.submittedAt,
         excluded: true,
+        group: row.group_label ?? null,
         points: null,
         totalPoints: null,
         percent: null,
@@ -372,6 +379,7 @@ export function buildStudentReports(
       name: p.name,
       submittedAt: p.submittedAt,
       excluded: false,
+      group: row.group_label ?? null,
       points: p.points,
       totalPoints: p.totalPoints,
       percent: p.percent,

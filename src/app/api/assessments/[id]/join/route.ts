@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { effectiveAssessmentStatus, normalizeAccessCode, shuffle } from '@/lib/graded-assessments'
 import { getDepartmentOfUser } from '@/lib/departments-server'
+import { applyGroupOrder, groupForSlot, isGroupOrders, type GroupLabel } from '@/lib/assessment-groups'
 
 const Schema = z.object({
   code: z.string().min(1).max(20),
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const service = createServiceClient()
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('id, title, access_code, part, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, department_id')
+    .select('id, title, access_code, part, duration_minutes, status, opens_at, closes_at, question_ids_snapshot, department_id, groups_enabled, group_orders')
     .eq('id', id)
     .maybeSingle()
 
@@ -86,12 +87,34 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // Fix a per-participant question and answer-option order at join time —
   // it stays stable across reconnects because it's baked into the stored
   // snapshot, not recomputed on every load.
-  const shuffledQuestions = shuffle(questionRows).map((q) => ({
+  // PROJ-76: Mit Gruppen kommt die feste Reihenfolge der Gruppe (abwechselnd A, B, A, B),
+  // ohne Gruppen mischt jeder Teilnehmer einzeln wie bisher.
+  let group: GroupLabel | null = null
+  let orderedRows: typeof questionRows
+  if (assessment.groups_enabled) {
+    if (!isGroupOrders(assessment.group_orders)) {
+      return NextResponse.json({ error: 'Beitritt fehlgeschlagen.' }, { status: 500 })
+    }
+    const { data: slot, error: slotError } = await service.rpc('next_assessment_group_slot', {
+      p_assessment_id: assessment.id,
+    })
+    if (slotError || typeof slot !== 'number') {
+      console.error('[POST /api/assessments/[id]/join] slot', slotError)
+      return NextResponse.json({ error: 'Beitritt fehlgeschlagen.' }, { status: 500 })
+    }
+    group = groupForSlot(slot)
+    orderedRows = applyGroupOrder(questionRows, assessment.group_orders[group])
+  } else {
+    orderedRows = shuffle(questionRows).map((q) => ({
+      ...q,
+      answer_options: shuffle(q.answer_options ?? []).map((opt, idx) => ({ ...opt, display_order: idx + 1 })),
+    }))
+  }
+  const shuffledQuestions = orderedRows.map((q) => ({
     ...q,
     part: assessment.part,
     explanation: null,
     sample_answer: null,
-    answer_options: shuffle(q.answer_options ?? []).map((opt, idx) => ({ ...opt, display_order: idx + 1 })),
   }))
 
   const { data: session, error } = await supabase
@@ -102,6 +125,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       started_at: new Date().toISOString(),
       status: 'in_progress',
       assessment_id: assessment.id,
+      group_label: group,
       participant_name: parsed.data.participantName,
       results_json: {
         durationMinutes: assessment.duration_minutes,

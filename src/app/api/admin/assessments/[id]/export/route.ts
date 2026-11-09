@@ -29,7 +29,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const service = createServiceClient()
   const { data: sessions } = await service
     .from('exam_sessions')
-    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
+    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading, group_label')
     .eq('assessment_id', id)
     .order('participant_name', { ascending: true })
 
@@ -44,11 +44,12 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   )
   const participants = buildParticipantRows(rows, assessment.part, assessment.grading_scale as GradeBoundary[])
 
-  const header = ['Name', 'Punkte', 'Von', 'Prozent', 'Note', 'Dauer (Min.)', 'Abgegeben', 'Zaehlt in Wertung']
+  const header = ['Name', 'Gruppe', 'Punkte', 'Von', 'Prozent', 'Note', 'Dauer (Min.)', 'Abgegeben', 'Zaehlt in Wertung']
   const lines = [header.join(';')]
   for (const p of participants) {
     lines.push([
       csvEscape(p.name),
+      p.group ?? '',
       p.points != null ? String(p.points) : '',
       p.totalPoints != null ? String(p.totalPoints) : '',
       p.percent != null ? String(p.percent) : '',
