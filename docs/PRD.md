@@ -108,10 +108,10 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-76: Leistungsnachweis – Gruppen A/B | Planned |
 | P2 | PROJ-77: Notenschlüssel-Vorlagen & Notenlisten-Export | Deployed |
 | P1 | PROJ-78: Nachweis in zwei Klicks – Vorschlag nach Thema, Anzahl & Schwierigkeit | Deployed |
-| P2 | PROJ-79: Nachweis duplizieren & schwache Fragen ersetzen | Approved |
+| P2 | PROJ-79: Nachweis duplizieren & schwache Fragen ersetzen | Planned |
 | P2 | PROJ-80: Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned |
 | P1 | PROJ-81: Aufgabenliste für Lehrkräfte auf der Startseite | Deployed |
-| P1 | PROJ-82: Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Approved |
+| P1 | PROJ-82: Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

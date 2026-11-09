@@ -1,6 +1,6 @@
 # PROJ-82: Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-09
 **Last Updated:** 2026-11-09
 
@@ -184,4 +184,5 @@ Keine neuen Pakete. Vorhanden sind Dialog, AlertDialog, Tabs, Textarea, ScrollAr
 
 
 ## Deployment
-_To be added by /deploy_
+- **2026-11-09:** Migration `20261115_proj82_meldung_entfaellt` im SQL-Editor eingespielt, Probe bestanden (T1–T5 wie erwartet), danach lesend geprüft (Funktion erweitert, `anon` ohne Zugriff). Push von `0e8f741` auf `main`, Vercel-Production Ready, neue und geänderte Routen ohne Login 401, keine Fehler in den Produktions-Logs.
+- **Noch offen:** einmal eingeloggt auf Handy und Laptop durchklicken (Prüf-Dialog, Speichern & abschließen, Weiter zur nächsten Meldung). Im Browser wurde das nicht geprüft.
