@@ -1,6 +1,6 @@
 # PROJ-76: Leistungsnachweis – Gruppen A/B
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-07
 **Last Updated:** 2026-11-09
 
@@ -143,4 +143,6 @@ Selbstprüfung (Code und Tests, kein Browser, siehe Regel „kein Dev-Server“)
 - Offen für manuelle Prüfung am Gerät: Druck des Lösungsschlüssels, Gruppenwechsel in der Liste.
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-09: Migration `20261116_proj76_nachweis_gruppen.sql` im SQL-Editor eingespielt, Probe bestanden (Ohne Gruppen NULL, Positionen 0,1,2, Zähler 3).
+- Push `f30a0a6` auf `main`, Vercel-Production Ready nach 1 Min.
+- Offen: Klick-Prüfung am Gerät (zwei Konten beitreten, Lösungsschlüssel drucken).
