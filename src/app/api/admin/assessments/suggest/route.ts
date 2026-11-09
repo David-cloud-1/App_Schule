@@ -105,20 +105,26 @@ export async function POST(request: NextRequest) {
 
     const byId = new Map(all.map((q) => [q.id, q]))
     const fixed = [...new Set(body.keepIds)].map((id) => byId.get(id)).filter((q): q is Candidate => !!q)
+    // Ohne Lösungsquoten ist jede Frage „mittel“: dann nicht nach leicht/schwer suchen
+    const mix = statsAvailable ? body.mix : { leicht: 0, mittel: 100, schwer: 0 }
     const result = buildSuggestion(pool, {
       count: body.count,
-      mix: body.mix,
+      mix,
       fixed,
       preferNot: new Set(body.preferNotIds),
       random: Math.random,
     })
     const emptyTopics = body.topics.filter((t) => !pool.some((q) => q.topic === t))
+    // Wie viele passende Fragen nur wegen „aus meinen letzten Nachweisen“ fehlen
+    const hiddenByRecent =
+      result.shortages.length > 0 && recent.size > 0 ? applyFilters(all, body, new Set()).length - pool.length : 0
     return NextResponse.json({
       items: result.items,
       summary: summarize(result.items),
       shortages: result.shortages,
       emptyTopics,
       poolSize: pool.length,
+      hiddenByRecent,
       statsAvailable,
     })
   } catch (err) {

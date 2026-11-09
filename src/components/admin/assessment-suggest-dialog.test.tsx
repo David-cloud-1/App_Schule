@@ -92,7 +92,7 @@ describe('AssessmentSuggestDialog', () => {
       departmentId: 'd1',
       count: 20,
       mix: { leicht: 30, mittel: 50, schwer: 20 },
-      exclude: { blocked: true, reported: true, recent: 3 },
+      exclude: { blocked: true, reported: true, recent: 0 },
       keepIds: [],
       alreadyChosenIds: [],
     })
@@ -167,9 +167,24 @@ describe('AssessmentSuggestDialog', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /Vorschlag erstellen/ }))
     await screen.findByText('Frage a')
-    expect(screen.getByText(/Zu wenige schwere Fragen: es fehlen 3/)).toBeInTheDocument()
+    expect(screen.getByText(/nicht genug passende Fragen: es fehlen 3 \(3 schwere\)/)).toBeInTheDocument()
     expect(screen.getByText(/Zum Thema „Thema 9“ gibt es keine passenden Fragen/)).toBeInTheDocument()
     expect(screen.getByText(/1 Frage hat noch zu wenige Antworten/)).toBeInTheDocument()
+  })
+
+  it('fasst Fehlbeträge ohne Lösungsquoten zusammen und nennt Fragen aus den letzten Nachweisen', async () => {
+    renderDialog()
+    answer(
+      result([cand('a', 'mittel', { rated: false, rate: null, attempts: 0 })], {
+        shortages: [{ level: 'mittel', missing: 3 }],
+        statsAvailable: false,
+        hiddenByRecent: 16,
+      }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Vorschlag erstellen/ }))
+    await screen.findByText('Frage a')
+    expect(screen.getByText('Es gibt nicht genug passende Fragen: es fehlen 3.')).toBeInTheDocument()
+    expect(screen.getByText(/16 passende Fragen stehen in deinen letzten Nachweisen/)).toBeInTheDocument()
   })
 
   it('zeigt bei leerem Ergebnis den Leerzustand mit Link zum Import', async () => {

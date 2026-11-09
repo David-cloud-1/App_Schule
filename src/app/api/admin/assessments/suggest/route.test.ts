@@ -188,6 +188,14 @@ describe('POST /api/admin/assessments/suggest', () => {
     expect(body.items).toHaveLength(2)
   })
 
+  it('sucht ohne Auswertung nur „mittel“ und meldet keine Fehlbeträge für leicht/schwer', async () => {
+    vi.mocked(fetchSelectableQuestions).mockResolvedValue([q(1), q(2)] as never)
+    rpcResult({ data: null, error: { message: 'timeout' } })
+    const body = await (await post({ ...baseBody, count: 5, mix: { leicht: 30, mittel: 50, schwer: 20 } })).json()
+    expect(body.items).toHaveLength(2)
+    expect(body.shortages).toEqual([{ level: 'mittel', missing: 3 }])
+  })
+
   it('holt die Lösungsquoten seitenweise, damit nichts bei 1000 Zeilen abgeschnitten wird', async () => {
     vi.mocked(fetchSelectableQuestions).mockResolvedValue([q(1), q(1500)] as never)
     const page1 = Array.from({ length: 1000 }, (_, i) => stat(i + 2, 40, 24))

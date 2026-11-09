@@ -45,11 +45,23 @@ const PRESET_LABEL: Record<PresetKey, string> = {
 }
 const PLURAL: Record<Level, string> = { leicht: 'leichte', mittel: 'mittlere', schwer: 'schwere' }
 
+/** Ein Satz für alle Fehlmengen statt einer Zeile pro Stufe */
+export function shortageText(shortages: Shortage[], statsAvailable: boolean): string {
+  const total = shortages.reduce((n, s) => n + s.missing, 0)
+  const head = `Es gibt nicht genug passende Fragen: ${total === 1 ? 'es fehlt 1' : `es fehlen ${total}`}`
+  // Ohne Lösungsquoten ist alles „mittel“ – eine Aufteilung nach Stufen wäre irreführend
+  if (!statsAvailable) return `${head}.`
+  const parts = shortages.map((s) => `${s.missing} ${PLURAL[s.level]}`)
+  return `${head} (${parts.join(', ')}). Ändere den Mix oder die Filter, wenn du mehr haben möchtest.`
+}
+
 interface Result {
   items: Candidate[]
   shortages: Shortage[]
   emptyTopics: string[]
   poolSize: number
+  /** passende Fragen, die nur wegen „aus meinen letzten Nachweisen“ fehlen */
+  hiddenByRecent?: number
   statsAvailable: boolean
 }
 
@@ -137,7 +149,7 @@ export function AssessmentSuggestDialog({ open, onOpenChange, departmentId, ques
   const [custom, setCustom] = useState<Mix>({ ...MIX_PRESETS.ausgewogen })
   const [exBlocked, setExBlocked] = useState(true)
   const [exReported, setExReported] = useState(true)
-  const [recent, setRecent] = useState<'0' | '1' | '3' | '5'>('3')
+  const [recent, setRecent] = useState<'0' | '1' | '3' | '5'>('0')
   const [addMode, setAddMode] = useState(selectedIds.size > 0)
 
   // --- Vorschlag ---
@@ -226,6 +238,7 @@ export function AssessmentSuggestDialog({ open, onOpenChange, departmentId, ques
         shortages: data.shortages,
         emptyTopics: data.emptyTopics,
         poolSize: data.poolSize,
+        hiddenByRecent: data.hiddenByRecent ?? 0,
         statsAvailable: data.statsAvailable,
       })
       setLocked(new Set([...keep].filter((id) => (data.items as Candidate[]).some((q) => q.id === id))))
@@ -474,11 +487,14 @@ export function AssessmentSuggestDialog({ open, onOpenChange, departmentId, ques
 
             {(result.shortages.length > 0 || result.emptyTopics.length > 0 || summary.unrated > 0 || !result.statsAvailable) && (
               <ul className="space-y-1 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm text-ws-orange" aria-label="Hinweise">
-                {result.shortages.map((s) => (
-                  <li key={s.level}>
-                    Zu wenige {PLURAL[s.level]} Fragen: es {s.missing === 1 ? 'fehlt' : 'fehlen'} {s.missing}. Ändere den Mix, wenn du mehr haben möchtest.
+                {result.shortages.length > 0 && (
+                  <li>{shortageText(result.shortages, result.statsAvailable)}</li>
+                )}
+                {result.shortages.length > 0 && (result.hiddenByRecent ?? 0) > 0 && (
+                  <li>
+                    {`${result.hiddenByRecent} passende ${result.hiddenByRecent === 1 ? 'Frage steht' : 'Fragen stehen'} in deinen letzten Nachweisen. Stelle unter „Angaben ändern“ bei „Fragen aus meinen letzten Nachweisen“ um, wenn du sie zulassen möchtest.`}
                   </li>
-                ))}
+                )}
                 {result.emptyTopics.map((t) => <li key={t}>Zum Thema „{t}“ gibt es keine passenden Fragen.</li>)}
                 {!result.statsAvailable && <li>Die Lösungsquoten sind gerade nicht verfügbar – alle Fragen gelten als mittel.</li>}
                 {result.statsAvailable && summary.unrated > 0 && (

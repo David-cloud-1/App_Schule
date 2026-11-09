@@ -24,7 +24,7 @@ Statt Fragen einzeln zusammenzusuchen, gibt die Lehrkraft Thema, Anzahl und Schw
 - [ ] Im Zusammenstell-Editor gibt es „Vorschlag erstellen“ mit: Fach (Mehrfachauswahl), Thema (Mehrfachauswahl, optional), Klassenstufe, Anzahl Fragen (Zahl, 5–60) und Schwierigkeitsmix.
 - [ ] Schwierigkeitsmix: Voreinstellungen „ausgewogen“ (30 % leicht, 50 % mittel, 20 % schwer), „eher leicht“, „eher schwer“ und „eigene Verteilung“ mit drei Reglern, deren Summe 100 % ergibt.
 - [ ] Schwierigkeit je Frage aus der Lösungsquote im freien Üben: leicht ≥ 75 %, mittel 40–74 %, schwer < 40 %. Fragen mit zu wenigen Antworten (< 20) zählen als „mittel“; ein Hinweis nennt, wie viele Fragen im Vorschlag so eingestuft wurden.
-- [ ] Ausschluss-Optionen (alle standardmäßig an): gesperrte Fragen (PROJ-75), Fragen mit offener Meldung (PROJ-73), Fragen, die ich in den letzten N Nachweisen verwendet habe (N wählbar: 1, 3, 5, nie).
+- [ ] Ausschluss-Optionen (gesperrte Fragen und offene Meldungen standardmäßig an, „letzte Nachweise“ standardmäßig aus, damit bewusst Fragen wiederverwendet werden können): gesperrte Fragen (PROJ-75), Fragen mit offener Meldung (PROJ-73), Fragen, die ich in den letzten N Nachweisen verwendet habe (N wählbar: 1, 3, 5, nie).
 - [ ] Nur Fragen, die für Nachweise zulässig sind (aktiv, im richtigen Fachbereich, bei Bedarf „nur für Nachweise“ eingeschlossen).
 
 ### Ergebnis
