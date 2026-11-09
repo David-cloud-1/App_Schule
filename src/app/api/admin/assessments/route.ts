@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('graded_assessments')
     .select(
-      'id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, department_id, created_by, exam_question_sets(name), subjects(name, code), departments(name, code)'
+      'id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, department_id, created_by, copied_from_title, exam_question_sets(name), subjects(name, code), departments(name, code)'
     )
     .order('created_at', { ascending: false })
   if (departmentId) query = query.eq('department_id', departmentId)
@@ -138,6 +138,7 @@ export async function GET(request: NextRequest) {
       participantCount: counts[a.id]?.participantCount ?? 0,
       submittedCount: counts[a.id]?.submittedCount ?? 0,
       createdAt: a.created_at,
+      copiedFromTitle: (a.copied_from_title as string | null) ?? null,
       schoolYear: a.school_year as string,
       className: (a.class_name as string | null) ?? null,
       subjectId: (a.subject_id as string | null) ?? null,

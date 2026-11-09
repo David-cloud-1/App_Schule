@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { GraduationCap, Plus, Ruler } from 'lucide-react'
+import { CopyPlus, GraduationCap, MoreHorizontal, Plus, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { DuplicateAssessmentDialog } from '@/components/admin/duplicate-assessment-dialog'
 import {
   Table,
   TableBody,
@@ -47,6 +54,8 @@ type AssessmentListItem = {
   participantCount: number
   submittedCount: number
   createdAt: string
+  /** PROJ-79: Titel des Originals, wenn der Nachweis eine Kopie ist */
+  copiedFromTitle?: string | null
   /** PROJ-39: Ablage */
   schoolYear: string
   className: string | null
@@ -102,6 +111,7 @@ function AssessmentsPageContent() {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [duplicating, setDuplicating] = useState<{ id: string; title: string } | null>(null)
   const [preselectedSetId, setPreselectedSetId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -182,7 +192,7 @@ function AssessmentsPageContent() {
 
   // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
   const showEmpty = !failed && !loading && assessments.length === 0
-  const columnCount = 6 + (isSuperAdmin ? 1 : 0)
+  const columnCount = 7 + (isSuperAdmin ? 1 : 0)
 
   return (
     <div className="space-y-6">
@@ -259,6 +269,7 @@ function AssessmentsPageContent() {
                 <TableHead className="text-ws-muted">Code</TableHead>
                 <TableHead className="text-ws-muted">Teilnehmer</TableHead>
                 <TableHead className="text-ws-muted">Erstellt</TableHead>
+                <TableHead className="w-12"><span className="sr-only">Aktionen</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -272,6 +283,7 @@ function AssessmentsPageContent() {
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-6" /></TableCell>
                   </TableRow>
                 ))
               ) : visible.length === 0 ? (
@@ -310,6 +322,11 @@ function AssessmentsPageContent() {
                       <Link href={`/admin/leistungsnachweise/${a.id}`} className="hover:underline">
                         {a.title}
                       </Link>
+                      {a.copiedFromTitle && (
+                        <div className="mt-0.5 max-w-xs truncate text-xs font-normal text-ws-muted" title={`Kopie von ${a.copiedFromTitle}`}>
+                          Kopie von {a.copiedFromTitle}
+                        </div>
+                      )}
                       {(a.className || a.subjectName) && (
                         <div className="mt-1 flex flex-wrap gap-1.5">
                           {a.className && (
@@ -344,6 +361,29 @@ function AssessmentsPageContent() {
                     <TableCell className="text-ws-muted text-sm">
                       {new Date(a.createdAt).toLocaleDateString('de-DE')}
                     </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Aktionen für ${a.title}`}
+                            className="size-11 rounded-xl text-ws-muted hover:text-ws-text"
+                          >
+                            <MoreHorizontal className="size-5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl border-ws-line bg-ws-surface text-ws-text">
+                          <DropdownMenuItem
+                            onSelect={() => setDuplicating({ id: a.id, title: a.title })}
+                            className="min-h-11 cursor-pointer gap-2 focus:bg-ws-raised focus:text-ws-text"
+                          >
+                            <CopyPlus className="text-ws-muted" />
+                            Duplizieren
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -352,6 +392,13 @@ function AssessmentsPageContent() {
         </div>
       )}
 
+      <DuplicateAssessmentDialog
+        open={duplicating !== null}
+        onOpenChange={(o) => !o && setDuplicating(null)}
+        assessmentId={duplicating?.id ?? ''}
+        assessmentTitle={duplicating?.title ?? ''}
+        onDuplicated={(newId) => router.push(`/admin/leistungsnachweise/${newId}`)}
+      />
       <CreateAssessmentModal
         open={createOpen}
         onOpenChange={setCreateOpen}

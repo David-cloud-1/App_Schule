@@ -11,6 +11,7 @@ import {
   Building2,
   ChevronDown,
   Copy,
+  CopyPlus,
   Download,
   ListChecks,
   Loader2,
@@ -62,6 +63,8 @@ import { cn } from '@/lib/utils'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { AssessmentItemAnalysis } from '@/components/admin/assessment-item-analysis'
+import { AssessmentCopyReview } from '@/components/admin/assessment-copy-review'
+import { DuplicateAssessmentDialog } from '@/components/admin/duplicate-assessment-dialog'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
 
@@ -95,6 +98,10 @@ type AssessmentDetail = {
   /** Auswahl für die Ablage, aus dem Bereich des Nachweises */
   categoryOptions: { subjects: { id: string; name: string; code: string }[]; classes: string[] }
   questionCount: number
+  /** PROJ-79: Herkunft einer Kopie; unavailable = Fragen, die im Zielbereich nicht mehr zulässig sind */
+  copiedFromId?: string | null
+  copiedFromTitle?: string | null
+  unavailableQuestionIds?: string[]
   /** Entwurfs-Fragenliste (nur im Status Entwurf) */
   draftQuestionIds?: string[]
   live: { joined: number; inProgress: number; submitted: number }
@@ -164,6 +171,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const [actionPending, setActionPending] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
   const [expandedFocus, setExpandedFocus] = useState<string | null>(null)
 
@@ -306,7 +314,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 <>
                   <Button
                     onClick={() => runAction('open')}
-                    disabled={actionPending}
+                    disabled={actionPending || (detail.unavailableQuestionIds?.length ?? 0) > 0}
+                    title={(detail.unavailableQuestionIds?.length ?? 0) > 0 ? 'Erst nicht mehr verfügbare Fragen ersetzen oder entfernen' : undefined}
                     className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                   >
                     <Unlock size={14} className="mr-1.5" />
@@ -393,6 +402,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
+              <Button
+                variant="outline"
+                onClick={() => setDuplicateOpen(true)}
+                disabled={actionPending}
+                className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+              >
+                <CopyPlus size={14} className="mr-1.5" />
+                Duplizieren
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => setConfirmDelete(true)}
@@ -483,6 +501,11 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         classSuggestions={detail.categoryOptions?.classes ?? []}
         onSaved={load}
       />
+
+      {/* PROJ-79: Prüfkarte für den Entwurf einer Kopie */}
+      {detail.status === 'draft' && detail.copiedFromTitle != null && (
+        <AssessmentCopyReview assessmentId={id} onChanged={() => void load()} />
+      )}
 
       {/* PROJ-30: Fokus-Verlust-Protokoll — im Entwurf einstellbar, danach nur als Hinweis */}
       {detail.status === 'draft' ? (
@@ -664,7 +687,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             onOpenChange={setEditQuestionsOpen}
             assessmentId={detail.id}
             departmentId={detail.departmentId}
-            initialQuestionIds={detail.draftQuestionIds ?? []}
+            initialQuestionIds={(detail.draftQuestionIds ?? []).filter((qid) => !(detail.unavailableQuestionIds ?? []).includes(qid))}
             onSaved={load}
           />
           <ChangeAssessmentDepartmentDialog
@@ -721,6 +744,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <DuplicateAssessmentDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        assessmentId={detail.id}
+        assessmentTitle={detail.title}
+        onDuplicated={(newId) => router.push(`/admin/leistungsnachweise/${newId}`)}
+      />
       <NotenlisteExportDialog assessmentId={id} open={exportOpen} onOpenChange={setExportOpen} />
     </div>
   )

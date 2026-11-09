@@ -14,6 +14,7 @@ import { fetchAnswerKey } from '@/lib/answer-key'
 import { finalizeOverdueAttempts } from '@/lib/assessment-submit'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { fetchUsedClassNames } from '@/lib/assessment-category'
+import { findUnavailableIds } from '@/lib/assessment-copy'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
 
@@ -78,9 +79,24 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .eq('id', assessment.department_id)
     .maybeSingle()
 
+  // PROJ-79: Entwurf einer Kopie — welche Fragen sind nicht mehr verfügbar (Platzhalter)?
+  const draftIds: string[] = assessment.status === 'draft' ? (assessment.draft_question_ids ?? set?.question_ids ?? []) : []
+  const isCopy = assessment.copied_from_title !== null && assessment.copied_from_title !== undefined
+  let unavailableQuestionIds: string[] = []
+  if (isCopy && draftIds.length > 0) {
+    try {
+      unavailableQuestionIds = await findUnavailableIds(supabase, assessment.department_id, draftIds, assessment.created_by)
+    } catch (err) {
+      console.error('[GET /api/admin/assessments/[id]] unavailable', err)
+    }
+  }
+
   return NextResponse.json({
     id: assessment.id,
     title: assessment.title,
+    copiedFromId: assessment.copied_from_id ?? null,
+    copiedFromTitle: assessment.copied_from_title ?? null,
+    unavailableQuestionIds: isCopy ? unavailableQuestionIds : undefined,
     examSetId: assessment.exam_set_id,
     examSetName: set?.name ?? null,
     departmentId: assessment.department_id,
@@ -158,6 +174,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return NextResponse.json({
           error: `Die Auswahl enthält inzwischen ${openCount} offene Fragen. Benotete Leistungsnachweise unterstützen nur Multiple-Choice-Fragen.`,
         }, { status: 400 })
+      }
+      // PROJ-79: Eine Kopie mit Platzhaltern („Frage nicht mehr verfügbar“) startet nicht
+      if (assessment.copied_from_title !== null && assessment.copied_from_title !== undefined) {
+        let missing: string[]
+        try {
+          missing = await findUnavailableIds(supabase, assessment.department_id, snapshot, assessment.created_by)
+        } catch (err) {
+          console.error('[PATCH /api/admin/assessments/[id]] open copy', err)
+          return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden. Bitte erneut versuchen.' }, { status: 500 })
+        }
+        if (missing.length > 0) {
+          return NextResponse.json({
+            error: `Der Entwurf enthält noch ${missing.length} Frage${missing.length === 1 ? '' : 'n'}, die nicht mehr verfügbar ${missing.length === 1 ? 'ist' : 'sind'}. Bitte zuerst ersetzen oder entfernen.`,
+          }, { status: 400 })
+        }
       }
       if (activeMc.length < 5) {
         return NextResponse.json({
