@@ -100,3 +100,7 @@ _To be added by /qa_
 - 2026-11-10: Migration `20261111_proj75_aufgabenanalyse.sql` im SQL-Editor eingespielt, Probe bestanden (7 von 7 Zeilen wie erwartet; Version der Frage wird bei der Sperre angehoben). Lesend geprüft: beide Spalten vorhanden, keine Probe-Reste.
 - Push von `a5f398a` auf `main`, Vercel-Production Ready nach 2m. Neue und geänderte Routen ohne Login: 401, keine Fehler in den Production-Logs.
 - **Nicht im Browser geprüft:** Reiter „Fragenanalyse“ mit Ampel, Aus-der-Wertung-nehmen mit Neuberechnung der Noten, Sperre mit Warn-Chip in der Fragenauswahl. Bitte an einem echten Nachweis mit Abgaben einmal durchklicken.
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Code):** gleichzeitiges Ausnehmen verschiedener Fragen überschreibt sich nicht mehr, sondern meldet 409 (B6); gelöschte Fragen ohne Sperr-Knopf und „alle richtig“ statt 0,00 (B9); Fehler beim Antwortschlüssel als verständliche Meldung (B10).
+- **Offen (niedrig):** „Nach Position“ nimmt die Reihenfolge der ersten Abgabe (B7); Prüfung „mindestens eine Frage zählt“ bei hart gelöschten Fragen (B8).

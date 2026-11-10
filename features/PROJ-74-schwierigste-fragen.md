@@ -131,3 +131,9 @@ Selbstprüfung 2026-11-08: Rechenlogik, Route und Komponente getestet (2627 Test
 
 ## Deployment
 2026-11-08: Migration vom Nutzer im SQL-Editor eingespielt (erster Versuch landete nicht im richtigen Projekt, zweiter wirkte), Push 064d888, Vercel Ready, API ohne Login 401, Seite leitet auf Login um, keine Fehler in den Logs.
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Browser-Fund):** Seite und Schnittstelle waren für Lehrkräfte gesperrt.
+- **Behoben (Code):** kein Zeitstempel einzelner Antworten mehr an den Browser, unter 5 Antworten keine gewählte Option (B2, Datenschutz).
+- **Behoben per Migration [20261118_qa_proj72_78_fixes.sql](../supabase/migrations/20261118_qa_proj72_78_fixes.sql) (Probe: [qa_proj72_78_probe.sql](../supabase/tests/qa_proj72_78_probe.sql)):** „seit … geändert“ zählt nur echte Inhaltsänderungen (B3); häufigste falsche Antwort nur aus Optionen der Frage (B4).
+- **Offen:** Doppelzählung bei Fragen mit mehreren Fächern (B1) – in Produktion gibt es keine solche Frage; Spalte „Fragen“ zeigt nur Fragen mit Antworten (B5); Laufzeit wächst mit den Antworten (aktuell 11.116).

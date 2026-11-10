@@ -173,3 +173,7 @@ Keine kritischen oder hohen Fehler offen → **Approved**.
 - Keine Datenbank-Migration nötig; die Funktion `question_difficulty_stats` (PROJ-74) lief schon in Produktion.
 - Prüfung nach dem Deploy: `POST /api/admin/assessments/suggest` ohne Login → 401.
 - Noch offen: Klick-Test eingeloggt (Anlegen-Dialog → Fragen → „Vorschlag erstellen"), dabei besonders prüfen, ob die Lösungsquoten ankommen (Hinweis „Lösungsquoten nicht verfügbar" darf nicht erscheinen).
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Code):** Fragen mit offener Meldung werden auch ohne Antworten in der Statistik ausgeschlossen (BUG-2).
+- **Offen:** Antwortzeit bei >5.000 Fragen nicht gemessen; Randfall Rundung 74,5 % = „leicht“.

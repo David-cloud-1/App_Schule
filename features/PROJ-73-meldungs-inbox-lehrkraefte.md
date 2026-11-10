@@ -116,3 +116,9 @@ _To be added by /qa_
 - 2026-11-10: Migration `20261110_proj72_73_fragen_meldungen.sql` von Hand im SQL-Editor eingespielt, Probe `proj72_73_meldungen_probe.sql` bestanden (26 von 26 Zeilen wie erwartet). Danach lesend geprüft: Tabelle, Ansicht, 4 Funktionen, RLS an, `anon` ohne Zugriff, keine Probe-Reste.
 - Push von `5ee19eb` auf `main`, Vercel-Production Ready nach 1m. Routen ohne Login: API 401, `/admin/gemeldete-fragen` 307 auf den Login, keine Fehler in den Production-Logs.
 - **Nicht im Browser geprüft** (kein Dev-Server erlaubt): Melde-Sheet im Quiz, Inbox-Oberfläche, Rückmeldungskarte. Bitte einmal als Azubi melden und als Lehrkraft abschließen.
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Browser-Fund, kritisch für Lehrkräfte):** Seite und Schnittstellen waren für Lehrkräfte im Proxy gesperrt (af8be52, d81f966).
+- **Behoben (Code):** Inbox folgt der Bereichsleiste, eigener Bereichsfilter entfällt (B1); gekappte Liste (>100) schließt alle offenen Meldungen (PROJ-82 B10).
+- **Behoben per Migration [20261118_qa_proj72_78_fixes.sql](../supabase/migrations/20261118_qa_proj72_78_fixes.sql) (Probe: [qa_proj72_78_probe.sql](../supabase/tests/qa_proj72_78_probe.sql)):** eine Zeile je offener Frage statt zwei (B2); „korrigiert“ mit Belohnung nur nach echter Änderung, Verweis auf genau diese (B3); Wochenlimit unter Sperre (B7).
+- **Offen:** Sammel-Schließen nicht atomar (B8, niedrig); Filter Fach/Thema nur in der Schnittstelle; Münzverlauf-Eintrag fehlt (keine Tabelle); Abschluss nicht im Änderungsverlauf.

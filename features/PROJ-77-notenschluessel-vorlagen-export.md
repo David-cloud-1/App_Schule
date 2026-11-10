@@ -153,3 +153,8 @@ Keine neuen Pakete. Neu: eine Datenbank-Migration (Tabelle mit Zugriffsregeln, p
 
 ## Deployment
 Live seit 2026-11-07 (Commit 1e3a0a1). Migration `20261112_proj77_notenschluessel_vorlagen.sql` vorab von Hand im SQL-Editor angewendet, Probe grün. Routen ohne Login: 401.
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Code):** Spalte „Gruppe“ im Export (BUG-1).
+- **Ohne Befund:** Formel-Injection abgefangen, Semikolon/BOM korrekt, Export nur mit Zugriff.
+- **Entscheidung nötig:** Super-Admin sieht private Vorlagen anderer (BUG-4, weicht vom Tech Design ab); Prozent wird vor der Notenzuordnung gerundet (91,67 % → 92 % → Note 1, BUG-5).

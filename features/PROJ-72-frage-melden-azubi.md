@@ -111,3 +111,8 @@ _To be added by /qa_
 - 2026-11-10: Migration `20261110_proj72_73_fragen_meldungen.sql` von Hand im SQL-Editor eingespielt, Probe `proj72_73_meldungen_probe.sql` bestanden (26 von 26 Zeilen wie erwartet). Danach lesend geprüft: Tabelle, Ansicht, 4 Funktionen, RLS an, `anon` ohne Zugriff, keine Probe-Reste.
 - Push von `5ee19eb` auf `main`, Vercel-Production Ready nach 1m. Routen ohne Login: API 401, `/admin/gemeldete-fragen` 307 auf den Login, keine Fehler in den Production-Logs.
 - **Nicht im Browser geprüft** (kein Dev-Server erlaubt): Melde-Sheet im Quiz, Inbox-Oberfläche, Rückmeldungskarte. Bitte einmal als Azubi melden und als Lehrkraft abschließen.
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Code):** Melde-Knopf zeigt „Gemeldet“ nur bei „schon gemeldet“, nicht bei laufender Prüfung (B9).
+- **Behoben per Migration [20261118_qa_proj72_78_fixes.sql](../supabase/migrations/20261118_qa_proj72_78_fixes.sql) (Probe: [qa_proj72_78_probe.sql](../supabase/tests/qa_proj72_78_probe.sql)):** Lehrer-Rollen können nicht mehr melden (B5); Tageslimit hält auch bei parallelen Anfragen (B6).
+- **Offen (Spec-Abweichungen, Entscheidung nötig):** Melden in der Ergebnisansicht der Prüfung fehlt; deaktivierte Frage zeigt nicht „nicht mehr verfügbar“; Hinweis „schon gemeldet“ erst nach dem Absenden.

@@ -146,3 +146,8 @@ Selbstprüfung (Code und Tests, kein Browser, siehe Regel „kein Dev-Server“)
 - 2026-11-09: Migration `20261116_proj76_nachweis_gruppen.sql` im SQL-Editor eingespielt, Probe bestanden (Ohne Gruppen NULL, Positionen 0,1,2, Zähler 3).
 - Push `f30a0a6` auf `main`, Vercel-Production Ready nach 1 Min.
 - Offen: Klick-Prüfung am Gerät (zwei Konten beitreten, Lösungsschlüssel drucken).
+
+## QA-Nachlauf (2026-11-10, Opus, Code-Review + Browser)
+- **Behoben (Code):** Spalte „Gruppe“ in der Notenliste (zusammen mit PROJ-77), nur angeboten bei Nachweisen mit Gruppen.
+- **Ohne Befund:** Antwortschlüssel bleibt auch mit Gruppen geschützt; Fremdzugriff gesperrt.
+- **Offen (niedrig):** Gruppenwechsel kann mit der ersten Antwort des Azubis zusammenfallen (BUG-3, nicht atomar).
