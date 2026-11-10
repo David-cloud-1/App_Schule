@@ -154,6 +154,14 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/schulrecht',
   // PROJ-63: Lehrerzimmer (jede Route prüft requireTeacherOrAdmin, die Datenbank die Rolle)
   '/api/admin/lehrerzimmer',
+  // PROJ-73/82: Meldungs-Inbox (requireTeacherOrAdmin bzw. requireContentAdmin)
+  '/api/admin/question-reports',
+  // PROJ-74: schwierigste Fragen (requireContentAdmin)
+  '/api/admin/schwierigste-fragen',
+  // PROJ-81: Aufgabenliste der Startseite (requireTeacherOrAdmin)
+  '/api/admin/tasks',
+  // PROJ-85: Inhalts-Baum (requireContentAdmin)
+  '/api/admin/content-tree',
 ]
 
 export function teacherMayCallApiPath(pathname: string): boolean {
