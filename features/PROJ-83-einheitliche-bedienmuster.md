@@ -1,6 +1,6 @@
 # PROJ-83: Einheitliche Bedienmuster im Lehrkräfte-Bereich
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 
@@ -136,4 +136,18 @@ Dieses Feature vereinheitlicht die Bedienmuster. Es ist die Grundlage für den s
 **Ergebnis:** Keine kritischen oder hohen Fehler. Freigegeben für den Deploy.
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-10** (https://spedilern.vercel.app, Commits `fee2e17`, `85e84c9`, `ebb27cb` auf `main`). Keine Migration, keine neuen Umgebungsvariablen.
+
+**Prüfung live (Chrome, nur lesend, als Super-Admin, Fensterbreite ca. 606 px):**
+- Fragen: Segmente für Status und Schwierigkeit, Zahl erscheint erst nach dem Laden („Wird geladen …“ → „3813 Fragen insgesamt“), Status-Label „Aktiv/Inaktiv“ sichtbar, Stift und `⋯` ohne Abschneiden.
+- Nachweise: Status als Segment. Nachweis-Detail: „Ergebnisse freigeben“ grün, Tabs unterstrichen.
+- Themen, Fächer, Prüfungssets: Stift plus `⋯`; Menü zeigt „Verlauf“ und rotes „Löschen“. Zeile „Stand bei Einführung“ ist weg.
+- Gemeldete Fragen, Papierkorb, Werkzeugkiste, Lehrerzimmer: einheitliche Tabs.
+- Vercel-Fehler-Logs (Production, 15 min): leer.
+
+**Beim Live-Test gefunden und behoben:** Die klebende Aktionsspalte der Fragenliste überdeckte auf dem Handy das Status-Label (Tabellen haben per CSS 40 rem Mindestbreite). Fix: Mindestbreite für diese Tabelle entfernt, Spalte „Fach“ unter 640 px ausgeblendet, Kleben entfernt.
+
+**Bewusst offen / Folgearbeit:**
+- Das Typ-Filter-Pillen im Lehrerzimmer (Alle / Tipp / Frage / Idee) und die Tabellen in Fächern und Nutzern (Aktionsspalte erst per Scroll sichtbar) folgen der Regel „bis 4 Werte = Segment“ noch nicht; sie waren nicht Teil der Kriterien.
+- Dunkler Modus, Bereichs-Admin und Lehrkraft nicht per Klick geprüft (nur Tokens und Tests).
+- Doppelte Bereichsanzeige, Nachweis-Detail (Ablage-Karte) und Inhalts-Baum sind für spätere Features vorgesehen.
