@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { AlertTriangle, FolderTree } from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
@@ -66,7 +66,6 @@ export default function InhaltePage() {
 }
 
 function InhaltePageContent() {
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -118,10 +117,12 @@ function InhaltePageContent() {
       }
       const qs = params.toString()
       const url = qs ? `${pathname}?${qs}` : pathname
-      if (mode === 'push') router.push(url, { scroll: false })
-      else router.replace(url, { scroll: false })
+      // Nur die Adresse ändern, ohne Server-Rundreise (Next.js gleicht useSearchParams ab).
+      // router.replace kostete im Browser je Klick ca. 0,5 s.
+      if (mode === 'push') window.history.pushState(null, '', url)
+      else window.history.replaceState(null, '', url)
     },
-    [router, pathname, searchParams],
+    [pathname, searchParams],
   )
 
   // Adresse zeigt auf etwas, das es nicht (mehr) gibt: still auf das nächste Vorhandene zurückfallen
@@ -173,7 +174,7 @@ function InhaltePageContent() {
   }
 
   function backToTree() {
-    if (pushedRef.current) router.back()
+    if (pushedRef.current) window.history.back()
     else navigate({ ansicht: null }, 'replace')
     pushedRef.current = false
   }
