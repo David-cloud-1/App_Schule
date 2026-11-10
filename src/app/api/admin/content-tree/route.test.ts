@@ -20,6 +20,7 @@ function makeSupabase(role: 'admin' | 'department_admin' | 'teacher' | 'student'
       if (table === 'topics') return { data: [{ id: 't1', name: 'Kosten', subject_id: 's1', version_number: 1 }] }
       if (table === 'questions') {
         return {
+          count: 2,
           data: [
             { topic_id: 't1', class_level: 10, question_subjects: [{ subject_id: 's1' }] },
             { topic_id: null, class_level: null, question_subjects: [{ subject_id: 's1' }] },
@@ -71,6 +72,31 @@ describe('GET /api/admin/content-tree (PROJ-85)', () => {
     await GET()
     const qa = admin.queries.find((x) => x.table === 'questions')!
     expect(hasCall(qa.calls, 'eq') && qa.calls.some((c) => c.args[0] === 'is_private')).toBe(false)
+  })
+
+  it('lädt alle Seiten der Fragen parallel anhand der Anzahl', async () => {
+    const mock = chainMock(
+      (table, calls) => {
+        if (table === 'profiles') return { data: { role: 'admin', department_id: 'dept-sped' } }
+        if (table === 'departments') return { data: [{ id: 'dept-sped' }] }
+        if (table === 'subjects') return { data: [{ id: 's1', name: 'KSK', code: 'KSK', is_active: true, department_id: 'dept-sped', version_number: 1, departments: dept }] }
+        if (table === 'topics') return { data: [] }
+        if (table === 'questions') {
+          if (calls.some((c) => c.method === 'select' && (c.args[1] as { head?: boolean } | undefined)?.head)) return { count: 2500 }
+          return { data: [{ topic_id: null, class_level: 10, question_subjects: [{ subject_id: 's1' }] }] }
+        }
+        return {}
+      },
+      { auth: { getUser: () => Promise.resolve({ data: { user: { id: 'u1' } } }) } },
+    )
+    vi.mocked(createClient).mockResolvedValue(mock.client as never)
+    const body = await (await GET()).json()
+    const ranges = mock.queries
+      .filter((q) => q.table === 'questions')
+      .map((q) => q.calls.find((c) => c.method === 'range')?.args)
+      .filter(Boolean)
+    expect(ranges).toEqual([[0, 999], [1000, 1999], [2000, 2999]])
+    expect(body.departments[0].subjects[0].counts.l10).toBe(3)
   })
 
   it('lässt gelöschte Fächer und Themen weg', async () => {

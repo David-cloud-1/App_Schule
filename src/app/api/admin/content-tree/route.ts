@@ -32,49 +32,71 @@ export async function GET() {
   }
   const subjectIds = new Set(((subjects ?? []) as { id: string }[]).map((s) => s.id))
 
-  // Themen seitenweise holen (die Schnittstelle liefert höchstens 1000 Zeilen je Anfrage)
-  const topics: unknown[] = []
-  if (subjectIds.size > 0) {
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const { data, error } = await supabase
-        .from('topics')
-        .select('id, name, subject_id, version_number')
-        .in('subject_id', Array.from(subjectIds))
-        .is('deleted_at', null)
-        .order('name')
-        .order('id')
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-      if (error) {
-        console.error('[GET /api/admin/content-tree] topics', error)
-        return NextResponse.json({ error: 'Failed to load content tree' }, { status: 500 })
-      }
-      for (const t of data ?? []) topics.push(t)
-      if (!data || data.length < PAGE_SIZE) break
-    }
+  const ids = Array.from(subjectIds)
+
+  // Themen und Fragen parallel holen. Die Schnittstelle liefert höchstens 1000
+  // Zeilen je Anfrage; die Seiten laufen gleichzeitig statt nacheinander
+  // (nacheinander: ca. 1,8 s bei 4.000 Fragen).
+  const topicsQuery = (from: number) =>
+    supabase
+      .from('topics')
+      .select('id, name, subject_id, version_number')
+      .in('subject_id', ids)
+      .is('deleted_at', null)
+      .order('name')
+      .order('id')
+      .range(from, from + PAGE_SIZE - 1)
+
+  // Private Nachweis-Fragen sieht nur der Super-Admin (PROJ-46), wie auf „Fragen“.
+  const questionsQuery = (select: string, head = false) => {
+    let query = supabase
+      .from('questions')
+      .select(select, head ? { count: 'exact', head: true } : undefined)
+      .is('deleted_at', null)
+    if (!isSuperAdmin) query = query.eq('is_private', false)
+    if (auth.scopeDepartmentIds) query = query.in('question_subjects.subject_id', ids)
+    return query
   }
 
-  // Fragen seitenweise zählen (PostgREST kappt bei 1000 Zeilen). Private
-  // Nachweis-Fragen sieht nur der Super-Admin (PROJ-46), wie auf „Fragen“.
-  const rows: TreeQuestionRow[] = []
-  if (subjectIds.size > 0) {
+  async function loadAllTopics(): Promise<unknown[]> {
+    const rows: unknown[] = []
     for (let page = 0; page < MAX_PAGES; page++) {
-      let query = supabase
-        .from('questions')
-        .select('topic_id, class_level, question_subjects!inner(subject_id)')
-        .is('deleted_at', null)
-        .order('id')
-        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-      if (!isSuperAdmin) query = query.eq('is_private', false)
-      if (auth.scopeDepartmentIds) {
-        query = query.in('question_subjects.subject_id', Array.from(subjectIds))
-      }
-      const { data, error } = await query
-      if (error) {
-        console.error('[GET /api/admin/content-tree] questions', error)
-        return NextResponse.json({ error: 'Failed to load content tree' }, { status: 500 })
-      }
-      for (const r of (data ?? []) as unknown as TreeQuestionRow[]) rows.push(r)
+      const { data, error } = await topicsQuery(page * PAGE_SIZE)
+      if (error) throw error
+      rows.push(...(data ?? []))
       if (!data || data.length < PAGE_SIZE) break
+    }
+    return rows
+  }
+
+  async function loadAllQuestions(): Promise<TreeQuestionRow[]> {
+    const select = 'topic_id, class_level, question_subjects!inner(subject_id)'
+    const { count, error } = await questionsQuery(select, true)
+    if (error) throw error
+    const pages = Math.min(MAX_PAGES, Math.ceil((count ?? 0) / PAGE_SIZE))
+    const results = await Promise.all(
+      Array.from({ length: pages }, (_, page) =>
+        questionsQuery(select)
+          .order('id')
+          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1),
+      ),
+    )
+    const rows: TreeQuestionRow[] = []
+    for (const { data, error: pageError } of results) {
+      if (pageError) throw pageError
+      rows.push(...((data ?? []) as unknown as TreeQuestionRow[]))
+    }
+    return rows
+  }
+
+  let topics: unknown[] = []
+  let rows: TreeQuestionRow[] = []
+  if (ids.length > 0) {
+    try {
+      ;[topics, rows] = await Promise.all([loadAllTopics(), loadAllQuestions()])
+    } catch (error) {
+      console.error('[GET /api/admin/content-tree] topics/questions', error)
+      return NextResponse.json({ error: 'Failed to load content tree' }, { status: 500 })
     }
   }
 
