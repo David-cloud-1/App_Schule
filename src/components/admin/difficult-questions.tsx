@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import {
@@ -179,12 +179,12 @@ export function DifficultQuestions() {
         />
       ) : (
         <>
-          <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-            <TabsList className="h-auto bg-ws-raised">
-              <TabsTrigger value="themen" className="min-h-11">Themen</TabsTrigger>
-              <TabsTrigger value="fragen" className="min-h-11">Fragen</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <AdminTabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+            <AdminTabsList>
+              <AdminTabsTrigger value="themen">Themen</AdminTabsTrigger>
+              <AdminTabsTrigger value="fragen">Fragen</AdminTabsTrigger>
+            </AdminTabsList>
+          </AdminTabs>
 
           {tab === 'themen' ? (
             <TopicsTable ranked={topics.ranked} tooFew={topics.tooFew} minAttempts={minAttempts} onOpen={openTopic} />

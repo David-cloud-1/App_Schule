@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   DropdownMenu,
@@ -382,7 +382,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 <Button
                   onClick={() => setConfirmRelease(true)}
                   disabled={actionPending || activeParticipants.length === 0}
-                  className="rounded-xl bg-ws-blue hover:bg-ws-blue-hover text-ws-on-accent"
+                  className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                 >
                   <PlayCircle size={14} className="mr-1.5" />
                   Ergebnisse freigeben
@@ -575,20 +575,20 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* Auswertung */}
-      <Tabs defaultValue="participants">
-        <TabsList className="bg-ws-surface border border-ws-line">
-          <TabsTrigger value="participants" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
+      <AdminTabs defaultValue="participants">
+        <AdminTabsList>
+          <AdminTabsTrigger value="participants">
             Teilnehmer
-          </TabsTrigger>
-          <TabsTrigger value="grades" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
+          </AdminTabsTrigger>
+          <AdminTabsTrigger value="grades">
             Notenspiegel
-          </TabsTrigger>
-          <TabsTrigger value="questions" className="data-[state=active]:bg-ws-raised data-[state=active]:text-ws-text text-ws-muted">
+          </AdminTabsTrigger>
+          <AdminTabsTrigger value="questions">
             Fragenanalyse
-          </TabsTrigger>
-        </TabsList>
+          </AdminTabsTrigger>
+        </AdminTabsList>
 
-        <TabsContent value="participants" className="mt-4">
+        <AdminTabsContent value="participants" className="mt-4">
           {detail.groupsEnabled && (results?.participants.length ?? 0) > 0 && (
             <p className="mb-2 text-xs text-ws-muted">
               Verteilung: Gruppe A {groupDistribution((results?.participants ?? []).map((p) => p.group)).A} · Gruppe B{' '}
@@ -700,9 +700,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </TableBody>
             </Table>
           </div>
-        </TabsContent>
+        </AdminTabsContent>
 
-        <TabsContent value="grades" className="mt-4">
+        <AdminTabsContent value="grades" className="mt-4">
           <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 space-y-4">
             {!results || activeParticipants.length === 0 ? (
               <p className="text-center text-ws-muted py-8">Noch keine gewerteten Teilnahmen.</p>
@@ -740,12 +740,12 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </>
             )}
           </div>
-        </TabsContent>
+        </AdminTabsContent>
 
-        <TabsContent value="questions" className="mt-4">
+        <AdminTabsContent value="questions" className="mt-4">
           <AssessmentItemAnalysis assessmentId={id} onChanged={() => void load()} />
-        </TabsContent>
-      </Tabs>
+        </AdminTabsContent>
+      </AdminTabs>
 
       {detail.status === 'draft' && (
         <>

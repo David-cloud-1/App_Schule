@@ -17,10 +17,10 @@ describe('AssessmentFilterBar', () => {
     const filters = defaultFilters('2026/27')
     render(<AssessmentFilterBar {...baseProps} filters={filters} onChange={onChange} />)
 
-    expect(screen.getByRole('button', { name: 'Alle' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Offen' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: 'Alle' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: 'Offen' })).toHaveAttribute('aria-checked', 'false')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Offen' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Offen' }))
     expect(onChange).toHaveBeenCalledWith({ ...filters, status: 'open' })
   })
 

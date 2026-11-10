@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
@@ -175,14 +175,14 @@ export function LehrerzimmerOverview() {
       />
 
       {isModerator && (
-        <Tabs value={view} onValueChange={(v) => setParams({ ansicht: v === 'reports' ? 'gemeldet' : null })}>
-          <TabsList className="h-11 bg-ws-raised">
-            <TabsTrigger value="all" className="min-h-9">Alle Beiträge</TabsTrigger>
-            <TabsTrigger value="reports" className="min-h-9">
+        <AdminTabs value={view} onValueChange={(v) => setParams({ ansicht: v === 'reports' ? 'gemeldet' : null })}>
+          <AdminTabsList>
+            <AdminTabsTrigger value="all">Alle Beiträge</AdminTabsTrigger>
+            <AdminTabsTrigger value="reports">
               Gemeldet{reportsLabel > 0 ? ` (${reportsLabel})` : ''}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+            </AdminTabsTrigger>
+          </AdminTabsList>
+        </AdminTabs>
       )}
 
       {view === 'reports' ? (

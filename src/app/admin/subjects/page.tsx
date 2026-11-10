@@ -27,6 +27,7 @@ import {
 } from '@/components/admin/subject-form-modal'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
 import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
 
@@ -108,7 +109,9 @@ export default function AdminSubjectsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Fächer"
-        description={<>{subjects.length} {subjects.length === 1 ? 'Fach' : 'Fächer'}</>}
+        description={
+          loading && subjects.length === 0 ? 'Wird geladen …' : <>{subjects.length} {subjects.length === 1 ? 'Fach' : 'Fächer'}</>
+        }
         actions={
           showEmpty ? undefined : (
             <Button
@@ -229,26 +232,23 @@ export default function AdminSubjectsPage() {
                         </TooltipProvider>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setHistoryTarget(s)}
-                          title="Verlauf"
-                          aria-label="Verlauf"
-                        >
-                          <History className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Fach bearbeiten"
-                          onClick={() => {
+                        <AdminRowActions
+                          subject={`Fach ${s.name}`}
+                          editLabel="Fach bearbeiten"
+                          editIcon={<Edit className="size-4" />}
+                          onEdit={() => {
                             setEditing({ id: s.id, name: s.name, code: s.code, version_number: s.version_number })
                             setFormOpen(true)
                           }}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
+                          items={[
+                            {
+                              key: 'history',
+                              label: 'Verlauf',
+                              icon: <History className="text-ws-muted" />,
+                              onSelect: () => setHistoryTarget(s),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   )

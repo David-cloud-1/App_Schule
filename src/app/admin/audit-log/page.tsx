@@ -43,7 +43,7 @@ import {
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { ContentChangesPanel } from '@/components/admin/content-changes-panel'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 
 type AuditEntry = {
   id: string
@@ -406,21 +406,21 @@ export default function AdminAuditLogPage() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Änderungsprotokoll" description={`${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
+      <AdminPageHeader title="Änderungsprotokoll" description={loading && total === 0 ? 'Wird geladen …' : `${total} ${total === 1 ? 'Eintrag' : 'Einträge'}`} />
 
       {isSuperAdmin ? (
-        <Tabs defaultValue="verwaltung">
-          <TabsList className="bg-ws-raised">
-            <TabsTrigger value="verwaltung">Verwaltung</TabsTrigger>
-            <TabsTrigger value="inhalte">Inhalte &amp; Personen</TabsTrigger>
-          </TabsList>
-          <TabsContent value="inhalte" className="mt-4">
+        <AdminTabs defaultValue="verwaltung">
+          <AdminTabsList>
+            <AdminTabsTrigger value="verwaltung">Verwaltung</AdminTabsTrigger>
+            <AdminTabsTrigger value="inhalte">Inhalte &amp; Personen</AdminTabsTrigger>
+          </AdminTabsList>
+          <AdminTabsContent value="inhalte" className="mt-4">
             <ContentChangesPanel />
-          </TabsContent>
-          <TabsContent value="verwaltung" className="mt-4 space-y-6">
+          </AdminTabsContent>
+          <AdminTabsContent value="verwaltung" className="mt-4 space-y-6">
             {auditLogBody}
-          </TabsContent>
-        </Tabs>
+          </AdminTabsContent>
+        </AdminTabs>
       ) : (
         auditLogBody
       )}

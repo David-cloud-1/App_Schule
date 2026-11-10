@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { History, Loader2, Pencil, Plus, Search, Tag, Trash2, X, Check, AlertTriangle } from 'lucide-react'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -355,36 +356,27 @@ function TopicsPageContent() {
                             <span className="text-sm text-ws-text">{topic.name}</span>
                             <LastChangedLine by={topic.last_changed_by} at={topic.last_changed_at} />
                           </span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setHistoryTarget(topic)}
-                            className="text-ws-muted hover:text-ws-text h-7 w-7 p-0"
-                            title="Verlauf"
-                          >
-                            <History className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => startEdit(topic)}
-                            className="text-ws-muted hover:text-ws-text h-7 w-7 p-0"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setDeleteTarget(topic)}
-                            disabled={deletingId === topic.id}
-                            className="text-ws-muted hover:text-ws-red h-7 w-7 p-0"
-                          >
-                            {deletingId === topic.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-3.5 h-3.5" />
-                            )}
-                          </Button>
+                          <AdminRowActions
+                            subject={`Thema ${topic.name}`}
+                            editIcon={<Pencil className="size-4" />}
+                            onEdit={() => startEdit(topic)}
+                            items={[
+                              {
+                                key: 'history',
+                                label: 'Verlauf',
+                                icon: <History className="text-ws-muted" />,
+                                onSelect: () => setHistoryTarget(topic),
+                              },
+                              {
+                                key: 'delete',
+                                label: 'Löschen',
+                                icon: <Trash2 />,
+                                destructive: true,
+                                disabled: deletingId === topic.id,
+                                onSelect: () => setDeleteTarget(topic),
+                              },
+                            ]}
+                          />
                         </>
                       )}
                     </li>

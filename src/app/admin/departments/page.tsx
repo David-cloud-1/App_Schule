@@ -58,7 +58,9 @@ export default function AdminDepartmentsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Fachbereiche"
-        description={<>{departments.length} {departments.length === 1 ? 'Fachbereich' : 'Fachbereiche'}</>}
+        description={
+          loading && departments.length === 0 ? 'Wird geladen …' : <>{departments.length} {departments.length === 1 ? 'Fachbereich' : 'Fachbereiche'}</>
+        }
         actions={
           showEmpty ? undefined : (
             <Button

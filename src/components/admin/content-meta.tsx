@@ -28,8 +28,19 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('de-DE', { dateStyle: 'medium' })
 }
 
-/** „Zuletzt geändert von <Name> am <Datum>“ (PROJ-70, alle vier Inhaltstypen) */
+/**
+ * So heißt der Urheber der ersten Version, die bei der Einführung des Verlaufs
+ * (PROJ-47) für alle Bestandsinhalte angelegt wurde. Das ist keine echte Änderung.
+ */
+export const LEGACY_CHANGE_LABEL = 'Stand bei Einführung'
+
+/**
+ * „Zuletzt geändert von <Name> am <Datum>“ (PROJ-70, alle vier Inhaltstypen).
+ * Inhalte, die seit der Einführung des Verlaufs nicht angefasst wurden
+ * (PROJ-83), zeigen nichts: „von Stand bei Einführung“ ist Rauschen.
+ */
 export function LastChangedLine({ by, at }: { by?: string | null; at?: string | null }) {
+  if (by === LEGACY_CHANGE_LABEL) return null
   if (!by && !at) return null
   return (
     <span className="text-xs text-ws-faint">

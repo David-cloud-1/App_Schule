@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { MeineMaterialien } from '@/components/werkzeugkiste/meine-materialien'
 import { RegalReiter } from '@/components/werkzeugkiste/regal-reiter'
@@ -58,29 +58,28 @@ export function WerkzeugkisteSeite() {
         }
       />
 
-      <Tabs value={reiter} onValueChange={wechsle} className="space-y-6">
-        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-none border-b border-ws-line bg-transparent p-0">
+      <AdminTabs value={reiter} onValueChange={wechsle} className="space-y-6">
+        <AdminTabsList>
           {WERKZEUGKISTE_REITER.map((r) => (
-            <TabsTrigger
+            <AdminTabsTrigger
               key={r.id}
               value={r.id}
-              className="min-h-11 shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 text-ws-muted shadow-none data-[state=active]:border-ws-green data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-ws-text data-[state=active]:shadow-none"
             >
               {r.label}
-            </TabsTrigger>
+            </AdminTabsTrigger>
           ))}
-        </TabsList>
+        </AdminTabsList>
 
-        <TabsContent value="werkzeuge" className="mt-0">
+        <AdminTabsContent value="werkzeuge" className="mt-0">
           <WerkzeugUebersicht />
-        </TabsContent>
-        <TabsContent value="materialien" className="mt-0">
+        </AdminTabsContent>
+        <AdminTabsContent value="materialien" className="mt-0">
           <MeineMaterialien onLeer={setMaterialienLeer} />
-        </TabsContent>
-        <TabsContent value="regal" className="mt-0">
+        </AdminTabsContent>
+        <AdminTabsContent value="regal" className="mt-0">
           <RegalReiter />
-        </TabsContent>
-      </Tabs>
+        </AdminTabsContent>
+      </AdminTabs>
     </div>
   )
 }

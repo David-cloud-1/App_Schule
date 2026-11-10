@@ -112,6 +112,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-80: Nachteilsausgleich & Nachschreiber im Leistungsnachweis | Planned |
 | P1 | PROJ-81: Aufgabenliste für Lehrkräfte auf der Startseite | Deployed |
 | P1 | PROJ-82: Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Deployed |
+| P1 | PROJ-83: Einheitliche Bedienmuster im Lehrkräfte-Bereich | Approved |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

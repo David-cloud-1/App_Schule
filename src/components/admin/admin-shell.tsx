@@ -146,7 +146,8 @@ function AdminSidebar() {
         <AdminNav />
       </SidebarContent>
       <SidebarFooter className="gap-3 border-t border-ws-line">
-        <div className="rounded-xl bg-ws-raised p-3 text-sm text-ws-muted group-data-[collapsible=icon]:hidden">
+        {/* PROJ-83: Auf niedrigen Fenstern (< 760 px Höhe) entfällt die Karte, damit sie keine Menüeinträge verdeckt */}
+        <div className="rounded-xl bg-ws-raised p-3 text-sm text-ws-muted group-data-[collapsible=icon]:hidden [@media(max-height:760px)]:hidden">
           <p className="font-semibold text-ws-text">Du brauchst Hilfe?</p>
           <p>
             Frag das Kollegium im{' '}

@@ -421,7 +421,7 @@ export default function AdminUsersPage() {
     <div className={selectedVisible.length > 0 ? 'space-y-6 pb-28 sm:pb-0' : 'space-y-6'}>
       <AdminPageHeader
         title="Nutzer"
-        description={`${filtered.length} von ${users.length}`}
+        description={loading && users.length === 0 ? 'Wird geladen …' : `${filtered.length} von ${users.length}`}
         actions={
           isSuperAdmin ? (
             selectedVisible.length > 0 ? (

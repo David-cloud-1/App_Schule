@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, Trash2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,20 +136,20 @@ export default function TeacherAssignmentsPage() {
       )}
 
       {!loading && !loadFailed && assignments.length > 0 && (
-        <Tabs defaultValue="subject">
-          <TabsList className="bg-ws-raised">
-            <TabsTrigger value="subject">Nach Fach</TabsTrigger>
-            <TabsTrigger value="teacher">Nach Lehrkraft</TabsTrigger>
-          </TabsList>
-          <TabsContent value="subject" className="mt-4 space-y-4">
+        <AdminTabs defaultValue="subject">
+          <AdminTabsList>
+            <AdminTabsTrigger value="subject">Nach Fach</AdminTabsTrigger>
+            <AdminTabsTrigger value="teacher">Nach Lehrkraft</AdminTabsTrigger>
+          </AdminTabsList>
+          <AdminTabsContent value="subject" className="mt-4 space-y-4">
             {bySubject.map((group) => (
               <div key={group.label}>
                 <h3 className="mb-2 text-sm font-semibold text-ws-text">{group.label}</h3>
                 <ul className="space-y-2">{group.rows.map((a) => row(a, a.teacher?.name ?? 'Unbekannt'))}</ul>
               </div>
             ))}
-          </TabsContent>
-          <TabsContent value="teacher" className="mt-4 space-y-4">
+          </AdminTabsContent>
+          <AdminTabsContent value="teacher" className="mt-4 space-y-4">
             {byTeacher.map((group) => (
               <div key={group.label}>
                 <h3 className="mb-2 text-sm font-semibold text-ws-text">{group.label}</h3>
@@ -160,8 +160,8 @@ export default function TeacherAssignmentsPage() {
                 </ul>
               </div>
             ))}
-          </TabsContent>
-        </Tabs>
+          </AdminTabsContent>
+        </AdminTabs>
       )}
 
       <AlertDialog open={!!removeTarget} onOpenChange={(v) => !v && setRemoveTarget(null)}>

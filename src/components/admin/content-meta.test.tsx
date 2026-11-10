@@ -28,6 +28,11 @@ describe('Zuletzt geändert', () => {
     renderInWorkspace(<LastChangedLine by="Frau Muster" at="2026-11-04T10:00:00Z" />)
     expect(screen.getByText(/Zuletzt geändert von Frau Muster am/)).toBeInTheDocument()
   })
+
+  it('zeigt bei unverändertem Bestand („Stand bei Einführung“) nichts (PROJ-83)', () => {
+    renderInWorkspace(<LastChangedLine by="Stand bei Einführung" at="2026-10-27T10:00:00Z" />)
+    expect(screen.queryByText(/Zuletzt geändert/)).not.toBeInTheDocument()
+  })
 })
 
 describe('Zielbereich beim Anlegen', () => {

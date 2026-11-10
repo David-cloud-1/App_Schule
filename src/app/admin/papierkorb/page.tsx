@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2, RotateCcw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,16 +135,16 @@ export default function PapierkorbPage() {
         description="Gelöschte Fragen, Themen, Fächer, Prüfungssets und Beiträge im Lehrerzimmer wiederherstellen."
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
-        <TabsList className="bg-ws-raised">
+      <AdminTabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
+        <AdminTabsList>
           {TABS.map((t) => (
-            <TabsTrigger key={t.type} value={t.type}>
+            <AdminTabsTrigger key={t.type} value={t.type}>
               {t.label}
-            </TabsTrigger>
+            </AdminTabsTrigger>
           ))}
-        </TabsList>
+        </AdminTabsList>
 
-        <TabsContent value={activeTab} className="mt-4">
+        <AdminTabsContent value={activeTab} className="mt-4">
           {loadFailed ? (
             <AdminErrorState message="Der Papierkorb konnte nicht geladen werden." onRetry={load} />
           ) : loading ? (
@@ -198,8 +198,8 @@ export default function PapierkorbPage() {
               </ul>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </AdminTabsContent>
+      </AdminTabs>
 
       <AlertDialog open={purgeTarget !== null} onOpenChange={(v) => !v && setPurgeTarget(null)}>
         <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">

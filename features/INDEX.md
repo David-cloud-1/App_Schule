@@ -99,4 +99,6 @@
 | PROJ-81 | Aufgabenliste für Lehrkräfte auf der Startseite | Deployed | [PROJ-81-aufgabenliste-startseite.md](PROJ-81-aufgabenliste-startseite.md) | 2026-11-07 |
 | PROJ-82 | Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Deployed | [PROJ-82-meldungen-direkt-pruefen.md](PROJ-82-meldungen-direkt-pruefen.md) | 2026-11-09 |
 
-## Next Available ID: PROJ-83
+| PROJ-83 | Einheitliche Bedienmuster im Lehrkräfte-Bereich | Approved | [PROJ-83-einheitliche-bedienmuster.md](PROJ-83-einheitliche-bedienmuster.md) | 2026-11-10 |
+
+## Next Available ID: PROJ-84

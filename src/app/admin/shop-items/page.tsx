@@ -104,7 +104,9 @@ export default function AdminShopItemsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title={<>{hofShortName}-Items</>}
-        description={<>{items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog</>}
+        description={
+          loading && items.length === 0 ? 'Wird geladen …' : <>{items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog</>
+        }
         actions={
           showEmpty ? undefined : (
             <Button

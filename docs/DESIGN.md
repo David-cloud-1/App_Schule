@@ -159,6 +159,13 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - **Hauptaktion:** Im Seitenkopf rechts, auch auf Detailseiten (Status-Aktionen). Bei leerer Liste steht sie nur im Leerzustand, nicht zusätzlich im Kopf.
 - **Tastenkürzel** über `useIsApplePlatform()` anzeigen: ⌘ auf Apple-Geräten, sonst Strg.
 
+### Bedienmuster (PROJ-83)
+- **Auswahl mit wenigen Werten:** bis 4 Werte = `AdminSegmented` (alle Werte sichtbar, 44 px, Pfeiltasten), mehr als 4 = Dropdown. Pflicht: `ariaLabel`. Nie Pillen-Gruppen mit `aria-pressed` für eine Auswahl nachbauen.
+- **Tabs:** `AdminTabs*` aus `admin-tabs.tsx` (grün unterstrichen, 44 px, scrollt in sich). Tabs wechseln Ansichten, Segmente wählen Werte. `ui/tabs.tsx` bleibt für die Schülerseite.
+- **Zeilenaktionen:** `AdminRowActions` = ein sichtbares Bearbeiten-Symbol plus `⋯`-Menü (Verlauf, weitere Aktionen). Löschen steht im Menü ganz unten, rot, und fragt weiter per `AlertDialog`. Icons als fertiges Element übergeben, nie als Funktion (Server/Client-Grenze).
+- **Zahlen in Seitenköpfen** („N Fragen insgesamt“) erscheinen erst nach dem Laden; bis dahin „Wird geladen …“, nie „0“.
+- **Zuletzt geändert:** Bestandsinhalte mit dem Urheber „Stand bei Einführung“ zeigen die Zeile nicht.
+
 ### Zustände (`src/components/admin/admin-states.tsx`)
 - **Laden:** `AdminLoadingState` (`table`, `list`, `cards`, `form`) oder Skeleton-Zeilen in Tabellenform. Kein Drehkreis über die ganze Seite.
 - **Leer:** `AdminEmptyState`: Icon, ein Satz, die passende Hauptaktion.

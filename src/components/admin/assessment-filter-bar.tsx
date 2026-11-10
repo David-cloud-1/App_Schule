@@ -2,10 +2,9 @@
 
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, type AssessmentFilters } from '@/lib/assessment-filter'
-import { cn } from '@/lib/utils'
 
 const STATUS_CHIPS: { value: string; label: string }[] = [
   { value: FILTER_ALL, label: 'Alle' },
@@ -129,27 +128,12 @@ export function AssessmentFilterBar({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Status filtern">
-        {STATUS_CHIPS.map((chip) => {
-          const active = filters.status === chip.value
-          return (
-            <Button
-              key={chip.value}
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-pressed={active}
-              onClick={() => onChange({ ...filters, status: chip.value })}
-              className={cn(
-                'h-11 rounded-full px-4 border-ws-line transition-all duration-200',
-                active ? 'bg-ws-green/20 border-ws-green text-ws-green hover:bg-ws-green/20 hover:text-ws-green' : 'bg-transparent text-ws-muted hover:text-ws-text',
-              )}
-            >
-              {chip.label}
-            </Button>
-          )
-        })}
-      </div>
+      <AdminSegmented
+        ariaLabel="Status filtern"
+        value={filters.status}
+        onChange={(status) => onChange({ ...filters, status })}
+        options={STATUS_CHIPS}
+      />
     </div>
   )
 }

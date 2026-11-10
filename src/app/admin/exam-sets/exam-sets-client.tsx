@@ -35,6 +35,7 @@ import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { toast } from 'sonner'
 import { AdminEmptyState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
 import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
@@ -569,34 +570,28 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                     {set.is_active ? <ShieldOff size={14} className="mr-1" /> : <Shield size={14} className="mr-1" />}
                     {set.is_active ? 'Deaktivieren' : 'Aktivieren'}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setHistoryTarget(set)}
-                    aria-label="Verlauf"
-                    title="Verlauf"
-                    className="rounded-lg border-ws-line text-ws-muted hover:bg-ws-raised px-2"
-                  >
-                    <History size={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEdit(set)}
-                    aria-label="Prüfungssimulation bearbeiten"
-                    className="rounded-lg border-ws-line text-ws-muted hover:bg-ws-raised px-2"
-                  >
-                    <Pencil size={14} />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setConfirmDeleteId(set.id)}
-                    disabled={deletingId === set.id}
-                    className="rounded-lg border-ws-red/30 text-ws-red hover:bg-ws-red/10 px-2"
-                  >
-                    <Trash2 size={14} />
-                  </Button>
+                  <AdminRowActions
+                    subject={`Prüfungssimulation ${set.name}`}
+                    editLabel="Prüfungssimulation bearbeiten"
+                    editIcon={<Pencil size={16} />}
+                    onEdit={() => openEdit(set)}
+                    items={[
+                      {
+                        key: 'history',
+                        label: 'Verlauf',
+                        icon: <History className="text-ws-muted" />,
+                        onSelect: () => setHistoryTarget(set),
+                      },
+                      {
+                        key: 'delete',
+                        label: 'Löschen',
+                        icon: <Trash2 />,
+                        destructive: true,
+                        disabled: deletingId === set.id,
+                        onSelect: () => setConfirmDeleteId(set.id),
+                      },
+                    ]}
+                  />
                 </div>
               </div>
 

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { AdminTabs, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   AlertDialog,
@@ -186,20 +186,20 @@ export function QuestionReportsInbox() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <Tabs
+        <AdminTabs
           value={tab}
           onValueChange={(v) => {
             setTab(v as TabValue)
             setPage(1)
           }}
         >
-          <TabsList className="h-auto flex-wrap bg-ws-raised">
-            <TabsTrigger value="offen" className="min-h-11">Offen</TabsTrigger>
-            <TabsTrigger value="korrigiert" className="min-h-11">Korrigiert</TabsTrigger>
-            <TabsTrigger value="nicht_uebernommen" className="min-h-11">Nicht übernommen</TabsTrigger>
-            <TabsTrigger value="entfaellt" className="min-h-11">Frage entfällt</TabsTrigger>
-          </TabsList>
-        </Tabs>
+          <AdminTabsList>
+            <AdminTabsTrigger value="offen">Offen</AdminTabsTrigger>
+            <AdminTabsTrigger value="korrigiert">Korrigiert</AdminTabsTrigger>
+            <AdminTabsTrigger value="nicht_uebernommen">Nicht übernommen</AdminTabsTrigger>
+            <AdminTabsTrigger value="entfaellt">Frage entfällt</AdminTabsTrigger>
+          </AdminTabsList>
+        </AdminTabs>
 
         <div className="flex flex-wrap gap-2">
           <Select

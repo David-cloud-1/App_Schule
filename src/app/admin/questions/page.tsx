@@ -20,6 +20,8 @@ import {
   X,
 } from 'lucide-react'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,6 +97,19 @@ type QuestionsResponse = {
   page: number
   totalPages: number
 }
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'Alle' },
+  { value: 'active', label: 'Aktiv' },
+  { value: 'inactive', label: 'Inaktiv' },
+] as const
+
+const DIFFICULTY_FILTER_OPTIONS = [
+  { value: 'all', label: 'Alle' },
+  { value: 'leicht', label: 'Leicht' },
+  { value: 'mittel', label: 'Mittel' },
+  { value: 'schwer', label: 'Schwer' },
+] as const
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -540,7 +555,9 @@ function AdminQuestionsPageContent() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Fragen"
-        description={`${total} ${total === 1 ? 'Frage' : 'Fragen'} insgesamt`}
+        description={
+          data ? `${total} ${total === 1 ? 'Frage' : 'Fragen'} insgesamt` : loadFailed ? undefined : 'Wird geladen …'
+        }
         actions={
           <>
             <Button
@@ -604,33 +621,18 @@ function AdminQuestionsPageContent() {
               ))}
             </SelectContent>
           </Select>
-          <Select
+          <AdminSegmented
+            ariaLabel="Status"
             value={statusFilter}
-            onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
-          >
-            <SelectTrigger className="w-[130px] bg-ws-surface border-ws-line text-ws-text">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-              <SelectItem value="all">Alle Status</SelectItem>
-              <SelectItem value="active">Aktiv</SelectItem>
-              <SelectItem value="inactive">Inaktiv</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
+            onChange={setStatusFilter}
+            options={STATUS_FILTER_OPTIONS}
+          />
+          <AdminSegmented
+            ariaLabel="Schwierigkeit"
             value={difficultyFilter}
-            onValueChange={(v) => setDifficultyFilter(v as typeof difficultyFilter)}
-          >
-            <SelectTrigger className="w-[150px] bg-ws-surface border-ws-line text-ws-text">
-              <SelectValue placeholder="Schwierigkeit" />
-            </SelectTrigger>
-            <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-              <SelectItem value="all">Alle Schwierigkeiten</SelectItem>
-              <SelectItem value="leicht">Leicht</SelectItem>
-              <SelectItem value="mittel">Mittel</SelectItem>
-              <SelectItem value="schwer">Schwer</SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={setDifficultyFilter}
+            options={DIFFICULTY_FILTER_OPTIONS}
+          />
           <Select value={classLevelFilter} onValueChange={setClassLevelFilter}>
             <SelectTrigger className="w-[140px] bg-ws-surface border-ws-line text-ws-text">
               <SelectValue placeholder="Klasse" />
@@ -811,7 +813,7 @@ function AdminQuestionsPageContent() {
                     <SortIcon col="created_at" current={sortCol} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
+                <TableHead className="sticky right-0 z-10 whitespace-nowrap bg-ws-bg text-right text-ws-muted">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -924,11 +926,16 @@ function AdminQuestionsPageContent() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Switch
-                              checked={q.is_active}
-                              onCheckedChange={(v) => toggleActive(q, v)}
-                              aria-label="Aktiv/Inaktiv"
-                            />
+                            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs text-ws-muted">
+                              <Switch
+                                checked={q.is_active}
+                                onCheckedChange={(v) => toggleActive(q, v)}
+                                aria-label={`Frage ${q.is_active ? 'deaktivieren' : 'aktivieren'}`}
+                              />
+                              <span className={q.is_active ? 'font-medium text-ws-green' : ''}>
+                                {q.is_active ? 'Aktiv' : 'Inaktiv'}
+                              </span>
+                            </label>
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {formatCreatedAt(q)}
@@ -936,16 +943,8 @@ function AdminQuestionsPageContent() {
                               <LastChangedLine by={q.last_changed_by} at={q.last_changed_at} />
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setHistoryTarget(q)}
-                                title="Verlauf"
-                              >
-                                <History className="w-4 h-4" />
-                              </Button>
+                          <TableCell className="sticky right-0 z-10 bg-ws-surface text-right">
+                            <div className="flex items-center justify-end gap-1">
                               {q.assessment_only && !q.is_private && (
                                 <Button
                                   variant="outline"
@@ -957,24 +956,29 @@ function AdminQuestionsPageContent() {
                                   Für Übung freigeben
                                 </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
+                              <AdminRowActions
+                                subject={`Frage ${q.question_text.slice(0, 40)}`}
+                                editIcon={<Edit className="size-4" />}
+                                onEdit={() => {
                                   setEditingQuestion(q)
                                   setFormOpen(true)
                                 }}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDeleteTarget(q)}
-                                className="text-ws-red hover:text-ws-red"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                                items={[
+                                  {
+                                    key: 'history',
+                                    label: 'Verlauf',
+                                    icon: <History className="text-ws-muted" />,
+                                    onSelect: () => setHistoryTarget(q),
+                                  },
+                                  {
+                                    key: 'delete',
+                                    label: 'Löschen',
+                                    icon: <Trash2 />,
+                                    destructive: true,
+                                    onSelect: () => setDeleteTarget(q),
+                                  },
+                                ]}
+                              />
                             </div>
                           </TableCell>
                         </TableRow>
