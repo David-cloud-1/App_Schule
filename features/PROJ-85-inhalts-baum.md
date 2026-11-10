@@ -1,6 +1,6 @@
 # PROJ-85: Inhalts-Baum – Fach → Thema mit Fragenliste
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 
@@ -253,4 +253,7 @@ Abweichend von der üblichen Reihenfolge zuerst Backend: Der Baum braucht die Z�
 **Bugs:** keine kritischen oder hohen. Offen (niedrig): Bei „Alle Bereiche“ lädt der Baum alle Fragen seitenweise nacheinander, bei ca. 8.000 Fragen etwa 2 Sekunden zu erwarten; nicht gemessen.
 
 ## Deployment
-_To be added by /deploy_
+- **Live seit 2026-11-10**, Commit 98cddc9, Vercel-Projekt `spedilern` (Production, Ready nach ca. 1 Minute).
+- **Keine Migration**, keine neuen Umgebungsvariablen, keine neuen Pakete.
+- Nachprüfung ohne Login: `/api/admin/content-tree` antwortet 401, `/admin/inhalte` leitet zum Login (307), `/api/admin/questions?subject_id=…` antwortet 401. Keine neuen Fehler in den Produktions-Logs.
+- **Offen:** einmal eingeloggt auf Laptop und Handy durchklicken (Baum, Fragenliste, Zurück-Taste, Klassenfilter, Thema anlegen/umbenennen/löschen).
