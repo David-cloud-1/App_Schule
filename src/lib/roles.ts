@@ -104,6 +104,11 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/my-subjects',
   // PROJ-50: „Mein Konto“ — das Profil jeder Lehrer-Rolle
   '/admin/konto',
+  // PROJ-85: Inhalts-Baum, gleiche Rollen wie „Fragen“
+  '/admin/inhalte',
+  // PROJ-73/74: Meldungs-Inbox und schwierigste Fragen sind für jede Lehrer-Rolle
+  '/admin/gemeldete-fragen',
+  '/admin/schwierigste-fragen',
   '/admin/questions',
   '/admin/subjects',
   '/admin/topics',

@@ -99,6 +99,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     for (const path of [
       '/admin/leistungsnachweise',
       '/admin/leistungsnachweise/abc/druck/klasse',
+      '/admin/inhalte',
       '/admin/questions',
       '/admin/subjects',
       '/admin/topics',

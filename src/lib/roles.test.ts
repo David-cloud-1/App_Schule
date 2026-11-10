@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { adminNavItemsFor } from './admin-nav'
 import {
   contentScopeShort,
   contentScopeText,
@@ -59,7 +60,7 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Papierkorb/Meine Fächer
     // darf eine Lehrkraft öffnen — welche Inhalte sie darin sieht, entscheiden
     // die API-Routen über ihre Fach-Zuständigkeiten (requireContentAdmin).
-    for (const path of ['/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects', '/admin/konto']) {
+    for (const path of ['/admin/inhalte', '/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects', '/admin/konto']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(true)
     }
     for (const path of ['/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
@@ -68,6 +69,13 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(mayOpenAdminPath('department_admin', '/admin/questions')).toBe(true)
     expect(mayOpenAdminPath('admin', '/admin/departments')).toBe(true)
     expect(mayOpenAdminPath('student', '/admin')).toBe(false)
+  })
+
+  it('lässt Lehrkräfte jede Seite öffnen, die ihnen die Navigation zeigt (PROJ-85: Inhalte fehlte)', () => {
+    for (const item of adminNavItemsFor('teacher')) {
+      if (item.external) continue
+      expect(mayOpenAdminPath('teacher', item.href), item.href).toBe(true)
+    }
   })
 
   it('lässt jede Lehrkraft in Schulrecht samt Aktennotiz-Ablauf und deren Schnittstelle (PROJ-55)', () => {
