@@ -819,7 +819,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         assessmentTitle={detail.title}
         onDuplicated={(newId) => router.push(`/admin/leistungsnachweise/${newId}`)}
       />
-      <NotenlisteExportDialog assessmentId={id} open={exportOpen} onOpenChange={setExportOpen} />
+      <NotenlisteExportDialog
+        // Neu aufbauen, wenn Gruppen an-/ausgeschaltet werden, damit die Spaltenauswahl passt
+        key={detail?.groupsEnabled ? 'mit-gruppen' : 'ohne-gruppen'}
+        assessmentId={id}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        groupsEnabled={Boolean(detail?.groupsEnabled)}
+      />
     </div>
   )
 }

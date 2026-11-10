@@ -55,6 +55,9 @@ export async function loadCandidates(supabase: SupabaseClient, userId: string, d
     for (const row of rows) if (!stats.has(row.question_id)) stats.set(row.question_id, row)
     if (rows.length < STATS_PAGE) break
   }
+  // Offene Meldungen getrennt zählen: die Statistik kennt nur Fragen mit Antworten,
+  // eine gemeldete Frage ohne gezählte Antwort wäre sonst nicht ausgeschlossen (QA PROJ-78 BUG-2)
+  const openReports = await openReportCounts(supabase)
   const all: Candidate[] = questions.map((q) => {
     const s = stats.get(q.id)
     const attempts = s?.attempts ?? 0
@@ -68,10 +71,34 @@ export async function loadCandidates(supabase: SupabaseClient, userId: string, d
       isPrivate: q.isPrivate,
       attempts,
       correct,
-      openReports: s?.open_reports ?? 0,
+      openReports: openReports?.get(q.id) ?? s?.open_reports ?? 0,
       blocked: q.blocked,
       ...levelFor(attempts, correct),
     }
   })
   return { all, statsAvailable }
+}
+
+/**
+ * Offene Meldungen (offen oder in Prüfung) je Frage. `null`, wenn die Abfrage
+ * scheitert: dann gilt weiter die Zahl aus der Statistik.
+ */
+export async function openReportCounts(supabase: SupabaseClient): Promise<Map<string, number> | null> {
+  try {
+    const { data, error } = await supabase
+      .from('question_reports')
+      .select('question_id')
+      .in('status', ['offen', 'in_pruefung'])
+      .not('question_id', 'is', null)
+      .limit(5000)
+    if (error) throw error
+    const counts = new Map<string, number>()
+    for (const row of (data ?? []) as { question_id: string }[]) {
+      counts.set(row.question_id, (counts.get(row.question_id) ?? 0) + 1)
+    }
+    return counts
+  } catch (error) {
+    console.error('[assessment-candidates] open reports', error)
+    return null
+  }
 }

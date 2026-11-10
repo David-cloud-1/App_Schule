@@ -61,4 +61,28 @@ describe('GET /api/admin/schwierigste-fragen', () => {
     expect(res.status).toBe(500)
     expect((await res.json()).error).not.toMatch(/boom/)
   })
+
+  it('gibt keinen Zeitstempel und bei sehr wenigen Antworten keine gewählte Option heraus (QA PROJ-74 B2)', async () => {
+    const row = (id: string, attempts: number) => ({
+      question_id: id,
+      attempts,
+      correct: 0,
+      question_text: 'Frage',
+      top_wrong_option_text: 'Option Y',
+      top_wrong_count: attempts,
+      last_changed_at: '2026-11-05T10:00:00Z',
+      first_counted_at: '2026-11-01T14:03:22Z',
+    })
+    rpc.mockResolvedValue({ data: [row('wenig', 1), row('viel', 30)], error: null })
+    const { items } = await (await GET(req())).json()
+    for (const item of items) {
+      expect(item).not.toHaveProperty('first_counted_at')
+      expect(item.changed_after_answers).toBe(true)
+    }
+    const wenig = items.find((i: { question_id: string }) => i.question_id === 'wenig')
+    const viel = items.find((i: { question_id: string }) => i.question_id === 'viel')
+    expect(wenig.top_wrong_option_text).toBeNull()
+    expect(wenig.top_wrong_count).toBe(0)
+    expect(viel.top_wrong_option_text).toBe('Option Y')
+  })
 })

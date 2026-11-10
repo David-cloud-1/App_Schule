@@ -50,12 +50,16 @@ export function NotenlisteExportDialog({
   assessmentId,
   open,
   onOpenChange,
+  groupsEnabled = false,
 }: {
   assessmentId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** PROJ-76: Spalte „Gruppe“ nur anbieten, wenn der Nachweis Gruppen A/B hat */
+  groupsEnabled?: boolean
 }) {
-  const [columns, setColumns] = useState<NotenlisteColumn[]>([...NOTENLISTE_COLUMNS])
+  const offered = NOTENLISTE_COLUMNS.filter((c) => c !== 'group' || groupsEnabled)
+  const [columns, setColumns] = useState<NotenlisteColumn[]>([...offered])
   const [sort, setSort] = useState<NotenlisteSort>('name')
   const [split, setSplit] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -102,7 +106,7 @@ export function NotenlisteExportDialog({
         <div className="space-y-5">
           <fieldset className="space-y-2">
             <legend className="mb-1 text-sm font-semibold text-ws-text">Spalten</legend>
-            {NOTENLISTE_COLUMNS.map((c) => (
+            {offered.map((c) => (
               <div key={c} className="flex items-center gap-3">
                 <Checkbox id={`col-${c}`} checked={columns.includes(c)} onCheckedChange={(v) => toggle(c, v === true)} />
                 <Label htmlFor={`col-${c}`} className="min-h-8 flex-1 cursor-pointer py-1.5">
@@ -110,7 +114,6 @@ export function NotenlisteExportDialog({
                 </Label>
               </div>
             ))}
-            <p className="text-xs text-ws-faint">Eine Spalte „Gruppe“ folgt, sobald es Gruppen gibt.</p>
           </fieldset>
 
           <fieldset className="space-y-2">

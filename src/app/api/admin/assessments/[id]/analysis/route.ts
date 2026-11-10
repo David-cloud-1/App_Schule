@@ -43,26 +43,37 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     .order('started_at', { ascending: true })
 
   const rawRows = (sessions ?? []) as unknown as SessionRow[]
-  const key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
+  let key: Awaited<ReturnType<typeof fetchAnswerKey>>
+  try {
+    key = await fetchAnswerKey(snapshotQuestionIds(rawRows, assessment.part))
+  } catch (err) {
+    // Verständliche Meldung statt unformatiertem 500er (QA PROJ-75 B10)
+    console.error('[api/admin/assessments/[id]/analysis] answer key', err)
+    return NextResponse.json({ error: 'Die Analyse konnte gerade nicht berechnet werden.' }, { status: 500 })
+  }
   const rows = applyGrading(rawRows, assessment.part, key, assessment.grading_scale as GradeBoundary[], excludedIds)
   const analysis = analyzeAssessment(rows, assessment.part)
 
-  // Welche Fragen sind schon für künftige Nachweise gesperrt?
+  // Welche Fragen sind schon für künftige Nachweise gesperrt, welche gibt es nicht mehr?
   const ids = analysis.items.map((i) => i.id)
   const blocked = new Set<string>()
+  const existing = new Set<string>()
   if (ids.length > 0) {
     const { data } = await supabase
       .from('questions')
-      .select('id, blocked_for_assessments')
+      .select('id, blocked_for_assessments, deleted_at')
       .in('id', ids)
-      .eq('blocked_for_assessments', true)
       .limit(500)
-    for (const row of data ?? []) blocked.add(row.id as string)
+    for (const row of data ?? []) {
+      if (row.blocked_for_assessments) blocked.add(row.id as string)
+      if (!row.deleted_at) existing.add(row.id as string)
+    }
   }
 
   return NextResponse.json({
     ...analysis,
-    items: analysis.items.map((i) => ({ ...i, blocked: blocked.has(i.id) })),
+    // Gelöschte Fragen lassen sich nicht mehr sperren (QA PROJ-75 B9)
+    items: analysis.items.map((i) => ({ ...i, blocked: blocked.has(i.id), deleted: !existing.has(i.id) })),
     status: assessment.status,
     released: !!assessment.results_released_at,
   })

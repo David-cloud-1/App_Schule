@@ -27,6 +27,8 @@ import {
   type QuestionFormHandle,
 } from '@/components/admin/question-form-modal'
 import {
+  REPORT_DETAIL_LIMIT,
+  REPORT_IDS_MAX,
   REPORT_REASON_LABEL,
   REPORT_RESPONSE_MAX,
   REPORT_RESPONSE_TEMPLATES,
@@ -206,7 +208,11 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
           result,
           response: trimmed || undefined,
           silent,
-          report_ids: openReportIds.length > 0 ? openReportIds : undefined,
+          // Nur die gesehenen Meldungen schließen; ist die Liste gekappt, alle offenen (QA PROJ-82 B10)
+          report_ids:
+            openReportIds.length > 0 && reports.length < REPORT_DETAIL_LIMIT && openReportIds.length <= REPORT_IDS_MAX
+              ? openReportIds
+              : undefined,
         }),
       })
       const body = (await res.json().catch(() => null)) as { error?: string; closed?: number; rewarded?: number } | null

@@ -164,7 +164,7 @@ describe('POST /api/admin/assessments/suggest', () => {
   it('fragt bei „nie“ die Nachweise gar nicht ab', async () => {
     vi.mocked(fetchSelectableQuestions).mockResolvedValue([q(1)] as never)
     await post(baseBody)
-    expect(from).not.toHaveBeenCalled()
+    expect(from).not.toHaveBeenCalledWith('graded_assessments')
   })
 
   it('lässt bereits Gewählte weg, behält aber Fixierte', async () => {

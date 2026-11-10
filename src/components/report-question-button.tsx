@@ -51,8 +51,9 @@ export function ReportQuestionButton({ questionId, selectedOptionId, className }
         setTimeout(() => setOpen(false), 1400)
         return
       }
-      const body = (await res.json().catch(() => null)) as { error?: string } | null
-      if (res.status === 409) setDone(true)
+      const body = (await res.json().catch(() => null)) as { error?: string; code?: string } | null
+      // Nur „schon gemeldet“ ist erledigt; bei laufender Prüfung wurde nichts gespeichert (QA PROJ-72 B9)
+      if (body?.code === 'ALREADY_REPORTED') setDone(true)
       setError(body?.error ?? 'Das hat nicht geklappt. Bitte versuche es erneut.')
     } catch {
       setError('Keine Verbindung. Dein Text bleibt erhalten, bitte versuche es erneut.')

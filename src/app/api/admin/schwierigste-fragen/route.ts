@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireContentAdmin } from '../_lib/auth'
+import { MIN_ATTEMPTS_LOWEST, changedAfterAnswers } from '@/lib/difficulty'
 
 const ROUTE = 'api/admin/schwierigste-fragen'
 const TEXT_MAX = 200
@@ -15,6 +16,8 @@ const querySchema = z.object({
  * Datenbank-Funktion question_difficulty_stats aus (nur Summen, keine
  * Personen). Der Bereich folgt der Bereichsleiste (PROJ-70). Nur Fragen mit
  * Antworten gehen an den Browser; Mindestanzahl und Ranking passieren dort.
+ * Personenbeziehbares (Zeitpunkt der ersten Antwort, Wahl bei sehr wenigen
+ * Antworten) bleibt auf dem Server.
  */
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
@@ -40,11 +43,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Das hat nicht geklappt. Bitte versuche es erneut.' }, { status: 500 })
   }
 
-  const rows = ((data ?? []) as Array<Record<string, unknown> & { attempts: number; question_text: string }>)
+  type StatRow = Record<string, unknown> & {
+    attempts: number
+    question_text: string
+    last_changed_at: string | null
+    first_counted_at: string | null
+  }
+  const rows = (data ?? []) as StatRow[]
   const withAnswers = rows.filter((r) => r.attempts > 0)
-  const items = withAnswers.map((r) => ({
-    ...r,
-    question_text: r.question_text.length > TEXT_MAX ? `${r.question_text.slice(0, TEXT_MAX)}…` : r.question_text,
-  }))
+  // Datenschutz (QA PROJ-74 B2): kein Zeitstempel einzelner Antworten an den Browser, und
+  // bei sehr wenigen Antworten keine gewählte falsche Antwort – sonst wird eine Person erkennbar.
+  const items = withAnswers.map(({ first_counted_at, ...r }) => {
+    const few = r.attempts < MIN_ATTEMPTS_LOWEST
+    return {
+      ...r,
+      question_text: r.question_text.length > TEXT_MAX ? `${r.question_text.slice(0, TEXT_MAX)}…` : r.question_text,
+      changed_after_answers: changedAfterAnswers({ last_changed_at: r.last_changed_at, first_counted_at }),
+      ...(few ? { top_wrong_option_text: null, top_wrong_count: 0 } : {}),
+    }
+  })
   return NextResponse.json({ items, totalQuestions: rows.length })
 }

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextResponse } from 'next/server'
-import { chainMock, hasCall, eqValue, type ChainCall } from '@/test/supabase-chain-mock'
+import { chainMock, hasCall, type ChainCall } from '@/test/supabase-chain-mock'
 
-vi.mock('../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn() }))
+vi.mock('../_lib/auth', () => ({ requireContentAdmin: vi.fn() }))
 const serviceSessions: { data: unknown; error: unknown } = { data: [], error: null }
 vi.mock('@/lib/supabase-server', () => ({
   createServiceClient: () => ({
@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase-server', () => ({
     },
   }),
 }))
-import { requireTeacherOrAdmin } from '../_lib/auth'
+import { requireContentAdmin } from '../_lib/auth'
 import { GET } from './route'
 
 const FUTURE = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString()
@@ -35,14 +35,17 @@ function setup(role: 'teacher' | 'department_admin' | 'admin', tables: Tables, d
     if (table === 'graded_assessments') return { data: tables.assessments?.data ?? [], error: tables.assessments?.error ?? null }
     return { data: null }
   })
-  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
+  vi.mocked(requireContentAdmin).mockResolvedValue({
     error: null,
     user: { id: 'u-1', email: 'u@x.de' },
     supabase: m.client,
     role,
     isSuperAdmin: role === 'admin',
     isDepartmentAdmin: role === 'department_admin',
-    suggestedDepartmentId: departmentId,
+    isTeacher: role === 'teacher',
+    // Bereichsleiste (PROJ-70): ein gewählter Bereich, `null` = „Alle Bereiche“
+    scopeDepartmentIds: departmentId ? [departmentId] : null,
+    departmentId,
   } as never)
   return { m, seen }
 }
@@ -56,7 +59,7 @@ beforeEach(() => {
 
 describe('GET /api/admin/tasks', () => {
   it('gibt die Antwort der Anmeldeprüfung weiter', async () => {
-    vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
+    vi.mocked(requireContentAdmin).mockResolvedValue({
       error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
       user: null,
       supabase: null,
@@ -123,7 +126,26 @@ describe('GET /api/admin/tasks', () => {
     const { counts } = await (await GET()).json()
     expect(counts.upcomingDrafts).toBe(1)
     expect(counts.draftQuestions).toBe(6)
-    expect(eqValue(seen['question_report_groups'], 'department_id')).toBe('dep-1')
+    expect(seen['question_report_groups'].find((c) => c.method === 'in')?.args).toEqual(['department_id', ['dep-1']])
+  })
+
+  it('zählt Meldungen auch für Lehrkräfte nur im Bereich der Bereichsleiste (QA PROJ-73 B1)', async () => {
+    const { seen } = setup('teacher', { groups: { count: 1 } }, 'dep-7')
+    await GET()
+    expect(seen['question_report_groups'].find((c) => c.method === 'in')?.args).toEqual(['department_id', ['dep-7']])
+  })
+
+  it('filtert in „Alle Bereiche“ nicht nach Bereich', async () => {
+    const { seen } = setup('admin', { groups: { count: 1 } }, null)
+    await GET()
+    expect(hasCall(seen['question_report_groups'], 'in')).toBe(false)
+  })
+
+  it('zählt eine liegengebliebene Übernahme (älter als 24 h) wieder als offen (QA PROJ-73 B4)', async () => {
+    const { seen } = setup('teacher', { groups: { count: 1 } })
+    await GET()
+    const or = String(seen['question_report_groups'].find((c) => c.method === 'or')?.args[0])
+    expect(or).toMatch(/and\(status\.eq\.in_pruefung,claimed_at\.lt\.\d{4}-/)
   })
 
   it('schließt die eigene Prüfung bei den offenen Meldungen aus', async () => {

@@ -3,11 +3,12 @@
 
 import { csvEscape, type ParticipantRow } from '@/lib/graded-assessments'
 
-export const NOTENLISTE_COLUMNS = ['name', 'points', 'max', 'percent', 'grade', 'submitted', 'duration'] as const
+export const NOTENLISTE_COLUMNS = ['name', 'group', 'points', 'max', 'percent', 'grade', 'submitted', 'duration'] as const
 export type NotenlisteColumn = (typeof NOTENLISTE_COLUMNS)[number]
 
 export const NOTENLISTE_COLUMN_LABELS: Record<NotenlisteColumn, string> = {
   name: 'Name',
+  group: 'Gruppe',
   points: 'Punkte',
   max: 'Maximum',
   percent: 'Prozent',
@@ -83,6 +84,8 @@ function cell(p: ParticipantRow, column: NotenlisteColumn, opts: NotenlisteOptio
   switch (column) {
     case 'name':
       return csvEscape(formatName(p.name, opts.splitName))
+    case 'group':
+      return p.group ?? ''
     case 'points':
       return p.points != null ? String(p.points) : ''
     case 'max':

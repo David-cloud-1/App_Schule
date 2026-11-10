@@ -19,7 +19,10 @@ export interface DifficultyRow {
   top_wrong_count: number
   open_reports: number
   last_changed_at: string | null
-  first_counted_at: string | null
+  /** Nur auf dem Server vorhanden; der Browser bekommt `changed_after_answers` */
+  first_counted_at?: string | null
+  /** Vom Server berechnet: Frage nach den ersten gezählten Antworten geändert */
+  changed_after_answers?: boolean
 }
 
 export const DEFAULT_MIN_ATTEMPTS = 20
@@ -42,7 +45,10 @@ export function needsAnswerCheck(row: Pick<DifficultyRow, 'correct' | 'top_wrong
 }
 
 /** Wurde die Frage geändert, nachdem schon Antworten gezählt wurden? */
-export function changedAfterAnswers(row: Pick<DifficultyRow, 'last_changed_at' | 'first_counted_at'>): boolean {
+export function changedAfterAnswers(
+  row: Pick<DifficultyRow, 'last_changed_at' | 'first_counted_at' | 'changed_after_answers'>,
+): boolean {
+  if (typeof row.changed_after_answers === 'boolean') return row.changed_after_answers
   if (!row.last_changed_at || !row.first_counted_at) return false
   return new Date(row.last_changed_at).getTime() > new Date(row.first_counted_at).getTime()
 }

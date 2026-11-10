@@ -22,7 +22,7 @@ import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/component
 import { ANALYSIS_REASON_HINT, type AnalysisLight, type ItemAnalysis } from '@/lib/assessment-analysis'
 import { cn } from '@/lib/utils'
 
-type Item = ItemAnalysis & { blocked: boolean }
+type Item = ItemAnalysis & { blocked: boolean; deleted?: boolean }
 
 interface AnalysisResponse {
   participants: number
@@ -164,11 +164,14 @@ export function AssessmentItemAnalysis({
         <div className="space-y-1">
           <p className="text-sm text-ws-text">
             {data.participants} gewertete {data.participants === 1 ? 'Abgabe' : 'Abgaben'}
-            {data.status === 'open' && <Badge className="ml-2 border-ws-orange/30 bg-ws-orange/15 text-ws-orange">Zwischenstand</Badge>}
+            {data.status === 'open' && (
+              <Badge className="ml-2 border-ws-orange/30 bg-ws-orange/15 text-ws-orange">Zwischenstand</Badge>
+            )}
           </p>
           {!data.discriminationAvailable && (
             <p className="max-w-prose text-xs text-ws-muted">
-              Die Trennschärfe wird erst ab 8 gewerteten Abgaben berechnet. Lösungsquote und Antwortverteilung gelten schon jetzt.
+              Die Trennschärfe wird erst ab 8 gewerteten Abgaben berechnet. Lösungsquote und Antwortverteilung gelten
+              schon jetzt.
             </p>
           )}
         </div>
@@ -198,7 +201,10 @@ export function AssessmentItemAnalysis({
       ) : (
         <ul className="space-y-3">
           {items.map((q) => (
-            <li key={q.id} className={cn('rounded-2xl border border-ws-line bg-ws-surface p-4', q.excluded && 'opacity-80')}>
+            <li
+              key={q.id}
+              className={cn('rounded-2xl border border-ws-line bg-ws-surface p-4', q.excluded && 'opacity-80')}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <p className="min-w-0 flex-1 text-sm leading-snug text-ws-text">
                   <span className="mr-2 text-ws-faint">{q.position}.</span>
@@ -222,12 +228,18 @@ export function AssessmentItemAnalysis({
               <dl className="mt-3 grid grid-cols-3 gap-3 text-sm sm:max-w-md">
                 <div>
                   <dt className="text-xs text-ws-muted">Lösungsquote</dt>
-                  <dd className="font-semibold tabular-nums text-ws-text">{q.correctRate !== null ? `${q.correctRate} %` : '–'}</dd>
+                  <dd className="font-semibold tabular-nums text-ws-text">
+                    {q.correctRate !== null ? `${q.correctRate} %` : '–'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-ws-muted">Trennschärfe</dt>
                   <dd className="font-semibold tabular-nums text-ws-text">
-                    {q.discrimination !== null ? q.discrimination.toFixed(2).replace('.', ',') : '–'}
+                    {q.correctRate === 100
+                      ? 'alle richtig'
+                      : q.discrimination !== null
+                        ? q.discrimination.toFixed(2).replace('.', ',')
+                        : '–'}
                   </dd>
                 </div>
                 <div>
@@ -248,7 +260,13 @@ export function AssessmentItemAnalysis({
                 {q.options.map((o) => (
                   <li key={o.id} className="text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span className={cn('min-w-0 flex-1 truncate', o.isCorrect ? 'font-medium text-ws-green' : 'text-ws-muted')} title={o.text}>
+                      <span
+                        className={cn(
+                          'min-w-0 flex-1 truncate',
+                          o.isCorrect ? 'font-medium text-ws-green' : 'text-ws-muted',
+                        )}
+                        title={o.text}
+                      >
                         {o.isCorrect ? '✓ ' : ''}
                         {o.text}
                       </span>
@@ -289,14 +307,16 @@ export function AssessmentItemAnalysis({
                     Aus der Wertung nehmen
                   </Button>
                 )}
-                <Button
-                  variant="outline"
-                  onClick={() => setPending({ kind: q.blocked ? 'unblock' : 'block', item: q })}
-                  className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
-                >
-                  <ShieldAlert className="mr-1.5 size-4" />
-                  {q.blocked ? 'Sperre aufheben' : 'Für Nachweise sperren'}
-                </Button>
+                {!q.deleted && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setPending({ kind: q.blocked ? 'unblock' : 'block', item: q })}
+                    className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+                  >
+                    <ShieldAlert className="mr-1.5 size-4" />
+                    {q.blocked ? 'Sperre aufheben' : 'Für Nachweise sperren'}
+                  </Button>
+                )}
               </div>
             </li>
           ))}

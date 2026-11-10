@@ -60,6 +60,12 @@ describe('reportErrorResponse', () => {
     expect(reportErrorResponse({ message: 'SESSION_RUNNING' }).status).toBe(409)
   })
 
+  it('gibt die Kennung mit, damit „schon gemeldet“ und „Prüfung läuft“ unterscheidbar sind (QA PROJ-72 B9)', () => {
+    expect(reportErrorResponse({ message: 'ALREADY_REPORTED' }).code).toBe('ALREADY_REPORTED')
+    expect(reportErrorResponse({ message: 'SESSION_RUNNING' }).code).toBe('SESSION_RUNNING')
+    expect(reportErrorResponse({ code: 'XX000', message: 'interner SQL-Text' }).code).toBeUndefined()
+  })
+
   it('macht aus fehlenden Rechten 403 und aus allem anderen einen neutralen 500', () => {
     expect(reportErrorResponse({ code: '42501', message: 'permission denied' }).status).toBe(403)
     const other = reportErrorResponse({ code: 'XX000', message: 'interner SQL-Text' })

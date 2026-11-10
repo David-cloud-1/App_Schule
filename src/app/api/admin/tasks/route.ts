@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
-import { requireTeacherOrAdmin } from '../_lib/auth'
+import { requireContentAdmin } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { EMPTY_TASK_COUNTS, type TaskCounts } from '@/lib/teacher-tasks'
 
 const ROUTE = 'api/admin/tasks'
 const DAY_MS = 86_400_000
+/** Nach so langer Zeit gilt eine Übernahme als liegengeblieben (wie der Hinweis in der Inbox) */
+const CLAIM_EXPIRY_MS = DAY_MS
 /** Ältere beendete Nachweise ohne Freigabe gelten als erledigt oder vergessen und nerven nicht mehr */
 const UNRELEASED_LOOKBACK_DAYS = 90
 
@@ -15,12 +17,13 @@ const UNRELEASED_LOOKBACK_DAYS = 90
  * Person, die fragt: sie sieht nur, was sie auch sonst sehen dürfte.
  */
 export async function GET() {
-  const auth = await requireTeacherOrAdmin()
+  // Bereich = Bereichsleiste (PROJ-70): dieselben Zahlen wie in Inbox und Nachweis-Liste
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
   const isTeacher = auth.role === 'teacher'
-  // Lehrkräfte haben keinen eigenen Bereich; Admins zählen für ihren (bzw. den gewählten) Bereich
-  const departmentId = isTeacher ? null : auth.suggestedDepartmentId
+  // Lehrkräfte zählen eigene Nachweise; Admins die des gewählten Bereichs („Alle Bereiche“ = alle)
+  const departmentId = isTeacher ? null : auth.departmentId
 
   const counts: TaskCounts = { ...EMPTY_TASK_COUNTS }
 
@@ -30,8 +33,11 @@ export async function GET() {
       .from('question_report_groups')
       .select('question_id', { count: 'exact', head: true })
       // Was ich gerade selbst prüfe, ist für mich nicht mehr „offen“
-      .or(`status.eq.offen,and(status.eq.in_pruefung,handled_by.neq.${user.id})`)
-    if (departmentId) query = query.eq('department_id', departmentId)
+      // Eine liegengebliebene Übernahme (älter als 24 h) zählt wieder als offen, auch für mich
+      .or(
+        `status.eq.offen,and(status.eq.in_pruefung,handled_by.neq.${user.id}),and(status.eq.in_pruefung,claimed_at.lt.${new Date(Date.now() - CLAIM_EXPIRY_MS).toISOString()})`,
+      )
+    if (auth.scopeDepartmentIds) query = query.in('department_id', auth.scopeDepartmentIds)
     const { count, error } = await query
     if (!error) counts.openReports = count ?? 0
     else console.error(`[${ROUTE}] openReports`, error)

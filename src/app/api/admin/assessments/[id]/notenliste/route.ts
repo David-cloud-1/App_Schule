@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const { data: sessions } = await createServiceClient()
     .from('exam_sessions')
-    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading')
+    .select('id, user_id, participant_name, started_at, ended_at, status, results_json, excluded_from_grading, group_label')
     .eq('assessment_id', id)
 
   const rawRows = (sessions ?? []) as unknown as SessionRow[]

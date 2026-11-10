@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { QuestionReportReviewDialog } from '@/components/admin/question-report-review-dialog'
-import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { questionSearchLink } from '@/lib/difficulty'
 import {
   REPORT_REASONS,
@@ -80,12 +79,8 @@ function formatDate(iso: string): string {
  * löst die Datenbank beim Abschließen aus.
  */
 export function QuestionReportsInbox() {
-  const role = useOptionalAdminRole()
-  const departments = role?.scope?.departments ?? []
-
   const [tab, setTab] = useState<TabValue>('offen')
   const [reason, setReason] = useState<'alle' | ReportReason>('alle')
-  const [department, setDepartment] = useState<string>('alle')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ListResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -104,7 +99,6 @@ export function QuestionReportsInbox() {
     try {
       const params = new URLSearchParams({ status: tab, page: String(page) })
       if (reason !== 'alle') params.set('reason', reason)
-      if (department !== 'alle') params.set('department', department)
       const res = await fetch(`/api/admin/question-reports?${params}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('load')
       setData((await res.json()) as ListResponse)
@@ -113,7 +107,7 @@ export function QuestionReportsInbox() {
     } finally {
       setLoading(false)
     }
-  }, [tab, reason, department, page])
+  }, [tab, reason, page])
 
   useEffect(() => {
     void load()
@@ -122,7 +116,7 @@ export function QuestionReportsInbox() {
   useEffect(() => {
     setSelected(new Set())
     setExpanded(null)
-  }, [tab, reason, department, page])
+  }, [tab, reason, page])
 
   async function loadDetails(questionId: string) {
     setDetails((d) => ({ ...d, [questionId]: 'loading' }))
@@ -221,27 +215,6 @@ export function QuestionReportsInbox() {
               ))}
             </SelectContent>
           </Select>
-          {departments.length > 1 && (
-            <Select
-              value={department}
-              onValueChange={(v) => {
-                setDepartment(v)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="min-h-11 w-full sm:w-48" aria-label="Fachbereich filtern">
-                <SelectValue placeholder="Fachbereich" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alle">Alle Fachbereiche</SelectItem>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
 

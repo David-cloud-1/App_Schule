@@ -68,8 +68,15 @@ describe('Sortierung', () => {
 describe('CSV', () => {
   it('beginnt mit BOM, nutzt Semikolon und Windows-Zeilenumbruch', () => {
     const csv = buildNotenlisteCsv([row({})], all)
-    expect(csv.startsWith('﻿Name;Punkte;Maximum;Prozent;Note;Abgabezeit;Bearbeitungsdauer (Min.)\r\n')).toBe(true)
+    expect(csv.startsWith('﻿Name;Gruppe;Punkte;Maximum;Prozent;Note;Abgabezeit;Bearbeitungsdauer (Min.)\r\n')).toBe(true)
     expect(csv.split('\r\n')).toHaveLength(2)
+  })
+  it('schreibt die Gruppe A/B in die Spalte „Gruppe“, ohne Gruppe bleibt sie leer (QA PROJ-76/77)', () => {
+    const csv = buildNotenlisteCsv(
+      [row({ name: 'Anna A', group: 'A' }), row({ name: 'Bea B', group: 'B' }), row({ name: 'Cem C', group: null })],
+      { columns: ['name', 'group'], sort: 'name', splitName: false },
+    )
+    expect(csv.split('\r\n').slice(1)).toEqual(['Anna A;A', 'Bea B;B', 'Cem C;'])
   })
   it('nur gewählte Spalten, feste Reihenfolge', () => {
     const csv = buildNotenlisteCsv([row({})], { ...all, columns: ['grade', 'name'] })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireTeacherOrAdmin } from '../_lib/auth'
+import { requireContentAdmin } from '../_lib/auth'
 import { REPORT_REASONS } from '@/lib/question-reports'
 
 const ROUTE = 'api/admin/question-reports'
@@ -21,7 +21,8 @@ const querySchema = z.object({
  * question_report_groups, die den Zeilenschutz des Aufrufers beachtet.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireTeacherOrAdmin()
+  // Bereich = Bereichsleiste (PROJ-70), wie auf den übrigen Inhalts-Seiten
+  const auth = await requireContentAdmin()
   if (auth.error) return auth.error
 
   const params: Record<string, string> = {}
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
   if (q.status === 'offen') query = query.in('status', ['offen', 'in_pruefung'])
   else if (q.status !== 'alle') query = query.eq('status', q.status)
   if (q.department) query = query.eq('department_id', q.department)
+  else if (auth.scopeDepartmentIds) query = query.in('department_id', auth.scopeDepartmentIds)
   if (q.subject) query = query.eq('subject_id', q.subject)
   if (q.topic) query = query.eq('topic_id', q.topic)
   if (q.reason) query = query.contains('reasons', [q.reason])

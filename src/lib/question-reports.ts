@@ -56,6 +56,11 @@ export const REPORT_RESPONSE_TEMPLATES = [
   'Danke, wir haben es geprüft und nichts geändert.',
 ] as const
 
+/** So viele Einzelmeldungen liefert die Detail-Schnittstelle je Frage höchstens */
+export const REPORT_DETAIL_LIMIT = 100
+/** So viele Meldungs-IDs nimmt der Abschluss höchstens an */
+export const REPORT_IDS_MAX = 200
+
 const uuid = z.string().uuid('Ungültige Kennung.')
 
 export const reportCreateSchema = z
@@ -78,7 +83,7 @@ export const reportCloseSchema = z.object({
   result: z.enum(['korrigiert', 'nicht_uebernommen', 'entfaellt']),
   response: z.string().trim().max(REPORT_RESPONSE_MAX, `Höchstens ${REPORT_RESPONSE_MAX} Zeichen.`).optional(),
   silent: z.boolean().optional(),
-  report_ids: z.array(uuid).min(1).max(200).optional(),
+  report_ids: z.array(uuid).min(1).max(REPORT_IDS_MAX).optional(),
 })
 
 export const reportBulkCloseSchema = z.object({
@@ -103,9 +108,15 @@ const ERROR_TEXT: Record<string, { status: number; message: string }> = {
 }
 
 /** Fehler einer Datenbank-Funktion in Status und deutschen Text übersetzen. */
-export function reportErrorResponse(error: { code?: string; message?: string }): { status: number; message: string } {
-  const known = error.message ? ERROR_TEXT[error.message.trim()] : undefined
-  if (known) return known
-  if (error.code === '42501') return ERROR_TEXT.FORBIDDEN
+export function reportErrorResponse(error: { code?: string; message?: string }): {
+  status: number
+  message: string
+  /** Kennung des bekannten Fehlers (z. B. ALREADY_REPORTED), damit die Oberfläche Fälle unterscheiden kann */
+  code?: string
+} {
+  const key = error.message?.trim()
+  const known = key ? ERROR_TEXT[key] : undefined
+  if (known) return { ...known, code: key }
+  if (error.code === '42501') return { ...ERROR_TEXT.FORBIDDEN, code: 'FORBIDDEN' }
   return { status: 500, message: GENERIC }
 }

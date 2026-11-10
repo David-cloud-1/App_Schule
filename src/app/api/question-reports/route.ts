@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   if (error) {
     const res = reportErrorResponse(error)
     if (res.status >= 500) console.error(`[${ROUTE}]`, error)
-    return NextResponse.json({ error: res.message }, { status: res.status })
+    return NextResponse.json({ error: res.message, code: res.code }, { status: res.status })
   }
   return NextResponse.json({ id: data }, { status: 201 })
 }
