@@ -101,6 +101,6 @@
 
 | PROJ-83 | Einheitliche Bedienmuster im Lehrkräfte-Bereich | Deployed | [PROJ-83-einheitliche-bedienmuster.md](PROJ-83-einheitliche-bedienmuster.md) | 2026-11-10 |
 | PROJ-84 | Nachweis-Detailseite aufräumen | Deployed | [PROJ-84-nachweis-detail-aufraeumen.md](PROJ-84-nachweis-detail-aufraeumen.md) | 2026-11-10 |
-| PROJ-85 | Inhalts-Baum – Fach → Thema mit Fragenliste | Architected | [PROJ-85-inhalts-baum.md](PROJ-85-inhalts-baum.md) | 2026-11-10 |
+| PROJ-85 | Inhalts-Baum – Fach → Thema mit Fragenliste | Approved | [PROJ-85-inhalts-baum.md](PROJ-85-inhalts-baum.md) | 2026-11-10 |
 
 ## Next Available ID: PROJ-86

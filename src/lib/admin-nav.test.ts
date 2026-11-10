@@ -58,7 +58,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte'])
     expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
       ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Meine Fächer', 'Lehrerzimmer'],
-      ['Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
+      ['Inhalte', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
     ])
   })
 

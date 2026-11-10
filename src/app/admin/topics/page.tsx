@@ -398,8 +398,8 @@ function TopicsPageContent() {
             </DialogTitle>
             <DialogDescription className="text-ws-muted">
               Das Thema <span className="font-semibold text-ws-text">„{deleteTarget?.name}"</span> wandert
-              in den Papierkorb und lässt sich von dort wiederherstellen. Fragen, die diesem Thema
-              zugewiesen sind, verlieren bis dahin ihre Zuordnung.
+              in den Papierkorb und lässt sich von dort wiederherstellen. Hat das Thema noch Fragen,
+              wird es nicht gelöscht: Verschiebe sie zuerst in ein anderes Thema.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

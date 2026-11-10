@@ -1,6 +1,6 @@
 # PROJ-85: Inhalts-Baum – Fach → Thema mit Fragenliste
 
-## Status: Architected
+## Status: Approved
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 
@@ -213,8 +213,44 @@ Keine neuen Pakete. Genutzt werden vorhandene shadcn/ui-Teile (DropdownMenu, Ale
 
 Abweichend von der üblichen Reihenfolge zuerst Backend: Der Baum braucht die Zähler, sonst lässt sich die Oberfläche nicht sinnvoll bauen.
 
-## QA Test Results
-_To be added by /qa_
+## Implementation Notes (Backend + Frontend, 2026-11-10)
+
+**Gebaut**
+- Seite `/admin/inhalte` mit Baum links und Fragenliste rechts ([page.tsx](../src/app/admin/inhalte/page.tsx)), Bausteine `content-tree`, `content-question-panel`, `topic-name-dialog` unter `src/components/admin/`.
+- Neue Lese-Schnittstelle `GET /api/admin/content-tree`; reine Logik (Zählen, Auswahl auflösen) in `src/lib/content-tree.ts`.
+- Fragen-Schnittstelle: neuer Filter `subject_id`. Fragen-Formular: neue Vorbelegung `defaults` (Fach, Thema, Klassenstufe).
+- Lösch-Sperre (E7): `DELETE /api/admin/topics/[id]` antwortet 409 mit Zahl, solange das Thema Fragen hat. Dialogtext auf „Themen“ angepasst.
+- Navigation: Eintrag „Inhalte“ in der Gruppe „Inhalte“ und in der Hauptliste (vor „Fragen“), gleiche Rollen wie „Fragen“.
+- Bereichsleiste: neuer Modus `compact` (ohne „Du siehst: …“, nur Umschalter), damit E6 gilt und Lehrkräfte den Bereich trotzdem wechseln können.
+
+**Abweichung vom Tech Design:** Keine Datenbank-Funktion und keine Migration. Die Route zählt im Server seitenweise (1000 Zeilen je Anfrage, gleiches Muster wie die Themen-Route). Grund: Migrationen an der Produktion muss der Nutzer von Hand einspielen, und der Bestand (ca. 4.000 Fragen je Bereich) ist klein genug. Wird der Baum bei „Alle Bereiche“ spürbar langsam, lässt sich die Zählung später in eine Funktion verlagern, ohne die Oberfläche zu ändern.
+
+**Weitere Entscheidungen**
+- Aktivieren/Deaktivieren eines Fachs prüft der Server (keine Deaktivierung bei aktiven Fragen), die Meldung erscheint als Toast.
+- Klassenstufe wird in „Neue Frage“ mit vorbelegt, wenn der Klassenfilter gesetzt ist.
+- Löscht jemand das gewählte Thema selbst, springt die Auswahl ohne Hinweis aufs Fach. Verschwindet es durch andere, erscheint der Hinweis „Dieses Thema gibt es nicht mehr“.
+
+## QA Test Results (2026-11-10)
+
+**Automatisch:** 2806 Tests grün (242 Dateien), `tsc` ohne Fehler, `npm run build` grün, neue Routen im Build. Neue Tests: Baum-Logik und Auswahl (8), Baum-Komponente inkl. Tastatur, Zähler, Klassenfilter, Menüs (10), Baum-Schnittstelle inkl. 401/403, gelöscht/privat (5), Lösch-Sperre (2), Fach-ID-Filter (2).
+**Datenbank (lesend):** benutzte Spalten und Fremdschlüssel vorhanden; Bestand 8.341 Fragen, 189 Themen, 9 Fächer.
+
+| Kriterium | Ergebnis |
+|---|---|
+| Seite, Navigation, Rollen wie „Fragen“ | erfüllt (Nav-Test, Schnittstelle prüft Rolle) |
+| Alte Seiten unverändert | erfüllt, außer Dialogtext bei „Themen“ (E7) |
+| Auswahl in der Adresse | erfüllt (`fach`, `thema`, `klasse`, `ansicht`) |
+| Baum, Zähler, gedämpft, inaktiv, Tastatur | erfüllt (Komponententest) |
+| Menüs, Lösch-Sperre, Toast | erfüllt |
+| Fragenliste, Suche, Status, seitenweise | erfüllt |
+| Handy: Baum → Liste mit Zurück | im Code umgesetzt, **nicht im Browser geprüft** |
+| Zustände Laden/Leer/Fehler | erfüllt |
+
+**Nicht im Browser geprüft** (kein Dev-Server erlaubt): Handy-Ansicht, Aussehen, Zurück-Taste. Bitte einmal auf Handy und Laptop durchklicken.
+
+**Sicherheit:** Alle Schreibzugriffe laufen über bestehende Schnittstellen mit Rechteprüfung. Neue Route ist rein lesend, prüft Anmeldung und Rolle, filtert Bereich, gelöschte Inhalte und private Nachweis-Fragen (nur Super-Admin). `subject_id` wird als UUID geprüft.
+
+**Bugs:** keine kritischen oder hohen. Offen (niedrig): Bei „Alle Bereiche“ lädt der Baum alle Fragen seitenweise nacheinander, bei ca. 8.000 Fragen etwa 2 Sekunden zu erwarten; nicht gemessen.
 
 ## Deployment
 _To be added by /deploy_

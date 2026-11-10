@@ -218,6 +218,21 @@ describe('GET /api/admin/questions', () => {
     expect(builder.in).not.toHaveBeenCalledWith('id', expect.anything())
   })
 
+  it('filters by subject ID on the same inner-join embed (PROJ-85)', async () => {
+    const mock = makeAdminSupabase({ queryData: [], queryCount: 0 })
+    vi.mocked(createClient).mockResolvedValue(mock as never)
+    const subjectId = '11111111-1111-4111-8111-111111111111'
+    const res = await GET(makeRequest('GET', { subject_id: subjectId }))
+    expect(res.status).toBe(200)
+    const questionsCall = mock.from.mock.results.find((r, i) => mock.from.mock.calls[i][0] === 'questions')
+    expect(questionsCall!.value.eq).toHaveBeenCalledWith('qs_filter.subject_id', subjectId)
+  })
+
+  it('returns 400 for a subject_id that is not a UUID (PROJ-85)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    expect((await GET(makeRequest('GET', { subject_id: 'KSK' }))).status).toBe(400)
+  })
+
   it('hides private Nachweis-Fragen from a department admin (PROJ-46)', async () => {
     const mock = makeAdminSupabase({ profileData: { role: 'department_admin', department_id: 'dept-sped' } })
     vi.mocked(createClient).mockResolvedValue(mock as never)

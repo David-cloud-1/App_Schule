@@ -6,6 +6,7 @@ import {
   FileText,
   Flag,
   FolderKanban,
+  FolderTree,
   GraduationCap,
   MessagesSquare,
   Plus,
@@ -73,6 +74,7 @@ export const ADMIN_HOME_HREF = '/admin'
  */
 export const ADMIN_MAIN_NAV_HREFS = [
   '/admin/leistungsnachweise',
+  '/admin/inhalte',
   '/admin/questions',
   WERKZEUGKISTE_HREF,
   SCHULRECHT_HREF,
@@ -141,6 +143,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     id: 'inhalte',
     label: 'Inhalte',
     items: [
+      {
+        href: '/admin/inhalte',
+        label: 'Inhalte',
+        description: 'Fächer, Themen und Fragen als Baum: Struktur und Fragenzahlen auf einen Blick',
+        icon: FolderTree,
+        // PROJ-85: dieselben Rollen wie „Fragen“
+        teacherVisible: true,
+      },
       {
         href: '/admin/questions',
         label: 'Fragen',

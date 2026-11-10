@@ -48,6 +48,8 @@ export function AdminPageHeader({
   const setDetailCrumb = workspace?.setDetailCrumb
   const pathname = usePathname()
   const scopeMode = useOptionalAdminRole() ? scopeBarModeFor(pathname ?? '') : null
+  // PROJ-85: der Inhalts-Baum zeigt den Bereich als obersten Knoten, hier bleibt nur der Umschalter
+  const scopeCompact = (pathname ?? '').replace(/\/+$/, '') === '/admin/inhalte'
 
   useEffect(() => {
     if (!setDetailCrumb || breadcrumb === undefined) return
@@ -62,7 +64,7 @@ export function AdminPageHeader({
         {description && <p className="mt-1 max-w-prose text-sm text-ws-muted">{description}</p>}
         {scopeMode && (
           <div className="mt-1">
-            <AdminScopeBar mode={scopeMode} />
+            <AdminScopeBar mode={scopeMode} compact={scopeCompact} />
           </div>
         )}
         {children && <div className="mt-3">{children}</div>}

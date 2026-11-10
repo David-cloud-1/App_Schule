@@ -99,6 +99,27 @@ export async function DELETE(
   const forbidden = assertCanAdminSubject(auth, existingSubject.id, existingSubject.department_id)
   if (forbidden) return forbidden
 
+  // PROJ-85 (E7): Ein Thema mit Fragen bleibt, bis die Fragen verschoben sind.
+  const { count: questionCount, error: countError } = await supabase
+    .from('questions')
+    .select('id', { count: 'exact', head: true })
+    .eq('topic_id', id)
+    .is('deleted_at', null)
+  if (countError) {
+    console.error('[DELETE /api/admin/topics/[id]] count', countError)
+    return NextResponse.json({ error: 'Failed to delete topic' }, { status: 500 })
+  }
+  if ((questionCount ?? 0) > 0) {
+    const n = questionCount as number
+    return NextResponse.json(
+      {
+        error: `Dieses Thema hat noch ${n} ${n === 1 ? 'Frage' : 'Fragen'}. Verschiebe sie zuerst in ein anderes Thema.`,
+        question_count: n,
+      },
+      { status: 409 }
+    )
+  }
+
   // Papierkorb statt endgültigem Löschen (PROJ-47).
   const { error } = await supabase
     .from('topics')

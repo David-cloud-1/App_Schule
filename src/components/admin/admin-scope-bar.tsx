@@ -31,7 +31,14 @@ export type ScopeBarMode = 'content' | 'people' | 'assessments'
  * Schülerdaten) zeigt allen außer dem Super-Admin ihren eigenen Bereich fest,
  * ohne Umschalter (Schülerdaten bleiben im eigenen Bereich).
  */
-export function AdminScopeBar({ mode = 'content' }: { mode?: ScopeBarMode }) {
+export function AdminScopeBar({
+  mode = 'content',
+  compact = false,
+}: {
+  mode?: ScopeBarMode
+  /** PROJ-85: ohne „Du siehst: …“, nur Umschalter (der Baum zeigt den Bereich selbst) */
+  compact?: boolean
+}) {
   const { role, scope, isSuperAdmin } = useAdminRole()
   const { name: departmentName } = useDepartment()
   const [switching, setSwitching] = useState(false)
@@ -39,6 +46,7 @@ export function AdminScopeBar({ mode = 'content' }: { mode?: ScopeBarMode }) {
   // Ohne Bereichsdaten (Einzelseiten, Tests) bleibt die ruhige Textzeile
   if (!scope && mode !== 'content') return null
   if (!scope) {
+    if (compact) return null
     return <p className="text-sm text-ws-muted">{contentScopeText(role, departmentName)}</p>
   }
 
@@ -46,6 +54,8 @@ export function AdminScopeBar({ mode = 'content' }: { mode?: ScopeBarMode }) {
   const fixedOwn = mode === 'people' && !isSuperAdmin
   const currentName = current ? (departments.find((d) => d.id === current)?.name ?? departmentName) : null
   const canSwitch = departments.length > 1 && !fixedOwn
+  const showTeacherLink = role === 'teacher' && mode === 'content'
+  if (compact && !canSwitch && !showTeacherLink) return null
 
   async function handleChange(value: string) {
     if (value === (current ?? ALL)) return
@@ -76,15 +86,17 @@ export function AdminScopeBar({ mode = 'content' }: { mode?: ScopeBarMode }) {
       aria-label="Bereich"
       className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ws-muted"
     >
-      <span className="flex items-center gap-2">
-        <Building2 className="size-4 shrink-0" aria-hidden />
-        <span>
-          Du siehst:{' '}
-          <strong className="font-semibold text-ws-text">
-            {fixedOwn ? departmentName : (currentName ?? 'alle Bereiche')}
-          </strong>
+      {!compact && (
+        <span className="flex items-center gap-2">
+          <Building2 className="size-4 shrink-0" aria-hidden />
+          <span>
+            Du siehst:{' '}
+            <strong className="font-semibold text-ws-text">
+              {fixedOwn ? departmentName : (currentName ?? 'alle Bereiche')}
+            </strong>
+          </span>
         </span>
-      </span>
+      )}
       {canSwitch && (
         <Select value={current ?? ALL} onValueChange={handleChange} disabled={switching}>
           <SelectTrigger
@@ -106,7 +118,7 @@ export function AdminScopeBar({ mode = 'content' }: { mode?: ScopeBarMode }) {
           </SelectContent>
         </Select>
       )}
-      {role === 'teacher' && mode === 'content' && (
+      {showTeacherLink && (
         <Link
           href="/admin/my-subjects"
           className="font-semibold text-ws-blue hover:underline focus-visible:ring-2 focus-visible:ring-ws-green"

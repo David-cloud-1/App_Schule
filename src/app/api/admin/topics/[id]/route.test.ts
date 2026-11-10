@@ -25,17 +25,20 @@ function makeSupabase(opts: {
   assignments?: { department_id: string; subject_id: string | null }[]
   topicSubjectId?: string
   topicDepartmentId?: string
+  questionCount?: number
 }) {
   const {
     role = 'teacher',
     assignments = [],
     topicSubjectId = 'subj-a',
     topicDepartmentId = 'dept-sped',
+    questionCount = 0,
   } = opts
   const { client, writes } = chainMock((table, calls) => {
     if (table === 'profiles') return { data: { role, department_id: 'dept-sped' } }
     if (table === 'teacher_subject_assignments') return { data: assignments }
     if (table === 'admin_audit_log') return {}
+    if (table === 'questions') return { count: questionCount }
     if (table === 'content_versions') return { data: { created_at: '2026-11-04T08:00:00Z', changed_by_label: null, profiles: { display_name: 'Frau Muster' } } }
     if (table === 'topics') {
       if (hasCall(calls, 'maybeSingle') && calls.some((c) => c.method === 'select' && String(c.args[0]) === 'version_number')) {
@@ -96,6 +99,26 @@ describe('DELETE /api/admin/topics/[id] (PROJ-48)', () => {
     expect(writes.find((w) => w.table === 'topics' && w.method === 'update')?.payload).toMatchObject({
       deleted_at: expect.any(String),
     })
+  })
+})
+
+describe('DELETE /api/admin/topics/[id] — Sperre bei Fragen (PROJ-85)', () => {
+  it('lehnt ab, solange das Thema Fragen hat, und nennt die Zahl', async () => {
+    const { client, writes } = makeSupabase({ role: 'admin', questionCount: 3 })
+    vi.mocked(createClient).mockResolvedValue(client as never)
+    const res = await DELETE({} as unknown as NextRequest, makeCtx())
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.question_count).toBe(3)
+    expect(body.error).toContain('3 Fragen')
+    expect(writes.find((w) => w.table === 'topics' && w.method === 'update')).toBeUndefined()
+  })
+
+  it('nennt bei genau einer Frage die Einzahl', async () => {
+    const { client } = makeSupabase({ role: 'admin', questionCount: 1 })
+    vi.mocked(createClient).mockResolvedValue(client as never)
+    const res = await DELETE({} as unknown as NextRequest, makeCtx())
+    expect((await res.json()).error).toContain('1 Frage.')
   })
 })
 

@@ -78,6 +78,15 @@ interface Props {
   onSuccess: () => void
   /** Öffnet den Verlauf aus dem Konflikt-Hinweis */
   onOpenHistory?: (question: AdminQuestion) => void
+  /** Vorbelegung beim Anlegen (PROJ-85: „Neue Frage“ im gewählten Fach/Thema) */
+  defaults?: QuestionDefaults
+}
+
+/** Vorbelegung einer neuen Frage; wirkt nur, wenn keine Frage bearbeitet wird. */
+export interface QuestionDefaults {
+  subjectId?: string
+  topicId?: string | null
+  classLevel?: 10 | 11 | 12 | null
 }
 
 /** Ergebnis von `save()` am Formular-Körper (PROJ-82). */
@@ -105,6 +114,7 @@ interface BodyProps {
   onCancel?: () => void
   /** Meldet, ob das Formular gegenüber dem Ausgangsstand verändert ist */
   onDirtyChange?: (dirty: boolean) => void
+  defaults?: QuestionDefaults
 }
 
 type FormState = {
@@ -148,6 +158,7 @@ export function QuestionFormModal({
   subjects,
   onSuccess,
   onOpenHistory,
+  defaults,
 }: Props) {
   const isEdit = Boolean(question)
   return (
@@ -167,6 +178,7 @@ export function QuestionFormModal({
           active={open}
           question={question}
           subjects={subjects}
+          defaults={defaults}
           onOpenHistory={onOpenHistory}
           onCancel={() => onOpenChange(false)}
           onSaved={({ andNew }) => {
@@ -189,7 +201,7 @@ export function QuestionFormModal({
  * dieselben Felder, Prüfungen und denselben Konflikt-Schutz haben.
  */
 export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(function QuestionFormBody(
-  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange },
+  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange, defaults },
   ref
 ) {
   const classLevelOptions = useClassLevelOptions()
@@ -203,6 +215,9 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
 
   const isEdit = Boolean(question)
   const initialRef = useRef<string>('')
+  const defaultSubjectId = defaults?.subjectId
+  const defaultTopicId = defaults?.topicId ?? null
+  const defaultClassLevel = defaults?.classLevel ?? null
 
   const loadTopicsForSubjects = useCallback(async (subjectIds: string[]) => {
     if (subjectIds.length === 0) { setTopics([]); return }
@@ -259,12 +274,19 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
       setForm(seeded)
       loadTopicsForSubjects(subjectIds)
     } else {
-      initialRef.current = JSON.stringify(EMPTY)
-      setForm(EMPTY)
+      const seeded: FormState = {
+        ...EMPTY,
+        subject_ids: defaultSubjectId ? [defaultSubjectId] : [],
+        topic_id: defaultSubjectId && defaultTopicId ? defaultTopicId : '_none',
+        class_level: defaultClassLevel ? (String(defaultClassLevel) as FormState['class_level']) : '_all',
+      }
+      initialRef.current = JSON.stringify(seeded)
+      setForm(seeded)
       setTopics([])
+      if (defaultSubjectId) loadTopicsForSubjects([defaultSubjectId])
     }
     setErrors({})
-  }, [open, question, loadTopicsForSubjects])
+  }, [open, question, loadTopicsForSubjects, defaultSubjectId, defaultTopicId, defaultClassLevel])
 
   const remaining = useMemo(() => 1000 - form.question_text.length, [form.question_text])
 

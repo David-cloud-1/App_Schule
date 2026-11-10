@@ -7,6 +7,8 @@ import { attachAnswerKey } from '@/lib/answer-key'
 const ListQuerySchema = z.object({
   q: z.string().optional(),
   subject: z.string().optional(),
+  // PROJ-85: Kürzel sind nicht bereichsübergreifend eindeutig, der Inhalts-Baum filtert nach ID
+  subject_id: z.string().uuid().optional(),
   status: z.enum(['active', 'inactive', 'all']).default('all'),
   difficulty: z.enum(['leicht', 'mittel', 'schwer']).optional(),
   class_level: z.coerce.number().int().refine((v) => [10, 11, 12].includes(v)).optional(),
@@ -55,7 +57,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { q, subject, status, difficulty, class_level, topic_id, missing_class_level, missing_topic, page, sort, sort_dir } = parsed.data
+  const { q, subject, subject_id, status, difficulty, class_level, topic_id, missing_class_level, missing_topic, page, sort, sort_dir } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -118,6 +120,9 @@ export async function GET(request: NextRequest) {
 
   if (subjectIds) {
     query = query.in('qs_filter.subject_id', subjectIds)
+  }
+  if (subject_id) {
+    query = query.eq('qs_filter.subject_id', subject_id)
   }
   if (difficulty) {
     query = query.eq('difficulty', difficulty)

@@ -50,6 +50,7 @@ describe('AdminNav (PROJ-40)', () => {
     expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Übersicht',
       'Leistungsnachweise',
+      'Inhalte',
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
@@ -179,6 +180,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     expect(names).toEqual([
       'Übersicht',
       'Leistungsnachweise',
+      'Inhalte',
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
@@ -203,6 +205,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
       'Übersicht',
       'Leistungsnachweise',
+      'Inhalte',
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
