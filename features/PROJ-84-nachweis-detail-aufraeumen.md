@@ -1,6 +1,6 @@
 # PROJ-84: Nachweis-Detailseite aufräumen
 
-## Status: Planned
+## Status: Deployed
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 
