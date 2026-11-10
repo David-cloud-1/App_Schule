@@ -769,7 +769,7 @@ function AdminQuestionsPageContent() {
       {loadFailed ? (
         <AdminErrorState message="Die Fragen konnten gerade nicht geladen werden." onRetry={fetchQuestions} />
       ) : (
-        <div className="ws-table-scroll border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
+        <div className="ws-table-scroll [&_table]:min-w-0 border border-ws-line rounded-2xl overflow-hidden bg-ws-surface">
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
@@ -813,7 +813,7 @@ function AdminQuestionsPageContent() {
                     <SortIcon col="created_at" current={sortCol} dir={sortDir} />
                   </button>
                 </TableHead>
-                <TableHead className="sticky right-0 z-10 whitespace-nowrap bg-ws-bg text-right text-ws-muted">Aktionen</TableHead>
+                <TableHead className="whitespace-nowrap text-right text-ws-muted">Aktionen</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -945,7 +945,7 @@ function AdminQuestionsPageContent() {
                               <LastChangedLine by={q.last_changed_by} at={q.last_changed_at} />
                             </div>
                           </TableCell>
-                          <TableCell className="sticky right-0 z-10 bg-ws-surface text-right">
+                          <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {q.assessment_only && !q.is_private && (
                                 <Button
