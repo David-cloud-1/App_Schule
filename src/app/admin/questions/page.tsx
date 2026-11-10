@@ -792,7 +792,7 @@ function AdminQuestionsPageContent() {
                   </button>
                 </TableHead>
                 <TableHead className="text-ws-muted hidden lg:table-cell">Thema</TableHead>
-                <TableHead className="text-ws-muted">Fach</TableHead>
+                <TableHead className="hidden text-ws-muted sm:table-cell">Fach</TableHead>
                 <TableHead className="text-ws-muted hidden md:table-cell">Klasse</TableHead>
                 <TableHead className="text-ws-muted hidden sm:table-cell">
                   <button
@@ -823,7 +823,7 @@ function AdminQuestionsPageContent() {
                       <TableCell className="pl-4"><Skeleton className="h-4 w-4" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-64" /></TableCell>
                       <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-10" /></TableCell>
                       <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                       <TableCell><Skeleton className="h-6 w-10" /></TableCell>
@@ -899,19 +899,21 @@ function AdminQuestionsPageContent() {
                               <span className="text-sm text-ws-muted">{q.topics!.name}</span>
                             )}
                           </TableCell>
-                          <TableCell className="flex flex-wrap gap-1">
-                            {codes.map((c) => (
-                              <Badge
-                                key={c}
-                                variant="outline"
-                                className="border-ws-line text-ws-muted"
-                              >
-                                {c}
-                              </Badge>
-                            ))}
-                            {departmentsOf(q).map((d) => (
-                              <DepartmentTag key={d.code} name={d.name} code={d.code} />
-                            ))}
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {codes.map((c) => (
+                                <Badge
+                                  key={c}
+                                  variant="outline"
+                                  className="border-ws-line text-ws-muted"
+                                >
+                                  {c}
+                                </Badge>
+                              ))}
+                              {departmentsOf(q).map((d) => (
+                                <DepartmentTag key={d.code} name={d.name} code={d.code} />
+                              ))}
+                            </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {q.class_level != null ? (
