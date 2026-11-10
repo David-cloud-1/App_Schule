@@ -243,17 +243,37 @@ Abweichend von der üblichen Reihenfolge zuerst Backend: Der Baum braucht die Z�
 | Baum, Zähler, gedämpft, inaktiv, Tastatur | erfüllt (Komponententest) |
 | Menüs, Lösch-Sperre, Toast | erfüllt |
 | Fragenliste, Suche, Status, seitenweise | erfüllt |
-| Handy: Baum → Liste mit Zurück | im Code umgesetzt, **nicht im Browser geprüft** |
+| Handy: Baum → Liste mit Zurück | erfüllt (Browser, Handy-Breite simuliert, s. u.) |
 | Zustände Laden/Leer/Fehler | erfüllt |
 
-**Nicht im Browser geprüft** (kein Dev-Server erlaubt): Handy-Ansicht, Aussehen, Zurück-Taste. Bitte einmal auf Handy und Laptop durchklicken.
+### Browser-Prüfung (Produktion, Konto „Lehrkraft“, Chrome, 2026-11-10)
+- Baum lädt mit Zählern (BGP 834, KSK 446, STG 1445, LOP 396, PuG 692). Fach und Thema wählen, Liste und Pfad stimmen.
+- Klassenfilter 11: Thema der 10. Klasse verschwindet, Auswahl fällt aufs Fach zurück, Zähler und Liste zeigen beide 355.
+- Tastatur: Pfeil runter/runter + Enter wählt das Thema, Fokus wandert mit, genau ein Knoten per Tab erreichbar.
+- „Neue Frage“: Fach KSK, Thema und Klasse 11 vorbelegt (ohne Speichern geschlossen).
+- `⋯` am Thema: Umbenennen, Verlauf, Löschen. Löschen bei 46 Fragen zeigt nur den Sperrhinweis.
+- Adresse mit unbekanntem Thema: Hinweis „Dieses Thema gibt es nicht mehr“, Auswahl aufs Fach, kein Fehlerbildschirm.
+- Handy: Die Fensterbreite ließ sich nicht ändern. Geprüft mit vorgetäuschter schmaler Breite: Antippen öffnet die Liste (`ansicht=liste`, neuer Verlaufseintrag, Baum unter 1024 px ausgeblendet), „Zurück zum Baum“ und Browser-Zurück führen zum Baum, KSK bleibt aufgeklappt. Optik auf echtem Handy nicht gesehen.
+- Nichts angelegt, umbenannt oder gelöscht (Produktionsdaten).
+
+### Im Browser gefundene und behobene Bugs
+| # | Schwere | Befund | Behoben |
+|---|---|---|---|
+| B1 | Kritisch | Lehrkräfte wurden von `/admin/inhalte` auf `/admin?gesperrt=1` umgeleitet (Seite fehlte in der Freigabeliste des Proxys). | af8be52 |
+| B2 | Kritisch | Der Proxy lehnte `/api/admin/content-tree` für Lehrkräfte mit 403 ab (zweite Freigabeliste für Schnittstellen). | d81f966 |
+| B3 | Hoch (PROJ-73/74/81/82) | Derselbe Fehler schon vorher bei „Gemeldete Fragen“, „Schwierigste Fragen“ und der Aufgabenliste: Lehrkräfte wurden umgeleitet bzw. bekamen 403. | af8be52, d81f966 |
+| B4 | Mittel | Jeder Klick im Baum brauchte ca. 0,6 s (Server-Rundreise über `router.replace`). Jetzt unter 25 ms. | 1409487 |
+| B5 | Niedrig | Baum lud Fragen-Seiten nacheinander (1,8 s). Jetzt parallel: 1,3–1,6 s. | 4c1ddac |
+
+Neue Wächter-Tests verhindern B1–B3 künftig: Jede für Lehrkräfte sichtbare Navigationsseite muss im Proxy erlaubt sein, und jede Admin-Route mit `requireTeacherOrAdmin`/`requireContentAdmin` muss im Proxy für Lehrkräfte freigegeben sein.
 
 **Sicherheit:** Alle Schreibzugriffe laufen über bestehende Schnittstellen mit Rechteprüfung. Neue Route ist rein lesend, prüft Anmeldung und Rolle, filtert Bereich, gelöschte Inhalte und private Nachweis-Fragen (nur Super-Admin). `subject_id` wird als UUID geprüft.
 
-**Bugs:** keine kritischen oder hohen. Offen (niedrig): Bei „Alle Bereiche“ lädt der Baum alle Fragen seitenweise nacheinander, bei ca. 8.000 Fragen etwa 2 Sekunden zu erwarten; nicht gemessen.
+**Offen (niedrig):** Ziel „Baum unter 1 s“ nicht erreicht. Gemessen 1,3–1,6 s im Bereich Spedition (Vergleich: die bestehende Fragenliste braucht ca. 0,95 s). Unter 1 s nur mit einer Zähl-Funktion in der Datenbank (Migration, die der Nutzer einspielen müsste).
 
 ## Deployment
 - **Live seit 2026-11-10**, Commit 98cddc9, Vercel-Projekt `spedilern` (Production, Ready nach ca. 1 Minute).
 - **Keine Migration**, keine neuen Umgebungsvariablen, keine neuen Pakete.
 - Nachprüfung ohne Login: `/api/admin/content-tree` antwortet 401, `/admin/inhalte` leitet zum Login (307), `/api/admin/questions?subject_id=…` antwortet 401. Keine neuen Fehler in den Produktions-Logs.
-- **Offen:** einmal eingeloggt auf Laptop und Handy durchklicken (Baum, Fragenliste, Zurück-Taste, Klassenfilter, Thema anlegen/umbenennen/löschen).
+- Nachbesserungen live: af8be52, d81f966 (Freigaben), 1409487, 4c1ddac (Tempo).
+- **Offen:** Optik auf einem echten Handy; Anlegen/Umbenennen/Löschen eines Themas nicht an Produktionsdaten ausprobiert.
