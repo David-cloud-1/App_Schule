@@ -66,6 +66,12 @@ describe('reportErrorResponse', () => {
     expect(reportErrorResponse({ code: 'XX000', message: 'interner SQL-Text' }).code).toBeUndefined()
   })
 
+  it('übersetzt NO_CHANGE in einen verständlichen Hinweis (QA PROJ-73 B3)', () => {
+    const res = reportErrorResponse({ code: '55000', message: 'NO_CHANGE' })
+    expect(res.status).toBe(409)
+    expect(res.message).toContain('nicht geändert')
+  })
+
   it('macht aus fehlenden Rechten 403 und aus allem anderen einen neutralen 500', () => {
     expect(reportErrorResponse({ code: '42501', message: 'permission denied' }).status).toBe(403)
     const other = reportErrorResponse({ code: 'XX000', message: 'interner SQL-Text' })

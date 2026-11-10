@@ -57,7 +57,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Diese Frage gehört nicht zum Nachweis.' }, { status: 400 })
   }
 
-  const current = (assessment.excluded_question_ids as string[] | null) ?? []
+  const stored = assessment.excluded_question_ids as string[] | null
+  const current = stored ?? []
   const next = excluded
     ? [...new Set([...current, questionId])]
     : current.filter((qid) => qid !== questionId)
@@ -72,17 +73,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
   // `.is(...)` verhindert, dass eine Freigabe zwischen Prüfung und Speichern unterlaufen wird;
   // `.select` zeigt, ob der Zeilenschutz die Änderung zugelassen hat.
-  const { data: updated, error } = await supabase
+  // Nur speichern, wenn die Liste noch so aussieht wie gelesen: Zwei gleichzeitige Aktionen
+  // auf verschiedene Fragen dürfen sich nicht still überschreiben (QA PROJ-75 B6).
+  let update = supabase
     .from('graded_assessments')
     .update({ excluded_question_ids: next })
     .eq('id', id)
     .is('results_released_at', null)
-    .select('id')
+  update = stored === null ? update.is('excluded_question_ids', null) : update.eq('excluded_question_ids', `{${stored.join(',')}}`)
+  const { data: updated, error } = await update.select('id')
   if (error) {
     console.error('[PUT /api/admin/assessments/:id/exclude-question]', error)
     return NextResponse.json({ error: 'Das hat nicht geklappt. Bitte versuche es erneut.' }, { status: 500 })
   }
   if (!updated || updated.length === 0) {
+    // Hat sich die Liste inzwischen geändert, war es eine gleichzeitige Aktion, kein Rechteproblem
+    const { data: again } = await supabase
+      .from('graded_assessments')
+      .select('excluded_question_ids')
+      .eq('id', id)
+      .maybeSingle()
+    const now = (again?.excluded_question_ids as string[] | null) ?? []
+    if (again && (now.length !== current.length || now.some((qid) => !current.includes(qid)))) {
+      return NextResponse.json(
+        { error: 'Jemand hat die Wertung gerade gleichzeitig geändert. Bitte lade die Seite neu und versuche es erneut.' },
+        { status: 409 },
+      )
+    }
     return NextResponse.json({ error: 'Dafür fehlt dir die Berechtigung.' }, { status: 403 })
   }
 

@@ -32,7 +32,9 @@ export async function POST(request: NextRequest) {
   if (error) {
     const res = reportErrorResponse(error)
     if (res.status >= 500) console.error(`[${ROUTE}]`, error)
-    return NextResponse.json({ error: res.message, code: res.code }, { status: res.status })
+    // Lehrer-Rollen dürfen nicht melden (QA PROJ-72 B5): verständlicher Text statt „Berechtigung“
+    const message = res.code === 'FORBIDDEN' ? 'Fragen melden können nur Azubis.' : res.message
+    return NextResponse.json({ error: message, code: res.code }, { status: res.status })
   }
   return NextResponse.json({ id: data }, { status: 201 })
 }

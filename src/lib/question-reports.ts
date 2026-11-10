@@ -105,6 +105,11 @@ const ERROR_TEXT: Record<string, { status: number; message: string }> = {
   SESSION_RUNNING: { status: 409, message: 'Während einer Prüfung kannst du nichts melden.' },
   DAILY_LIMIT: { status: 429, message: 'Du hast heute schon viele Fragen gemeldet. Morgen geht es weiter.' },
   ALREADY_REPORTED: { status: 409, message: 'Du hast diese Frage schon gemeldet.' },
+  // QA PROJ-73 B3: „korrigiert“ nur nach einer echten Änderung der Frage
+  NO_CHANGE: {
+    status: 409,
+    message: 'Die Frage wurde seit der Meldung nicht geändert. Speichere zuerst die Korrektur oder wähle „Nicht übernommen“.',
+  },
 }
 
 /** Fehler einer Datenbank-Funktion in Status und deutschen Text übersetzen. */

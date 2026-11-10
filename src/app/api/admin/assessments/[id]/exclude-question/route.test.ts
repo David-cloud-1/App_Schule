@@ -125,4 +125,28 @@ describe('PUT /api/admin/assessments/[id]/exclude-question', () => {
     expect(res.status).toBe(403)
     expect(writeAuditLog).not.toHaveBeenCalled()
   })
+
+  it('speichert nur, wenn die Ausschlussliste noch wie gelesen aussieht (QA PROJ-75 B6)', async () => {
+    const m = setup({ ...base, excluded_question_ids: [Q2] })
+    expect((await PUT(req({ question_id: Q1, excluded: true }), ctx())).status).toBe(200)
+    const upd = m.queries.find((q) => q.table === 'graded_assessments' && hasCall(q.calls, 'update'))!
+    expect(upd.calls.find((c) => c.method === 'eq' && c.args[0] === 'excluded_question_ids')?.args[1]).toBe(`{${Q2}}`)
+  })
+
+  it('meldet 409 statt 403, wenn jemand gleichzeitig eine andere Frage ausgenommen hat', async () => {
+    let reads = 0
+    const m = chainMock((table, calls) => {
+      if (table !== 'graded_assessments') return { data: null }
+      if (hasCall(calls, 'update')) return { data: [] }
+      reads++
+      return { data: reads === 1 ? base : { ...base, excluded_question_ids: [Q3] } }
+    })
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
+      error: null,
+      user: { id: 'teacher-1', email: 't@x.de' },
+      supabase: m.client,
+      role: 'teacher',
+    } as never)
+    expect((await PUT(req({ question_id: Q1, excluded: true }), ctx())).status).toBe(409)
+  })
 })
