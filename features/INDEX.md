@@ -100,5 +100,6 @@
 | PROJ-82 | Gemeldete Fragen direkt in der Inbox prüfen, bearbeiten und abschließen | Deployed | [PROJ-82-meldungen-direkt-pruefen.md](PROJ-82-meldungen-direkt-pruefen.md) | 2026-11-09 |
 
 | PROJ-83 | Einheitliche Bedienmuster im Lehrkräfte-Bereich | Deployed | [PROJ-83-einheitliche-bedienmuster.md](PROJ-83-einheitliche-bedienmuster.md) | 2026-11-10 |
+| PROJ-84 | Nachweis-Detailseite aufräumen | Planned | [PROJ-84-nachweis-detail-aufraeumen.md](PROJ-84-nachweis-detail-aufraeumen.md) | 2026-11-10 |
 
-## Next Available ID: PROJ-84
+## Next Available ID: PROJ-85

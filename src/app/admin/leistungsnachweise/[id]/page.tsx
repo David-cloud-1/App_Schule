@@ -63,6 +63,7 @@ import { groupDistribution } from '@/lib/assessment-groups'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
 import { cn } from '@/lib/utils'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { AssessmentItemAnalysis } from '@/components/admin/assessment-item-analysis'
@@ -337,42 +338,21 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           actions={
             <>
               {detail.status === 'draft' && (
-                <>
-                  <Button
-                    onClick={() => runAction('open')}
-                    disabled={actionPending || (detail.unavailableQuestionIds?.length ?? 0) > 0}
-                    title={(detail.unavailableQuestionIds?.length ?? 0) > 0 ? 'Erst nicht mehr verfügbare Fragen ersetzen oder entfernen' : undefined}
-                    className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
-                  >
-                    <Unlock size={14} className="mr-1.5" />
-                    Öffnen
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setEditQuestionsOpen(true)}
-                    disabled={actionPending}
-                    className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-                  >
-                    <ListChecks size={14} className="mr-1.5" />
-                    Fragen bearbeiten
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setChangeDepartmentOpen(true)}
-                    disabled={actionPending}
-                    className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-                  >
-                    <Building2 size={14} className="mr-1.5" />
-                    Zielbereich ändern
-                  </Button>
-                </>
+                <Button
+                  onClick={() => runAction('open')}
+                  disabled={actionPending || (detail.unavailableQuestionIds?.length ?? 0) > 0}
+                  title={(detail.unavailableQuestionIds?.length ?? 0) > 0 ? 'Erst nicht mehr verfügbare Fragen ersetzen oder entfernen' : undefined}
+                  className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
+                >
+                  <Unlock size={14} className="mr-1.5" />
+                  Öffnen
+                </Button>
               )}
               {detail.status === 'open' && (
                 <Button
-                  variant="outline"
                   onClick={() => runAction('close')}
                   disabled={actionPending}
-                  className="rounded-xl border-ws-orange/50 text-ws-orange hover:bg-ws-orange/10"
+                  className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                 >
                   <Lock size={14} className="mr-1.5" />
                   Beitritt schließen
@@ -436,24 +416,42 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button
-                variant="outline"
-                onClick={() => setDuplicateOpen(true)}
-                disabled={actionPending}
-                className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
-              >
-                <CopyPlus size={14} className="mr-1.5" />
-                Duplizieren
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setConfirmDelete(true)}
-                disabled={actionPending}
-                className="rounded-xl border-ws-red/30 text-ws-red hover:bg-ws-red/10"
-              >
-                <Trash2 size={14} className="mr-1.5" />
-                Löschen
-              </Button>
+              <AdminRowActions
+                subject="Leistungsnachweis"
+                items={[
+                  {
+                    key: 'questions',
+                    label: 'Fragen bearbeiten',
+                    icon: <ListChecks className="size-4 text-ws-muted" />,
+                    onSelect: () => setEditQuestionsOpen(true),
+                    hidden: detail.status !== 'draft',
+                    disabled: actionPending,
+                  },
+                  {
+                    key: 'department',
+                    label: 'Zielbereich ändern',
+                    icon: <Building2 className="size-4 text-ws-muted" />,
+                    onSelect: () => setChangeDepartmentOpen(true),
+                    hidden: detail.status !== 'draft',
+                    disabled: actionPending,
+                  },
+                  {
+                    key: 'duplicate',
+                    label: 'Duplizieren',
+                    icon: <CopyPlus className="size-4 text-ws-muted" />,
+                    onSelect: () => setDuplicateOpen(true),
+                    disabled: actionPending,
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Löschen',
+                    icon: <Trash2 className="size-4" />,
+                    onSelect: () => setConfirmDelete(true),
+                    destructive: true,
+                    disabled: actionPending,
+                  },
+                ]}
+              />
             </>
           }
         >
@@ -481,8 +479,25 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </AdminPageHeader>
       </div>
 
+      {/* PROJ-39: Ablage — in jedem Status änderbar */}
+      <AssessmentCategoryCard
+        key={`${detail.schoolYear}|${detail.className}|${detail.subjectId}`}
+        assessmentId={id}
+        schoolYear={detail.schoolYear}
+        schoolClass={detail.className}
+        subjectId={detail.subjectId}
+        subjects={detail.categoryOptions?.subjects ?? []}
+        classSuggestions={detail.categoryOptions?.classes ?? []}
+        onSaved={load}
+      />
+
       {/* Beitritt (bis zum Schließen) und Live-Stand (ab dem Öffnen) in einer Karte */}
-      <div className="bg-ws-surface border border-ws-line rounded-2xl p-5 flex flex-col lg:flex-row lg:items-center gap-5">
+      <div
+        className={cn(
+          'flex flex-col lg:flex-row lg:items-center gap-5',
+          detail.status !== 'closed' && 'bg-ws-surface border border-ws-line rounded-2xl p-5',
+        )}
+      >
         {detail.status !== 'closed' && (
           <div className="flex flex-1 flex-col sm:flex-row items-center gap-5">
             <div className="bg-white p-2 rounded-xl flex-shrink-0">
@@ -508,33 +523,19 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               detail.status === 'closed' ? 'flex-1' : 'lg:border-l lg:border-ws-line lg:pl-6',
             )}
           >
-            <div>
-              <p className="text-xl font-bold text-ws-text">{detail.live.joined}</p>
-              <p className="text-xs text-ws-muted">Beigetreten</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-ws-blue">{detail.live.inProgress}</p>
-              <p className="text-xs text-ws-muted">Schreiben</p>
-            </div>
-            <div>
-              <p className="text-xl font-bold text-ws-green">{detail.live.submitted}</p>
-              <p className="text-xs text-ws-muted">Abgegeben</p>
-            </div>
+            {[
+              { label: 'Beigetreten', value: detail.live.joined, tone: 'text-ws-text' },
+              { label: 'Schreiben', value: detail.live.inProgress, tone: 'text-ws-blue' },
+              { label: 'Abgegeben', value: detail.live.submitted, tone: 'text-ws-green' },
+            ].map((tile) => (
+              <div key={tile.label} className="min-w-20 flex-1 rounded-xl border border-ws-line bg-ws-bg px-4 py-3">
+                <p className={cn('text-2xl font-bold', tile.tone)}>{tile.value}</p>
+                <p className="text-xs text-ws-muted">{tile.label}</p>
+              </div>
+            ))}
           </div>
         )}
       </div>
-
-      {/* PROJ-39: Ablage — in jedem Status änderbar */}
-      <AssessmentCategoryCard
-        key={`${detail.schoolYear}|${detail.className}|${detail.subjectId}`}
-        assessmentId={id}
-        schoolYear={detail.schoolYear}
-        schoolClass={detail.className}
-        subjectId={detail.subjectId}
-        subjects={detail.categoryOptions?.subjects ?? []}
-        classSuggestions={detail.categoryOptions?.classes ?? []}
-        onSaved={load}
-      />
 
       {/* PROJ-79: Prüfkarte für den Entwurf einer Kopie */}
       {detail.status === 'draft' && detail.copiedFromTitle != null && (

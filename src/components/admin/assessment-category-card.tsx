@@ -2,8 +2,16 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { schoolYearFor } from '@/lib/assessment-category'
 import { schoolYearChoices } from '@/lib/assessment-filter'
 import { AssessmentCategoryFields, type CategoryValue, type SubjectOption } from './assessment-category-fields'
@@ -19,7 +27,7 @@ interface Props {
   onSaved: () => void
 }
 
-/** PROJ-39: Ablage eines Nachweises ändern — in jedem Status, ohne Wirkung auf die Prüfung */
+/** PROJ-39/84: Ablage eines Nachweises als ruhige Zeile; Ändern im Dialog — in jedem Status, ohne Wirkung auf die Prüfung */
 export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, subjectId, subjects, classSuggestions, onSaved }: Props) {
   const initial: CategoryValue = { schoolYear, className: schoolClass ?? '', subjectId }
   const [value, setValue] = useState<CategoryValue>(initial)
@@ -27,11 +35,24 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
   // Speichern auch dann ruht, wenn der Server die Schreibweise der Klasse vereinheitlicht hat
   const [base, setBase] = useState<CategoryValue>(initial)
   const [saving, setSaving] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const dirty =
     value.schoolYear !== base.schoolYear ||
     value.className.trim() !== base.className ||
     value.subjectId !== base.subjectId
+
+  function openDialog() {
+    setValue(base)
+    setOpen(true)
+  }
+
+  const subjectName = subjects.find((s) => s.id === base.subjectId)?.name
+  const summary = [
+    base.schoolYear,
+    base.className || 'Keine Klasse',
+    base.subjectId ? (subjectName ?? 'Fach') : 'Kein Fach',
+  ].join(' · ')
 
   async function save() {
     setSaving(true)
@@ -58,6 +79,7 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
       setBase(saved)
       setValue(saved)
       toast.success('Ablage gespeichert')
+      setOpen(false)
       onSaved()
     } catch (err) {
       console.error(err)
@@ -68,30 +90,57 @@ export function AssessmentCategoryCard({ assessmentId, schoolYear, schoolClass, 
   }
 
   return (
-    <div className="bg-ws-surface border border-ws-line rounded-2xl p-4 space-y-3">
-      <div>
-        <h2 className="text-base font-semibold text-ws-text">Ablage</h2>
-        <p className="text-xs text-ws-muted">Nur zum Sortieren und Wiederfinden — ändert nichts am Zugang oder an der Prüfung.</p>
-      </div>
-      <AssessmentCategoryFields
-        idPrefix="ablage"
-        value={value}
-        onChange={setValue}
-        subjects={subjects}
-        classSuggestions={classSuggestions}
-        schoolYears={schoolYearChoices([], schoolYearFor(new Date()))}
-        disabled={saving}
-      />
-      <div className="flex justify-end">
+    <>
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-ws-line bg-ws-surface py-1 pl-4 pr-2">
+        <p className="min-w-0 truncate text-sm text-ws-text" title={summary}>
+          <span className="mr-2 text-xs uppercase tracking-wide text-ws-muted">Ablage</span>
+          {summary}
+        </p>
         <Button
-          onClick={save}
-          disabled={!dirty || saving}
-          className="h-11 rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={openDialog}
+          aria-label="Ablage ändern"
+          title="Ablage ändern"
+          className="size-11 shrink-0 rounded-xl text-ws-muted hover:text-ws-text"
         >
-          {saving && <Loader2 className="size-4 mr-2 animate-spin" />}
-          Ablage speichern
+          <Pencil className="size-4" />
         </Button>
       </div>
-    </div>
+
+      <Dialog open={open} onOpenChange={(o) => !saving && setOpen(o)}>
+        <DialogContent className="max-w-xl border-ws-line bg-ws-surface text-ws-text">
+          <DialogHeader>
+            <DialogTitle>Ablage ändern</DialogTitle>
+            <DialogDescription className="text-ws-muted">
+              Nur zum Sortieren und Wiederfinden — ändert nichts am Zugang oder an der Prüfung.
+            </DialogDescription>
+          </DialogHeader>
+          <AssessmentCategoryFields
+            idPrefix="ablage"
+            value={value}
+            onChange={setValue}
+            subjects={subjects}
+            classSuggestions={classSuggestions}
+            schoolYears={schoolYearChoices([], schoolYearFor(new Date()))}
+            disabled={saving}
+          />
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
+              Abbrechen
+            </Button>
+            <Button
+              onClick={save}
+              disabled={!dirty || saving}
+              className="h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+            >
+              {saving && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

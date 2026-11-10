@@ -26,6 +26,10 @@ const props = {
   classSuggestions: ['SP11a'],
 }
 
+function openDialog() {
+  fireEvent.click(screen.getByRole('button', { name: 'Ablage ändern' }))
+}
+
 describe('AssessmentCategoryCard', () => {
   beforeEach(() => vi.clearAllMocks())
   afterEach(() => vi.unstubAllGlobals())
@@ -33,7 +37,8 @@ describe('AssessmentCategoryCard', () => {
   it('hat den Speichern-Knopf ohne Änderung deaktiviert', async () => {
     mockFetch()
     render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
-    expect(screen.getByRole('button', { name: /Ablage speichern/ })).toBeDisabled()
+    openDialog()
+    expect(screen.getByRole('button', { name: /^Speichern$/ })).toBeDisabled()
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -41,9 +46,10 @@ describe('AssessmentCategoryCard', () => {
     const calls = mockFetch()
     const onSaved = vi.fn()
     render(<AssessmentCategoryCard {...props} onSaved={onSaved} />)
+    openDialog()
 
     fireEvent.change(screen.getByLabelText(/Klasse/), { target: { value: '  SP11b ' } })
-    const button = screen.getByRole('button', { name: /Ablage speichern/ })
+    const button = screen.getByRole('button', { name: /^Speichern$/ })
     expect(button).toBeEnabled()
     fireEvent.click(button)
 
@@ -57,9 +63,10 @@ describe('AssessmentCategoryCard', () => {
   it('sendet eine geleerte Klasse als null', async () => {
     const calls = mockFetch()
     render(<AssessmentCategoryCard {...props} schoolClass="SP11a" onSaved={() => {}} />)
+    openDialog()
 
     fireEvent.change(screen.getByLabelText(/Klasse/), { target: { value: '   ' } })
-    fireEvent.click(screen.getByRole('button', { name: /Ablage speichern/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Speichern$/ }))
 
     await waitFor(() => expect(calls.some((c) => c.url.endsWith('/category'))).toBe(true))
     const patch = calls.find((c) => c.url.endsWith('/category'))!
@@ -70,9 +77,10 @@ describe('AssessmentCategoryCard', () => {
     mockFetch({ ok: false, body: { error: 'Dieses Fach gibt es in diesem Bereich nicht.' } })
     const onSaved = vi.fn()
     render(<AssessmentCategoryCard {...props} onSaved={onSaved} />)
+    openDialog()
 
     fireEvent.change(screen.getByLabelText(/Klasse/), { target: { value: 'SP12' } })
-    fireEvent.click(screen.getByRole('button', { name: /Ablage speichern/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Speichern$/ }))
 
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Dieses Fach gibt es in diesem Bereich nicht.'))
     expect(onSaved).not.toHaveBeenCalled()
@@ -80,20 +88,40 @@ describe('AssessmentCategoryCard', () => {
 
   it('bietet die vom Server gelieferten Klassen als Vorschlag an (ohne eigene Abfrage)', () => {
     mockFetch()
-    const { container } = render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
-    expect(container.querySelector('datalist option[value="SP11a"]')).not.toBeNull()
+    const { baseElement } = render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
+    openDialog()
+    expect(baseElement.querySelector('datalist option[value="SP11a"]')).not.toBeNull()
     expect(fetch).not.toHaveBeenCalled()
   })
 
   it('ruht nach dem Speichern, auch wenn der Server die Klasse anders schreibt (BUG-4)', async () => {
     mockFetch({ ok: true, body: { success: true, className: 'SP11a', subjectId: null, schoolYear: '2026/27' } })
     render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
+    openDialog()
 
     const input = screen.getByLabelText(/Klasse/) as HTMLInputElement
     fireEvent.change(input, { target: { value: 'sp11a' } })
-    fireEvent.click(screen.getByRole('button', { name: /Ablage speichern/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Speichern$/ }))
 
-    await waitFor(() => expect(input.value).toBe('SP11a'))
-    expect(screen.getByRole('button', { name: /Ablage speichern/ })).toBeDisabled()
+    // Dialog schließt, die Zeile zeigt den vom Server gespeicherten Wert
+    await waitFor(() => expect(screen.getByText(/SP11a/)).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /^Speichern$/ })).toBeNull()
+  })
+
+  it('zeigt die Ablage als Zeile und nennt fehlende Werte', () => {
+    mockFetch()
+    render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
+    expect(screen.getByText(/2026\/27 · Keine Klasse · Kein Fach/)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/Klasse/)).toBeNull()
+  })
+
+  it('bleibt bei einem Fehler offen und behält die Eingabe', async () => {
+    mockFetch({ ok: false, body: { error: 'Nein' } })
+    render(<AssessmentCategoryCard {...props} onSaved={() => {}} />)
+    openDialog()
+    fireEvent.change(screen.getByLabelText(/Klasse/), { target: { value: 'SP12' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Speichern$/ }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    expect((screen.getByLabelText(/Klasse/) as HTMLInputElement).value).toBe('SP12')
   })
 })
