@@ -1,6 +1,6 @@
 # PROJ-85: Inhalts-Baum – Fach → Thema mit Fragenliste
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-10
 **Last Updated:** 2026-11-10
 
@@ -15,6 +15,7 @@ Vorbild ist LimeSurvey: links die Struktur als Baum, rechts der Inhalt des gewä
 - **E3 – Fragenliste rechts:** Bearbeiten, Verlauf, Löschen (`AdminRowActions`), Aktiv/inaktiv-Schalter, grüne Hauptaktion „Neue Frage“ mit vorbelegtem Fach und Thema, Suche und Statusfilter innerhalb der Auswahl.
 - **E4 – Handy:** Erst nur der Baum. Tippen auf einen Knoten öffnet die Fragenliste als eigene Ansicht mit „Zurück“.
 - **E5 – Klassenstufen:** Filter über dem Baum („Alle / 10 / 11 / 12“ als `AdminSegmented`). Baum und Zähler zeigen nur passende Themen. Der Baum bleibt zweistufig.
+- **E7 – Thema löschen (2026-11-10, bei /architecture):** Ein Thema mit Fragen lässt sich **nirgends** löschen, weder im Baum noch auf der Seite „Themen“. Der Server prüft das. Bisher verschob „Themen“ das Thema trotz Fragen in den Papierkorb, und die Fragen verloren ihre Zuordnung.
 - **E6 – Bereichsanzeige:** Auf der neuen Seite gibt es **keine** Zeile „Du siehst: …“. Der gewählte Bereich ist der oberste Knoten des Baums. Die alten Seiten bleiben, wie sie sind.
 
 ## Dependencies
@@ -53,7 +54,7 @@ Vorbild ist LimeSurvey: links die Struktur als Baum, rechts der Inhalt des gewä
 ### Aktionen im Baum (`⋯`-Menü)
 - [ ] Am Fach: „Fach bearbeiten“ (bestehender Fach-Dialog), „Aktivieren/Deaktivieren“, „Thema anlegen“, „Verlauf“.
 - [ ] Am Thema: „Umbenennen“, „Verlauf“, „Löschen“ (ganz unten, rot, mit `AlertDialog`).
-- [ ] Ein Thema mit Fragen lässt sich nicht löschen, solange es Fragen hat. Die Rückfrage nennt die Zahl und verweist darauf, die Fragen erst zu verschieben (gleiches Verhalten wie heute auf „Themen“).
+- [ ] Ein Thema mit Fragen lässt sich nicht löschen, solange es Fragen hat. Die Rückfrage nennt die Zahl und verweist darauf, die Fragen erst zu verschieben (E7: gilt ab jetzt auch auf „Themen“, der Server lehnt ab).
 - [ ] Nach jeder Aktion aktualisieren sich Baum und Zähler ohne Neuladen. Erfolg zeigt einen kurzen Toast.
 
 ### Fragenliste (rechts)
@@ -101,7 +102,116 @@ Vorbild ist LimeSurvey: links die Struktur als Baum, rechts der Inhalt des gewä
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+### Überblick
+Die neue Seite „Inhalte“ ist eine **Ansicht auf vorhandene Daten**. Fächer, Themen und Fragen bleiben, wie sie sind. Neu sind nur: eine Abfrage, die den Baum samt Zählern in einem Schritt liefert, ein paar kleine Erweiterungen bestehender Schnittstellen und die Lösch-Sperre für Themen (E7). Fast alle Dialoge werden wiederverwendet.
+
+### A) Aufbau der Seite
+
+```
+/admin/inhalte
++-- AdminPageHeader „Inhalte“ (Beschreibung, keine Aktion im Kopf)
++-- Arbeitsfläche (ab 1024 px zwei Spalten, darunter eine)
+    |
+    +-- Linke Spalte: Baum-Panel (scrollt in sich)
+    |   +-- Klassenfilter „Alle / 10 / 11 / 12“ (AdminSegmented)
+    |   +-- Baum (Rolle „tree“, Tastatur)
+    |   |   +-- Bereich „Spedition“            (oberster Knoten, je Bereich einer)
+    |   |       +-- Fach „KSK“  [312]  ⋯        (auf-/zuklappbar, inaktiv = gedämpft)
+    |   |       |   +-- Thema „Kostenrechnung“  [48]  ⋯
+    |   |       |   +-- Thema „Controlling“     [0]   ⋯   (gedämpfter Zähler)
+    |   |       |   +-- „Ohne Thema“  [5]                 (nur wenn > 0)
+    |   |       +-- Fach „BGP“ …
+    |   +-- Zustände: Skeleton / Leer (Verweis auf „Fächer“) / Fehler + Erneut versuchen
+    |
+    +-- Rechte Spalte: Fragen-Panel
+        +-- Handy: „Zurück“-Knopf zum Baum
+        +-- Kopf: Pfad (Fach › Thema), „N Fragen“, grüne Hauptaktion „Neue Frage“
+        +-- Suchfeld + Statusfilter „Alle / Aktiv / Inaktiv“ (AdminSegmented)
+        +-- Fragentabelle (ws-table-scroll, seitenweise)
+        |   +-- Zeile: Fragetext (gekürzt), Klasse, Schwierigkeit, Aktiv-Schalter, AdminRowActions
+        +-- Zustände: „Wähle links ein Fach oder Thema“ / Leer mit „Neue Frage“ / Skeleton / Fehler
+
+Dialoge (alle schon vorhanden, nur eingebunden):
++-- Fach bearbeiten          → bestehender Fach-Dialog (subject-form-modal)
++-- Thema anlegen/umbenennen → kleiner Namens-Dialog (wie heute auf „Themen“)
++-- Thema löschen            → AlertDialog; bei Fragen nur Hinweis „erst verschieben“
++-- Frage anlegen/bearbeiten → bestehender Fragen-Dialog (question-form-modal)
++-- Verlauf                  → bestehende Verlauf-Seitenleiste (content-history-sheet)
++-- Versionskonflikt         → bestehende Meldung showVersionConflict
+```
+
+**Neue Bausteine** (alle unter `src/components/admin/`):
+- `content-tree` – der Baum selbst mit Tastaturbedienung und `⋯`-Menüs
+- `content-question-panel` – rechte Spalte mit Kopf, Suche, Filter, Tabelle
+- `topic-name-dialog` – Anlegen/Umbenennen eines Themas (aus der Seite „Themen“ herausgelöst, damit beide Seiten ihn teilen)
+
+### B) Woher die Daten kommen
+
+**Baum mit Zählern (neu):** eine Schnittstelle „Inhalts-Baum“ liefert für den Bereich der Bereichsleiste auf einmal:
+- Bereiche → Fächer (Name, Kürzel, aktiv?, Versionsnummer) → Themen (Name, Versionsnummer)
+- je Fach und je Thema die Zahl der Fragen, **aufgeteilt nach Klassenstufe** (10, 11, 12, ohne Stufe), dazu je Fach die Zahl „Ohne Thema“
+
+Weil die Zahlen schon nach Stufe aufgeteilt ankommen, rechnet die Seite beim Umschalten des Klassenfilters nur noch um. Es gibt keine neue Anfrage und kein Flackern.
+
+Gezählt wird in der Datenbank mit einer neuen, nur lesenden Funktion (eine Abfrage statt 5.000 Fragen über das Netz zu holen). Sie zählt nach denselben Regeln wie die Seite „Fragen“:
+- nur nicht gelöschte Fragen, Themen und Fächer
+- private Nachweis-Fragen nur für den Super-Admin (PROJ-46)
+- der Bereich kommt über das Fach, wie überall
+
+**Fragenliste:** nutzt die bestehende Fragen-Schnittstelle (20 je Seite, Suche, Status, Klasse, Thema, „ohne Thema“). Eine Ergänzung: Filter nach **Fach-ID** statt nur nach Kürzel, weil gleiche Kürzel („KSK“) in mehreren Bereichen vorkommen.
+
+**Zähl-Regel bei Fragen mit mehreren Fächern:** Eine Frage kann mehreren Fächern zugeordnet sein. Sie zählt in jedem dieser Fächer. Unter einem Thema erscheint sie nur, wenn das Thema zu diesem Fach gehört. Fach-Zahl = alle Fragen des Fachs, deshalb kann sie größer sein als die Summe der Themen plus „Ohne Thema“. Das ist gewollt und selten.
+
+**Was gespeichert wird:** nichts Neues. Keine neue Tabelle, keine neue Spalte.
+
+### C) Auswahl in der Adresse
+Die Adresse hält Fach, Thema (oder „ohne“), Klassenstufe und auf dem Handy die Ansicht „Liste“, z. B. `/admin/inhalte?fach=…&thema=…&klasse=11`.
+- Neu laden und Link teilen zeigen dieselbe Auswahl.
+- Auf dem Handy legt das Öffnen der Liste einen Eintrag im Browser-Verlauf an. So führen „Zurück“-Knopf und Browser-Zurück gleich zum Baum.
+- Der Auf-/Zuklapp-Zustand steht nicht in der Adresse, sondern im Speicher der Seite. Er bleibt beim Wechsel Baum ↔ Liste erhalten, Fächer mit der gewählten Auswahl klappen automatisch auf.
+- Zeigt die Adresse auf ein unbekanntes, gelöschtes oder fremdes Thema, fällt die Auswahl still auf Fach bzw. Bereich zurück (mit kurzem Hinweis, wenn es ein bekanntes Thema war).
+
+### D) Änderungen an Bestehendem
+| Was | Änderung | Warum |
+|---|---|---|
+| Thema löschen (Server) | lehnt ab, solange das Thema Fragen hat, und nennt die Zahl | E7, schützt vor Fragen ohne Zuordnung |
+| Seite „Themen“ | Lösch-Rückfrage zeigt die Sperre statt „verlieren ihre Zuordnung“ | E7, gleiche Regel überall |
+| Fragen-Schnittstelle | zusätzlicher Filter nach Fach-ID | Kürzel sind nicht eindeutig |
+| Fragen-Dialog | kann beim Anlegen Fach und Thema vorbelegen | „Neue Frage“ im gewählten Thema |
+| Seitenleiste + Schnellsuche (⌘K) | Eintrag „Inhalte“ in der Gruppe von „Fragen“ | Erreichbarkeit |
+
+Rechte: Die neue Lese-Schnittstelle prüft wie alle Inhalts-Schnittstellen „Zugang zum Lehrkräfte-Bereich“ und den Bereich der Bereichsleiste. Alle Änderungen laufen über die **bestehenden** Schnittstellen. Rechte, Protokoll (PROJ-70), Papierkorb und Versionskonflikt (PROJ-47) gelten deshalb automatisch.
+
+### E) Technische Entscheidungen (warum)
+- **Zählen in der Datenbank statt im Browser:** Die Seite „Themen“ holt heute alle Fragen seitenweise, um Klassenstufen abzuleiten. Für 5.000 Fragen dauert das zu lange. Eine Datenbank-Funktion liefert die fertigen Zahlen in einem Aufruf, damit bleibt der Baum unter 1 Sekunde.
+- **Zahlen nach Klassenstufe vorab aufgeteilt:** Der Klassenfilter fühlt sich sofort an, und die Datenbank wird nicht bei jedem Klick gefragt.
+- **Eigener Baum statt Bibliothek:** shadcn/ui hat keinen Baum. Zweistufig mit Tastaturbedienung ist überschaubar. Eine Baum-Bibliothek bringt mehr Gewicht als Nutzen.
+- **Bestehende Fragen-Schnittstelle wiederverwenden:** Suche, Seiten, Antwortschlüssel und Rechte sind dort schon gelöst und getestet. Eine zweite Liste würde auseinanderlaufen.
+- **Nach jeder Änderung Baum und Liste neu laden** statt Zahlen im Browser hochzuzählen. Der Baum-Aufruf ist billig, und so stimmen die Zähler auch nach Verschieben oder Konflikten sicher.
+- **Ein Baum-Aufruf je Bereichswechsel:** Schaltet jemand oben links den Bereich um, lädt die Seite neu und setzt die Auswahl zurück.
+- **Server/Client-Grenze:** Icons gehen als fertige Elemente an `AdminRowActions` und `⋯`-Menüs, nie als Funktion (Produktions-500 aus früheren Features).
+
+### F) Datenbank
+- **Neu:** eine nur lesende Zähl-Funktion (läuft mit den Rechten des aufrufenden Kontos, RLS gilt weiter). Mit Rückbau-Datei.
+- **Index prüfen:** Fach-Zuordnung der Fragen nach Fach suchbar. Fehlt der Index, kommt er in dieselbe Migration.
+- Keine neuen Tabellen, keine Änderung an RLS-Regeln.
+
+### G) Pakete
+Keine neuen Pakete. Genutzt werden vorhandene shadcn/ui-Teile (DropdownMenu, AlertDialog, Dialog, Switch, Input, Skeleton) und Lucide-Icons.
+
+### H) Tests (geplant)
+- Baum: Tastatur (hoch/runter/rechts/links/Enter), gedämpfte Zähler, inaktives Fach, „Ohne Thema“ nur bei > 0, Klassenfilter rechnet um und fängt ausgeblendete Auswahl ab.
+- Auswahl aus der Adresse inkl. Rückfall bei unbekanntem Thema.
+- Themen-Löschen: Server lehnt mit Fragen ab (409), ohne Fragen Papierkorb wie bisher.
+- Fragen-Schnittstelle: Filter nach Fach-ID respektiert den Bereich.
+- Zähl-Funktion: privat nur für Super-Admin, Gelöschtes zählt nicht.
+
+### I) Reihenfolge
+1. `/backend`: Zähl-Funktion + Baum-Schnittstelle, Fach-ID-Filter, Lösch-Sperre.
+2. `/frontend`: Seite, Baum, Fragen-Panel, Handy-Ansicht, Vorbelegung im Fragen-Dialog, Seite „Themen“ anpassen.
+
+Abweichend von der üblichen Reihenfolge zuerst Backend: Der Baum braucht die Zähler, sonst lässt sich die Oberfläche nicht sinnvoll bauen.
 
 ## QA Test Results
 _To be added by /qa_
