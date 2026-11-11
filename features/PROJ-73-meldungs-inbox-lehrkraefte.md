@@ -122,3 +122,8 @@ _To be added by /qa_
 - **Behoben (Code):** Inbox folgt der Bereichsleiste, eigener Bereichsfilter entfällt (B1); gekappte Liste (>100) schließt alle offenen Meldungen (PROJ-82 B10).
 - **Behoben per Migration [20261118_qa_proj72_78_fixes.sql](../supabase/migrations/20261118_qa_proj72_78_fixes.sql) (Probe: [qa_proj72_78_probe.sql](../supabase/tests/qa_proj72_78_probe.sql)):** eine Zeile je offener Frage statt zwei (B2); „korrigiert“ mit Belohnung nur nach echter Änderung, Verweis auf genau diese (B3); Wochenlimit unter Sperre (B7).
 - **Offen:** Sammel-Schließen nicht atomar (B8, niedrig); Filter Fach/Thema nur in der Schnittstelle; Münzverlauf-Eintrag fehlt (keine Tabelle); Abschluss nicht im Änderungsverlauf.
+
+### Entscheidungen des Nutzers (2026-11-11)
+- **Filter Fach und Thema: umgesetzt.** Zwei Auswahlfelder neben „Grund“ in der Inbox. Das Thema erscheint erst nach der Fach-Wahl und wird beim Fachwechsel zurückgesetzt. Die Werte kommen aus dem Inhalts-Baum (PROJ-85). Fällt der Baum aus, fehlen nur die beiden Felder. Bei gesetztem Filter und leerer Liste steht „Keine passenden Meldungen“ statt „Alles erledigt“.
+  - **Grenze:** Das Fach einer Meldung wird über das Thema der Frage bestimmt. Eine gemeldete Frage ohne Thema taucht bei einem Fach-Filter nicht auf, nur ohne Filter. Wird das zum Problem, braucht es eine Änderung an der Ansicht `question_report_groups` (Migration).
+- **Münzverlauf: nicht umgesetzt.** Die Benachrichtigung „Meine Meldungen“ zeigt Rückmeldung und Münzen. Ein eigener Verlauf braucht eine neue Tabelle und lohnt sich erst, wenn es mehrere Münzquellen mit Verlauf geben soll.

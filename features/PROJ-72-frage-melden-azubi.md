@@ -116,3 +116,6 @@ _To be added by /qa_
 - **Behoben (Code):** Melde-Knopf zeigt „Gemeldet“ nur bei „schon gemeldet“, nicht bei laufender Prüfung (B9).
 - **Behoben per Migration [20261118_qa_proj72_78_fixes.sql](../supabase/migrations/20261118_qa_proj72_78_fixes.sql) (Probe: [qa_proj72_78_probe.sql](../supabase/tests/qa_proj72_78_probe.sql)):** Lehrer-Rollen können nicht mehr melden (B5); Tageslimit hält auch bei parallelen Anfragen (B6).
 - **Offen (Spec-Abweichungen, Entscheidung nötig):** Melden in der Ergebnisansicht der Prüfung fehlt; deaktivierte Frage zeigt nicht „nicht mehr verfügbar“; Hinweis „schon gemeldet“ erst nach dem Absenden.
+
+### Entscheidung des Nutzers (2026-11-11)
+- **Melden in der Ergebnisansicht der Prüfung: zurückgestellt.** Bleibt wie heute (Melden im Quiz und bei „Lücken schließen“). Bei Bedarf als eigenes kleines Feature nachholen.

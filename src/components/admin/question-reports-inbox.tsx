@@ -23,6 +23,7 @@ import {
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { QuestionReportReviewDialog } from '@/components/admin/question-report-review-dialog'
 import { questionSearchLink } from '@/lib/difficulty'
+import type { ContentTree } from '@/lib/content-tree'
 import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
@@ -81,6 +82,10 @@ function formatDate(iso: string): string {
 export function QuestionReportsInbox() {
   const [tab, setTab] = useState<TabValue>('offen')
   const [reason, setReason] = useState<'alle' | ReportReason>('alle')
+  // PROJ-73: Fach und Thema als Filter (Werte aus dem Inhalts-Baum, ID oder „alle“)
+  const [subject, setSubject] = useState<string>('alle')
+  const [topic, setTopic] = useState<string>('alle')
+  const [tree, setTree] = useState<ContentTree | null>(null)
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ListResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -99,6 +104,8 @@ export function QuestionReportsInbox() {
     try {
       const params = new URLSearchParams({ status: tab, page: String(page) })
       if (reason !== 'alle') params.set('reason', reason)
+      if (subject !== 'alle') params.set('subject', subject)
+      if (topic !== 'alle') params.set('topic', topic)
       const res = await fetch(`/api/admin/question-reports?${params}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('load')
       setData((await res.json()) as ListResponse)
@@ -107,7 +114,7 @@ export function QuestionReportsInbox() {
     } finally {
       setLoading(false)
     }
-  }, [tab, reason, page])
+  }, [tab, reason, subject, topic, page])
 
   useEffect(() => {
     void load()
@@ -116,7 +123,32 @@ export function QuestionReportsInbox() {
   useEffect(() => {
     setSelected(new Set())
     setExpanded(null)
-  }, [tab, reason, page])
+  }, [tab, reason, subject, topic, page])
+
+  // Fächer und Themen für die Auswahlfelder; fällt der Baum aus, bleiben die Felder einfach weg
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/content-tree', { cache: 'no-store' })
+      .then((res) => (res.ok ? (res.json() as Promise<ContentTree>) : null))
+      .then((t) => {
+        if (!cancelled && t) setTree(t)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const subjectOptions = useMemo(() => {
+    const many = (tree?.departments.length ?? 0) > 1
+    return (tree?.departments ?? []).flatMap((d) =>
+      d.subjects.map((s) => ({ id: s.id, label: many ? `${s.name} (${d.name})` : s.name, topics: s.topics })),
+    )
+  }, [tree])
+  const topicOptions = useMemo(
+    () => (subject === 'alle' ? [] : (subjectOptions.find((s) => s.id === subject)?.topics ?? [])),
+    [subjectOptions, subject],
+  )
 
   async function loadDetails(questionId: string) {
     setDetails((d) => ({ ...d, [questionId]: 'loading' }))
@@ -165,6 +197,7 @@ export function QuestionReportsInbox() {
   const selectable = useMemo(() => items.filter((g) => g.question_id && g.status !== 'korrigiert'), [items])
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const isOpenTab = tab === 'offen'
+  const filtersActive = reason !== 'alle' || subject !== 'alle' || topic !== 'alle'
 
   function claimedByOther(g: Group): boolean {
     if (!g.claimed_at || g.claimed_by_me || g.status !== 'in_pruefung') return false
@@ -215,6 +248,49 @@ export function QuestionReportsInbox() {
               ))}
             </SelectContent>
           </Select>
+          {subjectOptions.length > 0 && (
+            <Select
+              value={subject}
+              onValueChange={(v) => {
+                setSubject(v)
+                setTopic('alle')
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="min-h-11 w-full sm:w-56" aria-label="Fach filtern">
+                <SelectValue placeholder="Fach" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Fächer</SelectItem>
+                {subjectOptions.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {subject !== 'alle' && topicOptions.length > 0 && (
+            <Select
+              value={topic}
+              onValueChange={(v) => {
+                setTopic(v)
+                setPage(1)
+              }}
+            >
+              <SelectTrigger className="min-h-11 w-full sm:w-56" aria-label="Thema filtern">
+                <SelectValue placeholder="Thema" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Themen</SelectItem>
+                {topicOptions.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -238,11 +314,13 @@ export function QuestionReportsInbox() {
       ) : items.length === 0 ? (
         <AdminEmptyState
           icon={isOpenTab ? CheckCircle2 : Flag}
-          title={isOpenTab ? 'Alles erledigt' : 'Hier ist nichts'}
+          title={filtersActive ? 'Keine passenden Meldungen' : isOpenTab ? 'Alles erledigt' : 'Hier ist nichts'}
           description={
-            isOpenTab
-              ? 'Keine offenen Meldungen. Azubis melden Fragen direkt nach dem Beantworten.'
-              : 'In dieser Ansicht gibt es keine Einträge.'
+            filtersActive
+              ? 'Zu dieser Auswahl gibt es keine Meldungen. Nimm einen Filter heraus, um mehr zu sehen.'
+              : isOpenTab
+                ? 'Keine offenen Meldungen. Azubis melden Fragen direkt nach dem Beantworten.'
+                : 'In dieser Ansicht gibt es keine Einträge.'
           }
         />
       ) : (

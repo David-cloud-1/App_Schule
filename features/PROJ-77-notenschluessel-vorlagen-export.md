@@ -158,3 +158,7 @@ Live seit 2026-11-07 (Commit 1e3a0a1). Migration `20261112_proj77_notenschluesse
 - **Behoben (Code):** Spalte „Gruppe“ im Export (BUG-1).
 - **Ohne Befund:** Formel-Injection abgefangen, Semikolon/BOM korrekt, Export nur mit Zugriff.
 - **Entscheidung nötig:** Super-Admin sieht private Vorlagen anderer (BUG-4, weicht vom Tech Design ab); Prozent wird vor der Notenzuordnung gerundet (91,67 % → 92 % → Note 1, BUG-5).
+
+### Entscheidungen des Nutzers (2026-11-11)
+- **Rundung des Prozentwerts vor der Note: bleibt.** 91,67 % gelten als 92 %. Der Notenschlüssel arbeitet mit ganzen Prozent.
+- **Super-Admin sieht private Vorlagen anderer Lehrkräfte: bleibt.** Weicht vom Tech Design („Privat sieht nur die Besitzerin“) bewusst ab.
