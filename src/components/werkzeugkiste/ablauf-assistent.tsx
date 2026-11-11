@@ -298,7 +298,7 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
             <p className="font-semibold text-ws-orange">{problem.was}</p>
             <p className="leading-relaxed text-ws-text">{problem.tun}</p>
             {problem.knopf === 'nachbesserung' && kontext.nachbesserung && (
-              <KopierKnopf text={kontext.nachbesserung} label="Nachbesserungs-Auftrag kopieren" />
+              <KopierKnopf text={kontext.nachbesserung} label="Nachbesserungs-Prompt kopieren" />
             )}
           </div>
         ) : (

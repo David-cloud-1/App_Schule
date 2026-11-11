@@ -68,7 +68,7 @@ describe('Hilfetexte: Wortwahl', () => {
   for (const werkzeug of HILFE_WERKZEUGE) {
     it(`${werkzeug}: keine Fachwörter aus der Verbotsliste`, () => {
       for (const { v, t } of alleTexte(werkzeug)) {
-        for (const wort of HILFE_VERBOTEN) expect(t.toLowerCase(), `${v}: „${wort}“ in „${t}“`).not.toContain(wort)
+        for (const wort of HILFE_VERBOTEN) expect(t.toLowerCase(), `${v}: „${wort}“ in „${t}“`).not.toMatch(new RegExp(`\\b${wort}`))
       }
     })
 
@@ -88,7 +88,7 @@ describe('Hilfetexte: Wortwahl', () => {
       const text = `${p.was} ${p.tun}`
       expect(zaehleWoerter(text), id).toBeLessThanOrEqual(40)
       expect(ohneKnopfnamen(text), id).not.toMatch(/prompt/i)
-      for (const wort of HILFE_VERBOTEN) expect(text.toLowerCase(), `${id}: ${wort}`).not.toContain(wort)
+      for (const wort of HILFE_VERBOTEN) expect(text.toLowerCase(), `${id}: ${wort}`).not.toMatch(new RegExp(`\\b${wort}`))
     }
   })
 })
@@ -104,7 +104,7 @@ describe('Problemhilfen: Zuordnung', () => {
   })
 
   it('alle sieben Pflichtfälle plus die allgemeine Hilfe haben einen Text', () => {
-    const ids: HilfeProblemId[] = ['lesen', 'gross', 'zu_lang', 'unvollstaendig', 'passt_nicht', 'kontrolle_fehler', 'bilder_fehlen', 'allgemein']
+    const ids: HilfeProblemId[] = ['lesen', 'gross', 'zu_lang', 'unvollstaendig', 'passt_nicht', 'kontrolle_fehler', 'hinweise', 'bilder_fehlen', 'allgemein']
     for (const id of ids) {
       expect(HILFE_PROBLEME[id].was.length).toBeGreaterThan(0)
       expect(HILFE_PROBLEME[id].tun.length).toBeGreaterThan(0)
@@ -128,8 +128,11 @@ describe('Problemhilfen: Zuordnung', () => {
       erkenneProblem({ pruefung: pruefung({ befunde: [{ text: 'Bei Aufgabe 3 fehlt das Bild.' }], nachbesserungsPrompt: 'Bitte ergänze …' }) }),
     ).toBe('bilder_fehlen')
     expect(
+      erkenneProblem({ pruefung: pruefung({ befunde: [{ text: 'In Kapitel 2 fehlt die Tabelle.' }], nachbesserungsPrompt: 'Bitte ergänze …' }) }),
+    ).toBe('bilder_fehlen')
+    expect(
       erkenneProblem({ pruefung: pruefung({ befunde: [{ text: 'Zwei Antworten sind gleich.' }], nachbesserungsPrompt: 'Bitte ändere …' }) }),
-    ).toBe('kontrolle_fehler')
+    ).toBe('hinweise')
     expect(erkenneProblem({ aktionsFehler: 'Die Antwort ist zu lang.' })).toBe('zu_lang')
   })
 

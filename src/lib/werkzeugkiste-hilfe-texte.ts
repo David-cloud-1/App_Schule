@@ -49,6 +49,7 @@ export type HilfeProblemId =
   | 'unvollstaendig'
   | 'passt_nicht'
   | 'kontrolle_fehler'
+  | 'hinweise'
   | 'bilder_fehlen'
   | 'allgemein'
 
@@ -115,7 +116,8 @@ export const HILFE_SEITEN: Record<HilfeVariante, HilfeSeite> = {
     anweisung: 'Kopiere die ganze Antwort der KI und füge sie in das Feld ein.',
     beispiel: 'Die Kontrolle startet nach dem Einfügen von allein.',
     fertigWenn: 'Fertig, wenn die Kontrolle keine Fehler meldet.',
-    mehrDazu: 'Die Kontrolle prüft nur, ob die Antwort vollständig und lesbar ist. Dafür braucht die App keine KI, das kostet nichts.',
+    mehrDazu:
+      'Die Kontrolle prüft nur, ob die Antwort vollständig und lesbar ist. Dafür braucht die App keine KI, das kostet nichts. Meldet sie Hinweise, zum Beispiel fehlende Tabellen oder Bilder, wird das Material trotzdem gebaut, nur mit Lücken. Du hast dann drei Möglichkeiten. Erstens: Du lässt es so, wenn es dir reicht. Zweitens: Du kopierst den „Nachbesserungs-Prompt“, fügst ihn in dieselbe KI-Unterhaltung ein und ersetzt oben die Antwort durch die neue. Die KI ergänzt dann nur das Fehlende. Drittens: Unter dem Antwortfeld änderst du einzelne Stellen. „Tippfehler direkt korrigieren“ geht ohne KI, „Ein einzelnes Kapitel neu anfragen“ holt nur ein Kapitel neu von der KI. Alles andere bleibt, wie es ist.',
     zeige: 'antwortfeld',
     zeigeErledigt: 'weiter',
   },
@@ -159,13 +161,18 @@ export const HILFE_PROBLEME: Record<HilfeProblemId, HilfeProblem> = {
     tun: 'Nimm den Auftrag aus Schritt 3 und füge die neue Antwort der KI ein.',
   },
   kontrolle_fehler: {
-    was: 'Die Kontrolle hat etwas gefunden.',
-    tun: 'Schicke den Nachbesserungs-Auftrag in dieselbe KI-Unterhaltung und füge die neue Antwort ein.',
+    was: 'Die Antwort ist nicht lesbar, daraus wird noch kein Material.',
+    tun: 'Bitte die KI in derselben Unterhaltung um die ganze Antwort und füge die neue ein.',
+    knopf: 'nachbesserung',
+  },
+  hinweise: {
+    was: 'Die Kontrolle hat Hinweise gefunden. Das Material wird trotzdem gebaut.',
+    tun: 'Du kannst es so lassen. Willst du es genauer, kopiere den „Nachbesserungs-Prompt“, schicke ihn in dieselbe KI-Unterhaltung und ersetze die Antwort durch die neue.',
     knopf: 'nachbesserung',
   },
   bilder_fehlen: {
-    was: 'In der Antwort fehlen Bilder oder Lösungen.',
-    tun: 'Schicke den Nachbesserungs-Auftrag in dieselbe KI-Unterhaltung und füge die neue Antwort ein.',
+    was: 'Bilder, Tabellen oder Lösungen fehlen. Das Material wird trotzdem gebaut, nur mit Lücken.',
+    tun: 'Lass es so oder kopiere den „Nachbesserungs-Prompt“. Die KI ergänzt dann nur das Fehlende, du ersetzt die Antwort durch die neue.',
     knopf: 'nachbesserung',
   },
   allgemein: {

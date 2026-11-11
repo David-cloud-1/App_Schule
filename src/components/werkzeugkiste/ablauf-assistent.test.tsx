@@ -272,14 +272,14 @@ describe('Assistent-Panel', () => {
     expect(screen.queryByText(/Kopiere die ganze Antwort der KI/)).toBeNull()
   })
 
-  it('bietet bei Kontrollfehlern „Nachbesserungs-Auftrag kopieren“', () => {
+  it('bietet bei Kontrollfehlern „Nachbesserungs-Prompt kopieren“', () => {
     render(
       <HilfePanel
         steuerung={steuerung()}
         kontext={kontext({ variante: 'antwort', problem: 'kontrolle_fehler', nachbesserung: 'Bitte ergänze …' })}
       />,
     )
-    expect(screen.getByRole('button', { name: /Nachbesserungs-Auftrag kopieren/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Nachbesserungs-Prompt kopieren/ })).toBeInTheDocument()
   })
 
   it('zeigt nie Technik: der allgemeine Fall nennt einen Ausweg', () => {

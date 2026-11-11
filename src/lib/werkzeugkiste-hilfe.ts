@@ -120,7 +120,7 @@ export function erkenneProblem(e: HilfeProblemEingabe): HilfeProblemId | null {
     if (p.abgeschnitten) return 'unvollstaendig'
     if (!p.lesbar) return /werkzeug|passt nicht|anderes|gehört|aufbau/i.test(p.fehler ?? '') ? 'passt_nicht' : 'kontrolle_fehler'
     if (p.befunde.length > 0 && p.nachbesserungsPrompt) {
-      return p.befunde.some((b) => /bild|lösung|loesung/i.test(b.text)) ? 'bilder_fehlen' : 'kontrolle_fehler'
+      return p.befunde.some((b) => /bild|tabelle|lösung|loesung/i.test(b.text)) ? 'bilder_fehlen' : 'hinweise'
     }
   }
   if (e.aktionsFehler) return /zu lang|zu viel|zu groß|zu gross|zu umfangreich/i.test(e.aktionsFehler) ? 'zu_lang' : 'allgemein'
