@@ -23,7 +23,16 @@ import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
  * Ablagefläche für das Skript (PROJ-51): ziehen oder auswählen. Prüft Format
  * und Größe sofort im Browser, damit nichts Unpassendes hochgeladen wird.
  */
-export function DateiAblage({ onDatei, deaktiviert }: { onDatei: (datei: File) => void; deaktiviert?: boolean }) {
+export function DateiAblage({
+  onDatei,
+  deaktiviert,
+  beiFehler,
+}: {
+  onDatei: (datei: File) => void
+  deaktiviert?: boolean
+  /** PROJ-87: meldet den Hinweis zur gewählten Datei (oder null), damit der Assistent dazu helfen kann */
+  beiFehler?: (text: string | null) => void
+}) {
   const eingabe = useRef<HTMLInputElement>(null)
   const [drueber, setDrueber] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -33,12 +42,13 @@ export function DateiAblage({ onDatei, deaktiviert }: { onDatei: (datei: File) =
     if (!datei) return
     const problem = pruefeSkriptDatei(datei)
     setFehler(problem)
+    beiFehler?.(problem)
     if (!problem) onDatei(datei)
     if (eingabe.current) eingabe.current.value = ''
   }
 
   return (
-    <div className="space-y-3">
+    <div data-hilfe="datei" className="space-y-3 rounded-2xl">
       <label
         onDragOver={(e) => {
           e.preventDefault()
@@ -142,7 +152,7 @@ export function SkriptErgebnis({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 rounded-2xl border border-ws-green/30 bg-ws-green/10 p-5 sm:flex-row sm:items-center">
+      <div data-hilfe="datei" className="flex flex-col gap-4 rounded-2xl border border-ws-green/30 bg-ws-green/10 p-5 sm:flex-row sm:items-center">
         <CheckCircle2 className="size-6 shrink-0 text-ws-green" aria-hidden />
         <div className="grid min-w-0 flex-1 gap-1">
           <span className="truncate font-semibold" title={name}>
@@ -173,7 +183,7 @@ export function SkriptErgebnis({
       )}
 
       {art && (
-        <Collapsible defaultOpen={eingegrenzt} className="rounded-2xl border border-ws-line bg-ws-surface">
+        <Collapsible defaultOpen={eingegrenzt} data-hilfe="auswahl" className="rounded-2xl border border-ws-line bg-ws-surface">
           <CollapsibleTrigger className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-2xl px-4 text-left text-sm font-medium text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
             <span>
               Auswahl eingrenzen{' '}

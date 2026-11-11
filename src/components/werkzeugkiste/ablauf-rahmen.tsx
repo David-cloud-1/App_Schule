@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { ABLAUF_SCHRITTE, DIREKT_SCHRITTE, WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
+import { HilfeAngebot, HilfeKnopf, HilfePanel, type HilfeKontext, type HilfeSteuerung } from '@/components/werkzeugkiste/ablauf-assistent'
 
 export const HAUPTAKTION =
   'min-h-12 w-full rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green sm:w-auto'
@@ -39,6 +40,7 @@ export function AblaufRahmen({
   beschreibung,
   schliessen,
   fuss,
+  hilfe,
   children,
 }: {
   schritt: number
@@ -55,6 +57,8 @@ export function AblaufRahmen({
   beschreibung?: React.ReactNode
   schliessen: React.ReactNode
   fuss?: React.ReactNode
+  /** PROJ-87: Assistent „Schritt für Schritt“; ohne Angabe oder ohne fertige Hilfeseiten bleibt alles wie bisher */
+  hilfe?: { steuerung: HilfeSteuerung; kontext: HilfeKontext }
   children: React.ReactNode
 }) {
   const ueberschrift = useRef<HTMLHeadingElement>(null)
@@ -77,14 +81,20 @@ export function AblaufRahmen({
             </span>
           )}
         </div>
+        {hilfe && <HilfeKnopf steuerung={hilfe.steuerung} />}
       </header>
 
       <main
         id="ws-main"
         tabIndex={-1}
-        className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8"
+        className={cn(
+          'mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8',
+          // Offene Schublade darf das Ende des Formulars nicht verdecken (ab 1536 px steht der Assistent daneben)
+          hilfe?.steuerung.verfuegbar && hilfe.steuerung.offen && (hilfe.steuerung.eingeklappt ? 'pb-24 2xl:pb-8' : 'pb-[55svh] 2xl:pb-8'),
+        )}
       >
         <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} schritte={schritte} />
+        {hilfe && <HilfeAngebot steuerung={hilfe.steuerung} />}
 
         <div className="space-y-2">
           <h1 ref={ueberschrift} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
@@ -96,11 +106,15 @@ export function AblaufRahmen({
         <div className="flex-1 space-y-6">{children}</div>
 
         {fuss && (
-          <div className="flex flex-col-reverse gap-3 border-t border-ws-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            data-hilfe="weiter"
+            className="flex flex-col-reverse gap-3 border-t border-ws-line pt-6 sm:flex-row sm:items-center sm:justify-between"
+          >
             {fuss}
           </div>
         )}
       </main>
+      {hilfe && <HilfePanel steuerung={hilfe.steuerung} kontext={hilfe.kontext} />}
     </div>
   )
 }

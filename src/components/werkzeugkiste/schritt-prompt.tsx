@@ -52,11 +52,14 @@ export function KopierKnopf({
   label,
   gross,
   className,
+  beiKopiert,
 }: {
   text: string
   label: string
   gross?: boolean
   className?: string
+  /** PROJ-87: meldet, dass der Text kopiert wurde (der Assistent zeigt dann „Erledigt“) */
+  beiKopiert?: () => void
 }) {
   const [kopiert, setKopiert] = useState(false)
   const [manuell, setManuell] = useState(false)
@@ -77,6 +80,7 @@ export function KopierKnopf({
     try {
       await navigator.clipboard.writeText(text)
       setKopiert(true)
+      beiKopiert?.()
       setManuell(false)
     } catch {
       setManuell(true)
@@ -119,12 +123,15 @@ export function KopierKnopf({
 }
 
 /** Schritt 3 (PROJ-51): großer Kopierknopf, Zeichenzahl, „Prompt ansehen“, drei Kurzschritte */
-export function SchrittPrompt({ prompt }: { prompt: string }) {
+export function SchrittPrompt({ prompt, beiKopiert }: { prompt: string; beiKopiert?: () => void }) {
   const zeichen = prompt.length.toLocaleString('de-DE')
   return (
     <div className="space-y-8">
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-ws-line bg-ws-surface px-5 py-8 text-center">
-        <KopierKnopf text={prompt} label="Prompt kopieren" gross className="w-full sm:w-auto" />
+      <div
+        data-hilfe="kopieren"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-ws-line bg-ws-surface px-5 py-8 text-center"
+      >
+        <KopierKnopf text={prompt} label="Prompt kopieren" gross className="w-full sm:w-auto" beiKopiert={beiKopiert} />
         <span className="text-sm text-ws-faint">ca. {zeichen} Zeichen</span>
         <KiOeffnenLink className="w-full sm:w-auto" />
         <Collapsible className="w-full">

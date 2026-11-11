@@ -9,6 +9,8 @@ import { ladeHoch, legeAblaufAn, legeVideoAblaufAn, lieseSkriptEin, loescheAblau
 import { AblaufRahmen, HAUPTAKTION, NEBENAKTION, SchliessenKnopf } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { DateiAblage, Hinweis, HochladeFortschritt } from '@/components/werkzeugkiste/schritt-skript'
 import { VideoEingabe } from '@/components/werkzeugkiste/schritt-video'
+import { useHilfe } from '@/components/werkzeugkiste/ablauf-assistent'
+import { erkenneProblem } from '@/lib/werkzeugkiste-hilfe'
 
 type Phase = 'wahl' | 'hochladen' | 'lesen' | 'lesefehler'
 
@@ -97,6 +99,9 @@ function SkriptNeu({ werkzeug }: { werkzeug: Werkzeug }) {
   const [prozent, setProzent] = useState(0)
   const [fehler, setFehler] = useState<{ text: string; hinweis?: string } | null>(null)
   const [ablaufId, setAblaufId] = useState<string | null>(null)
+  // Assistent „Schritt für Schritt“ (PROJ-87)
+  const hilfe = useHilfe(werkzeug.id, 'schreiben')
+  const [dateiFehler, setDateiFehler] = useState<string | null>(null)
 
   function zeigeFehler(e: unknown) {
     if (e instanceof WerkzeugFehler) setFehler({ text: e.message, hinweis: e.hinweis })
@@ -147,6 +152,16 @@ function SkriptNeu({ werkzeug }: { werkzeug: Werkzeug }) {
 
   return (
     <AblaufRahmen
+      hilfe={{
+        steuerung: hilfe,
+        kontext: {
+          werkzeug: werkzeug.id,
+          variante: 'skript',
+          folge: ['skript', 'einstellungen', 'auftrag', 'antwort', 'fertig'],
+          erledigt: false,
+          problem: erkenneProblem({ dateiFehler, lesefehler: phase === 'lesefehler', aktionsFehler: fehler?.text }),
+        },
+      }}
       schritt={1}
       erreicht={1}
       kurzinfo={datei ? `${datei.name} · ${werkzeug.name}` : werkzeug.name}
@@ -164,7 +179,7 @@ function SkriptNeu({ werkzeug }: { werkzeug: Werkzeug }) {
         </>
       }
     >
-      {phase === 'wahl' && <DateiAblage onDatei={starte} />}
+      {phase === 'wahl' && <DateiAblage onDatei={starte} beiFehler={setDateiFehler} />}
       {phase === 'wahl' && (
         <p className="text-sm text-ws-faint">Bitte keine Schülerdaten im Skript – nur Unterrichtsmaterial.</p>
       )}

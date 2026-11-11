@@ -59,7 +59,7 @@ export function SchrittAntwort({
           ))}
         </div>
       )}
-      <div className="space-y-2">
+      <div data-hilfe="antwortfeld" className="space-y-2 rounded-2xl">
         <Label htmlFor="wk-antwort" className="sr-only">
           Antwort der KI
         </Label>
@@ -73,7 +73,7 @@ export function SchrittAntwort({
         />
       </div>
 
-      <div aria-live="polite">
+      <div aria-live="polite" data-hilfe="kontrolle" className="rounded-2xl">
         {prueftGerade ? (
           <div className="flex items-center gap-3 rounded-2xl border border-ws-line bg-ws-surface p-4 text-sm text-ws-muted" role="status">
             <Loader2 className="size-4 animate-spin" aria-hidden />

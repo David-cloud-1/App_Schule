@@ -25,6 +25,7 @@ export function SchrittFertig({
   kostenEur,
   hinweise,
   anderesWerkzeug = true,
+  beimHerunterladen,
 }: {
   ablaufId: string
   ergebnis: AblaufErgebnis
@@ -35,6 +36,8 @@ export function SchrittFertig({
   hinweise?: string[]
   /** false bei Video-Fragen: Sie haben ein Transkript statt eines Skripts, das sich für ein anderes Werkzeug nicht kopieren lässt */
   anderesWerkzeug?: boolean
+  /** PROJ-87: meldet, dass der Download gestartet wurde (der Assistent zeigt dann „Erledigt“) */
+  beimHerunterladen?: () => void
 }) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
   const [teilenOffen, setTeilenOffen] = useState(false)
@@ -111,6 +114,7 @@ export function SchrittFertig({
           {!zumKopieren && (
             <Button
               asChild
+              data-hilfe="herunterladen"
               className="min-h-12 rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
             >
               <a
@@ -118,6 +122,7 @@ export function SchrittFertig({
                 download={ergebnis.dateiname}
                 onClick={(e) => {
                   e.preventDefault()
+                  beimHerunterladen?.()
                   ladeDatei(ablaufId).catch((err) =>
                     toast.error(err instanceof WerkzeugFehler ? err.message : 'Das hat gerade nicht geklappt. Bitte versuche es erneut.'),
                   )

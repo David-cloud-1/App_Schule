@@ -24,6 +24,7 @@ import {
   einstellungenFuerWerkzeug,
   neuerAblaufHref,
   schrittAusParam,
+  teileEingefuegt,
   WERKZEUGKISTE_HREF,
   type Ablauf,
   type AblaufAuswahl,
@@ -62,6 +63,8 @@ import { SchrittFertig } from '@/components/werkzeugkiste/schritt-fertig'
 import { SchrittErstellen } from '@/components/werkzeugkiste/schritt-erstellen'
 import { KostenRueckfrage, WegKarte, type WegDaten } from '@/components/werkzeugkiste/schritt-wegwahl'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { useHilfe, type HilfeKontext } from '@/components/werkzeugkiste/ablauf-assistent'
+import { erkenneProblem, hilfeFolge, hilfeVariante, istErledigt } from '@/lib/werkzeugkiste-hilfe'
 
 /** Wartezeit nach dem letzten Tippen/Einfügen, bevor die Prüfstelle läuft */
 const PRUEF_PAUSE_MS = 800
@@ -138,6 +141,10 @@ export function AblaufSeite({ id }: { id: string }) {
   const [pruefFehler, setPruefFehler] = useState<string | null>(null)
   /** Antwort, zu der die angezeigte Prüfung gehört */
   const [geprueftFuer, setGeprueftFuer] = useState<string | null>(null)
+  // Assistent „Schritt für Schritt“ (PROJ-87): Signale gibt es nur in dieser Sitzung
+  const hilfe = useHilfe(ablauf?.werkzeug ?? '', 'lesen')
+  const [auftragKopiert, setAuftragKopiert] = useState(false)
+  const [heruntergeladen, setHeruntergeladen] = useState(false)
 
   const lade = useCallback(async () => {
     setLadeFehler(null)
@@ -458,6 +465,7 @@ export function AblaufSeite({ id }: { id: string }) {
 
     case 2:
       inhalt = (
+        <div data-hilfe="einstellungen" className="rounded-2xl">
         <SchrittEinstellungen
           werkzeugId={werkzeug}
           eingabe={eingabeArt(ablauf.werkzeug)}
@@ -470,6 +478,7 @@ export function AblaufSeite({ id }: { id: string }) {
           }}
           setEinstellungen={setEinstellungen}
         />
+        </div>
       )
       if (DIREKT_ERSTELLEN_AKTIV) {
         inhalt = (
@@ -522,7 +531,11 @@ export function AblaufSeite({ id }: { id: string }) {
       }
       if (ablauf.teile) {
         // Langes Skript im kostenlosen Weg (PROJ-69): Teil-Liste statt eines Prompts
-        inhalt = <SchrittTeile ablauf={ablauf} onAblauf={setAblauf} />
+        inhalt = (
+          <div data-hilfe="teile" className="rounded-2xl">
+            <SchrittTeile ablauf={ablauf} onAblauf={setAblauf} />
+          </div>
+        )
         fuss = (
           <>
             {zurueck}
@@ -534,7 +547,7 @@ export function AblaufSeite({ id }: { id: string }) {
       inhalt = (
         <>
           {promptHinweis && <Hinweis ton="warnung">{promptHinweis}</Hinweis>}
-          <SchrittPrompt prompt={ablauf.prompt ?? ''} />
+          <SchrittPrompt prompt={ablauf.prompt ?? ''} beiKopiert={() => setAuftragKopiert(true)} />
         </>
       )
       fuss = (
@@ -640,6 +653,7 @@ export function AblaufSeite({ id }: { id: string }) {
           ergebnis={ablauf.ergebnis}
           direkt={direkt}
           anderesWerkzeug={!istVideo && !ablauf.herkunft}
+          beimHerunterladen={() => setHeruntergeladen(true)}
           kostenEur={lauf?.status === 'fertig' ? lauf.kostenEur : null}
           hinweise={direkt ? (ablauf.pruefung?.befunde ?? []).map((b) => b.text) : []}
         />
@@ -648,8 +662,30 @@ export function AblaufSeite({ id }: { id: string }) {
       break
   }
 
+  // Assistent: Hilfeseite, „erledigt“ und Problem aus dem Stand des Ablaufs ablesen
+  const teilListe = ablauf.teile?.teile ?? []
+  const kopie = !!ablauf.herkunft
+  const pruefungAktuell = schritt === 4 && geprueftFuer === antwort && !prueftGerade ? ablauf.pruefung : null
+  const hilfeKontext: HilfeKontext = {
+    werkzeug,
+    variante: hilfeVariante(schritt, { video: istVideo, teile: !!ablauf.teile }),
+    folge: hilfeFolge({ video: istVideo, teile: !!ablauf.teile, kopie }),
+    erledigt: istErledigt(hilfeVariante(schritt, { video: istVideo, teile: !!ablauf.teile }), {
+      eingelesen: !!ablauf.kennzahlen,
+      einstellungenGespeichert: !!ablauf.prompt || !!ablauf.teile,
+      auftragKopiert,
+      teileFertig: teilListe.length > 0 && teileEingefuegt(ablauf.teile) === teilListe.length,
+      antwortGeprueft: !!pruefungAktuell?.lesbar && !pruefFehler,
+      heruntergeladen,
+    }),
+    problem: erkenneProblem({ pruefung: pruefungAktuell, aktionsFehler: pruefFehler ?? aktionsFehler }),
+    nachbesserung: pruefungAktuell?.nachbesserungsPrompt ?? null,
+    teileZeile: teilListe.length > 0 ? `${teileEingefuegt(ablauf.teile)} von ${teilListe.length} Teilen eingefügt` : null,
+  }
+
   return (
     <AblaufRahmen
+      hilfe={direkt ? undefined : { steuerung: hilfe, kontext: hilfeKontext }}
       schritt={schritt}
       erreicht={ablauf.schritt}
       direkt={direkt}

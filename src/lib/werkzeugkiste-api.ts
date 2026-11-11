@@ -1,4 +1,5 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, AblaufTeil, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import type { HilfeAngebot, HilfeAngebotAntwort } from '@/lib/werkzeugkiste-hilfe-angebot'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
 import { SEITENGROESSE, type MaterialAbfrage, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
@@ -113,6 +114,16 @@ async function anfrage<T>(pfad: string, init?: RequestInit): Promise<T> {
   const daten = (await res.json().catch(() => ({}))) as { error?: string; hint?: string; code?: string } & T
   if (!res.ok) throw new WerkzeugFehler(daten.error || ALLGEMEINER_FEHLER, res.status, daten.hint, daten.code)
   return daten
+}
+
+/** PROJ-87: Hat die Lehrkraft das Angebot „Neu hier?“ für dieses Werkzeug schon beantwortet? */
+export function ladeHilfeAngebot(werkzeug: string) {
+  return anfrage<HilfeAngebot>(`/hilfe-angebot?werkzeug=${encodeURIComponent(werkzeug)}`)
+}
+
+/** PROJ-87: Antwort auf das Angebot merken (Konto + Werkzeug, nur „ja“ oder „nein“) */
+export function speichereHilfeAngebot(werkzeug: string, antwort: HilfeAngebotAntwort) {
+  return anfrage<HilfeAngebot>('/hilfe-angebot', { method: 'PUT', body: JSON.stringify({ werkzeug, antwort }) })
 }
 
 export function ladeOptionen() {
