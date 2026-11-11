@@ -28,6 +28,11 @@ export function KiOeffnenLink({ className }: { className?: string }) {
         </a>
       </Button>
       <p className="text-sm leading-relaxed text-ws-text">Kostenlos. Anmeldung mit deinem BayernCloud-Zugang.</p>
+      <ol className="mx-auto max-w-xs list-decimal space-y-1 pl-5 text-left text-sm leading-relaxed text-ws-muted">
+        <li>„Mit VIDIS einloggen“ anklicken</li>
+        <li>„bay“ eintippen</li>
+        <li>„BayernCloud Schule“ wählen und anmelden</li>
+      </ol>
       <p className="text-sm text-ws-muted">
         Du nutzt lieber eine andere KI? Auch{' '}
         <a href="https://claude.ai" target="_blank" rel="noopener noreferrer" className="font-medium text-ws-blue underline underline-offset-2 hover:text-ws-blue-hover">
