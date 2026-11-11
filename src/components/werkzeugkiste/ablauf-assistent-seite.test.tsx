@@ -82,7 +82,7 @@ describe('Assistent im Ablauf', () => {
     api.ladeAblauf.mockResolvedValue({ ablauf: ablauf() })
     render(<AblaufSeite id="a1" />)
     fireEvent.click(await screen.findByRole('button', { name: /Hilfe: Schritt für Schritt/ }))
-    expect(screen.getByText(/Erledigt\./)).toBeInTheDocument()
+    expect(screen.getByText('Erledigt')).toBeInTheDocument()
   })
 
   it('in Schritt 3 meldet das Kopieren „Erledigt“', async () => {
@@ -93,9 +93,9 @@ describe('Assistent im Ablauf', () => {
     render(<AblaufSeite id="a1" />)
     fireEvent.click(await screen.findByRole('button', { name: /Hilfe: Schritt für Schritt/ }))
     expect(screen.getByRole('heading', { name: 'Auftrag an die KI (Prompt) kopieren' })).toBeInTheDocument()
-    expect(screen.queryByText(/Erledigt\./)).toBeNull()
+    expect(screen.queryByText('Erledigt')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Prompt kopieren/ }))
-    await waitFor(() => expect(screen.getByText(/Erledigt\./)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Erledigt')).toBeInTheDocument())
   })
 
   it('zeigt bei langem Skript die Teile-Hilfe mit Stand', async () => {
@@ -137,7 +137,7 @@ describe('Assistent im Ablauf', () => {
     render(<AblaufSeite id="a1" />)
     fireEvent.click(await screen.findByRole('button', { name: /Hilfe: Schritt für Schritt/ }))
     expect(screen.getByRole('complementary')).toHaveTextContent('Antwort der KI einfügen')
-    expect(screen.getByRole('button', { name: 'Zurück' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /‹ Hilfe zu Schritt/ })).toBeNull()
   })
 
   it('Werkzeuge ohne fertige Hilfeseiten zeigen keinen Hilfe-Knopf', async () => {

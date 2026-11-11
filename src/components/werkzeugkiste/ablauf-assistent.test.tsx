@@ -184,7 +184,7 @@ describe('Assistent-Panel', () => {
 
   it('sagt „Erledigt“ (auch für Screenreader) und behält das Erkennungszeichen', () => {
     render(<HilfePanel steuerung={steuerung()} kontext={kontext({ erledigt: true })} />)
-    expect(screen.getByText(/Erledigt\./)).toBeInTheDocument()
+    expect(screen.getByText('Erledigt')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Schritt 2 von 5')
     expect(screen.getByRole('status')).toHaveTextContent('erledigt')
     expect(screen.getByText(/Fertig, wenn du unten auf/)).toBeInTheDocument()
@@ -192,19 +192,21 @@ describe('Assistent-Panel', () => {
 
   it('ohne „erledigt“ gibt es kein Häkchen', () => {
     render(<HilfePanel steuerung={steuerung()} kontext={kontext()} />)
-    expect(screen.queryByText(/Erledigt\./)).toBeNull()
+    expect(screen.queryByText('Erledigt')).toBeNull()
     expect(screen.getByRole('status')).not.toHaveTextContent('erledigt')
   })
 
-  it('Zurück/Weiter blättert nur in der Hilfe und folgt dem Formular, sobald der Schritt wechselt', () => {
+  it('blättert mit „Hilfe zu Schritt N“ nur in der Hilfe und folgt dem Formular, sobald der Schritt wechselt', () => {
     const s = steuerung()
     const { rerender } = render(<HilfePanel steuerung={s} kontext={kontext()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 3/ }))
     expect(screen.getByRole('heading')).toHaveTextContent('Auftrag an die KI (Prompt) kopieren')
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
+    fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 2/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 1/ }))
     expect(screen.getByRole('heading')).toHaveTextContent('Skript hochladen')
-    expect(screen.getByRole('button', { name: 'Zurück' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /‹ Hilfe zu Schritt/ })).toBeNull()
+    // Verwechslungsgefahr mit dem Weiter des Ablaufs ausgeschlossen: kein Knopf heißt nur „Weiter“
+    expect(screen.queryByRole('button', { name: 'Weiter' })).toBeNull()
     // Im Formular geht es zu Schritt 4: der Assistent folgt
     rerender(<HilfePanel steuerung={s} kontext={kontext({ variante: 'antwort' })} />)
     expect(screen.getByRole('heading')).toHaveTextContent('Antwort der KI einfügen')
@@ -212,8 +214,37 @@ describe('Assistent-Panel', () => {
 
   it('eine Kopie aus dem Regal beginnt bei der Antwort', () => {
     render(<HilfePanel steuerung={steuerung()} kontext={kontext({ variante: 'antwort', folge: ['antwort', 'fertig'] })} />)
-    expect(screen.getByRole('button', { name: 'Zurück' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /‹ Hilfe zu Schritt/ })).toBeNull()
     expect(screen.getByRole('heading')).toHaveTextContent('Antwort der KI einfügen')
+  })
+
+  it('bietet nach „erledigt“ ein „Weiter zu Schritt N“, das den Hauptknopf des Formulars drückt', () => {
+    const fuss = document.createElement('div')
+    fuss.setAttribute('data-hilfe', 'weiter')
+    const zurueck = document.createElement('button')
+    const hauptknopf = document.createElement('button')
+    const geklickt = vi.fn()
+    hauptknopf.addEventListener('click', geklickt)
+    fuss.append(zurueck, hauptknopf)
+    document.body.appendChild(fuss)
+    render(<HilfePanel steuerung={steuerung()} kontext={kontext({ erledigt: true })} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter zu Schritt 3' }))
+    expect(geklickt).toHaveBeenCalledTimes(1)
+    fuss.remove()
+  })
+
+  it('ohne „erledigt“ gibt es kein „Weiter zu Schritt N“, im letzten Schritt auch nicht', () => {
+    const { rerender } = render(<HilfePanel steuerung={steuerung()} kontext={kontext()} />)
+    expect(screen.queryByRole('button', { name: /Weiter zu Schritt/ })).toBeNull()
+    rerender(<HilfePanel steuerung={steuerung()} kontext={kontext({ variante: 'fertig', erledigt: true })} />)
+    expect(screen.queryByRole('button', { name: /Weiter zu Schritt/ })).toBeNull()
+  })
+
+  it('ist ein Teil des Seitenflusses (unter 1280 px) und überdeckt nie das Formular', () => {
+    render(<HilfePanel steuerung={steuerung()} kontext={kontext()} />)
+    const klassen = screen.getByRole('complementary').className
+    expect(klassen).not.toMatch(/(^|\s)fixed(\s|$)/)
+    expect(klassen).toMatch(/xl:fixed/)
   })
 
   it('zeigt bei einem Problem die Handlungshilfe statt der Standardseite', () => {
@@ -277,7 +308,7 @@ describe('Assistent-Panel', () => {
     expect(document.activeElement).toBe(screen.getByRole('heading'))
   })
 
-  it('auf dem Handy lässt sich die Schublade einklappen (nur die Titelzeile bleibt)', () => {
+  it('auf dem Handy lässt sich die Karte einklappen (nur die Titelzeile bleibt)', () => {
     const s = steuerung()
     render(<HilfePanel steuerung={s} kontext={kontext()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe einklappen' }))
@@ -320,13 +351,12 @@ describe('„Zeig mir die Stelle“', () => {
     expect(zeigeStelle('teile')).toBe(false)
   })
 
-  it('der Knopf klappt die Schublade ein und markiert dann die Stelle', () => {
+  it('der Knopf markiert die Stelle', () => {
     vi.useFakeTimers()
     const el = stelle('einstellungen')
     const s = steuerung()
     render(<HilfePanel steuerung={s} kontext={kontext()} />)
     fireEvent.click(screen.getByRole('button', { name: /Zeig mir die Stelle/ }))
-    expect(s.setEingeklappt).toHaveBeenCalledWith(true)
     act(() => {
       vi.advanceTimersByTime(60)
     })
@@ -334,18 +364,12 @@ describe('„Zeig mir die Stelle“', () => {
     el.remove()
   })
 
-  it('nach „erledigt“ zeigt der Knopf auf „Weiter“ statt auf das Feld', () => {
+  it('„Weiter zu Schritt N“ markiert die Fußzeile, wenn der Hauptknopf gerade nicht drückbar ist', () => {
     vi.useFakeTimers()
-    const feld = stelle('einstellungen')
     const weiter = stelle('weiter')
     render(<HilfePanel steuerung={steuerung()} kontext={kontext({ erledigt: true })} />)
-    fireEvent.click(screen.getByRole('button', { name: /Zeig mir die Stelle/ }))
-    act(() => {
-      vi.advanceTimersByTime(60)
-    })
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter zu Schritt 3' }))
     expect(weiter.classList.contains('ring-ws-green')).toBe(true)
-    expect(feld.classList.contains('ring-ws-green')).toBe(false)
-    feld.remove()
     weiter.remove()
   })
 })
@@ -378,10 +402,16 @@ describe('Einbau im Ablauf-Rahmen', () => {
     expect(screen.queryByRole('complementary')).toBeNull()
   })
 
-  it('der offene Assistent verdeckt das Formular nicht (Platz unten, Formular bleibt bedienbar)', () => {
+  it('der offene Assistent steht im Seitenfluss unter dem Fortschritt und schiebt die Spalte ab 1280 px zur Seite', () => {
     rahmen({ steuerung: steuerung(), kontext: kontext() })
-    expect(screen.getByRole('complementary')).toBeInTheDocument()
+    const main = document.getElementById('ws-main')!
+    expect(main).toContainElement(screen.getByRole('complementary'))
     expect(screen.getByText('Formular')).toBeVisible()
-    expect(document.getElementById('ws-main')?.className).toMatch(/pb-\[55svh\]/)
+    expect(main.parentElement?.className).toMatch(/xl:pr-\[22rem\]/)
+  })
+
+  it('geschlossen bleibt die Spalte unverändert', () => {
+    rahmen({ steuerung: steuerung({ offen: false }), kontext: kontext() })
+    expect(document.getElementById('ws-main')?.parentElement?.className).not.toMatch(/xl:pr/)
   })
 })

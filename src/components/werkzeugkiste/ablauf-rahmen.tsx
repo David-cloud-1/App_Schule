@@ -17,7 +17,13 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { ABLAUF_SCHRITTE, DIREKT_SCHRITTE, WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
-import { HilfeAngebot, HilfeKnopf, HilfePanel, type HilfeKontext, type HilfeSteuerung } from '@/components/werkzeugkiste/ablauf-assistent'
+import {
+  HilfeAngebot,
+  HilfeKnopf,
+  HilfePanel,
+  type HilfeKontext,
+  type HilfeSteuerung,
+} from '@/components/werkzeugkiste/ablauf-assistent'
 
 export const HAUPTAKTION =
   'min-h-12 w-full rounded-2xl bg-ws-green px-6 text-base font-bold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green sm:w-auto'
@@ -84,37 +90,38 @@ export function AblaufRahmen({
         {hilfe && <HilfeKnopf steuerung={hilfe.steuerung} />}
       </header>
 
-      <main
-        id="ws-main"
-        tabIndex={-1}
-        className={cn(
-          'mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8',
-          // Offene Schublade darf das Ende des Formulars nicht verdecken (ab 1536 px steht der Assistent daneben)
-          hilfe?.steuerung.verfuegbar && hilfe.steuerung.offen && (hilfe.steuerung.eingeklappt ? 'pb-24 2xl:pb-8' : 'pb-[55svh] 2xl:pb-8'),
-        )}
+      {/* Das Seitenfeld (ab 1280 px) schiebt die Formularspalte nach links, statt sie zu überdecken */}
+      <div
+        className={cn('flex flex-1 flex-col', hilfe?.steuerung.verfuegbar && hilfe.steuerung.offen && 'xl:pr-[22rem]')}
       >
-        <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} schritte={schritte} />
-        {hilfe && <HilfeAngebot steuerung={hilfe.steuerung} />}
+        <main
+          id="ws-main"
+          tabIndex={-1}
+          className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-6 outline-none sm:px-6 sm:py-8"
+        >
+          <Fortschritt schritt={schritt} erreicht={erreicht} direkt={direkt} schritte={schritte} />
+          {hilfe && <HilfeAngebot steuerung={hilfe.steuerung} />}
+          {hilfe && <HilfePanel steuerung={hilfe.steuerung} kontext={hilfe.kontext} />}
 
-        <div className="space-y-2">
-          <h1 ref={ueberschrift} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
-            {titel}
-          </h1>
-          {beschreibung && <p className="max-w-prose leading-relaxed text-ws-muted">{beschreibung}</p>}
-        </div>
-
-        <div className="flex-1 space-y-6">{children}</div>
-
-        {fuss && (
-          <div
-            data-hilfe="weiter"
-            className="flex flex-col-reverse gap-3 border-t border-ws-line pt-6 sm:flex-row sm:items-center sm:justify-between"
-          >
-            {fuss}
+          <div className="space-y-2">
+            <h1 ref={ueberschrift} tabIndex={-1} className="text-2xl font-bold tracking-tight outline-none sm:text-3xl">
+              {titel}
+            </h1>
+            {beschreibung && <p className="max-w-prose leading-relaxed text-ws-muted">{beschreibung}</p>}
           </div>
-        )}
-      </main>
-      {hilfe && <HilfePanel steuerung={hilfe.steuerung} kontext={hilfe.kontext} />}
+
+          <div className="flex-1 space-y-6">{children}</div>
+
+          {fuss && (
+            <div
+              data-hilfe="weiter"
+              className="flex flex-col-reverse gap-3 border-t border-ws-line pt-6 sm:flex-row sm:items-center sm:justify-between"
+            >
+              {fuss}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   )
 }
@@ -153,7 +160,10 @@ export function Fortschritt({
           return (
             <li key={s.nr} className="flex flex-1 items-center gap-2 last:flex-none">
               <span
-                className={cn('flex items-center gap-2 whitespace-nowrap text-sm', istAktuell ? 'font-semibold text-ws-text' : 'text-ws-faint')}
+                className={cn(
+                  'flex items-center gap-2 whitespace-nowrap text-sm',
+                  istAktuell ? 'font-semibold text-ws-text' : 'text-ws-faint',
+                )}
                 aria-current={istAktuell ? 'step' : undefined}
               >
                 <span
@@ -170,7 +180,10 @@ export function Fortschritt({
                 {erledigt && !istAktuell && <span className="sr-only">(erledigt)</span>}
               </span>
               {i < schritte.length - 1 && (
-                <span aria-hidden className={cn('h-0.5 min-w-4 flex-1 rounded-full', s.nr < schritt ? 'bg-ws-green' : 'bg-ws-raised')} />
+                <span
+                  aria-hidden
+                  className={cn('h-0.5 min-w-4 flex-1 rounded-full', s.nr < schritt ? 'bg-ws-green' : 'bg-ws-raised')}
+                />
               )}
             </li>
           )

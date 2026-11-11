@@ -255,7 +255,9 @@ Keine. Es werden vorhandene Bausteine (Seitenfeld/Schublade, Karten, Zustände) 
 
 - **Texte zentral:** `src/lib/werkzeugkiste-hilfe-texte.ts` (reine Daten: 7 Standardseiten, `HILFE_ABWEICHUNGEN` je Werkzeug für Teil 2, 8 Problemhilfen, Verbotsliste). Logik in `src/lib/werkzeugkiste-hilfe.ts` (`HILFE_WERKZEUGE = ['skript']`, Seitenwahl, „erledigt“, Problem-Zuordnung). Werkzeuge außerhalb der Liste zeigen **keinen** Hilfe-Knopf.
 - **Baustein:** `src/components/werkzeugkiste/ablauf-assistent.tsx` (`useHilfe`, `HilfeKnopf`, `HilfeAngebot`, `HilfePanel`, `zeigeStelle`). Er hängt am gemeinsamen `AblaufRahmen` (neue optionale Eigenschaft `hilfe`), nicht an einzelnen Werkzeugen. Eingebaut in `ablauf-seite.tsx` (Schritte 1–5) und `ablauf-neu.tsx` (Skript hochladen, dort entsteht der Ablauf).
-- **Abweichung von der Spezifikation (wie im Tech Design vermerkt):** Der Hilfe-Knopf sitzt in der Kopfzeile des Ablaufs (kein Seitenkopf vorhanden). Das Seitenfeld erscheint ab **1536 px** (`2xl`), darunter als Schublade von unten (max. halbe Höhe, einklappbar), weil die mittlere Spalte sonst überlappt.
+- **Abweichung von der Spezifikation:** Der Hilfe-Knopf sitzt in der Kopfzeile des Ablaufs (kein Seitenkopf vorhanden). **Überarbeitet nach dem ersten Test (2026-11-11):** Die erste Fassung legte den Assistenten als halbhohe Schublade über das Formular und verdeckte den „Weiter“-Knopf. Jetzt gilt: ab **1280 px** ein Seitenfeld rechts, das die Formularspalte nach links schiebt; darunter (Handy, Tablet) eine **Karte im Seitenfluss** direkt unter dem Fortschritt, einklappbar. Der Assistent liegt nie über dem Formular. Das bewusst abgewichene „Schublade von unten“ ist damit ersetzt.
+- **Verwechslung „Weiter“:** Die Blätter-Knöpfe in der Hilfe heißen „Hilfe zu Schritt N“. Ist der Schritt erledigt, bietet der Assistent einen grünen Knopf **„Weiter zu Schritt N“**, der den Hauptknopf des Formulars drückt (die Lehrkraft löst es selbst aus; ist der Knopf gerade nicht drückbar, wird die Fußzeile markiert). Das geht über die Spezifikation hinaus („schaltet nicht automatisch weiter“) und ist Nutzerwunsch aus dem ersten Test.
+- **Aufgeräumt:** Beispiel als leise Zeile statt Kasten, „Erledigt“ als kleines Häkchen, „Zeig mir die Stelle“ nur solange der Schritt offen ist.
 - **Mitgehen:** Die Hilfeseite folgt dem Schritt des Formulars. Zurück/Weiter blättert nur in der Hilfe und springt beim nächsten Schrittwechsel zurück. Ein neues Signal „Auftrag kopiert“ (`KopierKnopf.beiKopiert`) und „heruntergeladen“ (`SchrittFertig.beimHerunterladen`) gilt nur in der Sitzung.
 - **„Erledigt“:** 1 = Skript eingelesen · 2 = Auftrag liegt vor (Einstellungen gespeichert) · 3 = Auftrag kopiert bzw. alle Teile haben Antwort · 4 = Kontrolle lesbar, ohne Fehler · 5 = Download gestartet.
 - **Problemhilfen:** werden automatisch aus Kontrolle, Hochladen und Aktionsfehlern abgeleitet (abgeschnitten, nicht lesbar, Bilder/Lösungen fehlen, Datei zu groß, Lesefehler, „zu lang“, sonst allgemein). Die Zuordnung „passt nicht zum Werkzeug“ und „zu lang“ beruht auf Stichwörtern in der Meldung und ist Näherung.
@@ -279,7 +281,7 @@ Keine. Es werden vorhandene Bausteine (Seitenfeld/Schublade, Karten, Zustände) 
 | Barrierefreiheit (Rolle, Fokus, Esc, Statusansage) | per Test belegt; Screenreader-Lauf **nicht** gemacht |
 | Kontraste | nur `ws-*`-Tokens, getönte Flächen ≤ /15; kein neuer Token |
 | Sicherheit | Schnittstelle nur für Lehrer-Rollen, eigene Zeile per RLS und `owner_id`, Datenbankprobe bestanden (Fremdzugriff, Azubi, Löschen, ungültige Antwort) |
-| Handy, Hell/Dunkel, „Bewegung reduzieren“, Seitenfeld ab 1536 px | **nicht im Browser geprüft**, bitte einmal durchklicken |
+| Handy, Hell/Dunkel, „Bewegung reduzieren“, Seitenfeld ab 1280 px | **nicht im Browser geprüft**, bitte einmal durchklicken |
 | Textprüfung (unabhängiges Gegenlesen) und Test mit einer Anfänger-Lehrkraft | **offen** und Voraussetzung für Teil 2 |
 
 Keine kritischen oder hohen Fehler bekannt.
@@ -291,4 +293,4 @@ Keine kritischen oder hohen Fehler bekannt.
 
 - Reihenfolge: Migration `20261119_proj87_hilfe_angebot.sql` und `_rechte.sql` zuerst im SQL-Editor, Probe [proj87_hilfe_angebot_probe.sql](../supabase/tests/proj87_hilfe_angebot_probe.sql) bestanden (T1–T6 wie erwartet), danach Push auf `main`.
 - Prüfung nach dem Deploy: `GET` und `PUT /api/admin/werkzeugkiste/hilfe-angebot` ohne Login → 401, `/admin/werkzeugkiste/neu` leitet zur Anmeldung um (307), keine Fehler in den Produktions-Logs (15 Minuten).
-- **Noch offen:** einmal eingeloggt durchklicken (Handy, Hell/Dunkel, Seitenfeld ab 1536 px), Textprüfung und Test mit einer Anfänger-Lehrkraft. Erst danach Teil 2 (übrige 11 Werkzeuge).
+- **Noch offen:** einmal eingeloggt durchklicken (Handy, Hell/Dunkel, Seitenfeld ab 1280 px), Textprüfung und Test mit einer Anfänger-Lehrkraft. Erst danach Teil 2 (übrige 11 Werkzeuge).

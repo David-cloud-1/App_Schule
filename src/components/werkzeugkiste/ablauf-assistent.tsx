@@ -175,10 +175,20 @@ export function HilfeAngebot({ steuerung }: { steuerung: HilfeSteuerung }) {
   )
 }
 
+/** Klickt den Hauptknopf der Fußzeile des Formulars (der Lehrkraft die Arbeit abnehmen, nichts Automatisches) */
+export function klickeWeiter(): boolean {
+  const knoepfe = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-hilfe="weiter"] button'))
+  const knopf = knoepfe[knoepfe.length - 1]
+  if (!knopf || knopf.disabled) return false
+  knopf.click()
+  return true
+}
+
 /**
- * Der Assistent selbst: ab 1536 px ein Seitenfeld rechts neben der Spalte,
- * darunter eine Schublade von unten (höchstens halbe Höhe, einklappbar). Das
- * Formular bleibt bedienbar — der Assistent ist kein Dialog.
+ * Der Assistent selbst: ab 1280 px ein Seitenfeld rechts, das die Formularspalte
+ * nach links schiebt; darunter eine Karte im Seitenfluss direkt unter dem
+ * Fortschritt. Er liegt nie über dem Formular, also verdeckt er auch keinen
+ * Knopf. Er ist kein Dialog.
  */
 export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; kontext: HilfeKontext }) {
   const { offen, setOffen, eingeklappt, setEingeklappt } = steuerung
@@ -220,20 +230,27 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
   const erledigt = istAktuell ? kontext.erledigt : anzeigeIdx < aktuellIdx
   const problem = istAktuell && kontext.problem ? hilfeProblem(kontext.problem) : null
   const stelle = erledigt ? (seite.zeigeErledigt ?? seite.zeige) : seite.zeige
+  const vorige = anzeigeIdx > 0 ? folge[anzeigeIdx - 1] : null
+  const naechste = anzeigeIdx < folge.length - 1 ? folge[anzeigeIdx + 1] : null
+  // Weiter im Ablauf: nur wenn dieser Schritt erledigt ist und es einen nächsten gibt
+  const weiterNr = naechste ? HILFE_SCHRITT_NR[naechste] : null
+  const kannWeiter = istAktuell && erledigt && !problem && weiterNr !== null && anzeige !== 'fertig'
 
   function zeig() {
     if (!stelle) return
-    // Auf dem Handy aus dem Weg fahren, damit das Feld sichtbar bleibt
-    setEingeklappt(true)
     window.setTimeout(() => zeigeStelle(stelle), 50)
+  }
+
+  function weiter() {
+    if (!klickeWeiter()) zeigeStelle('weiter')
   }
 
   return (
     <aside
       aria-label="Hilfe: Schritt für Schritt"
       className={cn(
-        'fixed inset-x-0 bottom-0 z-30 flex max-h-[50svh] flex-col overflow-y-auto rounded-t-2xl border border-b-0 border-ws-line bg-ws-surface p-4 shadow-lg',
-        '2xl:inset-x-auto 2xl:bottom-auto 2xl:right-6 2xl:top-24 2xl:max-h-[calc(100svh-8rem)] 2xl:w-80 2xl:rounded-2xl 2xl:border-b',
+        'rounded-2xl border border-ws-line bg-ws-surface p-4 shadow-sm',
+        'xl:fixed xl:right-6 xl:top-24 xl:z-30 xl:w-80 xl:max-h-[calc(100svh-8rem)] xl:overflow-y-auto',
         'print:hidden',
       )}
     >
@@ -243,7 +260,7 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
             Schritt {nr} von {ABLAUF_SCHRITTE.length} · <span className="font-semibold text-ws-text">{schrittName}</span>
             {erledigt && <span className="sr-only">, erledigt</span>}
           </p>
-          <h2 ref={kopf} tabIndex={-1} className="mt-1 text-lg font-bold leading-snug outline-none">
+          <h2 ref={kopf} tabIndex={-1} className="mt-1 text-base font-semibold leading-snug outline-none">
             {seite.ueberschrift}
           </h2>
         </div>
@@ -254,7 +271,7 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
             onClick={() => setEingeklappt(!eingeklappt)}
             aria-expanded={!eingeklappt}
             aria-label={eingeklappt ? 'Hilfe ausklappen' : 'Hilfe einklappen'}
-            className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text 2xl:hidden"
+            className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text xl:hidden"
           >
             <ChevronDown className={cn('size-5 transition-transform duration-200', eingeklappt && 'rotate-180')} aria-hidden />
           </Button>
@@ -270,7 +287,7 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
         </div>
       </div>
 
-      <div className={cn('mt-3 space-y-3', eingeklappt && 'hidden 2xl:block')}>
+      <div className={cn('mt-2 space-y-3', eingeklappt && 'hidden xl:block')}>
         {problem ? (
           <div role="alert" className="space-y-3 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3">
             <p className="font-semibold text-ws-orange">{problem.was}</p>
@@ -282,30 +299,37 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
         ) : (
           <>
             <p className="leading-relaxed text-ws-text">{seite.anweisung}</p>
-            <p className="rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm italic text-ws-muted">{seite.beispiel}</p>
+            <p className="text-sm italic text-ws-muted">{seite.beispiel}</p>
+            {kontext.teileZeile && anzeige === 'teile' && <p className="text-sm text-ws-muted">{kontext.teileZeile}</p>}
             {erledigt && (
-              <p className="flex items-start gap-2 rounded-xl bg-ws-green/15 px-3 py-2 text-sm font-semibold text-ws-green">
-                <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>
-                  Erledigt.{' '}
-                  {kontext.variante !== 'fertig' && <span className="font-normal text-ws-text">Weiter zum nächsten Schritt.</span>}
-                </span>
+              <p className="flex items-center gap-2 rounded-xl bg-ws-green/15 px-3 py-2 text-sm font-semibold text-ws-green">
+                <Check className="size-4 shrink-0" aria-hidden />
+                Erledigt
               </p>
             )}
-            <p className="text-sm font-medium text-ws-text">{seite.fertigWenn}</p>
-            {kontext.teileZeile && anzeige === 'teile' && <p className="text-sm text-ws-muted">{kontext.teileZeile}</p>}
+            <p className={cn('text-sm', erledigt ? 'text-ws-muted' : 'font-medium text-ws-text')}>{seite.fertigWenn}</p>
           </>
         )}
 
-        {stelle && !problem && (
+        {kannWeiter ? (
           <Button
-            variant="outline"
-            onClick={zeig}
-            className="min-h-11 w-full rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+            onClick={weiter}
+            className="min-h-11 w-full rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
           >
-            <Crosshair className="mr-2 size-4" aria-hidden />
-            Zeig mir die Stelle
+            Weiter zu Schritt {weiterNr}
           </Button>
+        ) : (
+          stelle &&
+          !problem && (
+            <Button
+              variant="outline"
+              onClick={zeig}
+              className="min-h-11 w-full rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+            >
+              <Crosshair className="mr-2 size-4" aria-hidden />
+              Zeig mir die Stelle
+            </Button>
+          )
         )}
 
         {seite.mehrDazu && (
@@ -318,24 +342,32 @@ export function HilfePanel({ steuerung, kontext }: { steuerung: HilfeSteuerung; 
           </Collapsible>
         )}
 
-        <div className="flex items-center justify-between gap-2 border-t border-ws-line pt-3">
-          <Button
-            variant="ghost"
-            disabled={anzeigeIdx <= 0}
-            onClick={() => setBlaettern({ fuer: kontext.variante, seite: folge[anzeigeIdx - 1] })}
-            className="min-h-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-          >
-            Zurück
-          </Button>
-          <Button
-            variant="ghost"
-            disabled={anzeigeIdx >= folge.length - 1}
-            onClick={() => setBlaettern({ fuer: kontext.variante, seite: folge[anzeigeIdx + 1] })}
-            className="min-h-11 rounded-xl text-ws-text hover:bg-ws-raised hover:text-ws-text"
-          >
-            Weiter
-          </Button>
-        </div>
+        {(vorige || naechste) && (
+          <nav aria-label="Hilfeseiten" className="flex items-center justify-between gap-2 border-t border-ws-line pt-2 text-sm">
+            {vorige ? (
+              <Button
+                variant="ghost"
+                onClick={() => setBlaettern({ fuer: kontext.variante, seite: vorige })}
+                className="min-h-11 rounded-xl px-2 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
+              >
+                ‹ Hilfe zu Schritt {HILFE_SCHRITT_NR[vorige]}
+              </Button>
+            ) : (
+              <span />
+            )}
+            {naechste ? (
+              <Button
+                variant="ghost"
+                onClick={() => setBlaettern({ fuer: kontext.variante, seite: naechste })}
+                className="min-h-11 rounded-xl px-2 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
+              >
+                Hilfe zu Schritt {HILFE_SCHRITT_NR[naechste]} ›
+              </Button>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
       </div>
     </aside>
   )
