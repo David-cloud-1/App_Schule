@@ -150,6 +150,25 @@ describe('useHilfe', () => {
     expect(naechster.result.current.offen).toBe(false)
   })
 
+  it('ist auf breiten Bildschirmen (ab 1280 px) von Anfang an offen', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('1280px') }))
+    vi.mocked(ladeHilfeAngebot).mockResolvedValue({ werkzeug: 'skript', beantwortet: true, antwort: 'nein' })
+    const { result } = renderHook(() => useHilfe('skript', 'lesen'))
+    expect(result.current.offen).toBe(true)
+    vi.unstubAllGlobals()
+  })
+
+  it('wer die Hilfe auf „Neues Material“ schließt, hat sie im Ablauf auch auf breiten Bildschirmen zu', () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('1280px') }))
+    vi.mocked(ladeHilfeAngebot).mockResolvedValue({ werkzeug: 'skript', beantwortet: true, antwort: 'nein' })
+    const neu = renderHook(() => useHilfe('skript', 'schreiben'))
+    expect(neu.result.current.offen).toBe(true)
+    act(() => neu.result.current.setOffen(false))
+    const ablauf = renderHook(() => useHilfe('skript', 'lesen'))
+    expect(ablauf.result.current.offen).toBe(false)
+    vi.unstubAllGlobals()
+  })
+
   it('ein neuer Ablauf ist ohne Übergabe geschlossen', () => {
     vi.mocked(ladeHilfeAngebot).mockResolvedValue({ werkzeug: 'skript', beantwortet: true, antwort: 'ja' })
     const { result } = renderHook(() => useHilfe('skript', 'lesen'))

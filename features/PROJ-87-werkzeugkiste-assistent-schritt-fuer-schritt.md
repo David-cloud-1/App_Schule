@@ -12,8 +12,9 @@ Dieses Feature ergänzt jedes Werkzeug um einen **Assistenten „Schritt für Sc
 Ein Chat-Assistent mit KI („Frag mich“) ist bewusst **nicht** Teil dieses Features. Er wäre ein späterer Ausbau auf diesem Baustein und hängt an der Kostenfrage von PROJ-64 (pausiert).
 
 ### Entscheidungen (Nutzer, 2026-11-11)
-- **E1 – Nur auf Knopfdruck:** Der Assistent ist nie dauerhaft sichtbar. Ein Knopf „Hilfe: Schritt für Schritt“ im Seitenkopf schaltet ihn ein. Ohne Klick bleibt die Seite so übersichtlich wie heute.
+- **E1 – Nur auf Knopfdruck (geändert 2026-11-11, siehe E6):** Der Assistent ist nie dauerhaft sichtbar. Ein Knopf „Hilfe: Schritt für Schritt“ im Seitenkopf schaltet ihn ein. Ohne Klick bleibt die Seite so übersichtlich wie heute.
 - **E2 – Einmal anbieten:** Beim allerersten Öffnen eines Werkzeugs erscheint ein kleines Angebot „Neu hier? Ich führe dich durch.“ mit „Ja“ und „Nein, danke“. Die Antwort wird pro Werkzeug gemerkt, das Angebot kommt danach nie wieder (der Hilfe-Knopf bleibt).
+- **E6 – Mitlaufen auf breiten Bildschirmen (2026-11-11):** Ab 1280 px (Seitenfeld) ist die Hilfe beim Öffnen eines Ablaufs von Anfang an offen, darunter bleibt sie zu (Knopf/Angebot wie in E1/E2). Das Angebot „Neu hier?“ entfällt ab 1280 px. Schließen gilt nur für den laufenden Ablauf, ein Merken über Sitzungen hinaus gibt es bewusst nicht. Ändert E1 und E2 auf breiten Bildschirmen.
 - **E3 – Umfang:** Der Assistent führt durch alle fünf Schritte jedes Werkzeugs. Startseite, Meine Materialien und Regal bekommen eine kurze Einführung in einem späteren Feature.
 - **E4 – Rollout:** Erst das Muster am Werkzeug „Ganzes Skript“, dann Texte prüfen und mit einer echten Anfänger-Lehrkraft testen, danach die übrigen 11 Werkzeuge.
 - **E5 – Kostenlos:** Keine KI-Aufrufe, keine Kosten, keine neuen Dienste.

@@ -36,12 +36,15 @@ export interface HilfeSteuerung {
   beantworteAngebot: (a: HilfeAngebotAntwort) => void
 }
 
+/** Ab dieser Breite (Tailwind `xl`) ist die Hilfe von Anfang an offen */
+const HILFE_BREIT_AB = 1280
+
 /** Adresse des Hilfe-Knopfs: Beim Schließen geht der Fokus dorthin zurück */
 export const HILFE_KNOPF_ID = 'wk-hilfe-knopf'
 
 /**
- * Zustand des Assistenten (PROJ-87). Er ist nur offen, wenn die Lehrkraft ihn
- * einschaltet (Knopf oder „Ja, bitte“) — sonst bleibt die Seite wie immer.
+ * Zustand des Assistenten (PROJ-87). Auf breiten Bildschirmen (ab 1280 px) ist er von
+ * Anfang an offen, sonst nur, wenn die Lehrkraft ihn einschaltet (Knopf oder „Ja, bitte“).
  * Das Angebot wird einmal je Werkzeug gefragt; solange die Antwort lädt oder
  * die Abfrage scheitert, erscheint nichts. `uebergabe`: auf „Neues Material“
  * den Zustand für die nächste Seite merken (`schreiben`), im Ablauf einmal
@@ -50,13 +53,16 @@ export const HILFE_KNOPF_ID = 'wk-hilfe-knopf'
 export function useHilfe(werkzeugId: string, uebergabe?: 'schreiben' | 'lesen'): HilfeSteuerung {
   const verfuegbar = hatHilfe(werkzeugId)
   const [offen, setOffenIntern] = useState(() => {
-    if (uebergabe !== 'lesen' || typeof window === 'undefined') return false
+    if (typeof window === 'undefined') return false
+    // Auf breiten Bildschirmen (Seitenfeld, ab xl) läuft die Hilfe von Anfang an mit
+    const breit = window.matchMedia?.(`(min-width: ${HILFE_BREIT_AB}px)`).matches ?? false
+    if (uebergabe !== 'lesen') return breit
     try {
-      const war = window.sessionStorage.getItem(HILFE_UEBERGABE_SCHLUESSEL) === '1'
+      const war = window.sessionStorage.getItem(HILFE_UEBERGABE_SCHLUESSEL)
       window.sessionStorage.removeItem(HILFE_UEBERGABE_SCHLUESSEL)
-      return war
+      return war === null ? breit : war === '1'
     } catch {
-      return false
+      return breit
     }
   })
   const [eingeklappt, setEingeklappt] = useState(false)
@@ -68,8 +74,7 @@ export function useHilfe(werkzeugId: string, uebergabe?: 'schreiben' | 'lesen'):
       if (neu) setEingeklappt(false)
       if (uebergabe === 'schreiben') {
         try {
-          if (neu) window.sessionStorage.setItem(HILFE_UEBERGABE_SCHLUESSEL, '1')
-          else window.sessionStorage.removeItem(HILFE_UEBERGABE_SCHLUESSEL)
+          window.sessionStorage.setItem(HILFE_UEBERGABE_SCHLUESSEL, neu ? '1' : '0')
         } catch {
           // ohne Speicher geht der Zustand beim Seitenwechsel verloren — nicht schlimm
         }
@@ -153,7 +158,7 @@ export function HilfeAngebot({ steuerung }: { steuerung: HilfeSteuerung }) {
   return (
     <section
       aria-label="Angebot: Hilfe Schritt für Schritt"
-      className="flex flex-col gap-3 rounded-2xl border border-ws-blue/30 bg-ws-blue/10 p-4 sm:flex-row sm:items-center sm:justify-between print:hidden"
+      className="flex flex-col gap-3 rounded-2xl border border-ws-blue/30 bg-ws-blue/10 p-4 sm:flex-row sm:items-center sm:justify-between xl:hidden print:hidden"
     >
       <p className="font-medium text-ws-text">Neu hier? Ich führe dich Schritt für Schritt durch.</p>
       <div className="flex gap-2">
