@@ -195,3 +195,9 @@ Rückmeldung nach dem ersten Test im Browser: Der Dialog war zu voll (Frage dopp
 ## Deployment
 - **2026-11-09:** Migration `20261115_proj82_meldung_entfaellt` im SQL-Editor eingespielt, Probe bestanden (T1–T5 wie erwartet), danach lesend geprüft (Funktion erweitert, `anon` ohne Zugriff). Push von `0e8f741` auf `main`, Vercel-Production Ready, neue und geänderte Routen ohne Login 401, keine Fehler in den Produktions-Logs.
 - **Noch offen:** einmal eingeloggt auf Handy und Laptop durchklicken (Prüf-Dialog, Speichern & abschließen, Weiter zur nächsten Meldung). Im Browser wurde das nicht geprüft.
+
+## Vereinfachung nach Browserprüfung (2026-11-11)
+Rückmeldung: Liste und Dialog wirkten verwirrend.
+- **Liste:** nur noch zwei Spalten (Frage mit einer ruhigen Meta-Zeile aus Grund, Anzahl, Datum; Aktion). Der Aufklapper samt „In der Fragenliste öffnen“ entfällt, weil der Prüf-Dialog alle Details zeigt. „Du prüfst“ entfällt, nur „<Name> prüft gerade“ bei Kolleginnen und Kollegen bleibt.
+- **Dialog:** Abschnittstitel („Das wurde gemeldet“, „So sehen Azubis die Frage“), drei gleichwertige Entscheidungsknöpfe unter „Was soll mit der Frage passieren?“ (korrekt / korrigieren / entfällt, mit Kurzhinweis), „Azubi liest“ → „Nachricht an den Azubi“.
+- Tests (18) und Typen grün; Sicht im Browser noch offen.

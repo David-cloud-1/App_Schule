@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { AlertTriangle, CheckCircle2, Flag, Loader2, MessageSquare, Pencil } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Flag, Loader2, MessageSquare, Pencil, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -341,6 +341,9 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
               <>
                 {/* Was gemeldet wurde */}
                 <section aria-label="Meldungen" className="space-y-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-ws-faint">
+                    {reports.length === 1 ? 'Das wurde gemeldet' : `Das wurde gemeldet (${reports.length}×)`}
+                  </h3>
                   {reports.map((d) => (
                     <div key={d.id} className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -366,6 +369,7 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
                 {/* Schritt 1: Frage ansehen */}
                 {question && mode === 'view' && (
                   <section aria-label="Frage" className="space-y-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-ws-faint">So sehen Azubis die Frage</h3>
                     <p className="font-semibold leading-relaxed text-ws-text">{question.question_text}</p>
                     <ul className="space-y-1.5">
                       {question.answer_options.map((o, i) => {
@@ -442,7 +446,7 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
               <div className="text-sm">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <MessageSquare className="size-4 shrink-0 text-ws-muted" aria-hidden />
-                  <span className="text-ws-muted">Azubi liest:</span>
+                  <span className="text-ws-muted">Nachricht an den Azubi:</span>
                   <span className="min-w-0 flex-1 truncate text-ws-text" title={silent ? undefined : azubiPreview}>
                     {silent ? 'nichts (still geschlossen)' : `„${azubiPreview}“`}
                     {!silent && mode === 'edit' && (
@@ -499,25 +503,17 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
               </div>
 
               {mode === 'view' ? (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setPending({ kind: 'entfaellt' })}
-                    disabled={busy}
-                    className="min-h-11 rounded-xl px-3 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-                  >
-                    Frage entfällt …
-                  </Button>
-                  <div className="flex flex-1 flex-wrap justify-end gap-2">
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-ws-text">Was soll mit der Frage passieren?</p>
+                  <div className="grid gap-2 sm:grid-cols-3">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => void closeAsCorrect()}
                       disabled={busy}
-                      className={`${OUTLINE} flex-1 sm:flex-none`}
+                      className={OUTLINE}
                     >
-                      {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
+                      {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <CheckCircle2 className="mr-2 size-4" />}
                       Frage ist korrekt
                     </Button>
                     {canEdit && (
@@ -525,13 +521,26 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
                         type="button"
                         onClick={() => switchMode('edit')}
                         disabled={busy}
-                        className="min-h-11 flex-1 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover sm:flex-none"
+                        className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
                       >
                         <Pencil className="mr-2 size-4" />
                         Frage korrigieren
                       </Button>
                     )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setPending({ kind: 'entfaellt' })}
+                      disabled={busy}
+                      className="min-h-11 rounded-xl border-ws-red/30 bg-transparent text-ws-red hover:bg-ws-red/10 hover:text-ws-red"
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Frage entfällt …
+                    </Button>
                   </div>
+                  <p className="text-xs text-ws-muted">
+                    „Korrekt“ lässt die Frage, wie sie ist. „Entfällt“ nimmt sie aus dem Spiel (lässt sich wieder aktivieren).
+                  </p>
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center justify-end gap-2">

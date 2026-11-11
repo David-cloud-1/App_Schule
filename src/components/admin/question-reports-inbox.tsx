@@ -1,9 +1,8 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, Eye, Flag, Loader2, UserCheck } from 'lucide-react'
+import { CheckCircle2, Eye, Flag, Loader2, UserCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,14 +21,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { QuestionReportReviewDialog } from '@/components/admin/question-report-review-dialog'
-import { questionSearchLink } from '@/lib/difficulty'
 import type { ContentTree } from '@/lib/content-tree'
 import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
   REPORT_REASON_SHORT,
   REPORT_RESPONSE_TEMPLATES,
-  REPORT_STATUS_LABEL,
   type ReportReason,
   type ReportStatus,
 } from '@/lib/question-reports'
@@ -49,16 +46,6 @@ interface Group {
   claimed_at: string | null
   claimed_by_me: boolean
   changed_since_report: boolean
-}
-
-interface Detail {
-  id: string
-  reason: ReportReason
-  note: string | null
-  chosen_option_text: string | null
-  status: ReportStatus
-  created_at: string
-  response_text: string | null
 }
 
 interface ListResponse {
@@ -91,8 +78,6 @@ export function QuestionReportsInbox() {
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
 
-  const [expanded, setExpanded] = useState<string | null>(null)
-  const [details, setDetails] = useState<Record<string, Detail[] | 'error' | 'loading'>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const [review, setReview] = useState<{ queue: string[]; index: number } | null>(null)
@@ -122,7 +107,6 @@ export function QuestionReportsInbox() {
 
   useEffect(() => {
     setSelected(new Set())
-    setExpanded(null)
   }, [tab, reason, subject, topic, page])
 
   // Fächer und Themen für die Auswahlfelder; fällt der Baum aus, bleiben die Felder einfach weg
@@ -149,29 +133,6 @@ export function QuestionReportsInbox() {
     () => (subject === 'alle' ? [] : (subjectOptions.find((s) => s.id === subject)?.topics ?? [])),
     [subjectOptions, subject],
   )
-
-  async function loadDetails(questionId: string) {
-    setDetails((d) => ({ ...d, [questionId]: 'loading' }))
-    try {
-      const res = await fetch(`/api/admin/question-reports/${questionId}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error('details')
-      const body = (await res.json()) as { items: Detail[] }
-      setDetails((d) => ({ ...d, [questionId]: body.items }))
-    } catch {
-      setDetails((d) => ({ ...d, [questionId]: 'error' }))
-    }
-  }
-
-  function toggleExpand(g: Group) {
-    if (!g.question_id) return
-    const id = g.question_id
-    if (expanded === id) {
-      setExpanded(null)
-      return
-    }
-    setExpanded(id)
-    if (!details[id] || details[id] === 'error') void loadDetails(id)
-  }
 
   /** Prüf-Dialog öffnen (PROJ-82). Im Reiter „Offen“ als Durchlauf über alle offenen Zeilen der Seite. */
   function openReview(g: Group) {
@@ -339,160 +300,85 @@ export function QuestionReportsInbox() {
                     />
                   </TableHead>
                 )}
-                <TableHead className="text-ws-muted">Frage</TableHead>
-                <TableHead className="text-ws-muted">Meldungen</TableHead>
-                <TableHead className="text-ws-muted">Gründe</TableHead>
-                <TableHead className="text-ws-muted">Seit</TableHead>
-                <TableHead className="text-ws-muted text-right">Aktionen</TableHead>
+                <TableHead className="text-ws-muted">Gemeldete Frage</TableHead>
+                <TableHead className="w-px text-right text-ws-muted">
+                  <span className="sr-only">Aktion</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((g) => {
-                const key = rowKey(g)
                 const id = g.question_id
-                const isOpen = id !== null && expanded === id
-                const detail = id ? details[id] : undefined
                 const other = claimedByOther(g)
                 return (
-                  <Fragment key={key}>
-                    <TableRow className="border-ws-line">
-                      {isOpenTab && (
-                        <TableCell>
-                          {id && (
-                            <Checkbox
-                              aria-label="Zeile auswählen"
-                              checked={selected.has(id)}
-                              onCheckedChange={(checked) =>
-                                setSelected((prev) => {
-                                  const next = new Set(prev)
-                                  if (checked) next.add(id)
-                                  else next.delete(id)
-                                  return next
-                                })
-                              }
-                            />
-                          )}
-                        </TableCell>
-                      )}
-                      <TableCell className="max-w-md">
-                        <button
-                          type="button"
-                          onClick={() => toggleExpand(g)}
-                          disabled={!id}
-                          aria-expanded={isOpen}
-                          className="flex min-h-11 w-full items-start gap-2 text-left"
-                        >
-                          {isOpen ? (
-                            <ChevronDown className="mt-0.5 size-4 shrink-0 text-ws-muted" />
-                          ) : (
-                            <ChevronRight className="mt-0.5 size-4 shrink-0 text-ws-muted" />
-                          )}
-                          <span className="line-clamp-2 text-sm font-medium text-ws-text" title={g.question_text}>
-                            {g.question_text}
-                          </span>
-                        </button>
-                        <div className="ml-6 flex flex-wrap gap-1.5">
-                          {g.status === 'in_pruefung' && (
-                            <Badge className="border-ws-blue/30 bg-ws-blue/15 text-ws-blue">
-                              <UserCheck className="mr-1 size-3" />
-                              {g.claimed_by_me ? 'Du prüfst' : `${g.handled_by_name ?? 'Jemand'} prüft`}
-                            </Badge>
-                          )}
-                          {g.changed_since_report && g.status !== 'korrigiert' && (
-                            <Badge className="border-ws-orange/30 bg-ws-orange/15 text-ws-orange">
-                              Seit der Meldung geändert
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm tabular-nums text-ws-text">{g.report_count}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5">
-                          {g.reasons.map((r) => (
-                            <Badge key={r} variant="outline" className="border-ws-line text-ws-muted">
-                              {REPORT_REASON_SHORT[r]}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm text-ws-muted">{formatDate(g.oldest_at)}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap justify-end gap-2">
-                          {id && isOpenTab && (
-                            <Button
-                              onClick={() => openReview(g)}
-                              className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
-                            >
-                              Prüfen
-                            </Button>
-                          )}
-                          {id && !isOpenTab && (
-                            <Button
-                              variant="outline"
-                              onClick={() => openReview(g)}
-                              className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
-                            >
-                              <Eye className="mr-1.5 size-4" />
-                              Ansehen
-                            </Button>
-                          )}
-                        </div>
-                        {other && (
-                          <p className="mt-1 text-right text-xs text-ws-muted">
-                            Wird gerade von {g.handled_by_name ?? 'einer Kollegin oder einem Kollegen'} geprüft.
-                          </p>
+                  <TableRow key={rowKey(g)} className="border-ws-line">
+                    {isOpenTab && (
+                      <TableCell className="align-top">
+                        {id && (
+                          <Checkbox
+                            aria-label="Zeile auswählen"
+                            checked={selected.has(id)}
+                            onCheckedChange={(checked) =>
+                              setSelected((prev) => {
+                                const next = new Set(prev)
+                                if (checked) next.add(id)
+                                else next.delete(id)
+                                return next
+                              })
+                            }
+                          />
                         )}
                       </TableCell>
-                    </TableRow>
-
-                    {isOpen && (
-                      <TableRow className="border-ws-line bg-ws-bg/50">
-                        <TableCell colSpan={isOpenTab ? 6 : 5}>
-                          {detail === 'loading' || !detail ? (
-                            <Loader2 className="size-5 animate-spin text-ws-muted" aria-label="Wird geladen" />
-                          ) : detail === 'error' ? (
-                            <AdminErrorState message="Die Einzelmeldungen konnten nicht geladen werden." onRetry={() => id && void loadDetails(id)} />
-                          ) : (
-                            <ul className="space-y-2">
-                              {id && (
-                                <li>
-                                  <Button
-                                    asChild
-                                    variant="ghost"
-                                    className="min-h-11 rounded-xl px-2 text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-                                  >
-                                    <Link href={questionSearchLink(g.question_text)}>
-                                      <ExternalLink className="mr-1.5 size-4" />
-                                      In der Fragenliste öffnen
-                                    </Link>
-                                  </Button>
-                                </li>
-                              )}
-                              {detail.map((d) => (
-                                <li key={d.id} className="rounded-xl border border-ws-line bg-ws-surface p-3 text-sm">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant="outline" className="border-ws-line text-ws-muted">
-                                      {REPORT_REASON_LABEL[d.reason]}
-                                    </Badge>
-                                    <span className="text-xs text-ws-faint">
-                                      {formatDate(d.created_at)} · {REPORT_STATUS_LABEL[d.status]}
-                                    </span>
-                                  </div>
-                                  {d.note && <p className="mt-2 whitespace-pre-wrap text-ws-text">{d.note}</p>}
-                                  {d.chosen_option_text && (
-                                    <p className="mt-1 text-xs text-ws-muted">Gewählte Antwort: {d.chosen_option_text}</p>
-                                  )}
-                                  {d.response_text && (
-                                    <p className="mt-1 text-xs text-ws-muted">Rückmeldung: {d.response_text}</p>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </TableCell>
-                      </TableRow>
                     )}
-                  </Fragment>
+                    <TableCell className="max-w-xl whitespace-normal">
+                      <p className="line-clamp-2 text-sm font-medium text-ws-text" title={g.question_text}>
+                        {g.question_text}
+                      </p>
+                      {/* Eine ruhige Zeile: Grund, Anzahl, Datum, Bearbeiter */}
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ws-muted">
+                        {g.reasons.map((r) => (
+                          <Badge key={r} variant="outline" className="border-ws-line text-ws-muted">
+                            {REPORT_REASON_SHORT[r]}
+                          </Badge>
+                        ))}
+                        <span>
+                          {g.report_count === 1 ? '1 Meldung' : `${g.report_count} Meldungen`} · seit{' '}
+                          {formatDate(g.oldest_at)}
+                        </span>
+                        {other && (
+                          <Badge className="border-ws-blue/30 bg-ws-blue/15 text-ws-blue">
+                            <UserCheck className="mr-1 size-3" />
+                            {g.handled_by_name ?? 'Jemand'} prüft gerade
+                          </Badge>
+                        )}
+                        {g.changed_since_report && g.status !== 'korrigiert' && (
+                          <Badge className="border-ws-orange/30 bg-ws-orange/15 text-ws-orange">
+                            Seit der Meldung geändert
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right align-top">
+                      {id && isOpenTab && (
+                        <Button
+                          onClick={() => openReview(g)}
+                          className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+                        >
+                          Prüfen
+                        </Button>
+                      )}
+                      {id && !isOpenTab && (
+                        <Button
+                          variant="outline"
+                          onClick={() => openReview(g)}
+                          className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+                        >
+                          <Eye className="mr-1.5 size-4" />
+                          Ansehen
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
                 )
               })}
             </TableBody>
