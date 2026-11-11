@@ -42,17 +42,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
 import { roleChangeDescription } from '@/components/admin/role-change-text'
 import { ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
+import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { SortableTableHead } from '@/components/admin/sortable-table-head'
@@ -687,141 +682,54 @@ export default function AdminUsersPage() {
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Rollen vergeben — nur Super-Admin (AC-7) */}
-                          {isSuperAdmin && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={isSelf}
-                                  className="text-ws-blue hover:text-ws-blue"
-                                >
-                                  <ShieldCheck className="w-4 h-4 mr-1" />
-                                  Rolle
-                                  <ChevronDown className="w-3 h-3 ml-1" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-ws-surface border-ws-line text-ws-text">
-                                {USER_ROLES
-                                  .filter((r) => r !== u.role)
-                                  .map((r) => (
-                                    <DropdownMenuItem
-                                      key={r}
-                                      onClick={() => setRoleChange({ user: u, newRole: r })}
-                                      className="focus:bg-ws-bg focus:text-ws-text"
-                                    >
-                                      {ROLE_LABEL[r]}
-                                    </DropdownMenuItem>
-                                  ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-
-                          {/* Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin */}
-                          {canMove && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setMoveTarget(u)}
-                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} in anderen Fachbereich verschieben`}
-                                    className="text-ws-muted hover:text-ws-text"
-                                  >
-                                    <MapPinned className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
-                                  In anderen Fachbereich verschieben
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-
-                          {/* Passwort neu vergeben (PROJ-58) — gleiche Regel wie beim Sperren */}
-                          {!isSelf && canModerate && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setPasswordTarget(u)}
-                                    aria-label={`Passwort für ${u.display_name ?? u.email ?? 'Konto'} neu vergeben`}
-                                    className="text-ws-muted hover:text-ws-text"
-                                  >
-                                    <KeyRound className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
-                                  Passwort neu vergeben
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-
-                          {/* Konto löschen (PROJ-60) — nur Super-Admin, nie das eigene oder ein Super-Admin-Konto */}
-                          {isSuperAdmin && !isSelf && u.role !== 'admin' && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setDeleteTarget(u)}
-                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} löschen`}
-                                    className="text-ws-red hover:text-ws-red"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
-                                  Konto löschen
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    disabled={isSelf || !canModerate}
-                                    onClick={() => setTarget(u)}
-                                    aria-label={`${u.display_name ?? u.email ?? 'Konto'} ${u.banned ? 'entsperren' : 'sperren'}`}
-                                    className={
-                                      u.banned
-                                        ? 'text-ws-green hover:text-ws-green'
-                                        : 'text-ws-red hover:text-ws-red'
-                                    }
-                                  >
-                                    {u.banned ? (
-                                      <CheckCircle2 className="w-4 h-4" />
-                                    ) : (
-                                      <Ban className="w-4 h-4" />
-                                    )}
-                                  </Button>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-ws-bg text-ws-text border-ws-line">
-                                {isSelf
-                                  ? 'Du kannst dich nicht selbst sperren.'
-                                  : !canModerate
-                                    ? 'Nur der Super-Admin kann dieses Konto sperren.'
-                                    : u.banned
-                                    ? 'Entsperren'
-                                    : 'Sperren'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
+                      <TableCell className="w-px text-right">
+                        {/* Alle Zeilenaktionen in einem ⋯-Menü (PROJ-83), damit die Tabelle nicht seitlich scrollen muss */}
+                        <AdminRowActions
+                          subject={u.display_name ?? u.email ?? 'Konto'}
+                          items={[
+                            // Rollen vergeben — nur Super-Admin (AC-7)
+                            ...(isSuperAdmin && !isSelf
+                              ? USER_ROLES.filter((r) => r !== u.role).map((r) => ({
+                                  key: `role-${r}`,
+                                  label: `Rolle ändern: ${ROLE_LABEL[r]}`,
+                                  icon: <ShieldCheck className="size-4" />,
+                                  onSelect: () => setRoleChange({ user: u, newRole: r }),
+                                }))
+                              : []),
+                            // Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin
+                            {
+                              key: 'move',
+                              label: 'In anderen Fachbereich verschieben',
+                              icon: <MapPinned className="size-4" />,
+                              onSelect: () => setMoveTarget(u),
+                              hidden: !canMove,
+                            },
+                            // Passwort neu vergeben (PROJ-58) — gleiche Regel wie beim Sperren
+                            {
+                              key: 'password',
+                              label: 'Passwort neu vergeben',
+                              icon: <KeyRound className="size-4" />,
+                              onSelect: () => setPasswordTarget(u),
+                              hidden: isSelf || !canModerate,
+                            },
+                            {
+                              key: 'ban',
+                              label: u.banned ? 'Entsperren' : 'Sperren',
+                              icon: u.banned ? <CheckCircle2 className="size-4" /> : <Ban className="size-4" />,
+                              onSelect: () => setTarget(u),
+                              hidden: isSelf || !canModerate,
+                            },
+                            // Konto löschen (PROJ-60) — nur Super-Admin, nie das eigene oder ein Super-Admin-Konto
+                            {
+                              key: 'delete',
+                              label: 'Konto löschen',
+                              icon: <Trash2 className="size-4" />,
+                              onSelect: () => setDeleteTarget(u),
+                              destructive: true,
+                              hidden: !(isSuperAdmin && !isSelf && u.role !== 'admin'),
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   )

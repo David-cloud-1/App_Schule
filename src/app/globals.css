@@ -286,6 +286,16 @@
   .ws-table-scroll table {
     min-width: 40rem;
   }
+  /* Scroll-Hinweis: Schatten am Rand zeigt, dass die Tabelle in diese Richtung weiterläuft.
+     Er verschwindet, sobald man am Ende angekommen ist (Technik: local- vs. scroll-Hintergrund). */
+  .ws-table-scroll > div {
+    --ws-scroll-shadow: color-mix(in srgb, rgb(var(--ws-text)) 22%, transparent);
+    background:
+      linear-gradient(to right, rgb(var(--ws-surface)) 30%, transparent) 0 0 / 2.5rem 100% no-repeat local,
+      linear-gradient(to left, rgb(var(--ws-surface)) 30%, transparent) 100% 0 / 2.5rem 100% no-repeat local,
+      linear-gradient(to right, var(--ws-scroll-shadow), transparent) 0 0 / 0.875rem 100% no-repeat scroll,
+      linear-gradient(to left, var(--ws-scroll-shadow), transparent) 100% 0 / 0.875rem 100% no-repeat scroll;
+  }
   .ws-table-sticky :is(th, td):first-child:not([colspan]) {
     position: sticky;
     left: 0;

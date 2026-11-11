@@ -26,34 +26,42 @@ function setup(role: TeacherRole) {
   return screen.findByText('Anna Azubi')
 }
 
+/** Öffnet das ⋯-Menü der Zeile und liefert die Einträge als Text */
+function menuOf(name: string) {
+  fireEvent.keyDown(screen.getByRole('button', { name: `Weitere Aktionen: ${name}` }), { key: 'Enter' })
+  const entries = screen.getAllByRole('menuitem').map((e) => e.textContent)
+  return entries
+}
 const button = (name: RegExp) => screen.queryByRole('button', { name })
+const closeMenu = () => fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
 
-describe('Nutzerverwaltung – Knöpfe je Rolle (PROJ-44, QA BUG-3/5a)', () => {
+describe('Nutzerverwaltung – Zeilenmenü je Rolle (PROJ-44, QA BUG-3/5a)', () => {
   beforeEach(() => vi.unstubAllGlobals())
 
-  it('Bereichs-Admin: sperren und verschieben nur bei Azubis, bei Lehrer-Konten gesperrt bzw. ausgeblendet', async () => {
+  it('Bereichs-Admin: sperren und verschieben nur bei Azubis, bei Lehrer-Konten kein Menü', async () => {
     await setup('department_admin')
-    expect(button(/Anna Azubi sperren/)).toBeEnabled()
-    expect(button(/Anna Azubi in anderen Fachbereich/)).toBeInTheDocument()
-
+    expect(menuOf('Anna Azubi')).toEqual(['In anderen Fachbereich verschieben', 'Passwort neu vergeben', 'Sperren'])
+    closeMenu()
     for (const name of ['Petra Lehrkraft', 'Bernd Bereich']) {
-      expect(button(new RegExp(`${name} sperren`))).toBeDisabled()
-      expect(button(new RegExp(`${name} in anderen Fachbereich`))).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: `Weitere Aktionen: ${name}` })).not.toBeInTheDocument()
     }
   })
 
   it('Super-Admin: kann Lehrkraft und Bereichs-Admin verschieben und sperren (BUG-3)', async () => {
     await setup('admin')
     for (const name of ['Anna Azubi', 'Petra Lehrkraft', 'Bernd Bereich']) {
-      expect(button(new RegExp(`${name} sperren`))).toBeEnabled()
-      expect(button(new RegExp(`${name} in anderen Fachbereich`))).toBeInTheDocument()
+      const entries = menuOf(name)
+      expect(entries).toContain('In anderen Fachbereich verschieben')
+      expect(entries).toContain('Sperren')
+      expect(entries).toContain('Konto löschen')
+      expect(entries.some((e) => e?.startsWith('Rolle ändern'))).toBe(true)
+      closeMenu()
     }
   })
 
   it('Super-Admin: sich selbst weder sperren noch verschieben', async () => {
     await setup('admin')
-    expect(button(/Ich Selbst sperren/)).toBeDisabled()
-    expect(button(/Ich Selbst in anderen Fachbereich/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Weitere Aktionen: Ich Selbst' })).not.toBeInTheDocument()
   })
 
   it('zeigt den letzten Login bei allen Rollen (PROJ-57, vorher nur Lehrer-Rollen)', async () => {
@@ -131,24 +139,27 @@ describe('Nutzerliste – Sortieren & Inaktiv-Filter (PROJ-57)', () => {
 describe('Nutzerliste – Passwort neu vergeben (PROJ-58)', () => {
   beforeEach(() => vi.unstubAllGlobals())
 
-  it('Bereichs-Admin: Knopf nur bei Azubis', async () => {
+  it('Bereichs-Admin: Eintrag nur bei Azubis', async () => {
     await setup('department_admin')
-    expect(button(/Passwort für Anna Azubi neu vergeben/)).toBeInTheDocument()
-    expect(button(/Passwort für Petra Lehrkraft neu vergeben/)).not.toBeInTheDocument()
-    expect(button(/Passwort für Bernd Bereich neu vergeben/)).not.toBeInTheDocument()
+    expect(menuOf('Anna Azubi')).toContain('Passwort neu vergeben')
+    closeMenu()
+    expect(screen.queryByRole('button', { name: 'Weitere Aktionen: Petra Lehrkraft' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Weitere Aktionen: Bernd Bereich' })).not.toBeInTheDocument()
   })
 
-  it('Super-Admin: Knopf bei allen außer sich selbst', async () => {
+  it('Super-Admin: Eintrag bei allen außer sich selbst', async () => {
     await setup('admin')
     for (const name of ['Anna Azubi', 'Petra Lehrkraft', 'Bernd Bereich']) {
-      expect(button(new RegExp(`Passwort für ${name} neu vergeben`))).toBeInTheDocument()
+      expect(menuOf(name)).toContain('Passwort neu vergeben')
+      closeMenu()
     }
-    expect(button(/Passwort für Ich Selbst neu vergeben/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Weitere Aktionen: Ich Selbst' })).not.toBeInTheDocument()
   })
 
   it('Dialog: Vorschlag, zu kurz gesperrt, nach dem Setzen gut lesbar angezeigt', async () => {
     await setup('admin')
-    fireEvent.click(button(/Passwort für Anna Azubi neu vergeben/)!)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Weitere Aktionen: Anna Azubi' }), { key: 'Enter' })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Passwort neu vergeben' }))
     const input = (await screen.findByLabelText('Neues Passwort')) as HTMLInputElement
     expect(input.value).toMatch(/^[A-Za-z]+-[A-Za-z]+-[A-Za-z]+-[2-9]{2}$/)
 
@@ -168,7 +179,8 @@ describe('Nutzerliste – Passwort neu vergeben (PROJ-58)', () => {
 
   it('Dialog: Fehler der Schnittstelle bleibt sichtbar, Eingabe bleibt erhalten', async () => {
     await setup('admin')
-    fireEvent.click(button(/Passwort für Anna Azubi neu vergeben/)!)
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Weitere Aktionen: Anna Azubi' }), { key: 'Enter' })
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Passwort neu vergeben' }))
     const input = (await screen.findByLabelText('Neues Passwort')) as HTMLInputElement
     fireEvent.change(input, { target: { value: 'Mein-Test-Passwort-22' } })
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({ error: 'Zu viele Passwörter' }) })))
