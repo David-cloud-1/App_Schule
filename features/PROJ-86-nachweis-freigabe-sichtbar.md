@@ -1,6 +1,6 @@
 # PROJ-86: Freigabe-Status in der Nachweis-Liste sichtbar
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 
@@ -24,4 +24,4 @@ Die Übersicht meldet „N Nachweise sind beendet, die Ergebnisse sind noch nich
 ## Implementation Notes
 - `assessment-filter.ts` (`FILTER_UNRELEASED`), `assessment-filter-bar.tsx`, `leistungsnachweise/page.tsx`, `api/admin/assessments/route.ts`, `teacher-tasks.ts`.
 - Tests: `assessment-filter.test.ts`, `assessment-filter-bar.test.tsx`.
-- Noch nicht im Browser geprüft und nicht deployt.
+- Deployed 2026-11-11 (https://spedilern.vercel.app), Commit d57dbe9. Noch nicht im Browser geprüft.

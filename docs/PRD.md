@@ -115,7 +115,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-83: Einheitliche Bedienmuster im Lehrkräfte-Bereich | Deployed |
 | P1 | PROJ-84: Nachweis-Detailseite aufräumen | Deployed |
 | P1 | PROJ-85: Inhalts-Baum – Fach → Thema mit Fragenliste | Deployed |
-| P1 | PROJ-86: Freigabe-Status in der Nachweis-Liste sichtbar | In Progress |
+| P1 | PROJ-86: Freigabe-Status in der Nachweis-Liste sichtbar | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
