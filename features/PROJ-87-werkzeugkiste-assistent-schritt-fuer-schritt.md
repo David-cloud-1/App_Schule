@@ -1,6 +1,6 @@
 # PROJ-87: Werkzeugkiste – Assistent „Schritt für Schritt“
 
-## Status: Approved
+## Status: Deployed (Teil 1)
 **Created:** 2026-11-11
 **Last Updated:** 2026-11-11
 
@@ -287,4 +287,8 @@ Keine kritischen oder hohen Fehler bekannt.
 
 
 ## Deployment
-_To be added by /deploy_
+**2026-11-11 · Teil 1 (Werkzeug „Ganzes Skript“) live** · Commit `01646df`, Vercel-Projekt `spedilern`, Production „Ready“.
+
+- Reihenfolge: Migration `20261119_proj87_hilfe_angebot.sql` und `_rechte.sql` zuerst im SQL-Editor, Probe [proj87_hilfe_angebot_probe.sql](../supabase/tests/proj87_hilfe_angebot_probe.sql) bestanden (T1–T6 wie erwartet), danach Push auf `main`.
+- Prüfung nach dem Deploy: `GET` und `PUT /api/admin/werkzeugkiste/hilfe-angebot` ohne Login → 401, `/admin/werkzeugkiste/neu` leitet zur Anmeldung um (307), keine Fehler in den Produktions-Logs (15 Minuten).
+- **Noch offen:** einmal eingeloggt durchklicken (Handy, Hell/Dunkel, Seitenfeld ab 1536 px), Textprüfung und Test mit einer Anfänger-Lehrkraft. Erst danach Teil 2 (übrige 11 Werkzeuge).

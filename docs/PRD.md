@@ -116,7 +116,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-84: Nachweis-Detailseite aufräumen | Deployed |
 | P1 | PROJ-85: Inhalts-Baum – Fach → Thema mit Fragenliste | Deployed |
 | P1 | PROJ-86: Freigabe-Status in der Nachweis-Liste sichtbar | Deployed |
-| P1 | PROJ-87: Werkzeugkiste – Assistent „Schritt für Schritt“ | Approved |
+| P1 | PROJ-87: Werkzeugkiste – Assistent „Schritt für Schritt“ | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
