@@ -54,7 +54,7 @@ const SENTENCE: Record<TaskId, { href: string; text: (n: number) => string }> = 
     text: (n) => `${n} ${plural(n, 'Fragen-Entwurf wartet', 'Fragen-Entwürfe warten')} auf Prüfung`,
   },
   unreleasedAssessments: {
-    href: '/admin/leistungsnachweise',
+    href: '/admin/leistungsnachweise?status=unreleased&sj=alle',
     text: (n) =>
       `${n} ${plural(n, 'Nachweis ist beendet', 'Nachweise sind beendet')}, die Ergebnisse sind noch nicht freigegeben`,
   },

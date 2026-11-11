@@ -22,6 +22,8 @@ export type CategorizedAssessment = {
   title: string
   accessCode: string
   status: 'draft' | 'open' | 'closed'
+  /** PROJ-86: Zeitpunkt der Freigabe der Ergebnisse, null = noch nicht freigegeben */
+  resultsReleasedAt?: string | null
   schoolYear: string
   className: string | null
   subjectId: string | null
@@ -43,7 +45,7 @@ export type AssessmentFilters = {
   className: string
   /** Fach-ID, FILTER_ALL für alle, FILTER_NONE für „Ohne Zuordnung“ */
   subjectId: string
-  /** Status, FILTER_ALL für alle */
+  /** Status, FILTER_ALL für alle; 'unreleased' = geschlossen, Ergebnisse noch nicht freigegeben (PROJ-86) */
   status: string
   /** Zielbereich-ID, FILTER_ALL für alle (PROJ-46) */
   departmentId: string
@@ -65,7 +67,8 @@ export function defaultFilters(currentSchoolYear: string): AssessmentFilters {
   }
 }
 
-const STATUSES = ['draft', 'open', 'closed']
+export const FILTER_UNRELEASED = 'unreleased'
+const STATUSES = ['draft', 'open', 'closed', FILTER_UNRELEASED]
 
 /** Filter aus der Adresszeile lesen; fehlende oder kaputte Werte fallen auf den Standard zurück */
 export function filtersFromParams(params: URLSearchParams, currentSchoolYear: string): AssessmentFilters {
@@ -106,7 +109,9 @@ export function filterAssessments<T extends CategorizedAssessment>(items: T[], f
       if (filters.schoolYear !== FILTER_ALL && a.schoolYear !== filters.schoolYear) return false
       if (filters.className === FILTER_NONE ? a.className !== null : filters.className !== FILTER_ALL && a.className !== classFromFilter(filters.className)) return false
       if (filters.subjectId === FILTER_NONE ? a.subjectId !== null : filters.subjectId !== FILTER_ALL && a.subjectId !== filters.subjectId) return false
-      if (filters.status !== FILTER_ALL && a.status !== filters.status) return false
+      if (filters.status === FILTER_UNRELEASED) {
+        if (a.status !== 'closed' || a.resultsReleasedAt) return false
+      } else if (filters.status !== FILTER_ALL && a.status !== filters.status) return false
       if (filters.departmentId !== FILTER_ALL && a.departmentId !== filters.departmentId) return false
       if (filters.createdBy !== FILTER_ALL) {
         const wantDeleted = filters.createdBy === 'deleted'

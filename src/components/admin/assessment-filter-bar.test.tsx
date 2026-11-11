@@ -12,16 +12,12 @@ const baseProps = {
 }
 
 describe('AssessmentFilterBar', () => {
-  it('markiert den aktiven Status-Chip und meldet einen Wechsel', () => {
-    const onChange = vi.fn()
-    const filters = defaultFilters('2026/27')
-    render(<AssessmentFilterBar {...baseProps} filters={filters} onChange={onChange} />)
+  it('zeigt den Status als beschriftete Auswahl mit dem aktuellen Wert', () => {
+    const filters = { ...defaultFilters('2026/27'), status: 'unreleased' }
+    render(<AssessmentFilterBar {...baseProps} filters={filters} onChange={() => {}} />)
 
-    expect(screen.getByRole('radio', { name: 'Alle' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: 'Offen' })).toHaveAttribute('aria-checked', 'false')
-
-    fireEvent.click(screen.getByRole('radio', { name: 'Offen' }))
-    expect(onChange).toHaveBeenCalledWith({ ...filters, status: 'open' })
+    const trigger = screen.getByLabelText('Status filtern')
+    expect(trigger).toHaveTextContent('Nicht freigegeben')
   })
 
   it('meldet die Sucheingabe, ohne die anderen Filter zu verändern', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, classOptions, creatorOptions, defaultFilters, departmentOptions,
-  filterAssessments, filtersFromParams, filtersToParams, schoolYearChoices, schoolYearOptions, subjectOptions,
+  FILTER_UNRELEASED, filterAssessments, filtersFromParams, filtersToParams, schoolYearChoices, schoolYearOptions, subjectOptions,
   type CategorizedAssessment,
 } from './assessment-filter'
 
@@ -146,5 +146,22 @@ describe('Optionen', () => {
   it('Klassen: nur vorkommende, natürlich sortiert; Fächer: eindeutig nach Name', () => {
     expect(classOptions([{ className: 'SP11b' }, { className: null }, { className: 'SP2a' }, { className: 'SP11b' }])).toEqual(['SP2a', 'SP11b'])
     expect(subjectOptions(items)).toEqual([{ id: 's1', name: 'KSK' }, { id: 's2', name: 'STG' }])
+  })
+})
+
+describe('Filter „Nicht freigegeben“ (PROJ-86)', () => {
+  const list = [
+    make({ title: 'A', resultsReleasedAt: null }),
+    make({ title: 'B', resultsReleasedAt: '2026-10-10T00:00:00Z', createdAt: '2026-10-02T00:00:00Z' }),
+    make({ title: 'C', status: 'open', resultsReleasedAt: null, createdAt: '2026-10-03T00:00:00Z' }),
+  ]
+  it('zeigt nur geschlossene Nachweise ohne Freigabe', () => {
+    const f = { ...defaultFilters('2026/27'), status: FILTER_UNRELEASED }
+    expect(filterAssessments(list, f).map((a) => a.title)).toEqual(['A'])
+  })
+  it('liest den Wert aus der Adresszeile', () => {
+    const f = filtersFromParams(new URLSearchParams('status=unreleased&sj=alle'), '2026/27')
+    expect(f.status).toBe(FILTER_UNRELEASED)
+    expect(f.schoolYear).toBe(FILTER_ALL)
   })
 })

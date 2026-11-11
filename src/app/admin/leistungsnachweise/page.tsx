@@ -50,6 +50,7 @@ type AssessmentListItem = {
   examSetName: string | null
   part: number
   status: 'draft' | 'open' | 'closed'
+  resultsReleasedAt?: string | null
   accessCode: string
   participantCount: number
   submittedCount: number
@@ -342,6 +343,18 @@ function AssessmentsPageContent() {
                       <Badge className={cn('text-xs border-0', STATUS_STYLES[a.status])}>
                         {STATUS_LABELS[a.status]}
                       </Badge>
+                      {a.status === 'closed' && (
+                        <div className="mt-1">
+                          <Badge
+                            className={cn(
+                              'text-xs border-0',
+                              a.resultsReleasedAt ? 'bg-ws-green/15 text-ws-green' : 'bg-ws-orange/15 text-ws-orange',
+                            )}
+                          >
+                            {a.resultsReleasedAt ? 'Ergebnisse freigegeben' : 'Ergebnisse nicht freigegeben'}
+                          </Badge>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {a.departmentName && (

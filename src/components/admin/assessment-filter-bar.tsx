@@ -2,15 +2,16 @@
 
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
-import { AdminSegmented } from '@/components/admin/admin-segmented'
+import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { FILTER_ALL, FILTER_NONE, classFilterValue, classFromFilter, type AssessmentFilters } from '@/lib/assessment-filter'
+import { FILTER_ALL, FILTER_NONE, FILTER_UNRELEASED, classFilterValue, classFromFilter, type AssessmentFilters } from '@/lib/assessment-filter'
 
 const STATUS_CHIPS: { value: string; label: string }[] = [
   { value: FILTER_ALL, label: 'Alle' },
   { value: 'draft', label: 'Entwurf' },
   { value: 'open', label: 'Offen' },
   { value: 'closed', label: 'Geschlossen' },
+  { value: FILTER_UNRELEASED, label: 'Nicht freigegeben' },
 ]
 
 interface Props {
@@ -128,12 +129,16 @@ export function AssessmentFilterBar({
         )}
       </div>
 
-      <AdminSegmented
-        ariaLabel="Status filtern"
-        value={filters.status}
-        onChange={(status) => onChange({ ...filters, status })}
-        options={STATUS_CHIPS}
-      />
+      <Select value={filters.status} onValueChange={(status) => onChange({ ...filters, status })}>
+        <SelectTrigger className={cn(triggerClass, 'sm:w-64')} aria-label="Status filtern">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className={contentClass}>
+          {STATUS_CHIPS.map((c) => (
+            <SelectItem key={c.value} value={c.value}>{c.value === FILTER_ALL ? 'Alle Status' : c.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   )
 }
