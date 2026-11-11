@@ -58,7 +58,7 @@ describe('Hilfetexte: Länge und Aufbau', () => {
   it('der Assistent gibt es nur für echte Werkzeuge', () => {
     for (const id of HILFE_WERKZEUGE) expect(WERKZEUGE.some((w) => w.id === id)).toBe(true)
     expect(hatHilfe('skript')).toBe(true)
-    expect(hatHilfe('kahoot')).toBe(false)
+    expect(hatHilfe('podcast')).toBe(false)
     expect(hatHilfe('')).toBe(false)
     expect(hatHilfe(null)).toBe(false)
   })

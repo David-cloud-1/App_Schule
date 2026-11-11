@@ -141,7 +141,7 @@ describe('Assistent im Ablauf', () => {
   })
 
   it('Werkzeuge ohne fertige Hilfeseiten zeigen keinen Hilfe-Knopf', async () => {
-    api.ladeAblauf.mockResolvedValue({ ablauf: ablauf({ werkzeug: 'kahoot' }) })
+    api.ladeAblauf.mockResolvedValue({ ablauf: ablauf({ werkzeug: 'podcast' }) })
     render(<AblaufSeite id="a1" />)
     await screen.findByRole('heading', { name: 'Was soll daraus werden?' })
     expect(screen.queryByRole('button', { name: /Hilfe/ })).toBeNull()

@@ -110,7 +110,7 @@ describe('useHilfe', () => {
   })
 
   it('fragt bei Werkzeugen ohne Hilfeseiten gar nicht erst', () => {
-    const { result } = renderHook(() => useHilfe('kahoot'))
+    const { result } = renderHook(() => useHilfe('podcast'))
     expect(result.current.verfuegbar).toBe(false)
     expect(ladeHilfeAngebot).not.toHaveBeenCalled()
   })

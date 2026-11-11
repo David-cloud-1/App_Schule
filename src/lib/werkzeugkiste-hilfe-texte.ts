@@ -136,7 +136,132 @@ export const HILFE_SEITEN: Record<HilfeVariante, HilfeSeite> = {
  * abweichen. Ein Werkzeug steht in `HILFE_WERKZEUGE` (werkzeugkiste-hilfe.ts),
  * sobald alle seine Seiten gegengelesen sind.
  */
-export const HILFE_ABWEICHUNGEN: Record<string, Partial<Record<HilfeVariante, Partial<HilfeSeite>>>> = {}
+export const HILFE_ABWEICHUNGEN: Record<string, Partial<Record<HilfeVariante, Partial<HilfeSeite>>>> = {
+  kreativ: {
+    einstellungen: {
+      mehrDazu:
+        'Die Voreinstellung passt meistens. Unter „Mehr Optionen“ stellst du ein, ob alleine, zu zweit oder in Gruppen gearbeitet wird.',
+    },
+  },
+  differenzierung: {
+    einstellungen: {
+      anweisung: 'Wähle, wonach differenziert wird, die Stufen und das Format.',
+      beispiel: 'Zum Beispiel: Lernniveau, drei Stufen, Word-Dokument.',
+      mehrDazu:
+        'Zwei bis drei Stufen sind besser als vier, dann bleibt die Antwort der KI übersichtlich. Alle Stufen stehen in einer Datei.',
+    },
+  },
+  kahoot: {
+    einstellungen: {
+      anweisung: 'Wähle die Anzahl der Fragen und das Niveau.',
+      beispiel: 'Zum Beispiel: 12 Fragen, Niveau mittel.',
+      mehrDazu:
+        'Das Zeitlimit pro Frage findest du unter „Mehr Optionen“. „Automatisch“ lässt die KI es nach der Schwierigkeit wählen.',
+    },
+    antwort: { beispiel: 'Die Kontrolle startet von allein und meldet zu lange Fragen.' },
+    fertig: {
+      anweisung: 'Lade die Excel-Datei herunter und importiere sie in Kahoot.',
+      beispiel: 'In Kahoot: „Quiz erstellen“, dann „Importieren“.',
+      mehrDazu:
+        'Kahoot erlaubt höchstens 95 Zeichen je Frage und 60 je Antwort. Zu lange Texte meldet die Kontrolle schon vorher. Spiele das Quiz vor dem Unterricht einmal selbst durch.',
+    },
+  },
+  moodle: {
+    einstellungen: {
+      anweisung: 'Wähle die Anzahl der Fragen, die Fragetypen und das Niveau.',
+      beispiel: 'Zum Beispiel: 20 Fragen, Multiple Choice und Wahr/Falsch.',
+      mehrDazu:
+        'Unter „Mehr Optionen“ legst du den Ordner in der Fragensammlung fest. So landen die Fragen gleich in der richtigen Kategorie.',
+    },
+    fertig: {
+      anweisung: 'Lade die Textdatei herunter und importiere sie in Moodle.',
+      beispiel: 'In Moodle: Fragensammlung, „Importieren“, Format „GIFT“.',
+      mehrDazu: 'Schau dir nach dem Import in der Vorschau eine Frage von jedem Typ an.',
+    },
+  },
+  learningapps: {
+    einstellungen: {
+      anweisung: 'Wähle die Übungsarten und wie viele Elemente jede Übung hat.',
+      beispiel: 'Zum Beispiel: Paare zuordnen und Lückentext, 8 Elemente.',
+      mehrDazu:
+        'Wähle nur die Übungsarten, die du wirklich brauchst. Jede Art ergibt eigene Übungen. Für den Einstieg reichen 6 bis 8 Elemente.',
+    },
+    fertig: {
+      ueberschrift: 'Texte in LearningApps einfügen',
+      anweisung: 'Kopiere den Text einer Übung und füge ihn im Editor von learningapps.org ein.',
+      beispiel: 'Zu jeder Übung gibt es einen eigenen Text mit „Kopieren“.',
+      fertigWenn: 'Fertig, wenn alle Übungen in LearningApps angelegt sind.',
+      mehrDazu: 'Löse die fertige Übung einmal selbst, bevor du den Link teilst.',
+      zeige: undefined,
+    },
+  },
+  youtube: {
+    video: {
+      mehrDazu:
+        'Die KI sieht das Video nicht, sondern liest nur den Text. So kommst du daran: Video auf youtube.com öffnen, die Beschreibung mit „…mehr“ aufklappen, „Transkript anzeigen“ wählen und den Text kopieren.',
+    },
+    einstellungen: {
+      anweisung: 'Wähle das Format, das Niveau und die Fragetypen.',
+      beispiel: 'Zum Beispiel: Word-Dokument, Niveau mittel.',
+      mehrDazu:
+        'Unter „Mehr Optionen“ kannst du die Videolänge eintragen, zum Beispiel 8:30. Dann verteilt die KI die Fragen über das ganze Video. Jede Frage trägt eine Zeitmarke, prüfe ein, zwei davon.',
+    },
+  },
+  arbeitsblatt: {
+    einstellungen: {
+      anweisung: 'Wähle das Format, das Niveau und die Anzahl der Aufgaben.',
+      beispiel: 'Zum Beispiel: Word-Dokument, mittel, 12 Aufgaben.',
+      mehrDazu:
+        'Zehn bis fünfzehn Aufgaben reichen meist für eine Stunde. Die Bearbeitungszeit stellst du unter „Mehr Optionen“ ein, die KI passt den Umfang daran an.',
+    },
+    fertig: {
+      anweisung: 'Lade die Datei herunter. Bei Word liegen Arbeitsblatt und Lösungsblatt in einer ZIP-Datei.',
+      beispiel: 'ZIP-Datei mit Doppelklick öffnen, dann erscheinen beide Blätter.',
+      mehrDazu: 'Das Lösungsblatt ist nur für dich. Kontrolliere es kurz, bevor du es benutzt. Die KI kann sich verrechnen.',
+    },
+  },
+  lernsituation: {
+    einstellungen: {
+      anweisung: 'Wähle die Sozialform, das Niveau und das Format.',
+      beispiel: 'Zum Beispiel: Partnerarbeit, Niveau mittel, Word-Dokument.',
+      mehrDazu:
+        'Die Bearbeitungszeit steht unter „Mehr Optionen“. Plane sie lieber etwas knapper, dann bleibt Zeit für die Besprechung. „Automatisch“ bei der Sozialform lässt die KI abwechseln.',
+    },
+    fertig: {
+      anweisung: 'Lade die Datei herunter. Bei Word liegen Material und Handreichung in einer ZIP-Datei.',
+      beispiel: 'ZIP-Datei mit Doppelklick öffnen, dann erscheinen beide Dateien.',
+      mehrDazu: 'Das Material ist für die Klasse, die Handreichung nur für dich.',
+    },
+  },
+  pruefung: {
+    einstellungen: {
+      anweisung: 'Wähle das Format, die Bearbeitungszeit und das Niveau.',
+      beispiel: 'Zum Beispiel: Word-Dokument, 45 Minuten, Niveau mittel.',
+      mehrDazu:
+        'Unter „Mehr Optionen“ stellst du Aufgabentypen, den Anteil Multiple Choice und den Notenschlüssel ein. Ohne eigene Angaben gilt der IHK-Schlüssel.',
+    },
+    fertig: {
+      anweisung: 'Lade die Datei herunter. Bei Word liegen Schülerblatt und Lösungsblatt in einer ZIP-Datei.',
+      beispiel: 'ZIP-Datei mit Doppelklick öffnen, dann erscheinen beide Dateien.',
+      mehrDazu:
+        'Das Lösungsblatt mit Erwartungshorizont und Notenschlüssel ist nur für dich. Kontrolliere Punkte und Lösungen kurz, bevor die Arbeit geschrieben wird. Die KI kann sich verrechnen.',
+    },
+  },
+  lied: {
+    einstellungen: {
+      anweisung: 'Wähle die Musikrichtung und wie viele Lieder entstehen sollen.',
+      beispiel: 'Zum Beispiel: Rap, ein Lied je Kapitel.',
+      mehrDazu:
+        'Das Niveau steht unter „Mehr Optionen“. „Nur Refrain-Merksprüche“ passt für kurze Sprüche zum Auswendiglernen.',
+    },
+    fertig: {
+      anweisung: 'Lade die ZIP-Datei herunter. Darin liegen Liedtext, Karaoke-Blatt und ein fertiger Text für die Musik-KI.',
+      beispiel: 'Eine Musik-KI findest du zum Beispiel auf suno.com.',
+      mehrDazu:
+        'Prüfe den Liedtext fachlich, bevor du ihn austeilst. Das Karaoke-Blatt funktioniert auch ohne Musik: Die Klasse kann den Text gemeinsam sprechen.',
+    },
+  },
+}
 
 /** Handlungshilfen für die Problemfälle der Kontrolle und des Hochladens */
 export const HILFE_PROBLEME: Record<HilfeProblemId, HilfeProblem> = {

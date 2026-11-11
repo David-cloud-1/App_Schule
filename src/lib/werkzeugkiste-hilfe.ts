@@ -18,10 +18,22 @@ import {
 
 /**
  * Werkzeuge, deren Hilfeseiten fertig und gegengelesen sind. Alle anderen
- * zeigen keinen Hilfe-Knopf (nie einen leeren Assistenten). Teil 2 ergänzt
- * die übrigen Werkzeuge erst nach Freigabe der Texte.
+ * zeigen keinen Hilfe-Knopf (nie einen leeren Assistenten). Alle aktiven
+ * Werkzeuge außer dem noch nicht freigeschalteten Podcast stehen drin.
  */
-export const HILFE_WERKZEUGE: readonly string[] = ['skript']
+export const HILFE_WERKZEUGE: readonly string[] = [
+  'skript',
+  'kreativ',
+  'differenzierung',
+  'kahoot',
+  'moodle',
+  'learningapps',
+  'youtube',
+  'arbeitsblatt',
+  'lernsituation',
+  'pruefung',
+  'lied',
+]
 
 export function hatHilfe(werkzeugId: string | null | undefined): boolean {
   return !!werkzeugId && HILFE_WERKZEUGE.includes(werkzeugId)
