@@ -212,7 +212,7 @@ export function QuestionReportsInbox() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3">
         <AdminTabs
           value={tab}
           onValueChange={(v) => {
