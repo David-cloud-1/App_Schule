@@ -540,7 +540,7 @@ export default function AdminUsersPage() {
         <AdminErrorState message="Die Nutzer konnten gerade nicht geladen werden." onRetry={load} />
       ) : (
         <div
-          className={`ws-table-scroll ${isSuperAdmin ? '' : 'ws-table-sticky '}border border-ws-line rounded-2xl overflow-hidden bg-ws-surface`}
+          className={`ws-table-scroll [&_td:not(:has([role=checkbox]))]:px-2 [&_th:not(:has(button))]:px-2 ${isSuperAdmin ? '' : 'ws-table-sticky '}border border-ws-line rounded-2xl overflow-hidden bg-ws-surface`}
         >
           <Table>
             <TableHeader>
@@ -637,12 +637,14 @@ export default function AdminUsersPage() {
                             <Link
                               href={`/admin/users/${u.id}`}
                               title={`Details zu ${u.display_name ?? u.email ?? 'diesem Konto'}`}
-                              className="inline-flex min-h-11 items-center rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
+                              className="inline-flex min-h-11 max-w-[11rem] items-center truncate rounded hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
                             >
                               {u.display_name ?? '—'}
                             </Link>
                           ) : (
-                            (u.display_name ?? '—')
+                            <span className="block max-w-[11rem] truncate" title={u.display_name ?? undefined}>
+                              {u.display_name ?? '—'}
+                            </span>
                           )}
                           {u.role !== 'student' && (
                             <Badge
@@ -656,19 +658,21 @@ export default function AdminUsersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-ws-muted text-sm">
-                        {u.email ?? '—'}
+                        <span className="block max-w-[15rem] truncate" title={u.email ?? undefined}>
+                          {u.email ?? '—'}
+                        </span>
                       </TableCell>
                       {showAllDepartments && (
-                        <TableCell className="text-ws-muted text-sm">{u.department_name ?? '—'}</TableCell>
+                        <TableCell className="whitespace-nowrap text-ws-muted text-sm">{u.department_name ?? '—'}</TableCell>
                       )}
                       <TableCell className="text-ws-text">{u.total_xp}</TableCell>
                       <TableCell className="text-ws-text">
                         {u.current_streak}
                       </TableCell>
-                      <TableCell className="text-xs text-ws-muted">
+                      <TableCell className="whitespace-nowrap text-xs text-ws-muted">
                         {formatDate(u.last_session_date)}
                       </TableCell>
-                      <TableCell className="text-xs text-ws-muted">
+                      <TableCell className="whitespace-nowrap text-xs text-ws-muted">
                         {formatDate(u.last_sign_in_at ?? null)}
                       </TableCell>
                       <TableCell>
