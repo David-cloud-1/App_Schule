@@ -1,6 +1,6 @@
 # PROJ-89: Werkzeugkiste – Baukasten-Editor (Grundgerüst)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (Paket 3 gebaut)
 
@@ -513,4 +513,8 @@ BUG-1 bis BUG-6 behoben, dazu BUG-7 (Server-Dateien als Bild, beim Beheben gefun
 **Ergebnis Runde 2:** Im App-Code keine Critical/High-Bugs mehr. Produktionsreif, sobald der Kern-Fix `e226c2d` deployt ist und der Browser-Durchgang mit einem Test-Material klappt.
 
 ## Deployment
-_To be added by /deploy_
+- **Live seit:** 2026-11-12, https://spedilern.vercel.app (Vercel-Bereitstellung `spedilern-cyqtl7mtj`, App-Commit `b7b6c46`, Tag `v1.89.0-PROJ-89`)
+- **Kern:** `werkzeugkiste-kern` mit `vercel-kern` @ `e226c2d` (PROJ-89-Kern, Fixes BUG-3/5/7/8)
+- **Migration:** `20261120_proj89_baukasten_entwurf.sql` vor dem App-Deploy eingespielt und lesend geprüft
+- **Nach dem Deploy geprüft:** alle neuen Schnittstellen ohne Anmeldung 401, Editor-Seite leitet auf `/login` um
+- **Offen:** Browser-Durchgang mit einem Test-Material durch den Nutzer (Öffnen, Ändern, mehrfach automatisch speichern, Vorschau, Veröffentlichen, Link prüfen); `KERN_SECRET` erneuern (BUG-7)
