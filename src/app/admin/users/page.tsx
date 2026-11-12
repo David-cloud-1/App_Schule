@@ -3,34 +3,30 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, ChevronDown, Download, KeyRound, Loader2, MapPinned, Search, ShieldCheck, Trash2 } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Ban,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  KeyRound,
+  Loader2,
+  MapPinned,
+  Search,
+  ShieldCheck,
+  Trash2,
+} from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   AlertDialog,
@@ -150,7 +146,7 @@ export default function AdminUsersPage() {
     updateView(
       effectiveSort.key === key
         ? { sort: key, dir: effectiveSort.dir === 'asc' ? 'desc' : 'asc' }
-        : { sort: key, dir: defaultDir(key) }
+        : { sort: key, dir: defaultDir(key) },
     )
   }
 
@@ -192,9 +188,7 @@ export default function AdminUsersPage() {
       (u) =>
         (roleFilter === 'all' || u.role === roleFilter) &&
         matchesActivity(u, view.activity, now) &&
-        (!q ||
-          (u.display_name ?? '').toLowerCase().includes(q) ||
-          (u.email ?? '').toLowerCase().includes(q))
+        (!q || (u.display_name ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q)),
     )
     return sortUsers(matching, effectiveSort.key, effectiveSort.dir)
   }, [users, search, roleFilter, view.activity, effectiveSort.key, effectiveSort.dir])
@@ -218,7 +212,10 @@ export default function AdminUsersPage() {
     })
   }, [users])
 
-  const selectable = useMemo(() => (isSuperAdmin ? filtered.filter((u) => u.id !== ownId) : []), [filtered, isSuperAdmin, ownId])
+  const selectable = useMemo(
+    () => (isSuperAdmin ? filtered.filter((u) => u.id !== ownId) : []),
+    [filtered, isSuperAdmin, ownId],
+  )
   // Bei geänderten Filtern bleibt die Auswahl erhalten, zählt und wirkt aber nur auf sichtbare Zeilen
   const selectedVisible = useMemo(() => selectable.filter((u) => selected.has(u.id)), [selectable, selected])
   const allVisibleSelected = selectable.length > 0 && selectedVisible.length === selectable.length
@@ -410,7 +407,7 @@ export default function AdminUsersPage() {
   }
 
   // Name, E-Mail, [Bereich], XP, Streak, Letzte Session, Letzter Login, Status, Aktion
-  const columnCount = (showAllDepartments ? 9 : 8) + (isSuperAdmin ? 1 : 0)
+  const columnCount = (showAllDepartments ? 8 : 7) + (isSuperAdmin ? 1 : 0)
 
   return (
     <div className={selectedVisible.length > 0 ? 'space-y-6 pb-28 sm:pb-0' : 'space-y-6'}>
@@ -517,7 +514,7 @@ export default function AdminUsersPage() {
                 <SelectItem key={`${k}:${d}`} value={`${k}:${d}`} className="focus:bg-ws-raised focus:text-ws-text">
                   {SORT_LABEL[k]} {sortDirLabel(k, d)}
                 </SelectItem>
-              ))
+              )),
             )}
           </SelectContent>
         </Select>
@@ -558,16 +555,53 @@ export default function AdminUsersPage() {
                     </label>
                   </TableHead>
                 )}
-                {sortableKeys.map((k) => (
-                  <SortableTableHead
-                    key={k}
-                    sortKey={k}
-                    label={SORT_LABEL[k]}
-                    activeKey={effectiveSort.key}
-                    dir={effectiveSort.dir}
-                    onSort={handleSort}
-                  />
-                ))}
+                {sortableKeys.map((k) =>
+                  k === 'name' ? (
+                    <TableHead
+                      key={k}
+                      aria-sort={
+                        effectiveSort.key === 'name' || effectiveSort.key === 'email'
+                          ? effectiveSort.dir === 'asc'
+                            ? 'ascending'
+                            : 'descending'
+                          : 'none'
+                      }
+                      className="px-1"
+                    >
+                      {/* Name und E-Mail teilen sich eine Spalte, beide bleiben einzeln sortierbar */}
+                      <div className="flex items-center">
+                        {(['name', 'email'] as const).map((key) => {
+                          const active = effectiveSort.key === key
+                          const Icon = !active ? ArrowUpDown : effectiveSort.dir === 'asc' ? ArrowUp : ArrowDown
+                          return (
+                            <Button
+                              key={key}
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort(key)}
+                              className={`min-h-11 gap-1 px-2 font-medium hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green ${
+                                active ? 'text-ws-text' : 'text-ws-muted'
+                              }`}
+                            >
+                              {SORT_LABEL[key]}
+                              <Icon className={`size-3.5 ${active ? '' : 'opacity-50'}`} aria-hidden="true" />
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </TableHead>
+                  ) : k === 'email' ? null : (
+                    <SortableTableHead
+                      key={k}
+                      sortKey={k}
+                      label={SORT_LABEL[k]}
+                      activeKey={effectiveSort.key}
+                      dir={effectiveSort.dir}
+                      onSort={handleSort}
+                    />
+                  ),
+                )}
                 <TableHead className="text-right text-ws-muted">Aktion</TableHead>
               </TableRow>
             </TableHeader>
@@ -609,8 +643,7 @@ export default function AdminUsersPage() {
                   const canModerate = isSuperAdmin || u.role === 'student'
                   const canMove =
                     !isSelf &&
-                    (u.role === 'student' ||
-                      (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
+                    (u.role === 'student' || (isSuperAdmin && (u.role === 'teacher' || u.role === 'department_admin')))
                   return (
                     <TableRow
                       key={u.id}
@@ -647,28 +680,26 @@ export default function AdminUsersPage() {
                             </span>
                           )}
                           {u.role !== 'student' && (
-                            <Badge
-                              variant="outline"
-                              className="border-ws-green/50 text-ws-green bg-ws-green/10"
-                            >
+                            <Badge variant="outline" className="border-ws-green/50 text-ws-green bg-ws-green/10">
                               <ShieldCheck className="w-3 h-3 mr-1" />
                               {ROLE_LABEL[u.role]}
                             </Badge>
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-ws-muted text-sm">
-                        <span className="block max-w-[15rem] truncate" title={u.email ?? undefined}>
+                        <span
+                          className="block max-w-[16rem] truncate text-sm font-normal text-ws-muted"
+                          title={u.email ?? undefined}
+                        >
                           {u.email ?? '—'}
                         </span>
                       </TableCell>
                       {showAllDepartments && (
-                        <TableCell className="whitespace-nowrap text-ws-muted text-sm">{u.department_name ?? '—'}</TableCell>
+                        <TableCell className="whitespace-nowrap text-ws-muted text-sm">
+                          {u.department_name ?? '—'}
+                        </TableCell>
                       )}
                       <TableCell className="text-ws-text">{u.total_xp}</TableCell>
-                      <TableCell className="text-ws-text">
-                        {u.current_streak}
-                      </TableCell>
+                      <TableCell className="text-ws-text">{u.current_streak}</TableCell>
                       <TableCell className="whitespace-nowrap text-xs text-ws-muted">
                         {formatDate(u.last_session_date)}
                       </TableCell>
@@ -797,9 +828,7 @@ export default function AdminUsersPage() {
       >
         <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {target?.banned ? 'Nutzer entsperren?' : 'Nutzer sperren?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{target?.banned ? 'Nutzer entsperren?' : 'Nutzer sperren?'}</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
               {target?.banned
                 ? `Der Nutzer ${target?.display_name ?? target?.email} kann sich danach wieder einloggen.`

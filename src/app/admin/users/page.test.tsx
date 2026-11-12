@@ -85,7 +85,9 @@ const rowNames = () =>
     .map((r) => {
       const cells = within(r).getAllByRole('cell')
       const nameCell = within(cells[0]).queryByRole('checkbox') ? cells[1] : cells[0]
-      return nameCell?.textContent?.replace(/(Super-Admin|Lehrkraft|Bereichs-Admin)$/, '').trim()
+      // Name und E-Mail stehen in einer Zelle: Name = erste Zeile
+      const name = nameCell?.firstElementChild?.textContent ?? ''
+      return name.replace(/(Super-Admin|Lehrkraft|Bereichs-Admin)$/, '').trim()
     })
 
 describe('Nutzerliste – Sortieren & Inaktiv-Filter (PROJ-57)', () => {
