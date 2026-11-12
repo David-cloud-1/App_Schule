@@ -75,6 +75,8 @@ import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/
 import { TabelleHerausloesen } from '@/components/werkzeugkiste/editor/tabelle-herausloesen'
 import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
+import { TypWechsel } from '@/components/werkzeugkiste/editor/typ-wechsel'
+import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
 import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
 import { MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
 import { beispielBlock, fuegeBlockEin, katalogEintrag, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
@@ -392,6 +394,7 @@ function Gliederung({
                 schliessen={() => setAuswahl(null)}
                 materialId={materialId}
                 einfuegenBei={einfuegenBei}
+                rueckgaengig={rueckgaengig}
               />
             ))}
           </ol>
@@ -530,6 +533,7 @@ function ThemaKarte({
   schliessen,
   materialId,
   einfuegenBei,
+  rueckgaengig,
 }: {
   index: number
   titel: string
@@ -551,6 +555,7 @@ function ThemaKarte({
   schliessen: () => void
   materialId: string
   einfuegenBei: EinfuegenBei
+  rueckgaengig: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `t-${index}`,
@@ -662,6 +667,7 @@ function ThemaKarte({
                 schliessen={schliessen}
                 materialId={materialId}
                 einfuegenBei={einfuegenBei}
+                rueckgaengig={rueckgaengig}
               />,
             ])}
             <li
@@ -737,6 +743,7 @@ function BlockZeile({
   schliessen,
   materialId,
   einfuegenBei,
+  rueckgaengig,
 }: {
   thema: number
   index: number
@@ -752,6 +759,7 @@ function BlockZeile({
   schliessen: () => void
   materialId: string
   einfuegenBei: EinfuegenBei
+  rueckgaengig: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `b-${thema}-${index}`,
@@ -760,6 +768,9 @@ function BlockZeile({
   const name = typName(typ)
   const kurz = kurzzeile(block)
   const ort = { thema, block: index }
+  // Typ wechseln (PROJ-95): nur Blöcke mit verwandten Typen
+  const [wechselOffen, setWechselOffen] = useState(false)
+  const kannWechseln = wechselZiele(typ).length > 0
 
   return (
     <li
@@ -826,6 +837,11 @@ function BlockZeile({
             <DropdownMenuItem onSelect={() => aendere((s) => dupliziereBlock(s, ort))}>
               <Copy className="mr-2 size-4" aria-hidden /> Duplizieren
             </DropdownMenuItem>
+            {kannWechseln && (
+              <DropdownMenuItem onSelect={() => setWechselOffen(true)}>
+                <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln …
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => einfuegenBei({ thema, index })}>
               <ArrowUpToLine className="mr-2 size-4" aria-hidden /> Block darüber einfügen …
@@ -847,6 +863,13 @@ function BlockZeile({
               Diesen Blocktyp kennt die Seite nicht. Er wird beim Bauen übersprungen, geht aber nicht verloren.
             </p>
           )}
+          {kannWechseln && (
+            <div className="mb-3 flex justify-end">
+              <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setWechselOffen(true)}>
+                <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln
+              </Button>
+            </div>
+          )}
           <BlockBearbeiten
             materialId={materialId}
             block={block}
@@ -864,6 +887,15 @@ function BlockZeile({
             schliessen={schliessen}
           />
         </div>
+      )}
+      {kannWechseln && (
+        <TypWechsel
+          offen={wechselOffen}
+          onOpenChange={setWechselOffen}
+          block={block}
+          rueckgaengig={rueckgaengig}
+          onWechsel={(neu) => aendere((s) => setzeBlock(s, ort, neu))}
+        />
       )}
     </li>
   )

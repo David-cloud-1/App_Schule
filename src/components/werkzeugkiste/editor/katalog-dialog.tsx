@@ -13,6 +13,9 @@ import { katalogEintrag, leseZuletzt, nachGruppen, sucheKatalog, type KatalogEin
 /** Stand der Bilder des Materials – für die Bild-Typen (E5) */
 export type BilderStand = 'laedt' | 'fehler' | number
 
+export const AKTUELLER_TYP = 'Aktueller Typ'
+export const KEIN_WECHSEL = 'Nicht möglich: Dieser Typ hat keinen vergleichbaren Inhalt. Füge dafür einen neuen Block ein.'
+
 export const OHNE_BILDER = 'Dieses Material hat noch keine Bilder aus dem Skript.'
 
 /**
@@ -25,12 +28,15 @@ export function KatalogDialog({
   onOpenChange,
   onWaehle,
   erlaubt,
+  wechsel,
 }: {
   offen: boolean
   onOpenChange: (offen: boolean) => void
   onWaehle: (typ: string) => void
   /** Nur diese Typen (Kapiteltest, E6) */
   erlaubt?: readonly string[]
+  /** Wechsel-Modus (PROJ-95): nur diese Typen sind wählbar, `aktuell` ist der Typ des Blocks */
+  wechsel?: { aktuell: string; waehlbar: readonly string[] }
 }) {
   const [suche, setSuche] = useState('')
   const [zuletzt, setZuletzt] = useState<string[]>([])
@@ -55,7 +61,7 @@ export function KatalogDialog({
         .filter((e): e is KatalogEintrag => !!e && (!erlaubt || erlaubt.includes(e.typ))),
     [zuletzt, erlaubt],
   )
-  const zeigeZuletzt = !suche.trim() && zuletztEintraege.length > 0
+  const zeigeZuletzt = !wechsel && !suche.trim() && zuletztEintraege.length > 0
 
   /** Pfeiltasten wandern durch alle Einträge in Lesereihenfolge */
   function pfeile(e: KeyboardEvent<HTMLDivElement>) {
@@ -72,12 +78,19 @@ export function KatalogDialog({
     knoepfe[ziel]?.focus()
   }
 
+  const aktuellerKatalogTyp = wechsel?.aktuell === 'single_choice' ? 'multiple_choice' : wechsel?.aktuell
+  function grundFuer(typ: string): string | null {
+    if (!wechsel) return null
+    if (typ === aktuellerKatalogTyp) return AKTUELLER_TYP
+    return wechsel.waehlbar.includes(typ) ? null : KEIN_WECHSEL
+  }
+
   const karte = (e: KatalogEintrag, bereich: string) => (
     <KatalogKarte
       key={`${bereich}-${e.typ}`}
       eintrag={e}
       bereich={bereich}
-      grund={null}
+      grund={grundFuer(e.typ)}
       onWaehle={() => {
         onWaehle(e.typ)
       }}
@@ -95,9 +108,13 @@ export function KatalogDialog({
         }}
       >
         <DialogHeader className="space-y-1 border-b border-ws-line p-4 pr-14 text-left sm:p-6 sm:pr-16">
-          <DialogTitle className="text-xl font-bold">{erlaubt ? 'Frage hinzufügen' : 'Block hinzufügen'}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{wechsel ? `Typ wechseln – aktuell: ${katalogEintrag(aktuellerKatalogTyp ?? '')?.name ?? 'Block'}` : erlaubt ? 'Frage hinzufügen' : 'Block hinzufügen'}</DialogTitle>
           <DialogDescription className="text-ws-muted">
-            {erlaubt ? 'Im Kapiteltest sind nur diese Fragetypen möglich.' : 'Wähle einen Aufgabentyp. Er startet mit einem Beispiel, das du anpasst.'}
+            {wechsel
+              ? `${erlaubt ? 'Im Kapiteltest sind nur diese Fragetypen möglich. ' : ''}Wähle einen verwandten Typ. Der Inhalt wird soweit möglich übernommen.`
+              : erlaubt
+                ? 'Im Kapiteltest sind nur diese Fragetypen möglich.'
+                : 'Wähle einen Aufgabentyp. Er startet mit einem Beispiel, das du anpasst.'}
           </DialogDescription>
           <div className="relative pt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 mt-1.5 size-4 -translate-y-1/2 text-ws-muted" aria-hidden />
@@ -202,7 +219,7 @@ function KatalogKarte({ eintrag: e, bereich, grund, onWaehle }: { eintrag: Katal
         <span id={beschreibungId} className="space-y-1">
           <span className="block text-sm leading-snug text-ws-muted">{e.beschreibung}</span>
           {grund ? (
-            <span className="block text-xs font-medium text-ws-orange">{grund}</span>
+            <span className={cn('block text-xs font-medium', grund === AKTUELLER_TYP ? 'text-ws-green' : 'text-ws-orange')}>{grund}</span>
           ) : (
             <span className="block text-xs leading-snug text-ws-faint">
               <span className="font-semibold">Gut für:</span> {e.gutFuer}

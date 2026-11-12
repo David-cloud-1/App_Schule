@@ -3,11 +3,11 @@
 import { useId, useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { cn } from '@/lib/utils'
 import { typName, type Block } from '@/lib/werkzeugkiste-editor'
 import { KAPITELTEST_KATALOG, beispielBlock, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
+import { TypWechselKnopf } from '@/components/werkzeugkiste/editor/typ-wechsel'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
 import { KATALOG_FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare-katalog'
 import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
@@ -303,15 +303,6 @@ function neueFrage(typ: string): Block {
   }
 }
 
-/** Beim Typwechsel übernimmt die Frage, was passt (Fragetext), der Rest beginnt neu */
-function frageUmstellen(alt: Block, typ: string): Block {
-  const neu = neueFrage(typ)
-  const frage = s(alt.question || alt.text)
-  if (typ === 'fill_blanks') return { ...neu, text: frage }
-  if (typ !== 'true_false' && (alt.type === 'multiple_choice' || alt.type === 'single_choice')) return { ...alt, type: typ }
-  return { ...neu, question: frage }
-}
-
 export function KapiteltestFormular({ block, onChange }: FormProps) {
   const fragen = liste(block.questions) as Block[]
   const prozent = Number(block.pass_percentage ?? 70)
@@ -340,20 +331,13 @@ export function KapiteltestFormular({ block, onChange }: FormProps) {
       >
         {(f, i, setze) => (
           <>
-            <div className="space-y-1.5">
-              <Label>Fragetyp</Label>
-              <Select value={KAPITELTEST_TYPEN.includes(f.type as never) ? f.type : undefined} onValueChange={(t) => setze(frageUmstellen(f, t))}>
-                <SelectTrigger className="min-h-11 rounded-xl" aria-label={`Fragetyp von Frage ${i + 1}`}>
-                  <SelectValue placeholder={typName(f.type)} />
-                </SelectTrigger>
-                <SelectContent>
-                  {KAPITELTEST_TYPEN.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {typName(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex justify-end">
+              <TypWechselKnopf
+                block={f}
+                erlaubt={KAPITELTEST_KATALOG}
+                beschriftung={`Typ von Frage ${i + 1} wechseln (${typName(String(f.type))})`}
+                onWechsel={(neu) => setze(neu)}
+              />
             </div>
             <FrageFormular block={f} onChange={(neu) => setze(neu)} />
           </>
