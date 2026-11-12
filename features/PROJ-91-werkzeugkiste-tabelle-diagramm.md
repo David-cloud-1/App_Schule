@@ -1,6 +1,6 @@
 # PROJ-91: Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12
 
@@ -197,4 +197,7 @@ Ausgeführt am 2026-11-12 (statisch, Tests, Build, Sichtprüfung der Zeichnungen
 - Tabellenzellen: kein Fett/Links (reiner Text, bewusst).
 
 ## Deployment
-_To be added by /deploy_
+- **2026-11-12:** Kern `238f835` (Vercel `werkzeugkiste-kern`, per CLI, Ready) vor der App; App `8867983` (Push auf `main`, Vercel `spedilern`, Ready). Tag `v1.91.0-PROJ-91`.
+- Keine Migration, keine neuen Umgebungsvariablen. Route ohne Login liefert 401 wie erwartet.
+- Kern-Commits liegen nur lokal und per CLI-Deploy in Produktion (Zweig `vercel-kern` ist nicht gepusht).
+- **Offen:** Browser-Durchgang als Lehrkraft (Desktop und Handy), siehe QA.
