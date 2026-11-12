@@ -15,6 +15,7 @@ Eine Lehrkraft kann ein fertiges Material im Format „Interaktive Seite" nachtr
 | PROJ-91 | Neue Blöcke Tabelle und Diagramm |
 | PROJ-92 | Bilder: hochladen und aus dem Skript übernehmen |
 | PROJ-93 | Neues Thema oder neuen Block per KI (kopierter Prompt) |
+| PROJ-94 | Leere Seite von null aufbauen (ohne Skript und KI) |
 | später | Themen aus anderen Materialien oder dem Regal übernehmen (noch ohne Nummer) |
 
 ## Ausgangslage (Problem)

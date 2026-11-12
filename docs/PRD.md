@@ -123,6 +123,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-91: Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Planned |
 | P2 | PROJ-92: Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Planned |
 | P2 | PROJ-93: Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned |
+| P1 | PROJ-94: Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

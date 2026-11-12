@@ -110,5 +110,6 @@
 | PROJ-91 | Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Planned | [PROJ-91-werkzeugkiste-tabelle-diagramm.md](PROJ-91-werkzeugkiste-tabelle-diagramm.md) | 2026-11-12 |
 | PROJ-92 | Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Planned | [PROJ-92-werkzeugkiste-bilder.md](PROJ-92-werkzeugkiste-bilder.md) | 2026-11-12 |
 | PROJ-93 | Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned | [PROJ-93-werkzeugkiste-thema-per-ki.md](PROJ-93-werkzeugkiste-thema-per-ki.md) | 2026-11-12 |
+| PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Planned | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |
 
-## Next Available ID: PROJ-94
+## Next Available ID: PROJ-95
