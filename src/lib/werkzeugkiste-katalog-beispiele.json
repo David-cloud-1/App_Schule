@@ -1,0 +1,263 @@
+{
+  "text": {
+    "type": "text",
+    "content": "<h3>Neuer Lehrtext</h3><p>Ersetze diesen Absatz durch deinen eigenen Text. Mit der Werkzeugleiste fügst du <strong>Hervorhebungen</strong>, Listen und Boxen wie „Merke“ oder „Tipp“ ein.</p>"
+  },
+  "image": {
+    "type": "image",
+    "path": "",
+    "alt": "Beschreibe hier in einem Satz, was auf dem Bild zu sehen ist.",
+    "caption": "Abb.: Bildunterschrift",
+    "width": "100%"
+  },
+  "accordion": {
+    "type": "accordion",
+    "items": [
+      { "term": "Erster Begriff", "definition": "Erklärung, die beim Aufklappen erscheint." },
+      { "term": "Zweiter Begriff", "definition": "Noch eine Erklärung – ersetze beide durch deine Fachbegriffe." }
+    ]
+  },
+  "calculation_example": {
+    "type": "calculation_example",
+    "formula": "Gesamtpreis = Menge × Einzelpreis",
+    "steps": ["Menge: 4 Stück", "Einzelpreis: 12,50 €", "4 × 12,50 € = 50,00 €"],
+    "result": "50,00 €",
+    "explanation": "Ersetze dieses Beispiel durch eine Rechnung aus deinem Unterricht."
+  },
+  "multiple_choice": {
+    "type": "multiple_choice",
+    "question": "Welche Farbe entsteht, wenn man Blau und Gelb mischt? (Ersetze diese Frage durch deine eigene.)",
+    "answers": [
+      { "text": "Grün", "correct": true, "feedback": "Richtig – Blau und Gelb ergeben Grün." },
+      { "text": "Rot", "correct": false, "feedback": "Rot ist eine Grundfarbe und entsteht nicht durch Mischen." },
+      { "text": "Violett", "correct": false, "feedback": "Violett entsteht aus Blau und Rot." }
+    ]
+  },
+  "true_false": {
+    "type": "true_false",
+    "question": "Eine Woche hat sieben Tage. (Ersetze diese Aussage durch deine eigene.)",
+    "correct": true,
+    "feedback_correct": "Genau – Montag bis Sonntag.",
+    "feedback_wrong": "Zähl noch einmal nach: Montag bis Sonntag sind sieben Tage."
+  },
+  "single_choice_set": {
+    "type": "single_choice_set",
+    "questions": [
+      { "question": "Wie viele Minuten hat eine Stunde?", "correct": "60", "wrong": ["100", "30"] },
+      { "question": "Wie viele Monate hat ein Jahr?", "correct": "12", "wrong": ["10", "52"] },
+      { "question": "Wie viele Tage hat eine Woche?", "correct": "7", "wrong": ["5", "10"] }
+    ]
+  },
+  "question_set": {
+    "type": "question_set",
+    "pass_percentage": 70,
+    "questions": [
+      {
+        "type": "multiple_choice",
+        "question": "Welche Farbe entsteht, wenn man Blau und Gelb mischt? (Ersetze diese Frage durch deine eigene.)",
+        "answers": [
+          { "text": "Grün", "correct": true, "feedback": "Richtig – Blau und Gelb ergeben Grün." },
+          { "text": "Rot", "correct": false, "feedback": "Rot ist eine Grundfarbe und entsteht nicht durch Mischen." },
+          { "text": "Violett", "correct": false, "feedback": "Violett entsteht aus Blau und Rot." }
+        ]
+      },
+      {
+        "type": "true_false",
+        "question": "Eine Woche hat sieben Tage. (Ersetze diese Aussage durch deine eigene.)",
+        "correct": true,
+        "feedback_correct": "Genau – Montag bis Sonntag.",
+        "feedback_wrong": "Zähl noch einmal nach: Montag bis Sonntag sind sieben Tage."
+      },
+      { "type": "fill_blanks", "text": "Ein Jahr hat *zwölf/12* Monate. Ersetze diesen Satz durch deinen eigenen." }
+    ]
+  },
+  "freitext": {
+    "type": "freitext",
+    "question": "Begründe in zwei bis drei Sätzen, warum regelmäßiges Wiederholen beim Lernen hilft. (Ersetze diese Frage durch deine eigene.)",
+    "rows": 5,
+    "min_zeichen": 80,
+    "solution": "Wer regelmäßig wiederholt, holt Wissen immer wieder aus dem Gedächtnis. Dadurch wird es fester verankert und ist in der Prüfung schneller abrufbar. Kurze, verteilte Wiederholungen wirken besser als einmaliges langes Lernen."
+  },
+  "interactive_video": {
+    "type": "interactive_video",
+    "url": "",
+    "questions": [
+      {
+        "time": 60,
+        "type": "multiple_choice",
+        "question": "Worum ging es in der ersten Minute? (Ersetze diese Frage durch deine eigene.)",
+        "answers": [
+          { "text": "Richtige Antwort", "correct": true },
+          { "text": "Falsche Antwort", "correct": false }
+        ]
+      }
+    ]
+  },
+  "fill_blanks": {
+    "type": "fill_blanks",
+    "text": "Eine Woche hat *sieben/7* Tage, ein Jahr hat *zwölf/12* Monate. Ersetze diesen Text durch deinen eigenen und markiere die Lücken mit Sternchen."
+  },
+  "advanced_fill_blanks": {
+    "type": "advanced_fill_blanks",
+    "text": "Ein Jahr hat *zwölf* (Zahl in Worten) Monate und eine Woche hat *sieben* (Zahl in Worten) Tage. Ersetze diesen Text durch deinen eigenen."
+  },
+  "drag_words": {
+    "type": "drag_words",
+    "text": "Morgens geht die *Sonne* auf, nachts scheint der *Mond*. Ersetze diesen Text durch deinen eigenen."
+  },
+  "mark_words": {
+    "type": "mark_words",
+    "text": "Markiere alle Farben in diesem Satz: Der *rote* Ball liegt neben dem *blauen* Eimer auf der Wiese."
+  },
+  "drag_drop": {
+    "type": "drag_drop",
+    "description": "Ordne die Begriffe den richtigen Kategorien zu.",
+    "categories": ["Obst", "Gemüse"],
+    "items": [
+      { "text": "Apfel", "category": "Obst" },
+      { "text": "Banane", "category": "Obst" },
+      { "text": "Karotte", "category": "Gemüse" },
+      { "text": "Brokkoli", "category": "Gemüse" }
+    ]
+  },
+  "reihenfolge": {
+    "type": "reihenfolge",
+    "description": "Bring die Schritte in die richtige Reihenfolge.",
+    "items": ["Erster Schritt", "Zweiter Schritt", "Dritter Schritt", "Vierter Schritt"]
+  },
+  "bildzuordnung": {
+    "type": "bildzuordnung",
+    "path": "",
+    "description": "Setze die Begriffe an die richtige Stelle.",
+    "alt": "Beschreibe hier in einem Satz, was auf dem Bild zu sehen ist.",
+    "punkte": [
+      { "label": "Erster Begriff", "x": 40, "y": 50 },
+      { "label": "Zweiter Begriff", "x": 60, "y": 50 }
+    ]
+  },
+  "image_sequencing": {
+    "type": "image_sequencing",
+    "description": "Bring die Abbildungen in die richtige Reihenfolge.",
+    "steps": [
+      { "text": "Erster Schritt" },
+      { "text": "Zweiter Schritt" },
+      { "text": "Dritter Schritt" }
+    ]
+  },
+  "calculation_exercise": {
+    "type": "calculation_exercise",
+    "task": "Ein Heft kostet 2,50 €. Wie viel kosten 4 Hefte? (Ersetze diese Aufgabe durch deine eigene.)",
+    "result": "10,00 €"
+  },
+  "arithmetic_quiz": {
+    "type": "arithmetic_quiz",
+    "questions": [
+      { "question": "12 + 8", "answer": 20 },
+      { "question": "7 × 6", "answer": 42 },
+      { "question": "100 − 35", "answer": 65 }
+    ]
+  },
+  "rechenweg": {
+    "type": "rechenweg",
+    "task": "Ein Heft kostet 2,50 €. Du kaufst 4 Hefte und zahlst mit einem 20-€-Schein. (Ersetze diese Aufgabe durch deine eigene.)",
+    "schritte": [
+      { "frage": "Wie viel kosten die 4 Hefte zusammen?", "ergebnis": "10,00", "einheit": "€", "hinweis": "Rechne Menge mal Einzelpreis." },
+      { "frage": "Wie viel Wechselgeld bekommst du zurück?", "ergebnis": "10,00", "einheit": "€", "hinweis": "Ziehe den Gesamtpreis von 20 € ab." }
+    ]
+  },
+  "schaetzrunde": {
+    "type": "schaetzrunde",
+    "description": "Schätz erst, dann löst die Seite auf.",
+    "fragen": [
+      { "frage": "Wie viele Tage hat ein Schaltjahr?", "wert": "366", "einheit": "Tage", "kommentar": "<p>Alle vier Jahre bekommt der Februar einen Tag mehr.</p>" }
+    ]
+  },
+  "crossword": {
+    "type": "crossword",
+    "description": "Löse das Kreuzworträtsel.",
+    "words": [
+      { "word": "MONTAG", "clue": "Erster Tag der Arbeitswoche" },
+      { "word": "SONNTAG", "clue": "Letzter Tag der Woche" },
+      { "word": "JANUAR", "clue": "Erster Monat des Jahres" },
+      { "word": "MAI", "clue": "Fünfter Monat des Jahres" }
+    ]
+  },
+  "find_words": {
+    "type": "find_words",
+    "description": "Finde die vier Wochentage.",
+    "words": ["MONTAG", "DIENSTAG", "FREITAG", "SONNTAG"]
+  },
+  "memory_game": {
+    "type": "memory_game",
+    "description": "Finde die Paare.",
+    "cards": [
+      { "front": "Hund", "back": "bellt" },
+      { "front": "Katze", "back": "miaut" },
+      { "front": "Kuh", "back": "muht" },
+      { "front": "Schaf", "back": "blökt" }
+    ]
+  },
+  "trainer": {
+    "type": "trainer",
+    "description": "Übe die Reihenfolgen, bis sie sitzen.",
+    "runden": 2,
+    "gruppen": [
+      { "titel": "Wochentage", "hinweis": "Beginne mit Montag.", "reihe": ["Montag", "Dienstag", "Mittwoch"] },
+      { "titel": "Jahreszeiten", "reihe": ["Frühling", "Sommer", "Herbst", "Winter"] }
+    ]
+  },
+  "fallakte": {
+    "type": "fallakte",
+    "titel": "Fall #1: Der verschwundene Schlüssel",
+    "situation": "<p>Ersetze diesen Fall durch einen eigenen. Am Morgen ist der Schlüssel zum Lager verschwunden. Wo kann er sein?</p>",
+    "schritte": [
+      {
+        "frage": "Wo schaust du zuerst nach?",
+        "antworten": [
+          { "text": "Am Schlüsselbrett", "correct": true, "feedback": "Logisch – dort gehört er hin." },
+          { "text": "Im Papierkorb", "correct": false, "feedback": "Möglich, aber nicht der erste Gedanke." }
+        ],
+        "enthuellt": "Am Schlüsselbrett hängt ein Zettel: „Ausgeliehen von Lager 2“."
+      },
+      {
+        "frage": "Was tust du jetzt?",
+        "antworten": [
+          { "text": "In Lager 2 nachfragen", "correct": true, "feedback": "Genau, der Zettel zeigt den Weg." },
+          { "text": "Ein neues Schloss bestellen", "correct": false, "feedback": "Zu früh – erst der Spur folgen." }
+        ],
+        "enthuellt": "In Lager 2 liegt der Schlüssel auf dem Tisch."
+      }
+    ],
+    "urteil": "<p>Fall gelöst: Wer etwas ausleiht, hinterlässt eine Notiz.</p>"
+  },
+  "dialog_cards": {
+    "type": "dialog_cards",
+    "cards": [
+      { "front": "Vorderseite: ein Begriff", "back": "Rückseite: die Erklärung" },
+      { "front": "Zweiter Begriff", "back": "Ersetze die Karten durch deine eigenen." }
+    ]
+  },
+  "flashcards": {
+    "type": "flashcards",
+    "description": "Schreib zu jeder Karte die passende Antwort.",
+    "cards": [
+      { "front": "Wie heißt der erste Monat des Jahres?", "back": "Januar" },
+      { "front": "Wie viele Tage hat eine Woche?", "back": "7/sieben" }
+    ]
+  },
+  "summary": {
+    "type": "summary",
+    "questions": [
+      { "correct": "Eine Woche hat sieben Tage.", "distractors": ["Eine Woche hat fünf Tage.", "Eine Woche hat zehn Tage."] },
+      { "correct": "Ein Jahr hat zwölf Monate.", "distractors": ["Ein Jahr hat zehn Monate.", "Ein Jahr hat 52 Monate."] }
+    ]
+  },
+  "selbsteinschaetzung": {
+    "type": "selbsteinschaetzung",
+    "titel": "Wie sicher bist du?",
+    "punkte": [
+      { "text": "Ich kann die wichtigsten Begriffe des Themas erklären.", "hilfe": "Lies noch einmal die Merke-Boxen." },
+      { "text": "Ich kann eine typische Aufgabe allein lösen.", "hilfe": "Rechne das Beispiel noch einmal ohne Hilfe." }
+    ]
+  }
+}

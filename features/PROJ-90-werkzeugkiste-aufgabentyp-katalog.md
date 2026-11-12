@@ -1,8 +1,8 @@
 # PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12 (Anforderungen ausgearbeitet)
+**Last Updated:** 2026-11-12 (gebaut)
 
 ## Idee in einem Satz
 Im Baukasten-Editor (PROJ-89) fügt die Lehrkraft an jeder Stelle einen neuen Block ein: Sie wählt den Typ aus einem bebilderten Katalog aller Aufgabentypen der Interaktiven Seite. Der Block kommt mit einem Beispiel und wird im passenden Formular ausgefüllt.
@@ -260,6 +260,29 @@ Keine neuen. Genutzt werden die vorhandenen: shadcn/ui (Dialog, Input, Badge …
 2. **Kern:** Bilder auflisten und Bild holen, Test für alle Beispielinhalte. Deploy des Kerns vor der App.
 3. **Oberfläche:** Katalog-Fenster mit Skizzen, Einfügestellen, Kapiteltest-Anbindung, Beispiel-Hinweise.
 4. **18 Formulare** samt Bildauswahl und Punkte-Setzer.
+
+## Umsetzung (Frontend + Backend, 2026-11-12)
+
+**App (`App_Schule`)**
+- `src/lib/werkzeugkiste-katalog.ts` + `werkzeugkiste-katalog-beispiele.json`: 31 Einträge in 7 Gruppen mit Beschreibung, „Gut für“, Suchbegriffen; Beispielinhalte; Suche (Umlaute egal); „Zuletzt verwendet“ im Gerätespeicher; Einfügen; Beispiel-Hinweise (berechnet, nie gespeichert).
+- `katalog-dialog.tsx` (Fenster ab 1024 px, darunter Vollbild; Pfeiltasten, Esc, Leerzustand), `katalog-skizzen.tsx` (31 SVG-Skizzen mit ws-Farben; Ansicht: `docs/vorschau/proj90-skizzen-hell.png` / `-dunkel.png`).
+- `editor-gliederung.tsx`: Einfügestellen „+“ zwischen Blöcken (am Desktop 24 px hoch, damit sie keine Klicks auf Nachbarzeilen abfangen; auf Touch 44 px und immer sichtbar), „Block hinzufügen“ am Themenende, `⋯`: „Block darüber/darunter einfügen …“, im Themen-`⋯`: „Block hinzufügen …“. Bild-Typen laufen über die Bildauswahl.
+- `material-bilder.tsx`: Bilderliste einmal je Editor-Sitzung, geteilt von Katalog, Bildauswahl und Formularen; große Fassung je Bild zwischengespeichert.
+- `editor-formulare-katalog.tsx`: 18 neue Formulare inkl. Punkte-Setzer für die Bildzuordnung (Tippen setzt, Ziehen verschiebt, Prozentfelder). Gemeinsame Bausteine nach `formular-bausteine.tsx` ausgelagert.
+- Kapiteltest: „Frage hinzufügen“ öffnet den gefilterten Katalog; nicht erlaubte Fragen zeigen „Nicht im Kapiteltest möglich – wird übersprungen“.
+- Veröffentlichen-Dialog nennt die Zahl der Blöcke mit Beispielinhalt. Die Zahl „Hinweise der Prüfstelle“ zählt weiter nur die Befunde des Kerns.
+- Neue Route `POST /api/admin/werkzeugkiste/ablaeufe/[id]/editor/bilder` (`{}` → Liste, `{pfad}` → ein Bild). Pfad nur `images/…`, ohne `..`. Liegt unter der vorhandenen Lehrkraft-Freigabe `/api/admin/werkzeugkiste`.
+- Keine Datenbank-Änderung.
+
+**Kern (`Werkzeugkiste`, Zweig `vercel-kern`)**
+- `kern_editor.bilder()` / `bild()` + `POST /api/editor/bilder`, `/api/editor/bild`. Verkleinern mit PyMuPDF auf 240 px bzw. 1200 px als JPEG; höchstens 150 Bilder; nur Namen aus dem Paket.
+- Tests: `kern_editor_test` (Bildauswahl, unsichere Pfade, kaputte Bilder; jedes Beispiel der App baut ohne Warnung außer Video/Bilder ordnen).
+
+**Abweichungen von der Spec**
+- „Bilder ordnen“ braucht kein Bild zum Einfügen; Bilder je Schritt sind optional (Spec entsprechend ergänzt).
+- Die Prüfstelle des Kerns meldet Kern-Fehler einheitlich als 400 mit Satz (auch „Bild gibt es nicht“), wie alle anderen Editor-Wege.
+
+**Tests:** 3175 Vitest grün (neu: `werkzeugkiste-katalog.test.ts`, `katalog.test.tsx`, Einfüge-Tests im Editor, Bilder-Route), Kern 32 + 167 grün.
 
 ## QA Test Results
 _To be added by /qa_

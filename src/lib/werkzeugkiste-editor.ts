@@ -32,6 +32,15 @@ export interface EditorBefund {
   stellen: Stelle[]
 }
 
+/** Ein Bild aus dem Paket des Materials (PROJ-90): `pfad` ist der Name, wie er im Block steht */
+export interface MaterialBild {
+  pfad: string
+  /** kleines Vorschaubild als data:-Adresse */
+  vorschau: string
+  breite: number
+  hoehe: number
+}
+
 /** Was der Editor beim Öffnen bekommt */
 export interface EditorDaten {
   id: string

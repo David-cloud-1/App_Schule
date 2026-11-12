@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
 import { befundeJeStelle, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
+import { beispielBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorVorschau } from '@/components/werkzeugkiste/editor/editor-vorschau'
@@ -121,7 +122,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
   const [laeuft, setLaeuft] = useState(false)
   // Solange es noch keine Vorschau-Befunde gibt, gelten die gespeicherten
-  const befunde = v.befunde ?? daten.befunde
+  const kernBefunde = v.befunde ?? daten.befunde
+  // PROJ-90: Blöcke mit unverändertem Beispielinhalt – berechnet, nie gespeichert
+  const beispiele = useMemo(() => beispielBefunde(z.struktur), [z.struktur])
+  const befunde = useMemo(
+    () => (kernBefunde || beispiele.length ? [...(kernBefunde ?? []), ...beispiele] : null),
+    [kernBefunde, beispiele],
+  )
   const befundKarte = useMemo(() => befundeJeStelle(befunde), [befunde])
   const hatAenderungen = z.hatEntwurf() || z.speicherstand !== 'gespeichert'
 
@@ -191,7 +198,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
   const tasten = apple ? '⌘' : 'Strg+'
   const kleinerKnopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
-  const offeneHinweise = befunde?.length ?? 0
+  const offeneHinweise = kernBefunde?.length ?? 0
 
   const kopf = (
     <>
@@ -329,6 +336,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
                 {offeneHinweise > 0 && (
                   <p className="text-ws-orange">
                     Die Prüfstelle hat {offeneHinweise} {offeneHinweise === 1 ? 'Hinweis' : 'Hinweise'}. Du kannst trotzdem veröffentlichen.
+                  </p>
+                )}
+                {beispiele.length > 0 && (
+                  <p className="text-ws-orange">
+                    {beispiele.length === 1 ? '1 Block enthält' : `${beispiele.length} Blöcke enthalten`} noch Beispielinhalt.
                   </p>
                 )}
                 {z.struktur.chapters.length === 0 && <p className="text-ws-orange">Das Material hat keine Themen mehr.</p>}

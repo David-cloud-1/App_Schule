@@ -1,148 +1,24 @@
 'use client'
 
-import { useId } from 'react'
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useId, useState } from 'react'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
-import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { cn } from '@/lib/utils'
 import { typName, type Block } from '@/lib/werkzeugkiste-editor'
+import { KAPITELTEST_KATALOG, beispielBlock, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
+import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
+import { KATALOG_FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare-katalog'
+import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
+
+export type { FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
 
 /**
  * Formulare für die häufigsten Aufgabentypen (PROJ-89, Paket 2). Jede Eingabe
  * ändert den Block sofort (automatisch gespeichert, die Vorschau zieht nach).
- * Felder, die das Formular nicht kennt, bleiben unverändert erhalten.
- *
- * `onChange(block, feld)`: `feld` fasst Tippen in einem Feld zu einem
- * Rückgängig-Schritt zusammen.
+ * Die übrigen Typen stehen in `editor-formulare-katalog.tsx` (PROJ-90).
  */
-export type FormProps = { block: Block; onChange: (block: Block, feld: string) => void }
-
-type Eintrag = Record<string, unknown>
-
-const s = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v))
-const liste = (v: unknown): Eintrag[] => (Array.isArray(v) ? v.map((x) => (x && typeof x === 'object' ? (x as Eintrag) : { text: x })) : [])
-const texte = (v: unknown): string[] => (Array.isArray(v) ? v.map(s) : [])
-
-// ── Bausteine ─────────────────────────────────────────────────────────────
-
-function Feld({
-  label,
-  wert,
-  onChange,
-  mehrzeilig,
-  hinweis,
-  pflicht,
-  zeilen = 3,
-}: {
-  label: string
-  wert: string
-  onChange: (v: string) => void
-  mehrzeilig?: boolean
-  hinweis?: React.ReactNode
-  pflicht?: boolean
-  zeilen?: number
-}) {
-  const id = useId()
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id}>
-        {label}
-        {pflicht && (
-          <span className="ml-1 text-ws-red" aria-hidden>
-            *
-          </span>
-        )}
-      </Label>
-      {mehrzeilig ? (
-        <Textarea
-          id={id}
-          value={wert}
-          rows={zeilen}
-          required={pflicht}
-          onChange={(e) => onChange(e.target.value)}
-          className="rounded-xl"
-        />
-      ) : (
-        <Input id={id} value={wert} required={pflicht} onChange={(e) => onChange(e.target.value)} className="min-h-11 rounded-xl" />
-      )}
-      {hinweis && <p className="text-xs text-ws-muted">{hinweis}</p>}
-    </div>
-  )
-}
-
-/** Liste mit Hinzufügen, Entfernen und Verschieben – für Antworten, Karten, Begriffe … */
-function Liste<T>({
-  titel,
-  eintraege,
-  neu,
-  onChange,
-  einzahl,
-  mindestens = 0,
-  children,
-}: {
-  titel: string
-  eintraege: T[]
-  neu: () => T
-  onChange: (l: T[]) => void
-  einzahl: string
-  mindestens?: number
-  children: (e: T, i: number, setze: (neu: T) => void) => React.ReactNode
-}) {
-  const setze = (i: number, w: T) => onChange(eintraege.map((x, j) => (j === i ? w : x)))
-  const tausche = (i: number, j: number) => {
-    const n = [...eintraege]
-    ;[n[i], n[j]] = [n[j], n[i]]
-    onChange(n)
-  }
-  const knopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
-  return (
-    <fieldset className="space-y-2">
-      <legend className="mb-1 text-sm font-semibold">{titel}</legend>
-      {eintraege.length === 0 && <p className="text-sm text-ws-faint">Noch keine Einträge.</p>}
-      <ol className="space-y-2">
-        {eintraege.map((e, i) => (
-          <li key={i} className="flex gap-1 rounded-xl border border-ws-line bg-ws-bg p-2">
-            <div className="min-w-0 flex-1 space-y-2">{children(e, i, (w) => setze(i, w))}</div>
-            <div className="flex shrink-0 flex-col">
-              <Button variant="ghost" size="icon" className={knopf} disabled={i === 0} onClick={() => tausche(i, i - 1)} aria-label={`${einzahl} ${i + 1} nach oben`}>
-                <ArrowUp className="size-4" aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={knopf}
-                disabled={i === eintraege.length - 1}
-                onClick={() => tausche(i, i + 1)}
-                aria-label={`${einzahl} ${i + 1} nach unten`}
-              >
-                <ArrowDown className="size-4" aria-hidden />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(knopf, 'hover:text-ws-red')}
-                disabled={eintraege.length <= mindestens}
-                onClick={() => onChange(eintraege.filter((_, j) => j !== i))}
-                aria-label={`${einzahl} ${i + 1} entfernen`}
-              >
-                <Trash2 className="size-4" aria-hidden />
-              </Button>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <Button variant="outline" className={NEBENAKTION} onClick={() => onChange([...eintraege, neu()])}>
-        <Plus className="mr-2 size-4" aria-hidden /> {einzahl} hinzufügen
-      </Button>
-    </fieldset>
-  )
-}
 
 // ── Auswahlfrage (multiple_choice, single_choice) ───────────────────────
 
@@ -210,14 +86,6 @@ export function RichtigFalschFormular({ block, onChange }: FormProps) {
 }
 
 // ── Schnellfragen (single_choice_set) ────────────────────────────────────
-
-function TextListe({ titel, einzahl, werte, onChange, mindestens = 0 }: { titel: string; einzahl: string; werte: string[]; onChange: (w: string[]) => void; mindestens?: number }) {
-  return (
-    <Liste titel={titel} einzahl={einzahl} mindestens={mindestens} eintraege={werte} neu={() => ''} onChange={onChange}>
-      {(w, i, setze) => <Feld label={`${einzahl} ${i + 1}`} wert={w} onChange={setze} />}
-    </Liste>
-  )
-}
 
 export function SchnellfragenFormular({ block, onChange }: FormProps) {
   const fragen = liste(block.questions)
@@ -447,6 +315,8 @@ function frageUmstellen(alt: Block, typ: string): Block {
 export function KapiteltestFormular({ block, onChange }: FormProps) {
   const fragen = liste(block.questions) as Block[]
   const prozent = Number(block.pass_percentage ?? 70)
+  // PROJ-90 (E6): neue Fragen über den Katalog, gefiltert auf die erlaubten Typen
+  const [katalog, setKatalog] = useState(false)
   return (
     <div className="space-y-4">
       <div className="max-w-48">
@@ -465,6 +335,7 @@ export function KapiteltestFormular({ block, onChange }: FormProps) {
         mindestens={1}
         eintraege={fragen}
         neu={() => neueFrage('multiple_choice')}
+        hinzufuegen={() => setKatalog(true)}
         onChange={(l) => onChange({ ...block, questions: l }, 'questions')}
       >
         {(f, i, setze) => (
@@ -488,14 +359,31 @@ export function KapiteltestFormular({ block, onChange }: FormProps) {
           </>
         )}
       </Liste>
+      <KatalogDialog
+        offen={katalog}
+        onOpenChange={setKatalog}
+        erlaubt={KAPITELTEST_KATALOG}
+        bilder={0}
+        onWaehle={(typ) => {
+          merkeZuletzt(typ)
+          setKatalog(false)
+          // Neue Frage am Ende, mit Beispielinhalt (E2)
+          onChange({ ...block, questions: [...fragen, beispielBlock(typ)] }, 'questions-neu')
+        }}
+      />
     </div>
   )
 }
 
 function FrageFormular({ block, onChange }: FormProps) {
   const F = FORMULARE[block.type]
-  if (!F || block.type === 'question_set') {
-    return <p className="text-sm text-ws-orange">Diesen Fragetyp kennt der Kapiteltest nicht. Wähle oben einen erlaubten Typ.</p>
+  // Seit PROJ-90 gibt es Formulare für alle Typen – im Kapiteltest zählen trotzdem nur die erlaubten
+  if (!F || !(KAPITELTEST_TYPEN as readonly string[]).includes(block.type)) {
+    return (
+      <p className="text-sm text-ws-orange">
+        Nicht im Kapiteltest möglich – wird übersprungen. Wähle oben einen erlaubten Typ oder entferne die Frage.
+      </p>
+    )
   }
   return <F block={block} onChange={onChange} />
 }
@@ -554,6 +442,7 @@ export const FORMULARE: Record<string, (p: FormProps) => React.ReactNode> = {
   calculation_exercise: RechenFormular,
   summary: ZusammenfassungFormular,
   question_set: KapiteltestFormular,
+  ...KATALOG_FORMULARE,
 }
 
 export function hatFormular(typ: string): boolean {

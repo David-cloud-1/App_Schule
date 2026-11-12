@@ -1,5 +1,5 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, AblaufTeil, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
-import type { Block, EditorBefund, EditorDaten, Struktur } from '@/lib/werkzeugkiste-editor'
+import type { Block, EditorBefund, EditorDaten, MaterialBild, Struktur } from '@/lib/werkzeugkiste-editor'
 import type { HilfeAngebot, HilfeAngebotAntwort } from '@/lib/werkzeugkiste-hilfe-angebot'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
@@ -514,6 +514,19 @@ export function baueEntwurfVorschau(id: string) {
     `/ablaeufe/${id}/editor/vorschau`,
     { method: 'POST', body: '{}' },
   )
+}
+
+/** Bilder des Materials für die Bildauswahl (PROJ-90) */
+export function ladeMaterialBilder(id: string) {
+  return anfrage<{ bilder: MaterialBild[]; mehr: boolean }>(`/ablaeufe/${id}/editor/bilder`, { method: 'POST', body: '{}' })
+}
+
+/** Ein Bild des Materials in Arbeitsgröße (Bild-Block, Bildzuordnung) */
+export function ladeMaterialBild(id: string, pfad: string) {
+  return anfrage<{ pfad: string; bild: string; breite: number; hoehe: number }>(`/ablaeufe/${id}/editor/bilder`, {
+    method: 'POST',
+    body: JSON.stringify({ pfad }),
+  })
 }
 
 export function blockAlsRohfassung(id: string, block: Block) {

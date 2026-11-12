@@ -10,6 +10,7 @@ import {
   ZusammenfassungFormular,
   luecken,
 } from './editor-formulare'
+import { TYP_NAMEN } from '@/lib/werkzeugkiste-editor'
 
 vi.stubGlobal(
   'ResizeObserver',
@@ -36,13 +37,8 @@ describe('Lücken erkennen', () => {
 })
 
 describe('Formulare', () => {
-  it('kennen 13 Typen', () => {
-    expect(Object.keys(FORMULARE).sort()).toEqual(
-      [
-        'accordion', 'advanced_fill_blanks', 'calculation_exercise', 'dialog_cards', 'drag_words', 'fill_blanks',
-        'mark_words', 'multiple_choice', 'question_set', 'single_choice', 'single_choice_set', 'summary', 'true_false',
-      ].sort(),
-    )
+  it('kennen seit PROJ-90 alle 32 Typen außer dem Lehrtext (eigener Text-Editor)', () => {
+    expect(Object.keys(FORMULARE).sort()).toEqual(Object.keys(TYP_NAMEN).filter((t) => t !== 'text').sort())
   })
 
   it('Auswahlfrage: Text ändern, genau eine richtige Antwort, unbekannte Felder bleiben', () => {

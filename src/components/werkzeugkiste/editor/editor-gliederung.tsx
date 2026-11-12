@@ -17,7 +17,9 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowDownToLine,
   ArrowRightLeft,
+  ArrowUpToLine,
   ArrowUp,
   BookOpen,
   Box,
@@ -69,6 +71,9 @@ import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorRohfassung } from '@/components/werkzeugkiste/editor/editor-rohfassung'
 import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare'
 import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
+import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
+import { BildAuswahl, MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
+import { beispielBlock, fuegeBlockEin, katalogEintrag, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import {
   dupliziereBlock,
@@ -100,6 +105,10 @@ export type Auswahl =
   | null
 
 type Aendere = (neu: (s: Struktur) => Struktur, gruppe?: string) => void
+
+/** Stelle, an der ein neuer Block eingefügt wird (PROJ-90) */
+type Einfuegestelle = { thema: number; index: number }
+type EinfuegenBei = (stelle: Einfuegestelle) => void
 
 /** Ab so vielen Themen starten alle zugeklappt (Edge Case „sehr großes Material“) */
 const ZUKLAPPEN_AB = 20
@@ -154,16 +163,15 @@ function lies(id: string): { art: 'thema'; thema: number } | { art: 'block'; the
  * Blöcken (ziehbar, auch in andere Themen) und Lernzielkontrolle. Ein Klick
  * öffnet das Bearbeitungsfeld direkt unter der Zeile – immer nur eins.
  */
-export function EditorGliederung({
-  materialId,
-  struktur,
-  aendere,
-  rueckgaengig,
-  auswahl,
-  setAuswahl,
-  befunde,
-  befundKarte,
-}: {
+export function EditorGliederung(props: GliederungProps) {
+  return (
+    <MaterialBilderProvider materialId={props.materialId}>
+      <Gliederung {...props} />
+    </MaterialBilderProvider>
+  )
+}
+
+interface GliederungProps {
   materialId: string
   struktur: Struktur
   aendere: Aendere
@@ -172,7 +180,18 @@ export function EditorGliederung({
   setAuswahl: (a: Auswahl) => void
   befunde: EditorBefund[] | null
   befundKarte: Map<BefundSchluessel, number>
-}) {
+}
+
+function Gliederung({
+  materialId,
+  struktur,
+  aendere,
+  rueckgaengig,
+  auswahl,
+  setAuswahl,
+  befunde,
+  befundKarte,
+}: GliederungProps) {
   const [zu, setZu] = useState<Set<number>>(
     () => new Set(struktur.chapters.length >= ZUKLAPPEN_AB ? struktur.chapters.map((_, i) => i) : []),
   )
@@ -183,6 +202,43 @@ export function EditorGliederung({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const themen = struktur.chapters
+
+  // ── Neuen Block einfügen (PROJ-90) ──────────────────────────────────────
+  const bilder = useMaterialBilder()
+  const [ziel, setZiel] = useState<Einfuegestelle | null>(null)
+  const [katalogOffen, setKatalogOffen] = useState(false)
+  const [bildFuer, setBildFuer] = useState<string | null>(null)
+
+  const einfuegenBei: EinfuegenBei = (stelle) => {
+    setZiel(stelle)
+    setKatalogOffen(true)
+    bilder.anfordern()
+  }
+
+  function einfuegen(typ: string, bild?: string) {
+    if (!ziel) return
+    const { thema, index } = ziel
+    const laenge = themen[thema]?.elements.length ?? 0
+    aendere((s) => fuegeBlockEin(s, thema, index, beispielBlock(typ, bild)))
+    setZu((z) => {
+      const n = new Set(z)
+      n.delete(thema)
+      return n
+    })
+    setAuswahl({ art: 'block', thema, block: Math.max(0, Math.min(index, laenge)) })
+    setZiel(null)
+    // Gliederung scrollt zum neuen Block (sobald er gezeichnet ist)
+    requestAnimationFrame(() =>
+      document.getElementById(`block-${thema}-${Math.max(0, Math.min(index, laenge))}`)?.scrollIntoView?.({ block: "center", behavior: "smooth" }),
+    )
+  }
+
+  function typGewaehlt(typ: string) {
+    merkeZuletzt(typ)
+    setKatalogOffen(false)
+    if (katalogEintrag(typ)?.brauchtBild) setBildFuer(typ)
+    else einfuegen(typ)
+  }
 
   function bewegeBlock(von: Ort, nach: Ort) {
     aendere((s) => verschiebeBlock(s, von, nach))
@@ -322,6 +378,7 @@ export function EditorGliederung({
                 themaLoeschen={() => setThemaLoeschen(ti)}
                 schliessen={() => setAuswahl(null)}
                 materialId={materialId}
+                einfuegenBei={einfuegenBei}
               />
             ))}
           </ol>
@@ -379,6 +436,30 @@ export function EditorGliederung({
         )}
       </div>
 
+      <KatalogDialog
+        offen={katalogOffen}
+        onOpenChange={(o) => {
+          setKatalogOffen(o)
+          if (!o && !bildFuer) setZiel(null)
+        }}
+        onWaehle={typGewaehlt}
+        bilder={bilder.stand}
+      />
+      <BildAuswahl
+        offen={bildFuer !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setBildFuer(null)
+            setZiel(null)
+          }
+        }}
+        onWaehle={(pfad) => {
+          const typ = bildFuer
+          setBildFuer(null)
+          if (typ) einfuegen(typ, pfad)
+        }}
+      />
+
       <AlertDialog open={themaLoeschen !== null} onOpenChange={(o) => !o && setThemaLoeschen(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -435,6 +516,7 @@ function ThemaKarte({
   themaLoeschen,
   schliessen,
   materialId,
+  einfuegenBei,
 }: {
   index: number
   titel: string
@@ -455,6 +537,7 @@ function ThemaKarte({
   themaLoeschen: () => void
   schliessen: () => void
   materialId: string
+  einfuegenBei: EinfuegenBei
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `t-${index}`,
@@ -516,6 +599,9 @@ function ThemaKarte({
             <DropdownMenuItem disabled={index === anzahlThemen - 1} onSelect={() => bewegeThema(index, index + 1)}>
               <ArrowDown className="mr-2 size-4" aria-hidden /> Nach unten
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => einfuegenBei({ thema: index, index: bloecke.length })}>
+              <Plus className="mr-2 size-4" aria-hidden /> Block hinzufügen …
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => aendere((s) => dupliziereThema(s, index))}>
               <Copy className="mr-2 size-4" aria-hidden /> Duplizieren
             </DropdownMenuItem>
@@ -545,7 +631,8 @@ function ThemaKarte({
       {!zu && (
         <SortableContext items={bloecke.map((_, bi) => `b-${index}-${bi}`)} strategy={verticalListSortingStrategy}>
           <ol className="mt-2 space-y-2 pl-2 sm:pl-6" aria-label={`Blöcke in „${name}“`}>
-            {bloecke.map((block, bi) => (
+            {bloecke.map((block, bi) => [
+              bi > 0 && <Einfuegestelle key={`plus-${index}-${bi}`} onClick={() => einfuegenBei({ thema: index, index: bi })} />,
               <BlockZeile
                 key={`b-${index}-${bi}`}
                 thema={index}
@@ -561,8 +648,9 @@ function ThemaKarte({
                 loeschen={() => blockLoeschen({ thema: index, block: bi })}
                 schliessen={schliessen}
                 materialId={materialId}
-              />
-            ))}
+                einfuegenBei={einfuegenBei}
+              />,
+            ])}
             <li
               ref={ende.setNodeRef}
               className={cn(
@@ -574,8 +662,47 @@ function ThemaKarte({
               {bloecke.length === 0 ? 'Noch keine Blöcke' : <span className="sr-only">Ende des Themas</span>}
             </li>
           </ol>
+          <div className="mt-2 pl-2 sm:pl-6">
+            <Button
+              variant="outline"
+              className={cn(NEBENAKTION, 'w-full justify-center border-dashed')}
+              onClick={() => einfuegenBei({ thema: index, index: bloecke.length })}
+              aria-label={`Block hinzufügen in „${name}“`}
+            >
+              <Plus className="mr-2 size-4" aria-hidden />
+              Block hinzufügen
+            </Button>
+          </div>
         </SortableContext>
       )}
+    </li>
+  )
+}
+
+/**
+ * Einfügestelle „+“ zwischen zwei Blöcken (PROJ-90): mit der Maus beim
+ * Überfahren, per Tastatur beim Fokus sichtbar; auf Touch-Geräten immer und 44 px hoch.
+ */
+function Einfuegestelle({ onClick }: { onClick: () => void }) {
+  return (
+    // Am Desktop ragt der Knopf (24 px) nur in den Zeilenabstand, nie über die Nachbarzeilen
+    <li className="relative flex h-3 items-center [@media(pointer:coarse)]:h-11">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label="Block hier einfügen"
+        className={cn(
+          'absolute inset-x-0 top-1/2 flex h-6 -translate-y-1/2 [@media(pointer:coarse)]:h-11 items-center justify-center gap-2 rounded-xl text-xs font-semibold text-ws-green',
+          'opacity-0 transition-opacity duration-200 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
+          '[@media(pointer:coarse)]:opacity-100',
+        )}
+      >
+        <span className="h-px flex-1 bg-ws-green/40" aria-hidden />
+        <span className="flex size-6 items-center justify-center rounded-full border border-ws-green bg-ws-surface">
+          <Plus className="size-3.5" aria-hidden />
+        </span>
+        <span className="h-px flex-1 bg-ws-green/40" aria-hidden />
+      </button>
     </li>
   )
 }
@@ -596,6 +723,7 @@ function BlockZeile({
   loeschen,
   schliessen,
   materialId,
+  einfuegenBei,
 }: {
   thema: number
   index: number
@@ -610,6 +738,7 @@ function BlockZeile({
   loeschen: () => void
   schliessen: () => void
   materialId: string
+  einfuegenBei: EinfuegenBei
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `b-${thema}-${index}`,
@@ -620,7 +749,12 @@ function BlockZeile({
   const ort = { thema, block: index }
 
   return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(isDragging && 'z-10 opacity-80')}>
+    <li
+      ref={setNodeRef}
+      id={`block-${thema}-${index}`}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn('scroll-mt-24', isDragging && 'z-10 opacity-80')}
+    >
       <div className={cn(ZEILE, gewaehlt && 'border-ws-green', !istBekannterTyp(typ) && 'border-ws-orange/50')}>
         <button
           type="button"
@@ -678,6 +812,13 @@ function BlockZeile({
             )}
             <DropdownMenuItem onSelect={() => aendere((s) => dupliziereBlock(s, ort))}>
               <Copy className="mr-2 size-4" aria-hidden /> Duplizieren
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => einfuegenBei({ thema, index })}>
+              <ArrowUpToLine className="mr-2 size-4" aria-hidden /> Block darüber einfügen …
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => einfuegenBei({ thema, index: index + 1 })}>
+              <ArrowDownToLine className="mr-2 size-4" aria-hidden /> Block darunter einfügen …
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={loeschen} className="text-ws-red focus:text-ws-red">

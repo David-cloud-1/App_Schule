@@ -11,6 +11,8 @@ const api = vi.hoisted(() => ({
   veroeffentlicheEntwurf: vi.fn(),
   blockAlsRohfassung: vi.fn(),
   rohfassungLesen: vi.fn(),
+  ladeMaterialBilder: vi.fn(),
+  ladeMaterialBild: vi.fn(),
 }))
 vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
   ...(await original<typeof import('@/lib/werkzeugkiste-api')>()),
@@ -75,6 +77,8 @@ beforeEach(() => {
     stand: null,
   })
   vi.stubGlobal('fetch', vi.fn(async () => new Response('<html><body><p>Seite</p></body></html>')))
+  api.ladeMaterialBilder.mockResolvedValue({ bilder: [], mehr: false })
+  window.localStorage.clear()
 })
 
 describe('Baukasten-Editor', () => {
@@ -233,5 +237,71 @@ describe('Sprung-Skript', () => {
     expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('</body>'))
     expect(html).toContain('replace(/[^a-z0-9_-]/gi,"")')
     expect(mitSprungSkript('<p>ohne body</p>')).toContain('<script>')
+  })
+})
+
+describe('Block einfügen (PROJ-90)', () => {
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+
+  it('„Block hinzufügen“ fügt am Ende des Themas mit Beispiel ein, öffnet ihn und speichert', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    expect(screen.getByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="true_false"]')!)
+    // Formular des neuen Blocks ist offen
+    expect(await screen.findByLabelText(/^Aussage/)).toHaveValue('Eine Woche hat sieben Tage. (Ersetze diese Aussage durch deine eigene.)')
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'fill_blanks', 'true_false'])
+    expect(JSON.parse(window.localStorage.getItem('wk-katalog-zuletzt')!)).toEqual(['true_false'])
+  })
+
+  it('fügt in ein leeres Thema ein und meldet den Beispielinhalt als Hinweis', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Haftungsgrenzen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="crossword"]')!)
+    const gliederung = screen.getByRole('region', { name: 'Gliederung' })
+    expect(await within(gliederung).findByText('Kreuzworträtsel')).toBeInTheDocument()
+    expect(within(gliederung).queryByText('Noch keine Blöcke')).not.toBeInTheDocument()
+    fireEvent.click(within(gliederung).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
+    expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
+  })
+
+  it('„Block darüber einfügen“ setzt den Block vor den gewählten; Rückgängig nimmt ihn zurück', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    oeffneMenu(/Weitere Aktionen für Lückentext/)
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Block darüber einfügen/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'memory_game', 'fill_blanks'])
+    fireEvent.click(screen.getByRole('button', { name: /Rückgängig/ }))
+    await waitFor(() => expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'fill_blanks']), { timeout: 3000 })
+  })
+
+  it('Abbrechen im Katalog fügt nichts ein', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument())
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it('Bild-Typ: erst Bildauswahl, dann Block mit dem gewählten Bild', async () => {
+    api.ladeMaterialBilder.mockResolvedValue({
+      bilder: [{ pfad: 'images/seite2.png', vorschau: 'data:image/jpeg;base64,AA', breite: 600, hoehe: 300 }],
+      mehr: false,
+    })
+    api.ladeMaterialBild.mockResolvedValue({ pfad: 'images/seite2.png', bild: 'data:image/jpeg;base64,BB', breite: 600, hoehe: 300 })
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
+    fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(letzteStruktur().chapters[0].elements[2]).toMatchObject({ type: 'image', path: 'images/seite2.png' })
   })
 })

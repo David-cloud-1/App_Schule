@@ -11,6 +11,7 @@ import { DELETE as verwerfen, GET as laden, PUT as speichern } from './ablaeufe/
 import { POST as vorschau } from './ablaeufe/[id]/editor/vorschau/route'
 import { POST as rohfassung } from './ablaeufe/[id]/editor/rohfassung/route'
 import { POST as veroeffentlichen } from './ablaeufe/[id]/editor/veroeffentlichen/route'
+import { POST as bilder } from './ablaeufe/[id]/editor/bilder/route'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const ctx = { params: Promise.resolve({ id: ID }) }
@@ -403,6 +404,62 @@ describe('Zugriff', () => {
     vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: verboten } as never)
     expect((await laden(new Request('http://t'), ctx)).status).toBe(403)
     expect((await vorschau(json({}), ctx)).status).toBe(403)
+    expect((await bilder(json({}), ctx)).status).toBe(403)
+    expect(kernPfade()).toEqual([])
+  })
+})
+
+describe('Bilder für die Bildauswahl (PROJ-90)', () => {
+  const BILD = { pfad: 'images/a.png', vorschau: 'data:image/jpeg;base64,AA', breite: 600, hoehe: 300 }
+
+  it('listet die Bilder aus der Einlesung über den Kern', async () => {
+    kernSagt('/api/editor/bilder', { bilder: [BILD], mehr: false })
+    const res = await bilder(json({}), ctx)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ bilder: [BILD], mehr: false })
+    expect(letzter('/api/editor/bilder')).toEqual({ einlesung: { url: 'https://speicher.test/lesen/u1/' + ID + '/einlesung.zip' } })
+  })
+
+  it('nimmt ohne Einlesung den Bilder-Auszug', async () => {
+    vorhanden = new Set(['auszug.zip'])
+    kernSagt('/api/editor/bilder', { bilder: [], mehr: false })
+    await bilder(json({}), ctx)
+    expect(String((letzter('/api/editor/bilder').einlesung as { url: string }).url)).toContain('auszug.zip')
+  })
+
+  it('liefert ohne Bildquelle eine leere Liste, ohne den Kern zu fragen', async () => {
+    vorhanden = new Set()
+    expect(await (await bilder(json({}), ctx)).json()).toEqual({ bilder: [], mehr: false })
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('holt ein einzelnes Bild in Arbeitsgröße', async () => {
+    kernSagt('/api/editor/bild', { pfad: 'images/a.png', bild: 'data:image/jpeg;base64,BB', breite: 600, hoehe: 300 })
+    const d = await (await bilder(json({ pfad: 'images/a.png' }), ctx)).json()
+    expect(d).toEqual({ pfad: 'images/a.png', bild: 'data:image/jpeg;base64,BB', breite: 600, hoehe: 300 })
+    expect(letzter('/api/editor/bild')).toMatchObject({ pfad: 'images/a.png' })
+  })
+
+  it('lehnt Pfade außerhalb von images/ ab, ohne den Kern zu fragen', async () => {
+    for (const pfad of ['../ausgabe', 'images/../einlesung.zip', '/etc/passwd', 'text.txt', 'images\\a.png']) {
+      expect((await bilder(json({ pfad }), ctx)).status).toBe(400)
+    }
+    expect((await bilder(json({ pfad: 'images/a.png', mehr: 1 }), ctx)).status).toBe(400)
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('gibt Kern-Fehler verständlich weiter (Bild gibt es nicht)', async () => {
+    kernSagt('/api/editor/bild', { error: 'Dieses Bild gibt es im Material nicht.' }, 404)
+    const res = await bilder(json({ pfad: 'images/fehlt.png' }), ctx)
+    expect(res.status).toBe(400) // Kern-Fehler kommen einheitlich als 400 mit Satz an
+    expect((await res.json()).error).toBe('Dieses Bild gibt es im Material nicht.')
+  })
+
+  it('lehnt fremde und nicht bearbeitbare Materialien ab', async () => {
+    zeile = null as never
+    expect((await bilder(json({}), ctx)).status).toBe(404)
+    zeile = { ...BASIS, einstellungen: { ...BASIS.einstellungen, format: 'h5p' }, ergebnis: { ...BASIS.ergebnis, format: 'h5p' } }
+    expect((await bilder(json({}), ctx)).status).toBe(400)
     expect(kernPfade()).toEqual([])
   })
 })
