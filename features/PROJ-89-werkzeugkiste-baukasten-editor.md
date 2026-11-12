@@ -1,8 +1,8 @@
 # PROJ-89: Werkzeugkiste – Baukasten-Editor (Grundgerüst)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12 (Requirements)
+**Last Updated:** 2026-11-12 (Architecture freigegeben)
 
 ## Idee in einem Satz
 Eine Lehrkraft kann ein fertiges Material im Format „Interaktive Seite" nachträglich bearbeiten: Themen und Blöcke verschieben, löschen und duplizieren, Texte und Aufgaben ändern, mit Vorschau. Die Seite ändert sich für Schüler erst, wenn sie bewusst veröffentlicht.

@@ -105,7 +105,7 @@
 | PROJ-86 | Freigabe-Status in der Nachweis-Liste sichtbar | Deployed | [PROJ-86-nachweis-freigabe-sichtbar.md](PROJ-86-nachweis-freigabe-sichtbar.md) | 2026-11-11 |
 | PROJ-87 | Werkzeugkiste – Assistent „Schritt für Schritt“ | Deployed | [PROJ-87-werkzeugkiste-assistent-schritt-fuer-schritt.md](PROJ-87-werkzeugkiste-assistent-schritt-fuer-schritt.md) | 2026-11-11 |
 | PROJ-88 | Schulrecht – bessere Suche & lesbare Darstellung | Deployed | [PROJ-88-schulrecht-suche-und-darstellung.md](PROJ-88-schulrecht-suche-und-darstellung.md) | 2026-11-11 |
-| PROJ-89 | Werkzeugkiste – Baukasten-Editor (Grundgerüst) | Planned | [PROJ-89-werkzeugkiste-baukasten-editor.md](PROJ-89-werkzeugkiste-baukasten-editor.md) | 2026-11-12 |
+| PROJ-89 | Werkzeugkiste – Baukasten-Editor (Grundgerüst) | Architected | [PROJ-89-werkzeugkiste-baukasten-editor.md](PROJ-89-werkzeugkiste-baukasten-editor.md) | 2026-11-12 |
 | PROJ-90 | Werkzeugkiste – Baukasten: Aufgabentyp-Katalog | Planned | [PROJ-90-werkzeugkiste-aufgabentyp-katalog.md](PROJ-90-werkzeugkiste-aufgabentyp-katalog.md) | 2026-11-12 |
 | PROJ-91 | Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Planned | [PROJ-91-werkzeugkiste-tabelle-diagramm.md](PROJ-91-werkzeugkiste-tabelle-diagramm.md) | 2026-11-12 |
 | PROJ-92 | Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Planned | [PROJ-92-werkzeugkiste-bilder.md](PROJ-92-werkzeugkiste-bilder.md) | 2026-11-12 |
