@@ -1,6 +1,6 @@
 # PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (Anforderungen ausgearbeitet)
 
@@ -79,6 +79,7 @@ Im Baukasten-Editor (PROJ-89) fügt die Lehrkraft an jeder Stelle einen neuen Bl
 - [ ] Ohne Bilder sind beide Einträge ausgegraut und zeigen „Dieses Material hat noch keine Bilder. Hochladen kommt bald." Sie lassen sich nicht einfügen, sind aber per Bildschirmleser als „nicht verfügbar" erkennbar.
 - [ ] Beim Einfügen eines Bild-Typs öffnet sich zuerst die **Bildauswahl**: Vorschaubilder aller Bilder des Materials, Auswahl per Klick. „Abbrechen" fügt keinen Block ein.
 - [ ] Das Formular beider Typen erlaubt später, ein anderes Bild aus derselben Auswahl zu wählen.
+- [ ] **Bilder ordnen** (`image_sequencing`) ist immer wählbar. Jeder Schritt kann im Formular ein Bild aus derselben Auswahl bekommen. Ohne Bilder läuft die Aufgabe als reine Textreihenfolge, und der Kern meldet das als Hinweis.
 
 ### Kapiteltest (E6)
 - [ ] Im Formular „Kapiteltest" (im Thema und in der Lernzielkontrolle) öffnet „Frage hinzufügen" denselben Katalog, **gefiltert** auf die im Kapiteltest erlaubten Typen: Auswahlfrage, Richtig oder falsch, Lückentext.
@@ -87,7 +88,7 @@ Im Baukasten-Editor (PROJ-89) fügt die Lehrkraft an jeder Stelle einen neuen Bl
 - [ ] Die neue Frage wird am Ende des Kapiteltests eingefügt und startet mit Beispielinhalt.
 
 ### Beispielinhalt (E2)
-- [ ] Jeder Typ hat einen festen **Beispielinhalt**, der die Prüfstelle des Kerns ohne Fehler besteht und in der Vorschau voll funktioniert (z. B. Auswahlfrage mit Frage, drei Antworten, einer richtigen und Feedback; Kreuzworträtsel mit vier Wörtern; Memory mit vier Paaren).
+- [ ] Jeder Typ hat einen festen **Beispielinhalt**, den der Kern ohne Warnung baut (Ausnahme: Bilder ordnen ohne Bilder, Video ohne echte Adresse) und in der Vorschau voll funktioniert (z. B. Auswahlfrage mit Frage, drei Antworten, einer richtigen und Feedback; Kreuzworträtsel mit vier Wörtern; Memory mit vier Paaren).
 - [ ] Die Beispiele sind **fachneutral**, damit sie in jedem Fachbereich passen. Sie erklären möglichst den Typ selbst (z. B. „Ersetze diese Frage durch deine eigene").
 - [ ] Solange ein eingefügter Block seinen Beispielinhalt **unverändert** enthält, zeigt die Prüfstelle an diesem Block den Hinweis „Beispielinhalt noch nicht ersetzt". Wie alle Hinweise sperrt er nicht (PROJ-89 E9).
 - [ ] Die Bestätigung „Veröffentlichen" nennt zusätzlich, wie viele Blöcke noch Beispielinhalt enthalten, wenn es mindestens einer ist.
@@ -103,13 +104,13 @@ Im Baukasten-Editor (PROJ-89) fügt die Lehrkraft an jeder Stelle einen neuen Bl
   - **Rechenbeispiel** (`calculation_example`): Formel, Rechenschritte, Ergebnis, Erklärung
   - **Kopfrechnen** (`arithmetic_quiz`): Aufgaben mit Ergebnis
   - **Video mit Fragen** (`interactive_video`): Video-Adresse, Fragen mit Zeitpunkt (mm:ss) und Antworten
-  - **Offene Frage** (`freitext`): Aufgabe, Frage, Musterlösung, Mindestzahl Zeichen, Höhe des Antwortfelds
-  - **Trainer** (`trainer`): Arbeitsauftrag, Runden mit richtiger Reihe und Störern
+  - **Offene Frage** (`freitext`): Frage, Musterlösung, Mindestzahl Zeichen, Höhe des Antwortfelds (Zeilen)
+  - **Trainer** (`trainer`): Arbeitsauftrag, Anzahl Runden (1–5), Gruppen mit Titel, optionalem Hinweis, Einträgen der Reihe und optionalen Störern
   - **Bildzuordnung** (`bildzuordnung`): Bild, Arbeitsauftrag, Alternativtext, Punkte mit Beschriftung. Punkte werden **per Klick auf das Bild** gesetzt und per Ziehen verschoben. Für Tastatur gibt es Eingabefelder für die Position in Prozent.
   - **Wörtersuche** (`find_words`): Arbeitsauftrag, Wörter
   - **Memory** (`memory_game`): Arbeitsauftrag, Paare (Karte A, Karte B)
   - **Lernkarten zum Tippen** (`flashcards`): Arbeitsauftrag, Karten mit Frage und akzeptierten Antworten
-  - **Bilder ordnen** (`image_sequencing`): Arbeitsauftrag, Schritte in der richtigen Reihenfolge
+  - **Bilder ordnen** (`image_sequencing`): Arbeitsauftrag, Schritte in der richtigen Reihenfolge, je Schritt Text und optional ein Bild aus der Bildauswahl
   - **Rechenweg** (`rechenweg`): Aufgabe, Frage, Schritte, Ergebnis, Einheit, Hinweis
   - **Fallakte** (`fallakte`): Titel, Ausgangssituation, Schritte (Frage, Antworten, richtige Antwort, was danach enthüllt wird), Urteil am Ende
   - **Schätzrunde** (`schaetzrunde`): Arbeitsauftrag, Fragen mit Wert, Einheit, Quelle und Kommentar
@@ -161,7 +162,104 @@ Im Baukasten-Editor (PROJ-89) fügt die Lehrkraft an jeder Stelle einen neuen Bl
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+> Stand 2026-11-12. Grundlage: Editor aus PROJ-89 (`src/components/werkzeugkiste/editor/*`, `src/lib/werkzeugkiste-editor*.ts`) und Kern (`seite.py`, `prompts.py`, `kern_editor.py`, Zweig `vercel-kern`).
+
+### Was die Prüfung des Bestands ergeben hat
+1. **Der Editor kann schon fast alles, was der Katalog braucht.** Änderungen laufen über eine Funktion („ändere die Struktur"), sind damit automatisch ein Rückgängig-Schritt und werden automatisch gespeichert. Ein neuer Block ist nur eine weitere solche Änderung.
+2. **Die 13 Formulare aus PROJ-89** nutzen gemeinsame Bausteine (Feld, sortierbare Liste). Die 18 neuen Formulare bauen darauf auf.
+3. **Bilder liegen nicht einzeln im Speicher**, sondern gepackt in der Einlesung (bzw. im Bilder-Auszug) des Materials, unter Namen wie `images/seite3_x42.png`. Nur der Kern öffnet dieses Paket. Für die Bildauswahl braucht es deshalb einen kleinen neuen Kern-Weg.
+4. **Die genauen Felder je Typ** stehen in `seite.py`. Viele Typen akzeptieren zwei Namen (`schritte`/`steps`, `frage`/`question`, `punkte`/`points`). Der Master-Prompt nennt jeweils den bevorzugten Namen.
+5. **Die Prüfstelle läuft im Kern.** Den Hinweis „Beispielinhalt noch nicht ersetzt" kann der Kern nicht erkennen, weil er die Beispiele nicht kennt. Er entsteht deshalb im Editor.
+
+### A) Komponenten-Struktur
+```
+Editor (vorhanden, PROJ-89)
++-- Gliederung
+|   +-- Thema
+|   |   +-- Einfügestelle „+" zwischen je zwei Blöcken          ← neu
+|   |   +-- Block-Zeile
+|   |   |   +-- ⋯-Menü: „Block darüber/darunter einfügen …"     ← neu
+|   |   |   +-- geöffneter Block → Formular (jetzt für alle Typen)
+|   |   +-- „Block hinzufügen" am Ende des Themas                ← neu
+|   +-- Lernzielkontrolle → Kapiteltest → „Frage hinzufügen"     ← öffnet jetzt den gefilterten Katalog
+|   +-- Hinweise der Prüfstelle (inkl. „Beispielinhalt noch nicht ersetzt")   ← ergänzt
++-- Veröffentlichen-Dialog: „N Blöcke enthalten noch Beispielinhalt"         ← ergänzt
+
+Katalog-Fenster (neu; ab 1024 px als Fenster, darunter Vollbild)
++-- Kopf: Titel „Block hinzufügen", ✕
++-- Hinweiszeile (nur gefiltert): „Im Kapiteltest sind nur diese Fragetypen möglich."
++-- Suchfeld (Fokus beim Öffnen)
++-- „Zuletzt verwendet" (bis 4 Karten, entfällt bei Suche/ohne Verlauf)
++-- Gruppe × 7 (Überschrift)
+|   +-- Typ-Karte: Vorschaubild · Name · Beschreibung · „Gut für: …" · Pill „wird ausgewertet"
+|       (ausgegraut mit Grund, wenn Bild-Typ ohne Bilder)
++-- Leerzustand: „Kein Aufgabentyp passt zu „…"." + „Suche löschen"
+
+Bildauswahl-Fenster (neu): Raster der Bilder des Materials, Laden/Leer/Fehler-Zustand
+
+Neue Formulare (18, gleicher Aufbau wie PROJ-89, Umschalter „Formular | Rohfassung")
++-- Bild · Zuordnen · Kreuzworträtsel · Reihenfolge · Rechenbeispiel · Kopfrechnen
++-- Video mit Fragen · Offene Frage · Trainer · Wörtersuche · Memory · Lernkarten zum Tippen
++-- Bilder ordnen · Rechenweg · Fallakte · Schätzrunde · Selbsteinschätzung
++-- Bildzuordnung mit Punkte-Setzer (Bild groß, Klick setzt Punkt, Ziehen verschiebt, Prozentfelder)
+```
+
+### B) Daten (in Alltagssprache)
+**Keine Änderung an der Datenbank.** Ein neuer Block ist ein gewöhnlicher Block im Entwurf (PROJ-89) und wird mit ihm gespeichert und veröffentlicht.
+
+**Der Katalog ist feste Programm-Information** (eine Liste in der App, kein Inhalt aus der Datenbank). Je Eintrag:
+- Typ (technischer Name), Name (aus der vorhandenen Namensliste), Gruppe
+- Beschreibung (ein Satz), „Gut für" (ein Satz), Suchbegriffe
+- wird ausgewertet ja/nein, braucht Bild ja/nein, im Kapiteltest erlaubt ja/nein
+- Beispielinhalt (fester Block in der Form des Master-Prompts)
+- Vorschaubild (siehe Entscheidungen)
+
+**„Zuletzt verwendet"** liegt im Speicher des Browsers (pro Gerät, E7): höchstens 4 Typnamen, keine Inhalte. Fehlt der Speicher, entfällt der Abschnitt.
+
+**„Beispielinhalt unverändert"** wird nicht gespeichert, sondern bei jeder Anzeige berechnet: Ein Block, der inhaltlich genau dem Beispiel seines Typs entspricht, trägt den Hinweis. So verschwindet er mit der ersten Änderung von selbst und überlebt Neuladen, Duplizieren und Rückgängig ohne Sonderregeln.
+
+**Bilder für die Auswahl** kommen auf Anfrage vom Kern: eine Liste mit Name und kleinem Vorschaubild (höchstens 240 px breit). Für Bild-Block und Bildzuordnung lädt das Formular das gewählte Bild in größerer Fassung (höchstens 1200 px). Nichts davon wird gespeichert, im Block steht wie bisher nur der Bildname.
+
+### C) Abläufe
+**Einfügen:** Klick auf „+", „Block hinzufügen" oder den Menüeintrag merkt sich die Stelle (Thema, Position) und öffnet den Katalog. Die Wahl eines Typs legt eine Kopie seines Beispielinhalts an genau diese Stelle, öffnet den Block und vermerkt den Typ in „Zuletzt verwendet". Bei Bild und Bildzuordnung kommt vorher die Bildauswahl. Ihr Bild wird in den Beispielinhalt eingesetzt.
+
+**Kapiteltest:** „Frage hinzufügen" öffnet denselben Katalog mit Filter (nur Auswahlfrage, Richtig oder falsch, Lückentext). Die Frage wird am Ende angehängt.
+
+**Bildauswahl:** Der Editor fragt beim ersten Öffnen die Bilderliste bei der App ab. Die App prüft wie bei allen Editor-Wegen Rolle und Besitz, sucht die Bildquelle (Einlesung oder Bilder-Auszug, wie beim Bauen) und lässt den Kern die Vorschaubilder erzeugen. Die Liste bleibt, solange der Editor offen ist. Ob ein Material überhaupt Bilder hat (für das Ausgrauen), weiß der Editor aus derselben Liste.
+
+**Hinweise:** Die Befunde des Kerns und die Beispiel-Hinweise des Editors werden zu einer Liste zusammengeführt. Gliederung, Hinweis-Liste und Veröffentlichen-Dialog zeigen beide gleich.
+
+### D) Neue Schnittstellen
+| Weg | Wer | Was |
+|---|---|---|
+| App: Bilder eines Materials | Editor → App | Liste der Bilder (Name, Größe, Vorschaubild). Nur Besitzerin/Besitzer, sonst 403/404. |
+| App: ein Bild groß | Editor → App | Ein Bild in Arbeitsgröße. Der Name muss in der Bilderliste des Materials stehen. |
+| Kern: Bilder auflisten | App → Kern | Öffnet die Einlesung, verkleinert die Bilder, gibt die Liste zurück (höchstens 150 Bilder). |
+| Kern: Bild holen | App → Kern | Ein Bild aus der Einlesung, auf höchstens 1200 px verkleinert. Nur Namen aus dem Paket, nie Pfade auf dem Server. |
+
+Die neuen App-Wege liegen unter dem vorhandenen Editor-Pfad und sind damit für Lehrkräfte schon freigegeben (Proxy-Liste prüfen, Wächter-Test vorhanden). Das Verkleinern übernimmt PyMuPDF, das der Kern schon hat. Es kommt also keine neue Bibliothek hinzu.
+
+### E) Technische Entscheidungen (und warum)
+| Entscheidung | Warum |
+|---|---|
+| **Vorschaubilder als kleine gezeichnete Skizzen im App-Code (SVG), keine Bildschirmfotos.** | Sie passen sich Hell/Dunkel automatisch an (ws-Farben), laden ohne Wartezeit, wiegen fast nichts und müssen bei Änderungen am Seiten-Design nicht neu fotografiert werden. Bildschirmfotos bräuchten einen Browser im Bauprozess, den wir auf diesem Rechner nicht laufen lassen. |
+| **Katalog und Beispielinhalte als eine feste Liste in der App.** | Ein Ort für alles, was die Oberfläche zeigt. Kein Datenbank- oder Kern-Aufruf beim Öffnen, damit öffnet er sich sofort (unter 300 ms). |
+| **Beispiel-Hinweis im Editor statt in der Prüfstelle des Kerns.** | Der Kern kennt die Beispiele nicht und soll sie nicht kennen müssen. Weil der Hinweis berechnet und nicht gespeichert wird, braucht es keine Markierung im YAML, und veröffentlichte Seiten bleiben sauber. |
+| **Gleicher Katalog für Blöcke und Kapiteltest, nur gefiltert.** | Eine Komponente, ein Bedienmuster. Die Liste der erlaubten Typen gibt es schon (`KAPITELTEST_TYPEN`). |
+| **Formulare behalten unbekannte Felder und den vorhandenen Feldnamen.** | Wie in PROJ-89: Das Formular ändert nur, was es zeigt. Bei Doppelnamen (`steps`/`schritte`) schreibt es in den Namen, den der Block schon hat. So bleibt eine KI-Antwort beim Bearbeiten unverändert, wo niemand etwas angefasst hat. |
+| **Bilder über die App holen, nicht direkt aus dem Speicher.** | Die Einlesung ist ein gepacktes Paket, das nur der Kern lesen kann. Der Kern hat keine Speicher-Schlüssel und bekommt wie bisher eine kurzlebige Leseadresse von der App. |
+| **Wächter-Tests gegen Auseinanderlaufen.** | (1) Ein App-Test vergleicht den Katalog mit der Typliste des Kerns (`BAUSTEINE` in `seite.py`), wenn der Kern-Ordner danebenliegt. (2) Ein Kern-Test baut jeden Beispielinhalt aus der Liste der App und erwartet keine Warnung (außer den beiden erlaubten). |
+| **Rohfassung bleibt in jedem Formular.** | Expertenweg und Rettungsleine für Sonderfälle, die ein Formular nicht abdeckt. |
+
+### F) Abhängigkeiten (Pakete)
+Keine neuen. Genutzt werden die vorhandenen: shadcn/ui (Dialog, Input, Badge …), dnd-kit (Sortieren in Listen, schon im Editor), lucide-react, im Kern PyMuPDF.
+
+### G) Reihenfolge beim Bau
+1. **Katalog-Grundlage:** Liste der 31 Einträge mit Texten, Suchbegriffen und Beispielinhalten, Such- und Einfüge-Funktionen, Tests.
+2. **Kern:** Bilder auflisten und Bild holen, Test für alle Beispielinhalte. Deploy des Kerns vor der App.
+3. **Oberfläche:** Katalog-Fenster mit Skizzen, Einfügestellen, Kapiteltest-Anbindung, Beispiel-Hinweise.
+4. **18 Formulare** samt Bildauswahl und Punkte-Setzer.
 
 ## QA Test Results
 _To be added by /qa_
