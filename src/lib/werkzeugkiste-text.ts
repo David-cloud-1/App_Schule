@@ -152,9 +152,17 @@ export function rundreiseOk(original: string, ausDemEditor: string): boolean {
 
 // ── Hinweise zur HTML-Ansicht ────────────────────────────────────────────
 
-/** Skripte, Ereignisse und javascript:-Links entfernt der Kern beim Bauen – der Editor sagt es nur */
+/**
+ * Skripte, Ereignisse, javascript:-Links und eingebettete fremde Seiten (iframe,
+ * object, embed, form, meta, srcdoc) entfernt der Kern beim Bauen – der Editor sagt es nur
+ */
 export function hatAktivenInhalt(html: string): boolean {
-  return /<\s*script\b|\son[a-z]+\s*=|javascript:/i.test(html)
+  return /<\s*(?:script|iframe|frame|object|embed|applet|form|meta|base)\b|[\s/]on[a-z]+\s*=|\ssrcdoc\s*=|javascript:/i.test(html)
+}
+
+/** Bilder von fremden Adressen (`<img src="https://…">`) laden offline nicht */
+export function hatExterneBilder(html: string): boolean {
+  return /<\s*img\b[^>]*\ssrc\s*=\s*["']?\s*(?:https?:)?\/\//i.test(html)
 }
 
 const LEERE_TAGS = new Set(['br', 'hr', 'img', 'input', 'meta', 'link', 'area', 'base', 'col', 'embed', 'source', 'track', 'wbr'])

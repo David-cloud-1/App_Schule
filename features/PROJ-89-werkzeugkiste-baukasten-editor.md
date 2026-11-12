@@ -415,9 +415,24 @@ Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Ein
 - `hat_entwurf` steht jetzt in der Material-Liste und am Ablauf (`ABLAUF_SPALTEN`). **Deshalb muss die Migration vor dem Ausrollen der App eingespielt sein**, sonst schlagen alle Werkzeugkiste-Abfragen fehl.
 - Tests: 9 (Routen: Kopie als Seite, Sperren, Listen-Felder), 7 (Einstiege in der Oberfläche), 1 (Regal → Editor). Ganze Suite grün (3112), Build grün.
 
+### Fixes nach der QA (2026-11-12)
+**App** (Branch `feat/proj-89-baukasten-editor`)
+- **BUG-1:** Stände werden als Zeitpunkt verglichen (`gleicherStand`), nicht als Text. `PUT …/editor` gibt den Stand so zurück, wie ihn die Datenbank schreibt. Die nachgebildete Datenbank in `editor.test.ts` liefert jetzt `…+00:00` wie die echte, ein Test speichert dreimal hintereinander.
+- **BUG-2:** Veröffentlichen holt zuerst YAML und Prüfung (ohne Nebenwirkung), baut in Zwischendateien (`ausgabe-neu`, `vorschau-neu.html`), speichert mit Stand-Bedingung und ersetzt erst danach `ausgabe` und `vorschau.html`. Scheitert das Ersetzen, wird das Speichern zurückgenommen (alte Antwort, Entwurf wieder da). Bei 409 bleibt die veröffentlichte Datei unberührt.
+- **BUG-4:** 401/403/404 beim Speichern → Banner „Du hast keinen Zugriff mehr …“ bzw. „Dieses Material gibt es nicht mehr …“, Gliederung schreibgeschützt (`inert`), Veröffentlichen gesperrt, kein neuer Versuch.
+- **BUG-5:** Fehlende Bilder kommen als Hinweis „Bild fehlt: name.png“ an den Block (Liste und Symbol wie die Prüfstelle). Die HTML-Ansicht weist auf externe Bilder hin. Der Hinweis auf aktiven Inhalt erkennt jetzt auch iframe/object/embed/form/meta/srcdoc und `/onerror=`.
+- **BUG-6:** „Neu einlesen“ ist bei einem Entwurf gesperrt (409, `entwurf_im_editor`).
+
+**Kern** (Repo `Werkzeugkiste`, Branch `fix/proj-89-qa`, Commit 4704b78)
+- **BUG-3:** `_saeubern` hat eine zweite Stufe: entfernt iframe, frame, object, embed, applet, meta, base, link, form, portal, `srcdoc` und alle on…-Attribute (auch nach `/`), entschärft Skript- und `data:`-URLs auch ohne Anführungszeichen und mit Zeichencodes (`&#x09;`, `&#106;`). Die erste Stufe bleibt unverändert. Gegenprobe mit 752 echten Texten: keine Abweichung, bisherige Seiten bleiben bytegleich.
+- **BUG-7 (neu, Critical, bestand schon vor PROJ-89):** Bildpfade wurden im Server notfalls von der Platte des Kerns gelesen. Ein Pfad wie `/proc/self/environ` oder `kern.py` in der Antwort bzw. Rohfassung hätte Dateien des Servers (auch Umgebungsvariablen mit dem Kern-Kennwort) als Bild in die Seite geholt. Jetzt lesen `seite.py` und der Moodle-ZIP-Weg nur noch im Kommandozeilen-Betrieb (ohne `images`) von der Platte. H5P war nicht betroffen.
+- **BUG-5 (Kern-Teil):** Der Editor-Bau liefert `fehlende_bilder` mit Stelle. Die Editor-Vorschau zeigt einen Platzhalter „Bild fehlt: …“, veröffentlichte Seiten bleiben ohne.
+- Neue Tests: `kern_sicherheit_test.py` (7). Alle bisherigen Kern-Tests grün.
+
 ### Noch offen
-- `/qa` für PROJ-89 (Paket 1–3 zusammen), am besten nachdem Kern-PR und Migration in einer Testumgebung laufen. Ein echter Durchlauf gegen den Kern fehlt bisher.
-- Livegang in dieser Reihenfolge: lokalen `vercel-kern` mit `b4a1780` (PROJ-88) pushen → Kern-PR rebasen und mergen → Migration einspielen → App-Branch mergen.
+- Kern-Branch `fix/proj-89-qa` nach `vercel-kern` mergen und deployen (vor der App).
+- Erneute `/qa` und Browser-Durchgang mit einem Test-Material.
+- Kennwort des Kerns (`KERN_SECRET`) vorsorglich erneuern: BUG-7 war seit PROJ-51 offen. Ein Missbrauch ist nicht bekannt, ließe sich aber nur an den Antworten in `werkzeug_ablaeufe` erkennen.
 
 ## QA Test Results
 
@@ -482,6 +497,9 @@ Die Gliederung zeigt bei fehlender Bilddatei keinen Hinweis. Die HTML-Ansicht we
 
 ### Empfehlung
 BUG-1 vor dem Livegang beheben (sonst ist der Editor praktisch nicht benutzbar), BUG-2 ebenfalls. BUG-3 als eigener Kern-Fix, BUG-4 bis BUG-6 können folgen. Nach den Fixes erneut `/qa` und ein Browser-Durchgang mit einem Test-Material.
+
+### Stand der Bugs (2026-11-12, nach den Fixes)
+BUG-1 bis BUG-6 behoben, dazu BUG-7 (Server-Dateien als Bild, beim Beheben gefunden). Details unter „Umsetzung → Fixes nach der QA“. Erneute QA steht aus.
 
 ## Deployment
 _To be added by /deploy_

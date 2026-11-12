@@ -5,6 +5,7 @@ import {
   boxArt,
   eingefuegtesBereinigen,
   hatAktivenInhalt,
+  hatExterneBilder,
   istBox,
   kennzeichen,
   normalisiere,
@@ -79,6 +80,20 @@ describe('Hinweise zur HTML-Ansicht', () => {
     expect(hatAktivenInhalt('<script>alert(1)</script>')).toBe(true)
     expect(hatAktivenInhalt('<a href="javascript:alert(1)">a</a>')).toBe(true)
     expect(hatAktivenInhalt('<p>Online-Formular</p>')).toBe(false)
+    // Was der Kern seit der QA zusätzlich entfernt
+    expect(hatAktivenInhalt('<iframe src="https://x.example"></iframe>')).toBe(true)
+    expect(hatAktivenInhalt('<form action="https://x.example"></form>')).toBe(true)
+    expect(hatAktivenInhalt('<img src="x.png"/onerror=alert(1)>')).toBe(true)
+    expect(hatAktivenInhalt('<iframe srcdoc="x"></iframe>')).toBe(true)
+    expect(hatAktivenInhalt('<p>Ein Formular ausfüllen, die Information lesen</p>')).toBe(false)
+  })
+
+  it('externe Bilder', () => {
+    expect(hatExterneBilder('<img src="https://example.org/a.png">')).toBe(true)
+    expect(hatExterneBilder("<p><img alt='x' src='//cdn.example/a.png'></p>")).toBe(true)
+    expect(hatExterneBilder('<img src="data:image/png;base64,AAA=">')).toBe(false)
+    expect(hatExterneBilder('<img src="images/lager.png">')).toBe(false)
+    expect(hatExterneBilder('<a href="https://example.org">Link</a>')).toBe(false)
   })
 
   it('nicht geschlossene Elemente', () => {

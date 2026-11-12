@@ -16,6 +16,8 @@ interface Verlauf {
 
 const GRUPPE_MS = 1500
 const NEUER_VERSUCH_MS = 5000
+export const KEIN_ZUGRIFF = 'Du hast keinen Zugriff mehr auf die Werkzeugkiste. Deine letzten Änderungen sind nicht gespeichert.'
+export const MATERIAL_WEG = 'Dieses Material gibt es nicht mehr. Deine letzten Änderungen sind nicht gespeichert.'
 
 /**
  * Zustand des Baukasten-Editors (PROJ-89): die Struktur mit Rückgängig/Wiederholen
@@ -26,6 +28,8 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
   const [verlauf, setVerlauf] = useState<Verlauf>({ liste: [start], index: 0, gruppe: null, zeit: 0 })
   const [speicherstand, setSpeicherstand] = useState<Speicherstand>('gespeichert')
   const [konflikt, setKonflikt] = useState(false)
+  /** Satz, wenn der Editor schreibgeschützt ist (kein Zugriff, Material weg) */
+  const [gesperrt, setGesperrt] = useState<string | null>(null)
   const [fehlertext, setFehlertext] = useState<string | null>(null)
   /** Stand nach dem letzten erfolgreichen Speichern – Auslöser für die Vorschau */
   const [gespeichertAm, setGespeichertAm] = useState(0)
@@ -59,6 +63,14 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
       if (e instanceof WerkzeugFehler && e.status === 409) {
         konfliktRef.current = true
         setKonflikt(true)
+        setSpeicherstand('fehler')
+        return false
+      }
+      // Kein Zugriff mehr (Rolle entzogen, abgemeldet) oder Material gelöscht:
+      // nicht endlos wiederholen, sondern schreibgeschützt anhalten (QA BUG-4)
+      if (e instanceof WerkzeugFehler && (e.status === 401 || e.status === 403 || e.status === 404)) {
+        konfliktRef.current = true
+        setGesperrt(e.status === 404 ? MATERIAL_WEG : KEIN_ZUGRIFF)
         setSpeicherstand('fehler')
         return false
       }
@@ -123,10 +135,12 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
   }, [])
 
   const rueckgaengig = useCallback(() => {
+    if (konfliktRef.current) return
     setVerlauf((v) => (v.index > 0 ? { ...v, index: v.index - 1, gruppe: null } : v))
   }, [])
 
   const wiederholen = useCallback(() => {
+    if (konfliktRef.current) return
     setVerlauf((v) => (v.index < v.liste.length - 1 ? { ...v, index: v.index + 1, gruppe: null } : v))
   }, [])
 
@@ -151,6 +165,7 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
     speicherstand,
     fehlertext,
     konflikt,
+    gesperrt,
     /** Sofort speichern (vor dem Veröffentlichen); true = alles gespeichert */
     jetztSpeichern: speichern,
     stand: () => standRef.current,

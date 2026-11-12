@@ -37,6 +37,7 @@ import {
   boxArt,
   eingefuegtesBereinigen,
   hatAktivenInhalt,
+  hatExterneBilder,
   rundreiseOk,
   sauberGeschlossen,
 } from '@/lib/werkzeugkiste-text'
@@ -200,6 +201,11 @@ export function TextEditor({
       {aktiv && (
         <p className="text-sm text-ws-muted" role="status">
           Skripte und Ereignisse werden aus Sicherheitsgründen beim Bauen entfernt.
+        </p>
+      )}
+      {hatExterneBilder(html) && (
+        <p className="text-sm text-ws-muted" role="status">
+          Externe Bilder funktionieren offline nicht. Lade das Bild lieber hoch.
         </p>
       )}
     </div>

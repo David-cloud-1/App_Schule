@@ -9,6 +9,7 @@ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { POST as alsSeite } from './ablaeufe/[id]/als-seite/route'
 import { POST as bauen } from './ablaeufe/[id]/bauen/route'
+import { POST as einlesen } from './ablaeufe/[id]/einlesen/route'
 import { POST as kapitelEinsetzen } from './ablaeufe/[id]/kapitel/einsetzen/route'
 import { POST as pruefen } from './ablaeufe/[id]/pruefen/route'
 import { entwurfSperre, zeileZuAblauf, type AblaufZeile } from '@/lib/werkzeugkiste-server'
@@ -171,6 +172,13 @@ describe('Schritt 4 ist gesperrt, solange ein Entwurf im Editor liegt', () => {
     kernSagt('/api/pruefen', { lesbar: true, fehler: null, befunde: [], korrekturen: 0, nachbesserungsPrompt: null })
     const gleich = await pruefen(json({ antwort: BASIS.antwort }), ctx)
     expect(gleich.status).toBe(200)
+  })
+
+  it('Neu einlesen ist gesperrt – der Entwurf würde sonst zum alten Skript gehören (QA BUG-6)', async () => {
+    const res = await einlesen(json({}), ctx)
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: 'entwurf_im_editor' })
+    expect(kernAufrufe).toHaveLength(0)
   })
 
   it('ohne Entwurf oder bei unfertigen Abläufen sperrt nichts', () => {

@@ -151,6 +151,19 @@ describe('Baukasten-Editor', () => {
     expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
   })
 
+  it('ohne Zugriff: schreibgeschützt mit klarem Satz, kein endloses Wiederholen (QA BUG-4)', async () => {
+    api.speichereEntwurf.mockRejectedValue(new WerkzeugFehler('Kein Zugriff', 403))
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByText('Lückentext')
+    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    expect(await screen.findByText(/keinen Zugriff mehr auf die Werkzeugkiste/, {}, { timeout: 3000 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toHaveAttribute('inert')
+    // Kein zweiter Versuch nach 5 Sekunden
+    await new Promise((r) => setTimeout(r, 5600))
+    expect(api.speichereEntwurf).toHaveBeenCalledTimes(1)
+  }, 10_000)
+
   it('veröffentlicht nach Bestätigung mit dem gespeicherten Stand', async () => {
     api.ladeEditor.mockResolvedValue({ ...DATEN, stand: 'stand-alt' })
     api.veroeffentlicheEntwurf.mockResolvedValue({ befunde: [] })

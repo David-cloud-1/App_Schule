@@ -6,6 +6,7 @@ import { ABLAUF_TABELLE, fehler, kern, kernFehlerAntwort, leseAdresse, schreibAd
 import {
   aktuelleStruktur,
   befundeAusKern,
+  bildBefunde,
   bildQuelle,
   editorZeileOderFehler,
   entwurfVorschauPfad,
@@ -47,10 +48,14 @@ export async function POST(_request: Request, { params }: Kontext) {
       ...(quelle ? { einlesung: { url: quelle.url } } : {}),
     }
     const [ergebnis, pruefung] = await Promise.all([
-      kern<{ groesse?: number; warnungen?: number }>('/api/editor/bauen', { ...gemeinsam, datei_ziel: ziel, marken: true }),
+      kern<{ groesse?: number; warnungen?: number; fehlende_bilder?: unknown[] }>('/api/editor/bauen', {
+        ...gemeinsam,
+        datei_ziel: ziel,
+        marken: true,
+      }),
       kern<unknown>('/api/editor/pruefen', { ...gemeinsam, auswahl: zeile.auswahl ?? {} }),
     ])
-    const befunde = befundeAusKern(pruefung)
+    const befunde = [...bildBefunde(ergebnis), ...befundeAusKern(pruefung)]
 
     // Befunde nur an einen bestehenden Entwurf hängen – und nur, solange er nicht inzwischen weitergespeichert wurde
     if (zeile.entwurf && zeile.entwurf_am) {

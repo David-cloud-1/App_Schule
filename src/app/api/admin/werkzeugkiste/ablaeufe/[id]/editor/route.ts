@@ -8,6 +8,7 @@ import {
   aktuelleStruktur,
   editorZeileOderFehler,
   geteiltStatus,
+  gleicherStand,
   loescheEntwurfVorschau,
   speichernSchema,
   titelVon,
@@ -60,7 +61,7 @@ export async function PUT(request: Request, { params }: Kontext) {
   if (!zeile) return antwort
 
   const bekannt = zeile.entwurf ? zeile.entwurf_am : null
-  if (eingabe.data.stand !== bekannt) return fehler(ANDERES_FENSTER, 409, 'Neu laden')
+  if (!gleicherStand(eingabe.data.stand, bekannt)) return fehler(ANDERES_FENSTER, 409, 'Neu laden')
 
   const jetzt = new Date().toISOString()
   let abfrage = auth.supabase
@@ -68,10 +69,11 @@ export async function PUT(request: Request, { params }: Kontext) {
     .update({ entwurf: eingabe.data.struktur, entwurf_am: jetzt, updated_at: jetzt })
     .eq('id', zeile.id)
   abfrage = bekannt ? abfrage.eq('entwurf_am', bekannt) : abfrage.is('entwurf_am', null)
-  const { data, error } = await abfrage.select('id').maybeSingle()
+  const { data, error } = await abfrage.select('id, entwurf_am').maybeSingle()
   if (error) return fehler('Der Entwurf konnte nicht gespeichert werden.', 500)
   if (!data) return fehler(ANDERES_FENSTER, 409, 'Neu laden')
-  return NextResponse.json({ stand: jetzt })
+  // Den Stand so zurückgeben, wie ihn die Datenbank schreibt (QA BUG-1)
+  return NextResponse.json({ stand: (data as { entwurf_am?: string | null }).entwurf_am ?? jetzt })
 }
 
 /**

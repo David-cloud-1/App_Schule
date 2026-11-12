@@ -244,7 +244,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       </DropdownMenu>
       <Button
         className={cn(HAUPTAKTION, 'min-h-11 w-auto px-4 text-sm')}
-        disabled={!hatAenderungen || z.konflikt}
+        disabled={!hatAenderungen || z.konflikt || !!z.gesperrt}
         onClick={() => setDialog('veroeffentlichen')}
       >
         Veröffentlichen
@@ -263,6 +263,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           </Button>
         </div>
       )}
+      {z.gesperrt && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-ws-red/30 bg-ws-red/10 px-4 py-3 text-sm text-ws-red sm:px-6">
+          <AlertTriangle className="size-4" aria-hidden />
+          {z.gesperrt} Der Editor ist jetzt schreibgeschützt.
+        </div>
+      )}
 
       <div className="border-b border-ws-line px-4 py-2 lg:hidden">
         <AdminSegmented
@@ -277,7 +283,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       </div>
 
       <div className="grid flex-1 gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(22rem,1fr)_minmax(0,1.2fr)]">
-        <section aria-label="Gliederung" className={cn('min-w-0', ansicht !== 'gliederung' && 'hidden lg:block')}>
+        <section
+          aria-label="Gliederung"
+          // Schreibgeschützt: keine Eingaben mehr möglich, Inhalt bleibt lesbar
+          inert={z.gesperrt ? true : undefined}
+          aria-disabled={z.gesperrt ? true : undefined}
+          className={cn('min-w-0', ansicht !== 'gliederung' && 'hidden lg:block', z.gesperrt && 'opacity-70')}
+        >
           <EditorGliederung
             materialId={daten.id}
             struktur={z.struktur}

@@ -5,6 +5,7 @@ import type { Ablauf } from '@/lib/werkzeugkiste'
 import {
   aktualisiere,
   einlesungPfad,
+  entwurfSperre,
   fehler,
   kern,
   kernFehlerAntwort,
@@ -31,6 +32,9 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  // PROJ-89: Neu einlesen setzt die Antwort zurück – ein Entwurf im Editor würde danach zum alten Skript gehören
+  const gesperrt = entwurfSperre(zeile)
+  if (gesperrt) return gesperrt
   if (!zeile.datei_name) return fehler('Zu diesem Ablauf gehört kein Skript.', 400)
 
   const service = createServiceClient()

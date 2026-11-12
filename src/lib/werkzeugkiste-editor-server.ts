@@ -37,6 +37,20 @@ export interface EditorZeile extends AblaufZeile {
 }
 
 export const entwurfVorschauPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/entwurf.html`
+/** Zwischendateien beim Veröffentlichen: erst nach erfolgreichem Speichern ersetzen sie `ausgabe` und `vorschau.html` */
+export const neueAusgabePfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/ausgabe-neu`
+export const neueVorschauPfad = (ownerId: string, id: string) => `${ablaufOrdner(ownerId, id)}/vorschau-neu.html`
+
+/**
+ * Gleicher Entwurfs-Stand? Als Zeitpunkt verglichen, nicht als Text: Die Datenbank
+ * liefert `…+00:00`, `toISOString()` schreibt `…Z` (QA BUG-1).
+ */
+export function gleicherStand(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (a == null || b == null) return a == null && b == null
+  const x = Date.parse(a)
+  const y = Date.parse(b)
+  return Number.isFinite(x) && x === y
+}
 
 /** Höchstgröße einer veröffentlichten Seite (wie seite.MAX_SEITE_BYTES im Kern) */
 export const SEITE_MAX_BYTES = 8_000_000
@@ -149,6 +163,21 @@ export function befundeAusKern(roh: unknown): EditorBefund[] {
       schwere: o.schwere === 'hoch' ? 'hoch' : 'mittel',
       stellen,
     }
+  })
+}
+
+/**
+ * Fehlende Bilder aus dem Bau (Kern: `fehlende_bilder`) als Hinweise am Block –
+ * die Gliederung zeigt sie so wie die Befunde der Prüfstelle (QA BUG-5).
+ */
+export function bildBefunde(roh: unknown): EditorBefund[] {
+  const liste = (roh as { fehlende_bilder?: unknown[] } | null)?.fehlende_bilder
+  if (!Array.isArray(liste)) return []
+  return liste.slice(0, 100).flatMap((b) => {
+    const o = (b ?? {}) as Record<string, unknown>
+    if (typeof o.kapitel !== 'number' || typeof o.element !== 'number') return []
+    const pfad = String(o.pfad ?? '').split('/').pop()?.slice(0, 200) || 'ohne Pfad'
+    return [{ text: `Bild fehlt: ${pfad}`, schwere: 'mittel' as const, stellen: [{ kapitel: o.kapitel, element: o.element }] }]
   })
 }
 

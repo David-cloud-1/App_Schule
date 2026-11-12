@@ -60,6 +60,8 @@ function kernSagt(pfad: string, body: unknown, status = 200) {
   antworten[pfad] = { status, body }
 }
 const kernPfade = () => kernAufrufe.map((a) => a.pfad)
+/** So schreibt PostgREST einen timestamptz: `2026-11-12T09:00:00.123+00:00` */
+const alsDbZeit = (iso: string) => new Date(iso).toISOString().replace('Z', '+00:00')
 const letzter = (pfad: string) => [...kernAufrufe].reverse().find((a) => a.pfad === pfad)!.body
 
 beforeEach(() => {
@@ -78,8 +80,11 @@ beforeEach(() => {
     if (upd) {
       if (konflikt) return { data: null }
       updates.push({ payload: upd.args[0] as Record<string, unknown>, calls })
-      zeile = { ...zeile, ...(upd.args[0] as Record<string, unknown>) }
-      return { data: { id: ID } }
+      // Wie die echte Datenbank: Zeitpunkte kommen als `…+00:00` zurück, nicht als `…Z`
+      const payload = { ...(upd.args[0] as Record<string, unknown>) }
+      if (typeof payload.entwurf_am === 'string') payload.entwurf_am = alsDbZeit(payload.entwurf_am)
+      zeile = { ...zeile, ...payload }
+      return { data: { id: ID, entwurf_am: zeile.entwurf_am ?? null } }
     }
     return { data: zeile }
   })
@@ -160,7 +165,10 @@ describe('Entwurf speichern', () => {
     expect(res.status).toBe(200)
     const { stand } = await res.json()
     expect(typeof stand).toBe('string')
-    expect(updates[0].payload).toMatchObject({ entwurf: GEAENDERT, entwurf_am: stand })
+    expect(updates[0].payload).toMatchObject({ entwurf: GEAENDERT })
+    // Zurück kommt der Stand, wie ihn die Datenbank schreibt
+    expect(stand).toBe(zeile.entwurf_am)
+    expect(Date.parse(stand)).toBe(Date.parse(updates[0].payload.entwurf_am as string))
     // Bedingung: es gab noch keinen Entwurf
     expect(updates[0].calls.some((c) => c.method === 'is' && c.args[0] === 'entwurf_am' && c.args[1] === null)).toBe(true)
     // Nichts Veröffentlichtes wird angefasst
@@ -176,6 +184,20 @@ describe('Entwurf speichern', () => {
     const ok = await speichern(json({ struktur: GEAENDERT, stand: '2026-11-12T09:00:00Z' }, 'PUT'), ctx)
     expect(ok.status).toBe(200)
     expect(updates[0].calls.some((c) => c.method === 'eq' && c.args[0] === 'entwurf_am' && c.args[1] === '2026-11-12T09:00:00Z')).toBe(true)
+  })
+
+  it('speichert mehrmals hintereinander ohne Neuladen (QA BUG-1: Z gegen +00:00)', async () => {
+    let stand: string | null = null
+    for (let i = 0; i < 3; i++) {
+      const res = await speichern(json({ struktur: { ...GEAENDERT, cover: { title: `v${i}` } }, stand }, 'PUT'), ctx)
+      expect(res.status).toBe(200)
+      stand = (await res.json()).stand
+    }
+    expect(updates).toHaveLength(3)
+    // Auch ein Browser, der den Stand als …Z kennt, gilt als aktuell
+    const z = new Date(stand!).toISOString()
+    expect(z.endsWith('Z')).toBe(true)
+    expect((await speichern(json({ struktur: GEAENDERT, stand: z }, 'PUT'), ctx)).status).toBe(200)
   })
 
   it('meldet 409, wenn ein anderes Fenster zwischen Lesen und Schreiben gespeichert hat', async () => {
@@ -230,6 +252,17 @@ describe('Vorschau', () => {
     expect(updates[0].calls.some((c) => c.method === 'eq' && c.args[0] === 'entwurf_am')).toBe(true)
   })
 
+  it('meldet fehlende Bilder als Hinweis am Block (QA BUG-5)', async () => {
+    zeile = { ...BASIS, entwurf: GEAENDERT, entwurf_am: '2026-11-12T09:00:00Z' }
+    kernSagt('/api/editor/bauen', {
+      groesse: 1,
+      fehlende_bilder: [{ kapitel: 1, element: 3, pfad: 'images/lager.png' }, { kaputt: true }],
+    })
+    const d = await (await vorschau(json({}), ctx)).json()
+    expect(d.befunde[0]).toEqual({ text: 'Bild fehlt: lager.png', schwere: 'mittel', stellen: [{ kapitel: 1, element: 3 }] })
+    expect(d.befunde).toHaveLength(2)
+  })
+
   it('ohne Entwurf: baut die veröffentlichte Fassung und speichert nichts', async () => {
     kernSagt('/api/editor/struktur', { struktur: STRUKTUR })
     const res = await vorschau(json({}), ctx)
@@ -277,21 +310,42 @@ describe('Veröffentlichen', () => {
     kernSagt('/api/editor/pruefen', { befunde: [] })
   })
 
-  it('baut nach ausgabe, ersetzt die Antwort und räumt den Entwurf ab', async () => {
+  const NEU = `u1/${ID}/ausgabe-neu`
+  const NEU_VORSCHAU = `u1/${ID}/vorschau-neu.html`
+  /** Die Zwischendateien liegen nach dem Bau im Speicher */
+  const zwischendateienDa = () =>
+    speicher.download.mockImplementation(async (pfad: string) =>
+      pfad === NEU || pfad === NEU_VORSCHAU ? { data: new Blob([`<html>${pfad}</html>`]), error: null } : { data: null, error: { message: 'fehlt' } },
+    )
+  const hochgeladen = () => speicher.upload.mock.calls.map((c) => c[0] as string)
+
+  it('baut in Zwischendateien, speichert und ersetzt erst dann die veröffentlichte Datei', async () => {
+    zwischendateienDa()
     const res = await veroeffentlichen(json({ stand: STAND }), ctx)
     expect(res.status).toBe(200)
     const bau = letzter('/api/editor/bauen')
     expect(bau).toMatchObject({ struktur: GEAENDERT, marken: false, hoechstens: 8_000_000 })
-    expect(JSON.stringify(bau.datei_ziel)).toContain(`u1/${ID}/ausgabe`)
-    expect(JSON.stringify(bau.vorschau_ziel)).toContain('vorschau.html')
-    // Erst gebaut, dann geschrieben
-    expect(kernPfade()[0]).toBe('/api/editor/bauen')
+    expect(JSON.stringify(bau.datei_ziel)).toContain(NEU)
+    expect(JSON.stringify(bau.vorschau_ziel)).toContain(NEU_VORSCHAU)
+    // Erst die Schritte ohne Nebenwirkung, zuletzt der Bau
+    expect(kernPfade().at(-1)).toBe('/api/editor/bauen')
+    expect(kernPfade().slice(0, 2).sort()).toEqual(['/api/editor/pruefen', '/api/editor/yaml'])
     const p = updates[0].payload
     expect(p).toMatchObject({ antwort: 'cover:\n  title: Neu\n', entwurf: null, entwurf_am: null, entwurf_pruefung: null })
     expect(p.ergebnis).toMatchObject({ titel: 'Neu', dateiname: 'Neu.html', format: 'seite', kapitel: 1, aufgaben: 0, fertigAm: '2026-11-01T10:00:00Z' })
     expect(p.pruefung).toMatchObject({ lesbar: true, befunde: [] })
     expect(updates[0].calls.some((c) => c.method === 'eq' && c.args[0] === 'entwurf_am' && c.args[1] === STAND)).toBe(true)
-    expect(speicher.remove).toHaveBeenCalledWith([`u1/${ID}/entwurf.html`])
+    // Jetzt erst ersetzt: veröffentlichte Datei und Lehrer-Vorschau
+    expect(hochgeladen()).toEqual([`u1/${ID}/ausgabe`, `u1/${ID}/vorschau.html`])
+    expect(speicher.upload.mock.calls[0][2]).toMatchObject({ upsert: true, contentType: 'text/html' })
+    const entfernt = speicher.remove.mock.calls.flatMap((c) => c[0] as string[])
+    expect(entfernt).toEqual(expect.arrayContaining([NEU, NEU_VORSCHAU, `u1/${ID}/entwurf.html`]))
+  })
+
+  it('nimmt den Stand als …Z genauso an wie als …+00:00 (QA BUG-1)', async () => {
+    zwischendateienDa()
+    zeile = { ...zeile, entwurf_am: '2026-11-12T09:00:00.123+00:00' }
+    expect((await veroeffentlichen(json({ stand: '2026-11-12T09:00:00.123Z' }), ctx)).status).toBe(200)
   })
 
   it('ändert nichts, wenn der Bau scheitert (z. B. zu groß)', async () => {
@@ -300,21 +354,46 @@ describe('Veröffentlichen', () => {
     expect(res.status).toBe(400)
     expect((await res.json()).error).toContain('zu groß')
     expect(updates).toHaveLength(0)
-    expect(kernPfade()).toEqual(['/api/editor/bauen'])
+    expect(speicher.upload).not.toHaveBeenCalled()
+  })
+
+  it('ändert nichts, wenn der Kern nach dem Bau scheitern würde (QA BUG-2)', async () => {
+    kernSagt('/api/editor/yaml', { error: 'kaputt' }, 500)
+    const res = await veroeffentlichen(json({ stand: STAND }), ctx)
+    expect(res.ok).toBe(false)
+    // Gar nicht erst gebaut, nichts gespeichert, nichts ersetzt
+    expect(kernPfade()).not.toContain('/api/editor/bauen')
+    expect(updates).toHaveLength(0)
+    expect(speicher.upload).not.toHaveBeenCalled()
   })
 
   it('braucht einen Entwurf und den aktuellen Stand', async () => {
     expect((await veroeffentlichen(json({ stand: 'alt' }), ctx)).status).toBe(409)
+    expect((await veroeffentlichen(json({ stand: '2026-11-12T08:00:00Z' }), ctx)).status).toBe(409)
     zeile = { ...BASIS }
     expect((await veroeffentlichen(json({ stand: null }), ctx)).status).toBe(400)
     expect(kernPfade()).toEqual([])
   })
 
-  it('behält den Entwurf eines anderen Fensters, das währenddessen gespeichert hat', async () => {
+  it('behält den Entwurf eines anderen Fensters – und die veröffentlichte Datei bleibt unberührt (QA BUG-2)', async () => {
+    zwischendateienDa()
     konflikt = true
     const res = await veroeffentlichen(json({ stand: STAND }), ctx)
     expect(res.status).toBe(409)
-    expect(speicher.remove).not.toHaveBeenCalled()
+    expect(speicher.upload).not.toHaveBeenCalled()
+    const entfernt = speicher.remove.mock.calls.flatMap((c) => c[0] as string[])
+    expect(entfernt).toEqual([NEU, NEU_VORSCHAU])
+  })
+
+  it('nimmt das Speichern zurück, wenn das Ersetzen der Datei scheitert (QA BUG-2)', async () => {
+    zwischendateienDa()
+    speicher.upload.mockResolvedValueOnce({ error: { message: 'Speicher voll' } })
+    const res = await veroeffentlichen(json({ stand: STAND }), ctx)
+    expect(res.status).toBe(502)
+    expect((await res.json()).error).toContain('bisherige Fassung')
+    expect(updates).toHaveLength(2)
+    expect(updates[1].payload).toMatchObject({ antwort: BASIS.antwort, entwurf: GEAENDERT, ergebnis: BASIS.ergebnis })
+    expect(Date.parse(updates[1].payload.entwurf_am as string)).toBe(Date.parse(STAND))
   })
 })
 
