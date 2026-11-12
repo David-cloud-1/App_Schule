@@ -219,6 +219,14 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/ablauf/neu1?schritt=4'))
   })
 
+  it('öffnet eine angepasste Interaktive Seite direkt im Baukasten (PROJ-89)', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte({ id: 'f1', anpassbar: true })]))
+    api.passeAn.mockResolvedValue({ ablauf: { id: 'neu1', werkzeug: 'skript', status: 'fertig', ergebnis: { format: 'seite' } } })
+    render(<RegalReiter />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/bearbeiten/neu1'))
+  })
+
   it('meldet Fehler ruhig und bleibt im Regal', async () => {
     api.ladeRegal.mockResolvedValue(liste([karte({ anpassbar: true })]))
     api.passeAn.mockRejectedValue(new WerkzeugFehler('Dein Speicher ist voll.', 409))

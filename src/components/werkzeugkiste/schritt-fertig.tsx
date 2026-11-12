@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, ClipboardCopy, Download, Eye, Globe, Library, Loader2, PencilLine, Repeat, Share2 } from 'lucide-react'
+import { Check, ClipboardCopy, Download, Eye, Globe, Library, Loader2, PencilLine, Repeat, Share2, Blocks } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ablaufHref, WERKZEUGKISTE_HREF, type AblaufErgebnis } from '@/lib/werkzeugkiste'
@@ -26,6 +26,7 @@ export function SchrittFertig({
   hinweise,
   anderesWerkzeug = true,
   beimHerunterladen,
+  bearbeiten,
 }: {
   ablaufId: string
   ergebnis: AblaufErgebnis
@@ -38,6 +39,8 @@ export function SchrittFertig({
   anderesWerkzeug?: boolean
   /** PROJ-87: meldet, dass der Download gestartet wurde (der Assistent zeigt dann „Erledigt“) */
   beimHerunterladen?: () => void
+  /** PROJ-89: Adresse des Baukasten-Editors (nur bei Interaktiver Seite) */
+  bearbeiten?: string
 }) {
   const [vorschauOffen, setVorschauOffen] = useState(false)
   const [teilenOffen, setTeilenOffen] = useState(false)
@@ -137,6 +140,14 @@ export function SchrittFertig({
             <Button variant="outline" onClick={() => setVorschauOffen(true)} className={`${NEBENAKTION} min-h-12 px-5`}>
               <Eye className="mr-2 size-5" aria-hidden />
               Vorschau ansehen
+            </Button>
+          )}
+          {bearbeiten && (
+            <Button asChild variant="outline" className={`${NEBENAKTION} min-h-12 px-5`}>
+              <Link href={bearbeiten}>
+                <Blocks className="mr-2 size-5" aria-hidden />
+                Im Baukasten bearbeiten
+              </Link>
             </Button>
           )}
           {linkMoeglich && (

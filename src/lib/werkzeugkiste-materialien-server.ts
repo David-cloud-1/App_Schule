@@ -1,3 +1,4 @@
+import { baukastenWeg } from '@/lib/werkzeugkiste-editor'
 import type { NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -52,6 +53,7 @@ export const LISTEN_SPALTEN = [
   'titel',
   'datei_name',
   'hat_antwort',
+  'hat_entwurf',
   'skript_entfernt_am',
   'herkunft_name',
   'created_at',
@@ -74,6 +76,7 @@ export interface ListenZeile {
   titel: string | null
   datei_name: string | null
   hat_antwort: boolean | null
+  hat_entwurf?: boolean | null
   skript_entfernt_am: string | null
   herkunft_name?: string | null
   created_at: string
@@ -121,6 +124,8 @@ export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
     erstelltAm: (material && z.ergebnis_fertig_am) || z.created_at,
     aktualisiertAm: z.updated_at,
     laeuftAbAm: material ? null : z.laeuft_ab_am,
+    ...(z.hat_entwurf ? { entwurfOffen: true } : {}),
+    baukasten: baukastenWeg({ werkzeug: z.werkzeug, status: z.status, format: z.ergebnis_format, hatAntwort: !!z.hat_antwort }),
   }
 }
 

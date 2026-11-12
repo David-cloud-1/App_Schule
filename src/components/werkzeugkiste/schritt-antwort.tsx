@@ -27,6 +27,7 @@ export function SchrittAntwort({
   onAblauf,
   hinweise = [],
   rettung,
+  entwurfImEditor,
 }: {
   antwort: string
   setAntwort: (a: string) => void
@@ -47,9 +48,22 @@ export function SchrittAntwort({
   hinweise?: string[]
   /** Rettungs-Box für eine abgeschnittene Antwort (PROJ-69), erscheint unter dem Prüfergebnis */
   rettung?: React.ReactNode
+  /** PROJ-89: Adresse des Editors, wenn dort ein unveröffentlichter Entwurf liegt (Schritt 4 ist dann gesperrt) */
+  entwurfImEditor?: string
 }) {
   return (
     <div className="space-y-6">
+      {entwurfImEditor && (
+        <div role="status" className="flex flex-col gap-3 rounded-2xl border border-ws-gold/30 bg-ws-gold/15 p-4 text-sm text-ws-text sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <strong>Zu diesem Material gibt es einen Entwurf im Editor.</strong> Veröffentliche oder verwirf ihn dort, dann kannst du
+            die Antwort hier wieder ändern.
+          </p>
+          <Button asChild variant="outline" className="min-h-11 shrink-0 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">
+            <a href={entwurfImEditor}>Im Editor öffnen</a>
+          </Button>
+        </div>
+      )}
       {hinweise.length > 0 && (
         <div className="space-y-2" role="status">
           {hinweise.map((h, i) => (

@@ -64,6 +64,7 @@ import type {
  *   POST   /ablaeufe/:id/editor/vorschau   Vorschau des Entwurfs bauen (+ Prüfstelle)
  *   POST   /ablaeufe/:id/editor/rohfassung ein Block ↔ YAML (über den Kern)
  *   POST   /ablaeufe/:id/editor/veroeffentlichen  Entwurf wird zur neuen Fassung
+ *   POST   /ablaeufe/:id/als-seite      H5P-Material als neue Interaktive Seite kopieren (Paket 3)
  *
  * Öffentlicher Link „Link für alle“ (PROJ-67):
  *   GET/POST/DELETE /ablaeufe/:id/link    eigenen Link lesen · erzeugen · abschalten
@@ -534,4 +535,9 @@ export function veroeffentlicheEntwurf(id: string, stand: string | null) {
     method: 'POST',
     body: JSON.stringify({ stand }),
   })
+}
+
+/** H5P-Material als neue Interaktive Seite kopieren (PROJ-89, E12); gibt die neue Material-ID zurück */
+export function kopiereAlsSeite(id: string) {
+  return anfrage<{ id: string }>(`/ablaeufe/${id}/als-seite`, { method: 'POST', body: '{}' })
 }

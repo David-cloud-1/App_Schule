@@ -50,6 +50,10 @@ export interface MaterialZeile {
   regal?: MaterialRegal | null
   /** Öffentlicher Link „Link für alle“ (PROJ-67); leer = keiner aktiv */
   oeffentlich?: MaterialLink | null
+  /** PROJ-89: unveröffentlichte Änderungen im Baukasten-Editor */
+  entwurfOffen?: boolean
+  /** PROJ-89: im Baukasten bearbeitbar (`bearbeiten`) oder erst als Seite kopierbar (`als-seite`, H5P) */
+  baukasten?: 'bearbeiten' | 'als-seite' | null
 }
 
 export interface MaterialSpeicher {

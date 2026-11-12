@@ -4,6 +4,7 @@ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import {
   aktualisiere,
+  entwurfSperre,
   fehler,
   kernBauen,
   kernFehlerAntwort,
@@ -30,6 +31,9 @@ export async function POST(request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  // PROJ-89: Neu bauen würde die veröffentlichte Datei an einem Entwurf im Editor vorbei ersetzen
+  const gesperrt = entwurfSperre(zeile)
+  if (gesperrt) return gesperrt
   if (!zeile.antwort || !zeile.pruefung) return fehler('Füge zuerst die Antwort der KI ein.', 400)
   if (!zeile.pruefung.lesbar) return fehler('Die Antwort ist unvollständig und lässt sich nicht verarbeiten.', 400)
 

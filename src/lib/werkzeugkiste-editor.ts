@@ -70,6 +70,23 @@ export function istEditierbar(m: {
   )
 }
 
+/**
+ * Weg in den Baukasten für ein Material (PROJ-89, Paket 3):
+ * - `bearbeiten`: fertige Interaktive Seite eines der fünf Kapitel-Werkzeuge
+ * - `als-seite`: fertiges H5P-Material dieser Werkzeuge mit Antwort – erst als Seite kopieren (E12)
+ */
+export function baukastenWeg(m: { werkzeug: string; status: string; format?: string | null; hatAntwort?: boolean }): 'bearbeiten' | 'als-seite' | null {
+  if (m.status !== 'fertig' || !(EDITIERBARE_WERKZEUGE as readonly string[]).includes(m.werkzeug)) return null
+  if (m.format === 'seite') return 'bearbeiten'
+  if (m.format === 'h5p' && m.hatAntwort) return 'als-seite'
+  return null
+}
+
+/** Adresse des Editors */
+export function bearbeitenHref(id: string): string {
+  return `/admin/werkzeugkiste/bearbeiten/${id}`
+}
+
 // ── Klartext ─────────────────────────────────────────────────────────────
 
 /** Alle Typen, die seite.py baut – in Alltagssprache (nie `fill_blanks` in der Oberfläche) */

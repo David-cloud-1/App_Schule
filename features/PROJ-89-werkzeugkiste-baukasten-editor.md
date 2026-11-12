@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12 (Paket 2 gebaut)
+**Last Updated:** 2026-11-12 (Paket 3 gebaut)
 
 ## Idee in einem Satz
 Eine Lehrkraft kann ein fertiges Material im Format „Interaktive Seite" nachträglich bearbeiten: Themen und Blöcke verschieben, löschen und duplizieren, Texte und Aufgaben ändern, mit Vorschau. Die Seite ändert sich für Schüler erst, wenn sie bewusst veröffentlicht.
@@ -405,8 +405,19 @@ Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Ein
 - **Tiptap/ProseMirror deuten Inline-Stile um** (`font-weight` → fett, mehrteilige `style`-Angaben gehen verloren). Deshalb werden Blöcke mit eigenem `style` nicht im gestalteten Editor geöffnet, sondern unverändert gehalten. Neue Antworten (Boxen nur als Klasse) betrifft das nicht.
 - **Tabellen** bleiben vorerst unveränderliche Blöcke (Tiptaps Tabellen bauen `thead`/`colgroup` um). Bearbeiten als Tabelle kommt mit PROJ-91.
 
+### Paket 3 (2026-11-12): Einstiege und Zusammenspiel
+- **Meine Materialien:** sichtbares Symbol „Im Baukasten bearbeiten“ (Bausteine-Symbol, damit es nicht mit „Überarbeiten“ = Schritt 4 verwechselt wird) neben der Hauptaktion, in Tabelle und Handy-Karte. Bei Interaktiver Seite führt es in den Editor, bei H5P der fünf Kapitel-Werkzeuge öffnet es den Dialog „Als Interaktive Seite bearbeiten?“ (E12). Andere Werkzeuge und unfertige Abläufe bekommen kein Symbol.
+- **Markierung „Nicht veröffentlicht“** (Pill, Tooltip „Es gibt unveröffentlichte Änderungen im Baukasten“). Der Name „Entwurf“ war schon für unfertige Abläufe vergeben.
+- **H5P → Seite:** neue Route `POST …/ablaeufe/:id/als-seite`. Sie prüft zuerst, ob der Kern die Antwort als Kapitel-Struktur liest (sonst wird nichts angelegt), und legt dann ein neues Material „[Titel] (Seite)“ an. Einlesung bzw. Bilder-Auszug und Skript werden kopiert, die Skript-Uhr läuft weiter, und das Material wird als Seite gebaut (höchstens 8 MB). Scheitert der Bau, wird die halbe Kopie wieder entfernt. Das Original bleibt unberührt. Die Speichergrenze wird vorher geprüft.
+- **Schritt „Fertig“:** „Im Baukasten bearbeiten“ als `outline` neben „Herunterladen“, nur bei Interaktiver Seite.
+- **Regal „Anpassen“:** Eine Interaktive Seite öffnet direkt im Editor, alles andere wie bisher bei Schritt 4.
+- **Sperre in Schritt 4:** Solange ein Entwurf besteht, antworten „Neu bauen“, „Kapitel einsetzen“ und das Einfügen einer **anderen** Antwort mit 409 (`code: entwurf_im_editor`). Erneut prüfen derselben Antwort bleibt möglich. Schritt 4 zeigt den Hinweis „Zu diesem Material gibt es einen Entwurf im Editor“ mit „Im Editor öffnen“.
+- `hat_entwurf` steht jetzt in der Material-Liste und am Ablauf (`ABLAUF_SPALTEN`). **Deshalb muss die Migration vor dem Ausrollen der App eingespielt sein**, sonst schlagen alle Werkzeugkiste-Abfragen fehl.
+- Tests: 9 (Routen: Kopie als Seite, Sperren, Listen-Felder), 7 (Einstiege in der Oberfläche), 1 (Regal → Editor). Ganze Suite grün (3112), Build grün.
+
 ### Noch offen
-- **Paket 3:** Einstiege („Bearbeiten“ in Meine Materialien und Schritt 5, Regal-Anpassen → Editor, H5P → Seite kopieren), Markierung in der Liste, Sperre der Schritt-4-Funktionen bei bestehendem Entwurf.
+- `/qa` für PROJ-89 (Paket 1–3 zusammen), am besten nachdem Kern-PR und Migration in einer Testumgebung laufen. Ein echter Durchlauf gegen den Kern fehlt bisher.
+- Livegang in dieser Reihenfolge: lokalen `vercel-kern` mit `b4a1780` (PROJ-88) pushen → Kern-PR rebasen und mergen → Migration einspielen → App-Branch mergen.
 
 ## QA Test Results
 _To be added by /qa_

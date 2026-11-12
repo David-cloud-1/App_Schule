@@ -144,6 +144,21 @@ export function ungueltig(error: z.ZodError) {
   return fehler(error.issues[0]?.message ?? 'Ungültige Eingabe.', 400)
 }
 
+/** Satz und Code, wenn Schritt 4 wegen eines Entwurfs im Baukasten-Editor gesperrt ist (PROJ-89) */
+export const ENTWURF_IM_EDITOR = 'Zu diesem Material gibt es einen Entwurf im Editor.'
+
+/**
+ * Schritt 4 ändert die veröffentlichte Antwort. Solange im Baukasten-Editor ein
+ * Entwurf liegt, würden zwei Fassungen auseinanderlaufen – deshalb 409 mit Code.
+ */
+export function entwurfSperre(zeile: { status: string; hat_entwurf?: boolean | null }) {
+  if (zeile.status !== 'fertig' || !zeile.hat_entwurf) return null
+  return NextResponse.json(
+    { error: ENTWURF_IM_EDITOR, hint: 'Öffne ihn im Editor, veröffentliche oder verwirf ihn, dann geht es hier weiter.', code: 'entwurf_im_editor' },
+    { status: 409 },
+  )
+}
+
 export function fehler(meldung: string, status: number, hinweis?: string) {
   return NextResponse.json(hinweis ? { error: meldung, hint: hinweis } : { error: meldung }, { status })
 }
@@ -177,10 +192,12 @@ export interface AblaufZeile {
   auszug_am?: string | null
   // PROJ-69: Teil-Liste im kostenlosen Weg (fehlt vor der Migration)
   teile?: AblaufTeile | null
+  // PROJ-89: Entwurf im Baukasten-Editor (fehlt vor der Migration)
+  hat_entwurf?: boolean | null
 }
 
 export const ABLAUF_SPALTEN =
-  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am, herkunft_name, auszug_am, teile'
+  'id, owner_id, werkzeug, status, schritt, datei_name, datei_groesse, kennzahlen, gliederung, auswahl, einstellungen, prompt, antwort, pruefung, ergebnis, weg, updated_at, titel, skript_hochgeladen_am, skript_entfernt_am, herkunft_name, auszug_am, teile, hat_entwurf'
 
 export function standardEinstellungen(werkzeugId: string): AblaufEinstellungen {
   return {
@@ -239,6 +256,7 @@ export function zeileZuAblauf(z: AblaufZeile): Ablauf {
     teile: z.teile ?? null,
     herkunft: z.herkunft_name ?? null,
     aktualisiertAm: z.updated_at,
+    ...(z.hat_entwurf ? { entwurfImEditor: true } : {}),
   }
 }
 

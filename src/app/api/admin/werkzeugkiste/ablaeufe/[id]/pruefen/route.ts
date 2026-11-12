@@ -6,6 +6,7 @@ import {
   aktualisiere,
   antwortSchema,
   einlesungPfad,
+  entwurfSperre,
   fehler,
   kern,
   kernFehlerAntwort,
@@ -34,6 +35,11 @@ export async function POST(request: Request, { params }: Kontext) {
 
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  // PROJ-89: Erneut prüfen geht immer, eine andere Antwort nicht, solange ein Entwurf im Editor liegt
+  if (parsed.data.antwort !== zeile.antwort) {
+    const gesperrt = entwurfSperre(zeile)
+    if (gesperrt) return gesperrt
+  }
   // Eine Kopie aus dem Regal hat keinen Prompt (PROJ-53); alle anderen brauchen zuerst den Prompt
   const ausRegal = !!zeile.herkunft_name
   if (!ausRegal && (!zeile.kennzahlen || (!zeile.prompt && !zeile.teile))) return fehler('Erstelle zuerst den Prompt.', 400)

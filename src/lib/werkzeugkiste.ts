@@ -949,6 +949,8 @@ export interface Ablauf {
   /** Kopie aus dem Regal (PROJ-53): Name der Urheberin oder des Urhebers. Solche Materialien haben nie ein Skript. */
   herkunft?: string | null
   aktualisiertAm: string
+  /** PROJ-89: Es gibt unveröffentlichte Änderungen im Baukasten-Editor (Schritt 4 ist dann gesperrt) */
+  entwurfImEditor?: boolean
 }
 
 /**

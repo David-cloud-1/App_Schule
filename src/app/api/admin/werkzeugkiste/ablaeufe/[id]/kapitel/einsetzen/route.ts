@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import {
   aktualisiere,
+  entwurfSperre,
   fehler,
   kern,
   kernFehlerAntwort,
@@ -34,6 +35,8 @@ export async function POST(request: Request, { params }: Kontext) {
 
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const gesperrt = entwurfSperre(zeile)
+  if (gesperrt) return gesperrt
   if (!zeile.antwort) return fehler('Füge zuerst die Antwort der KI ein.', 400)
   try {
     const r = await kern<{ antwort: string }>('/api/kapitel-einsetzen', {

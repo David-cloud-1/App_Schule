@@ -13,6 +13,7 @@ import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { LinkUebersicht } from '@/components/werkzeugkiste/link-uebersicht'
 import { RegalModeration } from '@/components/werkzeugkiste/regal-moderation'
 import { ablaufHref, findeWerkzeug } from '@/lib/werkzeugkiste'
+import { baukastenWeg, bearbeitenHref } from '@/lib/werkzeugkiste-editor'
 import { ladeRegal, ladeRegalDatei, passeAn, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { formatName, relativesDatum, werkzeugName } from '@/lib/werkzeugkiste-materialien'
 import {
@@ -325,7 +326,11 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
     setKopiert(true)
     try {
       const { ablauf } = await passeAn(k.id)
-      window.location.href = ablaufHref(ablauf.id, 4)
+      // PROJ-89: Eine Interaktive Seite öffnet direkt im Baukasten, alles andere wie bisher bei Schritt 4
+      window.location.href =
+        baukastenWeg({ werkzeug: ablauf.werkzeug, status: ablauf.status, format: ablauf.ergebnis?.format ?? null }) === 'bearbeiten'
+          ? bearbeitenHref(ablauf.id)
+          : ablaufHref(ablauf.id, 4)
     } catch (e) {
       toast.error(meldung(e))
       setKopiert(false)

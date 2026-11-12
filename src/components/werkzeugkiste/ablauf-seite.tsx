@@ -51,6 +51,7 @@ import {
   type WerkzeugOptionen,
 } from '@/lib/werkzeugkiste-api'
 import { AblaufRahmen, HAUPTAKTION, SchliessenKnopf } from '@/components/werkzeugkiste/ablauf-rahmen'
+import { baukastenWeg, bearbeitenHref } from '@/lib/werkzeugkiste-editor'
 import { Hinweis, SkriptErgebnis } from '@/components/werkzeugkiste/schritt-skript'
 import { VideoErgebnis } from '@/components/werkzeugkiste/schritt-video'
 import { kurzesNiveau, SchrittEinstellungen } from '@/components/werkzeugkiste/schritt-einstellungen'
@@ -611,6 +612,7 @@ export function AblaufSeite({ id }: { id: string }) {
           ablaufId={id}
           hilfenFreigegeben={pruefungPasst && !!ablauf.pruefung?.lesbar}
           materialFertig={ablauf.status === 'fertig'}
+          entwurfImEditor={ablauf.status === 'fertig' && ablauf.entwurfImEditor ? bearbeitenHref(id) : undefined}
           seitenFormat={ablauf.ergebnis?.format === 'seite'}
           hinweise={ablauf.teile?.hinweise ?? []}
           rettung={pruefungPasst && !ablauf.teile ? rettung : undefined}
@@ -654,6 +656,11 @@ export function AblaufSeite({ id }: { id: string }) {
           direkt={direkt}
           anderesWerkzeug={!istVideo && !ablauf.herkunft}
           beimHerunterladen={() => setHeruntergeladen(true)}
+          bearbeiten={
+            baukastenWeg({ werkzeug: ablauf.werkzeug, status: ablauf.status, format: ablauf.ergebnis.format }) === 'bearbeiten'
+              ? bearbeitenHref(id)
+              : undefined
+          }
           kostenEur={lauf?.status === 'fertig' ? lauf.kostenEur : null}
           hinweise={direkt ? (ablauf.pruefung?.befunde ?? []).map((b) => b.text) : []}
         />

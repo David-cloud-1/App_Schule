@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
+  Blocks,
   CircleAlert,
   Download,
   Eye,
@@ -53,6 +54,7 @@ import {
   downloadHref,
   ladeDatei,
   kopiereFuerAnderesWerkzeug,
+  kopiereAlsSeite,
   ladeMaterialien,
   loescheAblauf,
   WerkzeugFehler,
@@ -73,6 +75,7 @@ import {
 } from '@/lib/werkzeugkiste-materialien'
 import { kannLinkHaben, LINK_TEXTE, type LinkStand } from '@/lib/werkzeugkiste-links'
 import { regalPill, type MaterialRegal } from '@/lib/werkzeugkiste-regal'
+import { bearbeitenHref } from '@/lib/werkzeugkiste-editor'
 
 const FELD = 'min-h-11 rounded-xl border-ws-line bg-ws-surface text-ws-text focus:ring-ws-green'
 const MENUE = 'border-ws-line bg-ws-surface text-ws-text'
@@ -112,6 +115,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
   const [loeschen, setLoeschen] = useState<MaterialZeile | null>(null)
   const [teilen, setTeilen] = useState<TeilenZiel | null>(null)
   const [linkZiel, setLinkZiel] = useState<LinkZiel | null>(null)
+  const [alsSeite, setAlsSeite] = useState<MaterialZeile | null>(null)
 
   // Suchfeld: erst nach kurzer Pause abfragen
   useEffect(() => {
@@ -319,6 +323,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                       <TableCell className="align-top">
                         <div className="flex items-center justify-end gap-2">
                           <Hauptknopf z={z} />
+                          <BaukastenKnopf z={z} setAlsSeite={setAlsSeite} />
                           <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                         </div>
                       </TableCell>
@@ -339,6 +344,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
                   {z.art === 'material' && <RegalPill regal={z.regal} />}
                   <div className="flex items-center gap-2">
                     <Hauptknopf z={z} voll />
+                    <BaukastenKnopf z={z} setAlsSeite={setAlsSeite} />
                     <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                   </div>
                 </li>
@@ -375,6 +381,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
           toast.success('Titel geändert')
         }}
       />
+      <AlsSeiteDialog zeile={alsSeite} schliessen={() => setAlsSeite(null)} />
       <LinkDialog ziel={linkZiel} schliessen={() => setLinkZiel(null)} geaendert={setzeOeffentlich} />
       <TeilenDialog
         ziel={teilen}
@@ -422,6 +429,14 @@ function TitelZelle({ z }: { z: MaterialZeile }) {
         {entwurf && (
           <Badge className="rounded-full border border-ws-blue/30 bg-ws-blue/15 px-2.5 py-0.5 text-xs font-semibold text-ws-blue hover:bg-ws-blue/15">
             Entwurf
+          </Badge>
+        )}
+        {z.entwurfOffen && (
+          <Badge
+            title="Es gibt unveröffentlichte Änderungen im Baukasten"
+            className="rounded-full border border-ws-gold/30 bg-ws-gold/15 px-2.5 py-0.5 text-xs font-semibold text-ws-gold hover:bg-ws-gold/15"
+          >
+            Nicht veröffentlicht
           </Badge>
         )}
         {z.oeffentlich && (
@@ -489,6 +504,85 @@ function Hauptknopf({ z, voll }: { z: MaterialZeile; voll?: boolean }) {
         <span className="sr-only">: {z.titel}</span>
       </a>
     </Button>
+  )
+}
+
+/**
+ * Baukasten (PROJ-89): sichtbares Symbol neben der Hauptaktion. Bei einer
+ * Interaktiven Seite öffnet es den Editor, bei H5P fragt es nach einer Kopie als Seite.
+ */
+function BaukastenKnopf({ z, setAlsSeite }: { z: MaterialZeile; setAlsSeite: (z: MaterialZeile) => void }) {
+  if (z.art !== 'material' || !z.baukasten) return null
+  const knopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
+  const label = `Im Baukasten bearbeiten: ${z.titel}`
+  if (z.baukasten === 'bearbeiten') {
+    return (
+      <Button asChild variant="ghost" size="icon" className={knopf}>
+        <Link href={bearbeitenHref(z.id)} aria-label={label} title="Im Baukasten bearbeiten">
+          <Blocks className="size-5" aria-hidden />
+        </Link>
+      </Button>
+    )
+  }
+  return (
+    <Button variant="ghost" size="icon" className={knopf} aria-label={label} title="Im Baukasten bearbeiten" onClick={() => setAlsSeite(z)}>
+      <Blocks className="size-5" aria-hidden />
+    </Button>
+  )
+}
+
+/** H5P im Baukasten (E12): erst eine Kopie als Interaktive Seite, das Original bleibt */
+function AlsSeiteDialog({ zeile, schliessen }: { zeile: MaterialZeile | null; schliessen: () => void }) {
+  const [laeuft, setLaeuft] = useState(false)
+  const [fehlertext, setFehlertext] = useState<string | null>(null)
+
+  async function anlegen() {
+    if (!zeile) return
+    setLaeuft(true)
+    setFehlertext(null)
+    try {
+      const { id } = await kopiereAlsSeite(zeile.id)
+      window.location.href = bearbeitenHref(id)
+    } catch (e) {
+      setFehlertext(meldung(e))
+      setLaeuft(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open={!!zeile}
+      onOpenChange={(offen) => {
+        if (!offen && !laeuft) {
+          setFehlertext(null)
+          schliessen()
+        }
+      }}
+    >
+      <DialogContent className="border-ws-line bg-ws-surface text-ws-text sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Als Interaktive Seite bearbeiten?</DialogTitle>
+          <DialogDescription className="text-ws-muted">
+            Der Editor arbeitet mit der Interaktiven Seite. Soll eine Kopie als Interaktive Seite angelegt werden? Dein
+            H5P-Material bleibt unverändert.
+          </DialogDescription>
+        </DialogHeader>
+        {fehlertext && (
+          <p role="alert" className="text-sm text-ws-red">
+            {fehlertext}
+          </p>
+        )}
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="outline" className={NEBENAKTION} onClick={schliessen} disabled={laeuft}>
+            Abbrechen
+          </Button>
+          <Button className={`${HAUPTAKTION} min-h-11 w-auto`} onClick={() => void anlegen()} disabled={laeuft}>
+            {laeuft && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
+            Kopie anlegen
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
