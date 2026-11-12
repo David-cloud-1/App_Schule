@@ -1,6 +1,6 @@
 # PROJ-89: Werkzeugkiste – Baukasten-Editor (Grundgerüst)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (Paket 3 gebaut)
 
@@ -420,7 +420,68 @@ Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Ein
 - Livegang in dieser Reihenfolge: lokalen `vercel-kern` mit `b4a1780` (PROJ-88) pushen → Kern-PR rebasen und mergen → Migration einspielen → App-Branch mergen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-11-12 · **Prüfer:** QA (Claude Opus 5.5) · **Stand:** App-Branch `feat/proj-89-baukasten-editor` (5ddc9c6), Kern `vercel-kern` 4b35e3b (live), Migration eingespielt.
+
+**Ergebnis: NICHT produktionsreif.** 1 Critical, 2 Medium, 3 Low.
+
+### Was geprüft wurde
+- **Automatisch:** `npm test` 3112/3112 grün (258 Dateien), `npm run build` grün. Kern: `kern_editor_test`, `kern_test`, `kern_recht_test`, `schulrecht_suche_neu_test`, `schulrecht_messung_test` grün.
+- **Code-Review** aller neuen Routen, der Server-Lib, des Editor-Zustands, der Vorschau und der Schritt-4-Sperren gegen die Acceptance Criteria.
+- **Datenbank (lesend):** RLS auf `werkzeug_ablaeufe` = nur Besitzer und nur mit Lehrkraft-Rolle, für alle vier Befehle. Neue Spalten vorhanden, `hat_entwurf` berechnet.
+- **Live-Kern:** `/api/editor/struktur` (unbekannter Block bleibt erhalten), `/api/editor/block-yaml` (YAML-1.1-Fallen `no`/`on` korrekt in Anführungszeichen), `/api/editor/block-lesen` (kaputte Rohfassung → „Diese Rohfassung ist nicht lesbar (Zeile 2). Bitte die Einrückung prüfen.").
+- **Bereinigung im Kern** (`seite._saeubern`) lokal mit Angriffs-HTML.
+- **Nicht geprüft:** Browser-Durchgang (kein Dev-Server/Playwright auf diesem Rechner), Cross-Browser, 375/768/1440 px, echtes Veröffentlichen an einem Produktionsmaterial. Keine neuen E2E-Tests.
+
+### Acceptance Criteria (Code-Review)
+| Bereich | Ergebnis |
+|---|---|
+| Einstieg (Meine Materialien, Fertig, Regal, H5P-Kopie, nur Besitzer) | bestanden. Abweichungen dokumentiert: Bausteine-Symbol statt Stift, Pill „Nicht veröffentlicht“ statt „Entwurf“ |
+| Aufbau, Verschieben, Löschen, Duplizieren, Thema hinzufügen | bestanden (laut Code und Komponententests) |
+| Textblöcke, HTML-Hinweise | bestanden bis auf BUG-3 (Bereinigung) |
+| Aufgaben-Formulare, Rohfassung, Deckblatt, Lernzielkontrolle | bestanden |
+| Prüfstelle | bestanden (Liste heißt „Hinweise der Prüfstelle (N)“) |
+| **Speichern (automatisch, Zwei-Tabs)** | **nicht bestanden – BUG-1** |
+| **Veröffentlichen** | **nicht bestanden – BUG-1, BUG-2** |
+| Zusammenspiel Schritt 4 (Sperren), Speichergröße, Löschen | bestanden. Lücke bei „Neu einlesen“ → BUG-6 |
+| Edge Cases „Bild fehlt“, „Externe Bilder“, „Rolle verloren“ | nicht umgesetzt → BUG-4, BUG-5 |
+
+### Bugs
+
+**BUG-1 – Critical: Ab dem zweiten automatischen Speichern meldet der Editor „In einem anderen Fenster geändert“.**
+`PUT …/editor` gibt `stand: new Date().toISOString()` zurück (`…123Z`), die Datenbank liefert `entwurf_am` aber als `…123+00:00` (live geprüft: `to_json(timestamptz)` → `+00:00`). Der Vergleich `eingabe.data.stand !== bekannt` ist ein Textvergleich und schlägt deshalb fehl.
+Schritte: Material im Editor öffnen → etwas ändern (1. Speichern klappt, `stand` = `…Z`) → noch etwas ändern → 409, Editor gesperrt, „Neu laden“. Ebenso „Veröffentlichen“ ohne vorheriges Neuladen → 409.
+Die Routentests verdecken das, weil die nachgebildete Datenbank `…Z` zurückgibt. Fix-Idee: Zeitpunkte als Zeit vergleichen (`Date.parse`) und nach dem Speichern den Wert aus der Datenbank zurückgeben (`.select('entwurf_am')`); einen Test mit `+00:00` aus der „Datenbank“ ergänzen.
+
+**BUG-2 – Medium: Veröffentlichen ersetzt die öffentliche Datei, bevor sicher ist, dass der Rest klappt.**
+`/api/editor/bauen` schreibt direkt nach `ausgabe` (und überschreibt die Lehrer-Vorschau). Erst danach laufen `yaml`, `pruefen` und das bedingte Update. Scheitert einer dieser Schritte (Kern-Fehler, Datenbankfehler, 409 weil ein anderer Tab weitergespeichert hat), sehen Link und Regal schon die neue Fassung, während Entwurf und alte Antwort bleiben. Das widerspricht E3 und dem AC „bleibt die alte Fassung veröffentlicht“. Bei der 409 im Rennen ist sogar ein älterer Entwurfsstand veröffentlicht.
+Fix-Idee: `yaml` und `pruefen` vor dem Bau holen, in eine Zwischendatei bauen und erst nach erfolgreichem Datenbank-Update an die Stelle von `ausgabe` kopieren.
+
+**BUG-3 – Medium (Kern, schon vor PROJ-89 vorhanden): Die Bereinigung lässt sich umgehen.**
+`seite._saeubern` arbeitet mit regulären Ausdrücken. Lokal getestet, unverändert durchgelassen werden:
+`<a href=javascript:alert(1)>` (ohne Anführungszeichen), `<a href="jav&#x09;ascript:…">`, `<iframe srcdoc="&lt;script&gt;…">`, `<object data="data:text/html;base64,…">`, `<meta http-equiv="refresh" content="0;url=https://…">`, `<form action="https://…">`.
+Der öffentliche Link läuft in einer Sandbox ohne `allow-same-origin`, an Daten der App kommt so niemand. Möglich sind aber Weiterleitung oder ein gefälschtes Formular auf der Seite der Schüler und Skripte in heruntergeladenen Dateien. Mit dem HTML-Feld des Editors ist das jetzt ein offizieller Weg. AC „Skripte, Event-Attribute und `javascript:`-Links erscheinen nie“: nicht erfüllt.
+Fix-Idee: Im Kern eine Freigabeliste statt Sperrliste (z. B. `nh3`), mit erlaubten Tags/Attributen/URL-Schemata. Dabei die Gleichwertigkeit bestehender Seiten prüfen.
+
+**BUG-4 – Low: Rolle verloren → endlose Wiederholung statt Schreibschutz.**
+Ein 403 beim Speichern landet im allgemeinen Fehlerzweig: „Nicht gespeichert“, alle 5 s neuer Versuch. Der Hinweis „Du hast keinen Zugriff mehr auf die Werkzeugkiste“ und der Schreibschutz (Edge Case) fehlen. Gleiches gilt für 404 (Material in anderem Tab gelöscht).
+
+**BUG-5 – Low: Edge Cases „Bild fehlt“ und „Externe Bilder“ nicht umgesetzt.**
+Die Gliederung zeigt bei fehlender Bilddatei keinen Hinweis. Die HTML-Ansicht weist bei `<img src="https://…">` nicht auf „Externe Bilder funktionieren offline nicht“ hin.
+
+**BUG-6 – Low: „Neu einlesen“ lässt einen alten Entwurf liegen.**
+`POST …/einlesen` setzt ein fertiges Material auf `laeuft` zurück, ohne `entwurfSperre` und ohne den Entwurf zu löschen. Nach dem neuen Bau taucht im Editor der Entwurf zum alten Skript wieder auf, und Schritt 4 ist gesperrt.
+
+### Sicherheit (Red Team)
+- Fremdes Material: RLS + `editorZeileOderFehler` → 404. Kein Weg über Service-Schlüssel an fremde Zeilen gefunden (alle Pfade aus der eigenen Zeile).
+- Proxy: Seite und API liegen unter den freigegebenen Präfixen `/admin/werkzeugkiste` bzw. `/api/admin/werkzeugkiste`.
+- Eingaben: Zod mit Größengrenzen (Struktur ≤ `ENTWURF_MAX_ZEICHEN`, 300 Themen, 1000 Blöcke, Rohfassung 200 000 Zeichen), dazu DB-Check 2,5 MB.
+- Vorschau: `srcdoc` + `sandbox="allow-scripts"` ohne `allow-same-origin`. Das Sprung-Skript filtert die Marke. In Ordnung.
+- Regal-„Anpassen“ und „anderes Werkzeug“ kopieren den Entwurf nicht. Unveröffentlichtes gelangt nicht zu Kolleginnen und Kollegen.
+- Bereinigung: siehe BUG-3.
+
+### Empfehlung
+BUG-1 vor dem Livegang beheben (sonst ist der Editor praktisch nicht benutzbar), BUG-2 ebenfalls. BUG-3 als eigener Kern-Fix, BUG-4 bis BUG-6 können folgen. Nach den Fixes erneut `/qa` und ein Browser-Durchgang mit einem Test-Material.
 
 ## Deployment
 _To be added by /deploy_
