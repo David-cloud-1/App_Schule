@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12 (Paket 1 gebaut)
+**Last Updated:** 2026-11-12 (Paket 2 gebaut)
 
 ## Idee in einem Satz
 Eine Lehrkraft kann ein fertiges Material im Format „Interaktive Seite" nachträglich bearbeiten: Themen und Blöcke verschieben, löschen und duplizieren, Texte und Aufgaben ändern, mit Vorschau. Die Seite ändert sich für Schüler erst, wenn sie bewusst veröffentlicht.
@@ -390,8 +390,22 @@ Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Ein
 - **Lernzielkontrolle als Rohfassung:** Der Kern liest einzelne Blöcke nur mit `type`. Die Lernzielkontrolle bekommt dafür beim Bearbeiten die Hilfsmarke `type: final_chapter`, die beim Übernehmen wieder entfernt wird.
 - **Veröffentlichen und Prüfbericht:** Der neue Prüfbericht (`pruefung`) kommt aus der Editor-Prüfung (ohne Korrekturzähler und ohne Nachbesserungs-Prompt).
 
+### Paket 2 (2026-11-12): Formulare und Text-Editor
+- **Formulare** (`editor-formulare.tsx`) für 13 Typen: Auswahlfrage (multiple/single choice, genau eine richtig per Optionsfeld, mindestens zwei Antworten), Richtig/Falsch, Schnellfragen, Lückentext/Lückentext mit Hinweis/Wörter ziehen/Wörter markieren (mit Liste der erkannten Lücken und einem Satz zur Schreibweise), Begriffe zum Aufklappen, Lernkarten, Rechenaufgabe, Zusammenfassung (Fragen oder Aussagen), Kapiteltest (Bestehensgrenze 0–100, Fragen nur in den vier erlaubten Typen, Typwechsel übernimmt den Fragetext). Unbekannte Felder bleiben erhalten. Jede Eingabe ändert sofort; Tippen in einem Feld ist ein Rückgängig-Schritt.
+- **Umschalter „Formular | Rohfassung“** an jedem Formular für Sonderfälle. Alle übrigen 19 Typen bleiben bis PROJ-90 in der Rohfassung.
+- **Lernzielkontrolle als Formular:** Titel, Abschlusstest, Kernaussagen.
+- **Text-Editor** (`text-editor.tsx`, Tiptap 2.27): gestaltete Ansicht wie die fertige Seite (Papier-Ansicht mit den Farben aus `schuldesign.py`) und Schalter zur HTML-Ansicht (CodeMirror). Werkzeugleiste: Fett, Kursiv, Kapitelüberschrift (h2), Unterabschnitt (h3), Aufzählung, nummerierte Liste, Schritt-für-Schritt-Liste, Link, „Box einfügen“ (Lernziele, Merke, Tipp, Achtung, Beispiel, Ausgangssituation, Arbeitsauftrag, Mission, Prüfungssimulation, Vergleich), „Box ändern in …“ und „Box auflösen“. Boxen werden **als Klasse** eingefügt wie im aktuellen Master-Prompt.
+- **Was der gestaltete Editor nicht bearbeiten kann, bleibt byte-genau stehen** (unveränderliche Blöcke): Tabellen, Bilder, fremde `div`s, Boxen und Blöcke mit eigenem `style` (alte Antworten). Sie zeigen den Hinweis „Unverändert übernommen – bearbeiten in der HTML-Ansicht“.
+- **Rundreise-Prüfung** (`werkzeugkiste-text.ts`): Beim Öffnen und beim Zurückschalten aus der HTML-Ansicht vergleicht der Editor das Original mit dem, was der gestaltete Editor daraus macht (Leerraum, Attribut-Reihenfolge, b/strong, einzelne Absätze in Listen und Boxen zählen nicht). Weicht es ab, bleibt der Block in der HTML-Ansicht mit dem Hinweis aus der Spec.
+- **Einfügen aus Word/Webseiten** verliert Schriften, Farben, Klassen und Skripte. Links nur mit `https:`/`http:`/`mailto:`.
+- **Hinweise in der HTML-Ansicht:** Skripte/Ereignisse („werden beim Bauen entfernt“) und nicht geschlossene Elemente, beides ohne Sperre.
+- Tests: 10 (Text-Hilfen), 7 (Text-Editor mit echter neuer und alter KI-Antwort), 9 (Formulare), 3 (Zusammenspiel im Editor). Ganze Suite grün (3095), Build grün. Im echten Browser (Chromium) geprüft: Boxen, Schritte, Vergleich und Tabelle sehen aus wie auf der Seite, „Box einfügen“ funktioniert, am Handy (390 px) kein seitliches Scrollen.
+
+### Funde aus Paket 2
+- **Tiptap/ProseMirror deuten Inline-Stile um** (`font-weight` → fett, mehrteilige `style`-Angaben gehen verloren). Deshalb werden Blöcke mit eigenem `style` nicht im gestalteten Editor geöffnet, sondern unverändert gehalten. Neue Antworten (Boxen nur als Klasse) betrifft das nicht.
+- **Tabellen** bleiben vorerst unveränderliche Blöcke (Tiptaps Tabellen bauen `thead`/`colgroup` um). Bearbeiten als Tabelle kommt mit PROJ-91.
+
 ### Noch offen
-- **Paket 2:** Formulare für die 13 häufigen Typen, Lernzielkontrolle als Formular, Text-Editor (gestaltet ⇄ HTML) mit Rundreise-Prüfung.
 - **Paket 3:** Einstiege („Bearbeiten“ in Meine Materialien und Schritt 5, Regal-Anpassen → Editor, H5P → Seite kopieren), Markierung in der Liste, Sperre der Schritt-4-Funktionen bei bestehendem Entwurf.
 
 ## QA Test Results

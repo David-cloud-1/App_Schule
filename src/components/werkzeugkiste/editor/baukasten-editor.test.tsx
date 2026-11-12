@@ -183,6 +183,37 @@ describe('Baukasten-Editor', () => {
   })
 })
 
+describe('Bearbeiten im Formular und im Text-Editor (Paket 2)', () => {
+  it('ändert einen Lückentext im Formular und speichert die Änderung', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    fireEvent.click((await screen.findByText('Lückentext')).closest('button')!)
+    const feld = await screen.findByLabelText(/^Text/)
+    fireEvent.change(feld, { target: { value: 'Der *Spediteur* haftet.' } })
+    expect(screen.getByText('Spediteur')).toBeInTheDocument()
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(api.speichereEntwurf.mock.calls.at(-1)![1].chapters[0].elements[1]).toEqual({
+      type: 'fill_blanks',
+      text: 'Der *Spediteur* haftet.',
+    })
+    // Umschalter zur Rohfassung ist da
+    expect(screen.getByRole('radiogroup', { name: 'Bearbeiten als' })).toBeInTheDocument()
+  })
+
+  it('öffnet einen Lehrtext im gestalteten Text-Editor', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    fireEvent.click((await screen.findByText('Lehrtext')).closest('button')!)
+    expect(await screen.findByRole('toolbar', { name: 'Textgestaltung' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Ansicht des Textblocks' })).toBeInTheDocument()
+  })
+
+  it('bearbeitet die Lernzielkontrolle im Formular', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    fireEvent.click(await screen.findByRole('button', { name: /^Lernzielkontrolle/ }))
+    expect(await screen.findByText('Abschlusstest')).toBeInTheDocument()
+    expect(screen.getByText('Gesamtzusammenfassung')).toBeInTheDocument()
+  })
+})
+
 describe('Sprung-Skript', () => {
   it('kommt vor </body> und nimmt nur Buchstaben, Ziffern, - und _ an', () => {
     const html = mitSprungSkript('<html><body><p>x</p></body></html>')

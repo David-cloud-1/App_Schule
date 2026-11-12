@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -67,6 +67,9 @@ import {
 import { cn } from '@/lib/utils'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorRohfassung } from '@/components/werkzeugkiste/editor/editor-rohfassung'
+import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare'
+import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import {
   dupliziereBlock,
   dupliziereThema,
@@ -354,19 +357,24 @@ export function EditorGliederung({
         </div>
         {istGewaehlt({ art: 'abschluss' }) && (
           <div className="mt-2 rounded-xl border border-ws-line bg-ws-surface p-4">
-            <EditorRohfassung
+            <MitRohfassung
               materialId={materialId}
               beschriftung="Rohfassung: Lernzielkontrolle"
               // Der Kern liest einzelne Blöcke nur mit `type` – die Lernzielkontrolle bekommt dafür eine Hilfsmarke
               block={{ type: 'final_chapter', ...(struktur.final_chapter ?? { title: 'Lernzielkontrolle' }) }}
-              onUebernehmen={(b) => {
+              onRohUebernommen={(b) => {
                 const { type: _marke, ...rest } = b
                 void _marke
                 aendere((s) => setzeAbschluss(s, rest))
                 setAuswahl(null)
               }}
-              onAbbrechen={() => setAuswahl(null)}
-            />
+              schliessen={() => setAuswahl(null)}
+            >
+              <AbschlussFormular
+                abschluss={struktur.final_chapter ?? { title: 'Lernzielkontrolle' }}
+                onChange={(neu, feld) => aendere((s) => setzeAbschluss(s, neu), `abschluss-${feld}`)}
+              />
+            </MitRohfassung>
           </div>
         )}
       </div>
@@ -685,19 +693,123 @@ function BlockZeile({
               Diesen Blocktyp kennt die Seite nicht. Er wird beim Bauen übersprungen, geht aber nicht verloren.
             </p>
           )}
-          <EditorRohfassung
+          <BlockBearbeiten
             materialId={materialId}
             block={block}
-            beschriftung={`Rohfassung: ${name}`}
-            onUebernehmen={(neu) => {
+            name={name}
+            gruppe={`k${thema}-e${index}`}
+            onChange={(neu, feld) => aendere((s) => setzeBlock(s, ort, neu), feld)}
+            onRohUebernommen={(neu) => {
               aendere((s) => setzeBlock(s, ort, neu))
               schliessen()
             }}
-            onAbbrechen={schliessen}
+            schliessen={schliessen}
           />
         </div>
       )}
     </li>
+  )
+}
+
+/**
+ * Bearbeitungsfeld eines Blocks (Paket 2): Lehrtext im Text-Editor, die
+ * häufigen Aufgabentypen im Formular (mit Umschalter zur Rohfassung), alles
+ * andere als Rohfassung. Formular und Text-Editor ändern sofort.
+ */
+function BlockBearbeiten({
+  materialId,
+  block,
+  name,
+  gruppe,
+  onChange,
+  onRohUebernommen,
+  schliessen,
+}: {
+  materialId: string
+  block: Block
+  name: string
+  gruppe: string
+  onChange: (block: Block, feld: string) => void
+  onRohUebernommen: (block: Block) => void
+  schliessen: () => void
+}) {
+  const typ = String(block.type ?? '')
+  if (typ === 'text') {
+    return (
+      <TextEditor
+        html={typeof block.content === 'string' ? block.content : ''}
+        beschriftung={name}
+        onChange={(html) => onChange({ ...block, content: html }, `${gruppe}-content`)}
+      />
+    )
+  }
+  const Formular = FORMULARE[typ]
+  if (!Formular) {
+    return (
+      <EditorRohfassung
+        materialId={materialId}
+        block={block}
+        beschriftung={`Rohfassung: ${name}`}
+        onUebernehmen={onRohUebernommen}
+        onAbbrechen={schliessen}
+      />
+    )
+  }
+  return (
+    <MitRohfassung materialId={materialId} block={block} beschriftung={`Rohfassung: ${name}`} onRohUebernommen={onRohUebernommen} schliessen={schliessen}>
+      <Formular block={block} onChange={(neu, feld) => onChange(neu, `${gruppe}-${feld}`)} />
+    </MitRohfassung>
+  )
+}
+
+/** Formular mit Umschalter zur Rohfassung (für Sonderfälle, die das Formular nicht abdeckt) */
+function MitRohfassung({
+  materialId,
+  block,
+  beschriftung,
+  onRohUebernommen,
+  schliessen,
+  children,
+}: {
+  materialId: string
+  block: Block
+  beschriftung: string
+  onRohUebernommen: (block: Block) => void
+  schliessen: () => void
+  children: ReactNode
+}) {
+  const [ansicht, setAnsicht] = useState<'formular' | 'roh'>('formular')
+  return (
+    <div className="space-y-4">
+      <AdminSegmented
+        ariaLabel="Bearbeiten als"
+        value={ansicht}
+        onChange={setAnsicht}
+        options={[
+          { value: 'formular', label: 'Formular' },
+          { value: 'roh', label: 'Rohfassung' },
+        ]}
+      />
+      {ansicht === 'formular' ? (
+        children
+      ) : (
+        <EditorRohfassung
+          materialId={materialId}
+          block={block}
+          beschriftung={beschriftung}
+          onUebernehmen={(b) => {
+            onRohUebernommen(b)
+            setAnsicht('formular')
+          }}
+          onAbbrechen={() => setAnsicht('formular')}
+        />
+      )}
+      <div className="flex justify-end border-t border-ws-line pt-3">
+        <Button variant="outline" className={NEBENAKTION} onClick={schliessen}>
+          Fertig
+        </Button>
+      </div>
+    </div>
   )
 }
 
