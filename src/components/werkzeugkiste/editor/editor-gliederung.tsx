@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Copy,
   FileText,
+  BarChart3,
   GraduationCap,
   GripVertical,
   HelpCircle,
@@ -37,6 +38,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Table2,
   TextCursorInput,
   Trash2,
   Video,
@@ -70,6 +72,7 @@ import { cn } from '@/lib/utils'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorRohfassung } from '@/components/werkzeugkiste/editor/editor-rohfassung'
 import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare'
+import { TabelleHerausloesen } from '@/components/werkzeugkiste/editor/tabelle-herausloesen'
 import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
 import { BildAuswahl, MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
@@ -96,6 +99,7 @@ import {
   type Ort,
   type Struktur,
 } from '@/lib/werkzeugkiste-editor'
+import { loeseTabelleHeraus, type HerausgeloesteTabelle } from '@/lib/werkzeugkiste-tabelle'
 
 export type Auswahl =
   | { art: 'deckblatt' }
@@ -122,6 +126,8 @@ function TypIcon({ typ }: { typ: string }) {
   const k = 'size-4 shrink-0 text-ws-muted'
   if (typ === 'text') return <FileText className={k} aria-hidden />
   if (typ === 'image' || typ === 'bildzuordnung' || typ === 'image_sequencing') return <BildIcon className={k} aria-hidden />
+  if (typ === 'tabelle') return <Table2 className={k} aria-hidden />
+  if (typ === 'diagramm') return <BarChart3 className={k} aria-hidden />
   if (typ === 'interactive_video') return <Video className={k} aria-hidden />
   if (typ.includes('calculation') || typ === 'arithmetic_quiz' || typ === 'rechenweg' || typ === 'schaetzrunde')
     return <Calculator className={k} aria-hidden />
@@ -844,6 +850,10 @@ function BlockZeile({
               aendere((s) => setzeBlock(s, ort, neu))
               schliessen()
             }}
+            onTabelleHeraus={(d) => {
+              aendere((s) => loeseTabelleHeraus(s, thema, index, d), `k${thema}-e${index}-tabelle-heraus`)
+              schliessen()
+            }}
             schliessen={schliessen}
           />
         </div>
@@ -864,6 +874,7 @@ function BlockBearbeiten({
   gruppe,
   onChange,
   onRohUebernommen,
+  onTabelleHeraus,
   schliessen,
 }: {
   materialId: string
@@ -872,16 +883,17 @@ function BlockBearbeiten({
   gruppe: string
   onChange: (block: Block, feld: string) => void
   onRohUebernommen: (block: Block) => void
+  onTabelleHeraus: (d: HerausgeloesteTabelle) => void
   schliessen: () => void
 }) {
   const typ = String(block.type ?? '')
   if (typ === 'text') {
+    const inhalt = typeof block.content === 'string' ? block.content : ''
     return (
-      <TextEditor
-        html={typeof block.content === 'string' ? block.content : ''}
-        beschriftung={name}
-        onChange={(html) => onChange({ ...block, content: html }, `${gruppe}-content`)}
-      />
+      <div className="space-y-3">
+        <TabelleHerausloesen html={inhalt} onHeraus={onTabelleHeraus} />
+        <TextEditor html={inhalt} beschriftung={name} onChange={(html) => onChange({ ...block, content: html }, `${gruppe}-content`)} />
+      </div>
     )
   }
   const Formular = FORMULARE[typ]

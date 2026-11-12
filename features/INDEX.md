@@ -107,7 +107,7 @@
 | PROJ-88 | Schulrecht – bessere Suche & lesbare Darstellung | Deployed | [PROJ-88-schulrecht-suche-und-darstellung.md](PROJ-88-schulrecht-suche-und-darstellung.md) | 2026-11-11 |
 | PROJ-89 | Werkzeugkiste – Baukasten-Editor (Grundgerüst) | Deployed | [PROJ-89-werkzeugkiste-baukasten-editor.md](PROJ-89-werkzeugkiste-baukasten-editor.md) | 2026-11-12 |
 | PROJ-90 | Werkzeugkiste – Baukasten: Aufgabentyp-Katalog | Deployed | [PROJ-90-werkzeugkiste-aufgabentyp-katalog.md](PROJ-90-werkzeugkiste-aufgabentyp-katalog.md) | 2026-11-12 |
-| PROJ-91 | Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Planned | [PROJ-91-werkzeugkiste-tabelle-diagramm.md](PROJ-91-werkzeugkiste-tabelle-diagramm.md) | 2026-11-12 |
+| PROJ-91 | Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | In Progress | [PROJ-91-werkzeugkiste-tabelle-diagramm.md](PROJ-91-werkzeugkiste-tabelle-diagramm.md) | 2026-11-12 |
 | PROJ-92 | Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Planned | [PROJ-92-werkzeugkiste-bilder.md](PROJ-92-werkzeugkiste-bilder.md) | 2026-11-12 |
 | PROJ-93 | Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned | [PROJ-93-werkzeugkiste-thema-per-ki.md](PROJ-93-werkzeugkiste-thema-per-ki.md) | 2026-11-12 |
 | PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Planned | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |

@@ -423,6 +423,29 @@ const SKIZZEN: Record<string, () => ReactNode> = {
       <Absatz x={16} y={52} breiten={[60, 44]} abstand={6} />
     </Kette>
   ),
+  tabelle: () => (
+    <Kette>
+      <K x={12} y={8} w={96} h={56} />
+      <rect x={12.5} y={8.5} width={95} height={14} rx={3} className="fill-ws-raised" />
+      {[12, 30, 44, 58].map((y) => (
+        <g key={y}>
+          <Z x={18} y={y - 2} w={30} t={y === 12 ? 'text' : 'muted'} />
+          <Z x={64} y={y - 2} w={34} t={y === 12 ? 'text' : 'muted'} />
+        </g>
+      ))}
+    </Kette>
+  ),
+  diagramm: () => (
+    <Kette>
+      <path d="M14 10 V58 H108" className="fill-none stroke-ws-line" strokeWidth={1.2} />
+      {[0, 1, 2, 3].map((i) => (
+        <g key={i}>
+          <rect x={22 + i * 22} y={[36, 22, 30, 14][i]} width={8} height={58 - [36, 22, 30, 14][i]} rx={1.5} className="fill-ws-blue" />
+          <rect x={31 + i * 22} y={[28, 30, 18, 24][i]} width={8} height={58 - [28, 30, 18, 24][i]} rx={1.5} className="fill-ws-orange" />
+        </g>
+      ))}
+    </Kette>
+  ),
   selbsteinschaetzung: () => (
     <Kette>
       {[8, 30, 52].map((y, i) => (

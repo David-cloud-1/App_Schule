@@ -31,15 +31,15 @@ beforeEach(() => window.localStorage.clear())
 afterEach(() => window.localStorage.clear())
 
 describe('Katalog-Fenster (PROJ-90)', () => {
-  it('zeigt sieben Gruppen und 31 Einträge mit „Gut für“', () => {
+  it('zeigt sieben Gruppen und 33 Einträge mit „Gut für“', () => {
     katalog()
     expect(screen.getByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
     for (const g of ['Lesen & Nachschlagen', 'Abfragen', 'Lücken & Wörter', 'Zuordnen & Ordnen', 'Rechnen', 'Spiele & Rätsel', 'Selbstcheck & Wiederholen']) {
       expect(screen.getByRole('heading', { name: g })).toBeInTheDocument()
     }
     const eintraege = document.querySelectorAll('[data-katalog-eintrag]')
-    expect(eintraege).toHaveLength(31)
-    expect(screen.getAllByText('Gut für:')).toHaveLength(31)
+    expect(eintraege).toHaveLength(33)
+    expect(screen.getAllByText('Gut für:')).toHaveLength(33)
     expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
   })
 
@@ -58,7 +58,7 @@ describe('Katalog-Fenster (PROJ-90)', () => {
     fireEvent.change(screen.getByLabelText('Aufgabentyp suchen'), { target: { value: 'zzzz' } })
     expect(screen.getByText('Kein Aufgabentyp passt zu „zzzz“.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Suche löschen/ }))
-    expect(document.querySelectorAll('[data-katalog-eintrag]')).toHaveLength(31)
+    expect(document.querySelectorAll('[data-katalog-eintrag]')).toHaveLength(33)
   })
 
   it('fügt per Klick sofort ein', () => {

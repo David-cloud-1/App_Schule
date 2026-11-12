@@ -132,6 +132,8 @@ export const TYP_NAMEN: Record<string, string> = {
   fallakte: 'Fallakte',
   schaetzrunde: 'Schätzrunde',
   selbsteinschaetzung: 'Selbsteinschätzung',
+  tabelle: 'Tabelle',
+  diagramm: 'Diagramm',
 }
 
 export function typName(typ: string): string {
@@ -157,7 +159,7 @@ function klartext(html: string): string {
     .trim()
 }
 
-const KURZ_FELDER = ['title', 'question', 'task', 'text', 'content', 'description', 'formula', 'caption', 'alt', 'path', 'url']
+const KURZ_FELDER = ['title', 'titel', 'question', 'task', 'text', 'content', 'description', 'formula', 'caption', 'alt', 'path', 'url']
 
 /** Die ersten Wörter eines Blocks für die Gliederung */
 export function kurzzeile(block: Block, max = 70): string {
@@ -167,6 +169,10 @@ export function kurzzeile(block: Block, max = 70): string {
       const t = klartext(wert)
       if (t) return t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t
     }
+  }
+  if (block.type === 'tabelle' && Array.isArray(block.zeilen) && block.zeilen.length) {
+    const z = block.zeilen.length
+    return `${z} ${z === 1 ? 'Zeile' : 'Zeilen'}`
   }
   for (const liste of ['questions', 'items', 'cards', 'answers', 'words', 'statements']) {
     const wert = block[liste]

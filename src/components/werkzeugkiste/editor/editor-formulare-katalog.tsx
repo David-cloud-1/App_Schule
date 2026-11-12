@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
 import { BildAuswahl, bildName, useGrossesBild } from '@/components/werkzeugkiste/editor/material-bilder'
+import { DiagrammFormular, TabelleFormular } from '@/components/werkzeugkiste/editor/editor-formulare-tabelle'
 import { cn } from '@/lib/utils'
 import type { Block } from '@/lib/werkzeugkiste-editor'
 
@@ -883,6 +884,8 @@ export function SelbsteinschaetzungFormular({ block, onChange }: FormProps) {
 // ── Zuordnung Typ → Formular ────────────────────────────────────────────────
 
 export const KATALOG_FORMULARE: Record<string, (p: FormProps) => React.ReactNode> = {
+  tabelle: TabelleFormular,
+  diagramm: DiagrammFormular,
   image: BildFormular,
   drag_drop: ZuordnenFormular,
   crossword: KreuzwortFormular,

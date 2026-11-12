@@ -66,6 +66,22 @@ const ROH: Roh[] = [
     ohneAuswertung: true,
   },
   {
+    typ: 'tabelle',
+    gruppe: 'lesen',
+    beschreibung: 'Eine Tabelle mit Kopfzeile, die du wie in Excel bearbeitest – ohne HTML.',
+    gutFuer: 'Kosten, Fristen und Vergleiche übersichtlich zeigen.',
+    suchbegriffe: ['Tabelle', 'Zeilen', 'Spalten', 'Excel', 'Vergleich', 'Übersicht', 'Zebra'],
+    ohneAuswertung: true,
+  },
+  {
+    typ: 'diagramm',
+    gruppe: 'lesen',
+    beschreibung: 'Ein Säulen-, Balken-, Linien- oder Kreisdiagramm aus einer kleinen Zahlentabelle.',
+    gutFuer: 'Entwicklungen und Anteile zeigen, z. B. Umsatz je Quartal oder die Kostenstruktur.',
+    suchbegriffe: ['Diagramm', 'Säulen', 'Balken', 'Linie', 'Kreis', 'Torte', 'Grafik', 'Statistik', 'Zahlen'],
+    ohneAuswertung: true,
+  },
+  {
     typ: 'calculation_example',
     gruppe: 'lesen',
     beschreibung: 'Eine vorgerechnete Aufgabe mit Formel, Rechenschritten und Ergebnis.',
