@@ -1,8 +1,8 @@
 # PROJ-89: Werkzeugkiste – Baukasten-Editor (Grundgerüst)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12 (Architecture freigegeben)
+**Last Updated:** 2026-11-12 (Paket 1 gebaut)
 
 ## Idee in einem Satz
 Eine Lehrkraft kann ein fertiges Material im Format „Interaktive Seite" nachträglich bearbeiten: Themen und Blöcke verschieben, löschen und duplizieren, Texte und Aufgaben ändern, mit Vorschau. Die Seite ändert sich für Schüler erst, wenn sie bewusst veröffentlicht.
@@ -367,6 +367,32 @@ Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Ein
 - Die Vorschau kann keine Daten der App lesen (Cookies, lokaler Speicher der App).
 - Zwei Tabs: kein stilles Überschreiben.
 - Material ohne Skript (Regal-Kopie, Skript entfernt): Bilder erscheinen in Vorschau und veröffentlichter Seite.
+
+## Umsetzung
+
+### Paket 1 (2026-11-12): Kern, Server, Editor mit Rohfassung
+**Kern** (Repo `Werkzeugkiste`, Branch `feat/proj-89-editor`, PR gegen `vercel-kern`: https://github.com/David-cloud-1/Werkzeugkiste/pull/1)
+- `kern_editor.py` (neu): Antwort → Struktur, Struktur → YAML (Rundreise), Rohfassung je Block, Prüfen und Bauen aus der Struktur, 8-MB-Grenze beim Veröffentlichen. `kern.py` bleibt unverändert.
+- `seite.py`: Sprungmarken `data-wk` nur mit `marken=True`. `qualitaet.py`: Befunde tragen `stelle`/`stellen`.
+- `app.py`: `/api/editor/{struktur,yaml,block-lesen,block-yaml,pruefen,bauen}`.
+- 26 Tests (`kern_editor_test.py`). Wichtigster Befund: Eine unverändert veröffentlichte Struktur ergibt eine **byte-gleiche Seite** wie heute.
+
+**App** (Branch `feat/proj-89-baukasten-editor`)
+- Migration `20261120_proj89_baukasten_entwurf.sql` (+ Down): `entwurf`, `entwurf_am`, `entwurf_pruefung`, `hat_entwurf`. **Noch nicht angewendet.**
+- Server: `GET/PUT/DELETE …/editor`, `POST …/editor/vorschau`, `…/editor/rohfassung`, `…/editor/veroeffentlichen`. Lib: `werkzeugkiste-editor.ts` (Struktur-Operationen), `werkzeugkiste-editor-server.ts`.
+- Oberfläche `/admin/werkzeugkiste/bearbeiten/[id]` (ohne Seitenleiste): Gliederung mit Ziehen (dnd-kit, Maus/Touch/Tastatur) und Menü-Alternative, Duplizieren, Löschen mit „Rückgängig“-Toast, Thema hinzufügen/umbenennen/löschen, Deckblatt-Formular, **Rohfassung (YAML, CodeMirror) für alle Blöcke und die Lernzielkontrolle**, Vorschau der echten Seite (abgeschotteter Rahmen, Sprung zum Block), Hinweise der Prüfstelle am Block, automatisches Speichern mit Zwei-Tabs-Regel, Rückgängig/Wiederholen, Entwurf verwerfen, Veröffentlichen mit Bestätigung, Umschalter Gliederung/Vorschau unter 1024 px.
+- Tests: 19 Routen-, 11 Struktur- und 11 Komponententests. Ganze Suite grün (3066), Build grün.
+
+### Abweichungen und Funde
+- **Live-Kern nicht auf GitHub:** Vercel betreibt den Kern mit Commit `b4a1780` (PROJ-88), `vercel-kern` auf GitHub steht auf `89537a4`. Vor dem Mergen des Kern-PRs muss der lokale Stand gepusht und der PR darauf rebased werden, sonst geht die neue Schulrecht-Suche live verloren.
+- **Boxen ohne Inline-Stil:** Auf `vercel-kern` schreibt der Master-Prompt Boxen nur noch mit Klasse (`<div class="merke">`), das Schuldesign setzt `schuldesign.py`. Für Paket 2 heißt das: Der Text-Editor fügt Boxen als Klassen ein, nicht mit Inline-Stilen (die AC „gleiche Inline-Stile wie im Master-Prompt“ ist entsprechend zu lesen). Alte Antworten mit Inline-Stilen müssen trotzdem erhalten bleiben.
+- **Name der Pill:** „Meine Materialien“ nennt unfertige Abläufe schon „Entwurf“. Die Markierung für unveröffentlichte Änderungen braucht in Paket 3 einen anderen Namen (Vorschlag: „Änderungen nicht veröffentlicht“).
+- **Lernzielkontrolle als Rohfassung:** Der Kern liest einzelne Blöcke nur mit `type`. Die Lernzielkontrolle bekommt dafür beim Bearbeiten die Hilfsmarke `type: final_chapter`, die beim Übernehmen wieder entfernt wird.
+- **Veröffentlichen und Prüfbericht:** Der neue Prüfbericht (`pruefung`) kommt aus der Editor-Prüfung (ohne Korrekturzähler und ohne Nachbesserungs-Prompt).
+
+### Noch offen
+- **Paket 2:** Formulare für die 13 häufigen Typen, Lernzielkontrolle als Formular, Text-Editor (gestaltet ⇄ HTML) mit Rundreise-Prüfung.
+- **Paket 3:** Einstiege („Bearbeiten“ in Meine Materialien und Schritt 5, Regal-Anpassen → Editor, H5P → Seite kopieren), Markierung in der Liste, Sperre der Schritt-4-Funktionen bei bestehendem Entwurf.
 
 ## QA Test Results
 _To be added by /qa_

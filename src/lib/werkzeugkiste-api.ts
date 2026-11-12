@@ -1,4 +1,5 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, AblaufTeil, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
+import type { Block, EditorBefund, EditorDaten, Struktur } from '@/lib/werkzeugkiste-editor'
 import type { HilfeAngebot, HilfeAngebotAntwort } from '@/lib/werkzeugkiste-hilfe-angebot'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
@@ -57,6 +58,12 @@ import type {
  *   POST   /ablaeufe/:id/zusammenfuegen     Teile zu einer Antwort zusammenfügen
  *   POST   /ablaeufe/:id/weiterschreiben    abgeschnittene Antwort (ohne Teile) kürzen + Weiterschreib-Prompt
  *   POST   /ablaeufe/:id/fortsetzung        Antwort auf den Weiterschreib-Prompt anhängen
+ *
+ * Baukasten-Editor (PROJ-89, Paket 1):
+ *   GET/PUT/DELETE /ablaeufe/:id/editor    öffnen · Entwurf speichern · Entwurf verwerfen
+ *   POST   /ablaeufe/:id/editor/vorschau   Vorschau des Entwurfs bauen (+ Prüfstelle)
+ *   POST   /ablaeufe/:id/editor/rohfassung ein Block ↔ YAML (über den Kern)
+ *   POST   /ablaeufe/:id/editor/veroeffentlichen  Entwurf wird zur neuen Fassung
  *
  * Öffentlicher Link „Link für alle“ (PROJ-67):
  *   GET/POST/DELETE /ablaeufe/:id/link    eigenen Link lesen · erzeugen · abschalten
@@ -481,4 +488,50 @@ export function ladeLinkUebersicht(seite: number) {
 
 export function schalteLinkAdminAb(linkId: string) {
   return anfrage<{ ok: true }>(`/links/${encodeURIComponent(linkId)}`, { method: 'DELETE' })
+}
+
+// ── Baukasten-Editor (PROJ-89) ────────────────────────────────────────────
+
+export function ladeEditor(id: string) {
+  return anfrage<EditorDaten>(`/ablaeufe/${id}/editor`)
+}
+
+/** Ganzer Entwurf; `stand` = zuletzt gesehener Speicherstand (null = noch kein Entwurf) */
+export function speichereEntwurf(id: string, struktur: Struktur, stand: string | null) {
+  return anfrage<{ stand: string }>(`/ablaeufe/${id}/editor`, {
+    method: 'PUT',
+    body: JSON.stringify({ struktur, stand }),
+  })
+}
+
+export function verwirfEntwurf(id: string) {
+  return anfrage<{ ok: true }>(`/ablaeufe/${id}/editor`, { method: 'DELETE' })
+}
+
+export function baueEntwurfVorschau(id: string) {
+  return anfrage<{ adresse: string; befunde: EditorBefund[]; groesse: number; stand: string | null }>(
+    `/ablaeufe/${id}/editor/vorschau`,
+    { method: 'POST', body: '{}' },
+  )
+}
+
+export function blockAlsRohfassung(id: string, block: Block) {
+  return anfrage<{ text: string }>(`/ablaeufe/${id}/editor/rohfassung`, {
+    method: 'POST',
+    body: JSON.stringify({ richtung: 'schreiben', block }),
+  })
+}
+
+export function rohfassungLesen(id: string, text: string) {
+  return anfrage<{ block: Block }>(`/ablaeufe/${id}/editor/rohfassung`, {
+    method: 'POST',
+    body: JSON.stringify({ richtung: 'lesen', text }),
+  })
+}
+
+export function veroeffentlicheEntwurf(id: string, stand: string | null) {
+  return anfrage<{ befunde: EditorBefund[] }>(`/ablaeufe/${id}/editor/veroeffentlichen`, {
+    method: 'POST',
+    body: JSON.stringify({ stand }),
+  })
 }

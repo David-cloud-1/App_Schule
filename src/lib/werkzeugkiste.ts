@@ -686,7 +686,9 @@ export function istAblaufPfad(pathname: string | null | undefined): boolean {
   return (
     pathname === `${WERKZEUGKISTE_HREF}/neu` ||
     pathname.startsWith(`${WERKZEUGKISTE_HREF}/neu/`) ||
-    pathname.startsWith(`${WERKZEUGKISTE_HREF}/ablauf/`)
+    pathname.startsWith(`${WERKZEUGKISTE_HREF}/ablauf/`) ||
+    // Baukasten-Editor (PROJ-89): ebenfalls eigener Rahmen ohne Seitenleiste
+    pathname.startsWith(`${WERKZEUGKISTE_HREF}/bearbeiten/`)
   )
 }
 
