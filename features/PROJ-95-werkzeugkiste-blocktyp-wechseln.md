@@ -1,6 +1,6 @@
 # PROJ-95: Werkzeugkiste – Baukasten: Typ eines Blocks wechseln
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (gebaut und geprüft)
 
@@ -273,4 +273,4 @@ Keine neuen Pakete. Dialog (`AlertDialog`), Toast (sonner), Menü und Katalog-Fe
   - **Browser-Durchgang offen** (Menü, Katalog-Modus, Dialog, Handy 360 px, Tastatur).
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-12** (Commit `b6f698d`, Push auf `main`, Vercel-Production „Ready“). Keine Migration, kein Kern-Deploy nötig (Kern unverändert). Version-Tag `v1.95.0-PROJ-95`. Ohne Login: Startseite leitet um (307), Editor-Weg antwortet 401. **Offen:** Browser-Durchgang als Lehrkraft (siehe QA).
