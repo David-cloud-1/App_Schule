@@ -1,6 +1,6 @@
 # PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (gebaut)
 
@@ -328,4 +328,9 @@ Keine neuen. Genutzt werden die vorhandenen: shadcn/ui (Dialog, Input, Badge …
 **Produktionsreif: JA** – keine offenen Critical/High-Fehler. Offen: Browser-Durchgang nach dem Deploy.
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-11-12
+- **App:** https://spedilern.vercel.app (Commit `4a03acd`, Tag `v1.90.0-PROJ-90`), Build „Ready“, keine Fehler im Produktions-Log.
+- **Kern:** https://werkzeugkiste-kern.vercel.app (Zweig `vercel-kern`, Commit `793bf49`), vor der App bereitgestellt. Neue Wege `/api/editor/bilder` und `/api/editor/bild` mit Kennwort geprüft (200 bzw. 404 für fremde Pfade).
+- **Datenbank:** keine Änderung.
+- **Geprüft ohne Login:** Bilder-Route → 401, Editor-Seite → Umleitung zum Login.
+- **Offen:** Browser-Durchgang als Lehrkraft (Desktop und Handy): Block einfügen, Katalog-Suche, Bildauswahl mit einem Material mit Bildern, Punkte setzen in der Bildzuordnung, Kapiteltest-Frage hinzufügen, Veröffentlichen-Dialog mit Beispiel-Hinweis.

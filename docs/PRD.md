@@ -119,7 +119,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-87: Werkzeugkiste – Assistent „Schritt für Schritt“ | Deployed |
 | P1 | PROJ-88: Schulrecht – bessere Suche & lesbare Darstellung | Deployed |
 | P1 | PROJ-89: Werkzeugkiste – Baukasten-Editor (Grundgerüst) | Deployed |
-| P1 | PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog | Planned |
+| P1 | PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog | Deployed |
 | P2 | PROJ-91: Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Planned |
 | P2 | PROJ-92: Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Planned |
 | P2 | PROJ-93: Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned |
