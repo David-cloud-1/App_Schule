@@ -10,6 +10,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { GET as themen } from './themen/route'
 import { POST as suche } from './suche/route'
 import { POST as aufwaermen } from './aufwaermen/route'
+import { POST as fragePrompt } from './frage-prompt/route'
 import { GET as vorschrift } from './vorschrift/route'
 import { GET as norm } from './norm/route'
 import { POST as erkennen } from './erkennen/route'
@@ -103,6 +104,7 @@ describe('Schulrecht-Schnittstelle (PROJ-55)', () => {
       await themen(),
       await suche(json({ frage: 'Handy' })),
       await aufwaermen(),
+      await fragePrompt(json({ frage: 'x', fundstellen: [{ kuerzel: 'BSO', nr: '§ 1' }] })),
       await vorschrift(new Request('http://t?kuerzel=BSO')),
       await norm(new Request('http://t?kuerzel=BSO&nr=%C2%A7%201')),
       await erkennen(json({ sachverhalt: 'x' })),
@@ -175,6 +177,33 @@ describe('Schulrecht-Schnittstelle (PROJ-55)', () => {
       kernAntwort({ ok: true })
       expect((await aufwaermen()).status).toBe(200)
       expect(JSON.parse(kernFetch.mock.calls[0][1].body)).toEqual({})
+    })
+  })
+
+  describe('Mit meiner KI beantworten (PROJ-88)', () => {
+    it('baut den Prompt im Kern aus Frage und Stellen, ohne etwas zu speichern', async () => {
+      kernAntwort({ prompt: 'PROMPT' })
+      const res = await fragePrompt(json({ frage: ' Darf ich das Handy einsammeln? ', fundstellen: [{ kuerzel: 'BayEUG', nr: 'Art. 56' }] }))
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ prompt: 'PROMPT' })
+      expect(res.headers.get('Cache-Control')).toBe('no-store')
+      const [url, init] = kernFetch.mock.calls[0]
+      expect(url).toBe('https://kern.test/api/recht/prompt')
+      expect(JSON.parse(init.body)).toEqual({ sachverhalt: 'Darf ich das Handy einsammeln?', fundstellen: [{ kuerzel: 'BayEUG', nr: 'Art. 56' }] })
+      expect(db.from).not.toHaveBeenCalled()
+    })
+
+    it('prüft die Eingabe: leere Frage, keine oder zu viele Stellen, fremde Felder', async () => {
+      const eine = [{ kuerzel: 'BSO', nr: '§ 1' }]
+      for (const body of [
+        { frage: ' ', fundstellen: eine },
+        { frage: 'Handy', fundstellen: [] },
+        { frage: 'Handy', fundstellen: Array(16).fill(eine[0]) },
+        { frage: 'Handy', fundstellen: eine, name: 'Max' },
+      ]) {
+        expect((await fragePrompt(json(body))).status).toBe(400)
+      }
+      expect(kernFetch).not.toHaveBeenCalled()
     })
   })
 

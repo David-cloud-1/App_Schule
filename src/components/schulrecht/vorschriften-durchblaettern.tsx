@@ -5,9 +5,10 @@ import { ChevronDown } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AdminErrorState } from '@/components/admin/admin-states'
-import { FundstelleKarte } from '@/components/schulrecht/fundstelle-karte'
+import { TrefferKarte } from '@/components/schulrecht/treffer-karte'
+import { VerweisFenster } from '@/components/schulrecht/verweis-fenster'
 import { ladeNorm, ladeVorschrift, SchulrechtFehler } from '@/lib/schulrecht-api'
-import { RANG_LABEL, standAnzeige, type Fundstelle, type Rechtsquelle, type VorschriftInhalt } from '@/lib/schulrecht'
+import { RANG_LABEL, standAnzeige, type Fundstelle, type NormVerweis, type Rechtsquelle, type VorschriftInhalt } from '@/lib/schulrecht'
 
 const TRIGGER =
   'group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green'
@@ -16,20 +17,25 @@ const TRIGGER =
  * „Vorschriften durchblättern“ (PROJ-55): jede Rechtsquelle zeigt ihr
  * Inhaltsverzeichnis, jede Norm lässt sich aufklappen. Inhaltsverzeichnis und
  * Wortlaut werden erst beim Öffnen geladen, damit die Seite schlank bleibt.
+ * Seit PROJ-88 mit Kurzfassung, nummerierten Absätzen und anklickbaren Verweisen.
  */
 export function VorschriftenDurchblaettern({ quellen }: { quellen: Rechtsquelle[] }) {
+  const [verweis, setVerweis] = useState<NormVerweis | null>(null)
   return (
-    <ul className="space-y-2">
-      {quellen.map((q) => (
-        <li key={q.kuerzel}>
-          <Quelle quelle={q} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="space-y-2">
+        {quellen.map((q) => (
+          <li key={q.kuerzel}>
+            <Quelle quelle={q} oeffneVerweis={setVerweis} />
+          </li>
+        ))}
+      </ul>
+      <VerweisFenster ziel={verweis} schliessen={() => setVerweis(null)} />
+    </>
   )
 }
 
-function Quelle({ quelle }: { quelle: Rechtsquelle }) {
+function Quelle({ quelle, oeffneVerweis }: { quelle: Rechtsquelle; oeffneVerweis: (v: NormVerweis) => void }) {
   const [offen, setOffen] = useState(false)
   const [inhalt, setInhalt] = useState<VorschriftInhalt | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -78,7 +84,7 @@ function Quelle({ quelle }: { quelle: Rechtsquelle }) {
             <ul className="space-y-1">
               {inhalt.normen.map((n) => (
                 <li key={n.nr}>
-                  <NormZeile kuerzel={quelle.kuerzel} nr={n.nr} titel={n.titel} />
+                  <NormZeile kuerzel={quelle.kuerzel} nr={n.nr} titel={n.titel} oeffneVerweis={oeffneVerweis} />
                 </li>
               ))}
             </ul>
@@ -89,7 +95,17 @@ function Quelle({ quelle }: { quelle: Rechtsquelle }) {
   )
 }
 
-function NormZeile({ kuerzel, nr, titel }: { kuerzel: string; nr: string; titel: string }) {
+function NormZeile({
+  kuerzel,
+  nr,
+  titel,
+  oeffneVerweis,
+}: {
+  kuerzel: string
+  nr: string
+  titel: string
+  oeffneVerweis: (v: NormVerweis) => void
+}) {
   const [offen, setOffen] = useState(false)
   const [fundstelle, setFundstelle] = useState<Fundstelle | null>(null)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -124,7 +140,7 @@ function NormZeile({ kuerzel, nr, titel }: { kuerzel: string; nr: string; titel:
         ) : !fundstelle ? (
           <Skeleton className="h-24 rounded-xl bg-ws-raised" role="status" aria-label="Wird geladen" />
         ) : (
-          <FundstelleKarte fundstelle={fundstelle} startOffen />
+          <TrefferKarte fundstelle={fundstelle} alleAbsaetze oeffneVerweis={oeffneVerweis} />
         )}
       </CollapsibleContent>
     </Collapsible>

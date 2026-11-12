@@ -52,6 +52,13 @@ export const neuerFallSchema = z
   })
   .strict()
 
+export const fragePromptSchema = z
+  .object({
+    frage: sucheSchema.shape.frage,
+    fundstellen: z.array(verweisSchema).min(1, 'Es fehlen die Fundstellen.').max(15, 'Es sind zu viele Fundstellen.'),
+  })
+  .strict()
+
 export const fallAenderungSchema = z.object({ schritt: z.number().int().min(1).max(3) }).strict()
 
 export const fallAntwortSchema = z

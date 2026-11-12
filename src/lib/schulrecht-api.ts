@@ -20,6 +20,7 @@ import type {
  *   GET    /themen                    Chips (Start + weitere) und Rechtsquellen — darf gemerkt werden
  *   POST   /suche {frage, quellen?}   Fundstellen ohne KI — nie gemerkt
  *   POST   /aufwaermen                lädt das Einbettungsmodell vor (ohne Frage)
+ *   POST   /frage-prompt {frage, fundstellen}  Prompt für die eigene KI (PROJ-88) — nie gemerkt, nie gespeichert
  *   GET    /vorschrift?kuerzel=       Inhaltsverzeichnis einer Rechtsquelle — darf gemerkt werden
  *   GET    /norm?kuerzel=&nr=         Wortlaut einer Norm — darf gemerkt werden
  *   POST   /erkennen {sachverhalt}    Personenbezüge mit Ersetzungsvorschlag (wird nicht gespeichert)
@@ -81,6 +82,11 @@ export function ladeThemen() {
 
 export function sucheFundstellen(frage: string, quellen?: string[]) {
   return anfrage<SuchErgebnis>('/suche', post({ frage, ...(quellen ? { quellen } : {}) }))
+}
+
+/** Prompt „Mit meiner KI beantworten“ (PROJ-88): Frage + Stellen im Wortlaut; nichts wird gespeichert */
+export function holeFragePrompt(frage: string, fundstellen: FundstellenVerweis[]) {
+  return anfrage<{ prompt: string }>('/frage-prompt', post({ frage, fundstellen }))
 }
 
 /** Hilft nur gegen die Wartezeit beim ersten Mal; Fehler sind egal */

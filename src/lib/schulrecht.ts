@@ -18,7 +18,7 @@ export const OHNE_NAMEN_HINWEIS =
 
 export const KURZE_FRAGE_HINWEIS = 'Mit einer ganzen Frage findest du genauere Stellen.'
 
-export const KEIN_TREFFER_TEXT = 'Dazu wurde nichts gefunden. Formuliere die Frage anders oder wähle ein Thema.'
+export const KEIN_TREFFER_TEXT = 'Dazu wurde nichts gefunden. Formuliere die Frage anders, zum Beispiel mit anderen Worten oder als ganzen Satz.'
 
 /** Wie lange ein Aktennotiz-Ablauf höchstens liegen bleibt (E4) */
 export const FALL_LAUFZEIT_STUNDEN = 24
@@ -90,14 +90,123 @@ export interface Fundstelle extends FundstellenVerweis {
   rang: Rang
   /** Wortlaut */
   text: string
-  /** Treffer der Ähnlichkeitssuche: ein Vorschlag, kein sicherer Treffer */
+  /** Treffer, den nur ein Suchverfahren vorn sieht: ein Vorschlag, kein sicherer Treffer */
   ungeprueft?: boolean
+  // ── ab PROJ-88 (der Kern liefert sie zusätzlich) ──
+  /** Vorab geschriebene Zusammenfassung in Alltagssprache (Opus-geprüft); maßgeblich bleibt der Wortlaut */
+  kurzfassung?: string | null
+  /** Die Absätze einzeln, mit Kernaussage, Markierung und erkannten Verweisen */
+  absaetze?: FundAbsatz[]
+  /** Position (ab 1) des Absatzes, der am besten zur Frage passt */
+  passend?: number
+  /** Mehrere Suchverfahren sehen die Norm weit vorn */
+  sicher?: boolean
+}
+
+export interface FundAbsatz {
+  /** Position ab 1 */
+  i: number
+  /** Wortlaut, beginnt meist mit der Absatznummer „(2)“ */
+  text: string
+  kernaussage: string | null
+  /** Literale Wörter im Text, die zur Frage passen */
+  markiert: string[]
+  verweise: NormVerweis[]
+}
+
+/** Verweis im Text auf eine andere Norm im Bestand, z. B. „Art. 86 Abs. 2“ */
+export interface NormVerweis {
+  start: number
+  ende: number
+  kuerzel: string
+  nr: string
 }
 
 export interface SuchErgebnis {
   fundstellen: Fundstelle[]
-  /** Gefundenes Thema samt Hinweis, wenn die Frage ein kuratiertes Thema trifft */
+  /** Altlast aus PROJ-55, seit PROJ-88 immer leer */
   themenHinweis?: string | null
+}
+
+/** So viele Treffer stehen zuerst da; „Weitere Treffer anzeigen“ zeigt den Rest (bis 15) */
+export const ERSTE_TREFFER = 5
+
+/** Einstieg statt Themen-Chips (PROJ-88, E3) */
+export const BEISPIEL_FRAGEN = [
+  'Darf ich einem Schüler das Handy wegnehmen?',
+  'Ab wann kann ich ein ärztliches Attest verlangen?',
+  'Wann muss ich den Ausbildungsbetrieb informieren, wenn ein Azubi fehlt?',
+] as const
+
+export const NICHT_ENTHALTEN_HINWEIS =
+  'Durchsucht werden BayEUG, BaySchO, BSO, die Münchner Dienstordnung, BayBG, BayPVG, Datenschutzrecht, Urheberrecht und unsere Handlungsleitlinien. Nicht enthalten sind Verwaltungsvorschriften (KMBek, KMS).'
+
+export const KURZFASSUNG_HINWEIS = 'Zusammenfassung – maßgeblich ist der Gesetzestext.'
+
+export const KI_HINWEIS = 'Die Frage geht an deine eigene KI. Schreibe keine Namen hinein.'
+
+/** Absätze einer Fundstelle; ältere Antworten ohne Absätze werden zu einem Absatz */
+export function absaetzeVon(f: Fundstelle): FundAbsatz[] {
+  if (f.absaetze && f.absaetze.length) return f.absaetze
+  return [{ i: 1, text: f.text, kernaussage: null, markiert: [], verweise: [] }]
+}
+
+export type TextStueck =
+  | { art: 'text'; text: string }
+  | { art: 'mark'; text: string }
+  | { art: 'verweis'; text: string; verweis: NormVerweis }
+
+/**
+ * Zerlegt einen Absatz in Stücke für die Anzeige: normale Wörter, markierte
+ * Suchwörter und anklickbare Verweise. Kein HTML – die Oberfläche setzt die
+ * Stücke selbst zusammen. Verweise haben Vorrang vor Markierungen.
+ */
+export function zerlegeText(text: string, markiert: string[], verweise: NormVerweis[]): TextStueck[] {
+  const stuecke: TextStueck[] = []
+  const gueltig = [...verweise]
+    .filter((v) => v.start >= 0 && v.ende <= text.length && v.start < v.ende)
+    .sort((a, b) => a.start - b.start)
+  const worte = [...new Set(markiert.filter((w) => w.length > 2))].sort((a, b) => b.length - a.length)
+  const muster = worte.length
+    ? new RegExp(`(?<![\\p{L}])(${worte.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\p{L}])`, 'gu')
+    : null
+
+  function markiere(abschnitt: string) {
+    if (!abschnitt) return
+    if (!muster) {
+      stuecke.push({ art: 'text', text: abschnitt })
+      return
+    }
+    let pos = 0
+    for (const m of abschnitt.matchAll(muster)) {
+      const start = m.index ?? 0
+      if (start > pos) stuecke.push({ art: 'text', text: abschnitt.slice(pos, start) })
+      stuecke.push({ art: 'mark', text: m[0] })
+      pos = start + m[0].length
+    }
+    if (pos < abschnitt.length) stuecke.push({ art: 'text', text: abschnitt.slice(pos) })
+  }
+
+  let position = 0
+  for (const v of gueltig) {
+    if (v.start < position) continue
+    markiere(text.slice(position, v.start))
+    stuecke.push({ art: 'verweis', text: text.slice(v.start, v.ende), verweis: v })
+    position = v.ende
+  }
+  markiere(text.slice(position))
+  return stuecke
+}
+
+/** Treffer nach Rechtsquelle bündeln; Reihenfolge der Gruppen = bester Treffer der Gruppe */
+export function gruppiereNachQuelle(fundstellen: Fundstelle[]): { kuerzel: string; vorschrift: string; fundstellen: Fundstelle[] }[] {
+  const gruppen: { kuerzel: string; vorschrift: string; fundstellen: Fundstelle[] }[] = []
+  for (const f of fundstellen) {
+    const g = gruppen.find((x) => x.kuerzel === f.kuerzel)
+    if (g) g.fundstellen.push(f)
+    else gruppen.push({ kuerzel: f.kuerzel, vorschrift: f.vorschrift, fundstellen: [f] })
+  }
+  return gruppen
 }
 
 export interface VorschriftInhalt {
@@ -133,6 +242,17 @@ export function kopierText(f: Fundstelle): string {
   const quelle = `Quelle: ${f.vorschrift}, Stand ${standAnzeige(f.stand)}`
   const rang = f.rang === 'gesetz' || f.rang === 'verordnung' ? '' : `\n${RANG_LABEL[f.rang]}`
   return `${kopf}\n\n${f.text.trim()}\n\n${quelle}${rang}`
+}
+
+/** Text für „Quelle kopieren“: Zitierzeile, z. B. „Art. 56 Abs. 5 BayEUG – Rechte und Pflichten (Stand 01.08.2025)“ */
+export function quellenAngabe(f: Fundstelle): string {
+  const abs = f.passend && (f.absaetze?.length ?? 0) > 1 ? absatzNummer(f.absaetze!.find((a) => a.i === f.passend)?.text) : null
+  return `${f.nr}${abs ? ` Abs. ${abs}` : ''} ${f.kuerzel}${f.titel ? ` – ${f.titel}` : ''} (Stand ${standAnzeige(f.stand)})`
+}
+
+/** „(1a) Text …“ -> „1a“ */
+export function absatzNummer(text: string | undefined): string | null {
+  return /^\s*\((\d+[a-z]?)\)/.exec(text ?? '')?.[1] ?? null
 }
 
 /** Weniger als zwei Wörter: es wird trotzdem gesucht, aber mit Hinweis */

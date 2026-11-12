@@ -4,6 +4,9 @@ import {
   fallHref,
   fallSchrittAusParam,
   fundstelleKurz,
+  gruppiereNachQuelle,
+  quellenAngabe,
+  zerlegeText,
   istFallPfad,
   istKurzeFrage,
   kopierText,
@@ -95,5 +98,47 @@ describe('Anzeige und Adressen (PROJ-55)', () => {
     expect(fallSchrittAusParam({ prompt: 'x', schritt: 2 }, '3')).toBe(3)
     expect(fallSchrittAusParam({ prompt: 'x', schritt: 2 }, null)).toBe(2)
     expect(fallSchrittAusParam({ prompt: 'x', schritt: 2 }, 'abc')).toBe(2)
+  })
+})
+
+describe('Darstellung der Treffer (PROJ-88)', () => {
+  const text = '(2) Schulaufgaben werden nach Art. 86 Abs. 2 angekündigt; Schulaufgabe.'
+  const verweis = { start: text.indexOf('Art. 86'), ende: text.indexOf('Art. 86') + 'Art. 86 Abs. 2'.length, kuerzel: 'BayEUG', nr: 'Art. 86' }
+
+  it('zerlegt einen Absatz in Text, Markierungen und Verweise, ohne Zeichen zu verlieren', () => {
+    const s = zerlegeText(text, ['Schulaufgaben', 'angekündigt'], [verweis])
+    expect(s.map((x) => x.text).join('')).toBe(text)
+    expect(s.filter((x) => x.art === 'mark').map((x) => x.text)).toEqual(['Schulaufgaben', 'angekündigt'])
+    expect(s.find((x) => x.art === 'verweis')).toMatchObject({ text: 'Art. 86 Abs. 2', verweis })
+  })
+
+  it('markiert nur ganze Wörter und kommt mit Sonderzeichen klar', () => {
+    const s = zerlegeText('Schulaufgabe und Schulaufgaben (x)', ['Schulaufgabe', '(x)'], [])
+    // „Schulaufgaben“ ist ein anderes Wort und bleibt unmarkiert; Klammern zerstören das Muster nicht
+    expect(s.filter((x) => x.art === 'mark').map((x) => x.text)).toEqual(['Schulaufgabe', '(x)'])
+  })
+
+  it('ignoriert Verweise außerhalb des Textes', () => {
+    const s = zerlegeText('kurz', [], [{ start: 2, ende: 99, kuerzel: 'X', nr: 'Y' }])
+    expect(s).toEqual([{ art: 'text', text: 'kurz' }])
+  })
+
+  const f = (kuerzel: string, nr: string): Fundstelle => ({ kuerzel, nr, vorschrift: kuerzel, titel: 'T', stand: '2026-07-01', rang: 'gesetz', text: 'x' })
+
+  it('gruppiert nach Quelle in der Reihenfolge des besten Treffers', () => {
+    const g = gruppiereNachQuelle([f('BSO', '§ 12'), f('BayEUG', 'Art. 56'), f('BSO', '§ 11')])
+    expect(g.map((x) => [x.kuerzel, x.fundstellen.map((y) => y.nr)])).toEqual([
+      ['BSO', ['§ 12', '§ 11']],
+      ['BayEUG', ['Art. 56']],
+    ])
+  })
+
+  it('Quellenangabe nennt den passenden Absatz', () => {
+    const mit = { ...f('BayEUG', 'Art. 56'), titel: 'Rechte und Pflichten', passend: 2, absaetze: [
+      { i: 1, text: '(1) a', kernaussage: null, markiert: [], verweise: [] },
+      { i: 2, text: '(5) b', kernaussage: null, markiert: [], verweise: [] },
+    ] }
+    expect(quellenAngabe(mit)).toBe('Art. 56 Abs. 5 BayEUG – Rechte und Pflichten (Stand 01.07.2026)')
+    expect(quellenAngabe(f('BSO', '§ 1'))).toBe('§ 1 BSO – T (Stand 01.07.2026)')
   })
 })
