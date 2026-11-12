@@ -1,6 +1,6 @@
 # PROJ-96: Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (Frontend gebaut)
 
@@ -312,7 +312,9 @@ Nutzer: „gerne weiter bis deploy“. Behoben:
 Tests: alle Editor-Tests grün, neue Tests für BUG-1/2/5.
 
 ### Entscheidung
-**Formal production-ready: JA.** Es gibt keine Critical- oder High-Bugs. **Empfehlung: erst BUG-1 und BUG-2 beheben** (beide klein), weil sie je ein Acceptance Criterion verletzen. BUG-3 und BUG-6 per Entscheidung in der Spezifikation klären. **Nach Nachtest: Approved.**
+**Formal production-ready: JA.** Es gibt keine Critical- oder High-Bugs. **Empfehlung: erst BUG-1 und BUG-2 beheben** (beide klein), weil sie je ein Acceptance Criterion verletzen. BUG-3 und BUG-6 per Entscheidung in der Spezifikation klären. **Nach Nachtest: Approved, danach deployt.**
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-12** (Commit abc07ac, Vercel-Production `spedilern`, Build „Ready“). Kein Kern-Deploy, keine Migration. Routen ohne Login geprüft. Mit ausgeliefert: der lokale Statuscommit zu PROJ-95 (nur Doku).
+
+**Offen:** Browser-Test durch den Nutzer (Hover, Stift-Klick, Hervorhebung, Scrollposition nach Neubau, Firefox/Safari/iPhone), am besten mit [docs/vorschau/proj96-pruefseite.html](../docs/vorschau/proj96-pruefseite.html) und im Editor. BUG-7 (Auswahl hängt an der Position beim Duplizieren) bleibt als Low-Altlast.
