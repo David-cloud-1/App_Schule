@@ -193,7 +193,180 @@ Quelle: Repo `David-cloud-1/Werkzeugkiste` (Vercel-Projekt `werkzeugkiste-kern`)
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+> Stand 2026-11-12. Grundlage: App-Code (`App_Schule`) und Kern-Code (Repo `Werkzeugkiste`, Branch `vercel-kern`, Datei `kern.py`, `seite.py`, `qualitaet.py`).
+
+### Was die Prüfung des Bestands ergeben hat
+1. **Der Kern baut die Seite aus YAML-Text.** `kern.bauen()` liest die Antwort mit PyYAML, repariert Kleinigkeiten (`qualitaet.repariere`) und ruft `seite.baue_seite()` mit den Bildern aus der Einlesung auf. Er gibt die fertige HTML-Datei und eine schlichte Lehrer-Vorschau zurück.
+2. **Link und Regal liefern immer die Datei unter `<Besitzer>/<Ablauf>/ausgabe`.** Was dort liegt, ist sofort öffentlich (PROJ-67).
+3. **Die heutige Vorschau** (`vorschau-dialog.tsx`) ist die schlichte Lehrer-Übersicht aus `vorschau.py` in einem Rahmen ohne Skripte. Sie zeigt nicht die echte Seite.
+4. **Die Prüfstelle nennt den Ort nur als Text** („Kapitel 2: …"), nicht als genaue Blocknummer.
+5. **Die gebaute Seite hat keine Sprungmarken je Block.** Die Vorschau kann so nicht zum bearbeiteten Block springen.
+6. **Die Zwei-Tabs-Regel gibt es schon:** Die App schickt beim Bauen den zuletzt gesehenen Änderungszeitpunkt (`stand`) mit und fragt nach, wenn sich inzwischen etwas geändert hat (PROJ-52).
+7. **Bilder bei Materialien ohne Skript** (Regal-Kopie, Skript nach 12 Monaten entfernt) kommen aus dem „Bilder-Auszug" (PROJ-53). Der Bau-Schritt kann das schon.
+8. **Die App hat noch keine Bibliotheken** für Ziehen & Ablegen, gestaltete Texteingabe oder Code-Felder.
+
+### Überblick: Wo was passiert
+```
+Browser (Editor)                        Lern-App (Server)                       Werkzeugkiste-Kern
+------------------------------          ------------------------------          --------------------------
+Gliederung, Formulare, Text-Editor  →   prüft Rolle + Besitz, speichert    →    liest YAML, baut Seite,
+Rückgängig/Wiederholen (im Speicher)    Entwurf, legt Vorschau ab,              prüft (Prüfstelle),
+Vorschau im abgeschotteten Rahmen   ←   veröffentlicht                     ←    wandelt YAML ↔ Struktur
+```
+- **Der Browser** hält das Material während des Bearbeitens als **Struktur** (Deckblatt, Themen, Blöcke mit Feldern), nicht als Text. Verschieben, Löschen, Duplizieren und Rückgängig passieren sofort im Browser.
+- **Die App** speichert diese Struktur als **Entwurf** und ist die einzige Stelle, die mit dem Kern spricht (wie bisher).
+- **Der Kern** bleibt der einzige, der YAML liest, schreibt, prüft und Seiten baut. So sieht der Editor genau das, was später auch gebaut wird.
+
+### A) Komponenten-Struktur
+```
+Meine Materialien (vorhanden)
++-- Zeilenaktion „Bearbeiten" (Stift)            ← neu, nur bei Interaktiver Seite der 5 Werkzeuge
++-- Pill „Entwurf" an der Zeile                  ← neu
++-- Dialog „Als Interaktive Seite kopieren?"     ← neu, bei H5P-Materialien
+
+Schritt 5 „Fertig" (vorhanden)
++-- Knopf „Bearbeiten" (outline)                 ← neu
+
+Regal → „Anpassen" (vorhanden)
++-- öffnet danach den Editor statt Schritt 4     ← geändert
+
+Schritt 4 „Antwort" (vorhanden)
++-- Hinweis „Es gibt einen Entwurf im Editor" + „Im Editor öffnen"   ← neu
+
+Editor-Seite  /admin/werkzeugkiste/bearbeiten/[id]   (eigene Ansicht ohne Seitenleiste, wie der Ablauf)
++-- Kopfleiste
+|   +-- ✕ Schließen (fragt bei ungespeicherten Änderungen)
+|   +-- Titel des Materials
+|   +-- Speicherstand („Entwurf gespeichert" / „Wird gespeichert …" / „Nicht gespeichert – erneut versuchen")
+|   +-- Rückgängig · Wiederholen
+|   +-- ⋯-Menü: „Entwurf verwerfen"
+|   +-- Hauptaktion „Veröffentlichen"  → Bestätigungsdialog (Hinweis auf Link/Regal, Zahl der Hinweise)
++-- Umschalter „Gliederung | Vorschau" (nur unter 1024 px, AdminSegmented)
++-- Linke Spalte: Gliederung
+|   +-- Hinweise (N), aufklappbar – Befunde der Prüfstelle, Klick öffnet Block
+|   +-- Deckblatt (klickbar → Deckblatt-Formular)
+|   +-- Themenliste (ziehbar)
+|   |   +-- Thema (auf-/zuklappbar, ⋯: nach oben/unten, duplizieren, löschen)
+|   |       +-- Block-Zeile (ziehbar, auch in andere Themen; Symbol, Typ in Klartext, Kurzzeile, Hinweis-Symbol)
+|   |       |   +-- ⋯: nach oben/unten, in anderes Thema …, duplizieren, löschen
+|   |       +-- geöffneter Block: Bearbeitungsfeld
+|   |           +-- Textblock-Editor (gestaltete Ansicht ⇄ HTML-Ansicht)
+|   |           |   +-- Werkzeugleiste: Fett, Kursiv, h2/h3, Listen, Link, „Box einfügen ▾"
+|   |           +-- Aufgaben-Formular (je Typ, 13 Typen in PROJ-89)
+|   |           +-- Rohfassung (YAML-Feld) für alle übrigen Typen und unbekannte Blöcke
+|   +-- „Thema hinzufügen"
+|   +-- Lernzielkontrolle (klickbar → Formular: Titel, Kapiteltest, Aussagen)
++-- Rechte Spalte: Vorschau
+    +-- echte Seite im abgeschotteten Rahmen
+    +-- Hinweis „Vorschau wird aktualisiert …" / „Vorschau gerade nicht aktuell"
+```
+
+### B) Datenmodell (in Alltagssprache)
+
+**Am vorhandenen Material (Tabelle `werkzeug_ablaeufe`) kommt hinzu:**
+- **Entwurf:** die bearbeitete Struktur des Materials (Deckblatt, Themen, Blöcke). Leer, solange niemand bearbeitet. Gleiche Größengrenze wie die KI-Antwort heute.
+- **Entwurf geändert am:** Zeitpunkt der letzten Entwurfs-Speicherung. Dient der Zwei-Tabs-Regel und der Anzeige.
+- **Hat Entwurf:** wird automatisch abgeleitet (ja, sobald ein Entwurf da ist). Damit kann „Meine Materialien" die Pill „Entwurf" zeigen, ohne den Entwurf selbst zu laden (wie heute `hat_antwort`).
+- **Entwurfs-Prüfung:** die Befunde der Prüfstelle zum aktuellen Entwurf.
+
+**Im Speicher (Supabase Storage), im Ordner des Materials:**
+- **Entwurfs-Vorschau:** die zuletzt gebaute Seite des Entwurfs. Sie liegt **neben** der veröffentlichten Datei (`ausgabe`), nie an ihrer Stelle. Sie zählt zur Speichergröße des Materials und wird beim Verwerfen, Veröffentlichen und Löschen entfernt.
+
+**Unverändert bleiben:** die veröffentlichte Datei (`ausgabe`), die KI-Antwort (`antwort`), Link, Regal-Freigaben, Bilder-Auszug. Bis zum Veröffentlichen fasst der Editor sie nicht an.
+
+**Beim Veröffentlichen** wird der Entwurf zur neuen Fassung:
+1. Der Kern baut aus dem Entwurf die Seite.
+2. Sie ersetzt die Datei `ausgabe`. Link und Regal liefern ab jetzt die neue Fassung, die Adresse bleibt gleich.
+3. Der Kern schreibt den Entwurf als YAML zurück. Das ersetzt die gespeicherte KI-Antwort, damit Schritt 4 und „Kapitel neu anfragen" mit der bearbeiteten Fassung weiterarbeiten.
+4. Ergebnis-Kennzahlen (Kapitel, Aufgaben) und Prüfbericht werden aktualisiert.
+5. Entwurf und Entwurfs-Vorschau werden entfernt.
+
+Schlägt Schritt 1 fehl, passiert nichts weiter: Die alte Fassung bleibt veröffentlicht, der Entwurf bleibt erhalten.
+
+**Hinweis zur Optik in Schritt 4:** Das zurückgeschriebene YAML erzeugt der Kern, nicht die KI. Inhaltlich ist es dasselbe, aber Einrückung und Anführungszeichen können anders aussehen als in der ursprünglichen KI-Antwort.
+
+### C) Abläufe
+
+**Öffnen:** Die App lädt das Material. Gibt es schon einen Entwurf, wird er geöffnet. Sonst bittet die App den Kern, die gespeicherte KI-Antwort in die Struktur zu übersetzen. Der Kern benutzt dafür dieselbe Lese-Logik wie beim Bauen, inklusive der kleinen Angleichungen (z. B. „richtige Antwort" vereinheitlichen).
+
+**Bearbeiten und automatisch speichern:** Jede Änderung ändert die Struktur im Browser. Nach höchstens 2 Sekunden Ruhe schickt der Browser den ganzen Entwurf mit dem zuletzt gesehenen Stand an die App. Hat sich der Stand inzwischen geändert (anderer Tab), lehnt die App ab, und der Editor zeigt „In einem anderen Fenster geändert – Neu laden".
+
+**Vorschau:** Nach einem erfolgreichen Speichern bittet der Browser (höchstens alle paar Sekunden, nie mehrere gleichzeitig) die App um eine neue Vorschau. Die App lässt den Kern die Seite bauen, legt sie als Entwurfs-Vorschau im Speicher ab und gibt eine kurzlebige Leseadresse zurück. Der Browser lädt die Seite als Text und zeigt sie im abgeschotteten Rahmen. Der Umweg über den Speicher ist nötig, weil Seiten mit Bildern größer sein können als die 4,5 MB, die eine App-Antwort auf Vercel höchstens haben darf.
+
+**Prüfen:** Mit jeder Vorschau läuft auch die Prüfstelle über den Entwurf. Die Befunde werden gespeichert und in der Gliederung angezeigt.
+
+**Rückgängig/Wiederholen:** Der Browser merkt sich die letzten mindestens 50 Fassungen der Struktur, solange der Editor offen ist. Rückgängig setzt die vorige Fassung ein und speichert sie wie jede andere Änderung.
+
+**Verwerfen:** Die App löscht Entwurf, Entwurfs-Prüfung und Entwurfs-Vorschau. Der Editor lädt danach die veröffentlichte Fassung.
+
+**H5P-Material als Seite kopieren:** Die App legt wie bei „Gleiches Skript, anderes Werkzeug" ein neues Material an: gleiches Werkzeug, Format Interaktive Seite, gleiche KI-Antwort, Skript und Einlesung bzw. Bilder-Auszug kopiert. Sie baut es einmal als Seite und öffnet den Editor. Das geht ohne neue KI-Antwort, weil beide Formate dieselbe Kapitel-Struktur nutzen.
+
+### D) Änderungen am Kern (Repo `Werkzeugkiste`, Branch `vercel-kern`)
+Klein und rückwärtsverträglich. Die heutigen Werkzeuge merken davon nichts.
+1. **„Antwort → Struktur"**: liest eine Antwort genau wie beim Bauen und gibt die Struktur zurück. Ebenso für einen einzelnen Block (Rohfassung).
+2. **„Struktur → YAML"**: schreibt eine Struktur als gut lesbares YAML (lange Texte als Textblock, Umlaute unverändert, Reihenfolge der Felder wie im Master-Prompt). Ebenso für einen einzelnen Block.
+3. **Bauen, Prüfen und Vorschau nehmen auch eine Struktur an**, nicht nur YAML-Text.
+4. **Sprungmarken im Editor-Modus:** Baut der Kern für die Editor-Vorschau, bekommt jeder Block auf der Seite eine unsichtbare Kennung (Thema-Nummer, Block-Nummer). Veröffentlichte Seiten bleiben ohne diese Kennungen.
+5. **Befunde mit genauer Stelle:** Jeder Befund der Prüfstelle bekommt zusätzlich zur Ortsangabe als Text die Nummer von Thema und Block, wo bekannt. Wo nicht bekannt, ordnet der Editor den Befund dem Thema zu („Kapitel 2").
+
+Die Prüfung `werkzeugtest.py` und `kern_test.py` müssen danach grün sein. Eine Rundreise „Antwort → Struktur → YAML → Struktur" muss für echte Antworten aller fünf Werkzeuge dieselbe Struktur ergeben.
+
+### E) Technische Entscheidungen (und warum)
+
+| Entscheidung | Warum |
+|---|---|
+| **YAML liest und schreibt nur der Kern, der Browser arbeitet mit der Struktur.** | Der Kern liest YAML mit PyYAML (YAML 1.1). Ein JavaScript-Leser (YAML 1.2) versteht manche Werte anders, z. B. „no" oder „on". Würden App und Kern verschieden lesen, sähe die Lehrkraft im Editor etwas anderes, als später gebaut wird. |
+| **Entwurf als eigenes Feld am Material, Vorschau als eigene Datei daneben.** | Link und Regal lesen weiterhin nur `ausgabe` und müssen nicht geändert werden. Damit ist E3 („erst Veröffentlichen macht es sichtbar") ohne Eingriff in PROJ-53 und PROJ-67 erfüllt, und keine zweite Tabelle mit eigenen Zugriffsregeln ist nötig. Die bestehenden Zugriffsregeln (nur Besitzer) gelten automatisch. |
+| **Der ganze Entwurf wird bei jedem Speichern geschickt, nicht nur die Änderung.** | Einfach und robust. Ein Material ist auch groß nur wenige hundert KB Text. Bilder sind nicht Teil des Entwurfs (nur ihr Dateiname). |
+| **Vorschau = echte Seite im abgeschotteten Rahmen mit Skripten, aber ohne Zugriff auf die App.** | Die Lehrkraft soll sehen, was Schüler sehen, inklusive funktionierender Aufgaben. Der Rahmen bekommt eine eigene, leere Herkunft: Die Seite kann ihre eigenen Skripte ausführen, aber weder Anmeldedaten noch Inhalte der App lesen. Die schlichte Lehrer-Vorschau aus Schritt 5 bleibt, wie sie ist. |
+| **Vorschau seltener als Speichern.** | Bauen mit Bildern dauert, Speichern nicht. So bleibt das Tippen flüssig und der Kern wird nicht mit Aufträgen überflutet. |
+| **Text-Editor auf Basis von Tiptap (ProseMirror), mit eigenen Bausteinen für jede Box aus dem Skript-Design.** | Bewährter, barrierearmer Editor für React, gut erweiterbar. Die Boxen (Merke, Tipp, Lernziele …) werden als eigene, ganze Bausteine erkannt (an ihrer Gestaltung aus dem Master-Prompt). Für alles Unbekannte gibt es einen „Behalten"-Baustein, der Stil und Aufbau unverändert durchreicht. Tabellen kann Tiptap von Haus aus. |
+| **Sicherheitsnetz für den Text-Editor: Rundreise-Prüfung.** | Beim Öffnen eines Textblocks prüft der Editor, ob „HTML → gestaltete Ansicht → HTML" den Block unverändert lässt. Wenn nicht, öffnet er ihn in der HTML-Ansicht mit dem Hinweis „Dieser Block enthält Gestaltung, die die gestaltete Ansicht nicht verlustfrei darstellen kann". So geht nie Gestaltung verloren, auch bei ungewöhnlichen KI-Antworten. |
+| **Code-Felder (HTML-Ansicht, Rohfassung) mit CodeMirror.** | Leicht, gut mit Tastatur und am Handy bedienbar, mit Hervorhebung für HTML und YAML. |
+| **Ziehen & Ablegen mit dnd-kit.** | Funktioniert mit Maus, Touch und Tastatur. Das ist wichtig für die Barrierefreiheit und für Tablets. |
+| **Rückgängig im Browser, kein Verlauf auf dem Server.** | Entspricht E11. Spart Speicher und Komplexität. |
+| **Die Sicherheitsbereinigung bleibt im Kern.** | HTML aus der HTML-Ansicht läuft beim Bau durch `_saeubern()`, wie heute die KI-Texte. Der Editor zeigt zusätzlich einen Hinweis, wenn er Skripte oder Ereignis-Attribute im Quelltext sieht, entfernt aber selbst nichts. So gibt es genau eine Stelle, die über Sicherheit entscheidet. |
+
+### F) Server-Aufrufe (neu, alle nur für Lehrkräfte und Admins, nur eigenes Material)
+| Aufruf | Zweck |
+|---|---|
+| Editor laden | Material, Entwurf oder (falls keiner) die in Struktur übersetzte KI-Antwort, Stand, Prüfbefunde |
+| Entwurf speichern | ganze Struktur mit zuletzt gesehenem Stand. Lehnt bei fremdem Stand ab. |
+| Vorschau bauen | baut die Entwurfs-Vorschau, prüft, gibt kurzlebige Leseadresse und Befunde zurück |
+| Rohfassung lesen / schreiben | einen Block zwischen Struktur und YAML übersetzen (über den Kern) |
+| Veröffentlichen | siehe Datenmodell. Prüft vorher die 8-MB-Grenze. |
+| Entwurf verwerfen | löscht Entwurf, Entwurfs-Prüfung und Entwurfs-Vorschau |
+| Als Seite kopieren | H5P-Material als neues Seiten-Material anlegen (Speichergrenze vorher prüfen) |
+
+**Geändert:** „Meine Materialien" liefert zusätzlich „hat Entwurf". Regal-„Anpassen" gibt die Editor-Adresse zurück. „Material löschen" entfernt auch die Entwurfs-Vorschau. Schritt-4-Aufrufe (Antwort ersetzen, Tippfehler, Kapitel einsetzen) lehnen ab, solange ein Entwurf besteht, mit dem Satz „Zu diesem Material gibt es einen Entwurf im Editor".
+
+### G) Sicherheit und Datenschutz
+- Jeder Aufruf prüft serverseitig Rolle (Lehrkraft/Admin) und Besitz, wie alle Werkzeugkiste-Aufrufe.
+- Die Kern-Adresse und sein Kennwort bleiben nur auf dem Server.
+- Die Vorschau-Leseadresse gilt nur kurz und nur für die Entwurfs-Vorschau dieses Materials.
+- Entwurfs-Inhalte erscheinen nicht in Fehlerberichten oder Logs.
+- Kontolöschung (PROJ-60) entfernt Entwurf und Entwurfs-Vorschau mit dem Material.
+
+### H) Pakete (neu zu installieren)
+- `@dnd-kit/core`, `@dnd-kit/sortable`: Ziehen & Ablegen mit Maus, Touch und Tastatur
+- `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`: gestalteter Text-Editor
+- `@tiptap/extension-table` (mit Zeile/Zelle/Kopf), `@tiptap/extension-link`: Tabellen und Links im Text
+- `@uiw/react-codemirror`, `@codemirror/lang-html`, `@codemirror/lang-yaml`: HTML-Ansicht und Rohfassung
+
+### I) Vorgeschlagene Bau-Reihenfolge (drei Pakete)
+1. **Kern + Grundlage:** Kern-Erweiterungen (D 1–5), Datenbankfelder, Server-Aufrufe Laden/Speichern/Vorschau/Veröffentlichen/Verwerfen. Editor mit Gliederung, Verschieben, Löschen, Duplizieren, Deckblatt, Rohfassung für **alle** Blöcke, Vorschau, Rückgängig, Entwurf/Veröffentlichen. Damit ist der Editor schon voll benutzbar (für Experten).
+2. **Formulare und Text-Editor:** die 13 Aufgaben-Formulare, Lernzielkontrolle, Textblock-Editor mit Boxen und HTML-Ansicht samt Rundreise-Prüfung, Prüfstelle in der Gliederung.
+3. **Einstiege und Zusammenspiel:** „Bearbeiten" in Meine Materialien und Schritt 5, Regal-Anpassen → Editor, H5P → Seite kopieren, Entwurf-Pill, Sperre der Schritt-4-Funktionen bei Entwurf, Handy-Umschalter, Feinschliff.
+
+### J) Was QA besonders prüfen muss
+- Ein veröffentlichtes, verlinktes Material ändert sich über den Link **nicht**, solange nur ein Entwurf besteht, und **sofort** nach dem Veröffentlichen.
+- Rundreise: echte Antworten aller fünf Werkzeuge (Ganzes Skript, Kreativ, Differenzierung, Arbeitsblatt, Lernsituation) öffnen, ohne Änderung veröffentlichen → die neue Seite ist inhaltsgleich mit der alten.
+- Textblöcke mit allen Box-Arten bleiben nach Hin- und Herschalten zwischen gestalteter Ansicht und HTML unverändert.
+- HTML mit `<script>`, `onclick` und `javascript:` erscheint nie auf der veröffentlichten Seite.
+- Die Vorschau kann keine Daten der App lesen (Cookies, lokaler Speicher der App).
+- Zwei Tabs: kein stilles Überschreiben.
+- Material ohne Skript (Regal-Kopie, Skript entfernt): Bilder erscheinen in Vorschau und veröffentlichter Seite.
 
 ## QA Test Results
 _To be added by /qa_
