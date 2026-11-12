@@ -1,6 +1,6 @@
 # PROJ-92: Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript übernehmen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12
 
@@ -236,4 +236,6 @@ Alle Tests grün (3 253 App-Tests, 168 + 10 Kern-Tests), `tsc` ohne neue Fehler,
 - **Low (offen):** Die Zahl 30 eigener Bilder je Material gilt auch für nicht benutzte; sie werden erst beim Veröffentlichen frei.
 
 ## Deployment
-_To be added by /deploy_
+**2026-11-12.** Kern `werkzeugkiste-kern` per `vercel deploy --prod` (Commit 4fcc0f9, Zweig `vercel-kern`, weiter ungepusht), danach App `b68b492` per Push auf `main` (Vercel „Ready“). Keine Migration, keine neuen Umgebungsvariablen. Neues Paket `react-image-crop` 11.1.2. Neue Route ohne Anmeldung antwortet 401.
+
+**Offen:** Browser-Durchgang als Lehrkraft (Desktop und Handy): Zuschneiden per Maus/Touch/Tastatur, Drehen, Handyfoto mit EXIF-Drehung, durchsichtiges PNG, Kamera-Auswahl auf iOS, Platzanzeige und Dialog bei 360 px. Dazu weiterhin `KERN_SECRET` erneuern.
