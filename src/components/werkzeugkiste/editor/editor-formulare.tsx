@@ -363,7 +363,6 @@ export function KapiteltestFormular({ block, onChange }: FormProps) {
         offen={katalog}
         onOpenChange={setKatalog}
         erlaubt={KAPITELTEST_KATALOG}
-        bilder={0}
         onWaehle={(typ) => {
           merkeZuletzt(typ)
           setKatalog(false)

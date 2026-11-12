@@ -13,15 +13,7 @@ import { katalogEintrag, leseZuletzt, nachGruppen, sucheKatalog, type KatalogEin
 /** Stand der Bilder des Materials – für die Bild-Typen (E5) */
 export type BilderStand = 'laedt' | 'fehler' | number
 
-export const OHNE_BILDER = 'Dieses Material hat noch keine Bilder. Hochladen kommt bald.'
-
-/** Warum ein Eintrag nicht wählbar ist (null = wählbar) */
-export function gesperrtGrund(e: KatalogEintrag, bilder: BilderStand): string | null {
-  if (!e.brauchtBild) return null
-  if (bilder === 'laedt') return 'Die Bilder des Materials werden geladen …'
-  if (bilder === 'fehler') return 'Die Bilder des Materials konnten nicht geladen werden.'
-  return bilder > 0 ? null : OHNE_BILDER
-}
+export const OHNE_BILDER = 'Dieses Material hat noch keine Bilder aus dem Skript.'
 
 /**
  * Aufgabentyp-Katalog (PROJ-90): alle Typen nach Gruppen, mit Vorschaubild,
@@ -33,14 +25,12 @@ export function KatalogDialog({
   onOpenChange,
   onWaehle,
   erlaubt,
-  bilder,
 }: {
   offen: boolean
   onOpenChange: (offen: boolean) => void
   onWaehle: (typ: string) => void
   /** Nur diese Typen (Kapiteltest, E6) */
   erlaubt?: readonly string[]
-  bilder: BilderStand
 }) {
   const [suche, setSuche] = useState('')
   const [zuletzt, setZuletzt] = useState<string[]>([])
@@ -87,7 +77,7 @@ export function KatalogDialog({
       key={`${bereich}-${e.typ}`}
       eintrag={e}
       bereich={bereich}
-      grund={gesperrtGrund(e, bilder)}
+      grund={null}
       onWaehle={() => {
         onWaehle(e.typ)
       }}

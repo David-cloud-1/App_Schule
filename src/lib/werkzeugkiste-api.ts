@@ -518,7 +518,7 @@ export function baueEntwurfVorschau(id: string) {
 
 /** Bilder des Materials für die Bildauswahl (PROJ-90) */
 export function ladeMaterialBilder(id: string) {
-  return anfrage<{ bilder: MaterialBild[]; mehr: boolean }>(`/ablaeufe/${id}/editor/bilder`, { method: 'POST', body: '{}' })
+  return anfrage<{ bilder: MaterialBild[]; mehr: boolean; skript?: boolean }>(`/ablaeufe/${id}/editor/bilder`, { method: 'POST', body: '{}' })
 }
 
 /** Ein Bild des Materials in Arbeitsgröße (Bild-Block, Bildzuordnung) */
@@ -526,6 +526,38 @@ export function ladeMaterialBild(id: string, pfad: string) {
   return anfrage<{ pfad: string; bild: string; breite: number; hoehe: number }>(`/ablaeufe/${id}/editor/bilder`, {
     method: 'POST',
     body: JSON.stringify({ pfad }),
+  })
+}
+
+/**
+ * Ein im Browser vorbereitetes Bild (PROJ-92) im Ordner des Materials ablegen und den
+ * Fortschritt in Prozent melden. Zurück kommt der Name für den Bild-Block samt Vorschaubild.
+ */
+export function ladeBildHoch(id: string, bild: Blob, fortschritt: (prozent: number) => void): Promise<MaterialBild> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${WK_API}/ablaeufe/${id}/editor/bilder/hochladen`)
+    xhr.setRequestHeader('Content-Type', bild.type || 'application/octet-stream')
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) fortschritt(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () => {
+      let daten: { bild?: MaterialBild; error?: string; hint?: string } = {}
+      try {
+        daten = JSON.parse(xhr.responseText)
+      } catch {
+        // Antwort ohne JSON: unten als allgemeiner Fehler
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && daten.bild) {
+        fortschritt(100)
+        resolve(daten.bild)
+      } else {
+        reject(new WerkzeugFehler(daten.error || ALLGEMEINER_FEHLER, xhr.status, daten.hint))
+      }
+    }
+    xhr.onerror = () =>
+      reject(new WerkzeugFehler('Das Hochladen wurde unterbrochen. Bitte prüfe dein Internet und versuche es erneut.', 0))
+    xhr.send(bild)
   })
 }
 

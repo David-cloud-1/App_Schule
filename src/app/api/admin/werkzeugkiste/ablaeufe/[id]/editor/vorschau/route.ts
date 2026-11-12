@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { eigeneFuerBau } from '@/lib/werkzeugkiste-bilder-server'
 import { aktualisiereSpeicher } from '@/lib/werkzeugkiste-materialien-server'
 import { ABLAUF_TABELLE, fehler, kern, kernFehlerAntwort, leseAdresse, schreibAdresse } from '@/lib/werkzeugkiste-server'
 import {
@@ -41,6 +42,7 @@ export async function POST(_request: Request, { params }: Kontext) {
       schreibAdresse(service, pfad),
     ])
     if (!ziel) return fehler('Die Vorschau konnte nicht vorbereitet werden.', 502)
+    const eigene = await eigeneFuerBau(service, zeile, JSON.stringify(struktur))
     const gemeinsam = {
       struktur,
       werkzeug: zeile.werkzeug,
@@ -52,6 +54,7 @@ export async function POST(_request: Request, { params }: Kontext) {
         ...gemeinsam,
         datei_ziel: ziel,
         marken: true,
+        ...(eigene.length ? { eigene_bilder: eigene } : {}),
       }),
       kern<unknown>('/api/editor/pruefen', { ...gemeinsam, auswahl: zeile.auswahl ?? {} }),
     ])

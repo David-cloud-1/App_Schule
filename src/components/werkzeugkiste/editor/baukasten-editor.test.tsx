@@ -304,4 +304,21 @@ describe('Block einfügen (PROJ-90)', () => {
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
     expect(letzteStruktur().chapters[0].elements[2]).toMatchObject({ type: 'image', path: 'images/seite2.png' })
   })
+
+  it('Bild-Block: „Bild bearbeiten“ öffnet das Bild-Fenster direkt beim Zuschneiden (PROJ-92)', async () => {
+    api.ladeMaterialBilder.mockResolvedValue({
+      bilder: [{ pfad: 'images/seite2.png', vorschau: 'data:image/jpeg;base64,AA', breite: 600, hoehe: 300 }],
+      mehr: false,
+      skript: true,
+    })
+    api.ladeMaterialBild.mockResolvedValue({ pfad: 'images/seite2.png', bild: 'data:image/jpeg;base64,QUJD', breite: 600, hoehe: 300 })
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
+    fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bild bearbeiten' }))
+    expect(await screen.findByRole('heading', { name: 'Bild bearbeiten' })).toBeInTheDocument()
+  })
 })

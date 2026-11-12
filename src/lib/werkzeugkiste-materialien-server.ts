@@ -176,7 +176,7 @@ export async function speicherGenutzt(supabase: SupabaseClient): Promise<number 
 
 /** Summe der Dateien im Ordner eines Ablaufs */
 async function ordnerGroesse(service: SupabaseClient, ownerId: string, id: string): Promise<number> {
-  const { data } = await service.storage.from(WK_BUCKET).list(ablaufOrdner(ownerId, id), { limit: 100 })
+  const { data } = await service.storage.from(WK_BUCKET).list(ablaufOrdner(ownerId, id), { limit: 300 })
   return (data ?? []).reduce((summe, f) => summe + Number((f as { metadata?: { size?: number } }).metadata?.size ?? 0), 0)
 }
 

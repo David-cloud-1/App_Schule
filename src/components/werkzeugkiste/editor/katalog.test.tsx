@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { KatalogDialog, OHNE_BILDER, gesperrtGrund } from './katalog-dialog'
+import { KatalogDialog } from './katalog-dialog'
 import { KatalogSkizze, SKIZZEN_TYPEN } from './katalog-skizzen'
 import { FORMULARE, KapiteltestFormular } from './editor-formulare'
 import { alsZeit, ausZeit, feldName } from './editor-formulare-katalog'
-import { KATALOG, beispielBlock, katalogEintrag } from '@/lib/werkzeugkiste-katalog'
+import { KATALOG, beispielBlock } from '@/lib/werkzeugkiste-katalog'
 import { TYP_NAMEN, type Block } from '@/lib/werkzeugkiste-editor'
 
 vi.stubGlobal(
@@ -23,7 +23,7 @@ const letzter = (fn: ReturnType<typeof vi.fn>) => fn.mock.calls.at(-1)!
 function katalog(props: Partial<Parameters<typeof KatalogDialog>[0]> = {}) {
   const onWaehle = vi.fn()
   const onOpenChange = vi.fn()
-  render(<KatalogDialog offen onOpenChange={onOpenChange} onWaehle={onWaehle} bilder={3} {...props} />)
+  render(<KatalogDialog offen onOpenChange={onOpenChange} onWaehle={onWaehle} {...props} />)
   return { onWaehle, onOpenChange }
 }
 
@@ -89,23 +89,12 @@ describe('Katalog-Fenster (PROJ-90)', () => {
     expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
   })
 
-  it('graut Bild-Typen ohne Bilder aus und fügt sie nicht ein', () => {
-    const { onWaehle } = katalog({ bilder: 0 })
+  it('lässt Bild-Typen immer wählbar, weil das Bild-Fenster auch Hochladen anbietet (PROJ-92)', () => {
+    const { onWaehle } = katalog()
     const bild = document.querySelector('[data-katalog-eintrag="image"]')!
-    expect(bild).toHaveAttribute('aria-disabled', 'true')
-    expect(within(bild as HTMLElement).getByText(OHNE_BILDER)).toBeInTheDocument()
+    expect(bild).not.toHaveAttribute('aria-disabled')
     fireEvent.click(bild)
-    expect(onWaehle).not.toHaveBeenCalled()
-    // Bilder ordnen bleibt wählbar (Bilder je Schritt sind optional)
-    expect(document.querySelector('[data-katalog-eintrag="image_sequencing"]')).not.toHaveAttribute('aria-disabled')
-  })
-
-  it('nennt den Grund beim Laden und bei Fehlern', () => {
-    const bild = katalogEintrag('bildzuordnung')!
-    expect(gesperrtGrund(bild, 'laedt')).toMatch(/geladen/)
-    expect(gesperrtGrund(bild, 'fehler')).toMatch(/nicht geladen/)
-    expect(gesperrtGrund(bild, 2)).toBeNull()
-    expect(gesperrtGrund(katalogEintrag('text')!, 0)).toBeNull()
+    expect(onWaehle).toHaveBeenCalledWith('image')
   })
 
   it('zeigt im Kapiteltest nur die drei erlaubten Typen mit Begründung', () => {

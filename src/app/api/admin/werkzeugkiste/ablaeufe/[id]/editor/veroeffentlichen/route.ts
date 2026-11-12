@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { aktualisiereSpeicher } from '@/lib/werkzeugkiste-materialien-server'
+import { eigeneFuerBau, loescheUnbenutzteEigene } from '@/lib/werkzeugkiste-bilder-server'
 import {
   ABLAUF_TABELLE,
   WK_BUCKET,
@@ -90,6 +91,7 @@ export async function POST(request: Request, { params }: Kontext) {
     ])
     quelle = q
     if (!dateiZiel || !vorschauZiel) return fehler('Das Ablegen der Datei konnte nicht vorbereitet werden.', 502)
+    const eigene = await eigeneFuerBau(service, zeile, JSON.stringify(zeile.entwurf))
     const gemeinsam = {
       struktur: zeile.entwurf,
       werkzeug: zeile.werkzeug,
@@ -110,6 +112,7 @@ export async function POST(request: Request, { params }: Kontext) {
       vorschau_ziel: vorschauZiel,
       marken: false,
       hoechstens: SEITE_MAX_BYTES,
+      ...(eigene.length ? { eigene_bilder: eigene } : {}),
     })
   } catch (e) {
     await aufraeumen()
@@ -182,7 +185,9 @@ export async function POST(request: Request, { params }: Kontext) {
 
   await Promise.all([aufraeumen(), loescheEntwurfVorschau(service, zeile)])
   // Bilder-Auszug für das Regal passend zur neuen Fassung (best effort)
-  if (quelle) await erzeugeAuszug(service, zeile.owner_id, zeile.id, yaml.antwort, quelle.pfad)
+  // PROJ-92: Auch ohne Skript (nur eigene Bilder) entsteht ein Auszug; danach fliegen unbenutzte eigene Bilder raus
+  await erzeugeAuszug(service, zeile.owner_id, zeile.id, yaml.antwort, quelle?.pfad)
+  await loescheUnbenutzteEigene(service, zeile, yaml.antwort)
   await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
   return NextResponse.json({ ergebnis, befunde })
 }

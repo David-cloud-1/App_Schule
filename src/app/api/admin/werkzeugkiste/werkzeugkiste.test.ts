@@ -163,7 +163,7 @@ describe('Werkzeugkiste-Schnittstelle (PROJ-51)', () => {
     it('löscht beim Abbrechen auch alle Dateien des Ablaufs', async () => {
       const res = await ablaufLoeschen(new Request('http://t', { method: 'DELETE' }), ctx)
       expect(res.status).toBe(200)
-      expect(speicher.list).toHaveBeenCalledWith(`u1/${ID}`, { limit: 100 })
+      expect(speicher.list).toHaveBeenCalledWith(`u1/${ID}`, { limit: 300 })
       expect(speicher.remove).toHaveBeenCalledWith([`u1/${ID}/skript.pdf`, `u1/${ID}/einlesung.zip`, `u1/${ID}/ausgabe`])
     })
   })

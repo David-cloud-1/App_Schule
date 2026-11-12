@@ -20,6 +20,7 @@ import {
   type AblaufTeile,
 } from '@/lib/werkzeugkiste'
 import { TITEL_MAX } from '@/lib/werkzeugkiste-materialien'
+import { eigeneBilderIn, eigeneDatei } from '@/lib/werkzeugkiste-bilder'
 
 /**
  * Server-Seite der Werkzeugkiste (PROJ-51): Aufruf des Python-Kerns, Pfade im
@@ -325,7 +326,7 @@ export async function dateiVorhanden(service: SupabaseClient, pfad: string): Pro
 /** Alle Dateien eines Ablaufs entfernen (Ordner <owner>/<id>/) */
 export async function loescheDateien(service: SupabaseClient, ownerId: string, id: string) {
   const ordner = ablaufOrdner(ownerId, id)
-  const { data } = await service.storage.from(WK_BUCKET).list(ordner, { limit: 100 })
+  const { data } = await service.storage.from(WK_BUCKET).list(ordner, { limit: 300 })
   const pfade = (data ?? []).map((f) => `${ordner}/${f.name}`)
   if (pfade.length) await service.storage.from(WK_BUCKET).remove(pfade)
 }
@@ -404,14 +405,21 @@ export async function erzeugeAuszug(
   try {
     const speicher = service.storage.from(WK_BUCKET)
     const { data, error } = await speicher.download(quellePfad)
-    if (error || !data) return false
-    const eintraege = unzipSync(new Uint8Array(await data.arrayBuffer()))
+    // Ohne Einlesung kann der Auszug trotzdem hochgeladene Bilder (PROJ-92) enthalten
+    const eintraege = !error && data ? unzipSync(new Uint8Array(await data.arrayBuffer())) : {}
     const behalten: Record<string, Uint8Array> = { 'text.txt': strToU8(AUSZUG_PLATZHALTER) }
     for (const [name, inhalt] of Object.entries(eintraege)) {
       if (name === 'text.txt' || name.endsWith('/')) continue
       // Die Antwort verweist mit dem Dateipfad (z. B. images/seite3_x42.png) auf ein Bild
       if (antwort.includes(name)) behalten[name] = inhalt
     }
+    // Hochgeladene Bilder (PROJ-92) liegen einzeln im Ordner; die benutzten kommen in den Auszug
+    for (const pfad of eigeneBilderIn(antwort)) {
+      if (behalten[pfad]) continue
+      const eigen = await speicher.download(`${ablaufOrdner(ownerId, id)}/${eigeneDatei(pfad)}`)
+      if (!eigen.error && eigen.data) behalten[pfad] = new Uint8Array(await eigen.data.arrayBuffer())
+    }
+    if (error && Object.keys(behalten).length === 1) return false
     const zip = zipSync(behalten, { level: 6 })
     const { error: hochFehler } = await speicher.upload(auszugPfad(ownerId, id), zip, {
       contentType: 'application/zip',

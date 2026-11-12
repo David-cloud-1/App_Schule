@@ -47,6 +47,41 @@ function speicherMit(zip: Uint8Array | null, optionen: { downloadFehler?: boolea
   return { service, hoch, download, update }
 }
 
+describe('Bilder-Auszug mit eigenen Bildern (PROJ-92)', () => {
+  const eigeneAntwort = 'path: images/eigen_abc123de.jpg\npath: images/seite3_x44.jpeg\npath: images/eigen_nichtda99.png'
+
+  function speicherMitEigenen(zip: Uint8Array | null) {
+    const hoch = vi.fn().mockResolvedValue({ error: null })
+    const download = vi.fn(async (pfad: string) => {
+      if (pfad === `${OWNER}/${ID}/eigen_abc123de.jpg`) return { data: new Blob([new Uint8Array([7, 7])]), error: null }
+      if (pfad.endsWith('einlesung.zip') && zip) return { data: new Blob([zip as unknown as BlobPart]), error: null }
+      return { data: null, error: { message: 'nicht da' } }
+    })
+    const update = chainMock(() => ({ data: null }))
+    return { service: { storage: { from: () => ({ download, upload: hoch }) }, from: update.from } as never, hoch }
+  }
+
+  it('nimmt die benutzten hochgeladenen Bilder neben den Skript-Bildern in den Auszug', async () => {
+    const { service, hoch } = speicherMitEigenen(einlesung())
+    expect(await erzeugeAuszug(service, OWNER, ID, eigeneAntwort)).toBe(true)
+    const entpackt = unzipSync(hoch.mock.calls[0][1] as Uint8Array)
+    expect(Object.keys(entpackt).sort()).toEqual(['images/eigen_abc123de.jpg', 'images/seite3_x44.jpeg', 'text.txt'])
+    expect(Array.from(entpackt['images/eigen_abc123de.jpg'])).toEqual([7, 7])
+  })
+
+  it('macht auch ohne Einlesung einen Auszug, wenn es hochgeladene Bilder gibt', async () => {
+    const { service, hoch } = speicherMitEigenen(null)
+    expect(await erzeugeAuszug(service, OWNER, ID, eigeneAntwort)).toBe(true)
+    expect(Object.keys(unzipSync(hoch.mock.calls[0][1] as Uint8Array)).sort()).toEqual(['images/eigen_abc123de.jpg', 'text.txt'])
+  })
+
+  it('ohne Einlesung und ohne hochgeladene Bilder bleibt es beim bisherigen false', async () => {
+    const { service, hoch } = speicherMitEigenen(null)
+    expect(await erzeugeAuszug(service, OWNER, ID, 'path: images/seite3_x44.jpeg')).toBe(false)
+    expect(hoch).not.toHaveBeenCalled()
+  })
+})
+
 describe('Bilder-Auszug', () => {
   it('behält nur Bilder, die in der Antwort vorkommen, und nie den Skripttext', async () => {
     const { service, hoch } = speicherMit(einlesung())

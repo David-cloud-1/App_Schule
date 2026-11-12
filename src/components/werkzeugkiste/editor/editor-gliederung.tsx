@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -75,7 +75,8 @@ import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/
 import { TabelleHerausloesen } from '@/components/werkzeugkiste/editor/tabelle-herausloesen'
 import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
-import { BildAuswahl, MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
+import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
+import { MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
 import { beispielBlock, fuegeBlockEin, katalogEintrag, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import {
@@ -170,8 +171,10 @@ function lies(id: string): { art: 'thema'; thema: number } | { art: 'block'; the
  * öffnet das Bearbeitungsfeld direkt unter der Zeile – immer nur eins.
  */
 export function EditorGliederung(props: GliederungProps) {
+  // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
+  const verwendet = useMemo(() => new Set(JSON.stringify(props.struktur).match(/images\/[^"\\]+/g) ?? []), [props.struktur])
   return (
-    <MaterialBilderProvider materialId={props.materialId}>
+    <MaterialBilderProvider materialId={props.materialId} verwendet={verwendet} seitenGroesse={props.seitenGroesse}>
       <Gliederung {...props} />
     </MaterialBilderProvider>
   )
@@ -186,6 +189,8 @@ interface GliederungProps {
   setAuswahl: (a: Auswahl) => void
   befunde: EditorBefund[] | null
   befundKarte: Map<BefundSchluessel, number>
+  /** Größe der Seite laut letzter Vorschau (Bytes), 0 = unbekannt */
+  seitenGroesse?: number
 }
 
 function Gliederung({
@@ -221,11 +226,13 @@ function Gliederung({
     bilder.anfordern()
   }
 
-  function einfuegen(typ: string, bild?: string) {
+  function einfuegen(typ: string, bild?: string, alt?: string) {
     if (!ziel) return
     const { thema, index } = ziel
     const laenge = themen[thema]?.elements.length ?? 0
-    aendere((s) => fuegeBlockEin(s, thema, index, beispielBlock(typ, bild)))
+    const block = beispielBlock(typ, bild)
+    if (alt && typ === 'image') block.alt = alt // eigener Alternativtext aus dem Bild-Fenster
+    aendere((s) => fuegeBlockEin(s, thema, index, block))
     setZu((z) => {
       const n = new Set(z)
       n.delete(thema)
@@ -449,7 +456,6 @@ function Gliederung({
           if (!o && !bildFuer) setZiel(null)
         }}
         onWaehle={typGewaehlt}
-        bilder={bilder.stand}
       />
       <BildAuswahl
         offen={bildFuer !== null}
@@ -459,10 +465,11 @@ function Gliederung({
             setZiel(null)
           }
         }}
-        onWaehle={(pfad) => {
+        mitAlt={bildFuer === 'image'}
+        onWaehle={(pfad, alt) => {
           const typ = bildFuer
           setBildFuer(null)
-          if (typ) einfuegen(typ, pfad)
+          if (typ) einfuegen(typ, pfad, alt)
         }}
       />
 

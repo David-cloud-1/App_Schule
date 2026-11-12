@@ -8,7 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
-import { BildAuswahl, bildName, useGrossesBild } from '@/components/werkzeugkiste/editor/material-bilder'
+import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
+import { bildName, useGrossesBild } from '@/components/werkzeugkiste/editor/material-bilder'
 import { DiagrammFormular, TabelleFormular } from '@/components/werkzeugkiste/editor/editor-formulare-tabelle'
 import { cn } from '@/lib/utils'
 import type { Block } from '@/lib/werkzeugkiste-editor'
@@ -67,9 +68,22 @@ const BREITEN = [
   { wert: '100%', name: 'ganze Breite' },
 ]
 
-/** Gewähltes Bild mit „Anderes Bild wählen“ */
-function BildWahl({ pfad, onWaehle, label = 'Bild' }: { pfad: string; onWaehle: (pfad: string) => void; label?: string }) {
-  const [offen, setOffen] = useState(false)
+/** Gewähltes Bild mit „Anderes Bild wählen“ und „Bild bearbeiten“ */
+function BildWahl({
+  pfad,
+  onWaehle,
+  label = 'Bild',
+  mitAlt = false,
+  alt = '',
+}: {
+  pfad: string
+  onWaehle: (pfad: string, alt?: string) => void
+  label?: string
+  /** Im Bild-Block: Alternativtext im Bild-Fenster mitfragen */
+  mitAlt?: boolean
+  alt?: string
+}) {
+  const [offen, setOffen] = useState<'waehlen' | 'bearbeiten' | null>(null)
   const bild = useGrossesBild(pfad)
   return (
     <div className="space-y-2">
@@ -95,18 +109,29 @@ function BildWahl({ pfad, onWaehle, label = 'Bild' }: { pfad: string; onWaehle: 
             {pfad ? bildName(pfad) : 'Noch kein Bild gewählt'}
           </p>
           {pfad && bild === 'fehler' && <p className="text-xs text-ws-orange">Bild fehlt im Material.</p>}
-          <Button variant="outline" className={NEBENAKTION} onClick={() => setOffen(true)}>
-            {pfad ? 'Anderes Bild wählen' : 'Bild wählen'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className={NEBENAKTION} onClick={() => setOffen('waehlen')}>
+              {pfad ? 'Anderes Bild wählen' : 'Bild wählen'}
+            </Button>
+            {/* Nur im Bild-Block: Zuschneiden würde die Punkte einer Bildzuordnung verschieben */}
+            {mitAlt && pfad && bild && bild !== 'fehler' && (
+              <Button variant="outline" className={NEBENAKTION} onClick={() => setOffen('bearbeiten')}>
+                Bild bearbeiten
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       <BildAuswahl
-        offen={offen}
-        onOpenChange={setOffen}
+        offen={offen !== null}
+        onOpenChange={(o) => !o && setOffen(null)}
         aktuell={pfad}
-        onWaehle={(p) => {
-          setOffen(false)
-          onWaehle(p)
+        mitAlt={mitAlt}
+        alt={alt}
+        bearbeite={offen === 'bearbeiten' ? pfad : undefined}
+        onWaehle={(p, a) => {
+          setOffen(null)
+          onWaehle(p, a)
         }}
       />
     </div>
@@ -117,7 +142,12 @@ export function BildFormular({ block, onChange }: FormProps) {
   const breite = BREITEN.some((b) => b.wert === s(block.width)) ? s(block.width) : undefined
   return (
     <div className="space-y-4">
-      <BildWahl pfad={s(block.path)} onWaehle={(p) => onChange({ ...block, path: p }, 'path')} />
+      <BildWahl
+        pfad={s(block.path)}
+        mitAlt
+        alt={s(block.alt)}
+        onWaehle={(p, a) => onChange({ ...block, path: p, ...(a !== undefined ? { alt: a } : {}) }, a !== undefined ? 'alt' : 'path')}
+      />
       <Feld
         label="Alternativtext"
         pflicht

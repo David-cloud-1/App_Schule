@@ -307,13 +307,14 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             setAuswahl={setAuswahl}
             befunde={befunde}
             befundKarte={befundKarte}
+            seitenGroesse={v.groesse}
           />
         </section>
         <section
           aria-label="Vorschau"
           className={cn('min-w-0 lg:sticky lg:top-24 lg:h-[calc(100svh-7.5rem)]', ansicht !== 'vorschau' && 'hidden lg:block')}
         >
-          <EditorVorschau html={v.html} laedt={v.laedt} fehler={v.fehler} marke={marke} neuLaden={v.neuBauen} />
+          <EditorVorschau html={v.html} laedt={v.laedt} fehler={v.fehler} marke={marke} neuLaden={v.neuBauen} groesse={v.groesse} />
         </section>
       </div>
 

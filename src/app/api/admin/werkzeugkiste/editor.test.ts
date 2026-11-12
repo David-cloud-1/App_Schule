@@ -12,6 +12,7 @@ import { POST as vorschau } from './ablaeufe/[id]/editor/vorschau/route'
 import { POST as rohfassung } from './ablaeufe/[id]/editor/rohfassung/route'
 import { POST as veroeffentlichen } from './ablaeufe/[id]/editor/veroeffentlichen/route'
 import { POST as bilder } from './ablaeufe/[id]/editor/bilder/route'
+import { POST as hochladen } from './ablaeufe/[id]/editor/bilder/hochladen/route'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const ctx = { params: Promise.resolve({ id: ID }) }
@@ -51,6 +52,8 @@ let konflikt: boolean
 let link: boolean
 let vorhanden: Set<string>
 let speicher: Record<string, ReturnType<typeof vi.fn>>
+let genutzt: number
+let jungeDateien: Set<string>
 let antworten: Record<string, { status: number; body: unknown }>
 let kernAufrufe: { pfad: string; body: Record<string, unknown> }[]
 
@@ -89,12 +92,18 @@ beforeEach(() => {
     }
     return { data: zeile }
   })
-  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: null, user: { id: 'u1' }, supabase: db.client, role: 'teacher' } as never)
+  genutzt = 1000
+  jungeDateien = new Set()
+  const rpc = vi.fn(async () => ({ data: genutzt, error: null }))
+  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: null, user: { id: 'u1' }, supabase: { ...db.client, rpc }, role: 'teacher' } as never)
   speicher = {
     createSignedUrl: vi.fn(async (pfad: string) => ({ data: { signedUrl: `https://speicher.test/lesen/${pfad}` } })),
     createSignedUploadUrl: vi.fn(async (pfad: string) => ({ data: { signedUrl: `https://speicher.test/schreiben/${pfad}` } })),
-    list: vi.fn(async (_ordner: string, opt: { search: string }) => ({
-      data: [...vorhanden].filter((n) => n === opt.search).map((name) => ({ name })),
+    list: vi.fn(async (_ordner: string, opt: { search?: string }) => ({
+      // Dateien sind – wenn nicht anders gesetzt – alt genug, um aufgeräumt zu werden
+      data: [...vorhanden]
+        .filter((n) => opt.search === undefined || n === opt.search)
+        .map((name) => ({ name, created_at: jungeDateien.has(name) ? new Date().toISOString() : '2026-01-01T00:00:00Z' })),
       error: null,
     })),
     remove: vi.fn().mockResolvedValue({ data: [] }),
@@ -416,7 +425,7 @@ describe('Bilder für die Bildauswahl (PROJ-90)', () => {
     kernSagt('/api/editor/bilder', { bilder: [BILD], mehr: false })
     const res = await bilder(json({}), ctx)
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ bilder: [BILD], mehr: false })
+    expect(await res.json()).toEqual({ bilder: [BILD], mehr: false, skript: true })
     expect(letzter('/api/editor/bilder')).toEqual({ einlesung: { url: 'https://speicher.test/lesen/u1/' + ID + '/einlesung.zip' } })
   })
 
@@ -429,7 +438,7 @@ describe('Bilder für die Bildauswahl (PROJ-90)', () => {
 
   it('liefert ohne Bildquelle eine leere Liste, ohne den Kern zu fragen', async () => {
     vorhanden = new Set()
-    expect(await (await bilder(json({}), ctx)).json()).toEqual({ bilder: [], mehr: false })
+    expect(await (await bilder(json({}), ctx)).json()).toEqual({ bilder: [], mehr: false, skript: false })
     expect(kernPfade()).toEqual([])
   })
 
@@ -461,5 +470,203 @@ describe('Bilder für die Bildauswahl (PROJ-90)', () => {
     zeile = { ...BASIS, einstellungen: { ...BASIS.einstellungen, format: 'h5p' }, ergebnis: { ...BASIS.ergebnis, format: 'h5p' } }
     expect((await bilder(json({}), ctx)).status).toBe(400)
     expect(kernPfade()).toEqual([])
+  })
+})
+
+
+// ── PROJ-92: eigene Bilder ───────────────────────────────────────────────────
+
+const PNG_KOPF = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]
+const JPEG_KOPF = [0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]
+const bildAnfrage = (bytes: number[] | Uint8Array, typ = 'image/png') =>
+  new Request('http://t', { method: 'POST', body: new Uint8Array(bytes), headers: { 'Content-Type': typ } })
+const VORSCHAU = 'data:image/jpeg;base64,QUJD'
+
+describe('Bild hochladen (PROJ-92)', () => {
+  beforeEach(() => {
+    kernSagt('/api/editor/bild-ablegen', { vorschau: VORSCHAU, breite: 800, hoehe: 400, bytes: 12345 })
+  })
+
+  it('legt ein PNG ab: Name vom Server, Kern prüft, Vorschau wird gespeichert', async () => {
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(201)
+    const { bild } = await res.json()
+    expect(bild.pfad).toMatch(/^images\/eigen_[0-9a-f]{16}\.png$/)
+    expect(bild).toMatchObject({ vorschau: VORSCHAU, breite: 800, hoehe: 400 })
+    const aufruf = letzter('/api/editor/bild-ablegen') as { format: string; bild: string; ziel: { url: string } }
+    expect(aufruf.format).toBe('png')
+    expect(Buffer.from(aufruf.bild, 'base64')).toEqual(Buffer.from(PNG_KOPF))
+    expect(aufruf.ziel.url).toContain(`schreiben/u1/${ID}/${bild.pfad.replace('images/', '')}`)
+    expect(speicher.upload).toHaveBeenCalledWith(
+      `u1/${ID}/${bild.pfad.replace('images/', '').replace('.png', '.vorschau.jpg')}`,
+      Buffer.from('ABC'),
+      expect.objectContaining({ contentType: 'image/jpeg' }),
+    )
+  })
+
+  it('erkennt JPEG am Inhalt, nicht am Inhaltstyp', async () => {
+    const res = await hochladen(bildAnfrage(JPEG_KOPF, 'image/png'), ctx)
+    expect(res.status).toBe(201)
+    expect((await res.json()).bild.pfad).toMatch(/\.jpg$/)
+    expect(letzter('/api/editor/bild-ablegen')).toMatchObject({ format: 'jpg' })
+  })
+
+  it('lehnt SVG, HTML, GIF und leere Anfragen ab, ohne den Kern zu fragen', async () => {
+    for (const roh of ['<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>', '<html></html>', 'GIF89a......']) {
+      const res = await hochladen(bildAnfrage(new TextEncoder().encode(roh), 'image/png'), ctx)
+      expect(res.status).toBe(415)
+      expect((await res.json()).error).toContain('PNG, JPG und WebP')
+    }
+    expect((await hochladen(bildAnfrage([]), ctx)).status).toBe(400)
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('lehnt zu große Bilder ab', async () => {
+    const gross = new Uint8Array(2_500_001)
+    gross.set(PNG_KOPF)
+    const res = await hochladen(bildAnfrage(gross), ctx)
+    expect(res.status).toBe(413)
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('räumt auf, wenn der Kern das Bild ablehnt, und gibt seinen Satz weiter', async () => {
+    kernSagt('/api/editor/bild-ablegen', { error: 'Dieses Bild lässt sich nicht lesen.' }, 422)
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toBe('Dieses Bild lässt sich nicht lesen.')
+    expect(speicher.remove).toHaveBeenCalledTimes(1)
+    expect(speicher.upload).not.toHaveBeenCalled()
+  })
+
+  it('räumt auf, wenn die Vorschau nicht gespeichert werden kann', async () => {
+    speicher.upload.mockResolvedValue({ error: { message: 'x' } })
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(502)
+    expect(speicher.remove).toHaveBeenCalledTimes(1)
+  })
+
+  it('verwirft ein Ergebnis, das nach dem Neukodieren zu groß ist', async () => {
+    kernSagt('/api/editor/bild-ablegen', { vorschau: VORSCHAU, breite: 5, hoehe: 5, bytes: 3_100_000 })
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(422)
+    expect(speicher.remove).toHaveBeenCalled()
+    expect(speicher.upload).not.toHaveBeenCalled()
+  })
+
+  it('sperrt bei 30 eigenen Bildern', async () => {
+    vorhanden = new Set(Array.from({ length: 30 }, (_, i) => `eigen_abcdef${String(i).padStart(2, '0')}.jpg`))
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(409)
+    expect((await res.json()).error).toContain('30 eigene Bilder')
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('sperrt, wenn der Speicher voll ist', async () => {
+    genutzt = 2 * 1024 * 1024 * 1024
+    const res = await hochladen(bildAnfrage(PNG_KOPF), ctx)
+    expect(res.status).toBe(409)
+    expect((await res.json()).error).toContain('Speicher ist voll')
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('lehnt fremde und nicht bearbeitbare Materialien ab', async () => {
+    zeile = null as never
+    expect((await hochladen(bildAnfrage(PNG_KOPF), ctx)).status).toBe(404)
+    zeile = { ...BASIS, werkzeug: 'kahoot' }
+    expect((await hochladen(bildAnfrage(PNG_KOPF), ctx)).status).toBe(400)
+    expect(kernPfade()).toEqual([])
+  })
+})
+
+describe('Eigene Bilder in Liste, Vorschau und Veröffentlichen (PROJ-92)', () => {
+  const MIT_BILD = {
+    ...STRUKTUR,
+    chapters: [{ title: 'G', elements: [{ type: 'image', path: 'images/eigen_abc123de.jpg', alt: 'Lager' }] }],
+  }
+
+  it('die Liste zeigt eigene Bilder zuerst und doppelt keines aus dem Paket', async () => {
+    vorhanden = new Set(['einlesung.zip', 'eigen_abc123de.jpg', 'eigen_abc123de.vorschau.jpg'])
+    speicher.download.mockImplementation(async (pfad: string) =>
+      pfad.endsWith('.vorschau.jpg') ? { data: new Blob([new Uint8Array([65, 66, 67])]), error: null } : { data: null, error: { message: 'x' } },
+    )
+    const A = { pfad: 'images/a.png', vorschau: 'data:image/jpeg;base64,AA', breite: 6, hoehe: 3 }
+    const DOPPELT = { pfad: 'images/eigen_abc123de.jpg', vorschau: 'x', breite: 1, hoehe: 1 }
+    kernSagt('/api/editor/bilder', { bilder: [A, DOPPELT], mehr: false })
+    const d = await (await bilder(json({}), ctx)).json()
+    expect(d.bilder.map((b: { pfad: string }) => b.pfad)).toEqual(['images/eigen_abc123de.jpg', 'images/a.png'])
+    expect(d.bilder[0].vorschau).toBe('data:image/jpeg;base64,QUJD')
+  })
+
+  it('ohne Skript und Auszug zeigt die Liste trotzdem die eigenen Bilder', async () => {
+    vorhanden = new Set(['eigen_abc123de.jpg', 'eigen_abc123de.vorschau.jpg'])
+    speicher.download.mockResolvedValue({ data: new Blob([new Uint8Array([65])]), error: null })
+    const d = await (await bilder(json({}), ctx)).json()
+    expect(d.bilder).toHaveLength(1)
+    expect(d.skript).toBe(false)
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('ein eigenes Bild in Arbeitsgröße kommt aus dem Speicher, nicht vom Kern', async () => {
+    vorhanden = new Set(['eigen_abc123de.jpg'])
+    speicher.download.mockResolvedValue({ data: new Blob([new Uint8Array([65, 66, 67])]), error: null })
+    const d = await (await bilder(json({ pfad: 'images/eigen_abc123de.jpg' }), ctx)).json()
+    expect(d.bild).toBe('data:image/jpeg;base64,QUJD')
+    expect(kernPfade()).toEqual([])
+  })
+
+  it('die Vorschau gibt dem Kern nur die benutzten eigenen Bilder mit', async () => {
+    zeile = { ...BASIS, entwurf: MIT_BILD, entwurf_am: '2026-11-12T09:00:00Z' }
+    vorhanden = new Set(['einlesung.zip', 'eigen_abc123de.jpg', 'eigen_unbenutzt1.jpg'])
+    kernSagt('/api/editor/bauen', { groesse: 10, fehlende_bilder: [] })
+    kernSagt('/api/editor/pruefen', { befunde: [] })
+    expect((await vorschau(new Request('http://t', { method: 'POST' }), ctx)).status).toBe(200)
+    const eigene = (letzter('/api/editor/bauen') as { eigene_bilder: { pfad: string; url: string }[] }).eigene_bilder
+    expect(eigene).toEqual([{ pfad: 'images/eigen_abc123de.jpg', url: `https://speicher.test/lesen/u1/${ID}/eigen_abc123de.jpg` }])
+  })
+
+  it('ohne eigene Bilder im Entwurf bleibt der Kern-Aufruf wie bisher', async () => {
+    zeile = { ...BASIS, entwurf: GEAENDERT, entwurf_am: '2026-11-12T09:00:00Z' }
+    vorhanden = new Set(['einlesung.zip', 'eigen_abc123de.jpg'])
+    kernSagt('/api/editor/bauen', { groesse: 10 })
+    kernSagt('/api/editor/pruefen', { befunde: [] })
+    await vorschau(new Request('http://t', { method: 'POST' }), ctx)
+    expect(letzter('/api/editor/bauen')).not.toHaveProperty('eigene_bilder')
+  })
+
+  it('Veröffentlichen gibt die benutzten eigenen Bilder an den Kern und räumt unbenutzte weg', async () => {
+    zeile = { ...BASIS, entwurf: MIT_BILD, entwurf_am: '2026-11-12T09:00:00Z' }
+    vorhanden = new Set(['einlesung.zip', 'eigen_abc123de.jpg', 'eigen_unbenutzt1.jpg'])
+    kernSagt('/api/editor/yaml', { antwort: 'chapters:\n- elements:\n  - type: image\n    path: images/eigen_abc123de.jpg' })
+    kernSagt('/api/editor/pruefen', { befunde: [] })
+    kernSagt('/api/editor/bauen', { titel: 'Haftung', dateiname: 'Haftung.html', kapitel: 1, aufgaben: 0 })
+    speicher.download.mockImplementation(async (pfad: string) =>
+      pfad.endsWith('ausgabe-neu') || pfad.endsWith('vorschau-neu.html')
+        ? { data: new Blob(['<html/>']), error: null }
+        : { data: null, error: { message: 'fehlt' } },
+    )
+    const res = await veroeffentlichen(json({ stand: '2026-11-12T09:00:00Z' }), ctx)
+    expect(res.status).toBe(200)
+    expect(letzter('/api/editor/bauen')).toMatchObject({ eigene_bilder: [{ pfad: 'images/eigen_abc123de.jpg' }] })
+    const entfernt = speicher.remove.mock.calls.flatMap((a) => a[0] as string[])
+    expect(entfernt).toContain(`u1/${ID}/eigen_unbenutzt1.jpg`)
+    expect(entfernt).toContain(`u1/${ID}/eigen_unbenutzt1.vorschau.jpg`)
+    expect(entfernt).not.toContain(`u1/${ID}/eigen_abc123de.jpg`)
+  })
+
+  it('Veröffentlichen lässt frisch hochgeladene Bilder stehen (Schonfrist)', async () => {
+    zeile = { ...BASIS, entwurf: MIT_BILD, entwurf_am: '2026-11-12T09:00:00Z' }
+    vorhanden = new Set(['einlesung.zip', 'eigen_abc123de.jpg', 'eigen_neuvonhier.jpg'])
+    jungeDateien = new Set(['eigen_neuvonhier.jpg'])
+    kernSagt('/api/editor/yaml', { antwort: 'path: images/eigen_abc123de.jpg' })
+    kernSagt('/api/editor/pruefen', { befunde: [] })
+    kernSagt('/api/editor/bauen', { titel: 'Haftung', dateiname: 'Haftung.html', kapitel: 1, aufgaben: 0 })
+    speicher.download.mockImplementation(async (pfad: string) =>
+      pfad.endsWith('ausgabe-neu') || pfad.endsWith('vorschau-neu.html')
+        ? { data: new Blob(['<html/>']), error: null }
+        : { data: null, error: { message: 'fehlt' } },
+    )
+    expect((await veroeffentlichen(json({ stand: '2026-11-12T09:00:00Z' }), ctx)).status).toBe(200)
+    const entfernt = speicher.remove.mock.calls.flatMap((a) => a[0] as string[])
+    expect(entfernt).not.toContain(`u1/${ID}/eigen_neuvonhier.jpg`)
   })
 })
