@@ -105,5 +105,6 @@
 | PROJ-86 | Freigabe-Status in der Nachweis-Liste sichtbar | Deployed | [PROJ-86-nachweis-freigabe-sichtbar.md](PROJ-86-nachweis-freigabe-sichtbar.md) | 2026-11-11 |
 | PROJ-87 | Werkzeugkiste – Assistent „Schritt für Schritt“ | Deployed | [PROJ-87-werkzeugkiste-assistent-schritt-fuer-schritt.md](PROJ-87-werkzeugkiste-assistent-schritt-fuer-schritt.md) | 2026-11-11 |
 | PROJ-88 | Schulrecht – bessere Suche & lesbare Darstellung | Deployed | [PROJ-88-schulrecht-suche-und-darstellung.md](PROJ-88-schulrecht-suche-und-darstellung.md) | 2026-11-11 |
+| PROJ-89 | Werkzeugkiste – Baukasten-Editor für fertige Materialien | Planned | [PROJ-89-werkzeugkiste-baukasten-editor.md](PROJ-89-werkzeugkiste-baukasten-editor.md) | 2026-11-12 |
 
-## Next Available ID: PROJ-89
+## Next Available ID: PROJ-90
