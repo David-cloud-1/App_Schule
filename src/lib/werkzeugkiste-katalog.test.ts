@@ -9,6 +9,7 @@ import {
   anzahlBeispiele,
   beispielBefunde,
   beispielBlock,
+  editorBefunde,
   fuegeBlockEin,
   istBeispiel,
   leseZuletzt,
@@ -178,5 +179,25 @@ describe('Zuletzt verwendet (E7)', () => {
     expect(leseZuletzt()).toEqual([])
     window.localStorage.setItem('wk-katalog-zuletzt', JSON.stringify(['gibtsnicht', 'text']))
     expect(leseZuletzt()).toEqual(['text'])
+  })
+})
+
+describe('Editor-Hinweise', () => {
+  it('meldet Videos ohne Web-Adresse, auch das Beispiel', () => {
+    const s: Struktur = {
+      cover: {},
+      chapters: [
+        {
+          elements: [
+            { type: 'interactive_video', url: 'https://www.youtube.com/watch?v=x', questions: [] },
+            { type: 'interactive_video', url: 'javascript:alert(1)', questions: [] },
+            beispielBlock('interactive_video'),
+          ],
+        },
+      ],
+    }
+    const texte = editorBefunde(s).map((b) => `${b.stellen[0] && 'element' in b.stellen[0] ? b.stellen[0].element : '-'}: ${b.text}`)
+    expect(texte.filter((t) => t.includes('Video-Adresse prüfen')).map((t) => t[0])).toEqual(['1', '2'])
+    expect(texte.some((t) => t.startsWith('2') && t.includes('Beispielinhalt'))).toBe(true)
   })
 })

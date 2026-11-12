@@ -86,6 +86,7 @@ export function KatalogDialog({
     <KatalogKarte
       key={`${bereich}-${e.typ}`}
       eintrag={e}
+      bereich={bereich}
       grund={gesperrtGrund(e, bilder)}
       onWaehle={() => {
         onWaehle(e.typ)
@@ -181,8 +182,9 @@ export function KatalogDialog({
   )
 }
 
-function KatalogKarte({ eintrag: e, grund, onWaehle }: { eintrag: KatalogEintrag; grund: string | null; onWaehle: () => void }) {
-  const beschreibungId = `katalog-${e.typ}-text`
+function KatalogKarte({ eintrag: e, bereich, grund, onWaehle }: { eintrag: KatalogEintrag; bereich: string; grund: string | null; onWaehle: () => void }) {
+  // Ein Typ kann zweimal stehen (Zuletzt verwendet + Gruppe) – die Kennung muss trotzdem eindeutig sein
+  const beschreibungId = `katalog-${bereich}-${e.typ}-text`
   return (
     <button
       type="button"

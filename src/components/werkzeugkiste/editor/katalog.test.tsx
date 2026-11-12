@@ -82,6 +82,9 @@ describe('Katalog-Fenster (PROJ-90)', () => {
     katalog()
     const zuletzt = screen.getByRole('heading', { name: 'Zuletzt verwendet' }).parentElement!
     expect([...zuletzt.querySelectorAll('[data-katalog-eintrag]')].map((e) => e.getAttribute('data-katalog-eintrag'))).toEqual(['fallakte', 'text'])
+    // Kennungen bleiben eindeutig, obwohl „Fallakte“ zweimal steht
+    const ids = [...document.querySelectorAll('[id^="katalog-"]')].map((e) => e.id)
+    expect(new Set(ids).size).toBe(ids.length)
     fireEvent.change(screen.getByLabelText('Aufgabentyp suchen'), { target: { value: 'fall' } })
     expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
   })

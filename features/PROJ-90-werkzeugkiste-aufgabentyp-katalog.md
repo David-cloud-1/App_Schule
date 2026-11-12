@@ -1,6 +1,6 @@
 # PROJ-90: Werkzeugkiste – Baukasten: Aufgabentyp-Katalog
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12 (gebaut)
 
@@ -285,7 +285,47 @@ Keine neuen. Genutzt werden die vorhandenen: shadcn/ui (Dialog, Input, Badge …
 **Tests:** 3175 Vitest grün (neu: `werkzeugkiste-katalog.test.ts`, `katalog.test.tsx`, Einfüge-Tests im Editor, Bilder-Route), Kern 32 + 167 grün.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-11-12 · **Art:** statische Prüfung gegen Spec, automatische Tests, Sicherheitsprüfung. Kein Dev-Server und kein Playwright auf diesem Rechner (siehe Projektregel), daher **kein Browser-Durchgang**. Der steht nach dem Deploy aus (Lehrkraft-Konto, Desktop und Handy).
+
+### Automatische Tests
+- Vitest: 260 Dateien, **3176 Tests grün** (neu: Katalog-Bibliothek 22, Katalog-Fenster/Formulare/Kapiteltest 22, Einfügen im Editor 5, Bilder-Route 7).
+- Kern: `kern_test`, `kern_sicherheit_test`, `kern_editor_test` **202 grün** (neu: Bildauswahl 7, Beispielinhalte bauen ohne Warnung, Videoadresse).
+- `tsc` ohne neue Fehler, `npm run build` erfolgreich, ESLint ohne neue Warnungen.
+- Skizzen in Hell und Dunkel gerendert und angesehen (`docs/vorschau/proj90-skizzen-*.png`, lokal).
+
+### Akzeptanzkriterien
+| Bereich | Ergebnis |
+|---|---|
+| Einfügen („+“, Block hinzufügen, darüber/darunter, Thema-Menü, genau an der Stelle, öffnet Block, ein Rückgängig-Schritt, automatisch gespeichert) | bestanden (Komponententests) |
+| Katalog-Aufbau (31 Einträge, 7 Gruppen, Klartext-Namen, Skizze, Beschreibung, „Gut für“, „wird ausgewertet“, Zuletzt verwendet max. 4, ohne Speicher kein Fehler) | bestanden |
+| Suche (Umlaute, Suchbegriffe, englische Namen, Leerzustand mit „Suche löschen“, Pfeiltasten, Enter, Esc, Klick fügt sofort ein) | bestanden; Esc/Vollbild unter 1024 px nur statisch geprüft |
+| Bild-Typen (nur mit Bildern, sonst ausgegraut mit Grund und `aria-disabled`, Bildauswahl vor dem Einfügen, Bild im Formular wechseln, Bilder ordnen optional) | bestanden |
+| Kapiteltest (gefilterter Katalog mit Grund, Frage am Ende mit Beispiel, nicht erlaubte Fragen „wird übersprungen“) | bestanden |
+| Beispielinhalt (baut ohne Warnung, fachneutral, Hinweis am Block, Zahl im Veröffentlichen-Dialog, verschwindet bei Änderung, Bild übernommen) | bestanden |
+| Formulare für alle 32 Typen, Listen sortierbar, Pflichtfelder, Doppelnamen bleiben, unbekannte Felder bleiben, Rohfassung je Formular | bestanden |
+| Leistung (Katalog ohne Netz, sofort) | bestanden (statisch) |
+| Fokus kehrt nach dem Schließen zurück | nicht geprüft (Browser) |
+
+### Gefundene und behobene Fehler
+| # | Schwere | Befund | Behoben |
+|---|---|---|---|
+| BUG-1 | Mittel | Bilder wurden nur in der Breite verkleinert. Ein sehr hohes Bild (z. B. 1000 × 10 000 px) hätte die Antwort über die 4,5-MB-Grenze von Vercel getrieben; die Liste hatte kein Größenbudget. | Ja: längste Seite begrenzt (240/1200 px), Liste höchstens 3 MB, sonst „mehr“. Gemessen: 150 Rauschbilder = 3,0 MB. |
+| BUG-2 | Hoch (Sicherheit) | Die Video-Adresse wurde im Kern ungeprüft als Link gesetzt. Über das neue Formularfeld ließ sich `javascript:…` eintragen, das auf der Seite der Schüler als anklickbarer Link erscheint. | Ja: Kern verlinkt nur `http(s)://`, sonst Warnung und kein Link; Test `VideoAdresseTest`. |
+| BUG-3 | Niedrig | Doppelte HTML-Kennungen, wenn ein Typ unter „Zuletzt verwendet“ und in seiner Gruppe steht (Bildschirmleser). | Ja. |
+| BUG-4 | Mittel | Spec-Edge-Case „Video-Adresse ungültig → Prüfstelle meldet“ fehlte (die Bau-Warnung erreicht die Prüfstelle nicht). | Ja: Editor-Hinweis „Video-Adresse prüfen“. |
+
+### Sicherheitsprüfung
+- Bilder-Route: Rolle + Besitz wie alle Editor-Wege (RLS, `editorZeileOderFehler`), Pfad nur `images/…` ohne `..`, Kern prüft zusätzlich, dass der Name im Paket steht (kein Lesen von Server-Dateien). Fremdes Material → 404, H5P → 400, Azubi → 403 (Tests).
+- Antworten enthalten nur verkleinerte Bilder des eigenen Materials, keine Speicher-Adressen.
+- HTML aus den neuen Formularfeldern (Fallakte, Schätzrunde, Rechenweg, Offene Frage) läuft im Kern durch `_saeubern` wie bisher.
+- Keine Datenbank-Änderung, keine neuen Geheimnisse.
+
+### Hinweis zur Wirkung auf Bestandsmaterial
+- Videos, deren Adresse nicht mit `http(s)://` beginnt (z. B. `www.youtube.com/…`), zeigen nach dem nächsten Bau keinen Link mehr, sondern die Leerzeile „Adresse: ___“. Vorher war ein solcher Link ohnehin defekt (relative Adresse).
+
+### Ergebnis
+**Produktionsreif: JA** – keine offenen Critical/High-Fehler. Offen: Browser-Durchgang nach dem Deploy.
 
 ## Deployment
 _To be added by /deploy_

@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
 import { befundeJeStelle, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
-import { beispielBefunde } from '@/lib/werkzeugkiste-katalog'
+import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorVorschau } from '@/components/werkzeugkiste/editor/editor-vorschau'
@@ -125,9 +125,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const kernBefunde = v.befunde ?? daten.befunde
   // PROJ-90: Blöcke mit unverändertem Beispielinhalt – berechnet, nie gespeichert
   const beispiele = useMemo(() => beispielBefunde(z.struktur), [z.struktur])
+  const eigene = useMemo(() => editorBefunde(z.struktur), [z.struktur])
   const befunde = useMemo(
-    () => (kernBefunde || beispiele.length ? [...(kernBefunde ?? []), ...beispiele] : null),
-    [kernBefunde, beispiele],
+    () => (kernBefunde || eigene.length ? [...(kernBefunde ?? []), ...eigene] : null),
+    [kernBefunde, eigene],
   )
   const befundKarte = useMemo(() => befundeJeStelle(befunde), [befunde])
   const hatAenderungen = z.hatEntwurf() || z.speicherstand !== 'gespeichert'

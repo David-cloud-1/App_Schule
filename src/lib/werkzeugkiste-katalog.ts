@@ -362,6 +362,28 @@ export function beispielBefunde(s: Struktur): EditorBefund[] {
   return befunde
 }
 
+/**
+ * Editor-Hinweise, die die Prüfstelle des Kerns nicht kennt (PROJ-90):
+ * Video ohne gültige Web-Adresse – der Kern verlinkt dann nichts.
+ */
+export function editorBefunde(s: Struktur): EditorBefund[] {
+  const befunde = beispielBefunde(s)
+  s.chapters.forEach((t, ti) =>
+    t.elements.forEach((b, bi) => {
+      if (b.type !== 'interactive_video') return
+      const url = typeof b.url === 'string' ? b.url.trim() : ''
+      if (!/^https?:\/\/\S+$/i.test(url)) {
+        befunde.push({
+          text: `Thema ${ti + 1} – Video mit Fragen: Video-Adresse prüfen (sie muss mit https:// beginnen)`,
+          schwere: 'mittel',
+          stellen: [{ kapitel: ti, element: bi }],
+        })
+      }
+    }),
+  )
+  return befunde
+}
+
 /** Wie viele Blöcke (inkl. Abschlusstest) enthalten noch Beispielinhalt? */
 export function anzahlBeispiele(s: Struktur): number {
   return beispielBefunde(s).length
