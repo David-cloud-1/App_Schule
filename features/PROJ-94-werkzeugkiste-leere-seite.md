@@ -11,6 +11,7 @@ Eine Lehrkraft startet den Baukasten-Editor ohne Skript und ohne KI mit einer le
 - **E1 – Eigenes Feature nach PROJ-90:** Erst mit dem Aufgabentyp-Katalog lassen sich neue Blöcke anlegen. Deshalb kommt dieses Feature danach. PROJ-89 bleibt unverändert.
 - **E2 – Startinhalt „Grundgerüst":** Deckblatt (Titel wird beim Anlegen abgefragt), ein Thema „Thema 1" mit einem Textblock samt leerer Lernziele-Box und eine leere Lernzielkontrolle.
 - **E3 – Einstieg an zwei Stellen:** eigene Karte **„Eigene Seite bauen"** auf der Startseite der Werkzeugkiste und Knopf **„Leere Seite anlegen"** in Meine Materialien.
+- **E4 – Kein Ablauf:** Eine eigene Seite bleibt gespeichert, bis die Lehrkraft sie löscht, auch als nie veröffentlichter Entwurf. Die Ablauf-Frist für unfertige Abläufe (PROJ-51/52) gilt hier nicht.
 - Alle Entscheidungen aus PROJ-89 gelten weiter (nur Interaktive Seite, Entwurf/Veröffentlichen, Prüfstelle ohne Sperre, automatisches Speichern).
 
 ## Dependencies
@@ -33,6 +34,7 @@ Eine Lehrkraft startet den Baukasten-Editor ohne Skript und ohne KI mit einer le
 - [ ] Beide öffnen einen kleinen Dialog mit dem Pflichtfeld **Titel** (1–120 Zeichen, wie Materialtitel in PROJ-52) und optional **Untertitel**. „Anlegen" ist erst mit Titel aktiv.
 - [ ] Vor dem Anlegen wird die Speichergrenze geprüft (PROJ-52). Ist sie erreicht, erscheint der bekannte Hinweis und es wird nichts angelegt.
 - [ ] „Anlegen" legt ein neues Material im Format Interaktive Seite an und öffnet es direkt im Editor (PROJ-89).
+- [ ] Das neue Material hat **kein Ablaufdatum**. Es erscheint nie in Abräum- oder Ablauf-Hinweisen und bleibt, bis die Lehrkraft es löscht (E4).
 
 ### Grundgerüst (E2)
 - [ ] Das neue Material enthält: Deckblatt mit dem eingegebenen Titel und Untertitel, Schule wie in der Werkzeugkiste vorbelegt („Berufsschule für Spedition und Touristik"), Dauer leer.
@@ -48,7 +50,7 @@ Eine Lehrkraft startet den Baukasten-Editor ohne Skript und ohne KI mit einer le
 - [ ] Die Prüfstelle läuft wie in PROJ-89. Befunde, die nur mit Skript Sinn ergeben (z. B. „Skript-Aufgabe fehlt"), erscheinen bei eigenen Seiten nicht.
 
 ## Edge Cases
-- **Lehrkraft legt an und schließt sofort wieder:** Das Material bleibt als Entwurf in Meine Materialien (Markierung „Entwurf"). Ein noch nie veröffentlichter, unveränderter Entwurf wird **nicht** automatisch gelöscht. Offen für /architecture: ob solche leeren Entwürfe wie andere Entwürfe ablaufen (`laeuft_ab_am`).
+- **Lehrkraft legt an und schließt sofort wieder:** Das Material bleibt als Entwurf in Meine Materialien (Markierung „Entwurf"). Es wird **nie automatisch gelöscht** und läuft nicht ab (E4), auch wenn es nie veröffentlicht oder geändert wurde.
 - **„Entwurf verwerfen" bei einem nie veröffentlichten Material:** Es gibt keine veröffentlichte Fassung, auf die man zurückkann. Die Aktion heißt hier „Zurück auf das Grundgerüst" und fragt per `AlertDialog`.
 - **Veröffentlichen mit leerem Grundgerüst** (nichts geändert): erlaubt. Die Bestätigung weist darauf hin, dass die Seite noch keine Aufgaben hat.
 - **Gleicher Titel wie ein vorhandenes Material:** erlaubt (wie bisher bei Materialtiteln).
