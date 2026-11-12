@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { Loader2, RotateCw } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
@@ -13,7 +13,11 @@ import { cn } from '@/lib/utils'
  * Aufgaben, abgeschottet in einem Rahmen ohne eigene Herkunft
  * (`sandbox="allow-scripts"` ohne `allow-same-origin`). Die Seite kann ihre
  * Skripte ausführen, aber weder Anmeldedaten noch Inhalte der App lesen.
- * Zum gewählten Block springt sie über eine Nachricht mit der Sprungmarke.
+ *
+ * Nur Text-Nachrichten gehen hin und her (PROJ-96):
+ *  - App → Seite: Sprungmarke zum Hervorheben/Springen, Scrollposition nach einem Neubau.
+ *  - Seite → App: „Bearbeiten“-Klick mit der Marke, Scrollposition, „bereit“.
+ * Die App nimmt Nachrichten nur vom eigenen Rahmen an.
  */
 export function EditorVorschau({
   html,
@@ -22,6 +26,9 @@ export function EditorVorschau({
   marke,
   neuLaden,
   groesse = 0,
+  onWaehle,
+  vollbreit = false,
+  onVollbreit,
 }: {
   html: string | null
   laedt: boolean
@@ -31,15 +38,74 @@ export function EditorVorschau({
   neuLaden: () => void
   /** Größe der gebauten Seite in Bytes (PROJ-92: Platzanzeige zur 8-MB-Grenze); 0 = unbekannt */
   groesse?: number
+  /** Klick auf „Bearbeiten“ in der Seite; false = nicht angenommen (Vorschau veraltet) */
+  onWaehle?: (marke: string) => boolean
+  /** Vorschau über die ganze Breite (Gliederung und Schublade ausgeblendet) */
+  vollbreit?: boolean
+  onVollbreit?: () => void
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
+  const scrollY = useRef(0)
+  const letzte = useRef<string | null>(null)
+  const ausVorschau = useRef<string | null>(null)
+  const aktuelleMarke = useRef(marke)
+  const waehleRef = useRef(onWaehle)
+  const fehlerRef = useRef(fehler)
+  useEffect(() => {
+    aktuelleMarke.current = marke
+    waehleRef.current = onWaehle
+    fehlerRef.current = fehler
+  })
+  const [hinweis, setHinweis] = useState<string | null>(null)
+
+  const senden = useCallback((nachricht: Record<string, unknown>) => {
+    rahmen.current?.contentWindow?.postMessage(nachricht, '*')
+  }, [])
+
+  // Andere Stelle gewählt, während die Seite steht: hervorheben und hinspringen
+  // (kam der Klick aus der Seite selbst, bleibt sie, wo sie ist)
+  useEffect(() => {
+    if (letzte.current === marke) return
+    letzte.current = marke
+    senden({ wk: marke, still: ausVorschau.current === marke })
+    ausVorschau.current = null
+  }, [marke, senden])
 
   useEffect(() => {
-    if (!marke) return
-    // Nach einem Neubau braucht der Rahmen einen Moment, bis die Seite steht
-    const t = setTimeout(() => rahmen.current?.contentWindow?.postMessage({ wk: marke }, '*'), 150)
+    const beiNachricht = (e: MessageEvent) => {
+      if (!rahmen.current || e.source !== rahmen.current.contentWindow) return
+      const d: unknown = e.data
+      if (!d || typeof d !== 'object') return
+      const n = d as Record<string, unknown>
+      if (n.wkBereit === true) {
+        // Neue Seite steht: Auswahl und Scrollposition wiederherstellen
+        letzte.current = aktuelleMarke.current
+        senden({ wk: aktuelleMarke.current, scrollY: scrollY.current })
+      } else if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
+        scrollY.current = Math.max(0, n.wkScroll)
+      } else if (typeof n.wkWaehle === 'string') {
+        const angenommen = waehleRef.current?.(n.wkWaehle) ?? false
+        if (angenommen) {
+          ausVorschau.current = n.wkWaehle
+          setHinweis(null)
+        } else {
+          setHinweis(
+            fehlerRef.current
+              ? 'Die Vorschau ist nicht aktuell. Bitte „Erneut versuchen“ klicken oder die Stelle in der Gliederung wählen.'
+              : 'Die Vorschau wird gerade aktualisiert. Bitte gleich noch einmal klicken.',
+          )
+        }
+      }
+    }
+    window.addEventListener('message', beiNachricht)
+    return () => window.removeEventListener('message', beiNachricht)
+  }, [senden])
+
+  useEffect(() => {
+    if (!hinweis) return
+    const t = setTimeout(() => setHinweis(null), 4000)
     return () => clearTimeout(t)
-  }, [marke, html])
+  }, [hinweis])
 
   return (
     <div className="flex h-full min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-ws-line bg-white">
@@ -55,12 +121,33 @@ export function EditorVorschau({
             Vorschau gerade nicht aktuell
           </span>
         )}
-        {groesse > 0 && <SeitenGroesse bytes={groesse} />}
-        {!laedt && fehler && (
-          <Button variant="ghost" size="sm" className="ml-auto min-h-9 rounded-lg" onClick={neuLaden}>
-            <RotateCw className="mr-1.5 size-3.5" aria-hidden /> Erneut versuchen
-          </Button>
+        {hinweis && (
+          <span className="text-ws-orange" role="status">
+            {hinweis}
+          </span>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          {groesse > 0 && <SeitenGroesse bytes={groesse} />}
+          {!laedt && fehler && (
+            <Button variant="ghost" size="sm" className="min-h-9 rounded-lg" onClick={neuLaden}>
+              <RotateCw className="mr-1.5 size-3.5" aria-hidden /> Erneut versuchen
+            </Button>
+          )}
+          {onVollbreit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="hidden size-9 rounded-lg text-ws-muted hover:bg-ws-raised hover:text-ws-text lg:inline-flex"
+              onClick={onVollbreit}
+              aria-pressed={vollbreit}
+              aria-label={vollbreit ? 'Bearbeitung wieder einblenden' : 'Vorschau über die ganze Breite'}
+              title={vollbreit ? 'Bearbeitung wieder einblenden' : 'Vorschau über die ganze Breite'}
+            >
+              {vollbreit ? <Minimize2 className="size-4" aria-hidden /> : <Maximize2 className="size-4" aria-hidden />}
+            </Button>
+          )}
+        </div>
       </div>
       {html ? (
         <iframe

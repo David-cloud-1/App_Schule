@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -45,8 +45,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   DropdownMenu,
@@ -70,17 +68,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
-import { EditorRohfassung } from '@/components/werkzeugkiste/editor/editor-rohfassung'
-import { AbschlussFormular, FORMULARE } from '@/components/werkzeugkiste/editor/editor-formulare'
-import { TabelleHerausloesen } from '@/components/werkzeugkiste/editor/tabelle-herausloesen'
-import { TextEditor } from '@/components/werkzeugkiste/editor/text-editor'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
 import { TypWechsel } from '@/components/werkzeugkiste/editor/typ-wechsel'
 import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
 import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
-import { MaterialBilderProvider, useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
+import { useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
 import { beispielBlock, fuegeBlockEin, katalogEintrag, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
-import { AdminSegmented } from '@/components/admin/admin-segmented'
 import {
   dupliziereBlock,
   dupliziereThema,
@@ -89,10 +82,7 @@ import {
   loescheBlock,
   loescheThema,
   neuesThema,
-  setzeAbschluss,
   setzeBlock,
-  setzeDeckblatt,
-  setzeThemaTitel,
   typName,
   verschiebeBlock,
   verschiebeThema,
@@ -102,7 +92,6 @@ import {
   type Ort,
   type Struktur,
 } from '@/lib/werkzeugkiste-editor'
-import { loeseTabelleHeraus, type HerausgeloesteTabelle } from '@/lib/werkzeugkiste-tabelle'
 
 export type Auswahl =
   | { art: 'deckblatt' }
@@ -111,7 +100,7 @@ export type Auswahl =
   | { art: 'abschluss' }
   | null
 
-type Aendere = (neu: (s: Struktur) => Struktur, gruppe?: string) => void
+export type Aendere = (neu: (s: Struktur) => Struktur, gruppe?: string) => void
 
 /** Stelle, an der ein neuer Block eingefügt wird (PROJ-90) */
 type Einfuegestelle = { thema: number; index: number }
@@ -170,20 +159,9 @@ function lies(id: string): { art: 'thema'; thema: number } | { art: 'block'; the
 /**
  * Gliederung des Baukasten-Editors (PROJ-89): Deckblatt, Themen mit ihren
  * Blöcken (ziehbar, auch in andere Themen) und Lernzielkontrolle. Ein Klick
- * öffnet das Bearbeitungsfeld direkt unter der Zeile – immer nur eins.
+ * wählt die Stelle aus; bearbeitet wird sie in der Schublade (PROJ-96).
  */
-export function EditorGliederung(props: GliederungProps) {
-  // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
-  const verwendet = useMemo(() => new Set(JSON.stringify(props.struktur).match(/images\/[^"\\]+/g) ?? []), [props.struktur])
-  return (
-    <MaterialBilderProvider materialId={props.materialId} verwendet={verwendet} seitenGroesse={props.seitenGroesse}>
-      <Gliederung {...props} />
-    </MaterialBilderProvider>
-  )
-}
-
-interface GliederungProps {
-  materialId: string
+export interface GliederungProps {
   struktur: Struktur
   aendere: Aendere
   rueckgaengig: () => void
@@ -191,12 +169,9 @@ interface GliederungProps {
   setAuswahl: (a: Auswahl) => void
   befunde: EditorBefund[] | null
   befundKarte: Map<BefundSchluessel, number>
-  /** Größe der Seite laut letzter Vorschau (Bytes), 0 = unbekannt */
-  seitenGroesse?: number
 }
 
-function Gliederung({
-  materialId,
+export function EditorGliederung({
   struktur,
   aendere,
   rueckgaengig,
@@ -349,18 +324,13 @@ function Gliederung({
           <button
             type="button"
             onClick={() => waehle({ art: 'deckblatt' })}
-            aria-expanded={istGewaehlt({ art: 'deckblatt' })}
+            aria-current={istGewaehlt({ art: 'deckblatt' }) ? 'true' : undefined}
             className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
           >
             <span className="text-sm font-semibold">Deckblatt</span>
             <span className="truncate text-sm text-ws-muted">{String(struktur.cover?.title ?? '')}</span>
           </button>
         </div>
-        {istGewaehlt({ art: 'deckblatt' }) && (
-          <div className="mt-2 rounded-xl border border-ws-line bg-ws-surface p-4">
-            <DeckblattFormular struktur={struktur} aendere={aendere} />
-          </div>
-        )}
       </div>
 
       <DndContext sensors={sensoren} collisionDetection={closestCenter} onDragEnd={ziehEnde}>
@@ -391,8 +361,6 @@ function Gliederung({
                 bewegeThema={bewegeThema}
                 blockLoeschen={blockLoeschen}
                 themaLoeschen={() => setThemaLoeschen(ti)}
-                schliessen={() => setAuswahl(null)}
-                materialId={materialId}
                 einfuegenBei={einfuegenBei}
                 rueckgaengig={rueckgaengig}
               />
@@ -420,7 +388,7 @@ function Gliederung({
           <button
             type="button"
             onClick={() => waehle({ art: 'abschluss' })}
-            aria-expanded={istGewaehlt({ art: 'abschluss' })}
+            aria-current={istGewaehlt({ art: 'abschluss' }) ? 'true' : undefined}
             className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
           >
             <span className="text-sm font-semibold">{String(struktur.final_chapter?.title ?? 'Lernzielkontrolle')}</span>
@@ -428,28 +396,6 @@ function Gliederung({
           </button>
           <HinweisMarke anzahl={befundKarte.get('abschluss')} was="der Lernzielkontrolle" />
         </div>
-        {istGewaehlt({ art: 'abschluss' }) && (
-          <div className="mt-2 rounded-xl border border-ws-line bg-ws-surface p-4">
-            <MitRohfassung
-              materialId={materialId}
-              beschriftung="Rohfassung: Lernzielkontrolle"
-              // Der Kern liest einzelne Blöcke nur mit `type` – die Lernzielkontrolle bekommt dafür eine Hilfsmarke
-              block={{ type: 'final_chapter', ...(struktur.final_chapter ?? { title: 'Lernzielkontrolle' }) }}
-              onRohUebernommen={(b) => {
-                const { type: _marke, ...rest } = b
-                void _marke
-                aendere((s) => setzeAbschluss(s, rest))
-                setAuswahl(null)
-              }}
-              schliessen={() => setAuswahl(null)}
-            >
-              <AbschlussFormular
-                abschluss={struktur.final_chapter ?? { title: 'Lernzielkontrolle' }}
-                onChange={(neu, feld) => aendere((s) => setzeAbschluss(s, neu), `abschluss-${feld}`)}
-              />
-            </MitRohfassung>
-          </div>
-        )}
       </div>
 
       <KatalogDialog
@@ -530,8 +476,6 @@ function ThemaKarte({
   bewegeThema,
   blockLoeschen,
   themaLoeschen,
-  schliessen,
-  materialId,
   einfuegenBei,
   rueckgaengig,
 }: {
@@ -552,8 +496,6 @@ function ThemaKarte({
   bewegeThema: (von: number, nach: number) => void
   blockLoeschen: (ort: Ort) => void
   themaLoeschen: () => void
-  schliessen: () => void
-  materialId: string
   einfuegenBei: EinfuegenBei
   rueckgaengig: () => void
 }) {
@@ -592,7 +534,7 @@ function ThemaKarte({
         >
           {zu ? <ChevronRight className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
         </button>
-        <button type="button" onClick={waehleThema} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left">
+        <button type="button" onClick={waehleThema} aria-current={gewaehlt ? 'true' : undefined} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left">
           <span className="truncate font-semibold" title={name}>
             {name}
           </span>
@@ -631,21 +573,6 @@ function ThemaKarte({
         </DropdownMenu>
       </div>
 
-      {gewaehlt && (
-        <div className="mt-2 space-y-2 rounded-xl border border-ws-line bg-ws-surface p-4">
-          <Label htmlFor={`thema-titel-${index}`}>Titel des Themas</Label>
-          <Input
-            id={`thema-titel-${index}`}
-            value={titel}
-            maxLength={500}
-            autoFocus
-            onChange={(e) => aendere((s) => setzeThemaTitel(s, index, e.target.value), `titel-${index}`)}
-            onKeyDown={(e) => e.key === 'Enter' && schliessen()}
-            className="min-h-11 rounded-xl"
-          />
-        </div>
-      )}
-
       {!zu && (
         <SortableContext items={bloecke.map((_, bi) => `b-${index}-${bi}`)} strategy={verticalListSortingStrategy}>
           <ol className="mt-2 space-y-2 pl-2 sm:pl-6" aria-label={`Blöcke in „${name}“`}>
@@ -664,8 +591,6 @@ function ThemaKarte({
                 aendere={aendere}
                 bewegeBlock={bewegeBlock}
                 loeschen={() => blockLoeschen({ thema: index, block: bi })}
-                schliessen={schliessen}
-                materialId={materialId}
                 einfuegenBei={einfuegenBei}
                 rueckgaengig={rueckgaengig}
               />,
@@ -740,8 +665,6 @@ function BlockZeile({
   aendere,
   bewegeBlock,
   loeschen,
-  schliessen,
-  materialId,
   einfuegenBei,
   rueckgaengig,
 }: {
@@ -756,8 +679,6 @@ function BlockZeile({
   aendere: Aendere
   bewegeBlock: (von: Ort, nach: Ort) => void
   loeschen: () => void
-  schliessen: () => void
-  materialId: string
   einfuegenBei: EinfuegenBei
   rueckgaengig: () => void
 }) {
@@ -793,7 +714,7 @@ function BlockZeile({
         <button
           type="button"
           onClick={waehlen}
-          aria-expanded={gewaehlt}
+          aria-current={gewaehlt ? 'true' : undefined}
           className="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1 text-left"
         >
           <TypIcon typ={typ} />
@@ -856,38 +777,6 @@ function BlockZeile({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {gewaehlt && (
-        <div className="mt-2 rounded-xl border border-ws-line bg-ws-surface p-4">
-          {!istBekannterTyp(typ) && (
-            <p className="mb-3 text-sm text-ws-orange">
-              Diesen Blocktyp kennt die Seite nicht. Er wird beim Bauen übersprungen, geht aber nicht verloren.
-            </p>
-          )}
-          {kannWechseln && (
-            <div className="mb-3 flex justify-end">
-              <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setWechselOffen(true)}>
-                <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln
-              </Button>
-            </div>
-          )}
-          <BlockBearbeiten
-            materialId={materialId}
-            block={block}
-            name={name}
-            gruppe={`k${thema}-e${index}`}
-            onChange={(neu, feld) => aendere((s) => setzeBlock(s, ort, neu), feld)}
-            onRohUebernommen={(neu) => {
-              aendere((s) => setzeBlock(s, ort, neu))
-              schliessen()
-            }}
-            onTabelleHeraus={(d) => {
-              aendere((s) => loeseTabelleHeraus(s, thema, index, d), `k${thema}-e${index}-tabelle-heraus`)
-              schliessen()
-            }}
-            schliessen={schliessen}
-          />
-        </div>
-      )}
       {kannWechseln && (
         <TypWechsel
           offen={wechselOffen}
@@ -898,140 +787,5 @@ function BlockZeile({
         />
       )}
     </li>
-  )
-}
-
-/**
- * Bearbeitungsfeld eines Blocks (Paket 2): Lehrtext im Text-Editor, die
- * häufigen Aufgabentypen im Formular (mit Umschalter zur Rohfassung), alles
- * andere als Rohfassung. Formular und Text-Editor ändern sofort.
- */
-function BlockBearbeiten({
-  materialId,
-  block,
-  name,
-  gruppe,
-  onChange,
-  onRohUebernommen,
-  onTabelleHeraus,
-  schliessen,
-}: {
-  materialId: string
-  block: Block
-  name: string
-  gruppe: string
-  onChange: (block: Block, feld: string) => void
-  onRohUebernommen: (block: Block) => void
-  onTabelleHeraus: (d: HerausgeloesteTabelle) => void
-  schliessen: () => void
-}) {
-  const typ = String(block.type ?? '')
-  if (typ === 'text') {
-    const inhalt = typeof block.content === 'string' ? block.content : ''
-    return (
-      <div className="space-y-3">
-        <TabelleHerausloesen html={inhalt} onHeraus={onTabelleHeraus} />
-        <TextEditor html={inhalt} beschriftung={name} onChange={(html) => onChange({ ...block, content: html }, `${gruppe}-content`)} />
-      </div>
-    )
-  }
-  const Formular = FORMULARE[typ]
-  if (!Formular) {
-    return (
-      <EditorRohfassung
-        materialId={materialId}
-        block={block}
-        beschriftung={`Rohfassung: ${name}`}
-        onUebernehmen={onRohUebernommen}
-        onAbbrechen={schliessen}
-      />
-    )
-  }
-  return (
-    <MitRohfassung materialId={materialId} block={block} beschriftung={`Rohfassung: ${name}`} onRohUebernommen={onRohUebernommen} schliessen={schliessen}>
-      <Formular block={block} onChange={(neu, feld) => onChange(neu, `${gruppe}-${feld}`)} />
-    </MitRohfassung>
-  )
-}
-
-/** Formular mit Umschalter zur Rohfassung (für Sonderfälle, die das Formular nicht abdeckt) */
-function MitRohfassung({
-  materialId,
-  block,
-  beschriftung,
-  onRohUebernommen,
-  schliessen,
-  children,
-}: {
-  materialId: string
-  block: Block
-  beschriftung: string
-  onRohUebernommen: (block: Block) => void
-  schliessen: () => void
-  children: ReactNode
-}) {
-  const [ansicht, setAnsicht] = useState<'formular' | 'roh'>('formular')
-  return (
-    <div className="space-y-4">
-      <AdminSegmented
-        ariaLabel="Bearbeiten als"
-        value={ansicht}
-        onChange={setAnsicht}
-        options={[
-          { value: 'formular', label: 'Formular' },
-          { value: 'roh', label: 'Rohfassung' },
-        ]}
-      />
-      {ansicht === 'formular' ? (
-        children
-      ) : (
-        <EditorRohfassung
-          materialId={materialId}
-          block={block}
-          beschriftung={beschriftung}
-          onUebernehmen={(b) => {
-            onRohUebernommen(b)
-            setAnsicht('formular')
-          }}
-          onAbbrechen={() => setAnsicht('formular')}
-        />
-      )}
-      <div className="flex justify-end border-t border-ws-line pt-3">
-        <Button variant="outline" className={NEBENAKTION} onClick={schliessen}>
-          Fertig
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-// ── Deckblatt ─────────────────────────────────────────────────────────────
-
-const DECKBLATT_FELDER: { feld: 'title' | 'subtitle' | 'school' | 'duration'; label: string; max: number }[] = [
-  { feld: 'title', label: 'Titel', max: 200 },
-  { feld: 'subtitle', label: 'Untertitel', max: 300 },
-  { feld: 'school', label: 'Schule', max: 200 },
-  { feld: 'duration', label: 'Dauer', max: 60 },
-]
-
-function DeckblattFormular({ struktur, aendere }: { struktur: Struktur; aendere: Aendere }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {DECKBLATT_FELDER.map(({ feld, label, max }) => (
-        <div key={feld} className={cn('space-y-2', feld === 'title' && 'sm:col-span-2')}>
-          <Label htmlFor={`deckblatt-${feld}`}>{label}</Label>
-          <Input
-            id={`deckblatt-${feld}`}
-            value={String(struktur.cover?.[feld] ?? '')}
-            maxLength={max}
-            onChange={(e) => {
-              const wert = e.target.value
-              aendere((s) => setzeDeckblatt(s, { ...s.cover, [feld]: wert }), `deckblatt-${feld}`)
-            }}
-            className="min-h-11 rounded-xl"
-          />
-        </div>
-      ))}
-    </div>
   )
 }

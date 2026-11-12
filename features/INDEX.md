@@ -112,5 +112,6 @@
 | PROJ-93 | Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned | [PROJ-93-werkzeugkiste-thema-per-ki.md](PROJ-93-werkzeugkiste-thema-per-ki.md) | 2026-11-12 |
 | PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Planned | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |
 | PROJ-95 | Werkzeugkiste – Baukasten: Typ eines Blocks wechseln | Deployed | [PROJ-95-werkzeugkiste-blocktyp-wechseln.md](PROJ-95-werkzeugkiste-blocktyp-wechseln.md) | 2026-11-12 |
+| PROJ-96 | Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Approved | [PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md](PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md) | 2026-11-12 |
 
-## Next Available ID: PROJ-96
+## Next Available ID: PROJ-97

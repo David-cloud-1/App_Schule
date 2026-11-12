@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
+import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
@@ -26,14 +27,50 @@ import { befundeJeStelle, sprungmarke, type EditorDaten } from '@/lib/werkzeugki
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
+import { EditorSchublade, gueltigeAuswahl } from '@/components/werkzeugkiste/editor/editor-schublade'
+import { MaterialBilderProvider } from '@/components/werkzeugkiste/editor/material-bilder'
+import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
 import { EditorVorschau } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
 
 const ZURUECK = `${WERKZEUGKISTE_HREF}?tab=materialien`
+const GLIEDERUNG_SPEICHER = 'wk-editor-gliederung'
+
+/** Gliederung offen? Beim ersten Mal zu; der Speicher kann fehlen oder gesperrt sein */
+function liesGliederungOffen(): boolean {
+  try {
+    return window.localStorage.getItem(GLIEDERUNG_SPEICHER) === 'offen'
+  } catch {
+    return false
+  }
+}
+
+function merkeGliederungOffen(offen: boolean) {
+  try {
+    window.localStorage.setItem(GLIEDERUNG_SPEICHER, offen ? 'offen' : 'zu')
+  } catch {
+    // Merken ist nur eine Bequemlichkeit
+  }
+}
+
+/** Ist das Fenster mindestens so breit? (Gliederung und Schublade passen dann zusammen neben die Vorschau) */
+function useMindestBreite(px: number): boolean {
+  const [breit, setBreit] = useState(true)
+  useEffect(() => {
+    const m = window.matchMedia(`(min-width: ${px}px)`)
+    const f = () => setBreit(m.matches)
+    f()
+    m.addEventListener('change', f)
+    return () => m.removeEventListener('change', f)
+  }, [px])
+  return breit
+}
 
 /**
- * Baukasten-Editor (PROJ-89): Gliederung links, Vorschau rechts (unter 1024 px
- * umschaltbar). Lädt das Material und übergibt an die eigentliche Arbeitsfläche.
+ * Baukasten-Editor (PROJ-89, PROJ-96): Die Vorschau ist die Hauptfläche, die
+ * Gliederung ein einklappbarer Streifen links, die gewählte Stelle wird in einer
+ * Schublade rechts bearbeitet (unter 1024 px: Umschalter Gliederung/Vorschau und
+ * Schublade als Blatt von unten). Lädt das Material und übergibt an die Arbeitsfläche.
  */
 export function BaukastenEditor({ id }: { id: string }) {
   const [daten, setDaten] = useState<EditorDaten | null>(null)
@@ -118,7 +155,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const z = useEditorZustand(daten.id, daten.struktur, daten.stand)
   const v = useEditorVorschau(daten.id, z.gespeichertAm)
   const [auswahl, setAuswahl] = useState<Auswahl>(null)
-  const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('gliederung')
+  // Handy: Vorschau zuerst, die Gliederung ist einen Tipp entfernt
+  const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('vorschau')
+  const [gliederungOffen, setGliederungOffen] = useState(liesGliederungOffen)
+  const [vollbreit, setVollbreit] = useState(false)
+  const istMobil = useIsMobile()
+  const platzFuerAlles = useMindestBreite(1280)
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
   const [laeuft, setLaeuft] = useState(false)
   // Solange es noch keine Vorschau-Befunde gibt, gelten die gespeicherten
@@ -133,16 +175,55 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const befundKarte = useMemo(() => befundeJeStelle(befunde), [befunde])
   const hatAenderungen = z.hatEntwurf() || z.speicherstand !== 'gespeichert'
 
+  // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
+  const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
+  // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
+  const verwendet = useMemo(() => new Set(JSON.stringify(z.struktur).match(/images\/[^"\\]+/g) ?? []), [z.struktur])
+
   const marke =
-    auswahl === null
+    gewaehlt === null
       ? null
-      : auswahl.art === 'deckblatt'
+      : gewaehlt.art === 'deckblatt'
         ? null
-        : auswahl.art === 'abschluss'
+        : gewaehlt.art === 'abschluss'
           ? sprungmarke('abschluss')
-          : auswahl.art === 'thema'
-            ? sprungmarke({ thema: auswahl.thema })
-            : sprungmarke({ thema: auswahl.thema, block: auswahl.block })
+          : gewaehlt.art === 'thema'
+            ? sprungmarke({ thema: gewaehlt.thema })
+            : sprungmarke({ thema: gewaehlt.thema, block: gewaehlt.block })
+
+  // Klick auf „Bearbeiten“ in der Vorschau. Die Marken zählen Themen und Blöcke durch –
+  // stimmt die gezeigte Seite nicht mehr mit dem Entwurf überein, wäre die Stelle falsch.
+  function beiVorschauWahl(m: string): boolean {
+    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
+    if (veraltet) return false
+    const a = gueltigeAuswahl(auswahlAusMarke(m), z.struktur)
+    if (!a) return false
+    setAuswahl(a)
+    // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
+    setVollbreit(false)
+    return true
+  }
+
+  // Schublade schließen. Am Desktop gibt es kein Blatt, das den Fokus zurückgibt: Er geht zur
+  // gewählten Zeile der Gliederung, sonst zum Knopf „Gliederung einblenden“, sonst zur Vorschau.
+  function schliesseSchublade() {
+    const zeile = document.querySelector<HTMLElement>('section[aria-label="Gliederung"] [aria-current="true"]')
+    setAuswahl(null)
+    if (istMobil) return
+    requestAnimationFrame(() => {
+      const ziel =
+        zeile && zeile.isConnected && zeile.offsetParent !== null
+          ? zeile
+          : (document.querySelector<HTMLElement>('button[aria-label="Gliederung einblenden"]') ??
+            document.querySelector<HTMLElement>('iframe[title="Vorschau der Seite"]'))
+      ziel?.focus({ preventScroll: true })
+    })
+  }
+
+  function schalteGliederung(offen: boolean) {
+    setGliederungOffen(offen)
+    merkeGliederungOffen(offen)
+  }
 
   // Strg/⌘+Z und Strg/⌘+Umschalt+Z – nicht in Eingabefeldern (dort gilt zuerst das Feld)
   useEffect(() => {
@@ -197,6 +278,26 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     }
   }
 
+  // Was zu sehen ist: Handy = Umschalter, sonst Vorschau groß, Gliederung nach Wunsch
+  const schubladeZeigen = !vollbreit || istMobil
+  const gliederungZeigen = !istMobil && !vollbreit
+  // Mit offener Schublade ist unter 1280 px kein Platz für Gliederung und Schublade zugleich
+  const gliederungSichtbar = istMobil
+    ? ansicht === 'gliederung'
+    : gliederungZeigen && gliederungOffen && (!gewaehlt || platzFuerAlles)
+  const vorschauZeigen = istMobil ? ansicht === 'vorschau' : true
+  const schubladeAngedockt = !istMobil && !!gewaehlt && schubladeZeigen
+  const spalten = istMobil
+    ? ''
+    : vollbreit
+      ? 'lg:grid-cols-[minmax(0,1fr)]'
+      : gliederungSichtbar
+        ? schubladeAngedockt
+          ? 'lg:grid-cols-[minmax(18rem,22rem)_minmax(30rem,1fr)_minmax(22rem,28rem)]'
+          : 'lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)]'
+        : schubladeAngedockt
+          ? 'lg:grid-cols-[3rem_minmax(30rem,1fr)_minmax(22rem,28rem)]'
+          : 'lg:grid-cols-[3rem_minmax(0,1fr)]'
   const tasten = apple ? '⌘' : 'Strg+'
   const kleinerKnopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
   const offeneHinweise = kernBefunde?.length ?? 0
@@ -262,6 +363,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
   return (
     <Huelle titel={daten.titel} kopf={kopf}>
+     <MaterialBilderProvider materialId={daten.id} verwendet={verwendet} seitenGroesse={v.groesse}>
       {z.konflikt && (
         <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-ws-red/30 bg-ws-red/10 px-4 py-3 text-sm text-ws-red sm:px-6">
           <AlertTriangle className="size-4" aria-hidden />
@@ -290,32 +392,87 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         />
       </div>
 
-      <div className="grid flex-1 gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(22rem,1fr)_minmax(0,1.2fr)]">
+      <div className={cn('grid flex-1 gap-4 p-4 sm:p-6', spalten)}>
+        {gliederungZeigen && !gliederungSichtbar && (
+          <div className="hidden min-w-0 lg:block lg:sticky lg:top-24 lg:self-start">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-xl"
+              // Offen gemerkt, aber wegen der Schublade ausgeblendet: Schublade schließen zeigt sie wieder
+              onClick={() => (gliederungOffen ? setAuswahl(null) : schalteGliederung(true))}
+              aria-label="Gliederung einblenden"
+              aria-expanded={false}
+              title="Gliederung einblenden"
+              disabled={!!z.gesperrt}
+            >
+              <PanelLeftOpen className="size-5" aria-hidden />
+            </Button>
+          </div>
+        )}
         <section
           aria-label="Gliederung"
+          hidden={!gliederungSichtbar}
           // Schreibgeschützt: keine Eingaben mehr möglich, Inhalt bleibt lesbar
           inert={z.gesperrt ? true : undefined}
           aria-disabled={z.gesperrt ? true : undefined}
-          className={cn('min-w-0', ansicht !== 'gliederung' && 'hidden lg:block', z.gesperrt && 'opacity-70')}
+          className={cn('min-w-0', z.gesperrt && 'opacity-70')}
         >
+          <div className="mb-3 hidden items-center justify-between gap-2 lg:flex">
+            <h2 className="text-sm font-semibold text-ws-muted">Gliederung</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text"
+              onClick={() => schalteGliederung(false)}
+              aria-label="Gliederung ausblenden"
+              aria-expanded
+              title="Gliederung ausblenden"
+            >
+              <PanelLeftClose className="size-5" aria-hidden />
+            </Button>
+          </div>
           <EditorGliederung
-            materialId={daten.id}
             struktur={z.struktur}
             aendere={z.aendere}
             rueckgaengig={z.rueckgaengig}
-            auswahl={auswahl}
+            auswahl={gewaehlt}
             setAuswahl={setAuswahl}
             befunde={befunde}
             befundKarte={befundKarte}
-            seitenGroesse={v.groesse}
           />
         </section>
         <section
           aria-label="Vorschau"
-          className={cn('min-w-0 lg:sticky lg:top-24 lg:h-[calc(100svh-7.5rem)]', ansicht !== 'vorschau' && 'hidden lg:block')}
+          hidden={!vorschauZeigen}
+          className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100svh-7.5rem)]"
         >
-          <EditorVorschau html={v.html} laedt={v.laedt} fehler={v.fehler} marke={marke} neuLaden={v.neuBauen} groesse={v.groesse} />
+          <EditorVorschau
+            html={v.html}
+            laedt={v.laedt}
+            fehler={v.fehler}
+            marke={marke}
+            neuLaden={v.neuBauen}
+            groesse={v.groesse}
+            onWaehle={beiVorschauWahl}
+            vollbreit={vollbreit}
+            onVollbreit={() => setVollbreit((b) => !b)}
+          />
         </section>
+        {schubladeZeigen && gewaehlt && (
+          <EditorSchublade
+            auswahl={gewaehlt}
+            struktur={z.struktur}
+            aendere={z.aendere}
+            rueckgaengig={z.rueckgaengig}
+            materialId={daten.id}
+            schliessen={schliesseSchublade}
+            angedockt={!istMobil}
+            gesperrt={!!z.gesperrt}
+          />
+        )}
       </div>
 
       <AlertDialog open={dialog === 'veroeffentlichen'} onOpenChange={(o) => !o && !laeuft && setDialog(null)}>
@@ -409,6 +566,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+     </MaterialBilderProvider>
     </Huelle>
   )
 }

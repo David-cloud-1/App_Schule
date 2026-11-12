@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { WerkzeugFehler, baueEntwurfVorschau, speichereEntwurf } from '@/lib/werkzeugkiste-api'
+import { mitSprungSkript } from '@/components/werkzeugkiste/editor/vorschau-skript'
 import { RUECKGAENGIG_SCHRITTE, SPEICHERN_NACH_MS, type EditorBefund, type Struktur } from '@/lib/werkzeugkiste-editor'
+
+export { mitSprungSkript }
 
 export type Speicherstand = 'gespeichert' | 'ungespeichert' | 'speichert' | 'fehler'
 
@@ -177,14 +180,6 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
 
 const VORSCHAU_NACH_MS = 1500
 
-/** Sprung-Helfer, der in die Vorschau eingefügt wird: Der Editor schickt nur eine Marke als Text */
-const SPRUNG_SKRIPT = `<script>addEventListener("message",function(e){var d=e.data;if(!d||typeof d.wk!=="string")return;var el=document.querySelector('[data-wk="'+d.wk.replace(/[^a-z0-9_-]/gi,"")+'"]');if(el)el.scrollIntoView({block:"start",behavior:"smooth"});});</script>`
-
-export function mitSprungSkript(html: string): string {
-  const i = html.lastIndexOf('</body>')
-  return i >= 0 ? html.slice(0, i) + SPRUNG_SKRIPT + html.slice(i) : html + SPRUNG_SKRIPT
-}
-
 /**
  * Vorschau des gespeicherten Entwurfs: baut neu, sobald gespeichert wurde –
  * nie mehrere gleichzeitig und seltener als gespeichert wird.
@@ -195,6 +190,10 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
   const [fehler, setFehler] = useState<string | null>(null)
   const [befunde, setBefunde] = useState<EditorBefund[] | null>(null)
   const [groesse, setGroesse] = useState(0)
+  /** Für welchen Speicherstand (`gespeichertAm`) die gezeigte Seite gebaut wurde (PROJ-96: Klick auf veraltete Vorschau erkennen) */
+  const [gebautFuer, setGebautFuer] = useState<number | null>(null)
+  const stand = useRef(gespeichertAm)
+  stand.current = gespeichertAm
   const laeuft = useRef(false)
   const nochmal = useRef(false)
 
@@ -206,12 +205,14 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
     laeuft.current = true
     setLaedt(true)
     try {
+      const fuer = stand.current
       const r = await baueEntwurfVorschau(id)
       const res = await fetch(r.adresse, { cache: 'no-store' })
       if (!res.ok) throw new Error('Die Vorschau konnte nicht geladen werden.')
       setHtml(mitSprungSkript(await res.text()))
       setBefunde(r.befunde)
       setGroesse(r.groesse)
+      setGebautFuer(fuer)
       setFehler(null)
     } catch (e) {
       setFehler(e instanceof Error ? e.message : 'Die Vorschau konnte nicht geladen werden.')
@@ -230,5 +231,5 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
     return () => clearTimeout(t)
   }, [gespeichertAm, bauen])
 
-  return { html, laedt, fehler, befunde, setBefunde, groesse, neuBauen: bauen }
+  return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, neuBauen: bauen }
 }
