@@ -499,7 +499,18 @@ Die Gliederung zeigt bei fehlender Bilddatei keinen Hinweis. Die HTML-Ansicht we
 BUG-1 vor dem Livegang beheben (sonst ist der Editor praktisch nicht benutzbar), BUG-2 ebenfalls. BUG-3 als eigener Kern-Fix, BUG-4 bis BUG-6 können folgen. Nach den Fixes erneut `/qa` und ein Browser-Durchgang mit einem Test-Material.
 
 ### Stand der Bugs (2026-11-12, nach den Fixes)
-BUG-1 bis BUG-6 behoben, dazu BUG-7 (Server-Dateien als Bild, beim Beheben gefunden). Details unter „Umsetzung → Fixes nach der QA“. Erneute QA steht aus.
+BUG-1 bis BUG-6 behoben, dazu BUG-7 (Server-Dateien als Bild, beim Beheben gefunden). Details unter „Umsetzung → Fixes nach der QA“.
+
+### Erneute QA (2026-11-12, Runde 2)
+**Stand:** App `f1baa78`, Kern `e226c2d` (lokal), live ist Kern `4704b78`.
+- **Automatisch:** App 3120/3120 Tests, Typprüfung und Build grün. Lint: 0 Fehler, 5 Warnungen (unverändert aus Paket 1, `editor-gliederung.tsx`). Kern: alle Tests grün, `kern_sicherheit_test` 8/8.
+- **BUG-1 bis BUG-7:** im Code und durch neue Tests bestätigt (Speichern dreimal ohne Neuladen; `…Z` gegen `…+00:00`; Veröffentlichen ersetzt `ausgabe` erst nach dem Speichern, bei 409 und Kern-Fehlern gar nicht, Rücknahme beim Scheitern des Ersetzens; Schreibschutz ohne Wiederholung; Bild-fehlt-Hinweis; Einlese-Sperre; keine Server-Dateien).
+- **BUG-8 – High (Kern, durch den Fix von BUG-3 entstanden): ReDoS in der Bereinigung.** Werte ohne Anführungszeichen durften `/` enthalten, das zugleich Attribute trennt. „x=y/x=y/…“ ließ sich exponentiell zerlegen: 22 Wiederholungen ≈ 0,8 s, jede weitere doppelt so lang. Eine Zeile im HTML-Feld hätte eine Kern-Funktion bis zur Zeitgrenze blockiert. **Behoben** in `e226c2d` (Werte enden an `/`, jetzt linear: 20 000 Wiederholungen < 6 ms), Test ergänzt, Bytegleichheit an 752 Texten weiter gegeben. **Noch nicht deployt** – live ist `4704b78` mit dem Fehler.
+- **BUG-9 – Low: Zwei Tabs veröffentlichen gleichzeitig.** Beide nutzen dieselben Zwischendateien. Räumt der unterlegene Tab (409) sie weg, bevor der andere sie kopiert, nimmt dieser sein Speichern zurück und meldet „Das Veröffentlichen hat nicht geklappt“. Der Zustand bleibt stimmig (nichts halb veröffentlicht), nur ein erneuter Klick ist nötig. Abhilfe bei Bedarf: Zwischendateien mit zufälligem Namen.
+- **Hinweis (kein Bug in diesem Projekt):** Die alte Flask-App (`h5p_server.py`, HF-Space) ruft `baue_seite` ggf. ohne `images` auf und liest dann weiter von der Platte. Sie läuft nicht auf Vercel; falls der Space noch erreichbar ist, gilt BUG-7 dort weiter.
+- **Nicht geprüft:** Browser-Durchgang, Cross-Browser, 375/768/1440 px.
+
+**Ergebnis Runde 2:** Im App-Code keine Critical/High-Bugs mehr. Produktionsreif, sobald der Kern-Fix `e226c2d` deployt ist und der Browser-Durchgang mit einem Test-Material klappt.
 
 ## Deployment
 _To be added by /deploy_
