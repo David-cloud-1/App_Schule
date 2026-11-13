@@ -16,7 +16,8 @@ import { cn } from '@/lib/utils'
  *
  * Nur Text-Nachrichten gehen hin und her (PROJ-96):
  *  - App → Seite: Sprungmarke zum Hervorheben/Springen, Scrollposition nach einem Neubau.
- *  - Seite → App: „Bearbeiten“-Klick mit der Marke, Scrollposition, „bereit“.
+ *  - Seite → App: „Bearbeiten“-Klick und „Block einfügen“-Klick (PROJ-97) mit der Marke,
+ *    Scrollposition, „bereit“.
  * Die App nimmt Nachrichten nur vom eigenen Rahmen an.
  */
 export function EditorVorschau({
@@ -27,6 +28,7 @@ export function EditorVorschau({
   neuLaden,
   groesse = 0,
   onWaehle,
+  onEinfuegen,
   vollbreit = false,
   onVollbreit,
 }: {
@@ -40,6 +42,8 @@ export function EditorVorschau({
   groesse?: number
   /** Klick auf „Bearbeiten“ in der Seite; false = nicht angenommen (Vorschau veraltet) */
   onWaehle?: (marke: string) => boolean
+  /** Klick auf „+ Darunter“ bzw. „+ Block“ in der Seite (PROJ-97); false = nicht angenommen (Vorschau veraltet) */
+  onEinfuegen?: (marke: string) => boolean
   /** Vorschau über die ganze Breite (Gliederung und Schublade ausgeblendet) */
   vollbreit?: boolean
   onVollbreit?: () => void
@@ -50,10 +54,12 @@ export function EditorVorschau({
   const ausVorschau = useRef<string | null>(null)
   const aktuelleMarke = useRef(marke)
   const waehleRef = useRef(onWaehle)
+  const einfuegenRef = useRef(onEinfuegen)
   const fehlerRef = useRef(fehler)
   useEffect(() => {
     aktuelleMarke.current = marke
     waehleRef.current = onWaehle
+    einfuegenRef.current = onEinfuegen
     fehlerRef.current = fehler
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
@@ -83,10 +89,13 @@ export function EditorVorschau({
         senden({ wk: aktuelleMarke.current, scrollY: scrollY.current })
       } else if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
         scrollY.current = Math.max(0, n.wkScroll)
-      } else if (typeof n.wkWaehle === 'string') {
-        const angenommen = waehleRef.current?.(n.wkWaehle) ?? false
+      } else if (typeof n.wkWaehle === 'string' || typeof n.wkEinfuegen === 'string') {
+        const einfuegen = typeof n.wkEinfuegen === 'string'
+        const stelle = (einfuegen ? n.wkEinfuegen : n.wkWaehle) as string
+        const angenommen = (einfuegen ? einfuegenRef.current : waehleRef.current)?.(stelle) ?? false
         if (angenommen) {
-          ausVorschau.current = n.wkWaehle
+          // Beim Einfügen bleibt die Seite, wo sie ist, und es wird nichts markiert
+          if (!einfuegen) ausVorschau.current = stelle
           setHinweis(null)
         } else {
           setHinweis(

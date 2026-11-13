@@ -6,8 +6,12 @@ import type { Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederun
  * Die App fügt es erst im Browser in die gebaute Seite ein, nie in die
  * gespeicherte oder veröffentlichte Datei. Es kann:
  *  - zu einer Stelle springen und sie hervorheben (Nachricht `{ wk }` von der App),
- *  - an jedem Thema, Block und an der Lernzielkontrolle einen „Bearbeiten“-Knopf
- *    zeigen, der die Sprungmarke an die App zurückschickt (`{ wkWaehle }`),
+ *  - über jedem Thema, Block und der Lernzielkontrolle eine schmale Knopfzeile
+ *    zeigen (PROJ-97): „Bearbeiten“ schickt die Sprungmarke an die App zurück
+ *    (`{ wkWaehle }`), „+ Darunter“ bzw. „+ Block“ bittet um einen neuen Block an
+ *    dieser Stelle (`{ wkEinfuegen }`); Deckblatt und Lernzielkontrolle haben kein „+“,
+ *  - den klebenden Seitenkopf der Seite (Titel, Fortschritt, Drucken, Zurücksetzen)
+ *    ausblenden: Im Editor verdeckt er nur Inhalt,
  *  - die Scrollposition melden (`{ wkScroll }`), damit sie nach einem Neubau
  *    wiederhergestellt wird, und melden, dass es bereit ist (`{ wkBereit }`).
  *
@@ -29,58 +33,67 @@ export function auswahlAusMarke(marke: unknown): Auswahl {
   return m[2] === undefined ? { art: 'thema', thema: Number(m[1]) } : { art: 'block', thema: Number(m[1]), block: Number(m[2]) }
 }
 
-// Farben: Die Knöpfe stehen auf der weißen Seite und brauchen Kontrast ≥ 4,5 : 1
+// Farben: Die Knöpfe stehen auf der Seite und brauchen Kontrast ≥ 4,5 : 1 (dunkles Blau auf Weiß/Beige).
+// Die Knopfzeile ist ein eigener Streifen über dem Block (PROJ-97, V4 a): Sie überdeckt nie Inhalt.
 const CSS = [
-  '.wk-k{position:absolute;top:8px;right:8px;z-index:50;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;',
-  'border:1px solid #1e3a8a;border-radius:8px;background:#fff;color:#1e3a8a;font:600 13px/1 system-ui,sans-serif;cursor:pointer;',
-  'box-shadow:0 1px 3px rgba(0,0,0,.2);opacity:0;transition:opacity .2s ease-out}',
-  '[data-wk]:hover>.wk-k,.wk-k:focus,.wk-aktiv>.wk-k{opacity:1}',
-  // Aufgaben: Der Knopf sitzt in der Kopfzeile neben „Aufgabe n“ und lässt „gelöst“ (rechts) frei
-  '.aufgabe>.wk-k{right:110px;top:2px}',
-  '.wk-k:focus-visible{outline:3px solid #2563eb;outline-offset:2px}',
+  // Seitenkopf: im Editor ohne Nutzen und verdeckt beim Scrollen Inhalt (`.navi` kommt aus dem Kern)
+  '.navi{display:none!important}',
+  '.wk-leiste{display:flex;justify-content:flex-end;align-items:center;gap:6px;min-height:32px;margin:0 0 4px;font:600 13px/1 system-ui,sans-serif}',
+  '.wk-k,.wk-p{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;',
+  'border:1px solid transparent;border-radius:8px;background:transparent;color:#1e3a8a;font:inherit;cursor:pointer}',
+  '.wk-k:hover,.wk-p:hover,.wk-leiste-aktiv .wk-k{border-color:#1e3a8a;background:#fff}',
+  '.wk-k:focus-visible,.wk-p:focus-visible{outline:3px solid #2563eb;outline-offset:2px}',
   '.wk-aktiv{outline:3px solid #2563eb!important;outline-offset:3px}',
-  '@media (hover:none),(pointer:coarse){.wk-k{opacity:1;min-height:44px;min-width:44px;justify-content:center}}',
-  '@media (prefers-reduced-motion:reduce){.wk-k{transition:none}}',
-  '@media print{.wk-k{display:none!important}.wk-aktiv{outline:none!important}}',
+  '@media (hover:none),(pointer:coarse){.wk-leiste{min-height:44px}.wk-k,.wk-p{min-height:44px;min-width:44px;justify-content:center;border-color:#1e3a8a;background:#fff}}',
+  '@media print{.wk-k{display:none!important}.wk-p,.wk-leiste{display:none!important}}',
 ].join('')
 
 const ICON =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>'
 
+const ICON_PLUS =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M12 5v14M5 12h14"/></svg>'
+
 const SKRIPT_TEXT = String.raw`
 (function(){
 var MUSTER=${MARKE_KNOPF.toString()};
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
-function markiere(m){var a=document.querySelectorAll(".wk-aktiv"),i;for(i=0;i<a.length;i++)a[i].classList.remove("wk-aktiv");var e=m?finde(m):null;if(e)e.classList.add("wk-aktiv");return e}
+function markiere(m){var a=document.querySelectorAll(".wk-aktiv,.wk-leiste-aktiv"),i;for(i=0;i<a.length;i++)a[i].classList.remove("wk-aktiv","wk-leiste-aktiv");var e=m?finde(m):null;if(e){e.classList.add("wk-aktiv");var l=e.previousElementSibling;if(l&&l.classList.contains("wk-leiste"))l.classList.add("wk-leiste-aktiv")}return e}
 var st=document.createElement("style");st.textContent=${JSON.stringify(CSS)};(document.head||document.documentElement).appendChild(st);
 var n=document.querySelectorAll("[data-wk]"),i;
 for(i=0;i<n.length;i++){
   var m=n[i].getAttribute("data-wk");
   if(!MUSTER.test(m))continue;
-  if(getComputedStyle(n[i]).position==="static")n[i].style.position="relative";
+  var z=document.createElement("div");
+  z.className="wk-leiste";z.setAttribute("data-wk-leiste",m);
+  var t=(n[i].textContent||"").replace(/\s+/g," ").trim().slice(0,60);
   var b=document.createElement("button");
   b.type="button";b.className="wk-k";b.setAttribute("data-wk-knopf",m);
-  b.setAttribute("aria-label","Bearbeiten: "+(n[i].textContent||"").replace(/\s+/g," ").trim().slice(0,60));
+  b.setAttribute("aria-label","Bearbeiten: "+t);
   b.innerHTML=${JSON.stringify(ICON)}+"<span>Bearbeiten</span>";
-  n[i].appendChild(b);
+  z.appendChild(b);
+  if(m!=="abschluss"){
+    var p=document.createElement("button");
+    var th=m.indexOf("-e")<0;
+    p.type="button";p.className="wk-p";p.setAttribute("data-wk-plus",m);
+    p.setAttribute("aria-label",(th?"Block am Anfang des Themas einfügen: ":"Block darunter einfügen: ")+t);
+    p.innerHTML=${JSON.stringify(ICON_PLUS)}+"<span>"+(th?"Block":"Darunter")+"</span>";
+    z.appendChild(p);
+  }
+  n[i].parentNode.insertBefore(z,n[i]);
 }
 document.addEventListener("click",function(e){
-  var t=e.target&&e.target.closest?e.target.closest(".wk-k"):null;
-  if(!t)return;
+  var c=e.target&&e.target.closest?e.target.closest(".wk-k,.wk-p"):null;
+  if(!c)return;
   e.preventDefault();e.stopPropagation();
-  parent.postMessage({wkWaehle:t.getAttribute("data-wk-knopf")},"*");
+  if(c.classList.contains("wk-p"))parent.postMessage({wkEinfuegen:c.getAttribute("data-wk-plus")},"*");
+  else parent.postMessage({wkWaehle:c.getAttribute("data-wk-knopf")},"*");
 },true);
 var tick=false;
 function lage(){
   tick=false;
-  var k=document.querySelectorAll(".wk-k"),j,r;
-  for(j=0;j<k.length;j++){
-    r=k[j].parentNode.getBoundingClientRect();
-    if(r.bottom<0||r.top>innerHeight)continue;
-    var o=k[j].parentNode.classList.contains("aufgabe")?2:8;
-    k[j].style.top=Math.max(o,Math.min(o-r.top,r.height-48))+"px";
-  }
   parent.postMessage({wkScroll:Math.round(scrollY)},"*");
 }
 addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(lage)}},{passive:true});

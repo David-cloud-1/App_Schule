@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   DndContext,
   KeyboardSensor,
@@ -68,6 +68,12 @@ import {
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
+import {
+  einfuegeortAusAuswahl,
+  neuesThemaNach,
+  themaDerAuswahl,
+  type Einfuegeort,
+} from '@/components/werkzeugkiste/editor/einfuege-stelle'
 import { KatalogDialog } from '@/components/werkzeugkiste/editor/katalog-dialog'
 import { TypWechsel } from '@/components/werkzeugkiste/editor/typ-wechsel'
 import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
@@ -103,8 +109,12 @@ export type Auswahl =
 export type Aendere = (neu: (s: Struktur) => Struktur, gruppe?: string) => void
 
 /** Stelle, an der ein neuer Block eingefügt wird (PROJ-90) */
-type Einfuegestelle = { thema: number; index: number }
-type EinfuegenBei = (stelle: Einfuegestelle) => void
+type Einfuegestelle = Einfuegeort
+/** `null` = es gibt noch kein Thema: Der Block kommt in ein neues Thema 1 (PROJ-97) */
+type EinfuegenBei = (stelle: Einfuegestelle | null) => void
+
+/** Bitte des Editor-Rahmens (Tastenkürzel, „+“ in der Vorschau), den Katalog zu öffnen – `nr` zählt die Bitten durch */
+export type EinfuegeAnfrage = { nr: number; ort: Einfuegeort | null }
 
 /** Ab so vielen Themen starten alle zugeklappt (Edge Case „sehr großes Material“) */
 const ZUKLAPPEN_AB = 20
@@ -169,6 +179,10 @@ export interface GliederungProps {
   setAuswahl: (a: Auswahl) => void
   befunde: EditorBefund[] | null
   befundKarte: Map<BefundSchluessel, number>
+  /** PROJ-97: Katalog von außen öffnen (Tastenkürzel, „+ Darunter“ in der Vorschau) */
+  einfuegenAnfrage?: EinfuegeAnfrage | null
+  /** Tastenkürzel zum Anzeigen im Tooltip, z. B. „⌘⇧A“ */
+  kuerzel?: string
 }
 
 export function EditorGliederung({
@@ -179,6 +193,8 @@ export function EditorGliederung({
   setAuswahl,
   befunde,
   befundKarte,
+  einfuegenAnfrage,
+  kuerzel,
 }: GliederungProps) {
   const [zu, setZu] = useState<Set<number>>(
     () => new Set(struktur.chapters.length >= ZUKLAPPEN_AB ? struktur.chapters.map((_, i) => i) : []),
@@ -194,22 +210,54 @@ export function EditorGliederung({
   // ── Neuen Block einfügen (PROJ-90) ──────────────────────────────────────
   const bilder = useMaterialBilder()
   const [ziel, setZiel] = useState<Einfuegestelle | null>(null)
+  // Es gibt noch kein Thema: Das Thema 1 entsteht erst mit dem gewählten Block, nicht schon beim Öffnen des Katalogs
+  const [zielNeuesThema, setZielNeuesThema] = useState(false)
   const [katalogOffen, setKatalogOffen] = useState(false)
   const [bildFuer, setBildFuer] = useState<string | null>(null)
 
   const einfuegenBei: EinfuegenBei = (stelle) => {
-    setZiel(stelle)
+    if (katalogOffen) return // zwei Wege gleichzeitig (Kürzel während eines Klicks): der Dialog steht schon
+    setZiel(stelle ?? { thema: 0, index: 0 })
+    setZielNeuesThema(stelle === null)
     setKatalogOffen(true)
     bilder.anfordern()
+  }
+
+  // Bitte von außen: jede neue Nummer öffnet den Katalog genau einmal (PROJ-97)
+  const letzteAnfrage = useRef(einfuegenAnfrage?.nr ?? 0)
+  useEffect(() => {
+    if (!einfuegenAnfrage || einfuegenAnfrage.nr === letzteAnfrage.current) return
+    letzteAnfrage.current = einfuegenAnfrage.nr
+    einfuegenBei(einfuegenAnfrage.ort)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [einfuegenAnfrage])
+
+  /** Leiste „+ Block“: dieselbe Regel wie das Kürzel, gelesen im Moment des Klicks */
+  function blockHinzu() {
+    einfuegenBei(einfuegeortAusAuswahl(auswahl, struktur))
+  }
+
+  /** Leiste „+ Thema“ und Menü „Thema darunter einfügen“: hinter dem gewählten Thema, sonst am Ende */
+  function themaHinzu(nach: number | null) {
+    const { index } = neuesThemaNach(struktur, nach)
+    aendere((s) => neuesThemaNach(s, nach).struktur)
+    setZu((z) => {
+      const n = new Set(z)
+      n.delete(index)
+      return n
+    })
+    setAuswahl({ art: 'thema', thema: index })
   }
 
   function einfuegen(typ: string, bild?: string, alt?: string) {
     if (!ziel) return
     const { thema, index } = ziel
-    const laenge = themen[thema]?.elements.length ?? 0
+    const neu = zielNeuesThema
+    const laenge = neu ? 0 : (themen[thema]?.elements.length ?? 0)
     const block = beispielBlock(typ, bild)
     if (alt && typ === 'image') block.alt = alt // eigener Alternativtext aus dem Bild-Fenster
-    aendere((s) => fuegeBlockEin(s, thema, index, block))
+    aendere((s) => fuegeBlockEin(neu && s.chapters.length === 0 ? neuesThema(s) : s, thema, index, block))
+    setZielNeuesThema(false)
     setZu((z) => {
       const n = new Set(z)
       n.delete(thema)
@@ -278,6 +326,34 @@ export function EditorGliederung({
 
   return (
     <div className="space-y-3">
+      {/* PROJ-97: Hinzufügen immer in Reichweite – die Leiste bleibt beim Scrollen stehen */}
+      <div
+        role="toolbar"
+        aria-label="Hinzufügen"
+        className="sticky top-[4.5rem] z-10 -mx-1 flex gap-2 bg-ws-bg px-1 py-1.5"
+      >
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(NEBENAKTION, 'min-w-0 flex-1 justify-center')}
+          onClick={blockHinzu}
+          title={kuerzel ? `Block hinzufügen (${kuerzel})` : 'Block hinzufügen'}
+        >
+          <Plus className="mr-2 size-4 shrink-0" aria-hidden />
+          Block
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn(NEBENAKTION, 'min-w-0 flex-1 justify-center')}
+          onClick={() => themaHinzu(themaDerAuswahl(auswahl))}
+          title="Thema hinzufügen"
+        >
+          <Plus className="mr-2 size-4 shrink-0" aria-hidden />
+          Thema
+        </Button>
+      </div>
+
       {!!befunde?.length && (
         <Collapsible className="rounded-xl border border-ws-orange/30 bg-ws-orange/10">
           <CollapsibleTrigger className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-semibold text-ws-orange">
@@ -362,6 +438,7 @@ export function EditorGliederung({
                 blockLoeschen={blockLoeschen}
                 themaLoeschen={() => setThemaLoeschen(ti)}
                 einfuegenBei={einfuegenBei}
+                themaDarunter={() => themaHinzu(ti)}
                 rueckgaengig={rueckgaengig}
               />
             ))}
@@ -477,6 +554,7 @@ function ThemaKarte({
   blockLoeschen,
   themaLoeschen,
   einfuegenBei,
+  themaDarunter,
   rueckgaengig,
 }: {
   index: number
@@ -497,6 +575,7 @@ function ThemaKarte({
   blockLoeschen: (ort: Ort) => void
   themaLoeschen: () => void
   einfuegenBei: EinfuegenBei
+  themaDarunter: () => void
   rueckgaengig: () => void
 }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -561,6 +640,9 @@ function ThemaKarte({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => einfuegenBei({ thema: index, index: bloecke.length })}>
               <Plus className="mr-2 size-4" aria-hidden /> Block hinzufügen …
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={themaDarunter}>
+              <Plus className="mr-2 size-4" aria-hidden /> Thema darunter einfügen
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => aendere((s) => dupliziereThema(s, index))}>
               <Copy className="mr-2 size-4" aria-hidden /> Duplizieren

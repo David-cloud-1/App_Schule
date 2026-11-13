@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
+import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Plus, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,10 +26,14 @@ import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkze
 import { befundeJeStelle, hatAufgaben, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
-import { EditorGliederung, type Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
+import { EditorGliederung, type Auswahl, type EinfuegeAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorSchublade, gueltigeAuswahl } from '@/components/werkzeugkiste/editor/editor-schublade'
 import { MaterialBilderProvider } from '@/components/werkzeugkiste/editor/material-bilder'
 import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
+import {
+  einfuegeortAusAuswahl,
+  einfuegeortAusMarke,
+} from '@/components/werkzeugkiste/editor/einfuege-stelle'
 import { EditorVorschau } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
 
@@ -159,6 +163,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('vorschau')
   const [gliederungOffen, setGliederungOffen] = useState(liesGliederungOffen)
   const [vollbreit, setVollbreit] = useState(false)
+  // PROJ-97: Gliederung bewusst aufgeklappt, obwohl die Schublade offen ist (gilt nur, solange eine Stelle gewählt ist)
+  const [gliederungTrotzSchublade, setGliederungTrotzSchublade] = useState(false)
+  // PROJ-97: Bitte an die Gliederung, den Katalog zu öffnen (Kürzel, „+“ in der schmalen Leiste und in der Vorschau)
+  const [einfuegenAnfrage, setEinfuegenAnfrage] = useState<EinfuegeAnfrage>({ nr: 0, ort: null })
   const istMobil = useIsMobile()
   const platzFuerAlles = useMindestBreite(1280)
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
@@ -179,6 +187,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
   // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
   const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
+  // Ist nichts mehr gewählt (Schublade zu), gilt wieder der gemerkte Zustand der Gliederung
+  if (gliederungTrotzSchublade && !gewaehlt) setGliederungTrotzSchublade(false)
   // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
   const verwendet = useMemo(() => new Set(JSON.stringify(z.struktur).match(/images\/[^"\\]+/g) ?? []), [z.struktur])
 
@@ -204,6 +214,24 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
     setVollbreit(false)
     return true
+  }
+
+  // PROJ-97: „+ Darunter“ bzw. „+ Block“ in der Vorschau – gleiche Prüfung wie „Bearbeiten“
+  function beiVorschauEinfuegen(m: string): boolean {
+    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
+    if (veraltet) return false
+    const ort = einfuegeortAusMarke(m, z.struktur)
+    if (!ort) return false
+    setVollbreit(false)
+    setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort }))
+    return true
+  }
+
+  // Katalog öffnen: Stelle nach der gemeinsamen Regel, gelesen im Moment des Aufrufs (Kürzel und „+“ der schmalen Leiste)
+  function oeffneKatalog() {
+    if (z.gesperrt) return
+    setVollbreit(false)
+    setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort: einfuegeortAusAuswahl(gewaehlt, z.struktur) }))
   }
 
   // Schublade schließen. Am Desktop gibt es kein Blatt, das den Fokus zurückgibt: Er geht zur
@@ -240,6 +268,23 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     window.addEventListener('keydown', taste)
     return () => window.removeEventListener('keydown', taste)
   }, [z])
+
+  // Alt+Umschalt+B („B“ wie Block) öffnet den Katalog – nicht bei offenem Dialog, nicht im Schreibschutz,
+  // nicht in Eingabefeldern und im Texteditor (dort gilt zuerst das Feld).
+  // (⌘/Strg+Umschalt+A gehört in Chrome der Tab-Suche und ist nicht abfangbar.)
+  useEffect(() => {
+    function taste(e: KeyboardEvent) {
+      if (!e.altKey || !e.shiftKey || e.ctrlKey || e.metaKey || e.code !== 'KeyB') return
+      if (z.gesperrt || dialog || document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      const ziel = e.target as HTMLElement | null
+      if (ziel?.closest?.('input, textarea, select, [contenteditable="true"], .cm-editor')) return
+      e.preventDefault()
+      oeffneKatalog()
+    }
+    window.addEventListener('keydown', taste)
+    return () => window.removeEventListener('keydown', taste)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [z.gesperrt, dialog, gewaehlt, z.struktur])
 
   function schliessen() {
     if (z.speicherstand !== 'gespeichert') setDialog('schliessen')
@@ -283,10 +328,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   // Was zu sehen ist: Handy = Umschalter, sonst Vorschau groß, Gliederung nach Wunsch
   const schubladeZeigen = !vollbreit || istMobil
   const gliederungZeigen = !istMobil && !vollbreit
-  // Mit offener Schublade ist unter 1280 px kein Platz für Gliederung und Schublade zugleich
+  // PROJ-97: Bei offener Schublade klappt die Gliederung ein, damit die Vorschau breit bleibt –
+  // außer, sie wurde bewusst aufgeklappt. Der gemerkte Zustand (gliederungOffen) bleibt davon unberührt.
   const gliederungSichtbar = istMobil
     ? ansicht === 'gliederung'
-    : gliederungZeigen && gliederungOffen && (!gewaehlt || platzFuerAlles)
+    : gliederungZeigen && (gewaehlt ? gliederungTrotzSchublade : gliederungOffen)
   const vorschauZeigen = istMobil ? ansicht === 'vorschau' : true
   const schubladeAngedockt = !istMobil && !!gewaehlt && schubladeZeigen
   const spalten = istMobil
@@ -301,6 +347,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           ? 'lg:grid-cols-[3rem_minmax(30rem,1fr)_minmax(22rem,28rem)]'
           : 'lg:grid-cols-[3rem_minmax(0,1fr)]'
   const tasten = apple ? '⌘' : 'Strg+'
+  const kuerzel = apple ? '⌥⇧B' : 'Alt+Umschalt+B'
   const kleinerKnopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
   const offeneHinweise = kernBefunde?.length ?? 0
 
@@ -396,20 +443,40 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
       <div className={cn('grid flex-1 gap-4 p-4 sm:p-6', spalten)}>
         {gliederungZeigen && !gliederungSichtbar && (
-          <div className="hidden min-w-0 lg:block lg:sticky lg:top-24 lg:self-start">
+          <div className="hidden min-w-0 flex-col gap-2 lg:sticky lg:top-24 lg:flex lg:self-start">
             <Button
               type="button"
               variant="outline"
               size="icon"
               className="size-11 rounded-xl"
-              // Offen gemerkt, aber wegen der Schublade ausgeblendet: Schublade schließen zeigt sie wieder
-              onClick={() => (gliederungOffen ? setAuswahl(null) : schalteGliederung(true))}
+              onClick={() => {
+                // Mit offener Schublade ist unter 1280 px kein Platz für beides: Dort schließt der Knopf die Schublade
+                if (!gewaehlt) schalteGliederung(true)
+                else if (platzFuerAlles) setGliederungTrotzSchublade(true)
+                else {
+                  // Schublade schließen und die Gliederung wirklich aufklappen (auch wenn sie vorher zugeklappt war)
+                  setAuswahl(null)
+                  schalteGliederung(true)
+                }
+              }}
               aria-label="Gliederung einblenden"
               aria-expanded={false}
               title="Gliederung einblenden"
               disabled={!!z.gesperrt}
             >
               <PanelLeftOpen className="size-5" aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-11 rounded-xl"
+              onClick={oeffneKatalog}
+              aria-label="Block hinzufügen"
+              title={`Block hinzufügen (${kuerzel})`}
+              disabled={!!z.gesperrt}
+            >
+              <Plus className="size-5" aria-hidden />
             </Button>
           </div>
         )}
@@ -428,7 +495,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               variant="ghost"
               size="icon"
               className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-              onClick={() => schalteGliederung(false)}
+              onClick={() => (gewaehlt ? setGliederungTrotzSchublade(false) : schalteGliederung(false))}
               aria-label="Gliederung ausblenden"
               aria-expanded
               title="Gliederung ausblenden"
@@ -444,6 +511,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             setAuswahl={setAuswahl}
             befunde={befunde}
             befundKarte={befundKarte}
+            einfuegenAnfrage={einfuegenAnfrage}
+            kuerzel={kuerzel}
           />
         </section>
         <section
@@ -459,6 +528,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             neuLaden={v.neuBauen}
             groesse={v.groesse}
             onWaehle={beiVorschauWahl}
+            onEinfuegen={beiVorschauEinfuegen}
             vollbreit={vollbreit}
             onVollbreit={() => setVollbreit((b) => !b)}
           />

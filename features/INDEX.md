@@ -113,5 +113,6 @@
 | PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Deployed | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |
 | PROJ-95 | Werkzeugkiste – Baukasten: Typ eines Blocks wechseln | Deployed | [PROJ-95-werkzeugkiste-blocktyp-wechseln.md](PROJ-95-werkzeugkiste-blocktyp-wechseln.md) | 2026-11-12 |
 | PROJ-96 | Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed | [PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md](PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md) | 2026-11-12 |
+| PROJ-97 | Werkzeugkiste – Baukasten: Hinzufügen präsenter & Vorschau aufgeräumt | Deployed | [PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md](PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md) | 2026-11-13 |
 
-## Next Available ID: PROJ-97
+## Next Available ID: PROJ-98

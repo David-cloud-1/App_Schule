@@ -63,7 +63,8 @@ const DATEN: EditorDaten = {
 }
 
 function oeffneMenu(name: RegExp) {
-  fireEvent.keyDown(screen.getByRole('button', { name }), { key: 'Enter' })
+  // hidden: Bei offener Schublade ist die Gliederung eingeklappt (PROJ-97), ihre Menüs bleiben im Aufbau
+  fireEvent.keyDown(screen.getByRole('button', { name, hidden: true }), { key: 'Enter' })
 }
 
 beforeEach(() => {
@@ -165,7 +166,8 @@ describe('Baukasten-Editor', () => {
     fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
     expect(await screen.findByText(/keinen Zugriff mehr auf die Werkzeugkiste/, {}, { timeout: 3000 })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
-    expect(screen.getByRole('region', { name: 'Gliederung' })).toHaveAttribute('inert')
+    // Das neue Thema ist gewählt, die Schublade offen und die Gliederung eingeklappt (PROJ-97): im Aufbau bleibt sie stehen
+    expect(document.querySelector('section[aria-label="Gliederung"]')).toHaveAttribute('inert')
     // Kein zweiter Versuch nach 5 Sekunden
     await new Promise((r) => setTimeout(r, 5600))
     expect(api.speichereEntwurf).toHaveBeenCalledTimes(1)
@@ -264,10 +266,11 @@ describe('Block einfügen (PROJ-90)', () => {
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Haftungsgrenzen“/ }))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="crossword"]')!)
-    const gliederung = screen.getByRole('region', { name: 'Gliederung' })
+    // Mit dem neuen Block öffnet sich die Schublade, und die Gliederung klappt ein (PROJ-97), bleibt aber im Aufbau
+    const gliederung = document.querySelector<HTMLElement>('section[aria-label="Gliederung"]')!
     expect(await within(gliederung).findByText('Kreuzworträtsel')).toBeInTheDocument()
     expect(within(gliederung).queryByText('Noch keine Blöcke')).not.toBeInTheDocument()
-    fireEvent.click(within(gliederung).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
+    fireEvent.click(within(gliederung).getByRole('button', { name: /Hinweise der Prüfstelle/, hidden: true }))
     expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
   })
 
@@ -451,8 +454,11 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeitung wieder einblenden' }))
-    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
+    // Bei offener Schublade bleibt die Gliederung eingeklappt (PROJ-97) und lässt sich bewusst aufklappen
+    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Gliederung einblenden' }))
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
   })
 
   it('schließt die Schublade, wenn der gewählte Block verschwindet (Löschen)', async () => {
@@ -541,5 +547,212 @@ describe('Hilfsskript in der Seite (PROJ-96)', () => {
     expect(document.querySelector('.wk-aktiv')?.getAttribute('data-wk')).toBe('k0-e1')
     fireEvent(window, new MessageEvent('message', { data: { wk: null }, source: window }))
     expect(document.querySelector('.wk-aktiv')).toBeNull()
+  })
+})
+
+describe('Hinzufügen präsenter (PROJ-97)', () => {
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+  const typen = (t: number) => letzteStruktur().chapters[t].elements.map((b) => b.type)
+  const gespeichert = () => waehleAus(() => api.speichereEntwurf.mock.calls.length > 0)
+  function waehleAus(f: () => boolean) {
+    return waitFor(() => expect(f()).toBe(true), { timeout: 3000 })
+  }
+  function nachricht(data: unknown, rahmen: HTMLIFrameElement | null, source?: MessageEventSource | null) {
+    fireEvent(window, new MessageEvent('message', { data, source: source === undefined ? rahmen?.contentWindow : source }))
+  }
+  const katalogOffen = () => screen.queryByRole('heading', { name: 'Block hinzufügen' })
+  async function bereit() {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    return rahmen
+  }
+  const waehleTyp = (typ: string) => fireEvent.click(document.querySelector(`[data-katalog-eintrag="${typ}"]`)!)
+
+  it('Leiste „Block“ ohne Auswahl: am Ende des letzten Themas', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    fireEvent.click(screen.getByRole('button', { name: 'Block' }))
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    waehleTyp('memory_game')
+    await gespeichert()
+    expect(typen(1)).toEqual(['memory_game'])
+    expect(typen(0)).toEqual(['text', 'fill_blanks'])
+  })
+
+  it('Leiste „Thema“ hängt ein Thema an; das Themen-Menü fügt eines direkt darunter ein', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    oeffneMenu(/Weitere Aktionen für Thema „Grundlagen“/)
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Thema darunter einfügen/ }))
+    await gespeichert()
+    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Neues Thema', 'Haftungsgrenzen'])
+    // Das neue Thema ist gewählt, die Schublade offen
+    expect(await screen.findByRole('complementary')).toBeInTheDocument()
+  })
+
+  it('„+“ in der schmalen Leiste fügt hinter dem gewählten Block ein', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
+    await screen.findByRole('complementary')
+    fireEvent.click(screen.getByRole('button', { name: 'Block hinzufügen' }))
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    waehleTyp('memory_game')
+    await gespeichert()
+    expect(typen(0)).toEqual(['text', 'memory_game', 'fill_blanks'])
+  })
+
+  it('Tastenkürzel Alt+Umschalt+B öffnet den Katalog, andere Kombinationen nicht', async () => {
+    await bereit()
+    fireEvent.keyDown(document.body, { key: 'B', code: 'KeyB', altKey: true })
+    fireEvent.keyDown(document.body, { key: 'b', code: 'KeyB', ctrlKey: true, shiftKey: true })
+    expect(katalogOffen()).not.toBeInTheDocument()
+    fireEvent.keyDown(document.body, { key: 'B', code: 'KeyB', altKey: true, shiftKey: true })
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+  })
+
+  it('Tastenkürzel wirkt nicht, solange der Fokus in einem Eingabefeld steht', async () => {
+    await bereit()
+    const feld = document.createElement('input')
+    document.body.appendChild(feld)
+    feld.focus()
+    fireEvent.keyDown(feld, { key: 'B', code: 'KeyB', altKey: true, shiftKey: true })
+    expect(katalogOffen()).not.toBeInTheDocument()
+    feld.remove()
+    fireEvent.keyDown(document.body, { key: 'B', code: 'KeyB', altKey: true, shiftKey: true })
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+  })
+
+  it('zeigt das Tastenkürzel am Leistenknopf', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    await screen.findByRole('heading', { name: 'Mein Material' })
+    expect(screen.getByRole('button', { name: 'Block' }).getAttribute('title')).toMatch(/Alt\+Umschalt\+B|⌥⇧B/)
+  })
+
+  it('„+ Darunter“ in der Vorschau öffnet den Katalog, der Block kommt hinter den angeklickten', async () => {
+    const rahmen = await bereit()
+    nachricht({ wkEinfuegen: 'k0-e0' }, rahmen)
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    waehleTyp('memory_game')
+    await gespeichert()
+    expect(typen(0)).toEqual(['text', 'memory_game', 'fill_blanks'])
+  })
+
+  it('„+ Block“ an einem Thema in der Vorschau fügt am Anfang des Themas ein', async () => {
+    const rahmen = await bereit()
+    nachricht({ wkEinfuegen: 'k0' }, rahmen)
+    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    waehleTyp('memory_game')
+    await gespeichert()
+    expect(typen(0)).toEqual(['memory_game', 'text', 'fill_blanks'])
+  })
+
+  it('nimmt „+“-Nachrichten nur vom eigenen Rahmen, mit gültiger Marke und nicht für die Lernzielkontrolle an', async () => {
+    const rahmen = await bereit()
+    nachricht({ wkEinfuegen: 'k0-e0' }, rahmen, window) // fremder Absender
+    nachricht({ wkEinfuegen: 'k0-e0' }, rahmen, null)
+    nachricht({ wkEinfuegen: 'k0-e0"]x' }, rahmen)
+    nachricht({ wkEinfuegen: 7 }, rahmen)
+    nachricht({ wkEinfuegen: 'k9-e9' }, rahmen) // gibt es nicht
+    nachricht({ wkEinfuegen: 'abschluss' }, rahmen) // Lernzielkontrolle hat kein „+“
+    expect(katalogOffen()).not.toBeInTheDocument()
+  })
+
+  it('lehnt „+“ ab, solange die Vorschau veraltet ist, und sagt es', async () => {
+    const rahmen = await bereit()
+    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    await screen.findByRole('complementary')
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    nachricht({ wkEinfuegen: 'k0-e0' }, rahmen)
+    expect(await screen.findByText(/Bitte gleich noch einmal klicken/)).toBeInTheDocument()
+    expect(katalogOffen()).not.toBeInTheDocument()
+  })
+
+  it('Gliederung klappt bei offener Schublade ein und kehrt danach zurück; der gemerkte Zustand bleibt', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    await screen.findByRole('complementary')
+    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
+    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
+  })
+
+  it('bewusst aufgeklappt bleibt die Gliederung bei offener Schublade offen, bis die Schublade schließt', async () => {
+    window.localStorage.setItem('wk-editor-gliederung', 'zu')
+    const rahmen = await bereit()
+    nachricht({ wkWaehle: 'k0-e1' }, rahmen) // „Bearbeiten“ in der Vorschau
+    await screen.findByRole('complementary')
+    // gemerkt „zu“, aber die Schublade ist offen und die Gliederung noch nicht bewusst aufgeklappt
+    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Gliederung einblenden' }))
+    const offen = screen.getByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(offen).getByText('Lehrtext').closest('button')!) // anderer Block: kein erneutes Einklappen
+    expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
+    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('zu')
+  })
+})
+
+describe('Hilfsskript: Knopfzeile und Seitenkopf (PROJ-97)', () => {
+  function laufenLassen() {
+    document.head.innerHTML = ''
+    document.body.innerHTML =
+      '<div class="navi">Kopf</div><h2 data-wk="k0">Thema</h2><div data-wk="k0-e0"><p>Block A</p></div><div data-wk="k0-e1"><p>Block B</p></div>' +
+      '<div data-wk="abschluss"><div data-wk="abschluss-summary">Teil</div></div><div data-wk="k1;x">Fremd</div>'
+    const code = mitSprungSkript('<body></body>').match(/<script>([\s\S]*)<\/script>/)![1]
+    Element.prototype.scrollIntoView = vi.fn()
+    const gesendet = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
+    new Function(code)()
+    return gesendet
+  }
+
+  it('setzt über jeden Thema-, Block- und Abschluss-Bereich eine eigene Knopfzeile (kein Überdecken)', () => {
+    laufenLassen()
+    const zeilen = [...document.querySelectorAll('.wk-leiste')]
+    expect(zeilen.map((z) => z.getAttribute('data-wk-leiste'))).toEqual(['k0', 'k0-e0', 'k0-e1', 'abschluss'])
+    // Die Zeile steht vor dem Bereich, nicht darin
+    for (const z of zeilen) expect(z.nextElementSibling?.getAttribute('data-wk')).toBe(z.getAttribute('data-wk-leiste'))
+    expect(document.querySelector('[data-wk="k0-e0"] .wk-k')).toBeNull()
+  })
+
+  it('„+“ gibt es an Themen („Block“) und Blöcken („Darunter“), nicht an der Lernzielkontrolle', () => {
+    laufenLassen()
+    const plus = [...document.querySelectorAll('.wk-p')].map((p) => p.getAttribute('data-wk-plus'))
+    expect(plus).toEqual(['k0', 'k0-e0', 'k0-e1'])
+    expect(document.querySelector('[data-wk-plus="k0"]')!.textContent).toBe('Block')
+    expect(document.querySelector('[data-wk-plus="k0-e1"]')!.textContent).toBe('Darunter')
+    expect(document.querySelector('[data-wk-plus="k0-e1"]')!.getAttribute('aria-label')).toMatch(/^Block darunter einfügen/)
+    expect(document.querySelector('[data-wk-plus="k0"]')!.getAttribute('aria-label')).toMatch(/^Block am Anfang des Themas einfügen/)
+  })
+
+  it('meldet den „+“-Klick mit der Marke und „Bearbeiten“ weiter getrennt', () => {
+    const gesendet = laufenLassen()
+    ;(document.querySelector('[data-wk-plus="k0-e1"]') as HTMLElement).click()
+    expect(gesendet).toHaveBeenCalledWith({ wkEinfuegen: 'k0-e1' }, '*')
+    ;(document.querySelector('[data-wk-knopf="k0-e1"]') as HTMLElement).click()
+    expect(gesendet).toHaveBeenCalledWith({ wkWaehle: 'k0-e1' }, '*')
+  })
+
+  it('blendet den Seitenkopf aus, ohne den Kern anzufassen, und lässt den Druck frei von Knöpfen', () => {
+    laufenLassen()
+    const css = document.head.querySelector('style')!.textContent!
+    expect(css).toContain('.navi{display:none!important}')
+    expect(css).toContain('@media print{.wk-k{display:none!important}.wk-p,.wk-leiste{display:none!important}}')
+  })
+
+  it('hebt mit der gewählten Stelle auch ihre Knopfzeile hervor', () => {
+    laufenLassen()
+    fireEvent(window, new MessageEvent('message', { data: { wk: 'k0-e1' }, source: window }))
+    expect(document.querySelector('.wk-leiste-aktiv')?.getAttribute('data-wk-leiste')).toBe('k0-e1')
+    fireEvent(window, new MessageEvent('message', { data: { wk: null }, source: window }))
+    expect(document.querySelector('.wk-leiste-aktiv')).toBeNull()
   })
 })
