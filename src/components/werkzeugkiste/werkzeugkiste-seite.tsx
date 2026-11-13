@@ -3,10 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { Upload } from 'lucide-react'
+import { PencilRuler, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { LeereSeiteDialog } from '@/components/werkzeugkiste/leere-seite-dialog'
 import { MeineMaterialien } from '@/components/werkzeugkiste/meine-materialien'
 import { RegalReiter } from '@/components/werkzeugkiste/regal-reiter'
 import { WerkzeugUebersicht } from '@/components/werkzeugkiste/werkzeug-uebersicht'
@@ -31,6 +32,7 @@ export function WerkzeugkisteSeite() {
   const reiter = reiterAusParam(searchParams.get('tab'))
   // Ist die Ablage ganz leer, steht „Skript hochladen“ nur im Leerzustand (nicht zusätzlich im Kopf)
   const [materialienLeer, setMaterialienLeer] = useState(false)
+  const [leereSeiteOffen, setLeereSeiteOffen] = useState(false)
   const hauptaktionZeigen = !(reiter === 'materialien' && materialienLeer)
 
   function wechsle(neu: string) {
@@ -48,12 +50,21 @@ export function WerkzeugkisteSeite() {
         description="Aus einem Skript Unterrichtsmaterial machen – kostenlos, mit der KI deiner Wahl."
         actions={
           hauptaktionZeigen ? (
-            <Button asChild className={HAUPTAKTION_KLASSE}>
-              <Link href={neuerAblaufHref()}>
-                <Upload className="mr-2 size-5" aria-hidden />
-                Skript hochladen
-              </Link>
-            </Button>
+            <>
+              {/* PROJ-94: Nebenaktion nur in Meine Materialien; die grüne Hauptaktion bleibt */}
+              {reiter === 'materialien' && (
+                <Button variant="outline" onClick={() => setLeereSeiteOffen(true)} className="min-h-11 rounded-2xl border-ws-line px-5 font-semibold">
+                  <PencilRuler className="mr-2 size-5" aria-hidden />
+                  Leere Seite anlegen
+                </Button>
+              )}
+              <Button asChild className={HAUPTAKTION_KLASSE}>
+                <Link href={neuerAblaufHref()}>
+                  <Upload className="mr-2 size-5" aria-hidden />
+                  Skript hochladen
+                </Link>
+              </Button>
+            </>
           ) : undefined
         }
       />
@@ -71,15 +82,16 @@ export function WerkzeugkisteSeite() {
         </AdminTabsList>
 
         <AdminTabsContent value="werkzeuge" className="mt-0">
-          <WerkzeugUebersicht />
+          <WerkzeugUebersicht onEigeneSeite={() => setLeereSeiteOffen(true)} />
         </AdminTabsContent>
         <AdminTabsContent value="materialien" className="mt-0">
-          <MeineMaterialien onLeer={setMaterialienLeer} />
+          <MeineMaterialien onLeer={setMaterialienLeer} onLeereSeite={() => setLeereSeiteOffen(true)} />
         </AdminTabsContent>
         <AdminTabsContent value="regal" className="mt-0">
           <RegalReiter />
         </AdminTabsContent>
       </AdminTabs>
+      <LeereSeiteDialog offen={leereSeiteOffen} onOpenChange={setLeereSeiteOffen} />
     </div>
   )
 }

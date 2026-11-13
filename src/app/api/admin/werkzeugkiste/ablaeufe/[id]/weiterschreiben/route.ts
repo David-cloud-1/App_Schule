@@ -10,7 +10,7 @@ import {
   kernFehlerAntwort,
   ladeEigenenAblauf,
   leseAdresse,
-  zeileZuAblauf,
+  zeileZuAblauf, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 import { teilKapitel } from '@/lib/werkzeugkiste-teile-server'
 
@@ -33,6 +33,8 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (zeile.teile) return fehler('Dieser Ablauf ist in Teile geteilt. Schreibe den Teil weiter, der abgeschnitten ist.', 400)
   if (zeile.status === 'fertig') return fehler('Dieses Material ist fertig.', 400)
   if (!hatTeilWeg(zeile.werkzeug)) return fehler('Für dieses Werkzeug gibt es kein Weiterschreiben.', 400)

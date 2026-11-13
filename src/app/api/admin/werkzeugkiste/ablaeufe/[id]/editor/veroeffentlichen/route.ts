@@ -1,3 +1,4 @@
+import { istEigeneSeite, kernWerkzeug } from '@/lib/werkzeugkiste-editor'
 import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
@@ -94,7 +95,7 @@ export async function POST(request: Request, { params }: Kontext) {
     const eigene = await eigeneFuerBau(service, zeile, JSON.stringify(zeile.entwurf))
     const gemeinsam = {
       struktur: zeile.entwurf,
-      werkzeug: zeile.werkzeug,
+      werkzeug: kernWerkzeug(zeile.werkzeug),
       einstellungen: zeile.einstellungen ?? {},
       ...(quelle ? { einlesung: { url: quelle.url } } : {}),
     }
@@ -186,7 +187,7 @@ export async function POST(request: Request, { params }: Kontext) {
   await Promise.all([aufraeumen(), loescheEntwurfVorschau(service, zeile)])
   // Bilder-Auszug für das Regal passend zur neuen Fassung (best effort)
   // PROJ-92: Auch ohne Skript (nur eigene Bilder) entsteht ein Auszug; danach fliegen unbenutzte eigene Bilder raus
-  await erzeugeAuszug(service, zeile.owner_id, zeile.id, yaml.antwort, quelle?.pfad)
+  await erzeugeAuszug(service, zeile.owner_id, zeile.id, yaml.antwort, quelle?.pfad, istEigeneSeite(zeile.werkzeug))
   await loescheUnbenutzteEigene(service, zeile, yaml.antwort)
   await aktualisiereSpeicher(service, zeile.owner_id, zeile.id)
   return NextResponse.json({ ergebnis, befunde })

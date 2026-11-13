@@ -13,7 +13,7 @@ import {
   speichernSchema,
   titelVon,
 } from '@/lib/werkzeugkiste-editor-server'
-import type { EditorDaten } from '@/lib/werkzeugkiste-editor'
+import { grundgeruest, nieVeroeffentlicht, type EditorDaten } from '@/lib/werkzeugkiste-editor'
 
 export const maxDuration = 60
 
@@ -29,7 +29,7 @@ export async function GET(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const { zeile, antwort } = await editorZeileOderFehler(auth.supabase, (await params).id)
   if (!zeile) return antwort
-  if (!zeile.entwurf && !zeile.antwort) return fehler('Zu diesem Material gibt es keine Inhalte zum Bearbeiten.', 400)
+  if (!zeile.entwurf && !zeile.antwort && !nieVeroeffentlicht(zeile)) return fehler('Zu diesem Material gibt es keine Inhalte zum Bearbeiten.', 400)
   try {
     const [struktur, geteilt] = await Promise.all([aktuelleStruktur(zeile), geteiltStatus(auth.supabase, zeile.id)])
     const daten: EditorDaten = {
@@ -40,6 +40,7 @@ export async function GET(_request: Request, { params }: Kontext) {
       stand: zeile.entwurf ? zeile.entwurf_am : null,
       befunde: zeile.entwurf ? (zeile.entwurf_pruefung?.befunde ?? null) : null,
       ...geteilt,
+      ...(nieVeroeffentlicht(zeile) ? { nieVeroeffentlicht: true } : {}),
     }
     return NextResponse.json(daten)
   } catch (e) {
@@ -79,12 +80,35 @@ export async function PUT(request: Request, { params }: Kontext) {
 /**
  * DELETE …/ablaeufe/:id/editor (PROJ-89) — „Entwurf verwerfen“ (E11): zurück
  * auf die veröffentlichte Fassung. Entwurf, seine Prüfung und Vorschau verschwinden.
+ *
+ * PROJ-94: Eine eigene Seite, die noch nie veröffentlicht wurde, hat keine
+ * Fassung, auf die man zurückkann. Dort wird der Entwurf durch ein frisches
+ * Grundgerüst mit dem aktuellen Titel (und Untertitel) ersetzt.
  */
 export async function DELETE(_request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const { zeile, antwort } = await editorZeileOderFehler(auth.supabase, (await params).id)
   if (!zeile) return antwort
+  if (nieVeroeffentlicht(zeile)) {
+    const jetzt = new Date().toISOString()
+    const untertitel = typeof zeile.entwurf?.cover?.subtitle === 'string' ? zeile.entwurf.cover.subtitle : null
+    const { data, error: neuFehler } = await auth.supabase
+      .from(ABLAUF_TABELLE)
+      .update({
+        entwurf: grundgeruest(titelVon(zeile), untertitel),
+        entwurf_am: jetzt,
+        entwurf_pruefung: null,
+        updated_at: jetzt,
+      })
+      .eq('id', zeile.id)
+      .select('entwurf_am')
+      .maybeSingle()
+    if (neuFehler || !data) return fehler('Die Seite konnte nicht zurückgesetzt werden.', 500)
+    const service = createServiceClient()
+    await loescheEntwurfVorschau(service, zeile)
+    return NextResponse.json({ ok: true })
+  }
   const { error } = await auth.supabase
     .from(ABLAUF_TABELLE)
     .update({ entwurf: null, entwurf_am: null, entwurf_pruefung: null, updated_at: new Date().toISOString() })

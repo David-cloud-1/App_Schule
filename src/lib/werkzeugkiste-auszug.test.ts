@@ -80,6 +80,12 @@ describe('Bilder-Auszug mit eigenen Bildern (PROJ-92)', () => {
     expect(await erzeugeAuszug(service, OWNER, ID, 'path: images/seite3_x44.jpeg')).toBe(false)
     expect(hoch).not.toHaveBeenCalled()
   })
+
+  it('PROJ-94: bei einer eigenen Seite entsteht auch ohne Einlesung und ohne Bilder ein Auszug (nur Platzhalter)', async () => {
+    const { service, hoch } = speicherMitEigenen(null)
+    expect(await erzeugeAuszug(service, OWNER, ID, 'path: nichts', undefined, true)).toBe(true)
+    expect(auszugBildnamen(hoch.mock.calls[0][1] as Uint8Array)).toEqual([])
+  })
 })
 
 describe('Bilder-Auszug', () => {

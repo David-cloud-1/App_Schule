@@ -24,9 +24,10 @@ import {
 const EINST: AblaufEinstellungen = { format: 'h5p', niveau: 'mittel', bildungsgang: 'auto', lernfeld: '', umfang: '' }
 
 describe('Werkzeugliste', () => {
-  it('hat zwölf Werkzeuge in vier Gruppen mit eindeutigen IDs', () => {
-    expect(WERKZEUGE).toHaveLength(12)
-    expect(new Set(WERKZEUGE.map((w) => w.id)).size).toBe(12)
+  it('hat zwölf Werkzeuge mit Ablauf in vier Gruppen und ein dreizehntes ohne (PROJ-94), alle mit eindeutigen IDs', () => {
+    expect(WERKZEUGE.filter((w) => !w.ohneAblauf)).toHaveLength(12)
+    expect(WERKZEUGE.filter((w) => w.ohneAblauf).map((w) => w.id)).toEqual(['eigen'])
+    expect(new Set(WERKZEUGE.map((w) => w.id)).size).toBe(13)
     expect(WERKZEUG_GRUPPEN.map((g) => werkzeugeDerGruppe(g.id).length)).toEqual([3, 4, 3, 2])
   })
 
@@ -183,7 +184,7 @@ describe('Einstellungsfelder (PROJ-54)', () => {
 
   it('bietet das Format „Seite“ nur Werkzeugen mit Seiten-Ausgabe an', () => {
     const mitSeite = WERKZEUGE.filter((w) => w.formate.some((f) => f.id === 'seite')).map((w) => w.id)
-    expect(mitSeite).toEqual(['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation'])
+    expect(mitSeite).toEqual(['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation', 'eigen'])
   })
 
   it('setzt Stufen auf den Standard der neuen Art zurück', () => {

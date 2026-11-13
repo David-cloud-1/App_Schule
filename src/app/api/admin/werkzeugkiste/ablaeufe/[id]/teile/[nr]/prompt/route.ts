@@ -9,7 +9,7 @@ import {
   ladeEigenenAblauf,
   leseAdresse,
   ungueltig,
-  zeileZuAblauf,
+  zeileZuAblauf, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 import { teilPromptSchema } from '@/lib/werkzeugkiste-teile-server'
 
@@ -33,6 +33,8 @@ export async function POST(request: Request, { params }: Kontext) {
   const { id, nr: nrText } = await params
   const zeile = await ladeEigenenAblauf(auth.supabase, id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (!zeile.teile) return fehler('Dieser Ablauf ist nicht in Teile geteilt.', 400)
   const teil = zeile.teile.teile.find((t) => t.nr === Number(nrText))
   if (!teil) return fehler('Diesen Teil gibt es nicht.', 404)

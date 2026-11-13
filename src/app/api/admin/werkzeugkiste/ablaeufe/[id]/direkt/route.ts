@@ -11,7 +11,7 @@ import {
   kernFehlerAntwort,
   ladeEigenenAblauf,
   ungueltig,
-  zeileZuAblauf,
+  zeileZuAblauf, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 import {
   brichAb,
@@ -46,6 +46,8 @@ export async function GET(request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
 
   const service = createServiceClient()
   const url = new URL(request.url)
@@ -88,6 +90,8 @@ export async function POST(request: Request, { params }: Kontext) {
 
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (!zeile.kennzahlen) return fehler('Das Skript ist noch nicht eingelesen.', 400)
   if (!process.env.ANTHROPIC_API_KEY) return fehler('Die direkte Erstellung ist noch nicht eingerichtet.', 503)
 
@@ -136,6 +140,8 @@ export async function DELETE(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   const lauf = await letzterLauf(auth.supabase, zeile.id)
   if (!lauf) return fehler('Es läuft keine Erstellung.', 404)
   const neu = istAktiv(lauf) ? await brichAb(createServiceClient(), lauf.id) : lauf

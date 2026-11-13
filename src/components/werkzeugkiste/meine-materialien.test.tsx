@@ -318,3 +318,29 @@ describe('Meine Materialien (PROJ-52)', () => {
     })
   })
 })
+
+describe('Eigene Seite (PROJ-94)', () => {
+  it('nie veröffentlicht: „Bearbeiten“ statt „Öffnen“, Teilen und Link erst nach dem Veröffentlichen', async () => {
+    api.ladeMaterialien.mockResolvedValue(
+      liste([
+        zeile({
+          id: 'e1',
+          werkzeug: 'eigen',
+          titel: 'Meine Seite',
+          skriptName: null,
+          format: 'seite',
+          hatDatei: false,
+          hatVorschau: false,
+          hatAntwort: false,
+          nochNichtVeroeffentlicht: true,
+          entwurfOffen: true,
+          baukasten: 'bearbeiten',
+        }),
+      ]),
+    )
+    render(<MeineMaterialien />)
+    const bearbeiten = await screen.findAllByRole('link', { name: /Bearbeiten/ })
+    expect(bearbeiten[0]).toHaveAttribute('href', expect.stringContaining('e1'))
+    expect(screen.queryByRole('link', { name: /Öffnen/ })).toBeNull()
+  })
+})

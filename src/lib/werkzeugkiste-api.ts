@@ -582,6 +582,15 @@ export function veroeffentlicheEntwurf(id: string, stand: string | null) {
   })
 }
 
+/** Leere Seite anlegen (PROJ-94): Interaktive Seite ohne Skript, mit Grundgerüst; gibt die neue Material-ID zurück */
+export function legeEigeneSeiteAn(titel: string, untertitel: string) {
+  const u = untertitel.trim()
+  return anfrage<{ id: string }>('/materialien', {
+    method: 'POST',
+    body: JSON.stringify(u ? { titel, untertitel: u } : { titel }),
+  })
+}
+
 /** H5P-Material als neue Interaktive Seite kopieren (PROJ-89, E12); gibt die neue Material-ID zurück */
 export function kopiereAlsSeite(id: string) {
   return anfrage<{ id: string }>(`/ablaeufe/${id}/als-seite`, { method: 'POST', body: '{}' })

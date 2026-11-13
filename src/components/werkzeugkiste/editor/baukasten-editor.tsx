@@ -23,7 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
-import { befundeJeStelle, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
+import { befundeJeStelle, hatAufgaben, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
@@ -174,6 +174,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   )
   const befundKarte = useMemo(() => befundeJeStelle(befunde), [befunde])
   const hatAenderungen = z.hatEntwurf() || z.speicherstand !== 'gespeichert'
+  // PROJ-94: eigene Seite ohne veröffentlichte Fassung – es gibt nichts, auf das man zurückkann, außer dem Grundgerüst
+  const nie = !!daten.nieVeroeffentlicht
 
   // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
   const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
@@ -269,7 +271,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     try {
       await verwirfEntwurf(daten.id)
       setDialog(null)
-      toast.success('Entwurf verworfen')
+      toast.success(nie ? 'Zurück auf das Grundgerüst' : 'Entwurf verworfen')
       neuLaden()
     } catch (e) {
       toast.error((e as Error).message)
@@ -347,7 +349,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             onSelect={() => setDialog('verwerfen')}
             className="text-ws-red focus:text-ws-red"
           >
-            <RotateCcw className="mr-2 size-4" aria-hidden /> Entwurf verwerfen
+            <RotateCcw className="mr-2 size-4" aria-hidden /> {nie ? 'Zurück auf das Grundgerüst' : 'Entwurf verwerfen'}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -503,6 +505,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
                   </p>
                 )}
                 {z.struktur.chapters.length === 0 && <p className="text-ws-orange">Das Material hat keine Themen mehr.</p>}
+                {nie && !hatAufgaben(z.struktur) && (
+                  <p className="text-ws-orange">Die Seite hat noch keine Aufgaben. Du kannst trotzdem veröffentlichen.</p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -528,10 +533,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       <AlertDialog open={dialog === 'verwerfen'} onOpenChange={(o) => !o && !laeuft && setDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Entwurf verwerfen?</AlertDialogTitle>
+            <AlertDialogTitle>{nie ? 'Zurück auf das Grundgerüst?' : 'Entwurf verwerfen?'}</AlertDialogTitle>
             <AlertDialogDescription>
-              Alle Änderungen seit dem letzten Veröffentlichen gehen verloren. Das Material ist danach wieder so, wie es
-              veröffentlicht ist.
+              {nie
+                ? 'Alle Änderungen gehen verloren. Die Seite beginnt wieder mit dem Grundgerüst aus Deckblatt, Thema 1 und Lernzielkontrolle.'
+                : 'Alle Änderungen seit dem letzten Veröffentlichen gehen verloren. Das Material ist danach wieder so, wie es veröffentlicht ist.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -546,7 +552,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
                 void verwerfen()
               }}
             >
-              Entwurf verwerfen
+              {nie ? 'Zurück auf das Grundgerüst' : 'Entwurf verwerfen'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

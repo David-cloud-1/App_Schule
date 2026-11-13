@@ -9,6 +9,7 @@ import {
   MonitorPlay,
   Mic,
   Music,
+  PencilRuler,
   Sparkles,
   Timer,
   type LucideIcon,
@@ -106,6 +107,8 @@ export interface Werkzeug {
   tipps?: string[]
   /** Was die Lehrkraft in Schritt 1 gibt: ein Skript (Standard) oder ein Video-Transkript (Video-Fragen) */
   eingabe?: 'skript' | 'video'
+  /** PROJ-94: kein Ablauf mit Schritten (keine Werkzeug-Karte, nicht für neue Abläufe wählbar), aber Material in „Meine Materialien“ */
+  ohneAblauf?: boolean
 }
 
 const H5P: WerkzeugFormat = { id: 'h5p', label: 'H5P für Moodle', hinweis: 'Ergebnisse zählen im Notenbuch' }
@@ -156,6 +159,9 @@ const STUFEN_LERN: FeldOption[] = [
   { key: 'schwer', label: 'schwer' },
 ]
 const STUFEN_CEFR: FeldOption[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((k) => ({ key: k, label: k }))
+
+/** Schlüssel des Werkzeugs „Eigene Seite“ (PROJ-94) */
+export const EIGENE_SEITE = 'eigen'
 
 export const WERKZEUGE: Werkzeug[] = [
   {
@@ -491,6 +497,18 @@ export const WERKZEUGE: Werkzeug[] = [
       LERNFELD,
     ],
   },
+  {
+    // PROJ-94: eigene Seite ohne Skript und ohne KI. Kein Ablauf, deshalb `aktiv: false` (kein neuer Ablauf mit diesem Werkzeug)
+    id: EIGENE_SEITE,
+    name: 'Eigene Seite',
+    gruppe: 'selbstlernen',
+    beschreibung: 'Ohne Skript und ohne KI: Baue eine Interaktive Seite selbst aus Blöcken.',
+    icon: PencilRuler,
+    aktiv: false,
+    ohneAblauf: true,
+    formate: [SEITE],
+    felder: [],
+  },
   { id: 'podcast', name: 'Podcast', gruppe: 'hoeren', beschreibung: 'Lern-Dialog als MP3', icon: Mic, aktiv: false, formate: [], felder: VORLAEUFIG },
   {
     id: 'lied',
@@ -611,7 +629,7 @@ export function findeWerkzeug(id: string | null | undefined): Werkzeug | undefin
 }
 
 export function werkzeugeDerGruppe(gruppe: WerkzeugGruppeId): Werkzeug[] {
-  return WERKZEUGE.filter((w) => w.gruppe === gruppe)
+  return WERKZEUGE.filter((w) => w.gruppe === gruppe && !w.ohneAblauf)
 }
 
 // ── Reiter der Werkzeugkiste-Seite ─────────────────────────────────────────

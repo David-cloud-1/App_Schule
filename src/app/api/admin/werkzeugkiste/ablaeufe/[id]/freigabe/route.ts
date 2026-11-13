@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { erzeugeAuszug, fehler, ladeEigenenAblauf, ungueltig } from '@/lib/werkzeugkiste-server'
+import { istEigeneSeite } from '@/lib/werkzeugkiste-editor'
+import { erstVeroeffentlichen } from '@/lib/werkzeugkiste-editor-server'
 import { fehlerAusFunktion, freigabeSchema, lesenZuStand } from '@/lib/werkzeugkiste-regal-server'
 
 export const maxDuration = 60
@@ -43,6 +45,9 @@ export async function PUT(request: Request, { params }: Kontext) {
   const id = (await params).id
   const material = await eigenesMaterial(auth, id)
   if (!material) return fehler(NICHT_GEFUNDEN, 404)
+  // PROJ-94: Eine nie veröffentlichte eigene Seite lässt sich nicht teilen
+  const erst = erstVeroeffentlichen(material)
+  if (erst) return erst
 
   const roh = await request.json().catch(() => null)
   const parsed = freigabeSchema.safeParse(roh)
@@ -62,7 +67,7 @@ export async function PUT(request: Request, { params }: Kontext) {
   // Ältere Materialien haben noch keinen Bilder-Auszug: beim ersten Teilen nachholen (best effort).
   // Ohne ihn lässt sich das Material herunterladen, aber nicht anpassen.
   if (!material.auszug_am && material.antwort) {
-    await erzeugeAuszug(createServiceClient(), material.owner_id, material.id, material.antwort)
+    await erzeugeAuszug(createServiceClient(), material.owner_id, material.id, material.antwort, undefined, istEigeneSeite(material.werkzeug))
   }
   return NextResponse.json({ ok: true })
 }

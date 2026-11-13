@@ -123,7 +123,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-91: Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Deployed |
 | P2 | PROJ-92: Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Deployed |
 | P2 | PROJ-93: Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned |
-| P1 | PROJ-94: Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Planned |
+| P1 | PROJ-94: Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Approved |
 | P2 | PROJ-95: Werkzeugkiste – Baukasten: Typ eines Blocks wechseln | Deployed |
 | P1 | PROJ-96: Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed |
 

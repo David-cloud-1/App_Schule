@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
+import { erstVeroeffentlichen } from '@/lib/werkzeugkiste-editor-server'
 import { fehler, ladeEigenenAblauf } from '@/lib/werkzeugkiste-server'
 import { fehlerAusFunktion } from '@/lib/werkzeugkiste-regal-server'
 import { linkZuStand } from '@/lib/werkzeugkiste-links-server'
@@ -37,7 +38,11 @@ export async function POST(_request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const id = (await params).id
-  if (!(await eigenesMaterial(auth, id))) return fehler(NICHT_GEFUNDEN, 404)
+  const material = await eigenesMaterial(auth, id)
+  if (!material) return fehler(NICHT_GEFUNDEN, 404)
+  // PROJ-94: Eine nie veröffentlichte eigene Seite hat noch nichts, was ein Link ausliefern könnte
+  const erst = erstVeroeffentlichen(material)
+  if (erst) return erst
 
   const { data, error } = await auth.supabase.rpc('link_erzeugen', { p_ablauf_id: id })
   if (error) return fehlerAusFunktion(error)

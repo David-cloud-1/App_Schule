@@ -12,6 +12,7 @@ import {
   loescheDateien,
   ungueltig,
   zeileZuAblauf,
+  eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 import { auswahlSchluessel, einstellungenSchluessel } from '@/lib/werkzeugkiste-teile-server'
 
@@ -45,6 +46,11 @@ export async function PATCH(request: Request, { params }: Kontext) {
   if (!zeile) return fehler(NICHT_DA, 404)
 
   const { werkzeug, einstellungen, auswahl, schritt, weg, titel } = parsed.data
+  // PROJ-94: Eine eigene Seite lässt sich nur umbenennen – Einstellungen und Schritte gibt es dort nicht
+  if (werkzeug !== undefined || einstellungen || auswahl || schritt !== undefined || weg) {
+    const keinAblauf = eigeneSeiteSperre(zeile)
+    if (keinAblauf) return keinAblauf
+  }
   if (titel !== undefined && zeile.status !== 'fertig') {
     return fehler('Nur fertige Materialien lassen sich umbenennen.', 400)
   }

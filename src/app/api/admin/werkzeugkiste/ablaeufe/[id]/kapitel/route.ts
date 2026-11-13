@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
-import { fehler, kern, kernFehlerAntwort, ladeEigenenAblauf, ungueltig, zeileZuAblauf } from '@/lib/werkzeugkiste-server'
+import { fehler, kern, kernFehlerAntwort, ladeEigenenAblauf, ungueltig, zeileZuAblauf, eigeneSeiteSperre } from '@/lib/werkzeugkiste-server'
 
 export const maxDuration = 60
 
@@ -22,6 +22,8 @@ export async function GET(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (!zeile.antwort) return NextResponse.json({ kapitel: [] })
   try {
     const r = await kern<{ kapitel: string[] }>('/api/kapitel-liste', { antwort: zeile.antwort })
@@ -39,6 +41,8 @@ export async function POST(request: Request, { params }: Kontext) {
 
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (!zeile.antwort) return fehler('Füge zuerst die Antwort der KI ein.', 400)
   const ablauf = zeileZuAblauf(zeile)
   try {

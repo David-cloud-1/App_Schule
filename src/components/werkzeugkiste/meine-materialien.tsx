@@ -14,6 +14,7 @@ import {
   Loader2,
   MoreHorizontal,
   PencilLine,
+  PencilRuler,
   Play,
   Repeat,
   Search,
@@ -47,7 +48,7 @@ import { HAUPTAKTION, NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahm
 import { LinkDialog, type LinkZiel } from '@/components/werkzeugkiste/link-fuer-alle'
 import { TeilenDialog, type TeilenZiel } from '@/components/werkzeugkiste/teilen-dialog'
 import { VorschauDialog } from '@/components/werkzeugkiste/vorschau-dialog'
-import { ablaufHref, neuerAblaufHref, WERKZEUGE } from '@/lib/werkzeugkiste'
+import { ablaufHref, EIGENE_SEITE, neuerAblaufHref, WERKZEUGE } from '@/lib/werkzeugkiste'
 import {
   antwortHref,
   benenneMaterialUm,
@@ -94,7 +95,7 @@ const meldung = (e: unknown) => (e instanceof WerkzeugFehler ? e.message : FEHLE
  * `onLeer` meldet der Seite, ob die Ablage ganz leer ist — dann steht die
  * Hauptaktion nur im Leerzustand und nicht zusätzlich im Seitenkopf.
  */
-export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void }) {
+export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boolean) => void; onLeereSeite?: () => void }) {
   const [eingabe, setEingabe] = useState('')
   const [suche, setSuche] = useState('')
   const [werkzeug, setWerkzeug] = useState(ALLE)
@@ -212,14 +213,22 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
       <AdminEmptyState
         icon={Library}
         title="Noch kein Material erstellt."
-        description="Lade ein Skript hoch. Dein fertiges Material landet danach automatisch hier."
+        description="Lade ein Skript hoch oder baue eine Seite selbst. Dein fertiges Material landet danach automatisch hier."
         action={
-          <Button asChild className={HAUPTAKTION}>
-            <Link href={neuerAblaufHref()}>
-              <Upload className="mr-2 size-5" aria-hidden />
-              Skript hochladen
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button asChild className={HAUPTAKTION}>
+              <Link href={neuerAblaufHref()}>
+                <Upload className="mr-2 size-5" aria-hidden />
+                Skript hochladen
+              </Link>
+            </Button>
+            {onLeereSeite && (
+              <Button variant="outline" onClick={onLeereSeite} className={`${NEBENAKTION} px-5`}>
+                <PencilRuler className="mr-2 size-5" aria-hidden />
+                Leere Seite anlegen
+              </Button>
+            )}
+          </div>
         }
       />
     )
@@ -259,7 +268,7 @@ export function MeineMaterialien({ onLeer }: { onLeer?: (leer: boolean) => void 
             <SelectItem value={ALLE} className="min-h-11">
               Alle Werkzeuge
             </SelectItem>
-            {WERKZEUGE.filter((w) => w.aktiv).map((w) => (
+            {WERKZEUGE.filter((w) => w.aktiv || w.ohneAblauf).map((w) => (
               <SelectItem key={w.id} value={w.id} className="min-h-11">
                 {w.name}
               </SelectItem>
@@ -478,6 +487,18 @@ function Hauptknopf({ z, voll }: { z: MaterialZeile; voll?: boolean }) {
       </Button>
     )
   }
+  if (z.nochNichtVeroeffentlicht) {
+    // PROJ-94: Eine eigene Seite hat keinen Ablauf – statt „Öffnen“ steht nur „Bearbeiten“
+    return (
+      <Button asChild variant="outline" className={`${NEBENAKTION} ${breite}`}>
+        <Link href={bearbeitenHref(z.id)}>
+          <Blocks className="mr-2 size-4" aria-hidden />
+          Bearbeiten
+          <span className="sr-only">: {z.titel}</span>
+        </Link>
+      </Button>
+    )
+  }
   if (!z.hatDatei) {
     return (
       <Button asChild variant="outline" className={`${NEBENAKTION} ${breite}`}>
@@ -605,6 +626,9 @@ function ZeilenMenue({
   const entwurf = z.art === 'entwurf'
   const ueberarbeiten = ueberarbeitenErlaubt(z)
   const anderes = anderesWerkzeugErlaubt(z)
+  // PROJ-94: Eigene Seiten haben weder Skript noch KI-Antwort, und bis zur ersten Veröffentlichung keine Datei
+  const eigene = z.werkzeug === EIGENE_SEITE
+  const erst = !!z.nochNichtVeroeffentlicht
   const punkt = 'min-h-11 cursor-pointer gap-2 focus:bg-ws-raised focus:text-ws-text'
 
   async function anderesWerkzeugStarten() {
@@ -639,7 +663,7 @@ function ZeilenMenue({
             Vorschau ansehen
           </DropdownMenuItem>
         )}
-        {!entwurf && (
+        {!entwurf && !eigene && (
           <DropdownMenuItem asChild={ueberarbeiten.erlaubt} disabled={!ueberarbeiten.erlaubt} className={`${punkt} items-start`}>
             {ueberarbeiten.erlaubt ? (
               <Link href={ablaufHref(z.id, 4)}>
@@ -657,7 +681,7 @@ function ZeilenMenue({
             )}
           </DropdownMenuItem>
         )}
-        {!entwurf && (
+        {!entwurf && !eigene && (
           <DropdownMenuItem
             disabled={!anderes.erlaubt}
             className={`${punkt} items-start`}
@@ -670,13 +694,31 @@ function ZeilenMenue({
             </span>
           </DropdownMenuItem>
         )}
-        {!entwurf && (
+        {!entwurf && erst && (
+          <>
+            <DropdownMenuItem disabled className={`${punkt} items-start`}>
+              <Share2 className="mt-0.5 size-4" aria-hidden />
+              <span className="grid">
+                Teilen …
+                <span className="text-xs text-ws-faint">Erst veröffentlichen</span>
+              </span>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled className={`${punkt} items-start`}>
+              <Globe className="mt-0.5 size-4" aria-hidden />
+              <span className="grid">
+                {LINK_TEXTE.erzeugen} …
+                <span className="text-xs text-ws-faint">Erst veröffentlichen</span>
+              </span>
+            </DropdownMenuItem>
+          </>
+        )}
+        {!entwurf && !erst && (
           <DropdownMenuItem className={punkt} onSelect={() => setTeilen({ id: z.id, titel: z.titel, linkMoeglich: kannLinkHaben(z.format, z.hatDatei) })}>
             <Share2 className="size-4" aria-hidden />
             Teilen …
           </DropdownMenuItem>
         )}
-        {!entwurf && kannLinkHaben(z.format, z.hatDatei) && (
+        {!entwurf && !erst && kannLinkHaben(z.format, z.hatDatei) && (
           <DropdownMenuItem className={punkt} onSelect={() => setLink({ id: z.id, titel: z.titel })}>
             <Globe className="size-4" aria-hidden />
             {z.oeffentlich ? 'Öffentlicher Link …' : `${LINK_TEXTE.erzeugen} …`}

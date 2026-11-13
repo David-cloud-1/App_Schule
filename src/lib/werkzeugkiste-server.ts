@@ -6,6 +6,7 @@ import {
   type AblaufErgebnis,
   dateiEndung,
   feldIds,
+  EIGENE_SEITE,
   feldStandards,
   findeWerkzeug,
   pruefeSkriptDatei,
@@ -146,13 +147,22 @@ export function ungueltig(error: z.ZodError) {
 }
 
 /** Satz und Code, wenn Schritt 4 wegen eines Entwurfs im Baukasten-Editor gesperrt ist (PROJ-89) */
+export const EIGENE_SEITE_OHNE_ABLAUF = 'Eine selbst gebaute Seite hat keinen Ablauf mit Schritten.'
 export const ENTWURF_IM_EDITOR = 'Zu diesem Material gibt es einen Entwurf im Editor.'
 
 /**
  * Schritt 4 ändert die veröffentlichte Antwort. Solange im Baukasten-Editor ein
  * Entwurf liegt, würden zwei Fassungen auseinanderlaufen – deshalb 409 mit Code.
  */
-export function entwurfSperre(zeile: { status: string; hat_entwurf?: boolean | null }) {
+export function eigeneSeiteSperre(zeile: { werkzeug?: string }) {
+  if (zeile.werkzeug !== EIGENE_SEITE) return null
+  return NextResponse.json({ error: EIGENE_SEITE_OHNE_ABLAUF, hint: 'Bearbeite sie im Baukasten.', code: 'eigene_seite' }, { status: 409 })
+}
+
+export function entwurfSperre(zeile: { status: string; werkzeug?: string; hat_entwurf?: boolean | null }) {
+  // PROJ-94: Eine eigene Seite hat keinen Ablauf (kein Skript, keine KI-Antwort) – Schritt 4 gibt es dort nie
+  const eigene = eigeneSeiteSperre(zeile)
+  if (eigene) return eigene
   if (zeile.status !== 'fertig' || !zeile.hat_entwurf) return null
   return NextResponse.json(
     { error: ENTWURF_IM_EDITOR, hint: 'Öffne ihn im Editor, veröffentliche oder verwirf ihn, dann geht es hier weiter.', code: 'entwurf_im_editor' },
@@ -401,6 +411,8 @@ export async function erzeugeAuszug(
   id: string,
   antwort: string,
   quellePfad: string = einlesungPfad(ownerId, id),
+  /** PROJ-94: Eine eigene Seite hat nie eine Einlesung – ein Auszug nur mit Platzhalter ist dort gültig */
+  leerErlaubt = false,
 ): Promise<boolean> {
   try {
     const speicher = service.storage.from(WK_BUCKET)
@@ -419,7 +431,7 @@ export async function erzeugeAuszug(
       const eigen = await speicher.download(`${ablaufOrdner(ownerId, id)}/${eigeneDatei(pfad)}`)
       if (!eigen.error && eigen.data) behalten[pfad] = new Uint8Array(await eigen.data.arrayBuffer())
     }
-    if (error && Object.keys(behalten).length === 1) return false
+    if (error && !leerErlaubt && Object.keys(behalten).length === 1) return false
     const zip = zipSync(behalten, { level: 6 })
     const { error: hochFehler } = await speicher.upload(auszugPfad(ownerId, id), zip, {
       contentType: 'application/zip',

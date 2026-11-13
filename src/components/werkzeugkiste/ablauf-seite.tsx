@@ -21,6 +21,7 @@ import {
   DIREKT_ERSTELLEN_AKTIV,
   ablaufKurzinfo,
   eingabeArt,
+  EIGENE_SEITE,
   einstellungenFuerWerkzeug,
   neuerAblaufHref,
   schrittAusParam,
@@ -151,6 +152,11 @@ export function AblaufSeite({ id }: { id: string }) {
     setLadeFehler(null)
     try {
       const { ablauf: a } = await ladeAblauf(id)
+      // PROJ-94: Eine eigene Seite hat keinen Ablauf (kein Skript, keine KI-Antwort) – direkt in den Editor
+      if (a.werkzeug === EIGENE_SEITE) {
+        window.location.replace(bearbeitenHref(id))
+        return
+      }
       setAblauf(a)
       setAuswahl(a.auswahl)
       setWerkzeug(a.werkzeug)

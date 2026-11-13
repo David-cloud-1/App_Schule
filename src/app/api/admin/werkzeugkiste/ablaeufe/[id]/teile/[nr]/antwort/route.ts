@@ -11,7 +11,7 @@ import {
   ladeEigenenAblauf,
   leseAdresse,
   ungueltig,
-  zeileZuAblauf,
+  zeileZuAblauf, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 import {
   fingerabdruck,
@@ -54,6 +54,8 @@ export async function POST(request: Request, { params }: Kontext) {
   const { id, nr: nrText } = await params
   const zeile = await ladeEigenenAblauf(auth.supabase, id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   const teile = zeile.teile
   if (!teile) return fehler('Dieser Ablauf ist nicht in Teile geteilt.', 400)
   if (zeile.status === 'fertig') {

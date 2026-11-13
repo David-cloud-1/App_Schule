@@ -17,7 +17,7 @@ import {
   skriptPfad,
   vorbelegung,
   zeileZuAblauf,
-  type AblaufZeile,
+  type AblaufZeile, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 
 export const maxDuration = 60
@@ -35,6 +35,8 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const quelle = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!quelle) return fehler('Dieses Material gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(quelle)
+  if (keinAblauf) return keinAblauf
 
   if (quelle.herkunft_name) return fehler(`${HINWEIS_AUS_REGAL}. Lade für ein neues Material ein eigenes Skript hoch.`, 409)
   if (quelle.skript_entfernt_am) return fehler(`${HINWEIS_SKRIPT_ENTFERNT}. Lade das Skript für ein neues Material erneut hoch.`, 409)

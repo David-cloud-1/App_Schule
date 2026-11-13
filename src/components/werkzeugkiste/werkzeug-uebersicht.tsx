@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { PencilRuler } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   neuerAblaufHref,
@@ -23,7 +24,7 @@ const KACHEL_FARBE: Record<WerkzeugGruppe['farbe'], string> = {
  * startet den Ablauf mit vorgewähltem Werkzeug; noch nicht freigeschaltete
  * Werkzeuge stehen ruhig als „kommt bald“ da.
  */
-export function WerkzeugUebersicht() {
+export function WerkzeugUebersicht({ onEigeneSeite }: { onEigeneSeite?: () => void }) {
   return (
     <div className="space-y-8">
       {WERKZEUG_GRUPPEN.map((gruppe) => (
@@ -43,6 +44,31 @@ export function WerkzeugUebersicht() {
           </ul>
         </section>
       ))}
+      {onEigeneSeite && (
+        <section aria-labelledby="gruppe-selbst-bauen" className="space-y-3">
+          <h2 id="gruppe-selbst-bauen" className="text-xs font-semibold uppercase tracking-wider text-ws-faint">
+            Selbst bauen
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <li>
+              {/* PROJ-94: kein Werkzeug mit Ablauf, sondern ein Dialog zum Anlegen */}
+              <button
+                type="button"
+                onClick={onEigeneSeite}
+                className="flex min-h-11 w-full items-start gap-3 rounded-2xl border border-ws-line bg-ws-surface p-4 text-left transition-colors duration-200 hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-ws-green/15 text-ws-green">
+                  <PencilRuler className="size-5" aria-hidden />
+                </span>
+                <span className="grid min-w-0 gap-0.5">
+                  <span className="font-semibold text-ws-text">Eigene Seite bauen</span>
+                  <span className="text-sm text-ws-muted">Ohne Skript und ohne KI: Baue eine Interaktive Seite selbst aus Blöcken.</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

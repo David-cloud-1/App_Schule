@@ -102,6 +102,8 @@ describe('entferneAlteSkripte', () => {
     const abfrage = svc.queries[0].calls
     expect(abfrage.find((c) => c.method === 'eq')!.args).toEqual(['status', 'fertig'])
     expect(abfrage.find((c) => c.method === 'is')!.args).toEqual(['skript_entfernt_am', null])
+    // PROJ-94: eigene Seiten haben nie ein Skript und werden nie angefasst
+    expect(abfrage.find((c) => c.method === 'neq')!.args).toEqual(['werkzeug', 'eigen'])
     expect(abfrage.find((c) => c.method === 'lt')!.args).toEqual(['skript_hochgeladen_am', skriptGrenze(jetzt).toISOString()])
 
     expect(remove).toHaveBeenCalledWith(['u1/a1/skript.pdf', 'u1/a1/einlesung.zip'])

@@ -11,7 +11,7 @@ import {
   kernFehlerAntwort,
   ladeEigenenAblauf,
   leseAdresse,
-  zeileZuAblauf,
+  zeileZuAblauf, eigeneSeiteSperre,
 } from '@/lib/werkzeugkiste-server'
 
 export const maxDuration = 60
@@ -38,6 +38,8 @@ export async function POST(_request: Request, { params }: Kontext) {
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
   if (!zeile) return fehler('Diesen Ablauf gibt es nicht mehr.', 404)
+  const keinAblauf = eigeneSeiteSperre(zeile)
+  if (keinAblauf) return keinAblauf
   if (!zeile.kennzahlen) return fehler('Das Skript ist noch nicht eingelesen.', 400)
 
   const einlesung = await leseAdresse(createServiceClient(), einlesungPfad(zeile.owner_id, zeile.id))

@@ -15,7 +15,10 @@ import {
 } from '@/lib/werkzeugkiste-server'
 import {
   ENTWURF_MAX_ZEICHEN,
+  grundgeruest,
   istEditierbar,
+  kernWerkzeug,
+  nieVeroeffentlicht,
   type EditorBefund,
   type Stelle,
   type Struktur,
@@ -117,10 +120,12 @@ export function titelVon(zeile: AblaufZeile): string {
 /** Struktur des Entwurfs oder – falls es keinen gibt – der veröffentlichten Antwort */
 export async function aktuelleStruktur(zeile: EditorZeile): Promise<Struktur> {
   if (zeile.entwurf) return zeile.entwurf
+  // PROJ-94: Eine eigene Seite ohne Entwurf und ohne Fassung beginnt wieder beim Grundgerüst
+  if (!zeile.antwort && nieVeroeffentlicht(zeile)) return grundgeruest(titelVon(zeile))
   if (!zeile.antwort) throw new Error('keine Antwort')
   const r = await kern<{ struktur: Struktur }>('/api/editor/struktur', {
     antwort: zeile.antwort,
-    werkzeug: zeile.werkzeug,
+    werkzeug: kernWerkzeug(zeile.werkzeug),
     einstellungen: zeile.einstellungen ?? {},
   })
   return r.struktur
@@ -193,4 +198,18 @@ export async function geteiltStatus(supabase: SupabaseClient, id: string): Promi
     supabase.from('regal_freigaben').select('id').eq('ablauf_id', id).is('entnommen_am', null).maybeSingle(),
   ])
   return { oeffentlich: !!link.data, imRegal: !!regal.data }
+}
+
+// ── Eigene Seite (PROJ-94) ────────────────────────────────────────────────
+
+export const ERST_VEROEFFENTLICHEN = 'Erst veröffentlichen.'
+
+/**
+ * Download, öffentlicher Link und Regal lesen nur die veröffentlichte Datei.
+ * Eine eigene Seite, die noch nie veröffentlicht wurde, hat keine – dann 409
+ * mit einem Satz, den die Oberfläche zeigen kann.
+ */
+export function erstVeroeffentlichen(zeile: { werkzeug: string; antwort?: string | null; ergebnis?: unknown }) {
+  if (!nieVeroeffentlicht(zeile)) return null
+  return fehler(ERST_VEROEFFENTLICHEN, 409, 'Veröffentliche die Seite im Baukasten, dann geht es hier weiter.')
 }

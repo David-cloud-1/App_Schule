@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { erstVeroeffentlichen } from '@/lib/werkzeugkiste-editor-server'
 import { ausgabePfad, dateiVorhanden, downloadAdresse, fehler, ladeEigenenAblauf } from '@/lib/werkzeugkiste-server'
 
 type Kontext = { params: Promise<{ id: string }> }
@@ -18,6 +19,10 @@ export async function GET(request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
   const zeile = await ladeEigenenAblauf(auth.supabase, (await params).id)
+  if (zeile) {
+    const erst = erstVeroeffentlichen(zeile)
+    if (erst) return erst
+  }
   if (!zeile?.ergebnis) return fehler('Zu diesem Ablauf gibt es noch keine fertige Datei.', 404)
 
   const service = createServiceClient()

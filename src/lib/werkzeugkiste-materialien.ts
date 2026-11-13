@@ -52,6 +52,8 @@ export interface MaterialZeile {
   oeffentlich?: MaterialLink | null
   /** PROJ-89: unveröffentlichte Änderungen im Baukasten-Editor */
   entwurfOffen?: boolean
+  /** PROJ-94: eigene Seite, die noch nie veröffentlicht wurde – Herunterladen, Link und Regal gehen erst danach */
+  nochNichtVeroeffentlicht?: boolean
   /** PROJ-89: im Baukasten bearbeitbar (`bearbeiten`) oder erst als Seite kopierbar (`als-seite`, H5P) */
   baukasten?: 'bearbeiten' | 'als-seite' | null
 }

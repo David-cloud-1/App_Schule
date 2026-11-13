@@ -3,12 +3,16 @@ import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { SPEICHER_GRENZE_BYTES, type MaterialListe } from '@/lib/werkzeugkiste-materialien'
 import {
   LISTEN_SPALTEN,
+  leereSeiteSchema,
   listenAbfrageSchema,
+  speicherPruefen,
   speicherGenutzt,
   suchbegriff,
   zeileZuMaterial,
   type ListenZeile,
 } from '@/lib/werkzeugkiste-materialien-server'
+import { EIGENE_SEITE } from '@/lib/werkzeugkiste'
+import { grundgeruest } from '@/lib/werkzeugkiste-editor'
 import { vermerkZuRegal, type RegalVermerkZeile } from '@/lib/werkzeugkiste-regal-server'
 import { ABLAUF_TABELLE, ungueltig, fehler } from '@/lib/werkzeugkiste-server'
 
@@ -109,4 +113,40 @@ export async function GET(request: Request) {
     speicher: { genutztBytes: (await speicherGenutzt(auth.supabase)) ?? 0, grenzeBytes: SPEICHER_GRENZE_BYTES },
   }
   return NextResponse.json(antwort)
+}
+
+/**
+ * POST /api/admin/werkzeugkiste/materialien (PROJ-94) — „Leere Seite anlegen“:
+ * eine Interaktive Seite ohne Skript und ohne KI, mit Grundgerüst als Entwurf.
+ * Das Material ist sofort „fertig“ (damit läuft es nie ab, E4), hat aber keine
+ * veröffentlichte Fassung: weder Antwort noch Ergebnis noch Datei. Rolle und
+ * Besitz regelt RLS; die Speichergrenze wird vorher geprüft (PROJ-52).
+ */
+export async function POST(request: Request) {
+  const auth = await requireTeacherOrAdmin()
+  if (auth.error) return auth.error
+
+  const eingabe = leereSeiteSchema.safeParse(await request.json().catch(() => null))
+  if (!eingabe.success) return ungueltig(eingabe.error)
+
+  const voll = await speicherPruefen(auth.supabase)
+  if (voll) return voll
+
+  const jetzt = new Date().toISOString()
+  const { data, error } = await auth.supabase
+    .from(ABLAUF_TABELLE)
+    .insert({
+      owner_id: auth.user.id,
+      werkzeug: EIGENE_SEITE,
+      status: 'fertig',
+      schritt: 5,
+      titel: eingabe.data.titel,
+      einstellungen: { format: 'seite' },
+      entwurf: grundgeruest(eingabe.data.titel, eingabe.data.untertitel),
+      entwurf_am: jetzt,
+    })
+    .select('id')
+    .single()
+  if (error || !data) return fehler('Die Seite konnte nicht angelegt werden.', 500)
+  return NextResponse.json({ id: (data as { id: string }).id }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
 }

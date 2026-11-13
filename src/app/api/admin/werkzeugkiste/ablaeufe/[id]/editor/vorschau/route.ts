@@ -1,3 +1,4 @@
+import { kernWerkzeug } from '@/lib/werkzeugkiste-editor'
 import { NextResponse } from 'next/server'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -45,7 +46,7 @@ export async function POST(_request: Request, { params }: Kontext) {
     const eigene = await eigeneFuerBau(service, zeile, JSON.stringify(struktur))
     const gemeinsam = {
       struktur,
-      werkzeug: zeile.werkzeug,
+      werkzeug: kernWerkzeug(zeile.werkzeug),
       einstellungen: zeile.einstellungen ?? {},
       ...(quelle ? { einlesung: { url: quelle.url } } : {}),
     }

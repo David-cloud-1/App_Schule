@@ -1,8 +1,8 @@
-import { baukastenWeg } from '@/lib/werkzeugkiste-editor'
+import { UNTERTITEL_MAX, baukastenWeg, istEigeneSeite, nieVeroeffentlicht } from '@/lib/werkzeugkiste-editor'
 import type { NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { findeWerkzeug, type AblaufErgebnis, type AblaufSchritt } from '@/lib/werkzeugkiste'
+import { EIGENE_SEITE, findeWerkzeug, type AblaufErgebnis, type AblaufSchritt } from '@/lib/werkzeugkiste'
 import {
   SEITENGROESSE,
   SPEICHER_GRENZE_BYTES,
@@ -27,6 +27,24 @@ import {
 export const SKRIPT_MONATE = 12
 
 // ── Liste ─────────────────────────────────────────────────────────────────
+
+/** Eingabe von „Leere Seite anlegen“ (PROJ-94): Titel wie jeder Materialtitel, Untertitel optional */
+export const leereSeiteSchema = z
+  .object({
+    titel: z
+      .string()
+      .trim()
+      .min(1, 'Der Titel darf nicht leer sein.')
+      .max(TITEL_MAX, `Der Titel ist zu lang (höchstens ${TITEL_MAX} Zeichen).`)
+      .regex(/^[^\u0000-\u001f\u007f]+$/, 'Der Titel enthält ungültige Zeichen.'),
+    untertitel: z
+      .string()
+      .trim()
+      .max(UNTERTITEL_MAX, `Der Untertitel ist zu lang (höchstens ${UNTERTITEL_MAX} Zeichen).`)
+      .regex(/^[^\u0000-\u001f\u007f]*$/, 'Der Untertitel enthält ungültige Zeichen.')
+      .optional(),
+  })
+  .strict()
 
 export const listenAbfrageSchema = z.object({
   suche: z.string().max(100, 'Der Suchbegriff ist zu lang.').default(''),
@@ -104,6 +122,7 @@ export function suchbegriff(roh: string): string {
 export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
   const material = z.status === 'fertig'
   const werkzeugName = findeWerkzeug(z.werkzeug)?.name ?? z.werkzeug
+  const nochNie = nieVeroeffentlicht({ werkzeug: z.werkzeug, hatAntwort: z.hat_antwort, ergebnis: z.ergebnis_titel ?? z.ergebnis_format })
   const quelle = z.datei_name ?? z.video_url ?? null
   const titel = material ? (z.titel ?? z.ergebnis_titel ?? quelle ?? werkzeugName) : (quelle ?? werkzeugName)
   return {
@@ -112,11 +131,12 @@ export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
     werkzeug: z.werkzeug,
     titel,
     skriptName: z.datei_name,
-    format: material ? z.ergebnis_format : null,
+    // PROJ-94: Eine nie veröffentlichte eigene Seite hat noch kein Ergebnis, ihr Format steht trotzdem fest
+    format: material ? (z.ergebnis_format ?? (istEigeneSeite(z.werkzeug) ? 'seite' : null)) : null,
     schritt: Math.min(5, Math.max(1, z.schritt)) as AblaufSchritt,
     // Nur Texte zum Kopieren (LearningApps) heißt: kein Download
-    hatDatei: material && z.ergebnis_text == null,
-    hatVorschau: material && z.ergebnis_vorschau !== 'false',
+    hatDatei: material && z.ergebnis_text == null && !nochNie,
+    hatVorschau: material && z.ergebnis_vorschau !== 'false' && !nochNie,
     hatAntwort: !!z.hat_antwort,
     skriptEntfernt: !!z.skript_entfernt_am,
     ...(z.herkunft_name ? { ausRegal: z.herkunft_name } : {}),
@@ -125,6 +145,7 @@ export function zeileZuMaterial(z: ListenZeile): MaterialZeile {
     aktualisiertAm: z.updated_at,
     laeuftAbAm: material ? null : z.laeuft_ab_am,
     ...(z.hat_entwurf ? { entwurfOffen: true } : {}),
+    ...(nochNie ? { nochNichtVeroeffentlicht: true } : {}),
     baukasten: baukastenWeg({ werkzeug: z.werkzeug, status: z.status, format: z.ergebnis_format, hatAntwort: !!z.hat_antwort }),
   }
 }
@@ -219,6 +240,8 @@ export async function entferneAlteSkripte(service: SupabaseClient, jetzt = new D
     .select('id, owner_id')
     .eq('status', 'fertig')
     .is('skript_entfernt_am', null)
+    // PROJ-94: Eine eigene Seite hat nie ein Skript, also gibt es nichts zu entfernen (und kein „Skript entfernt“)
+    .neq('werkzeug', EIGENE_SEITE)
     .lt('skript_hochgeladen_am', skriptGrenze(jetzt).toISOString())
     .order('skript_hochgeladen_am', { ascending: true })
     .limit(jeLauf)

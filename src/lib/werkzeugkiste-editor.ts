@@ -9,6 +9,8 @@
  * Unbekannte Felder werden immer unverändert durchgereicht.
  */
 
+import { EIGENE_SEITE } from '@/lib/werkzeugkiste'
+
 export type Block = { type: string } & Record<string, unknown>
 
 export type Thema = { title?: string; elements: Block[] } & Record<string, unknown>
@@ -53,10 +55,12 @@ export interface EditorDaten {
   /** Ist der Link für alle aktiv bzw. liegt das Material im Regal? (Text im Veröffentlichen-Dialog) */
   oeffentlich: boolean
   imRegal: boolean
+  /** PROJ-94: eigene Seite, die noch nie veröffentlicht wurde (Menü „Zurück auf das Grundgerüst“, Hinweis im Dialog) */
+  nieVeroeffentlicht?: boolean
 }
 
 /** Werkzeuge, deren Seite aus der Kapitel-YAML gebaut wird (E2) */
-export const EDITIERBARE_WERKZEUGE = ['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation'] as const
+export const EDITIERBARE_WERKZEUGE = ['skript', 'kreativ', 'differenzierung', 'arbeitsblatt', 'lernsituation', EIGENE_SEITE] as const
 
 /** Obergrenze für den gespeicherten Entwurf (Zeichen JSON), wie die Datenbank-Regel */
 export const ENTWURF_MAX_ZEICHEN = 2_400_000
@@ -72,6 +76,7 @@ export function istEditierbar(m: {
   status: string
   format?: string | null
 }): boolean {
+  if (m.status === 'fertig' && m.werkzeug === EIGENE_SEITE) return true
   return (
     m.status === 'fertig' &&
     (EDITIERBARE_WERKZEUGE as readonly string[]).includes(m.werkzeug) &&
@@ -86,6 +91,7 @@ export function istEditierbar(m: {
  */
 export function baukastenWeg(m: { werkzeug: string; status: string; format?: string | null; hatAntwort?: boolean }): 'bearbeiten' | 'als-seite' | null {
   if (m.status !== 'fertig' || !(EDITIERBARE_WERKZEUGE as readonly string[]).includes(m.werkzeug)) return null
+  if (m.werkzeug === EIGENE_SEITE) return 'bearbeiten'
   if (m.format === 'seite') return 'bearbeiten'
   if (m.format === 'h5p' && m.hatAntwort) return 'als-seite'
   return null
@@ -307,4 +313,80 @@ export function sprungmarke(ort: Ort | 'deckblatt' | 'abschluss' | { thema: numb
   if (ort === 'deckblatt') return 'deckblatt'
   if (ort === 'abschluss') return 'abschluss'
   return 'block' in ort ? `k${ort.thema}-e${ort.block}` : `k${ort.thema}`
+}
+
+
+// ── Eigene Seite ohne Skript (PROJ-94) ────────────────────────────────────
+
+/** Schule, wie sie die Werkzeugkiste vorbelegt */
+export const STANDARD_SCHULE = 'Berufsschule für Spedition und Touristik'
+
+/** Höchstlänge des Untertitels beim Anlegen */
+export const UNTERTITEL_MAX = 200
+
+/**
+ * Unter welchem Werkzeug-Namen der Kern eine Seite liest, prüft und baut. Er
+ * kennt „Eigene Seite“ nicht und braucht es nicht: Als Seite gelten für jedes
+ * Werkzeug dieselben Regeln, und ohne Skript fallen die Regeln für „Ganzes
+ * Skript“ und „Kreativ“ weg. „Arbeitsblatt“ ist dafür das neutrale Werkzeug.
+ */
+export function kernWerkzeug(werkzeug: string): string {
+  return werkzeug === EIGENE_SEITE ? 'arbeitsblatt' : werkzeug
+}
+
+/** Ist das Material eine selbst gebaute Seite (ohne Skript, ohne KI)? */
+export function istEigeneSeite(werkzeug: string | null | undefined): boolean {
+  return werkzeug === EIGENE_SEITE
+}
+
+/**
+ * Eine eigene Seite, die noch nie veröffentlicht wurde: Es gibt weder eine
+ * gespeicherte Fassung (Antwort) noch ein Ergebnis. Abgeleitet, nicht gespeichert
+ * – so kann es nicht von der Wirklichkeit abweichen.
+ */
+export function nieVeroeffentlicht(m: { werkzeug: string; antwort?: string | null; hatAntwort?: boolean | null; ergebnis?: unknown }): boolean {
+  return istEigeneSeite(m.werkzeug) && !m.antwort && !m.hatAntwort && !m.ergebnis
+}
+
+/**
+ * Startinhalt einer eigenen Seite (E2): Deckblatt, ein Thema „Thema 1“ mit
+ * Lernziele-Box und Kapitelbalken, eine leere Lernzielkontrolle. Boxen stehen
+ * als Klasse (wie im aktuellen Master-Prompt), das Schuldesign setzt der Kern.
+ */
+export function grundgeruest(titel: string, untertitel?: string | null): Struktur {
+  const unter = (untertitel ?? '').trim()
+  return {
+    cover: {
+      title: titel.trim(),
+      ...(unter ? { subtitle: unter } : {}),
+      school: STANDARD_SCHULE,
+      duration: '',
+    },
+    chapters: [
+      {
+        title: 'Thema 1',
+        elements: [
+          {
+            type: 'text',
+            content: '<div class="lernziele"><p>Nach diesem Kapitel kannst du…</p><ul><li></li></ul></div><h2>Thema 1</h2><p></p>',
+          },
+        ],
+      },
+    ],
+    final_chapter: { title: 'Lernzielkontrolle' },
+  }
+}
+
+/**
+ * Hat die Seite schon Aufgaben? Ja, sobald ein Block kein reiner Text ist oder die
+ * Lernzielkontrolle mehr als einen Titel hat (PROJ-94, Hinweis beim Veröffentlichen).
+ */
+export function hatAufgaben(struktur: Struktur): boolean {
+  if (struktur.chapters.some((k) => k.elements.some((b) => b.type !== 'text'))) return true
+  const abschluss = struktur.final_chapter ?? {}
+  return Object.entries(abschluss).some(([schluessel, wert]) => {
+    if (schluessel === 'title') return false
+    if (Array.isArray(wert)) return wert.length > 0
+    return wert !== null && wert !== undefined && wert !== ''
+  })
 }
