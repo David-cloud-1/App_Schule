@@ -1,6 +1,6 @@
 # PROJ-94: Werkzeugkiste – Baukasten: Leere Seite von null aufbauen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-12
 **Last Updated:** 2026-11-12
 
@@ -295,4 +295,7 @@ Anlegen → Editor → Vorschau → Veröffentlichen → Download/Link/Regal als
 **Produktionsreif: JA.** Kein offener Fehler, weder kritisch, hoch, mittel noch niedrig. Status: **Approved**. Empfehlung: Beim Deploy den Gesamtablauf (Anlegen → Veröffentlichen → Link → Regal → Anpassen) einmal von Hand in der Produktion durchspielen.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Build Ready nach 2 Min.)
+- **Datum:** 2026-11-13 · **Commit:** f2e7f54 · **Tag:** v1.94.0-PROJ-94
+- Keine Migration, kein Kern-Deploy nötig. Neue Aufrufe ohne Login: 401 (geprüft).
+- **Offen (nur im Browser prüfbar):** Gesamtablauf Anlegen → Editor → Veröffentlichen → Download/Link/Regal/Anpassen sowie 375/768/1440 px.

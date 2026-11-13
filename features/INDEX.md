@@ -110,7 +110,7 @@
 | PROJ-91 | Werkzeugkiste – Baukasten: Blöcke Tabelle und Diagramm | Deployed | [PROJ-91-werkzeugkiste-tabelle-diagramm.md](PROJ-91-werkzeugkiste-tabelle-diagramm.md) | 2026-11-12 |
 | PROJ-92 | Werkzeugkiste – Baukasten: Bilder hochladen und aus dem Skript | Deployed | [PROJ-92-werkzeugkiste-bilder.md](PROJ-92-werkzeugkiste-bilder.md) | 2026-11-12 |
 | PROJ-93 | Werkzeugkiste – Baukasten: Neues Thema oder Block per KI | Planned | [PROJ-93-werkzeugkiste-thema-per-ki.md](PROJ-93-werkzeugkiste-thema-per-ki.md) | 2026-11-12 |
-| PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Approved | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |
+| PROJ-94 | Werkzeugkiste – Baukasten: Leere Seite von null aufbauen | Deployed | [PROJ-94-werkzeugkiste-leere-seite.md](PROJ-94-werkzeugkiste-leere-seite.md) | 2026-11-12 |
 | PROJ-95 | Werkzeugkiste – Baukasten: Typ eines Blocks wechseln | Deployed | [PROJ-95-werkzeugkiste-blocktyp-wechseln.md](PROJ-95-werkzeugkiste-blocktyp-wechseln.md) | 2026-11-12 |
 | PROJ-96 | Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed | [PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md](PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md) | 2026-11-12 |
 
