@@ -9,7 +9,7 @@ import type { Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederun
  *  - über jedem Thema, Block und der Lernzielkontrolle eine schmale Knopfzeile
  *    zeigen (PROJ-97): „Bearbeiten“ schickt die Sprungmarke an die App zurück
  *    (`{ wkWaehle }`), „+ Darunter“ bzw. „+ Block“ bittet um einen neuen Block an
- *    dieser Stelle (`{ wkEinfuegen }`); Deckblatt und Lernzielkontrolle haben kein „+“,
+ *    dieser Stelle (`{ wkEinfuegen }`); an Blöcken (nicht Themen) steht auch „Löschen“ (`{ wkLoesche }`); Deckblatt und Lernzielkontrolle haben kein „+“,
  *  - den klebenden Seitenkopf der Seite (Titel, Fortschritt, Drucken, Zurücksetzen)
  *    ausblenden: Im Editor verdeckt er nur Inhalt,
  *  - die Scrollposition melden (`{ wkScroll }`), damit sie nach einem Neubau
@@ -39,13 +39,14 @@ const CSS = [
   // Seitenkopf: im Editor ohne Nutzen und verdeckt beim Scrollen Inhalt (`.navi` kommt aus dem Kern)
   '.navi{display:none!important}',
   '.wk-leiste{display:flex;justify-content:flex-end;align-items:center;gap:6px;min-height:32px;margin:0 0 4px;font:600 13px/1 system-ui,sans-serif}',
-  '.wk-k,.wk-p{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;',
+  '.wk-k,.wk-p,.wk-d{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;',
   'border:1px solid transparent;border-radius:8px;background:transparent;color:#1e3a8a;font:inherit;cursor:pointer}',
-  '.wk-k:hover,.wk-p:hover,.wk-leiste-aktiv .wk-k{border-color:#1e3a8a;background:#fff}',
-  '.wk-k:focus-visible,.wk-p:focus-visible{outline:3px solid #2563eb;outline-offset:2px}',
+  '.wk-k:hover,.wk-p:hover,.wk-d:hover,.wk-leiste-aktiv .wk-k{border-color:#1e3a8a;background:#fff}',
+  '.wk-k:focus-visible,.wk-p:focus-visible,.wk-d:focus-visible{outline:3px solid #2563eb;outline-offset:2px}',
   '.wk-aktiv{outline:3px solid #2563eb!important;outline-offset:3px}',
-  '@media (hover:none),(pointer:coarse){.wk-leiste{min-height:44px}.wk-k,.wk-p{min-height:44px;min-width:44px;justify-content:center;border-color:#1e3a8a;background:#fff}}',
-  '@media print{.wk-k{display:none!important}.wk-p,.wk-leiste{display:none!important}}',
+  '.wk-d{color:#991b1b}.wk-d:hover{border-color:#991b1b}.wk-d:focus-visible{outline-color:#991b1b}',
+  '@media (hover:none),(pointer:coarse){.wk-leiste{min-height:44px}.wk-k,.wk-p,.wk-d{min-height:44px;min-width:44px;justify-content:center;border-color:#1e3a8a;background:#fff}}',
+  '@media print{.wk-k{display:none!important}.wk-p,.wk-d,.wk-leiste{display:none!important}}',
 ].join('')
 
 const ICON =
@@ -55,6 +56,10 @@ const ICON =
 const ICON_PLUS =
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M12 5v14M5 12h14"/></svg>'
+
+const ICON_PAPIERKORB =
+  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>'
 
 const SKRIPT_TEXT = String.raw`
 (function(){
@@ -81,14 +86,22 @@ for(i=0;i<n.length;i++){
     p.setAttribute("aria-label",(th?"Block am Anfang des Themas einfügen: ":"Block darunter einfügen: ")+t);
     p.innerHTML=${JSON.stringify(ICON_PLUS)}+"<span>"+(th?"Block":"Darunter")+"</span>";
     z.appendChild(p);
+    if(!th){
+      var d=document.createElement("button");
+      d.type="button";d.className="wk-d";d.setAttribute("data-wk-loesche",m);
+      d.setAttribute("aria-label","Block löschen: "+t);
+      d.innerHTML=${JSON.stringify(ICON_PAPIERKORB)}+"<span>Löschen</span>";
+      z.appendChild(d);
+    }
   }
   n[i].parentNode.insertBefore(z,n[i]);
 }
 document.addEventListener("click",function(e){
-  var c=e.target&&e.target.closest?e.target.closest(".wk-k,.wk-p"):null;
+  var c=e.target&&e.target.closest?e.target.closest(".wk-k,.wk-p,.wk-d"):null;
   if(!c)return;
   e.preventDefault();e.stopPropagation();
-  if(c.classList.contains("wk-p"))parent.postMessage({wkEinfuegen:c.getAttribute("data-wk-plus")},"*");
+  if(c.classList.contains("wk-d"))parent.postMessage({wkLoesche:c.getAttribute("data-wk-loesche")},"*");
+  else if(c.classList.contains("wk-p"))parent.postMessage({wkEinfuegen:c.getAttribute("data-wk-plus")},"*");
   else parent.postMessage({wkWaehle:c.getAttribute("data-wk-knopf")},"*");
 },true);
 var tick=false;

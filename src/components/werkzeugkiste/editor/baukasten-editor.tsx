@@ -23,7 +23,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
-import { befundeJeStelle, hatAufgaben, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
+import { befundeJeStelle, hatAufgaben, loescheBlock, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl, type EinfuegeAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
@@ -227,11 +227,39 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     return true
   }
 
+  // PROJ-98: „Löschen“ an einem Block in der Vorschau – gleiche Prüfung wie „Bearbeiten“, nur echte Blöcke
+  function beiVorschauLoesche(m: string): boolean {
+    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
+    if (veraltet || z.gesperrt) return false
+    const a = auswahlAusMarke(m)
+    if (a?.art !== 'block' || !z.struktur.chapters[a.thema]?.elements[a.block]) return false
+    const ort = { thema: a.thema, block: a.block }
+    z.aendere((s) => loescheBlock(s, ort))
+    setAuswahl(null)
+    toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+    return true
+  }
+
   // Katalog öffnen: Stelle nach der gemeinsamen Regel, gelesen im Moment des Aufrufs (Kürzel und „+“ der schmalen Leiste)
   function oeffneKatalog() {
     if (z.gesperrt) return
     setVollbreit(false)
     setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort: einfuegeortAusAuswahl(gewaehlt, z.struktur) }))
+  }
+
+  // Schublade: Block darunter einfügen bzw. löschen (wie im ⋯-Menü der Gliederung)
+  function blockDarunter() {
+    if (z.gesperrt || gewaehlt?.art !== 'block') return
+    const ort = einfuegeortAusAuswahl(gewaehlt, z.struktur)
+    setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort }))
+  }
+
+  function blockLoeschenAusSchublade() {
+    if (z.gesperrt || gewaehlt?.art !== 'block') return
+    const ort = { thema: gewaehlt.thema, block: gewaehlt.block }
+    z.aendere((s) => loescheBlock(s, ort))
+    setAuswahl(null)
+    toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
   }
 
   // Schublade schließen. Am Desktop gibt es kein Blatt, das den Fokus zurückgibt: Er geht zur
@@ -529,6 +557,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             groesse={v.groesse}
             onWaehle={beiVorschauWahl}
             onEinfuegen={beiVorschauEinfuegen}
+            onLoesche={beiVorschauLoesche}
             vollbreit={vollbreit}
             onVollbreit={() => setVollbreit((b) => !b)}
           />
@@ -543,6 +572,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             schliessen={schliesseSchublade}
             angedockt={!istMobil}
             gesperrt={!!z.gesperrt}
+            onBlockDarunter={blockDarunter}
+            onBlockLoeschen={blockLoeschenAusSchublade}
           />
         )}
       </div>

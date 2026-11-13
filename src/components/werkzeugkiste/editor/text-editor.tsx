@@ -16,6 +16,7 @@ import {
   ListOrdered,
   ListChecks,
   PanelTop,
+  Trash2,
   Unlink,
   X,
 } from 'lucide-react'
@@ -271,6 +272,23 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
     }
   }
 
+  // Neue Box hinter die aktuelle Box setzen (statt die vorhandene umzuwandeln)
+  function boxDarunter(klasse: string) {
+    const $from = editor.state.selection.$from
+    for (let d = $from.depth; d > 0; d--) {
+      if ($from.node(d).type.name === 'box') {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt($from.after(d), `<div class="${klasse}"><p></p></div>`)
+          .run()
+        return
+      }
+    }
+  }
+
+  const erhaltenGewaehlt = editor.isActive('erhalten')
+
   function linkSetzen() {
     const alt = String(editor.getAttributes('link').href ?? '')
     const href = window.prompt('Adresse des Links (https://…)', alt || 'https://')
@@ -341,6 +359,11 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
         </Knopf>
       )}
       <span className="mx-1 h-6 w-px bg-ws-line" aria-hidden />
+      {erhaltenGewaehlt && (
+        <Knopf label="Gewählten unveränderten Block löschen" onClick={() => editor.chain().focus().deleteSelection().run()}>
+          <Trash2 className={k} aria-hidden />
+        </Knopf>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -375,8 +398,21 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
           {inBox && (
             <>
               <DropdownMenuSeparator />
+              <DropdownMenuLabel>Neue Box darunter einfügen</DropdownMenuLabel>
+              {BOX_ARTEN.map((b) => (
+                <DropdownMenuItem key={`darunter-${b.klasse}`} onSelect={() => boxDarunter(b.klasse)}>
+                  {b.label}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => editor.chain().focus().lift('box').run()}>
-                <X className="mr-2 size-4" aria-hidden /> Box auflösen
+                <X className="mr-2 size-4" aria-hidden /> Box auflösen (Text bleibt)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => editor.chain().focus().deleteNode('box').run()}
+                className="text-ws-red focus:text-ws-red"
+              >
+                <Trash2 className="mr-2 size-4" aria-hidden /> Box samt Inhalt löschen
               </DropdownMenuItem>
             </>
           )}

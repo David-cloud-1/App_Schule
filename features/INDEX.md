@@ -114,5 +114,6 @@
 | PROJ-95 | Werkzeugkiste – Baukasten: Typ eines Blocks wechseln | Deployed | [PROJ-95-werkzeugkiste-blocktyp-wechseln.md](PROJ-95-werkzeugkiste-blocktyp-wechseln.md) | 2026-11-12 |
 | PROJ-96 | Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed | [PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md](PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md) | 2026-11-12 |
 | PROJ-97 | Werkzeugkiste – Baukasten: Hinzufügen präsenter & Vorschau aufgeräumt | Deployed | [PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md](PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md) | 2026-11-13 |
+| PROJ-98 | Werkzeugkiste – Baukasten: Löschen & Einfügen an der Bearbeitungsstelle | Deployed | [PROJ-98-werkzeugkiste-baukasten-loeschen-und-einfuegen.md](PROJ-98-werkzeugkiste-baukasten-loeschen-und-einfuegen.md) | 2026-11-13 |
 
-## Next Available ID: PROJ-98
+## Next Available ID: PROJ-99

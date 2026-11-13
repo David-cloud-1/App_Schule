@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { ArrowRightLeft, X } from 'lucide-react'
+import { ArrowRightLeft, Plus, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,6 +52,10 @@ interface SchubladeProps {
   angedockt: boolean
   /** Schreibgeschützt (Konflikt, kein Zugriff): Eingaben gesperrt */
   gesperrt?: boolean
+  /** Neuen Block direkt hinter dem gewählten Block einfügen (öffnet den Katalog) */
+  onBlockDarunter?: () => void
+  /** Gewählten Block löschen (mit „Rückgängig“ im Hinweis) */
+  onBlockLoeschen?: () => void
 }
 
 function titelUndZeile(auswahl: Exclude<Auswahl, null>, struktur: Struktur): { titel: string; zeile: string } {
@@ -151,7 +155,7 @@ export function EditorSchublade(props: SchubladeProps) {
 }
 
 /** Was in der Schublade steht – je nach gewählter Stelle */
-function SchubladeInhalt({ auswahl, struktur, aendere, rueckgaengig, materialId, schliessen }: SchubladeProps) {
+function SchubladeInhalt({ auswahl, struktur, aendere, rueckgaengig, materialId, schliessen, onBlockDarunter, onBlockLoeschen }: SchubladeProps) {
   if (auswahl.art === 'deckblatt') return <DeckblattFormular struktur={struktur} aendere={aendere} />
 
   if (auswahl.art === 'thema') {
@@ -196,7 +200,18 @@ function SchubladeInhalt({ auswahl, struktur, aendere, rueckgaengig, materialId,
     )
   }
 
-  return <BlockInhalt auswahl={auswahl} struktur={struktur} aendere={aendere} rueckgaengig={rueckgaengig} materialId={materialId} schliessen={schliessen} />
+  return (
+    <BlockInhalt
+      auswahl={auswahl}
+      struktur={struktur}
+      aendere={aendere}
+      rueckgaengig={rueckgaengig}
+      materialId={materialId}
+      schliessen={schliessen}
+      onBlockDarunter={onBlockDarunter}
+      onBlockLoeschen={onBlockLoeschen}
+    />
+  )
 }
 
 function BlockInhalt({
@@ -206,6 +221,8 @@ function BlockInhalt({
   rueckgaengig,
   materialId,
   schliessen,
+  onBlockDarunter,
+  onBlockLoeschen,
 }: {
   auswahl: { art: 'block'; thema: number; block: number }
   struktur: Struktur
@@ -213,6 +230,8 @@ function BlockInhalt({
   rueckgaengig: () => void
   materialId: string
   schliessen: () => void
+  onBlockDarunter?: () => void
+  onBlockLoeschen?: () => void
 }) {
   const { thema, block: index } = auswahl
   const block = struktur.chapters[thema]?.elements[index]
@@ -253,6 +272,25 @@ function BlockInhalt({
         }}
         schliessen={schliessen}
       />
+      {(onBlockDarunter || onBlockLoeschen) && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-ws-line pt-3">
+          {onBlockDarunter && (
+            <Button type="button" variant="outline" className={NEBENAKTION} onClick={onBlockDarunter}>
+              <Plus className="mr-2 size-4" aria-hidden /> Block darunter einfügen
+            </Button>
+          )}
+          {onBlockLoeschen && (
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(NEBENAKTION, 'border-ws-red/30 text-ws-red hover:bg-ws-red/15 hover:text-ws-red')}
+              onClick={onBlockLoeschen}
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden /> Block löschen
+            </Button>
+          )}
+        </div>
+      )}
       {kannWechseln && (
         <TypWechsel
           offen={wechselOffen}

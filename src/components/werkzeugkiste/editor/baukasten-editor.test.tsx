@@ -274,6 +274,28 @@ describe('Block einfügen (PROJ-90)', () => {
     expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
   })
 
+  it('Schublade: „Block löschen“ entfernt den gewählten Block und schließt die Schublade', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
+    fireEvent.click(within(schublade).getByRole('button', { name: /Block löschen/ }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text'])
+  })
+
+  it('Schublade: „Block darunter einfügen“ öffnet den Katalog hinter dem gewählten Block', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
+    fireEvent.click(within(schublade).getByRole('button', { name: /Block darunter einfügen/ }))
+    fireEvent.click(await waitFor(() => document.querySelector('[data-katalog-eintrag="memory_game"]')!))
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
+    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'fill_blanks', 'memory_game'])
+  })
+
   it('„Block darüber einfügen“ setzt den Block vor den gewählten; Rückgängig nimmt ihn zurück', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
@@ -659,6 +681,19 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(katalogOffen()).not.toBeInTheDocument()
   })
 
+  it('„Löschen“ in der Vorschau entfernt den Block; fremde Absender, Themen und Unbekanntes werden verworfen (PROJ-98)', async () => {
+    const rahmen = await bereit()
+    nachricht({ wkLoesche: 'k0-e1' }, rahmen, window) // fremder Absender
+    nachricht({ wkLoesche: 'k0' }, rahmen) // Thema: nicht über die Vorschau
+    nachricht({ wkLoesche: 'abschluss' }, rahmen)
+    nachricht({ wkLoesche: 'k9-e9' }, rahmen)
+    nachricht({ wkLoesche: 'k0-e1"]x' }, rahmen)
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+    nachricht({ wkLoesche: 'k0-e1' }, rahmen)
+    await gespeichert()
+    expect(typen(0)).toEqual(['text'])
+  })
+
   it('lehnt „+“ ab, solange die Vorschau veraltet ist, und sagt es', async () => {
     const rahmen = await bereit()
     fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
@@ -733,6 +768,14 @@ describe('Hilfsskript: Knopfzeile und Seitenkopf (PROJ-97)', () => {
     expect(document.querySelector('[data-wk-plus="k0"]')!.getAttribute('aria-label')).toMatch(/^Block am Anfang des Themas einfügen/)
   })
 
+  it('„Löschen“ gibt es nur an Blöcken und meldet die Marke (PROJ-98)', () => {
+    const gesendet = laufenLassen()
+    const loeschen = [...document.querySelectorAll('.wk-d')].map((d) => d.getAttribute('data-wk-loesche'))
+    expect(loeschen).toEqual(['k0-e0', 'k0-e1'])
+    ;(document.querySelector('[data-wk-loesche="k0-e1"]') as HTMLElement).click()
+    expect(gesendet).toHaveBeenCalledWith({ wkLoesche: 'k0-e1' }, '*')
+  })
+
   it('meldet den „+“-Klick mit der Marke und „Bearbeiten“ weiter getrennt', () => {
     const gesendet = laufenLassen()
     ;(document.querySelector('[data-wk-plus="k0-e1"]') as HTMLElement).click()
@@ -745,7 +788,7 @@ describe('Hilfsskript: Knopfzeile und Seitenkopf (PROJ-97)', () => {
     laufenLassen()
     const css = document.head.querySelector('style')!.textContent!
     expect(css).toContain('.navi{display:none!important}')
-    expect(css).toContain('@media print{.wk-k{display:none!important}.wk-p,.wk-leiste{display:none!important}}')
+    expect(css).toContain('@media print{.wk-k{display:none!important}.wk-p,.wk-d,.wk-leiste{display:none!important}}')
   })
 
   it('hebt mit der gewählten Stelle auch ihre Knopfzeile hervor', () => {

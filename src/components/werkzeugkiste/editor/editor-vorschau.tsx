@@ -29,6 +29,7 @@ export function EditorVorschau({
   groesse = 0,
   onWaehle,
   onEinfuegen,
+  onLoesche,
   vollbreit = false,
   onVollbreit,
 }: {
@@ -44,6 +45,8 @@ export function EditorVorschau({
   onWaehle?: (marke: string) => boolean
   /** Klick auf „+ Darunter“ bzw. „+ Block“ in der Seite (PROJ-97); false = nicht angenommen (Vorschau veraltet) */
   onEinfuegen?: (marke: string) => boolean
+  /** Block löschen (PROJ-98): wie `onWaehle` – false, wenn die Vorschau nicht aktuell ist */
+  onLoesche?: (marke: string) => boolean
   /** Vorschau über die ganze Breite (Gliederung und Schublade ausgeblendet) */
   vollbreit?: boolean
   onVollbreit?: () => void
@@ -55,11 +58,13 @@ export function EditorVorschau({
   const aktuelleMarke = useRef(marke)
   const waehleRef = useRef(onWaehle)
   const einfuegenRef = useRef(onEinfuegen)
+  const loescheRef = useRef(onLoesche)
   const fehlerRef = useRef(fehler)
   useEffect(() => {
     aktuelleMarke.current = marke
     waehleRef.current = onWaehle
     einfuegenRef.current = onEinfuegen
+    loescheRef.current = onLoesche
     fehlerRef.current = fehler
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
@@ -89,13 +94,14 @@ export function EditorVorschau({
         senden({ wk: aktuelleMarke.current, scrollY: scrollY.current })
       } else if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
         scrollY.current = Math.max(0, n.wkScroll)
-      } else if (typeof n.wkWaehle === 'string' || typeof n.wkEinfuegen === 'string') {
+      } else if (typeof n.wkWaehle === 'string' || typeof n.wkEinfuegen === 'string' || typeof n.wkLoesche === 'string') {
         const einfuegen = typeof n.wkEinfuegen === 'string'
-        const stelle = (einfuegen ? n.wkEinfuegen : n.wkWaehle) as string
-        const angenommen = (einfuegen ? einfuegenRef.current : waehleRef.current)?.(stelle) ?? false
+        const loeschen = typeof n.wkLoesche === 'string'
+        const stelle = (loeschen ? n.wkLoesche : einfuegen ? n.wkEinfuegen : n.wkWaehle) as string
+        const angenommen = (loeschen ? loescheRef.current : einfuegen ? einfuegenRef.current : waehleRef.current)?.(stelle) ?? false
         if (angenommen) {
           // Beim Einfügen bleibt die Seite, wo sie ist, und es wird nichts markiert
-          if (!einfuegen) ausVorschau.current = stelle
+          if (!einfuegen && !loeschen) ausVorschau.current = stelle
           setHinweis(null)
         } else {
           setHinweis(
