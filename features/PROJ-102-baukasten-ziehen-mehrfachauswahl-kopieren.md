@@ -1,6 +1,6 @@
 # PROJ-102: Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16
 
@@ -230,7 +230,112 @@ So ist nach jedem Schritt etwas Brauchbares fertig.
 - Browser-Test (Laptop, iPad quer, Handy): Optik der Sammel-Leiste, Ziehen mit Auto-Scrollen, Ziehen über Aufgaben mit eigener Zieh-Logik (Drag & Drop, Memory), Kopieren zwischen zwei Tabs.
 
 ## QA Test Results
-_To be added by /qa_
+**Geprüft:** 2026-11-16 (Opus, Code-Review und automatische Tests; kein Dev-Server, kein Playwright nach Nutzer-Vorgabe)
+
+### Automatische Prüfungen
+| Prüfung | Ergebnis |
+|---|---|
+| `npx tsc --noEmit -p .` | sauber (Exit 0) |
+| `npx vitest run src/components/werkzeugkiste src/lib/werkzeugkiste src/app/api/admin/werkzeugkiste` | 68 Dateien, 1244 Tests: 1243 grün, **1 rot = bekannter Fehlschlag** `werkzeugkiste-auszug.test.ts` („nennt die Urheberin …“, PROJ-100, nicht dieses Feature) |
+| Neue QA-Tests `src/components/werkzeugkiste/editor/vorschau-skript-mehrfach-qa.test.ts` | 8 grün, 1 `it.fails` (belegt BUG-1) |
+
+Die QA-Tests prüfen: Ziehen endet bei blur, Moduswechsel und pointercancel ohne Wunsch, und der Auto-Scroll-Takt stoppt. Im Schreibschutz und am Handy startet kein Ziehen. Während des Ziehens gehen keine Tasten an die App. Alt+Pfeil kommt mit `alt=true` an. `liesWunsch` lehnt falsche Marken, Typen und Zusätze bei `wkMehr`, `wkLege`, `wkLegeThema` und `wkKopiere` ab. Zusatzfelder (z. B. eingeschleuste Blöcke) werden nie durchgereicht.
+
+### Acceptance Criteria
+**Ziehen in der Vorschau**
+- ✅ Ziehgriff in der Block-Leiste, Einfügelinie (`.wk-linie`), gezogene Blöcke halbtransparent (`.wk-zieht`).
+- ⚠️ Auto-Scrollen am Rand ist umgesetzt (Takt 30 ms, Rand 60 px) und im Test belegt. Ob es sich im Browser gut anfühlt, ist noch nicht geprüft.
+- ✅ Ablegen zwischen Blöcken, am Themenanfang und in leeren Themen. Deckblatt und Lernzielkontrolle sind ausgeschlossen. Das prüfen Skript und `liesWunsch`, die App prüft die Stelle noch einmal.
+- ✅ Themen nur zwischen Themen bzw. vor die Lernzielkontrolle. Abweichung „nur vor ein anderes Thema oder ans Ende“ ist vertretbar, weil das gleichwertig ist.
+- ✅ Esc bricht ab, nichts ändert sich.
+- ⚠️ Nach dem Ablegen ist der Block weiter gewählt, Rückgängig ist ein Schritt. **Aber** nach dem Rückgängig bleibt die Auswahl auf der neuen Stelle stehen und rahmt dort einen anderen Block (siehe BUG-3).
+- ✅ ⌥/Alt + Pfeil verschiebt um eine Stelle, auch über Themengrenzen (`eineStelle`). Am ersten bzw. letzten Block geschieht nichts.
+
+**Verschieben nach …**
+- ✅ „Verschieben nach …“ im ⋯-Menü mit allen Themen. Es setzt ans Ende des Themas, auch bei Mehrfachauswahl.
+- ✅ Handy: „Nach oben/unten“ in der festen Leiste (als Alt+Pfeil an die App), kein Ziehgriff.
+
+**Mehrfachauswahl**
+- ⚠️ ⌘/Strg+Klick und Umschalt+Klick funktionieren, auch über Themengrenzen. Der Anker für Umschalt+Klick stimmt aber nicht immer (BUG-2).
+- ⚠️ Gliederung: Mehrfachauswahl per ⌘/Strg- bzw. Umschalt-Klick, **keine Kontrollkästchen** (bewusste Abweichung). Vertretbar, aber die Funktion ist dort nicht auffindbar, weil es keinen sichtbaren Hinweis gibt. Den Anker-Fehler aus BUG-2 gibt es hier ebenfalls.
+- ✅ Die Leiste zeigt „N Blöcke ausgewählt“ mit Griff, Kopieren, Duplizieren, ⋯ (Verschieben nach …, Auswahl aufheben) und Löschen.
+- ✅ „Alle gleichen auswählen“ (im Thema / auf der Seite) steht im ⋯-Menü eines Einzelblocks.
+- ✅ Ziehen aus der Mehrfachauswahl verschiebt alle Blöcke in alter Reihenfolge (`verschiebeBloecke`). Eine nicht zusammenhängende Auswahl wird an der Zielstelle zusammengeführt.
+- ✅ Mehrfach-Löschen ist ein Rückgängig-Schritt. Ab 5 Blöcken erscheint der `AlertDialog` „N Blöcke löschen?“.
+- ✅ Themen und Blöcke lassen sich nicht mischen: `wkMehr` nimmt nur Block-Marken an, ein Thema-Klick mit ⌘ wird zur Einzelauswahl.
+
+**Kopieren & Einfügen**
+- ⚠️ ⌘/Strg + C/X/V und die Menü-Einträge sind vorhanden. Abweichungen: Ohne Auswahl wird am Ende des **letzten** Themas eingefügt (vertretbar). ⌘C bei markiertem Text in der Vorschau kopiert Blöcke statt Text (BUG-1).
+- ✅ Hinweise „N Blöcke kopiert / eingefügt / ausgeschnitten“.
+- ✅ Zwischen Materialien desselben Kontos, über Tabs und nach dem Neuladen (`localStorage`). Bei einem anderen Konto wird der Inhalt verworfen.
+- ✅ Bilder kommen mit (eigene Kopie im Ziel-Material), Anzahl und 8-MB-Schätzung werden vor dem Schreiben geprüft. Die Seitengröße liefert der Browser, siehe Security.
+- ⚠️ Unbekannte Typen werden ausgelassen und gemeldet. Geprüft wird nur gegen den Gesamtkatalog (`istBekannterTyp`), nicht je Werkzeug. Das ist ausreichend, solange alle Baukasten-Materialien dasselbe Format haben.
+- ✅ Eingefügte Blöcke sind danach gewählt.
+- ✅ Ein Einfügen ist ein Rückgängig-Schritt.
+
+**Allgemein**
+- ✅ Schreibschutz: Kopieren geht. Ziehen, Ausschneiden, Einfügen, Löschen, Verschieben und `legeThema` lehnt die App doppelt ab: `z.gesperrt` in jeder ändernden Funktion, und Marken-Wünsche scheitern ohnehin an `speicherstand !== 'gespeichert'`. Das Skript blendet Griff und Ändern-Knöpfe aus.
+- ✅ Jede Änderung geht über `z.aendere` (Autosave), die Vorschau baut gebündelt neu.
+
+**Edge Cases:** Leeres Thema bleibt stehen ✅ · Einfügen ins selbe Material ergibt Kopien ohne „(Kopie)“, ohne Bild-Kopie ✅ · Fremdtext wird nur als Text eingefügt, maskiert und auf 20 000 Zeichen gekürzt ✅ · gelöschtes Herkunfts-Material: Blöcke kommen ohne Bild und mit Hinweis ✅ · Lernzielkontrolle nicht verschiebbar und nicht kopierbar ✅ · Ziehen bei veralteter Vorschau: Die App lehnt ab und die Kopfzeile meldet es (Abweichung vertretbar).
+
+### Security-Audit (Red Team)
+**Neuer Server-Weg `…/editor/bilder/uebernehmen`**
+- **Besitz:** Beide Materialien werden mit dem Nutzer-Client geladen. Die RLS auf `werkzeug_ablaeufe` zeigt nur eigene Zeilen (`owner_id = auth.uid() AND has_teacher_role()`). Zusätzlich prüft der Server `owner_id === user.id` (doppelte Sicherung) ✅
+- **Informationsabfluss:** Ein fremdes Material ist durch die RLS unsichtbar und liefert dieselbe Antwort wie ein gelöschtes (`200 {fehlend: alle}`). Ob eine fremde ID existiert, lässt sich so nicht erkennen. Der 403-Zweig ist praktisch nicht erreichbar, aber harmlos ✅
+- **Pfade und Namen:** `BILD_NAME` erlaubt nur `images/` plus `[A-Za-z0-9_][A-Za-z0-9_.-]{0,120}`. Unterordner, Backslash, Unicode, `..` und ein führender Punkt sind damit ausgeschlossen, die Länge ist begrenzt (≤ 160). `images/eigen_x.vorschau.jpg` passt nicht zu `EIGENER_PFAD` und geht deshalb nur als Paket-Name an den Kern, nie als Speicherpfad. Ziel-Namen vergibt immer der Server (`randomBytes`) ✅
+- **Zahlen:** `seitenGroesse` muss eine ganze Zahl zwischen 0 und 50 Mio. sein. NaN und Infinity kommen per JSON als `null` an und werden mit 400 abgewiesen ✅. Der Wert kommt aber vom Browser. Wer zu wenig angibt, schadet nur sich selbst, weil das Veröffentlichen die 8 MB im Kern ohnehin erzwingt (Low, siehe BUG-6).
+- **Grenzen:** Höchstens 40 Pfade (doppelte werden entfernt), höchstens 30 eigene Bilder im Ziel, beides vor dem Schreiben geprüft ✅. Nebenläufigkeit: Zwei gleichzeitige Aufrufe können die 30er-Grenze überschreiten. Das gilt genauso für das bestehende Hochladen (BUG-5, Low).
+- **Teilfehler:** Alles Angelegte wird im `catch` entfernt ✅. Bricht der Server nach `maxDuration` ab, läuft kein Aufräumen. Die verwaisten Dateien entfernt das Aufräumen beim Veröffentlichen (PROJ-92) ✅
+- **DoS:** Ein Aufruf hält bis zu 40 Bilder (je ≤ ~3 MB) zuzüglich Base64 im Speicher und ruft den Kern bis zu 80-mal nacheinander auf. Die Anzahl wird erst nach dem Lesen geprüft. Nur für angemeldete Lehrkräfte erreichbar (BUG-5, Low).
+- **Kern-Ergebnis:** Anders als beim Hochladen wird `r.bytes` aus `bild-ablegen` nicht gegen `ERGEBNIS_MAX_BYTES` geprüft (BUG-6, Low).
+- **Proxy/Rollen:** Die Route liegt unter `/api/admin/werkzeugkiste` (Freigabe für Lehrkräfte in `src/lib/roles.ts`) und nutzt `requireTeacherOrAdmin`. Schüler kommen nicht hinein: Proxy und RLS (`has_teacher_role`) lassen sie nicht durch ✅
+
+**Nachrichten aus der Vorschau (G1)**
+- Die neuen Wünsche tragen nur Marken und feste Werte. Die Inhalte liest die App aus ihrer eigenen Struktur, und eingeschleuste Felder werden verworfen (QA-Test) ✅
+- Marken-Wünsche bei veralteter Vorschau werden abgelehnt. `kopiere` kopiert immer die Auswahl der App, nicht eine Marke der Seite ✅
+
+**Zwischenablage (`localStorage`)**
+- Wird beim Kontowechsel verworfen, gilt 7 Tage, höchstens 50 Blöcke und ~1 MB ✅. Ein manipulierter Eintrag (nur über Same-Origin-Zugriff möglich) läuft durch `istBlock`, Typ-Filter, JSON-Kopie und beim Speichern durch `strukturSchema`. Die Bereinigung beim Bau übernimmt der Kern, wie bei Formular- und Rohfassungs-Eingaben ✅. `__proto__` aus `JSON.parse` wird eine eigene Eigenschaft, es gibt keine Prototype-Pollution.
+- `textAlsBlock` maskiert `& < > "`, daher kein HTML aus der System-Zwischenablage ✅
+- Datenschutz-Hinweis: Kopierte Inhalte bleiben nach dem Abmelden bis zu 7 Tage im Browser-Speicher. Sie werden erst verworfen, wenn eine andere Person den Editor öffnet (BUG-7, Low).
+
+### Bugs
+| # | Schweregrad | Fundstelle | Beschreibung / Reproduktion | Vorschlag |
+|---|---|---|---|---|
+| BUG-1 | **Medium** | `src/components/werkzeugkiste/editor/vorschau-skript.ts:410` | ⌘/Strg+C bzw. X in der Vorschau: Bei gewähltem Block fängt das Skript die Taste auch dann ab, wenn Text markiert ist. Die App prüft das (`baukasten-editor.tsx:718`), das Skript nicht. Reproduktion: Block wählen, Text im Block markieren, ⌘C. Ergebnis: Kopiert wird der Block (Toast „1 Block kopiert“), nicht der Text. Belegt durch `it.fails` in `vorschau-skript-mehrfach-qa.test.ts`. | Im Skript `&&!String(getSelection()).length` für c/x ergänzen. |
+| BUG-2 | Low | `src/components/werkzeugkiste/editor/baukasten-editor.tsx:389`, `:513` | Der Anker für Umschalt+Klick wird nur bei Klick in der Vorschau bzw. ⌘-Klick gesetzt. Klick in der Gliederung, Pfeiltasten, Verschieben, Einfügen und „Alle gleichen“ setzen ihn nicht zurück. Reproduktion: Block A in der Vorschau klicken, mit ↓ auf B, Umschalt+Klick auf D. Ergebnis: A–D statt B–D gewählt. Nach einem Verschieben zeigt der Anker auf die alte Stelle. | Anker in `setAuswahlRoh`/`waehleOrte` auf den Primärblock setzen (außer bei „bereich“). |
+| BUG-3 | Low | `baukasten-editor.tsx` (Undo ohne Auswahl-Abgleich, `use-editor-zustand.ts:140`) | Nach Rückgängig eines Verschiebens bleibt die Auswahl auf den neuen Indizes stehen und rahmt andere Blöcke. Ein folgendes Entf löscht diese. Das Muster gibt es seit PROJ-101 (Duplizieren), durch Mehrfachauswahl und Alt+Pfeil fällt es jetzt öfter auf. | Beim Rückgängig die Mehrfachauswahl aufheben oder die Stelle zurückrechnen. |
+| BUG-4 | Low | `baukasten-editor.tsx:434–482` (`fuegeEin`) | Die Bilder werden vor dem Typ-Filter kopiert (auch für Blöcke, die dann ausgelassen werden). `ziel` wird vor dem `await` berechnet, Änderungen während der Server-Anfrage sind also nicht berücksichtigt. Doppeltes ⌘V startet zwei Kopien. `bildPfadeIn` findet auch Bildnamen im Fließtext und meldet sie als „fehlend“. Bei mehr als 40 Bildern oder Namen über 121 Zeichen lehnt der Server mit 400 ab, und nichts wird eingefügt. | Erst filtern, dann Bilder übernehmen. Ziel nach dem `await` neu bestimmen, Einfügen sperren, solange eine Anfrage läuft. Pfade nur aus Bild-Feldern sammeln. |
+| BUG-5 | Low | `src/app/api/admin/werkzeugkiste/ablaeufe/[id]/editor/bilder/uebernehmen/route.ts:97–134` | Die Anzahl-Prüfung (30) läuft erst nach dem Lesen aller bis zu 40 Bilder (Speicher und Zeit). Zwei gleichzeitige Aufrufe können zusammen mehr als 30 Bilder anlegen (Race, wie beim Hochladen). | `vorhanden + pfade.length` vorab prüfen. Die Race ist akzeptabel bzw. wird über das Aufräumen behandelt. |
+| BUG-6 | Low | `uebernehmen/route.ts:153` und `:136` | `bild-ablegen`: `r.bytes` wird nicht gegen `ERGEBNIS_MAX_BYTES` geprüft (das Hochladen tut es). Die 8-MB-Prüfung vertraut der `seitenGroesse` aus dem Browser. Ist die Vorschau noch nicht gebaut, ist sie 0. | Ergebnisgröße prüfen. Seitengröße optional aus der zuletzt gebauten Entwurfsvorschau serverseitig lesen. |
+| BUG-7 | Low | `src/components/werkzeugkiste/editor/block-zwischenablage.ts` | Kopierte Inhalte bleiben nach dem Abmelden bis zu 7 Tage in `localStorage` (gemeinsamer Rechner). | Beim Abmelden `leereZwischenablage()` aufrufen. |
+
+Keine Critical- oder High-Bugs.
+
+### Regression
+- PROJ-101 (Auswählen, Leiste, Tasten), PROJ-89/96/98 (Gliederung, Schublade, Löschen/Einfügen), PROJ-92 (Bilder): Alle bestehenden Tests sind grün. `baukasten-editor.test.tsx` wurde im Commit nur geringfügig angepasst (7 Zeilen), ohne Prüfungen abzuschwächen.
+- Das Einfrieren der Aufgaben bleibt erhalten, der bestehende Skript-Test „friert Aufgaben ein“ ist grün. Ziehen beginnt nur am Griff in `.wk-ui`.
+- Bekannter Fehlschlag außerhalb des Features: `werkzeugkiste-auszug.test.ts` (PROJ-100).
+
+### Offen für den Nutzer (Browser)
+- Ziehen mit der Maus samt Auto-Scrollen (Chrome, Firefox, Safari), auch über Aufgaben mit eigener Zieh-Logik (Drag & Drop, Memory).
+- Sammel-Leiste „N Blöcke ausgewählt“ bei 1440 px und 768 px (iPad quer), Umbruch der Leiste. Handy 375 px: „Nach oben/unten“ und „Verschieben nach …“.
+- Kopieren zwischen zwei Tabs bzw. Materialien samt Bildern. Einfügen von Fremdtext (Freigabe der System-Zwischenablage je Browser, Safari fragt nach).
+- BUG-1 im Browser gegenprüfen (Text markieren und ⌘C in der Vorschau).
+
+### Entscheidung
+**Approved** – keine Critical- oder High-Bugs offen. Empfehlung: BUG-1 (Medium) vor dem Deploy beheben, weil es ein übliches Kopieren stört. Die Low-Bugs können später folgen.
+
+### Nachbesserung (2026-11-16, Sonnet, nach QA mit Opus)
+- **BUG-1 (Medium) behoben:** Das Hilfsskript fängt ⌘/Strg+C und X nicht mehr ab, wenn in der Seite Text markiert ist. Der QA-Test ist jetzt ein normaler Test.
+- **BUG-2 behoben:** Ausgangspunkt für Umschalt+Klick ist jeder zuletzt einzeln gewählte Block (auch nach Pfeiltasten, Gliederung, Verschieben, Einfügen).
+- **BUG-4 teilweise behoben:** Bilder werden nur noch für Blöcke kopiert, die das Material kennt. Offen (Low): Einfügestelle vor der Server-Anfrage, doppeltes ⌘V, mehr als 40 Bilder.
+- **BUG-6 teilweise behoben:** Die Größe des Ergebnisses beim Ablegen wird geprüft (3 MB wie beim Hochladen). Offen (Low): Die Seitengröße kommt vom Browser.
+- **Offen, bewusst nicht behoben (Low):** BUG-3 (Auswahl nach Rückgängig, Muster seit PROJ-101), BUG-5 (30er-Grenze erst nach dem Lesen, Rennen wie beim Hochladen), BUG-7 (Zwischenablage bleibt bis 7 Tage im Browser-Speicher).
+
+### Entscheidung
+**Approved** (keine Critical/High-Bugs offen). Browser-Test des Nutzers steht aus.
 
 ## Deployment
 _To be added by /deploy_

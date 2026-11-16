@@ -199,6 +199,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const nutzer = daten.nutzer ?? 'unbekannt'
   // Eine normale Auswahl beendet immer die Mehrfachauswahl
   const setAuswahlRoh = useCallback((a: Auswahl) => {
+    // Ausgangspunkt für Umschalt+Klick ist jeder zuletzt einzeln gewählte Block
+    if (a?.art === 'block') anker.current = { thema: a.thema, block: a.block }
     setAuswahlState(a)
     setMarkiert([])
   }, [])
@@ -437,7 +439,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     let ohneBild = 0
     const ablage = liesZwischenablage(nutzer)
     if (ablage) {
-      bloecke = ablage.bloecke
+      // Nur Blöcke, die das Material kennt, bekommen ihre Bilder kopiert
+      bloecke = passendeBloecke(ablage.bloecke).passend
       // Aus einem anderen Material: Die Bilder bekommen eine eigene Kopie (Prüfung der Größe vor dem Kopieren)
       const pfade = ablage.material !== daten.id ? bildPfadeIn(bloecke) : []
       if (pfade.length > 0) {
@@ -465,7 +468,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       }
       bloecke = [block]
     }
-    const { passend, ausgelassen } = passendeBloecke(bloecke)
+    const passend = bloecke
+    const ausgelassen = (ablage ? ablage.bloecke.length : bloecke.length) - passend.length
     if (passend.length === 0) {
       toast.error(ausgelassen === 1 ? '1 Block passt nicht in dieses Material und wurde ausgelassen.' : `${ausgelassen} Blöcke passen nicht in dieses Material.`)
       return

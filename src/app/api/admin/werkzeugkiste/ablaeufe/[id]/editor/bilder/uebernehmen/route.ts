@@ -22,6 +22,9 @@ export const maxDuration = 60
 
 type Kontext = { params: Promise<{ id: string }> }
 
+/** Was der Kern nach dem Neukodieren höchstens liefern darf (wie beim Hochladen) */
+const ERGEBNIS_MAX_BYTES = 3_000_000
+
 const BILD_NAME = /^images\/[A-Za-z0-9_][A-Za-z0-9_.-]{0,120}$/
 
 const eingabeSchema = z
@@ -150,13 +153,13 @@ export async function POST(request: Request, { params }: Kontext) {
         // Bild aus dem Skript-Paket: der Kern kodiert neu und legt es ab (wie beim Hochladen)
         const adresse = await schreibAdresse(service, pfadNeu)
         if (!adresse) throw new Error('ablegen')
-        const r = await kern<{ vorschau: string }>('/api/editor/bild-ablegen', {
+        const r = await kern<{ vorschau: string; bytes?: number }>('/api/editor/bild-ablegen', {
           bild: Buffer.from(g.bytes).toString('base64'),
           format: g.art,
           ziel: adresse,
         })
         const v = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(r.vorschau))
-        if (!v) throw new Error('ablegen')
+        if (!v || Number(r.bytes) > ERGEBNIS_MAX_BYTES) throw new Error('ablegen')
         const b = await speicher.upload(vorschauPfad, Buffer.from(v[1], 'base64'), { contentType: 'image/jpeg', upsert: true })
         if (b.error) throw new Error('ablegen')
       }

@@ -407,7 +407,7 @@ function weitergabe(e){
     else if((kl==="Delete"||kl==="Backspace")&&!mod&&!e.altKey)ok=!!auswahl;
     else if(kl==="Escape")ok=true;
     else if(mod&&!e.altKey&&(kl==="d"||kl==="e"||kl==="z"))ok=true;
-    else if(mod&&!e.altKey&&!e.shiftKey&&(kl==="c"||kl==="x"))ok=!!auswahl&&!feld;
+    else if(mod&&!e.altKey&&!e.shiftKey&&(kl==="c"||kl==="x"))ok=!!auswahl&&!feld&&!(typeof getSelection==="function"&&String(getSelection()).length);
     else if(mod&&!e.altKey&&!e.shiftKey&&kl==="v")ok=!feld;
     else if(e.altKey&&e.shiftKey&&!mod&&(e.code==="KeyB"||kl==="b"))ok=true;
     if(!ok&&inBlock&&k!=="Tab"&&!(e.shiftKey&&k==="Shift")&&k!=="Shift"&&k!=="Control"&&k!=="Meta"&&k!=="Alt"&&(feld||k==="Enter"||k===" "))stoppe(e);
