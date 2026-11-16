@@ -2,7 +2,7 @@
 
 ## Status: Planned (Rahmen – Details werden vor dem Bau mit /requirements festgelegt)
 **Created:** 2026-11-12
-**Last Updated:** 2026-11-12
+**Last Updated:** 2026-11-16 (erweitert um „Werkzeug im Editor starten“)
 
 ## Idee in einem Satz
 Im Baukasten-Editor lässt die Lehrkraft ein neues Thema oder einzelne Blöcke von ihrer eigenen KI erzeugen: Die App baut einen kleinen Prompt, die Lehrkraft kopiert ihn in ihre KI und fügt die Antwort wieder ein.
@@ -22,6 +22,14 @@ Im Baukasten-Editor lässt die Lehrkraft ein neues Thema oder einzelne Blöcke v
 - Requires: PROJ-89 (Editor-Grundgerüst)
 - Empfohlen: PROJ-90 (Katalog) für „Block per KI"
 - Berührt: Kern (`prompts.py`) – neue Prompt-Bausteine; `prompt-sync` muss danach grün sein
+
+## Erweiterung (Nutzer, 2026-11-16): Werkzeug im Editor starten
+Entscheidung aus der Planung „Baukasten direkt“ (PROJ-101 ff.): Der Weg „anderes Werkzeug aus dem Editor heraus nutzen“ geht **in diesem Feature auf** und bekommt keine eigene Nummer, weil es derselbe Ablauf ist (kopierter Prompt → Antwort einfügen → Block).
+- **Werkzeug zum aktuellen Thema starten:** An einer Einfügestelle (Katalog-Reiter „Mit Werkzeug erzeugen“) wählt die Lehrkraft ein passendes Werkzeug, z. B. Kahoot-Quiz, Moodle-Fragen, Video-Fragen, Lernsituation. Die App baut den Prompt aus dem Thema (Titel, Lehrtexte, ggf. Skriptstellen) und den Werkzeug-Einstellungen (höchstens drei sichtbar, PROJ-54 E3).
+- **Ergebnis wird ein Block:** Die eingefügte Antwort wird zu einem passenden Block. Kahoot und Moodle werden zur Quiz-Show (PROJ-110), Video-Fragen zu `interactive_video` oder Einzelaufgaben, Lernsituation zu Lehrtext mit Boxen und Aufgaben. Werkzeuge ohne passenden Block (Podcast, LearningApps) stehen hier nicht zur Wahl.
+- **Gleiche Regeln:** Prüfstelle vor dem Einsetzen, Rückgängig in einem Schritt, kein bezahlter KI-Weg (PROJ-64 bleibt pausiert).
+- **Dependencies zusätzlich:** PROJ-101 (Einfügestellen, Leerzustände), PROJ-110 (Quiz-Show als Ziel für Kahoot/Moodle), PROJ-54 (Werkzeug-Prompts).
+- Die Details (Acceptance Criteria) werden zusammen mit dem übrigen Umfang dieses Features vor dem Bau mit `/requirements` festgelegt.
 
 ## Abgrenzung
 - Bezahlte KI direkt aus dem Editor

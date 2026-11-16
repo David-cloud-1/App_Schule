@@ -129,6 +129,17 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-97: Werkzeugkiste – Baukasten: Hinzufügen präsenter & Vorschau aufgeräumt | Deployed |
 | P1 | PROJ-98: Werkzeugkiste – Baukasten: Löschen & Einfügen an der Bearbeitungsstelle | Deployed |
 | P1 | PROJ-100: Werkzeugkiste – „Meine Materialien“: Herkunft sichtbar & übersichtlicher | In Progress |
+| P1 | PROJ-99: Werkzeugkiste – höhere Qualität und Spielspaß für Selbstlerneinheiten | Architected |
+| P1 | PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste | Planned |
+| P1 | PROJ-102: Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Planned |
+| P1 | PROJ-103: Baukasten – Lehrtext direkt in der Seite tippen | Planned |
+| P1 | PROJ-104: Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Planned |
+| P2 | PROJ-105: Baukasten – Bild neben Text & Bild-Galerie | Planned |
+| P2 | PROJ-106: Baukasten – Bild beschriften & markieren | Planned |
+| P2 | PROJ-107: Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen) | Planned |
+| P2 | PROJ-108: Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Planned |
+| P2 | PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) | Planned |
+| P2 | PROJ-110: Baukasten – Quiz-Show-Block im Kahoot-Stil | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
