@@ -68,7 +68,7 @@ import {
   neuesThemaNach,
 } from '@/components/werkzeugkiste/editor/einfuege-stelle'
 import { EditorVorschau, type Modus } from '@/components/werkzeugkiste/editor/editor-vorschau'
-import { useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
+import { stelleStimmt, useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
 import {
   direktBearbeitbar,
   einfachText,
@@ -205,7 +205,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [schreibBefehl, setSchreibBefehl] = useState<SchreibBefehl | null>(null)
   const schreibRef = useRef<{ nr: number; marke: string; teil: SchreibTeil; ort: Auswahl; start: string } | null>(null)
   const schreibZaehler = useRef(0)
-  const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben)
+  const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben, z.gespeichertSchluessel)
   const [auswahl, setAuswahlState] = useState<Auswahl>(null)
   // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
   const [markiert, setMarkiert] = useState<Ort[]>([])
@@ -526,10 +526,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       beiSchreiben(w)
       return true
     }
-    // Alles mit Marke: Die Marken zählen Themen und Blöcke durch – stimmt die gezeigte Seite nicht mehr mit
-    // dem Entwurf überein, wäre die Stelle falsch.
-    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
-    if (veraltet) return false
+    // Alles mit Marke: Die Marken zählen Themen und Blöcke durch. PROJ-113: Die Seite muss nicht brandneu sein,
+    // aber die angeklickte Stelle muss in der gezeigten Seite dieselbe sein wie jetzt im Entwurf (sonst träfe der
+    // Klick einen anderen Block). So geht ein Klick auch während des Neubaus.
+    if (!stelleStimmt(w.marke, z.struktur, v.gebautSchluessel)) return false
     const a = gueltigeAuswahl(auswahlAusMarke(w.marke), z.struktur)
     if (!a) return false
     switch (w.art) {

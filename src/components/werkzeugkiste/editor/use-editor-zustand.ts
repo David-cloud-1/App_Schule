@@ -7,6 +7,34 @@ import { RUECKGAENGIG_SCHRITTE, SPEICHERN_NACH_MS, type EditorBefund, type Struk
 
 export { mitSprungSkript }
 
+/**
+ * PROJ-113: Fingerabdruck jeder Stelle (Thema `k0`, Block `k0-e1`) einer Struktur. Die Vorschau-Seite trägt diese
+ * Marken; stimmt der Fingerabdruck der angeklickten Stelle in der gebauten und in der aktuellen Struktur überein,
+ * ist ein Klick in die (noch nicht neu gebaute) Seite sicher: Er trifft denselben Block.
+ */
+export function markenSchluessel(s: Struktur): Record<string, string> {
+  const aus: Record<string, string> = {}
+  s.chapters.forEach((k, t) => {
+    aus[`k${t}`] = String(k?.title ?? '')
+    ;(k?.elements ?? []).forEach((e, b) => {
+      aus[`k${t}-e${b}`] = JSON.stringify(e)
+    })
+  })
+  return aus
+}
+
+/**
+ * Trifft ein Klick auf `marke` in der gezeigten Seite denselben Block wie jetzt im Entwurf?
+ * Deckblatt und Lernzielkontrolle hängen nicht an der Nummerierung und stimmen immer.
+ * `gebaut` ist null, solange nicht sicher ist, aus welchem Stand die Seite stammt.
+ */
+export function stelleStimmt(marke: string, aktuell: Struktur, gebaut: Record<string, string> | null): boolean {
+  if (!/^k\d+(-e\d+)?$/.test(marke)) return true
+  if (!gebaut) return false
+  const jetzt = markenSchluessel(aktuell)
+  return marke in jetzt && gebaut[marke] === jetzt[marke]
+}
+
 export type Speicherstand = 'gespeichert' | 'ungespeichert' | 'speichert' | 'fehler'
 
 interface Verlauf {
@@ -36,6 +64,8 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
   const [fehlertext, setFehlertext] = useState<string | null>(null)
   /** Stand nach dem letzten erfolgreichen Speichern – Auslöser für die Vorschau */
   const [gespeichertAm, setGespeichertAm] = useState(0)
+  /** PROJ-113: Fingerabdrücke der zuletzt gespeicherten Struktur (gehört zu `gespeichertAm`) */
+  const [gespeichertSchluessel, setGespeichertSchluessel] = useState<Record<string, string>>(() => markenSchluessel(start))
 
   const struktur = verlauf.liste[verlauf.index]
   const standRef = useRef<string | null>(startStand)
@@ -58,6 +88,7 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
         standRef.current = stand
         gespeichertRef.current = ziel
         setFehlertext(null)
+        setGespeichertSchluessel(markenSchluessel(ziel))
         setGespeichertAm(Date.now())
       }
       setSpeicherstand('gespeichert')
@@ -175,13 +206,14 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
     stand: () => standRef.current,
     hatEntwurf: () => standRef.current !== null,
     gespeichertAm,
+    gespeichertSchluessel,
     neuStart,
   }
 }
 
 const VORSCHAU_NACH_MS = 1500
 /** PROJ-112: Nach einem langsamen Bau wartet der nächste länger (halbe Bauzeit, höchstens so viel), sonst staut sich eine Schlange von Neubauten */
-const VORSCHAU_HOECHSTENS_MS = 5000
+const VORSCHAU_HOECHSTENS_MS = 3000
 
 /** Wartezeit bis zum nächsten Neubau, abhängig davon, wie lange der letzte gedauert hat */
 export function vorschauWartezeit(letzteDauerMs: number): number {
@@ -193,7 +225,7 @@ export function vorschauWartezeit(letzteDauerMs: number): number {
  * Vorschau des gespeicherten Entwurfs: baut neu, sobald gespeichert wurde –
  * nie mehrere gleichzeitig und seltener als gespeichert wird.
  */
-export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = false) {
+export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = false, gespeichertSchluessel?: Record<string, string>) {
   const [html, setHtml] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(true)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -203,6 +235,10 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
   const [gebautFuer, setGebautFuer] = useState<number | null>(null)
   const stand = useRef(gespeichertAm)
   stand.current = gespeichertAm
+  const schluesselRef = useRef(gespeichertSchluessel)
+  schluesselRef.current = gespeichertSchluessel
+  /** PROJ-113: Fingerabdrücke der Struktur, aus der die gezeigte Seite gebaut wurde (null = unsicher, z. B. während des Baus gespeichert) */
+  const [gebautSchluessel, setGebautSchluessel] = useState<Record<string, string> | null>(null)
   const laeuft = useRef(false)
   const nochmal = useRef(false)
   /** Für welchen Speicherstand zuletzt gebaut wurde (nach einer Pause nicht ohne Grund neu bauen) */
@@ -220,6 +256,7 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
     const t0 = performance.now()
     try {
       const fuer = stand.current
+      const schluessel = schluesselRef.current ?? null
       const r = await baueEntwurfVorschau(id)
       const t1 = performance.now()
       const res = await fetch(r.adresse, { cache: 'no-store' })
@@ -233,6 +270,8 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
       setBefunde(r.befunde)
       setGroesse(r.groesse)
       setGebautFuer(fuer)
+      // Wurde während des Baus erneut gespeichert, weiß man nicht sicher, welcher Stand in der Seite steckt
+      setGebautSchluessel(stand.current === fuer ? schluessel : null)
       gebautStand.current = fuer
       setFehler(null)
     } catch (e) {
@@ -254,5 +293,5 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
     return () => clearTimeout(t)
   }, [gespeichertAm, bauen, pausiert])
 
-  return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, neuBauen: bauen }
+  return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, gebautSchluessel, neuBauen: bauen }
 }

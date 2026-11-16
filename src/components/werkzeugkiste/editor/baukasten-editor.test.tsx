@@ -426,7 +426,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     // Speichern, Wartezeit, Neubau scheitert: Erst dann steht die alte Seite dauerhaft „nicht aktuell“
     await screen.findByText('Vorschau gerade nicht aktuell', {}, { timeout: 8000 })
-    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    nachricht({ wkWaehle: 'k2' }, rahmen) // das neue Thema kennt die alte Seite nicht
     expect(await screen.findByText(/Die Vorschau ist nicht aktuell\. Bitte/)).toBeInTheDocument()
     expect(screen.queryByText(/Bitte gleich noch einmal klicken/)).not.toBeInTheDocument()
   }, 15000)
@@ -445,6 +445,19 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 
+  it('PROJ-113: Ein Klick auf einen unveränderten Block geht auch bei veralteter Vorschau sofort', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    await screen.findByRole('complementary')
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
+    expect(screen.queryByText(/Bitte gleich noch einmal klicken/)).not.toBeInTheDocument()
+  })
+
   it('wählt nicht aus, solange die Vorschau veraltet ist, und sagt es', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
@@ -453,7 +466,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
-    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    nachricht({ wkWaehle: 'k2' }, rahmen) // das neue Thema kennt die gezeigte Seite noch nicht
     expect(await screen.findByText(/Bitte gleich noch einmal klicken/)).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
@@ -638,7 +651,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
-    nachricht({ wkEinfuegen: 'k0-e0' }, rahmen)
+    nachricht({ wkEinfuegen: 'k2' }, rahmen)
     expect(await screen.findByText(/Bitte gleich noch einmal klicken/)).toBeInTheDocument()
     expect(katalogOffen()).not.toBeInTheDocument()
   })
