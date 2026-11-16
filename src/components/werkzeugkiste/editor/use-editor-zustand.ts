@@ -180,6 +180,14 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
 }
 
 const VORSCHAU_NACH_MS = 1500
+/** PROJ-112: Nach einem langsamen Bau wartet der nächste länger (halbe Bauzeit, höchstens so viel), sonst staut sich eine Schlange von Neubauten */
+const VORSCHAU_HOECHSTENS_MS = 5000
+
+/** Wartezeit bis zum nächsten Neubau, abhängig davon, wie lange der letzte gedauert hat */
+export function vorschauWartezeit(letzteDauerMs: number): number {
+  if (!Number.isFinite(letzteDauerMs) || letzteDauerMs <= 0) return VORSCHAU_NACH_MS
+  return Math.min(VORSCHAU_HOECHSTENS_MS, Math.max(VORSCHAU_NACH_MS, Math.round(letzteDauerMs / 2)))
+}
 
 /**
  * Vorschau des gespeicherten Entwurfs: baut neu, sobald gespeichert wurde –
@@ -199,6 +207,8 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
   const nochmal = useRef(false)
   /** Für welchen Speicherstand zuletzt gebaut wurde (nach einer Pause nicht ohne Grund neu bauen) */
   const gebautStand = useRef(-1)
+  /** Dauer des letzten Baus (Server, Download, Übergabe an den Rahmen) in ms */
+  const letzteDauer = useRef(0)
 
   const bauen = useCallback(async () => {
     if (laeuft.current) {
@@ -207,12 +217,19 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
     }
     laeuft.current = true
     setLaedt(true)
+    const t0 = performance.now()
     try {
       const fuer = stand.current
       const r = await baueEntwurfVorschau(id)
+      const t1 = performance.now()
       const res = await fetch(r.adresse, { cache: 'no-store' })
       if (!res.ok) throw new Error('Die Vorschau konnte nicht geladen werden.')
-      setHtml(mitSprungSkript(await res.text()))
+      const text = await res.text()
+      const t2 = performance.now()
+      setHtml(mitSprungSkript(text))
+      letzteDauer.current = t2 - t0
+      // Messwerte für die Fehlersuche (nur Konsole, nichts wird gesendet)
+      console.info(`[Vorschau] ${Math.round(r.groesse / 1000)} kB gebaut: Server ${Math.round(t1 - t0)} ms, Laden ${Math.round(t2 - t1)} ms`)
       setBefunde(r.befunde)
       setGroesse(r.groesse)
       setGebautFuer(fuer)
@@ -233,7 +250,7 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
   // PROJ-103: Solange direkt in der Seite geschrieben wird, baut die Vorschau nicht neu (der Cursor soll nie springen)
   useEffect(() => {
     if (pausiert || gebautStand.current === gespeichertAm) return
-    const t = setTimeout(() => void bauen(), gespeichertAm === 0 ? 0 : VORSCHAU_NACH_MS)
+    const t = setTimeout(() => void bauen(), gespeichertAm === 0 ? 0 : vorschauWartezeit(letzteDauer.current))
     return () => clearTimeout(t)
   }, [gespeichertAm, bauen, pausiert])
 

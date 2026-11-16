@@ -60,6 +60,7 @@ export function EditorVorschau({
   schreiben = null,
   schreibBefehl = null,
   beiNeueSeite,
+  schubladeOffen = false,
 }: {
   html: string | null
   laedt: boolean
@@ -94,6 +95,8 @@ export function EditorVorschau({
   schreibBefehl?: SchreibBefehl | null
   /** Die Seite wurde neu gebaut (eine laufende Schreib-Sitzung ist damit vorbei) */
   beiNeueSeite?: () => void
+  /** PROJ-111: Das Formular zur gewählten Stelle ist offen; die Leiste in der Seite zeigt dann kein zweites „Bearbeiten“ */
+  schubladeOffen?: boolean
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -109,7 +112,7 @@ export function EditorVorschau({
   const wunschRef = useRef(onWunsch)
   const fehlerRef = useRef(fehler)
   const leerSchluessel = leer.join(',')
-  const zustandRef = useRef({ modus, lesen, mobil, leer })
+  const zustandRef = useRef({ modus, lesen, mobil, leer, schublade: schubladeOffen })
   useEffect(() => {
     aktuelleMarke.current = marke
     aktuellerName.current = name
@@ -117,7 +120,7 @@ export function EditorVorschau({
     wunschRef.current = onWunsch
     neueSeiteRef.current = beiNeueSeite
     fehlerRef.current = fehler
-    zustandRef.current = { modus, lesen, mobil, leer }
+    zustandRef.current = { modus, lesen, mobil, leer, schublade: schubladeOffen }
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
 
@@ -171,8 +174,8 @@ export function EditorVorschau({
 
   // Modus, Schreibschutz, Handy oder leere Themen geändert: der Seite Bescheid geben
   useEffect(() => {
-    if (bereit.current) senden({ wkZustand: { modus, lesen, mobil, leer: zustandRef.current.leer } })
-  }, [modus, lesen, mobil, leerSchluessel, senden])
+    if (bereit.current) senden({ wkZustand: { modus, lesen, mobil, leer: zustandRef.current.leer, schublade: schubladeOffen } })
+  }, [modus, lesen, mobil, leerSchluessel, schubladeOffen, senden])
 
   useEffect(() => {
     const beiNachricht = (e: MessageEvent) => {

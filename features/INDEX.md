@@ -128,5 +128,7 @@
 | PROJ-108 | Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Planned | [PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md](PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md) | 2026-11-16 |
 | PROJ-109 | Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung | Planned | [PROJ-109-baukasten-externe-einbettung.md](PROJ-109-baukasten-externe-einbettung.md) | 2026-11-16 |
 | PROJ-110 | Baukasten – Quiz-Show-Block im Kahoot-Stil (spielbar, offline) | Planned | [PROJ-110-baukasten-quiz-show-block.md](PROJ-110-baukasten-quiz-show-block.md) | 2026-11-16 |
+| PROJ-111 | Baukasten – Eine Bedienstelle statt drei | In Review | [PROJ-111-baukasten-eine-bedienstelle.md](PROJ-111-baukasten-eine-bedienstelle.md) | 2026-11-16 |
+| PROJ-112 | Baukasten – Vorschau schneller | In Review | [PROJ-112-baukasten-vorschau-schneller.md](PROJ-112-baukasten-vorschau-schneller.md) | 2026-11-16 |
 
-## Next Available ID: PROJ-111
+## Next Available ID: PROJ-113

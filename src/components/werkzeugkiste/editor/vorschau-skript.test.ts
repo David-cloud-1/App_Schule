@@ -200,6 +200,18 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     expect(sichtbar()).toEqual(['bearbeite'])
   })
 
+  it('PROJ-111: Ist das Formular offen, fehlt „Bearbeiten“ in der Leiste (am Desktop); am Handy bleibt es', () => {
+    const sichtbar = () =>
+      [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
+    laufenLassen({ modus: 'bearbeiten', schublade: true })
+    vomEditor({ wk: 'k0-e1', name: 'x' })
+    expect(sichtbar()).toEqual(['griff', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
+    vomEditor({ wkZustand: { modus: 'bearbeiten', schublade: false } })
+    expect(sichtbar()).toContain('bearbeite')
+    vomEditor({ wkZustand: { modus: 'bearbeiten', schublade: true, mobil: true } })
+    expect(sichtbar()).toContain('bearbeite')
+  })
+
   it('Handy: die feste Leiste bekommt Platz am Seitenende (Klasse wk-mobil)', () => {
     laufenLassen({ modus: 'bearbeiten', mobil: true })
     expect(document.body.classList.contains('wk-mobil')).toBe(true)

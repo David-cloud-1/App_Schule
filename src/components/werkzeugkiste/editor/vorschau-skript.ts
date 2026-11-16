@@ -113,7 +113,7 @@ const SKRIPT_TEXT = String.raw`
 var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
 var ICON=${JSON.stringify(ICONS)};
-var modus="bearbeiten",lesen=false,mobil=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null;
+var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null;
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
 function elt(t){return t&&t.nodeType===1?t:(t&&t.parentElement)||null}
@@ -163,7 +163,8 @@ function leisteAktualisieren(){
   var art=!auswahl?"":(viele?"viele":(/-e\d+$/.test(auswahl)?"block":(/^k\d+$/.test(auswahl)?"thema":"sonst")));
   typ.textContent=viele?(mehr.length+" Blöcke ausgewählt"):auswahlName;
   bGriff.hidden=lesen||mobil||(art!=="block"&&art!=="thema"&&art!=="viele");
-  bBearb.hidden=viele;
+  // PROJ-111: Ist das Formular schon offen, braucht es kein zweites „Bearbeiten“ in der Leiste
+  bBearb.hidden=viele||(schublade&&!mobil);
   bPlus.hidden=lesen||viele||(art!=="block"&&art!=="thema");
   bPlus.querySelector("span").textContent=art==="thema"?"Block":"Darunter";
   bPlus.setAttribute("aria-label",art==="thema"?"Block am Anfang des Themas einfügen":"Block darunter einfügen");
@@ -527,7 +528,7 @@ addEventListener("message",function(e){
   if(d.wkZustand&&typeof d.wkZustand==="object"){
     var z=d.wkZustand;
     if(z.modus==="bearbeiten"||z.modus==="ausprobieren")modus=z.modus;
-    lesen=z.lesen===true;mobil=z.mobil===true;
+    lesen=z.lesen===true;mobil=z.mobil===true;schublade=z.schublade===true;
     leer=Array.isArray(z.leer)?z.leer.filter(function(n){return typeof n==="number"&&n>=0&&n%1===0}).slice(0,500):[];
     anwenden();
     return;

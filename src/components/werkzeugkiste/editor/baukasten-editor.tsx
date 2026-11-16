@@ -742,18 +742,6 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort: einfuegeortAusAuswahl(gewaehlt, z.struktur) }))
   }
 
-  // Schublade: Block darunter einfügen bzw. löschen (wie im ⋯-Menü der Gliederung)
-  function blockDarunter() {
-    if (z.gesperrt || gewaehlt?.art !== 'block') return
-    const ort = einfuegeortAusAuswahl(gewaehlt, z.struktur)
-    setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort }))
-  }
-
-  function blockLoeschenAusSchublade() {
-    if (gewaehlt?.art !== 'block') return
-    loescheBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
-  }
-
   // Schublade schließen. Am Desktop gibt es kein Blatt, das den Fokus zurückgibt: Er geht zur
   // gewählten Zeile der Gliederung, sonst zum Knopf „Gliederung einblenden“, sonst zur Vorschau.
   function schliesseSchublade() {
@@ -1124,6 +1112,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             vollbreit={vollbreit}
             onVollbreit={() => setVollbreit((b) => !b)}
             mehrMarken={mehrMarken}
+            schubladeOffen={schubladeZeigen && schubladeAktiv}
           />
         </section>
         {schubladeZeigen && schubladeAktiv && gewaehlt && (
@@ -1136,8 +1125,6 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             schliessen={schliesseSchublade}
             angedockt={!istMobil}
             gesperrt={!!z.gesperrt}
-            onBlockDarunter={blockDarunter}
-            onBlockLoeschen={blockLoeschenAusSchublade}
           />
         )}
       </div>

@@ -53,6 +53,8 @@ export const SCHREIB_CSS = [
   '.wk-papier .ProseMirror-selectednode{outline:2px solid #26640C}',
   // Formatleiste
   `.wk-format{position:sticky;top:4px;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:0 0 8px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2);font:600 13px/1.2 system-ui,sans-serif}`,
+  // PROJ-111: Nach „Fertig“ ist die Leiste weg. Ohne diese Regel überstimmt `display:flex` das Attribut `hidden`.
+  '.wk-format[hidden]{display:none!important}',
   '.wk-format-unten{position:fixed;left:0;right:0;top:auto;bottom:0;margin:0;border-radius:12px 12px 0 0;border-width:1px 0 0}',
   `.wk-fb{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:34px;min-height:34px;padding:4px 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:${F.text};font:inherit;cursor:pointer}`,
   `.wk-fb:hover{background:#eff6ff;border-color:${F.text}}`,

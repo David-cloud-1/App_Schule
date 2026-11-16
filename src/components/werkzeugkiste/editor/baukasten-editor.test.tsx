@@ -274,26 +274,17 @@ describe('Block einfügen (PROJ-90)', () => {
     expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
   })
 
-  it('Schublade: „Block löschen“ entfernt den gewählten Block und schließt die Schublade', async () => {
+  it('PROJ-111: Die Schublade zeigt keine doppelten Aktionen (Darunter einfügen, Löschen, zweites „Fertig“); sie liegen in der Leiste und im ⋯-Menü', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
     fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
     const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
-    fireEvent.click(within(schublade).getByRole('button', { name: /Block löschen/ }))
+    expect(within(schublade).queryByRole('button', { name: /Block löschen/ })).not.toBeInTheDocument()
+    expect(within(schublade).queryByRole('button', { name: /Block darunter einfügen/ })).not.toBeInTheDocument()
+    expect(within(schublade).queryByRole('button', { name: 'Fertig' })).not.toBeInTheDocument()
+    // Geschlossen wird mit dem X in der Kopfzeile
+    fireEvent.click(within(schublade).getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
-    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
-    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text'])
-  })
-
-  it('Schublade: „Block darunter einfügen“ öffnet den Katalog hinter dem gewählten Block', async () => {
-    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
-    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
-    const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
-    fireEvent.click(within(schublade).getByRole('button', { name: /Block darunter einfügen/ }))
-    fireEvent.click(await waitFor(() => document.querySelector('[data-katalog-eintrag="memory_game"]')!))
-    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
-    expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'fill_blanks', 'memory_game'])
   })
 
   it('„Block darüber einfügen“ setzt den Block vor den gewählten; Rückgängig nimmt ihn zurück', async () => {
@@ -702,7 +693,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
   it('sagt der Seite beim „bereit“ Modus, Schreibschutz, Handy und leere Themen', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkBereit: true }, rahmen)
-    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1] } }, '*')
+    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1], schublade: false } }, '*')
   })
 
   it('ein Klick in der Seite wählt den Block aus, ohne das Formular zu öffnen, und die Seite bekommt den Typ-Namen', async () => {
@@ -837,11 +828,11 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
-    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'ausprobieren', lesen: false, mobil: false, leer: [1] } }, '*')
+    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'ausprobieren', lesen: false, mobil: false, leer: [1], schublade: false } }, '*')
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
     // In der Seite ist Bearbeiten wirkungslos: Wünsche kommen dort gar nicht mehr an; über die Tasten geht es zurück
     nachricht({ wkTaste: 'e', mod: true }, rahmen)
-    await waitFor(() => expect(senden).toHaveBeenLastCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1] } }, '*'))
+    await waitFor(() => expect(senden).toHaveBeenLastCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1], schublade: false } }, '*'))
     fireEvent.keyDown(window, { key: 'e', ctrlKey: true })
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Ausprobieren' })).toHaveAttribute('data-state', 'on'))
     // Die Auswahl blieb gemerkt: ein Enter öffnet das Formular desselben Blocks – im Modus Bearbeiten
