@@ -1,6 +1,6 @@
 # PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16 (Frontend und Kern-Ergänzung gebaut)
 
@@ -253,7 +253,60 @@ Diese Grundsatzentscheidung war der Opus-Teil. **`/frontend` für PROJ-101 und d
 - **Browser-Test** (Laptop, iPad quer, Handy): Optik der Leiste, Einfügelinie, Einfrieren aller 32 Aufgabentypen im Modus Bearbeiten (Risiko F im Tech Design), Menü an der Klickstelle.
 
 ## QA Test Results
-_To be added by /qa_
+**Getestet:** 2026-11-16 (Sonnet 5.5, QA). **Methode:** Code-Review gegen die Acceptance Criteria, Einheits- und Integrationstests, Typprüfung, Lint, Kern-Quelltext. **Kein Browserlauf** (Regel „Kein Dev-Server“: `npm run dev` und Playwright bringen den MacBook zum Absturz). Alles, was nur ein echter Browser zeigt, steht unten unter „Offen für dich“.
+
+### Automatische Prüfungen
+| Prüfung | Ergebnis |
+|---|---|
+| `vitest src/components/werkzeugkiste` | 29 Dateien, **427 Tests grün** (darunter 28 in `vorschau-skript.test.ts`, 13 „Direkt auf der Seite“) |
+| `tsc --noEmit` | sauber |
+| `eslint` Editor-Ordner | 0 Fehler, 5 Warnungen (React-Compiler-Hinweis zu Refs, u. a. `editor-gliederung.tsx:701`, schon vor PROJ-101 dort) |
+| Kern-Tests (laut Umsetzung) | `kern_vorschau_marken_test.py` 8, gesamt 257 grün; nicht von mir erneut gelaufen |
+| E2E (Playwright) | **nicht geschrieben und nicht gelaufen** (Regel „Kein Dev-Server“). Die Abdeckung liegt in den Einheits- und Integrationstests |
+
+### Acceptance Criteria (Code-Review)
+| Bereich | Ergebnis |
+|---|---|
+| Modus-Schalter (`AdminSegmented`, `ariaLabel`, Standard Bearbeiten, ⌘/Strg+E, Schublade schließt, Auswahl bleibt, kein Neubau) | ✅ |
+| Bearbeiten: Aufgaben eingefroren | ✅ Fenster-Erfassungsphase für Maus/Zeiger/Touch/Tastatur/Zieh-Ereignisse; `click` wird in der Erfassungsphase gestoppt, Fokus in der Seite wird sofort abgegeben. Der Kern bindet in den Aufgaben nur `click`, `input` und `focus` (Quelltext geprüft), alle drei sind abgedeckt |
+| Auswählen (Klick, Rahmen, Hover, Esc/leere Fläche, Gliederung synchron, Doppelklick/Enter) | ✅ |
+| Block-Leiste (Bearbeiten, Darunter, Duplizieren, ⋯, Löschen rot mit `aria-label`, sticky, Löschen mit „Rückgängig“, alte Knopfzeile weg) | ✅, Abweichungen siehe Bugs und die dokumentierten (kein Ziehgriff, kein „Kopieren“ bis PROJ-102) |
+| Leerzustände (6 Schnellblöcke + „Alle Blöcke …“, „+ Block/+ Thema“, Einfügelinie, neuer Block sofort gewählt) | ✅, Platzhaltertexte weichen ab (BUG-1) |
+| Tastatur (Pfeile, Enter, Entf, ⌘/Strg+D, Esc; nicht in Eingabefeldern) | ✅ solange die Vorschau den Fokus hat (BUG-3) |
+| Handy/Tablet (Leiste unten fest, 44 px, Schalter da) | ✅ im Code; Optik nicht gesehen |
+| Allgemein: nur in der Editor-Vorschau, schreibgeschützt, Animation ≤ 200 ms + „Bewegung reduzieren“, Kontrast | ✅ (Skript nur in der Vorschau, Test prüft Kontraste, `prefers-reduced-motion` im Stylesheet, App lehnt ändernde Wünsche bei `gesperrt` selbst ab) |
+
+### Security-Audit (Red Team)
+- **Sandbox** unverändert: `sandbox="allow-scripts"`, kein `allow-same-origin`, `referrerPolicy="no-referrer"`. ✅
+- **Absender:** App nimmt nur Nachrichten von `rahmen.contentWindow` an; das Skript nur von `parent`. ✅
+- **Wünsche:** `liesWunsch` verwirft fremde Marken (Regex, ≤ 40 Zeichen), unbekannte Typen (feste Liste von 6), Tasten außerhalb der Liste, unsinnige Zahlen. Mit Marke wird zusätzlich auf veraltete Vorschau, existierenden Block und Schreibschutz geprüft. ✅
+- **Einschleusen:** Typ-Namen kommen über `textContent`, `innerHTML` nur mit festen Icon-Konstanten; `finde()` bereinigt die Marke. ✅
+- **Inhalte ändern:** Die Seite ändert nie selbst etwas, alles läuft über `z.aendere`, Rückgängig und Autosave bleiben richtig. ✅
+- **Veröffentlichte Seite:** Kern ändert nur mit `marken=True` etwas; Test mit Prüfsumme. Skript steckt nur in der Editor-Vorschau. ✅
+- **Gefälschte Nachrichten** aus der Seite (z. B. durch Fremd-Inhalte im Regal) können höchstens dieselben geprüften Wünsche stellen, die Leiste auch stellen darf; ein gefälschtes Menü landet an beliebiger Stelle im Fenster, aber ohne Folgen. Kein Befund.
+- Neue Daten, APIs oder Rechte gibt es nicht. Keine Geheimnisse im Skript.
+
+### Bugs
+| ID | Schwere | Befund |
+|---|---|---|
+| BUG-1 | Low | **Platzhaltertexte weichen von der Spec ab.** Der Kern zeigt für jeden übersprungenen Block „Dieser Block kann nicht angezeigt werden (Typ: …). Klicke ihn an …“ (`seite.py` ~1433). Ein leerer Lehrtext, ein Bild ohne Datei oder eine leere Aufgabe bekommt also keinen Satz wie „Klicke hier und schreibe los.“ bzw. „Bild hierher ziehen oder klicken.“, und bei kaputten Blöcken weicht der Wortlaut von „… konnte nicht angezeigt werden.“ ab. Funktional ok (auswählbar, löschbar). Der Satz für Lehrtext gehört mit zu PROJ-103, der für Bilder zu PROJ-104 |
+| BUG-2 | Low | **Leiste am Thema ohne Löschen/Duplizieren/⋯.** Für ein Thema zeigt die Leiste nur „Bearbeiten“ und „Block“. Die Spec erwähnt „Themen löschen fragt weiter per `AlertDialog`“ für die Leiste. Das Löschen geht weiter über die Gliederung. Nicht in „Abweichungen“ dokumentiert |
+| BUG-3 | Low | **Tastenkürzel gelten nur bei Fokus in der Vorschau.** Schließt man die Schublade, geht der Fokus an die Gliederungszeile (`schliesseSchublade`); dort greifen Pfeile, Enter, Entf nicht, und ⌘/Strg+D öffnet das Browser-Lesezeichen. Ein Klick in die Vorschau behebt es |
+| BUG-4 | Low | **Leiste „bei Platzmangel darunter“ fehlt.** Sie wird bei Platzmangel an den Rand (4 px) gedrückt und kann so den Anfang des Blocks verdecken (z. B. Deckblatt ganz oben). Am Handy liegt die feste Leiste über dem Seitenende, ohne Abstand unten |
+
+Keine Critical-, High- oder Medium-Bugs.
+
+### Regression
+Alle Editor-Tests (427) grün, Typprüfung sauber. Gliederung, Schublade, Katalog, Typ wechseln, Löschen/Einfügen (PROJ-98), Bilder (PROJ-92) laufen über dieselben Bausteine wie vorher und sind in den Integrationstests abgedeckt. Datenbank, APIs und Proxy-Freigaben wurden nicht angefasst.
+
+### Offen für dich (Browser, nicht von mir prüfbar)
+1. **Laptop (Chrome/Safari/Firefox):** Rahmen, Leiste, Einfügelinie, Menü „⋯“ an der Klickstelle, Modus-Schalter.
+2. **iPad quer und Handy:** Antippen wählt, Leiste unten, 44-px-Flächen, Scrollen mit Wischen geht weiter.
+3. **Einfrieren:** in „Bearbeiten“ je einmal in einen Block jedes Aufgabentyps klicken (Memory, Kreuzworträtsel, Drag & Drop, Lückentext, Zuordnen); nichts darf reagieren. Danach in „Ausprobieren“ muss alles gehen.
+4. Doppelklick auf Text: Dabei darf keine blaue Textmarkierung hängen bleiben.
+
+### Entscheidung
+**Produktionsreif: JA** (keine Critical/High-Bugs). Der Browser-Test oben liegt bei dir und sollte vor dem Deploy kurz laufen.
 
 ## Deployment
 _To be added by /deploy_
