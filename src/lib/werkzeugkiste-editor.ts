@@ -57,6 +57,8 @@ export interface EditorDaten {
   imRegal: boolean
   /** PROJ-94: eigene Seite, die noch nie veröffentlicht wurde (Menü „Zurück auf das Grundgerüst“, Hinweis im Dialog) */
   nieVeroeffentlicht?: boolean
+  /** PROJ-102: wer das Material gerade bearbeitet (die Zwischenablage gehört einer Person) */
+  nutzer?: string
 }
 
 /** Werkzeuge, deren Seite aus der Kapitel-YAML gebaut wird (E2) */

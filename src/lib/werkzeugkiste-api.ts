@@ -529,6 +529,18 @@ export function ladeMaterialBilder(id: string) {
   return anfrage<{ bilder: MaterialBild[]; mehr: boolean; skript?: boolean }>(`/ablaeufe/${id}/editor/bilder`, { method: 'POST', body: '{}' })
 }
 
+/**
+ * PROJ-102: Bilder aus einem anderen eigenen Material in dieses übernehmen (eigene Kopie).
+ * Zurück kommt die Zuordnung alter Name → neuer Name. `seitenGroesse` ist die aktuelle Größe der Seite
+ * (für die 8-MB-Prüfung vor dem Kopieren).
+ */
+export function uebernehmeBilder(id: string, von: string, pfade: string[], seitenGroesse: number) {
+  return anfrage<{ zuordnung: Record<string, string>; fehlend: string[] }>(`/ablaeufe/${id}/editor/bilder/uebernehmen`, {
+    method: 'POST',
+    body: JSON.stringify({ von, pfade, seitenGroesse }),
+  })
+}
+
 /** Ein Bild des Materials in Arbeitsgröße (Bild-Block, Bildzuordnung) */
 export function ladeMaterialBild(id: string, pfad: string) {
   return anfrage<{ pfad: string; bild: string; breite: number; hoehe: number }>(`/ablaeufe/${id}/editor/bilder`, {

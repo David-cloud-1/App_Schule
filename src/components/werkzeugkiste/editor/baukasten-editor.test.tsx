@@ -20,7 +20,7 @@ vi.mock('@/lib/werkzeugkiste-api', async (original) => ({
 }))
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn() }) }))
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 
 import { WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { BaukastenEditor } from './baukasten-editor'
@@ -708,7 +708,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
   it('ein Klick in der Seite wählt den Block aus, ohne das Formular zu öffnen, und die Seite bekommt den Typ-Namen', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkWaehle: 'k0-e1' }, rahmen)
-    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wk: 'k0-e1', name: 'Lückentext', still: true }, '*'))
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wk: 'k0-e1', name: 'Lückentext', mehr: [], still: true }, '*'))
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     // „Bearbeiten“ (oder Enter) öffnet das Formular, Esc schließt es, ein zweites Esc hebt die Auswahl auf
     nachricht({ wkTaste: 'Enter' }, rahmen)
@@ -822,7 +822,8 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
     nachricht({ wkMenue: 'k0-e1', x: 120, y: 80 }, rahmen)
     expect(await screen.findByRole('menuitem', { name: /Nach oben/ })).toBeInTheDocument()
-    expect(screen.getByRole('menuitem', { name: /Nach unten/ })).toHaveAttribute('aria-disabled', 'true') // schon der letzte
+    // Auch der letzte Block kann weiter: in das nächste Thema (PROJ-102)
+    expect(screen.getByRole('menuitem', { name: /Nach unten/ })).not.toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByRole('menuitem', { name: /Typ wechseln/ })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('menuitem', { name: /Nach oben/ }))
     await gespeichert()

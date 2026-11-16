@@ -20,6 +20,9 @@ export { auswahlAusMarke }
  *  - **ausprobieren:** Alle Bedienelemente des Editors sind weg, die Seite verhält sich
  *    wie für Schüler.
  *
+ * PROJ-102: ⌘/Strg+Klick und Umschalt+Klick wählen mehrere Blöcke (`{ wkMehr }`), am Griff der Leiste
+ * lässt sich ziehen (`{ wkLege }`, `{ wkLegeThema }`); Kopieren, Ausschneiden, Einfügen und Alt+Pfeil gehen als Tasten an die App.
+ *
  * Weitere Aufgaben: zu einer Stelle springen (`{ wk }`), klebenden Seitenkopf ausblenden,
  * Scrollposition melden (`{ wkScroll }`) und „bereit“ melden (`{ wkBereit }`).
  *
@@ -53,12 +56,17 @@ const CSS = [
   `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}`,
   '.wk-leiste[hidden],.wk-b[hidden]{display:none!important}',
   'body.wk-bearbeiten.wk-mobil{padding-bottom:72px}',
-  '.wk-leiste-unten{left:0;right:0;bottom:0;justify-content:space-between;border-radius:12px 12px 0 0;border-width:1px 0 0}',
+  '.wk-leiste-unten{left:0;right:0;bottom:0;flex-wrap:wrap;justify-content:space-between;border-radius:12px 12px 0 0;border-width:1px 0 0}',
   `.wk-typ{padding:0 8px;color:${F.textTyp};white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}`,
   `.wk-b{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:${F.text};font:inherit;cursor:pointer}`,
   `.wk-b:hover{background:#eff6ff;border-color:${F.text}}`,
   '.wk-b:focus-visible{outline:3px solid #2563eb;outline-offset:1px}',
   `.wk-d{color:${F.gefahr}}.wk-d:hover{background:#fef2f2;border-color:${F.gefahr}}`,
+  '.wk-griff{cursor:grab!important;touch-action:none;padding:4px 6px}',
+  'body.wk-zieht-aktiv,body.wk-zieht-aktiv *{cursor:grabbing!important;user-select:none!important}',
+  'body.wk-bearbeiten .wk-zieht{opacity:.4}',
+  '.wk-linie{position:fixed;z-index:2147483001;height:4px;margin-top:-2px;border-radius:2px;background:#2563eb;pointer-events:none;box-shadow:0 0 0 2px rgba(37,99,235,.25)}',
+  '.wk-linie[hidden]{display:none!important}',
   '.wk-plus{position:fixed;z-index:2147482999;height:24px;display:flex;align-items:center;justify-content:center;pointer-events:none}',
   '.wk-plus[hidden]{display:none!important}',
   '.wk-plus::before{content:"";position:absolute;left:0;right:0;top:11px;height:2px;background:#2563eb}',
@@ -83,6 +91,10 @@ const ICONS = {
   plus: SVG('<path d="M12 5v14M5 12h14"/>'),
   kopie: SVG('<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'),
   mehr: SVG('<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>'),
+  griff: SVG('<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>'),
+  zwischen: SVG('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'),
+  hoch: SVG('<path d="m18 15-6-6-6 6"/>'),
+  runter: SVG('<path d="m6 9 6 6 6-6"/>'),
   papierkorb: SVG('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>'),
 }
 
@@ -97,7 +109,7 @@ const SKRIPT_TEXT = String.raw`
 var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
 var ICON=${JSON.stringify(ICONS)};
-var modus="bearbeiten",lesen=false,mobil=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null;
+var modus="bearbeiten",lesen=false,mobil=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null;
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
 function elt(t){return t&&t.nodeType===1?t:(t&&t.parentElement)||null}
@@ -125,12 +137,16 @@ var st=document.createElement("style");st.textContent=${JSON.stringify(CSS)};(do
 var leiste=neu("div","wk-ui wk-leiste");
 leiste.setAttribute("role","toolbar");leiste.setAttribute("aria-label","Aktionen für den ausgewählten Bereich");leiste.hidden=true;
 var typ=neu("span","wk-typ");
+var bGriff=knopf("griff",ICON.griff,"Zum Verschieben ziehen","wk-griff");bGriff.setAttribute("title","Ziehen zum Verschieben");
+var bHoch=knopf("hoch",ICON.hoch,"Nach oben");
+var bRunter=knopf("runter",ICON.runter,"Nach unten");
+var bKopiere=knopf("kopiere",ICON.zwischen+"<span>Kopieren</span>","Kopieren");
 var bBearb=knopf("bearbeite",ICON.stift+"<span>Bearbeiten</span>","Bearbeiten");
 var bPlus=knopf("einfuegen",ICON.plus+"<span>Darunter</span>","Block darunter einfügen");
 var bKopie=knopf("dupliziere",ICON.kopie+"<span>Duplizieren</span>","Block duplizieren");
 var bMehr=knopf("menue",ICON.mehr,"Weitere Aktionen");bMehr.setAttribute("aria-haspopup","menu");
 var bWeg=knopf("loesche",ICON.papierkorb,"Block löschen","wk-d");
-[typ,bBearb,bPlus,bKopie,bMehr,bWeg].forEach(function(x){leiste.appendChild(x)});
+[bGriff,typ,bBearb,bPlus,bHoch,bRunter,bKopiere,bKopie,bMehr,bWeg].forEach(function(x){leiste.appendChild(x)});
 document.body.appendChild(leiste);
 
 var plus=neu("div","wk-ui wk-plus");plus.hidden=true;
@@ -138,16 +154,21 @@ var plusKnopf=knopf("einfuegen",ICON.plus+"<span>Block</span>","Block hier einf�
 plus.appendChild(plusKnopf);document.body.appendChild(plus);
 
 function leisteAktualisieren(){
-  var art=!auswahl?"":(/-e\d+$/.test(auswahl)?"block":(/^k\d+$/.test(auswahl)?"thema":"sonst"));
-  typ.textContent=auswahlName;
-  bBearb.hidden=false;
-  bPlus.hidden=lesen||(art!=="block"&&art!=="thema");
+  var viele=mehr.length>1;
+  var art=!auswahl?"":(viele?"viele":(/-e\d+$/.test(auswahl)?"block":(/^k\d+$/.test(auswahl)?"thema":"sonst")));
+  typ.textContent=viele?(mehr.length+" Blöcke ausgewählt"):auswahlName;
+  bGriff.hidden=lesen||mobil||(art!=="block"&&art!=="thema"&&art!=="viele");
+  bBearb.hidden=viele;
+  bPlus.hidden=lesen||viele||(art!=="block"&&art!=="thema");
   bPlus.querySelector("span").textContent=art==="thema"?"Block":"Darunter";
   bPlus.setAttribute("aria-label",art==="thema"?"Block am Anfang des Themas einfügen":"Block darunter einfügen");
-  bKopie.hidden=lesen||art!=="block";
-  bMehr.hidden=lesen||art!=="block";
-  bWeg.hidden=lesen||(art!=="block"&&art!=="thema");
-  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":"Block löschen");
+  bHoch.hidden=lesen||!mobil||(art!=="block"&&art!=="viele");
+  bRunter.hidden=bHoch.hidden;
+  bKopiere.hidden=viele?false:true;
+  bKopie.hidden=lesen||(art!=="block"&&art!=="viele");
+  bMehr.hidden=lesen||(art!=="block"&&art!=="viele");
+  bWeg.hidden=lesen||(art!=="block"&&art!=="thema"&&art!=="viele");
+  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Blöcke löschen":"Block löschen"));
 }
 function plaziere(){
   var e=modus==="bearbeiten"&&auswahl?finde(auswahl):null;
@@ -166,10 +187,12 @@ function plaziere(){
   var left=Math.min(Math.max(4,r.right-w),Math.max(4,innerWidth-w-4));
   leiste.style.top=top+"px";leiste.style.left=left+"px";
 }
-function markiere(m,name){
+function markiere(m,name,liste){
   var a=document.querySelectorAll(".wk-aktiv"),i;
   for(i=0;i<a.length;i++)a[i].classList.remove("wk-aktiv");
   var e=m?finde(m):null;
+  mehr=Array.isArray(liste)?liste.filter(function(x){return typeof x==="string"&&/^k\d+-e\d+$/.test(x)}).slice(0,100):[];
+  if(mehr.length>1&&e){mehr.forEach(function(x){var f=finde(x);if(f)f.classList.add("wk-aktiv")})}else mehr=[];
   if(e)e.classList.add("wk-aktiv");
   auswahl=e?m:null;auswahlName=e&&typeof name==="string"?name.slice(0,60):"";
   leisteAktualisieren();plaziere();
@@ -219,7 +242,7 @@ function baueEinfuegestellen(){
 // ── Einfügelinie zwischen zwei Blöcken (nur mit Maus) ─────────────────
 function grob(){return typeof matchMedia==="function"&&matchMedia("(hover:none),(pointer:coarse)").matches}
 function bewegt(ev){
-  if(modus!=="bearbeiten"||lesen||mobil||grob())return;
+  if(modus!=="bearbeiten"||lesen||mobil||grob()||ziehen)return;
   var t=elt(ev.target);
   if(!t)return;
   if(t.closest&&t.closest(".wk-ui")){return}
@@ -260,6 +283,8 @@ function aktion(a){
   else if(t==="loesche")p({wkLoesche:m});
   else if(t==="thema")p({wkThemaNeu:true});
   else if(t==="schnell")p({wkSchnell:m,typ:a.getAttribute("data-wk-typ")});
+  else if(t==="kopiere")p({wkKopiere:m});
+  else if(t==="hoch"||t==="runter")p({wkTaste:t==="hoch"?"ArrowUp":"ArrowDown",mod:false,shift:false,alt:true});
   else if(t==="menue"){var r=a.getBoundingClientRect();p({wkMenue:m,x:Math.round(r.right),y:Math.round(r.bottom)})}
 }
 
@@ -289,8 +314,82 @@ addEventListener("click",function(e){
   stoppe(e);
   var m=markeVon(t);
   if(!m){p({wkAbwaehle:true});return}
-  if(e.detail>=2)p({wkBearbeite:m});else p({wkWaehle:m});
+  var mitMod=e.metaKey||e.ctrlKey||e.shiftKey;
+  if(mitMod&&/-e\d+$/.test(m)&&!mobil)p({wkMehr:m,wie:e.shiftKey?"bereich":"umschalten"});
+  else if(e.detail>=2)p({wkBearbeite:m});else p({wkWaehle:m});
 },true);
+
+// ── Ziehen: nur am Griff der Leiste; die Seite meldet am Ende genau einen Wunsch ─
+var linie=neu("div","wk-ui wk-linie");linie.hidden=true;document.body.appendChild(linie);
+var zeiger={x:0,y:0},ziehTakt=null;
+function ziehMarken(){return mehr.length>1?mehr:(auswahl?[auswahl]:[])}
+function grenzen(thema,gesperrt){
+  var liste=[],els=Array.prototype.slice.call(document.querySelectorAll("[data-wk]")),i;
+  if(thema){
+    var ks=els.filter(function(x){return x.tagName==="H2"&&/^k\d+$/.test(x.getAttribute("data-wk"))});
+    ks.forEach(function(k){var r=k.getBoundingClientRect();liste.push({marke:k.getAttribute("data-wk"),y:r.top,x:r.left,b:r.width})});
+    var ab=els.filter(function(x){return /^abschluss/.test(x.getAttribute("data-wk"))})[0];
+    if(ab){var ra=ab.getBoundingClientRect();liste.push({marke:"abschluss",y:ra.top,x:ra.left,b:ra.width})}
+    else if(ks.length){var l=ks[ks.length-1].parentNode.lastElementChild;if(l){var rl=l.getBoundingClientRect();liste.push({marke:"abschluss",y:rl.bottom,x:rl.left,b:rl.width})}}
+    return liste;
+  }
+  for(i=0;i<els.length;i++){
+    var x=els[i],m=x.getAttribute("data-wk"),r=x.getBoundingClientRect();
+    if(x.tagName==="H2"&&/^k\d+$/.test(m)){
+      // Ende der Überschrift; ein leeres Thema zeigt dahinter die Vorschläge (auch dort darf abgelegt werden)
+      var nx=x.nextElementSibling,unten=r.bottom;
+      if(nx&&nx.classList.contains("wk-leer"))unten=nx.getBoundingClientRect().bottom;
+      liste.push({marke:m,wo:"anfang",y:unten,x:r.left,b:r.width});
+    }else if(/^k\d+-e\d+$/.test(m)&&!gesperrt[m]){
+      liste.push({marke:m,wo:"nach",y:r.bottom,x:r.left,b:r.width});
+    }
+  }
+  return liste;
+}
+function zielBerechnen(){
+  if(!ziehen)return;
+  var gesperrt={};ziehMarken().forEach(function(m){gesperrt[m]=1});
+  var liste=grenzen(ziehen.thema,gesperrt),beste=null,d=1e9,i;
+  for(i=0;i<liste.length;i++){var dd=Math.abs(liste[i].y-zeiger.y);if(dd<d){d=dd;beste=liste[i]}}
+  ziehen.ziel=beste;
+  if(!beste){linie.hidden=true;return}
+  linie.hidden=false;linie.style.top=beste.y+"px";linie.style.left=beste.x+"px";linie.style.width=beste.b+"px";
+}
+function startZiehen(ev){
+  if(modus!=="bearbeiten"||lesen||mobil||!auswahl||ziehen)return;
+  if(typeof ev.button==="number"&&ev.button!==0)return;
+  ziehen={thema:mehr.length<2&&/^k\d+$/.test(auswahl),ziel:null,id:ev.pointerId};
+  zeiger.x=ev.clientX;zeiger.y=ev.clientY;
+  try{bGriff.setPointerCapture(ev.pointerId)}catch(x){}
+  document.body.classList.add("wk-zieht-aktiv");
+  ziehMarken().forEach(function(m){var f=finde(m);if(f)f.classList.add("wk-zieht")});
+  plus.hidden=true;stoppe(ev);zielBerechnen();
+  ziehTakt=setInterval(function(){
+    if(!ziehen)return;
+    var rand=60,schritt=0;
+    if(zeiger.y<rand)schritt=-Math.max(4,Math.round((rand-zeiger.y)/3));
+    else if(zeiger.y>innerHeight-rand)schritt=Math.max(4,Math.round((zeiger.y-(innerHeight-rand))/3));
+    if(schritt){scrollBy(0,schritt)}
+    zielBerechnen();
+  },30);
+}
+function endeZiehen(senden){
+  if(!ziehen)return;
+  var z=ziehen;ziehen=null;
+  if(ziehTakt){clearInterval(ziehTakt);ziehTakt=null}
+  linie.hidden=true;document.body.classList.remove("wk-zieht-aktiv");
+  var a=document.querySelectorAll(".wk-zieht"),i;for(i=0;i<a.length;i++)a[i].classList.remove("wk-zieht");
+  if(senden&&z.ziel){
+    if(z.thema)p({wkLegeThema:z.ziel.marke});
+    else p({wkLege:z.ziel.marke,wo:z.ziel.wo});
+  }
+  plaziere();
+}
+bGriff.addEventListener("pointerdown",startZiehen);
+addEventListener("pointermove",function(ev){if(!ziehen)return;zeiger.x=ev.clientX;zeiger.y=ev.clientY;zielBerechnen()},{passive:true});
+addEventListener("pointerup",function(){endeZiehen(true)});
+addEventListener("pointercancel",function(){endeZiehen(false)});
+addEventListener("blur",function(){endeZiehen(false)});
 
 // ── Tastatur: nur vereinbarte Kürzel gehen an die App ─────────────────
 function weitergabe(e){
@@ -302,11 +401,14 @@ function weitergabe(e){
   }else{
     var inBlock=!!(t&&t.closest&&t.closest("[data-wk]"));
     if(feld&&!inBlock)return false;
-    if((kl==="ArrowUp"||kl==="ArrowDown")&&!mod&&!e.altKey)ok=!!auswahl;
+    if(ziehen){if(kl==="Escape")endeZiehen(false);stoppe(e);return true}
+    if((kl==="ArrowUp"||kl==="ArrowDown")&&!mod&&!e.shiftKey)ok=!!auswahl;
     else if(kl==="Enter"&&!mod&&!e.altKey&&!e.shiftKey)ok=!!auswahl&&!knopfZiel;
     else if((kl==="Delete"||kl==="Backspace")&&!mod&&!e.altKey)ok=!!auswahl;
     else if(kl==="Escape")ok=true;
     else if(mod&&!e.altKey&&(kl==="d"||kl==="e"||kl==="z"))ok=true;
+    else if(mod&&!e.altKey&&!e.shiftKey&&(kl==="c"||kl==="x"))ok=!!auswahl&&!feld;
+    else if(mod&&!e.altKey&&!e.shiftKey&&kl==="v")ok=!feld;
     else if(e.altKey&&e.shiftKey&&!mod&&(e.code==="KeyB"||kl==="b"))ok=true;
     if(!ok&&inBlock&&k!=="Tab"&&!(e.shiftKey&&k==="Shift")&&k!=="Shift"&&k!=="Control"&&k!=="Meta"&&k!=="Alt"&&(feld||k==="Enter"||k===" "))stoppe(e);
   }
@@ -330,7 +432,7 @@ addEventListener("resize",plaziere);
 function anwenden(){
   document.body.classList.toggle("wk-bearbeiten",modus==="bearbeiten");
   document.body.classList.toggle("wk-mobil",mobil);
-  if(modus!=="bearbeiten"){plus.hidden=true;if(hoverEl){hoverEl.classList.remove("wk-hover");hoverEl=null}}
+  if(modus!=="bearbeiten"){endeZiehen(false);plus.hidden=true;if(hoverEl){hoverEl.classList.remove("wk-hover");hoverEl=null}}
   baueEinfuegestellen();leisteAktualisieren();plaziere();
 }
 
@@ -348,7 +450,7 @@ addEventListener("message",function(e){
     return;
   }
   if(d.wk!==null&&typeof d.wk!=="string")return;
-  var x=markiere(d.wk,d.name);
+  var x=markiere(d.wk,d.name,d.mehr);
   if(typeof d.scrollY==="number"){scrollTo({top:d.scrollY,behavior:"instant"});plaziere();return}
   if(x){
     var r=x.getBoundingClientRect();

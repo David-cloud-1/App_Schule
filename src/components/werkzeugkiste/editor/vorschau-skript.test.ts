@@ -189,11 +189,11 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     const sichtbar = () =>
       [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
     vomEditor({ wk: 'k0-e1', name: 'x' })
-    expect(sichtbar()).toEqual(['bearbeite', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
+    expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
     expect(aktion('einfuegen').textContent).toBe('Darunter')
     vomEditor({ wk: 'k0', name: 'Thema' })
     // Am Thema geht auch Löschen (die App fragt per Dialog nach)
-    expect(sichtbar()).toEqual(['bearbeite', 'einfuegen', 'loesche'])
+    expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'loesche'])
     expect(aktion('einfuegen').textContent).toBe('Block')
     expect(aktion('loesche').getAttribute('aria-label')).toBe('Thema löschen')
     vomEditor({ wk: 'abschluss', name: 'Lernzielkontrolle' })
@@ -378,6 +378,13 @@ describe('Nachrichten der Seite an die App (liesWunsch)', () => {
     expect(liesWunsch({ wkMenue: 'k0-e0', x: 10, y: 20 })).toEqual({ art: 'menue', marke: 'k0-e0', x: 10, y: 20 })
     expect(liesWunsch({ wkSchnell: 'k1', typ: 'text' })).toEqual({ art: 'schnell', marke: 'k1', typ: 'text' })
     expect(liesWunsch({ wkThemaNeu: true })).toEqual({ art: 'neuesThema' })
+    expect(liesWunsch({ wkMehr: 'k0-e1', wie: 'bereich' })).toEqual({ art: 'mehr', marke: 'k0-e1', wie: 'bereich' })
+    expect(liesWunsch({ wkLege: 'k0-e1', wo: 'nach' })).toEqual({ art: 'lege', marke: 'k0-e1', wo: 'nach' })
+    expect(liesWunsch({ wkLege: 'k2', wo: 'anfang' })).toEqual({ art: 'lege', marke: 'k2', wo: 'anfang' })
+    expect(liesWunsch({ wkLegeThema: 'abschluss' })).toEqual({ art: 'legeThema', marke: 'abschluss' })
+    expect(liesWunsch({ wkLegeThema: 'k3' })).toEqual({ art: 'legeThema', marke: 'k3' })
+    expect(liesWunsch({ wkKopiere: 'k0-e1' })).toEqual({ art: 'kopiere', marke: 'k0-e1' })
+    expect(liesWunsch({ wkTaste: 'v', mod: true })).toEqual({ art: 'taste', taste: { key: 'v', mod: true, shift: false, alt: false } })
     expect(liesWunsch({ wkTaste: 'z', mod: true, shift: true })).toEqual({ art: 'taste', taste: { key: 'z', mod: true, shift: true, alt: false } })
   })
 
@@ -402,6 +409,18 @@ describe('Nachrichten der Seite an die App (liesWunsch)', () => {
       { wkTaste: 'a' },
       { wkAbwaehle: 'ja' },
       { wkThemaNeu: 1 },
+      { wkMehr: 'k0', wie: 'bereich' },
+      { wkMehr: 'k0-e1', wie: 'alle' },
+      { wkMehr: 'k0-e1' },
+      { wkLege: 'k0-e1', wo: 'anfang' },
+      { wkLege: 'k0', wo: 'nach' },
+      { wkLege: 'k0-e1', wo: 'unten' },
+      { wkLege: 'k0-e1' },
+      { wkLegeThema: 'k0-e1' },
+      { wkLegeThema: 'deckblatt' },
+      { wkLegeThema: 'k99999999999999' },
+      { wkKopiere: 'k0' },
+      { wkKopiere: 'k0-e1; x' },
     ])
       expect(liesWunsch(n)).toBeNull()
   })
@@ -412,5 +431,164 @@ describe('Nachrichten der Seite an die App (liesWunsch)', () => {
     expect(auswahlAusMarke('k12-e3')).toEqual({ art: 'block', thema: 12, block: 3 })
     expect(auswahlAusMarke('abschluss-summary')).toEqual({ art: 'abschluss' })
     expect(auswahlAusMarke('deckblatt-x')).toBeNull()
+  })
+})
+
+describe('Mehrfachauswahl und Ziehen (PROJ-102)', () => {
+  const taste = (key: string, init: KeyboardEventInit = {}) => {
+    const e = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init })
+    document.body.dispatchEvent(e)
+    return e
+  }
+  const maus = (typ: string, init: MouseEventInit) => window.dispatchEvent(new MouseEvent(typ, { bubbles: true, ...init }))
+  const sichtbar = () =>
+    [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
+
+  /** Lage der Blöcke von oben nach unten, damit die Zielstelle berechnet werden kann (im Testfenster ist alles 0) */
+  function lageSetzen() {
+    const lagen: Record<string, [number, number]> = { k0: [0, 20], 'k0-e0': [20, 100], 'k0-e1': [100, 200], k1: [200, 220], abschluss: [300, 320] }
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const [top, bottom] = lagen[this.getAttribute('data-wk') ?? ''] ?? [0, 0]
+      return { top, bottom, left: 0, right: 400, width: 400, height: bottom - top, x: 0, y: top, toJSON() {} } as DOMRect
+    })
+  }
+
+  it('⌘/Strg+Klick meldet „umschalten“, Umschalt+Klick „bereich“; am Handy gilt ein normaler Klick', () => {
+    const gesendet = laufenLassen()
+    id('text').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, ctrlKey: true }))
+    expect(gesendet).toHaveBeenLastCalledWith({ wkMehr: 'k0-e0', wie: 'umschalten' }, '*')
+    id('text').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, shiftKey: true }))
+    expect(gesendet).toHaveBeenLastCalledWith({ wkMehr: 'k0-e0', wie: 'bereich' }, '*')
+    id('text').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, metaKey: true }))
+    expect(gesendet).toHaveBeenLastCalledWith({ wkMehr: 'k0-e0', wie: 'umschalten' }, '*')
+    // Themen lassen sich nicht in die Mehrfachauswahl nehmen
+    document.querySelector('[data-wk="k0"]')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, ctrlKey: true }))
+    expect(gesendet).toHaveBeenLastCalledWith({ wkWaehle: 'k0' }, '*')
+  })
+
+  it('am Handy gibt es keine Mehrfachauswahl', () => {
+    const gesendet = laufenLassen({ modus: 'bearbeiten', mobil: true })
+    id('text').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1, ctrlKey: true }))
+    expect(gesendet).toHaveBeenLastCalledWith({ wkWaehle: 'k0-e0' }, '*')
+  })
+
+  it('bei mehreren gewählten Blöcken zeigt die Leiste die Anzahl und die Sammel-Aktionen; alle Blöcke sind gerahmt', () => {
+    const gesendet = laufenLassen()
+    vomEditor({ wk: 'k0-e1', name: 'x', mehr: ['k0-e0', 'k0-e1'] })
+    expect(document.querySelector('.wk-typ')!.textContent).toBe('2 Blöcke ausgewählt')
+    expect(sichtbar()).toEqual(['griff', 'kopiere', 'dupliziere', 'menue', 'loesche'])
+    expect([...document.querySelectorAll('.wk-aktiv')].map((e) => e.getAttribute('data-wk'))).toEqual(['k0-e0', 'k0-e1'])
+    expect(aktion('loesche').getAttribute('aria-label')).toBe('Ausgewählte Blöcke löschen')
+    aktion('kopiere').click()
+    expect(gesendet).toHaveBeenCalledWith({ wkKopiere: 'k0-e1' }, '*')
+    // eine Liste mit nur einem Eintrag oder Fremdem ist keine Mehrfachauswahl
+    vomEditor({ wk: 'k0-e1', name: 'x', mehr: ['k0-e1', 'abschluss', '"><b>'] })
+    expect(document.querySelectorAll('.wk-aktiv')).toHaveLength(1)
+    expect(sichtbar()).not.toContain('kopiere')
+  })
+
+  it('am Handy: „Nach oben/unten“ in der festen Leiste, kein Ziehgriff', () => {
+    const gesendet = laufenLassen({ modus: 'bearbeiten', mobil: true })
+    vomEditor({ wk: 'k0-e1', name: 'x' })
+    expect(sichtbar()).toEqual(['bearbeite', 'einfuegen', 'hoch', 'runter', 'dupliziere', 'menue', 'loesche'])
+    aktion('runter').click()
+    expect(gesendet).toHaveBeenLastCalledWith({ wkTaste: 'ArrowDown', mod: false, shift: false, alt: true }, '*')
+  })
+
+  it('schreibgeschützt: Kopieren bei mehreren Blöcken ja, Ziehen und Ändern nein', () => {
+    laufenLassen({ modus: 'bearbeiten', lesen: true })
+    vomEditor({ wk: 'k0-e1', name: 'x', mehr: ['k0-e0', 'k0-e1'] })
+    expect(sichtbar()).toEqual(['kopiere'])
+  })
+
+  it('Ziehen am Griff: ein einziger Wunsch am Ende, mit der nächsten Stelle', () => {
+    const gesendet = laufenLassen()
+    lageSetzen()
+    vomEditor({ wk: 'k0-e1', name: 'x' })
+    aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientX: 5, clientY: 150 }))
+    expect(document.body.classList.contains('wk-zieht-aktiv')).toBe(true)
+    expect(document.querySelector('[data-wk="k0-e1"]')!.classList.contains('wk-zieht')).toBe(true)
+    maus('pointermove', { clientX: 5, clientY: 22 })
+    maus('pointermove', { clientX: 5, clientY: 102 })
+    expect(gesendet).not.toHaveBeenCalled()
+    maus('pointerup', {})
+    expect(gesendet).toHaveBeenCalledTimes(1)
+    // k0-e1 selbst ist gesperrt; am nächsten liegt das Ende von k0-e0
+    expect(gesendet).toHaveBeenCalledWith({ wkLege: 'k0-e0', wo: 'nach' }, '*')
+    expect(document.body.classList.contains('wk-zieht-aktiv')).toBe(false)
+    expect(document.querySelector('.wk-zieht')).toBeNull()
+  })
+
+  it('Ziehen an den Anfang eines Themas meldet „anfang“', () => {
+    const gesendet = laufenLassen()
+    lageSetzen()
+    vomEditor({ wk: 'k0-e1', name: 'x' })
+    aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 150 }))
+    maus('pointermove', { clientY: 21 })
+    maus('pointerup', {})
+    expect(gesendet).toHaveBeenCalledWith({ wkLege: 'k0', wo: 'anfang' }, '*')
+  })
+
+  it('Esc bricht das Ziehen ab: nichts wird gemeldet, nichts bleibt markiert', () => {
+    const gesendet = laufenLassen()
+    lageSetzen()
+    vomEditor({ wk: 'k0-e1', name: 'x' })
+    aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 150 }))
+    maus('pointermove', { clientY: 102 })
+    taste('Escape')
+    maus('pointerup', {})
+    expect(gesendet).not.toHaveBeenCalled()
+    expect(document.body.classList.contains('wk-zieht-aktiv')).toBe(false)
+    expect(document.querySelector('.wk-zieht')).toBeNull()
+  })
+
+  it('ein Thema wird am Griff gezogen und vor ein anderes Thema oder ans Ende gelegt', () => {
+    const gesendet = laufenLassen()
+    lageSetzen()
+    vomEditor({ wk: 'k0', name: 'Thema' })
+    expect(sichtbar()).toContain('griff')
+    aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 5 }))
+    maus('pointermove', { clientY: 290 })
+    maus('pointerup', {})
+    expect(gesendet).toHaveBeenCalledWith({ wkLegeThema: 'abschluss' }, '*')
+  })
+
+  it('ohne Auswahl und im Modus Ausprobieren gibt es kein Ziehen', () => {
+    const gesendet = laufenLassen({ modus: 'ausprobieren' })
+    lageSetzen()
+    aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 5 }))
+    maus('pointerup', {})
+    expect(gesendet).not.toHaveBeenCalled()
+    expect(document.body.classList.contains('wk-zieht-aktiv')).toBe(false)
+  })
+
+  it('gibt ⌘/Strg + C, X, V und Alt + Pfeil weiter – C und X nur mit Auswahl, V auch ohne', () => {
+    const gesendet = laufenLassen()
+    taste('c', { ctrlKey: true })
+    taste('x', { ctrlKey: true })
+    taste('ArrowDown', { altKey: true })
+    expect(gesendet).not.toHaveBeenCalled()
+    taste('v', { metaKey: true })
+    expect(gesendet).toHaveBeenLastCalledWith({ wkTaste: 'v', mod: true, shift: false, alt: false }, '*')
+    gesendet.mockClear()
+    vomEditor({ wk: 'k0-e0', name: 'x' })
+    taste('c', { ctrlKey: true })
+    taste('x', { metaKey: true })
+    const e = taste('ArrowUp', { altKey: true })
+    expect(e.defaultPrevented).toBe(true)
+    expect(gesendet.mock.calls.map((c) => c[0])).toEqual([
+      { wkTaste: 'c', mod: true, shift: false, alt: false },
+      { wkTaste: 'x', mod: true, shift: false, alt: false },
+      { wkTaste: 'ArrowUp', mod: false, shift: false, alt: true },
+    ])
+  })
+
+  it('in Eingabefeldern bleiben ⌘/Strg + C, X, V beim Feld', () => {
+    const gesendet = laufenLassen()
+    vomEditor({ wk: 'k0-e0', name: 'x' })
+    const feld = document.createElement('input')
+    document.body.appendChild(feld)
+    for (const k of ['c', 'x', 'v']) feld.dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, cancelable: true }))
+    expect(gesendet).not.toHaveBeenCalled()
   })
 })

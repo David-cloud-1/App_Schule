@@ -21,8 +21,8 @@ export type Modus = 'bearbeiten' | 'ausprobieren'
  * Nur Text-Nachrichten gehen hin und her (PROJ-96, PROJ-101):
  *  - App → Seite: Zustand (Modus, Schreibschutz, Handy, leere Themen), gewählte Stelle samt
  *    Typ-Name, Scrollposition nach einem Neubau.
- *  - Seite → App: **Wünsche** (auswählen, bearbeiten, einfügen, löschen, duplizieren, Menü,
- *    Schnellauswahl, Tasten), Scrollposition, „bereit“. Die App prüft jede Nachricht streng
+ *  - Seite → App: **Wünsche** (auswählen, mehr auswählen, bearbeiten, einfügen, löschen, duplizieren, kopieren,
+ *    ablegen/ziehen, Menü, Schnellauswahl, Tasten), Scrollposition, „bereit“. Die App prüft jede Nachricht streng
  *    (`liesWunsch`) und führt nur aus, was sie selbst für gültig hält.
  * Die App nimmt Nachrichten nur vom eigenen Rahmen an.
  */
@@ -42,6 +42,7 @@ export function EditorVorschau({
   leer = [],
   vollbreit = false,
   onVollbreit,
+  mehrMarken = [],
 }: {
   html: string | null
   laedt: boolean
@@ -69,6 +70,8 @@ export function EditorVorschau({
   /** Vorschau über die ganze Breite (Gliederung und Schublade ausgeblendet) */
   vollbreit?: boolean
   onVollbreit?: () => void
+  /** PROJ-102: Marken aller gewählten Blöcke, wenn mehrere gewählt sind (sonst leer) */
+  mehrMarken?: string[]
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -77,6 +80,8 @@ export function EditorVorschau({
   const bereit = useRef(false)
   const aktuelleMarke = useRef(marke)
   const aktuellerName = useRef(name)
+  const mehrSchluessel = mehrMarken.join(',')
+  const aktuelleMehr = useRef(mehrMarken)
   const wunschRef = useRef(onWunsch)
   const fehlerRef = useRef(fehler)
   const leerSchluessel = leer.join(',')
@@ -84,6 +89,7 @@ export function EditorVorschau({
   useEffect(() => {
     aktuelleMarke.current = marke
     aktuellerName.current = name
+    aktuelleMehr.current = mehrMarken
     wunschRef.current = onWunsch
     fehlerRef.current = fehler
     zustandRef.current = { modus, lesen, mobil, leer }
@@ -102,12 +108,12 @@ export function EditorVorschau({
   // Andere Stelle gewählt (oder anderer Typ-Name), während die Seite steht: hervorheben und hinspringen
   // (kam der Klick aus der Seite selbst, bleibt sie, wo sie ist)
   useEffect(() => {
-    const schluessel = `${marke ?? ''}|${name}`
+    const schluessel = `${marke ?? ''}|${name}|${mehrSchluessel}`
     if (letzte.current === schluessel) return
     letzte.current = schluessel
-    senden({ wk: marke, name, still: ausVorschau.current === marke })
+    senden({ wk: marke, name, mehr: aktuelleMehr.current, still: ausVorschau.current === marke })
     ausVorschau.current = null
-  }, [marke, name, senden])
+  }, [marke, name, mehrSchluessel, senden])
 
   // Modus, Schreibschutz, Handy oder leere Themen geändert: der Seite Bescheid geben
   useEffect(() => {
@@ -123,9 +129,9 @@ export function EditorVorschau({
       if (n.wkBereit === true) {
         // Neue Seite steht: Zustand, Auswahl und Scrollposition wiederherstellen
         bereit.current = true
-        letzte.current = `${aktuelleMarke.current ?? ''}|${aktuellerName.current}`
+        letzte.current = `${aktuelleMarke.current ?? ''}|${aktuellerName.current}|${aktuelleMehr.current.join(',')}`
         senden({ wkZustand: zustandRef.current })
-        senden({ wk: aktuelleMarke.current, name: aktuellerName.current, scrollY: scrollY.current })
+        senden({ wk: aktuelleMarke.current, name: aktuellerName.current, mehr: aktuelleMehr.current, scrollY: scrollY.current })
         return
       }
       if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
@@ -142,7 +148,7 @@ export function EditorVorschau({
       const angenommen = wunschRef.current?.(w) ?? false
       if (angenommen) {
         // Ein Klick aus der Seite lässt sie, wo sie ist
-        if (w.art === 'waehle' || w.art === 'bearbeite') ausVorschau.current = w.marke
+        if (w.art === 'waehle' || w.art === 'bearbeite' || w.art === 'mehr') ausVorschau.current = w.marke
         setHinweis(null)
       } else {
         setHinweis(

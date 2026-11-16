@@ -189,6 +189,9 @@ export interface GliederungProps {
   themaLoeschenAnfrage?: ThemaLoeschenAnfrage | null
   /** Tastenkürzel zum Anzeigen im Tooltip, z. B. „⌘⇧A“ */
   kuerzel?: string
+  /** PROJ-102: Blöcke der Mehrfachauswahl (hervorgehoben) und Klick mit ⌘/Strg bzw. Umschalt auf einen Block */
+  markiert?: Ort[]
+  onMehr?: (ort: Ort, wie: 'umschalten' | 'bereich') => void
 }
 
 export function EditorGliederung({
@@ -197,6 +200,8 @@ export function EditorGliederung({
   rueckgaengig,
   auswahl,
   setAuswahl,
+  markiert = [],
+  onMehr,
   befunde,
   befundKarte,
   einfuegenAnfrage,
@@ -460,6 +465,8 @@ export function EditorGliederung({
                 waehleThema={() => waehle({ art: 'thema', thema: ti })}
                 gewaehlterBlock={auswahl?.art === 'block' && auswahl.thema === ti ? auswahl.block : null}
                 waehleBlock={(bi) => waehle({ art: 'block', thema: ti, block: bi })}
+                inMehr={(bi) => markiert.some((o) => o.thema === ti && o.block === bi)}
+                mehrKlick={(bi, wie) => onMehr?.({ thema: ti, block: bi }, wie)}
                 befundKarte={befundKarte}
                 aendere={aendere}
                 bewegeBlock={bewegeBlock}
@@ -576,6 +583,8 @@ function ThemaKarte({
   waehleThema,
   gewaehlterBlock,
   waehleBlock,
+  inMehr,
+  mehrKlick,
   befundKarte,
   aendere,
   bewegeBlock,
@@ -597,6 +606,8 @@ function ThemaKarte({
   waehleThema: () => void
   gewaehlterBlock: number | null
   waehleBlock: (b: number) => void
+  inMehr: (b: number) => boolean
+  mehrKlick: (b: number, wie: 'umschalten' | 'bereich') => void
   befundKarte: Map<BefundSchluessel, number>
   aendere: Aendere
   bewegeBlock: (von: Ort, nach: Ort) => void
@@ -698,6 +709,8 @@ function ThemaKarte({
                 alleThemen={alleThemen}
                 gewaehlt={gewaehlterBlock === bi}
                 waehlen={() => waehleBlock(bi)}
+                inMehr={inMehr(bi)}
+                mehrKlick={(wie) => mehrKlick(bi, wie)}
                 hinweise={befundKarte.get(`k${index}-e${bi}`)}
                 aendere={aendere}
                 bewegeBlock={bewegeBlock}
@@ -772,6 +785,8 @@ function BlockZeile({
   alleThemen,
   gewaehlt,
   waehlen,
+  inMehr,
+  mehrKlick,
   hinweise,
   aendere,
   bewegeBlock,
@@ -786,6 +801,8 @@ function BlockZeile({
   alleThemen: string[]
   gewaehlt: boolean
   waehlen: () => void
+  inMehr: boolean
+  mehrKlick: (wie: 'umschalten' | 'bereich') => void
   hinweise: number | undefined
   aendere: Aendere
   bewegeBlock: (von: Ort, nach: Ort) => void
@@ -811,7 +828,7 @@ function BlockZeile({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn('scroll-mt-24', isDragging && 'z-10 opacity-80')}
     >
-      <div className={cn(ZEILE, gewaehlt && 'border-ws-green', !istBekannterTyp(typ) && 'border-ws-orange/50')}>
+      <div className={cn(ZEILE, (gewaehlt || inMehr) && 'border-ws-green', inMehr && 'bg-ws-green/10', !istBekannterTyp(typ) && 'border-ws-orange/50')}>
         <button
           type="button"
           ref={setActivatorNodeRef}
@@ -824,8 +841,9 @@ function BlockZeile({
         </button>
         <button
           type="button"
-          onClick={waehlen}
+          onClick={(e) => (e.metaKey || e.ctrlKey || e.shiftKey ? mehrKlick(e.shiftKey ? 'bereich' : 'umschalten') : waehlen())}
           aria-current={gewaehlt ? 'true' : undefined}
+          aria-pressed={inMehr ? true : undefined}
           className="flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1 text-left"
         >
           <TypIcon typ={typ} />

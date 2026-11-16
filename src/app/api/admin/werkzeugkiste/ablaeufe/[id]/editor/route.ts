@@ -40,6 +40,7 @@ export async function GET(_request: Request, { params }: Kontext) {
       stand: zeile.entwurf ? zeile.entwurf_am : null,
       befunde: zeile.entwurf ? (zeile.entwurf_pruefung?.befunde ?? null) : null,
       ...geteilt,
+      nutzer: auth.user.id,
       ...(nieVeroeffentlicht(zeile) ? { nieVeroeffentlicht: true } : {}),
     }
     return NextResponse.json(daten)

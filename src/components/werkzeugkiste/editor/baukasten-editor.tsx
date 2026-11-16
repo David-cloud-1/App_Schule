@@ -22,8 +22,36 @@ import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
-import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
-import { befundeJeStelle, dupliziereBlock, hatAufgaben, loescheBlock, sprungmarke, typName, type EditorDaten, type Ort } from '@/lib/werkzeugkiste-editor'
+import { ladeEditor, uebernehmeBilder, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
+import {
+  befundeJeStelle,
+  dupliziereBlock,
+  hatAufgaben,
+  loescheBlock,
+  sprungmarke,
+  typName,
+  verschiebeThema,
+  type Block,
+  type EditorDaten,
+  type Ort,
+} from '@/lib/werkzeugkiste-editor'
+import {
+  ZWISCHENABLAGE_MAX_BLOECKE,
+  bereichOrte,
+  bildPfadeIn,
+  blockZahl,
+  bloeckeAn,
+  eineStelle,
+  ersetzeBildPfade,
+  fuegeBloeckeEin,
+  gleicheTypOrte,
+  loescheBloecke,
+  ordneOrte,
+  passendeBloecke,
+  textAlsBlock,
+  verschiebeBloecke,
+  type Ziel,
+} from '@/lib/werkzeugkiste-bloecke'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl, type EinfuegeAnfrage, type ThemaLoeschenAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
@@ -33,6 +61,7 @@ import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skri
 import type { Taste, VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/block-menue'
 import { nachbarAuswahl } from '@/components/werkzeugkiste/editor/auswahl-navigation'
+import { kopiereBloecke, liesZwischenablage } from '@/components/werkzeugkiste/editor/block-zwischenablage'
 import {
   einfuegeortAusAuswahl,
   einfuegeortAusMarke,
@@ -162,7 +191,17 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const apple = useIsApplePlatform()
   const z = useEditorZustand(daten.id, daten.struktur, daten.stand)
   const v = useEditorVorschau(daten.id, z.gespeichertAm)
-  const [auswahl, setAuswahlRoh] = useState<Auswahl>(null)
+  const [auswahl, setAuswahlState] = useState<Auswahl>(null)
+  // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
+  const [markiert, setMarkiert] = useState<Ort[]>([])
+  const [loeschenFrage, setLoeschenFrage] = useState<Ort[] | null>(null)
+  const anker = useRef<Ort | null>(null)
+  const nutzer = daten.nutzer ?? 'unbekannt'
+  // Eine normale Auswahl beendet immer die Mehrfachauswahl
+  const setAuswahlRoh = useCallback((a: Auswahl) => {
+    setAuswahlState(a)
+    setMarkiert([])
+  }, [])
   // PROJ-101: Auswählen (Klick in der Vorschau, Leiste am Block) und Formular öffnen (Schublade) sind zwei Dinge
   const [schubladeOffen, setSchubladeOffen] = useState(false)
   const [modus, setModus] = useState<Modus>('bearbeiten')
@@ -171,7 +210,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const setAuswahl = useCallback((a: Auswahl) => {
     setAuswahlRoh(a)
     setSchubladeOffen(a !== null)
-  }, [])
+  }, [setAuswahlRoh])
   // Handy: Vorschau zuerst, die Gliederung ist einen Tipp entfernt
   const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('vorschau')
   const [gliederungOffen, setGliederungOffen] = useState(liesGliederungOffen)
@@ -201,8 +240,21 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
   // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
   const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
-  // Das Formular ist offen, wenn es gewünscht ist, etwas gewählt ist und wir im Bearbeiten-Modus sind
-  const schubladeAktiv = schubladeOffen && !!gewaehlt && modus === 'bearbeiten'
+  // PROJ-102: Alle gewählten Blöcke (bei Einzelauswahl genau einer, sonst keiner)
+  const wahlOrte = useMemo<Ort[]>(() => {
+    if (gewaehlt?.art !== 'block') return []
+    const eins = { thema: gewaehlt.thema, block: gewaehlt.block }
+    if (markiert.length > 1) {
+      const m = ordneOrte(z.struktur, markiert)
+      if (m.length > 1 && m.some((o) => o.thema === eins.thema && o.block === eins.block)) return m
+    }
+    return [eins]
+  }, [gewaehlt, markiert, z.struktur])
+  const viele = wahlOrte.length > 1
+  if (markiert.length > 0 && !viele) setMarkiert([])
+  const mehrMarken = viele ? wahlOrte.map((o) => sprungmarke(o)) : []
+  // Das Formular ist offen, wenn es gewünscht ist, etwas gewählt ist und wir im Bearbeiten-Modus sind (nicht bei Mehrfachauswahl)
+  const schubladeAktiv = schubladeOffen && !!gewaehlt && modus === 'bearbeiten' && !viele
   // Ist die Schublade zu, gilt wieder der gemerkte Zustand der Gliederung
   if (gliederungTrotzSchublade && !schubladeAktiv) setGliederungTrotzSchublade(false)
   // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
@@ -256,6 +308,179 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     setAuswahlRoh({ art: 'block', thema: ort.thema, block: ort.block + 1 })
   }
 
+  // ── PROJ-102: mehrere Blöcke, Verschieben, Kopieren und Einfügen ──────────
+  // Alle Wege (Ziehen, Menü, Tasten, Zwischenablage) laufen durch dieselben reinen Funktionen
+  // aus `werkzeugkiste-bloecke.ts` und sind **ein** Schritt für „Rückgängig“.
+  function waehleOrte(orte: Ort[], primaer?: Ort) {
+    // Nur ordnen: Nach dem Verschieben oder Einfügen gelten die neuen Stellen erst im nächsten Zustand,
+    // ob es sie gibt, prüft die Ableitung `wahlOrte` beim Anzeigen
+    const g = orte
+      .filter((o) => Number.isInteger(o.thema) && Number.isInteger(o.block))
+      .sort((x, y) => x.thema - y.thema || x.block - y.block)
+      .filter((o, i, l) => i === 0 || o.thema !== l[i - 1].thema || o.block !== l[i - 1].block)
+    if (g.length === 0) return
+    const p = primaer ?? g[g.length - 1]
+    setAuswahlState({ art: 'block', thema: p.thema, block: p.block })
+    setMarkiert(g.length > 1 ? g : [])
+    if (g.length > 1) setSchubladeOffen(false)
+  }
+
+  function loescheOrte(orte: Ort[], mitFrage: boolean) {
+    if (z.gesperrt) return
+    const g = ordneOrte(z.struktur, orte)
+    if (g.length === 0) return
+    if (mitFrage && g.length >= 5) {
+      setLoeschenFrage(g)
+      return
+    }
+    z.aendere((s) => loescheBloecke(s, g))
+    setAuswahl(null)
+    toast.success(g.length === 1 ? 'Block gelöscht' : `${blockZahl(g.length)} gelöscht`, {
+      action: { label: 'Rückgängig', onClick: z.rueckgaengig },
+    })
+  }
+
+  function loescheAuswahl() {
+    if (viele) loescheOrte(wahlOrte, true)
+    else if (wahlOrte[0]) loescheBlockAn(wahlOrte[0])
+  }
+
+  function dupliziereAuswahl() {
+    if (z.gesperrt) return
+    if (!viele) {
+      if (wahlOrte[0]) dupliziereBlockAn(wahlOrte[0])
+      return
+    }
+    const letzter = wahlOrte[wahlOrte.length - 1]
+    const ziel: Ziel = { thema: letzter.thema, index: letzter.block + 1 }
+    const kopien = bloeckeAn(z.struktur, wahlOrte)
+    const r = fuegeBloeckeEin(z.struktur, ziel, kopien)
+    z.aendere((s) => fuegeBloeckeEin(s, ziel, kopien).struktur)
+    waehleOrte(r.orte)
+  }
+
+  function verschiebeAuswahlNach(ziel: Ziel) {
+    if (z.gesperrt || wahlOrte.length === 0) return
+    const orte = wahlOrte
+    const r = verschiebeBloecke(z.struktur, orte, ziel)
+    if (r.struktur === z.struktur) return
+    z.aendere((s) => verschiebeBloecke(s, orte, ziel).struktur)
+    waehleOrte(r.orte)
+  }
+
+  // Alt + Pfeil: eine Stelle weiter, auch über Themengrenzen
+  function verschiebeEineStelle(richtung: 1 | -1) {
+    if (z.gesperrt) return
+    if (gewaehlt?.art === 'thema') {
+      const von = gewaehlt.thema
+      const nach = von + richtung
+      if (nach < 0 || nach >= z.struktur.chapters.length) return
+      z.aendere((s) => verschiebeThema(s, von, nach))
+      setAuswahlRoh({ art: 'thema', thema: nach })
+      return
+    }
+    const ziel = eineStelle(z.struktur, wahlOrte, richtung)
+    if (ziel) verschiebeAuswahlNach(ziel)
+  }
+
+  function waehleMehr(ort: Ort, wie: 'umschalten' | 'bereich') {
+    const basis: Ort[] = viele ? wahlOrte : gewaehlt?.art === 'block' ? [{ thema: gewaehlt.thema, block: gewaehlt.block }] : []
+    if (wie === 'bereich') {
+      const a = anker.current
+      const von = a && z.struktur.chapters[a.thema]?.elements[a.block] ? a : (basis[0] ?? ort)
+      waehleOrte(bereichOrte(z.struktur, von, ort), ort)
+      return
+    }
+    const drin = basis.some((o) => o.thema === ort.thema && o.block === ort.block)
+    const neu = drin ? basis.filter((o) => !(o.thema === ort.thema && o.block === ort.block)) : [...basis, ort]
+    if (!drin) anker.current = ort
+    if (neu.length === 0) setAuswahl(null)
+    else waehleOrte(neu, drin ? neu[neu.length - 1] : ort)
+  }
+
+  function kopiereOrte(schneiden: boolean) {
+    if (wahlOrte.length === 0 || (schneiden && z.gesperrt)) return
+    const bloecke = bloeckeAn(z.struktur, wahlOrte)
+    const r = kopiereBloecke(bloecke, daten.id, nutzer)
+    if (r === 'zu-viele') {
+      toast.error(`Bitte höchstens ${ZWISCHENABLAGE_MAX_BLOECKE} Blöcke auf einmal kopieren.`)
+      return
+    }
+    if (r === 'zu-gross') {
+      toast.error('Das ist zu viel auf einmal. Bitte kopiere weniger Blöcke.')
+      return
+    }
+    if (!schneiden) {
+      toast.success(`${blockZahl(bloecke.length)} kopiert`)
+      return
+    }
+    const orte = wahlOrte
+    z.aendere((s) => loescheBloecke(s, orte))
+    setAuswahl(null)
+    toast.success(`${blockZahl(bloecke.length)} ausgeschnitten`, { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+  }
+
+  // Wohin eingefügt wird: hinter den (letzten) gewählten Block, sonst ans Ende des letzten Themas
+  function einfuegeZiel(): Ziel | null {
+    const letzter = wahlOrte[wahlOrte.length - 1]
+    return einfuegeortAusAuswahl(letzter ? { art: 'block', thema: letzter.thema, block: letzter.block } : gewaehlt, z.struktur)
+  }
+
+  async function fuegeEin() {
+    if (z.gesperrt) return
+    const ziel = einfuegeZiel()
+    if (!ziel) {
+      toast.info('Lege zuerst ein Thema an.')
+      return
+    }
+    let bloecke: Block[]
+    let ohneBild = 0
+    const ablage = liesZwischenablage(nutzer)
+    if (ablage) {
+      bloecke = ablage.bloecke
+      // Aus einem anderen Material: Die Bilder bekommen eine eigene Kopie (Prüfung der Größe vor dem Kopieren)
+      const pfade = ablage.material !== daten.id ? bildPfadeIn(bloecke) : []
+      if (pfade.length > 0) {
+        try {
+          const r = await uebernehmeBilder(daten.id, ablage.material, pfade, v.groesse)
+          bloecke = ersetzeBildPfade(bloecke, r.zuordnung)
+          ohneBild = r.fehlend.length
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : 'Das Einfügen hat nicht geklappt.')
+          return
+        }
+      }
+    } else {
+      // Nichts Eigenes kopiert: normaler Text aus der Zwischenablage des Systems wird ein Lehrtext
+      let text = ''
+      try {
+        text = await navigator.clipboard.readText()
+      } catch {
+        // keine Erlaubnis oder kein Zugriff
+      }
+      const block = textAlsBlock(text)
+      if (!block) {
+        toast.info(`Die Zwischenablage ist leer. Kopiere zuerst Blöcke mit ${apple ? '⌘' : 'Strg+'}C.`)
+        return
+      }
+      bloecke = [block]
+    }
+    const { passend, ausgelassen } = passendeBloecke(bloecke)
+    if (passend.length === 0) {
+      toast.error(ausgelassen === 1 ? '1 Block passt nicht in dieses Material und wurde ausgelassen.' : `${ausgelassen} Blöcke passen nicht in dieses Material.`)
+      return
+    }
+    const r = fuegeBloeckeEin(z.struktur, ziel, passend)
+    z.aendere((s) => fuegeBloeckeEin(s, ziel, passend).struktur)
+    waehleOrte(r.orte)
+    setVollbreit(false)
+    toast.success(`${blockZahl(passend.length)} eingefügt`)
+    if (ausgelassen > 0) {
+      toast.info(ausgelassen === 1 ? '1 Block passt nicht in dieses Material und wurde ausgelassen.' : `${ausgelassen} Blöcke passen nicht in dieses Material und wurden ausgelassen.`)
+    }
+    if (ohneBild > 0) toast.info(ohneBild === 1 ? '1 Bild war nicht mehr erreichbar und fehlt.' : `${ohneBild} Bilder waren nicht mehr erreichbar und fehlen.`)
+  }
+
   // Wünsche aus der Vorschau (PROJ-101). Die Seite zeigt und meldet, die App prüft und führt aus.
   // Rückgabe false = Vorschau veraltet („Bitte gleich noch einmal klicken“); nicht ausführbares sonst still ignoriert.
   function beiWunsch(w: VorschauWunsch): boolean {
@@ -285,8 +510,31 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (!a) return false
     switch (w.art) {
       case 'waehle':
+        if (a.art === 'block') anker.current = { thema: a.thema, block: a.block }
         setAuswahlRoh(a)
         return true
+      case 'mehr':
+        if (a.art === 'block') waehleMehr({ thema: a.thema, block: a.block }, w.wie)
+        return true
+      case 'kopiere':
+        kopiereOrte(false)
+        return true
+      case 'lege': {
+        if (z.gesperrt || wahlOrte.length === 0) return true
+        if (w.wo === 'anfang' && a.art === 'thema') verschiebeAuswahlNach({ thema: a.thema, index: 0 })
+        else if (a.art === 'block') verschiebeAuswahlNach({ thema: a.thema, index: a.block + (w.wo === 'nach' ? 1 : 0) })
+        return true
+      }
+      case 'legeThema': {
+        if (z.gesperrt || gewaehlt?.art !== 'thema') return true
+        const von = gewaehlt.thema
+        const vor = a.art === 'abschluss' ? z.struktur.chapters.length : a.art === 'thema' ? a.thema : -1
+        const nach = von < vor ? vor - 1 : vor
+        if (vor < 0 || nach === von) return true
+        z.aendere((s) => verschiebeThema(s, von, nach))
+        setAuswahlRoh({ art: 'thema', thema: nach })
+        return true
+      }
       case 'bearbeite':
         setAuswahl(a)
         // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
@@ -319,10 +567,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         if (a.art !== 'block') return false
         if (z.gesperrt) return true
         const ort = { thema: a.thema, block: a.block }
-        if (w.art === 'loesche') loescheBlockAn(ort)
-        else if (w.art === 'dupliziere') dupliziereBlockAn(ort)
-        else {
-          setAuswahlRoh(a)
+        const inAuswahl = viele && wahlOrte.some((o) => o.thema === ort.thema && o.block === ort.block)
+        if (w.art === 'loesche') {
+          if (inAuswahl) loescheOrte(wahlOrte, true)
+          else loescheBlockAn(ort)
+        } else if (w.art === 'dupliziere') {
+          if (inAuswahl) dupliziereAuswahl()
+          else dupliziereBlockAn(ort)
+        } else {
+          // Das Menü gilt für alle gewählten Blöcke, wenn der Block dazugehört
+          if (!inAuswahl) setAuswahlRoh(a)
           setMenue({ x: w.x, y: w.y, ort })
         }
         return true
@@ -345,6 +599,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         break
       case 'ArrowUp':
       case 'ArrowDown': {
+        if (t.alt) {
+          verschiebeEineStelle(t.key === 'ArrowDown' ? 1 : -1)
+          break
+        }
         const n = nachbarAuswahl(gewaehlt, z.struktur, t.key === 'ArrowDown' ? 1 : -1)
         if (n) setAuswahlRoh(n)
         break
@@ -357,11 +615,20 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         break
       case 'Delete':
       case 'Backspace':
-        if (gewaehlt?.art === 'block') loescheBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
+        if (gewaehlt?.art === 'block') loescheAuswahl()
         else if (gewaehlt?.art === 'thema') frageThemaLoeschen(gewaehlt.thema)
         break
       case 'd':
-        if (t.mod && gewaehlt?.art === 'block') dupliziereBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
+        if (t.mod && gewaehlt?.art === 'block') dupliziereAuswahl()
+        break
+      case 'c':
+        if (t.mod) kopiereOrte(false)
+        break
+      case 'x':
+        if (t.mod) kopiereOrte(true)
+        break
+      case 'v':
+        if (t.mod) void fuegeEin()
         break
       case 'e':
         if (t.mod) wechsleModus('ausprobieren')
@@ -432,16 +699,23 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   })
   useEffect(() => {
     function taste(e: KeyboardEvent) {
-      if (e.defaultPrevented || modus !== 'bearbeiten' || !gewaehlt) return
+      if (e.defaultPrevented || modus !== 'bearbeiten') return
       const k = e.key
+      const kl = k.toLowerCase()
       const mod = e.metaKey || e.ctrlKey
       const art =
-        mod && !e.altKey && !e.shiftKey && k.toLowerCase() === 'd'
-          ? 'd'
-          : !mod && !e.altKey && !e.shiftKey && ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape'].includes(k)
+        mod && !e.altKey && !e.shiftKey && ['d', 'c', 'x', 'v'].includes(kl)
+          ? kl
+          : !mod && !e.shiftKey && e.altKey && (k === 'ArrowUp' || k === 'ArrowDown')
             ? k
-            : null
+            : !mod && !e.altKey && !e.shiftKey && ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape'].includes(k)
+              ? k
+              : null
       if (!art) return
+      // Ohne Auswahl gilt nur „Einfügen“
+      if (!gewaehlt && art !== 'v') return
+      // Markierter Text soll sich normal kopieren lassen
+      if ((art === 'c' || art === 'x') && window.getSelection()?.toString()) return
       const ziel = e.target as HTMLElement | null
       if (!ziel?.closest) return
       // Eingabefelder, Dialoge, Menüs und Texteditor behalten ihre Tasten; Ziehgriffe der Gliederung ebenso
@@ -455,7 +729,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       // Enter gehört bei Knöpfen und Links dem Knopf selbst
       if (art === 'Enter' && ziel.closest('button, a, summary, [role="button"], [role="treeitem"]')) return
       e.preventDefault()
-      beiTasteRef.current({ key: art, mod, shift: false, alt: false } as Taste)
+      beiTasteRef.current({ key: art, mod, shift: false, alt: e.altKey } as Taste)
     }
     window.addEventListener('keydown', taste)
     return () => window.removeEventListener('keydown', taste)
@@ -732,6 +1006,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             einfuegenAnfrage={einfuegenAnfrage}
             themaLoeschenAnfrage={themaLoeschenAnfrage}
             kuerzel={kuerzel}
+            markiert={viele ? wahlOrte : []}
+            onMehr={waehleMehr}
           />
         </section>
         <section
@@ -755,6 +1031,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             leer={leereThemen}
             vollbreit={vollbreit}
             onVollbreit={() => setVollbreit((b) => !b)}
+            mehrMarken={mehrMarken}
           />
         </section>
         {schubladeZeigen && schubladeAktiv && gewaehlt && (
@@ -780,9 +1057,44 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         aendere={z.aendere}
         rueckgaengig={z.rueckgaengig}
         einfuegenBei={(ort) => setEinfuegenAnfrage((x) => ({ nr: x.nr + 1, ort }))}
-        folge={setAuswahlRoh}
-        onLoesche={loescheBlockAn}
+        orte={wahlOrte}
+        onVerschiebe={verschiebeAuswahlNach}
+        onKopiere={() => kopiereOrte(false)}
+        onAusschneide={() => kopiereOrte(true)}
+        onEinfuegen={() => void fuegeEin()}
+        onDupliziere={dupliziereAuswahl}
+        onGleiche={(imThema) => {
+          const ort = wahlOrte[wahlOrte.length - 1]
+          if (!ort) return
+          const gleiche = gleicheTypOrte(z.struktur, ort, imThema)
+          if (gleiche.length < 2) toast.info('Es gibt keinen weiteren Block dieser Art.')
+          else waehleOrte(gleiche, ort)
+        }}
+        onAufheben={() => setAuswahl(null)}
+        onLoesche={loescheAuswahl}
       />
+
+      <AlertDialog open={!!loeschenFrage} onOpenChange={(o) => !o && setLoeschenFrage(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{loeschenFrage ? `${blockZahl(loeschenFrage.length)} löschen?` : ''}</AlertDialogTitle>
+            <AlertDialogDescription>Du kannst das gleich mit „Rückgängig“ zurücknehmen.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11 rounded-xl">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-11 rounded-xl bg-ws-red text-ws-on-accent hover:bg-ws-red-hover"
+              onClick={() => {
+                const orte = loeschenFrage
+                setLoeschenFrage(null)
+                if (orte) loescheOrte(orte, false)
+              }}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={dialog === 'veroeffentlichen'} onOpenChange={(o) => !o && !laeuft && setDialog(null)}>
         <AlertDialogContent>

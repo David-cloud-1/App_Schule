@@ -26,7 +26,7 @@ export function auswahlAusMarke(marke: unknown): Auswahl {
 export const SCHNELLE_TYPEN = ['text', 'image', 'multiple_choice', 'fill_blanks', 'drag_drop', 'accordion'] as const
 
 /** Die wenigen Tasten, die die Seite an die App weitergibt (sonst käme nichts an, solange die Seite den Fokus hat) */
-export const WEITERGABE_TASTEN = ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape', 'd', 'e', 'z', 'b'] as const
+export const WEITERGABE_TASTEN = ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape', 'd', 'e', 'z', 'b', 'c', 'x', 'v'] as const
 export type WeitergabeTaste = (typeof WEITERGABE_TASTEN)[number]
 
 export interface Taste {
@@ -46,6 +46,10 @@ export type VorschauWunsch =
   | { art: 'dupliziere'; marke: string }
   | { art: 'menue'; marke: string; x: number; y: number }
   | { art: 'schnell'; marke: string; typ: (typeof SCHNELLE_TYPEN)[number] }
+  | { art: 'mehr'; marke: string; wie: 'umschalten' | 'bereich' }
+  | { art: 'lege'; marke: string; wo: 'vor' | 'nach' | 'anfang' }
+  | { art: 'legeThema'; marke: string }
+  | { art: 'kopiere'; marke: string }
   | { art: 'neuesThema' }
   | { art: 'taste'; taste: Taste }
 
@@ -93,6 +97,26 @@ export function liesWunsch(daten: unknown): VorschauWunsch | null {
     const m = marke(n.wkSchnell)
     const typ = (SCHNELLE_TYPEN as readonly unknown[]).includes(n.typ) ? (n.typ as (typeof SCHNELLE_TYPEN)[number]) : null
     return m && typ ? { art: 'schnell', marke: m, typ } : null
+  }
+  if (typeof n.wkMehr === 'string') {
+    const m = marke(n.wkMehr)
+    return m && /^k\d+-e\d+$/.test(m) && (n.wie === 'umschalten' || n.wie === 'bereich') ? { art: 'mehr', marke: m, wie: n.wie } : null
+  }
+  if (typeof n.wkLege === 'string') {
+    const m = marke(n.wkLege)
+    const wo = n.wo === 'vor' || n.wo === 'nach' || n.wo === 'anfang' ? n.wo : null
+    if (!m || !wo) return null
+    // „anfang“ gehört einem Thema, „vor/nach“ einem Block
+    if (wo === 'anfang' ? !/^k\d+$/.test(m) : !/^k\d+-e\d+$/.test(m)) return null
+    return { art: 'lege', marke: m, wo }
+  }
+  if (typeof n.wkLegeThema === 'string') {
+    // Ziel eines Themas: vor einem anderen Thema oder ans Ende (vor die Lernzielkontrolle)
+    return n.wkLegeThema === 'abschluss' || (n.wkLegeThema.length <= 12 && /^k\d+$/.test(n.wkLegeThema)) ? { art: 'legeThema', marke: n.wkLegeThema } : null
+  }
+  if (typeof n.wkKopiere === 'string') {
+    const m = marke(n.wkKopiere)
+    return m && /^k\d+-e\d+$/.test(m) ? { art: 'kopiere', marke: m } : null
   }
   if (n.wkThemaNeu === true) return { art: 'neuesThema' }
   if (typeof n.wkTaste === 'string') {
