@@ -570,7 +570,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           toast.info('Dieser Text lässt sich nur in der Schublade bearbeiten (HTML-Ansicht), damit keine Gestaltung verloren geht.')
           return true
         }
+        // Wer direkt in der Seite schreiben will, braucht die Schublade nicht: sie schließt, sonst würde das Schreiben sofort wieder enden
         setAuswahlRoh(a)
+        setSchubladeOffen(false)
         const nr = ++schreibZaehler.current
         schreibRef.current = { nr, marke: w.marke, teil: w.teil, ort: a, start: wert }
         setSchreiben({ nr, marke: w.marke, teil: w.teil, html: w.teil === 'text' ? wert : undefined })
