@@ -1,6 +1,6 @@
 # PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16 (Frontend und Kern-Ergänzung gebaut)
 
@@ -305,8 +305,17 @@ Alle Editor-Tests (427) grün, Typprüfung sauber. Gliederung, Schublade, Katalo
 3. **Einfrieren:** in „Bearbeiten“ je einmal in einen Block jedes Aufgabentyps klicken (Memory, Kreuzworträtsel, Drag & Drop, Lückentext, Zuordnen); nichts darf reagieren. Danach in „Ausprobieren“ muss alles gehen.
 4. Doppelklick auf Text: Dabei darf keine blaue Textmarkierung hängen bleiben.
 
+### Nachbesserung (2026-11-16, auf Wunsch „alle Bugs beheben“)
+Alle vier Bugs behoben, danach 181 Editor-Tests grün (3 neue Integrationstests, 1 neuer und 1 angepasster Skript-Test), Kern-Test erweitert.
+- **BUG-1:** Kern-Platzhalter sagen jetzt je nach Typ, was zu tun ist („Dieser Textblock ist noch leer. Klicke ihn an und schreibe los.“, „Diese Aufgabe ist noch nicht fertig ausgefüllt …“, „Noch kein Bild gewählt. Klicke hier, um eines einzufügen.“, sonst „Dieser Block konnte nicht angezeigt werden …“). „Bild hierher ziehen“ kommt mit PROJ-104.
+- **BUG-2:** Leiste am Thema hat „Löschen“ (rot, `aria-label` „Thema löschen“); die App öffnet den bestehenden Rückfrage-Dialog der Gliederung. Entf am gewählten Thema macht dasselbe.
+- **BUG-3:** Globaler Tasten-Handler in der App für Pfeile, Enter, Entf/Rücktaste, Esc und ⌘/Strg+D, wenn nicht die Vorschau den Fokus hat. Nicht in Eingabefeldern, Dialogen, Menüs, Texteditor, an Ziehgriffen; Enter gehört Knöpfen und Links.
+- **BUG-4:** Leiste steht unter dem Block, wenn darüber kein Platz ist und der Blockanfang noch im Bild ist; sonst klebt sie oben. Am Handy bekommt die Seite unten 72 px Platz.
+
 ### Entscheidung
 **Produktionsreif: JA** (keine Critical/High-Bugs). Der Browser-Test oben liegt bei dir und sollte vor dem Deploy kurz laufen.
 
 ## Deployment
-_To be added by /deploy_
+- **2026-11-16:** App per Push auf `main` (`3bfbdd3`), Vercel-Production `spedilern-m106n59kj` Ready, Route ohne Login 401. Mit ausgeliefert: die noch nicht gepushten PROJ-101-Commits (`94a686f` u. a.) und ein reiner Doku-Commit zu PROJ-99.
+- **Kern:** Production `werkzeugkiste-kern-82anuat52`, `/api/gesund` ok, POST ohne Kennwort 401. Aus einer Kopie deployt, **ohne** die PROJ-99-Dateien (`prompt_seite.py`, `abwechslung.py`, `messsatz/`, `prompts.py` und `qualitaet.py` auf den Stand vor `8d9f486`). Kern-Commits (`e17b8e6`, `948cd73`) liegen nur lokal auf `vercel-kern`.
+- **Offen:** Browser-Test (Laptop, iPad quer, Handy, alle Aufgabentypen im Modus Bearbeiten).
