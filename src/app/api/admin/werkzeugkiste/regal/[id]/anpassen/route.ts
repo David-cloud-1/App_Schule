@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { TITEL_MAX } from '@/lib/werkzeugkiste-materialien'
+import { NAME_PLATZHALTER, TITEL_MAX } from '@/lib/werkzeugkiste-materialien'
 import { aktualisiereSpeicher, speicherPruefen } from '@/lib/werkzeugkiste-materialien-server'
 import {
   ABLAUF_SPALTEN,
@@ -49,7 +49,7 @@ interface Quelle {
  * Material vorkommen). Skript, Skripttext und Einlesung des Originals gehen nie
  * mit (E2). Die Sichtbarkeit prüft die Datenbank (regal_anpassen_quelle).
  */
-export async function POST(_request: Request, { params }: Kontext) {
+export async function POST(request: Request, { params }: Kontext) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
 
@@ -75,6 +75,25 @@ export async function POST(_request: Request, { params }: Kontext) {
   const titel = `${quelle.titel.slice(0, TITEL_MAX - KOPIE_ENDE.length)}${KOPIE_ENDE}`
   const service = createServiceClient()
 
+  // PROJ-100: Gibt es schon eine Kopie mit diesem Titel, wird vor einer weiteren gefragt
+  const rumpf = (await request.json().catch(() => null)) as { trotzdem?: unknown } | null
+  if (rumpf?.trotzdem !== true) {
+    const { data: vorhanden } = await auth.supabase
+      .from(ABLAUF_TABELLE)
+      .select('id')
+      .eq('owner_id', auth.user.id)
+      .eq('titel', titel)
+      .not('herkunft_name', 'is', null)
+      .limit(1)
+    if (Array.isArray(vorhanden) && vorhanden.length > 0) {
+      return NextResponse.json(
+        { error: 'Du hast von diesem Material schon eine Kopie in „Meine Materialien“.', code: 'schon_kopiert' },
+        { status: 409 },
+      )
+    }
+  }
+  const herkunft = await herkunftName(service, quelle)
+
   // Herkunft und „kein Skript“ setzt nur der Server (Trigger); deshalb mit dem Service-Schlüssel.
   // Der Besitzer ist die anfragende Lehrkraft, sonst nichts.
   const { data: eingefuegt, error: einfuegeFehler } = await service
@@ -91,7 +110,7 @@ export async function POST(_request: Request, { params }: Kontext) {
       antwort: quelle.antwort,
       pruefung: quelle.pruefung,
       ergebnis: { ...quelle.ergebnis, fertigAm: jetzt },
-      herkunft_name: quelle.besitzer_name.slice(0, 120),
+      herkunft_name: herkunft.slice(0, 120),
       herkunft_am: jetzt,
       // Kein Skript, deshalb nichts für das 12-Monats-Aufräumen
       skript_entfernt_am: jetzt,
@@ -121,4 +140,23 @@ export async function POST(_request: Request, { params }: Kontext) {
   await aktualisiereSpeicher(service, auth.user.id, neueId)
 
   return NextResponse.json({ ablauf: zeileZuAblauf(neu) }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
+}
+
+/**
+ * PROJ-100: Name der Urheberin oder des Urhebers für die Kopie. Fehlt im Profil der
+ * Anzeigename (die Regal-Funktion liefert dann „Lehrkraft“), steht die E-Mail-Adresse
+ * da, damit man weiß, von wem das Material stammt. Gelingt das Nachschlagen nicht,
+ * bleibt der bisherige Name: Das Übernehmen darf daran nie scheitern.
+ */
+async function herkunftName(service: ReturnType<typeof createServiceClient>, quelle: Quelle): Promise<string> {
+  const name = quelle.besitzer_name?.trim()
+  if (name && name !== NAME_PLATZHALTER) return name
+  try {
+    const { data } = await service.auth.admin.getUserById(quelle.owner_id)
+    const mail = data?.user?.email?.trim()
+    if (mail) return mail
+  } catch {
+    // bleibt beim Platzhalter
+  }
+  return name || NAME_PLATZHALTER
 }

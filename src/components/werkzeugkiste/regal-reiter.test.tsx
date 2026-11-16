@@ -215,7 +215,7 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     api.passeAn.mockResolvedValue({ ablauf: { id: 'neu1' } })
     render(<RegalReiter />)
     fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
-    await waitFor(() => expect(api.passeAn).toHaveBeenCalledWith('f1'))
+    await waitFor(() => expect(api.passeAn).toHaveBeenCalledWith('f1', false))
     await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/ablauf/neu1?schritt=4'))
   })
 
@@ -225,6 +225,20 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     render(<RegalReiter />)
     fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
     await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/bearbeiten/neu1'))
+  })
+
+  it('fragt nach, wenn schon eine Kopie da ist, und legt erst nach „Trotzdem“ eine weitere an (PROJ-100)', async () => {
+    api.ladeRegal.mockResolvedValue(liste([karte({ id: 'f1', anpassbar: true })]))
+    api.passeAn.mockRejectedValueOnce(new WerkzeugFehler('Schon eine Kopie.', 409, undefined, 'schon_kopiert'))
+    api.passeAn.mockResolvedValueOnce({ ablauf: { id: 'neu2' } })
+    render(<RegalReiter />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    expect(await screen.findByText('Du hast davon schon eine Kopie')).toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
+    expect(window.location.href).toBe('http://localhost/')
+    fireEvent.click(screen.getByRole('button', { name: 'Trotzdem weitere Kopie' }))
+    await waitFor(() => expect(api.passeAn).toHaveBeenLastCalledWith('f1', true))
+    await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/ablauf/neu2?schritt=4'))
   })
 
   it('meldet Fehler ruhig und bleibt im Regal', async () => {

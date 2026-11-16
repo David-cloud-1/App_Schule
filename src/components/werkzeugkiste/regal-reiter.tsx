@@ -4,6 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Copy, Download, Loader2, Search, SearchX, ShieldAlert, UserRoundSearch, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +24,7 @@ import { LinkUebersicht } from '@/components/werkzeugkiste/link-uebersicht'
 import { RegalModeration } from '@/components/werkzeugkiste/regal-moderation'
 import { ablaufHref, findeWerkzeug } from '@/lib/werkzeugkiste'
 import { baukastenWeg, bearbeitenHref } from '@/lib/werkzeugkiste-editor'
-import { ladeRegal, ladeRegalDatei, passeAn, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
+import { CODE_SCHON_KOPIERT, ladeRegal, ladeRegalDatei, passeAn, WerkzeugFehler } from '@/lib/werkzeugkiste-api'
 import { formatName, relativesDatum, werkzeugName } from '@/lib/werkzeugkiste-materialien'
 import {
   geladenText,
@@ -307,6 +317,7 @@ function ChipReihe({
 function Karte({ karte: k }: { karte: RegalKarte }) {
   const [laedt, setLaedt] = useState(false)
   const [kopiert, setKopiert] = useState(false)
+  const [frage, setFrage] = useState(false)
   const format = formatName(k.format)
   const kopf = [findeWerkzeug(k.werkzeug)?.name ?? k.werkzeug, format].filter(Boolean).join(' · ')
 
@@ -322,17 +333,20 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
   }
 
   /** Legt eine Kopie in „Meine Materialien“ an und öffnet sie bei Schritt 4 (das Original bleibt unverändert) */
-  async function anpassen() {
+  async function anpassen(trotzdem = false) {
+    setFrage(false)
     setKopiert(true)
     try {
-      const { ablauf } = await passeAn(k.id)
+      const { ablauf } = await passeAn(k.id, trotzdem)
       // PROJ-89: Eine Interaktive Seite öffnet direkt im Baukasten, alles andere wie bisher bei Schritt 4
       window.location.href =
         baukastenWeg({ werkzeug: ablauf.werkzeug, status: ablauf.status, format: ablauf.ergebnis?.format ?? null }) === 'bearbeiten'
           ? bearbeitenHref(ablauf.id)
           : ablaufHref(ablauf.id, 4)
     } catch (e) {
-      toast.error(meldung(e))
+      // PROJ-100: Schon eine Kopie da – erst fragen, statt still eine weitere anzulegen
+      if (e instanceof WerkzeugFehler && e.code === CODE_SCHON_KOPIERT) setFrage(true)
+      else toast.error(meldung(e))
       setKopiert(false)
     }
   }
@@ -376,13 +390,33 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
           <p className="text-sm text-ws-muted">Dieses Material besteht nur aus Texten, es gibt keine Datei zum Herunterladen.</p>
         )}
         {k.anpassbar && !k.vonMir && (
-          <Button variant="outline" onClick={() => void anpassen()} disabled={laedt || kopiert} className={`${NEBENAKTION} flex-1`}>
+          <Button variant="outline" onClick={() => void anpassen(false)} disabled={laedt || kopiert} className={`${NEBENAKTION} flex-1`}>
             {kopiert ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Copy className="mr-2 size-4" aria-hidden />}
             Anpassen
             <span className="sr-only">: {k.titel}</span>
           </Button>
         )}
       </div>
+
+      <AlertDialog open={frage} onOpenChange={setFrage}>
+        <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Du hast davon schon eine Kopie</AlertDialogTitle>
+            <AlertDialogDescription className="text-ws-muted">
+              „{k.titel}“ liegt bereits in „Meine Materialien“. Noch eine Kopie anzulegen macht die Liste unübersichtlicher.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void anpassen(true)}
+              className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover"
+            >
+              Trotzdem weitere Kopie
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </article>
   )
 }

@@ -32,11 +32,12 @@ export async function GET(request: Request) {
     suche: params.get('suche') ?? undefined,
     werkzeug: params.get('werkzeug') || undefined,
     oeffentlich: params.get('oeffentlich') || undefined,
+    herkunft: params.get('herkunft') || undefined,
     seite: params.get('seite') ?? undefined,
     je: params.get('je') ?? undefined,
   })
   if (!parsed.success) return ungueltig(parsed.error)
-  const { suche, werkzeug, seite, je, oeffentlich } = parsed.data
+  const { suche, werkzeug, seite, je, oeffentlich, herkunft } = parsed.data
 
   // Zugriff regelt RLS (nur eigene Zeilen); owner_id zusätzlich, damit es auch ohne sie stimmt
   let abfrage = auth.supabase
@@ -46,6 +47,9 @@ export async function GET(request: Request) {
     .not('kennzahlen', 'is', null)
 
   if (werkzeug) abfrage = abfrage.eq('werkzeug', werkzeug)
+  // PROJ-100: Kopien aus dem Regal tragen den Namen der Urheberin oder des Urhebers, alles andere ist selbst erstellt
+  if (herkunft === 'regal') abfrage = abfrage.not('herkunft_name', 'is', null)
+  if (herkunft === 'eigen') abfrage = abfrage.is('herkunft_name', null)
   // „Nur öffentliche“ (PROJ-67): zuerst die eigenen aktiven Links, dann nur diese Materialien
   if (oeffentlich) {
     const { data: aktive } = await auth.supabase.from('werkzeug_links').select('ablauf_id').is('abgeschaltet_am', null)

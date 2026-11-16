@@ -79,7 +79,26 @@ export interface MaterialAbfrage {
   seite: number
   /** Nur Materialien mit aktivem öffentlichen Link (PROJ-67) */
   nurOeffentlich?: boolean
+  /** PROJ-100: nur selbst Erstelltes oder nur Kopien aus dem Regal; leer = alles */
+  herkunft?: HerkunftFilter
 }
+
+/** PROJ-100: Filter „Alle · Selbst erstellt · Aus dem Regal“ */
+export type HerkunftFilter = 'alle' | 'eigen' | 'regal'
+export const HERKUNFT_FILTER: readonly { value: HerkunftFilter; label: string }[] = [
+  { value: 'alle', label: 'Alle' },
+  { value: 'eigen', label: 'Selbst erstellt' },
+  { value: 'regal', label: 'Aus dem Regal' },
+]
+
+/** PROJ-100: Spalte „Von“ – eigene Materialien „Ich“, Kopien aus dem Regal der Name der Urheberin oder des Urhebers */
+export const VON_ICH = 'Ich'
+export function vonName(z: { ausRegal?: string | null }): string {
+  return z.ausRegal || VON_ICH
+}
+
+/** Platzhalter, den das Regal einsetzt, wenn im Profil kein Anzeigename steht */
+export const NAME_PLATZHALTER = 'Lehrkraft'
 
 // ── Anzeige ────────────────────────────────────────────────────────────────
 
@@ -134,12 +153,13 @@ export function werkzeugName(id: string): string {
   return WERKZEUGE.find((w) => w.id === id)?.name ?? id
 }
 
-/** Zeile unter dem Titel: „Format · aus Skriptname“ (Entwürfe: nur der Stand) */
+/**
+ * Zeile unter dem Titel: „Format · aus Skriptname“ (Entwürfe: nur der Stand).
+ * Wer ein Material angelegt hat, steht seit PROJ-100 in der Spalte „Von“.
+ */
 export function untertitel(z: Pick<MaterialZeile, 'format' | 'skriptName' | 'art'> & { ausRegal?: string | null }): string {
   if (z.art === 'entwurf') return ''
-  return [formatName(z.format), z.skriptName ? `aus ${z.skriptName}` : null, z.ausRegal ? `aus dem Regal von ${z.ausRegal}` : null]
-    .filter(Boolean)
-    .join(' · ')
+  return [formatName(z.format), z.skriptName ? `aus ${z.skriptName}` : z.ausRegal ? 'aus dem Regal' : null].filter(Boolean).join(' · ')
 }
 
 // ── Was geht noch? ─────────────────────────────────────────────────────────

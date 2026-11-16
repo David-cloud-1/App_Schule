@@ -243,7 +243,7 @@ describe('Meine Materialien (PROJ-67)', () => {
     render(<MeineMaterialien />)
     await screen.findAllByText('Haftung')
     fireEvent.click(screen.getByRole('checkbox', { name: 'Nur öffentliche' }))
-    await waitFor(() => expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: '', werkzeug: '', seite: 1, nurOeffentlich: true }))
+    await waitFor(() => expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: '', werkzeug: '', seite: 1, nurOeffentlich: true, herkunft: 'alle' }))
   })
 
   it('warnt beim Löschen eines öffentlichen Materials vor dem Abschalten des Links', async () => {

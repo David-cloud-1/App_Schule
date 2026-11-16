@@ -146,7 +146,7 @@ describe('Meine Materialien (PROJ-52)', () => {
 
     fireEvent.change(screen.getByRole('searchbox', { name: 'Materialien durchsuchen' }), { target: { value: 'zzz' } })
     expect(await screen.findByText('Nichts gefunden')).toBeInTheDocument()
-    expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: 'zzz', werkzeug: '', seite: 1, nurOeffentlich: false })
+    expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: 'zzz', werkzeug: '', seite: 1, nurOeffentlich: false, herkunft: 'alle' })
     // Bei einer Suche ist die Ablage nicht „leer“: Die Hauptaktion bleibt im Seitenkopf
     expect(onLeer).not.toHaveBeenLastCalledWith(true)
 
@@ -162,7 +162,7 @@ describe('Meine Materialien (PROJ-52)', () => {
     await screen.findAllByText('Erstes')
     fireEvent.click(screen.getByRole('button', { name: 'Mehr laden' }))
     await screen.findAllByText('Zweites')
-    expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: '', werkzeug: '', seite: 2, nurOeffentlich: false })
+    expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: '', werkzeug: '', seite: 2, nurOeffentlich: false, herkunft: 'alle' })
     expect(screen.getAllByText('Erstes').length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Mehr laden' })).not.toBeInTheDocument()
   })
@@ -304,7 +304,9 @@ describe('Meine Materialien (PROJ-52)', () => {
       )
       render(<MeineMaterialien />)
       await screen.findAllByText('Haftung (Kopie)')
-      expect(screen.getAllByText('H5P für Moodle · aus dem Regal von Frau Meier').length).toBeGreaterThan(0)
+      // PROJ-100: Der Name steht in der Spalte „Von“ (Tabelle und Karte), nicht mehr im Untertitel
+      expect(screen.getAllByText('Frau Meier').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('H5P für Moodle · aus dem Regal').length).toBeGreaterThan(0)
       expect(screen.queryByText('Skript entfernt')).not.toBeInTheDocument()
 
       oeffneMenue('Haftung (Kopie)')

@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { HAUPTAKTION, NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { LinkDialog, type LinkZiel } from '@/components/werkzeugkiste/link-fuer-alle'
 import { TeilenDialog, type TeilenZiel } from '@/components/werkzeugkiste/teilen-dialog'
@@ -70,7 +71,10 @@ import {
   TITEL_MAX,
   ueberarbeitenErlaubt,
   untertitel,
+  vonName,
   werkzeugName,
+  HERKUNFT_FILTER,
+  type HerkunftFilter,
   type MaterialListe,
   type MaterialZeile,
 } from '@/lib/werkzeugkiste-materialien'
@@ -101,6 +105,8 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
   const [werkzeug, setWerkzeug] = useState(ALLE)
   /** „Nur öffentliche“ (PROJ-67): nur Materialien mit aktivem Link für alle */
   const [nurOeffentlich, setNurOeffentlich] = useState(false)
+  /** PROJ-100: selbst erstellt oder Kopie aus dem Regal */
+  const [herkunft, setHerkunft] = useState<HerkunftFilter>('alle')
 
   const [liste, setListe] = useState<MaterialListe | null>(null)
   const [laedt, setLaedt] = useState(true)
@@ -131,7 +137,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
     setFehler(null)
     setMehrFehler(null)
     try {
-      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: 1, nurOeffentlich })
+      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: 1, nurOeffentlich, herkunft })
       if (nr !== abfrageNr.current) return
       setListe(daten)
     } catch (e) {
@@ -140,7 +146,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
     } finally {
       if (nr === abfrageNr.current) setLaedt(false)
     }
-  }, [suche, werkzeug, nurOeffentlich])
+  }, [suche, werkzeug, nurOeffentlich, herkunft])
 
   useEffect(() => {
     void lade()
@@ -151,7 +157,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
     setLadtMehr(true)
     setMehrFehler(null)
     try {
-      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: seite.current + 1, nurOeffentlich })
+      const daten = await ladeMaterialien({ suche, werkzeug: werkzeug === ALLE ? '' : werkzeug, seite: seite.current + 1, nurOeffentlich, herkunft })
       if (nr !== abfrageNr.current) return
       seite.current += 1
       setListe((alt) => (alt ? { ...daten, eintraege: [...alt.eintraege, ...daten.eintraege] } : daten))
@@ -162,7 +168,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
     }
   }
 
-  const gefiltert = suche.trim() !== '' || werkzeug !== ALLE || nurOeffentlich
+  const gefiltert = suche.trim() !== '' || werkzeug !== ALLE || nurOeffentlich || herkunft !== 'alle'
   const komplettLeer = !laedt && !fehler && !!liste && liste.eintraege.length === 0 && !gefiltert
 
   useEffect(() => {
@@ -174,6 +180,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
     setSuche('')
     setWerkzeug(ALLE)
     setNurOeffentlich(false)
+    setHerkunft('alle')
   }
 
   function entferne(id: string) {
@@ -282,6 +289,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
           <Checkbox id="wk-nur-oeffentlich" checked={nurOeffentlich} onCheckedChange={(an) => setNurOeffentlich(an === true)} />
           Nur öffentliche
         </Label>
+        <AdminSegmented value={herkunft} onChange={setHerkunft} options={HERKUNFT_FILTER} ariaLabel="Nach Herkunft filtern" />
       </div>
 
       {fehler ? (
@@ -313,6 +321,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                   <TableRow className="border-ws-line bg-ws-bg hover:bg-ws-bg">
                     <TableHead className="text-ws-muted">Titel</TableHead>
                     <TableHead className="text-ws-muted">Werkzeug</TableHead>
+                    <TableHead className="text-ws-muted">Von</TableHead>
                     <TableHead className="text-ws-muted">Regal</TableHead>
                     <TableHead className="text-ws-muted">Erstellt</TableHead>
                     <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
@@ -325,6 +334,9 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                         <TitelZelle z={z} />
                       </TableCell>
                       <TableCell className="whitespace-nowrap align-top text-ws-muted">{werkzeugName(z.werkzeug)}</TableCell>
+                      <TableCell className="max-w-48 align-top">
+                        <VonZelle z={z} />
+                      </TableCell>
                       <TableCell className="whitespace-nowrap align-top">
                         {z.art === 'material' && <RegalPill regal={z.regal} />}
                       </TableCell>
@@ -350,6 +362,12 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                   <p className="text-sm text-ws-muted">
                     {werkzeugName(z.werkzeug)} · {relativesDatum(z.erstelltAm)}
                   </p>
+                  {z.art === 'material' && (
+                    <p className="flex min-w-0 gap-1 text-sm text-ws-muted">
+                      <span className="shrink-0">Von:</span>
+                      <VonZelle z={z} />
+                    </p>
+                  )}
                   {z.art === 'material' && <RegalPill regal={z.regal} />}
                   <div className="flex items-center gap-2">
                     <Hauptknopf z={z} voll />
@@ -425,6 +443,17 @@ function RegalPill({ regal }: { regal: MaterialRegal | null | undefined }) {
     rot: 'border-ws-red/30 bg-ws-red/15 text-ws-red',
   }[p.ton]
   return <Badge className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold hover:bg-transparent ${ton}`}>{p.text}</Badge>
+}
+
+/** PROJ-100: wer das Material angelegt hat – „Ich“ oder der Name (bzw. die E-Mail) aus dem Regal */
+function VonZelle({ z }: { z: MaterialZeile }) {
+  if (z.art === 'entwurf') return <span className="text-ws-faint">–</span>
+  const name = vonName(z)
+  return (
+    <span className={`block truncate ${z.ausRegal ? 'text-ws-text' : 'text-ws-muted'}`} title={z.ausRegal ? `Aus dem Regal von ${name}` : 'Von dir erstellt'}>
+      {name}
+    </span>
+  )
 }
 
 /** Titel, darunter Format · aus Skript bzw. Stand des Entwurfs */

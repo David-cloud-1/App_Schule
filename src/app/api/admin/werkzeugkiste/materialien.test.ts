@@ -190,6 +190,15 @@ describe('Liste „Meine Materialien“', () => {
     expect(res.status).toBe(400)
   })
 
+  it('filtert nach Herkunft: Kopien aus dem Regal oder selbst Erstelltes (PROJ-100)', async () => {
+    listeAnmelden([])
+    await materialien(new Request('http://t/api/x?herkunft=regal'))
+    expect(db.queries[0].calls).toContainEqual({ method: 'not', args: ['herkunft_name', 'is', null] })
+    await materialien(new Request('http://t/api/x?herkunft=eigen'))
+    expect(db.queries[1].calls).toContainEqual({ method: 'is', args: ['herkunft_name', null] })
+    expect((await materialien(new Request('http://t/api/x?herkunft=fremd'))).status).toBe(400)
+  })
+
   it('lädt seitenweise und sagt, ob es mehr gibt', async () => {
     listeAnmelden([LISTEN_ZEILE], 120)
     const body = await (await materialien(new Request('http://t/api/x?seite=2'))).json()

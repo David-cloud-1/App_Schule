@@ -11,6 +11,7 @@ import {
   speicherStand,
   ueberarbeitenErlaubt,
   untertitel,
+  vonName,
 } from './werkzeugkiste-materialien'
 
 // Mittwoch, 28.10.2026, 12:00 Ortszeit
@@ -68,6 +69,10 @@ describe('Zeile unter dem Titel (PROJ-52)', () => {
     expect(untertitel({ art: 'material', format: 'h5p', skriptName: 'Haftung.pdf' })).toBe('H5P für Moodle · aus Haftung.pdf')
     expect(untertitel({ art: 'material', format: 'h5p', skriptName: null })).toBe('H5P für Moodle')
     expect(untertitel({ art: 'entwurf', format: null, skriptName: 'Haftung.pdf' })).toBe('')
+    // PROJ-100: Der Name der Urheberin steht in der Spalte „Von“
+    expect(untertitel({ art: 'material', format: 'h5p', skriptName: null, ausRegal: 'Frau Meier' })).toBe('H5P für Moodle · aus dem Regal')
+    expect(vonName({})).toBe('Ich')
+    expect(vonName({ ausRegal: 'frau@schule.de' })).toBe('frau@schule.de')
   })
 })
 

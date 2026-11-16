@@ -320,11 +320,12 @@ export function brichDirektAb(id: string) {
 
 // ── Meine Materialien (PROJ-52) ───────────────────────────────────────────
 
-export function ladeMaterialien({ suche, werkzeug, seite, nurOeffentlich }: MaterialAbfrage) {
+export function ladeMaterialien({ suche, werkzeug, seite, nurOeffentlich, herkunft }: MaterialAbfrage) {
   const params = new URLSearchParams({ seite: String(seite), je: String(SEITENGROESSE) })
   if (suche.trim()) params.set('suche', suche.trim())
   if (werkzeug) params.set('werkzeug', werkzeug)
   if (nurOeffentlich) params.set('oeffentlich', '1')
+  if (herkunft && herkunft !== 'alle') params.set('herkunft', herkunft)
   return anfrage<MaterialListe>(`/materialien?${params.toString()}`)
 }
 
@@ -392,9 +393,16 @@ export async function ladeRegalDatei(freigabeId: string): Promise<void> {
 }
 
 /** Legt eine Kopie des Regal-Materials an; die Kopie hat kein Skript und lässt sich überarbeiten */
-export function passeAn(freigabeId: string) {
-  return anfrage<{ ablauf: Ablauf }>(`/regal/${encodeURIComponent(freigabeId)}/anpassen`, { method: 'POST' })
+export function passeAn(freigabeId: string, trotzdem = false) {
+  return anfrage<{ ablauf: Ablauf }>(`/regal/${encodeURIComponent(freigabeId)}/anpassen`, {
+    method: 'POST',
+    // PROJ-100: Es gibt schon eine Kopie; „trotzdem“ legt bewusst eine weitere an
+    ...(trotzdem ? { body: JSON.stringify({ trotzdem: true }) } : {}),
+  })
 }
+
+/** Code der Rückfrage, wenn von diesem Regal-Material schon eine Kopie vorliegt (PROJ-100) */
+export const CODE_SCHON_KOPIERT = 'schon_kopiert'
 
 export function ladeModeration(seite: number) {
   return anfrage<ModerationListe>(`/regal/moderation?seite=${seite}`)

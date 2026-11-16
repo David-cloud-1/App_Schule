@@ -115,5 +115,6 @@
 | PROJ-96 | Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed | [PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md](PROJ-96-werkzeugkiste-editor-vorschau-hauptflaeche.md) | 2026-11-12 |
 | PROJ-97 | Werkzeugkiste – Baukasten: Hinzufügen präsenter & Vorschau aufgeräumt | Deployed | [PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md](PROJ-97-werkzeugkiste-baukasten-hinzufuegen-vorschau.md) | 2026-11-13 |
 | PROJ-98 | Werkzeugkiste – Baukasten: Löschen & Einfügen an der Bearbeitungsstelle | Deployed | [PROJ-98-werkzeugkiste-baukasten-loeschen-und-einfuegen.md](PROJ-98-werkzeugkiste-baukasten-loeschen-und-einfuegen.md) | 2026-11-13 |
+| PROJ-100 | Werkzeugkiste – „Meine Materialien“: Herkunft sichtbar & übersichtlicher | In Progress | [PROJ-100-meine-materialien-herkunft.md](PROJ-100-meine-materialien-herkunft.md) | 2026-11-16 |
 
-## Next Available ID: PROJ-99
+## Next Available ID: PROJ-101

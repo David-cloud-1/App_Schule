@@ -168,6 +168,42 @@ describe('Anpassen – Kopie ohne Skript', () => {
     expect(body.ablauf.status).toBe('fertig')
   })
 
+  it('fragt nach, wenn es schon eine Kopie gibt, und legt dann nichts an (PROJ-100)', async () => {
+    tabellen = { werkzeug_ablaeufe: [{ id: 'vorhanden' }] }
+    mitQuelle()
+    const res = await anpassen(json({}), ctxF)
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe('schon_kopiert')
+    expect(svc.writes).toHaveLength(0)
+    expect(speicher.copy).not.toHaveBeenCalled()
+  })
+
+  it('legt mit „trotzdem“ bewusst eine weitere Kopie an (PROJ-100)', async () => {
+    tabellen = { werkzeug_ablaeufe: [{ id: 'vorhanden' }] }
+    mitQuelle()
+    const res = await anpassen(json({ trotzdem: true }), ctxF)
+    expect(res.status).toBe(201)
+    expect(svc.writes.some((w) => w.method === 'insert')).toBe(true)
+  })
+
+  it('schreibt die E-Mail-Adresse als Herkunft, wenn im Profil kein Name steht (PROJ-100)', async () => {
+    mitQuelle({ besitzer_name: 'Lehrkraft' })
+    const getUserById = vi.fn().mockResolvedValue({ data: { user: { email: 'meier@schule.de' } } })
+    ;(svc.client as unknown as { auth: unknown }).auth = { admin: { getUserById } }
+    expect((await anpassen(json({}), ctxF)).status).toBe(201)
+    expect(getUserById).toHaveBeenCalledWith('u-besitzer')
+    const insert = svc.writes.find((w) => w.method === 'insert')!.payload as Record<string, unknown>
+    expect(insert.herkunft_name).toBe('meier@schule.de')
+  })
+
+  it('bleibt beim Platzhalter, wenn die E-Mail nicht zu finden ist – das Übernehmen scheitert daran nie (PROJ-100)', async () => {
+    mitQuelle({ besitzer_name: 'Lehrkraft' })
+    ;(svc.client as unknown as { auth: unknown }).auth = { admin: { getUserById: vi.fn().mockRejectedValue(new Error('weg')) } }
+    expect((await anpassen(json({}), ctxF)).status).toBe(201)
+    const insert = svc.writes.find((w) => w.method === 'insert')!.payload as Record<string, unknown>
+    expect(insert.herkunft_name).toBe('Lehrkraft')
+  })
+
   it('kopiert im Speicher nur Datei, Vorschau und Bilder-Auszug — nie Skript oder Einlesung', async () => {
     mitQuelle()
     await anpassen(json({}), ctxF)

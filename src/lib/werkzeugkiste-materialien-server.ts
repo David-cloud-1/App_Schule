@@ -55,6 +55,8 @@ export const listenAbfrageSchema = z.object({
     .optional(),
   /** „Nur öffentliche“ (PROJ-67) */
   oeffentlich: z.enum(['1']).optional(),
+  /** PROJ-100: selbst erstellt oder Kopie aus dem Regal */
+  herkunft: z.enum(['eigen', 'regal']).optional(),
   seite: z.coerce.number().int().min(1).max(1000).default(1),
   je: z.coerce.number().int().min(1).max(SEITENGROESSE).default(SEITENGROESSE),
 })
