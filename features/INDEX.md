@@ -130,6 +130,6 @@
 | PROJ-110 | Baukasten – Quiz-Show-Block im Kahoot-Stil (spielbar, offline) | Planned | [PROJ-110-baukasten-quiz-show-block.md](PROJ-110-baukasten-quiz-show-block.md) | 2026-11-16 |
 | PROJ-111 | Baukasten – Eine Bedienstelle statt drei | Deployed | [PROJ-111-baukasten-eine-bedienstelle.md](PROJ-111-baukasten-eine-bedienstelle.md) | 2026-11-16 |
 | PROJ-112 | Baukasten – Vorschau schneller | Deployed | [PROJ-112-baukasten-vorschau-schneller.md](PROJ-112-baukasten-vorschau-schneller.md) | 2026-11-16 |
-| PROJ-113 | Baukasten – Klicks in die Vorschau nie unnötig blockieren | In Review | [PROJ-113-baukasten-klicks-nie-blockieren.md](PROJ-113-baukasten-klicks-nie-blockieren.md) | 2026-11-16 |
+| PROJ-113 | Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed | [PROJ-113-baukasten-klicks-nie-blockieren.md](PROJ-113-baukasten-klicks-nie-blockieren.md) | 2026-11-16 |
 
 ## Next Available ID: PROJ-114

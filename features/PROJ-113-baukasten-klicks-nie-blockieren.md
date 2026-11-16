@@ -1,8 +1,8 @@
 # PROJ-113: Baukasten – Klicks in die Vorschau nie unnötig blockieren
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-16 (Deployed: App 51453a4)
 
 ## Idee in einem Satz
 Nach einer Änderung bleibt die Vorschau sofort bedienbar. Ein Klick auf einen Block, den die Änderung nicht berührt hat, wird nicht mehr abgewiesen.
