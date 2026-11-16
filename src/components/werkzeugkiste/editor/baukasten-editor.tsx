@@ -74,6 +74,7 @@ import {
   einfachText,
   schreibWert,
   setzeSchreibWert,
+  alsReinerText,
   uebernimmSchreibtext,
   type SchreibTeil,
 } from '@/components/werkzeugkiste/editor/schreiben'
@@ -642,7 +643,14 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (sit.teil === 'text') {
       const r = uebernimmSchreibtext(sit.start, w.html)
       if (!r.ok) {
-        toast.error(r.grund)
+        // Der getippte Text darf nie still verloren gehen: zum Kopieren anbieten
+        const verloren = alsReinerText(w.html)
+        toast.error(r.grund, {
+          duration: 20_000,
+          action: verloren
+            ? { label: 'Text kopieren', onClick: () => void navigator.clipboard?.writeText(verloren).then(() => toast.success('Text kopiert')) }
+            : undefined,
+        })
         beendeSitzung(true)
         return
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Struktur } from '@/lib/werkzeugkiste-editor'
-import { direktBearbeitbar, einfachText, inselnVon, schreibWert, setzeSchreibWert, uebernimmSchreibtext, SCHREIB_MAX } from './schreiben'
+import { alsReinerText, direktBearbeitbar, einfachText, inselnVon, schreibWert, setzeSchreibWert, uebernimmSchreibtext, SCHREIB_MAX } from './schreiben'
 import { liesWunsch } from './vorschau-nachrichten'
 
 const struktur = (): Struktur => ({
@@ -98,6 +98,27 @@ describe('Schreiben: Inseln und Reinigung', () => {
     }
   })
 
+  it('reinigt auch dann, wenn das Original schon aktiven Inhalt hatte (BUG-1)', () => {
+    const r = uebernimmSchreibtext('<p onclick="alt()">x</p>', '<p onclick="alt()">x</p><script>alert(1)</script><p>neu</p>')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.html).not.toMatch(/<script/i)
+      expect(r.html).toContain('neu')
+    }
+  })
+
+  it('schickt die Antwort durch das Motor-Schema: Ereignisse und gefährliche Links fallen weg (BUG-2)', () => {
+    const r = uebernimmSchreibtext('<p>x</p>', '<p>x</p><p onmouseover="a()">m</p><p onclick="b()">y</p><a href="javascript:alert(1)">l</a><a href="data:text/html,x">d</a>')
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.html).not.toMatch(/onmouseover|onclick|javascript:|data:text/i)
+    }
+  })
+
+  it('liefert reinen Text zum Kopieren', () => {
+    expect(alsReinerText('<p>Hallo <b>Welt</b></p>')).toBe('Hallo Welt')
+  })
+
   it('lehnt zu lange und falsche Typen ab', () => {
     expect(uebernimmSchreibtext('', 'x'.repeat(SCHREIB_MAX + 1)).ok).toBe(false)
     expect(uebernimmSchreibtext('', 42).ok).toBe(false)
@@ -118,5 +139,17 @@ describe('Schreiben: Nachrichten der Seite', () => {
     expect(liesWunsch({ wkSchreibEnde: 'k0-e1', teil: 'text' })).toBeNull()
     expect(liesWunsch({ wkSchreibEnde: 'k0-e1', teil: 'text', html: 'x'.repeat(SCHREIB_MAX + 1) })).toBeNull()
     expect(liesWunsch({ wkSchreibZwischen: 'k0-e1', teil: 'text', html: 5 })).toBeNull()
+  })
+})
+
+describe('Schreiben: fremde Elemente', () => {
+  it('unbekannte Elemente fallen durch das Schema weg, der Text bleibt', () => {
+    const r = uebernimmSchreibtext('<p>x</p>', '<p>x</p><p><marquee>m</marquee></p>')
+    expect(r.ok).toBe(true)
+    if (r.ok) expect(r.html).not.toMatch(/marquee/i)
+  })
+
+  it('ein neues gestaltetes Element (Insel) wird abgelehnt', () => {
+    expect(uebernimmSchreibtext('<p>x</p>', '<p>x</p><p style="color:red">y</p>').ok).toBe(false)
   })
 })

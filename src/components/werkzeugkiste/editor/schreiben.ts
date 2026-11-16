@@ -114,14 +114,24 @@ export function entschaerfen(html: string): string {
 
 export type Uebernahme = { ok: true; html: string } | { ok: false; grund: string }
 
+/** Text durch das Motor-Schema schicken und aufräumen: Was der Motor nicht kennt, fliegt raus (Skripte, fremde Tags, Ereignis-Attribute) */
+function normalisieren(html: string): string {
+  const e = editorFuer(html)
+  try {
+    return aufraeumen(alsHtml(e))
+  } finally {
+    e.destroy()
+  }
+}
+
 /**
  * Text von der Seite übernehmen: reinigen und prüfen, dass keine geschützte Insel verändert wurde.
  * Was die Seite zurückschickt, ist nie vertrauenswürdig.
  */
 export function uebernimmSchreibtext(original: string, zurueck: unknown): Uebernahme {
   if (typeof zurueck !== 'string' || zurueck.length > SCHREIB_MAX) return { ok: false, grund: 'Der Text ist zu lang oder ungültig.' }
-  let html = zurueck
-  if (hatAktivenInhalt(html) && !hatAktivenInhalt(original)) html = entschaerfen(html)
+  // Immer durch das Schema des Motors (wie im Formular), nie ungeprüft weiterreichen
+  let html = normalisieren(zurueck)
   // Jede Insel im Ergebnis muss eine Insel des Originals sein (je Original höchstens einmal)
   const frei = inselnVon(original)
   for (const insel of inselnVon(html)) {
@@ -129,5 +139,14 @@ export function uebernimmSchreibtext(original: string, zurueck: unknown): Uebern
     if (i < 0) return { ok: false, grund: 'Ein geschützter Teil des Textes wurde verändert. Der Text wurde nicht übernommen.' }
     frei.splice(i, 1)
   }
+  // Inseln sind byte-gleich mit dem Original und bleiben unangetastet; für alles andere gilt zusätzlich die Entschärfung
+  if (hatAktivenInhalt(html) && !hatAktivenInhalt(original)) html = entschaerfen(html)
   return { ok: true, html }
+}
+
+/** Reiner Text aus HTML (für „Text kopieren“, wenn die Übernahme abgelehnt wurde) */
+export function alsReinerText(html: string): string {
+  const t = document.createElement('template')
+  t.innerHTML = html
+  return (t.content.textContent ?? '').trim()
 }
