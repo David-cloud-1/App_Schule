@@ -1,8 +1,8 @@
 # PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-16 (Tech Design)
 
 ## Idee in einem Satz
 Im Baukasten wählt ein Klick auf einen Block in der Vorschau ihn aus. Direkt am Block erscheint eine schwebende Leiste mit allen Aktionen. Ein Schalter „Bearbeiten | Ausprobieren“ trennt Bearbeiten und Spielen eindeutig, und leere Stellen sagen, was man tun kann.
@@ -117,7 +117,106 @@ Im Baukasten wählt ein Klick auf einen Block in der Vorschau ihn aus. Direkt am
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Erstellt:** 2026-11-16 (Opus). Gilt als **Grundsatz für die ganze Reihe PROJ-101–110**.
+
+### Ausgangslage (Bestand)
+- Die Vorschau ist die echte Seite aus dem Kern (`baue_seite(..., marken=True)`). Jeder Block und jede Themen-Überschrift trägt eine Sprungmarke (`k0`, `k0-e3`, `abschluss`). Sie läuft in einem abgeschotteten Rahmen (`sandbox="allow-scripts"`, kein `allow-same-origin`).
+- Die App spielt beim Anzeigen ein **Hilfsskript** in die Seite ein (`vorschau-skript.ts`). Es setzt heute die Knopfzeile „Bearbeiten · Darunter · Löschen“ über jeden Block und schickt Klicks als Text-Nachrichten an die App (`wkWaehle`, `wkEinfuegen`, `wkLoesche`). Die App prüft jede Nachricht (`editor-vorschau.tsx`).
+- Alle Aktionen gibt es schon als fertige Bausteine im Editor-Zustand: Duplizieren, Verschieben, Löschen mit Rückgängig, Typ wechseln, Katalog öffnen (`editor-gliederung.tsx`, `use-editor-zustand.ts`, `baukasten-editor.tsx`).
+
+### Grundsatzentscheidung G1: Bedienung lebt **in** der Seite, nicht als Schicht darüber
+Zwei Wege waren möglich:
+
+| | A) Schicht der App über dem Rahmen | **B) Hilfsskript in der Seite (gewählt)** |
+|---|---|---|
+| Wer kennt die Lage der Blöcke? | Nur die Seite. Die App müsste bei jedem Scrollen und jeder Größenänderung alle Positionen per Nachricht erfragen. | Die Seite selbst, ohne Umweg. |
+| Gefühl beim Scrollen | Leiste und Rahmen hinken sichtbar hinterher (Nachrichten-Verzögerung). | Leiste klebt am Block, ruckelfrei. |
+| Spätere Features (Ziehen, Bild-Anfasser, Zuschneiden, Markieren, Text tippen) | Alles doppelt rechnen: Koordinaten Seite ↔ App, Zoom, Scroll. | Alles passiert dort, wo das Bild bzw. der Text ist. |
+| Sicherheit | Gleich: Die Seite bleibt abgeschottet. | Gleich. Die Seite darf nur **Wünsche** schicken. Die App prüft und führt aus. |
+| Aussehen | shadcn/`ws-*` möglich. | Eigenes kleines Stylesheet im Skript (wie heute), an `ws-*` angelehnt, Kontrast ≥ 4,5 : 1. |
+
+**Warum B:** Bei A müsste jede künftige Funktion (PROJ-102 Ziehen, PROJ-104 Anfasser, PROJ-106 Markieren, PROJ-103 Tippen) Positionen über die Rahmengrenze hinweg nachführen. Das wird ruckelig und fehleranfällig. B baut auf dem Weg auf, der seit PROJ-96 im Einsatz ist und funktioniert.
+**Regel für alle Folge-Features:** *Die Seite zeigt und meldet, die App entscheidet und speichert.* Die Seite ändert nie selbst Inhalte. Sie schickt einen Wunsch („Block k0-e3 löschen“), die App prüft (eigener Rahmen, gültige Marke, Block existiert, Vorschau aktuell, nicht schreibgeschützt), ändert die YAML und baut neu. Rückgängig, Autosave und Prüfstelle bleiben so automatisch richtig.
+
+**Folge:** Das Hilfsskript wird von einer einzelnen Datei mit Textbausteinen zu einem **kleinen eigenen Programm in mehreren Teilen** (Auswahl, Leiste, Modus, Leerzustände, Tastatur). Es wird weiterhin nur in die Editor-Vorschau eingespielt, nie in Download, Link, Regal oder Druck.
+
+### G2: Aufgaben „einfrieren“ im Modus Bearbeiten
+- Das Skript fängt im Modus Bearbeiten **alle** Maus-, Touch-, Tastatur- und Zieh-Ereignisse ab, **bevor** die Aufgaben sie sehen. Ausnahme sind die eigenen Bedienelemente des Editors. Ein Klick wird dabei zu „Block auswählen“.
+- Keine Auffangschicht über jedem Block: Die würde Größe und Lage der Blöcke verfälschen und mit PROJ-104 (Anfasser am Bild) kollidieren.
+- Im Modus **Ausprobieren** schaltet das Skript das Abfangen ab und blendet alle Editor-Teile aus. Die Seite verhält sich wie für Schüler. Der Wechsel braucht **keinen** Neubau. Die App sendet nur „Modus = Ausprobieren/Bearbeiten“.
+- Was Schüler in Ausprobieren eingegeben haben, bleibt beim Wechsel zurück in Bearbeiten sichtbar, bis die Seite neu gebaut wird. Das ist gewollt und harmlos.
+
+### G3: Kleine Ergänzung im Kern (nur Vorschau)
+Der Kern bekommt im Vorschau-Modus (`marken=True`) zwei Ergänzungen. Veröffentlichte Seiten bleiben byte-gleich.
+1. **Deckblatt-Marke** (`deckblatt`), damit das Deckblatt per Klick wählbar ist (heute nur über die Gliederung).
+2. **Platzhalter statt Weglassen:** Ein Block, den der Kern heute stillschweigend überspringt (leer oder kaputt), erscheint als schlichter Platzhalter mit seiner Marke. Nur so kann die Lehrkraft ihn in der Seite anklicken, füllen oder löschen.
+
+*Warum im Kern und nicht im Skript?* Nur der Kern weiß, **wo** ein übersprungener Block gestanden hätte. Die App könnte es nachrechnen, müsste dafür aber die Bau-Logik des Kerns nachbauen und bei jeder Kern-Änderung nachziehen. Leere **Themen** erkennt das Skript dagegen selbst (Überschrift ohne Blöcke), dafür ist keine Kern-Änderung nötig.
+*Rückfall:* Liefert der Kern (noch) keine Platzhalter, funktioniert alles andere. Leere oder kaputte Blöcke sind dann wie heute nur über die Gliederung erreichbar.
+
+### A) Aufbau (was die Lehrkraft sieht)
+```
+Baukasten-Editor (bestehend)
++-- Kopfzeile: Schließen · Titel/Status · Rückgängig/Wiederholen · ⋯ · Veröffentlichen   (unverändert)
++-- Gliederung (einklappbar, unverändert, Auswahl synchron)
++-- Vorschau-Rahmen
+|   +-- Vorschau-Kopfzeile
+|   |   +-- NEU: Modus-Schalter „Bearbeiten | Ausprobieren“ (AdminSegmented, ⌘/Strg+E)
+|   |   +-- „Wird aktualisiert …“ · Platzanzeige · Vollbreite (unverändert)
+|   +-- Die Seite (abgeschottet) mit Hilfsskript
+|       +-- Darüberfahren: dünner Rahmen „das würde gewählt“
+|       +-- Ausgewählter Block: kräftiger Rahmen
+|       |   +-- Block-Leiste (schwebt über dem Block, klebt beim Scrollen)
+|       |       +-- Ziehgriff (Platz für PROJ-102) · Typ-Name
+|       |       +-- Bearbeiten · + Darunter · Duplizieren · ⋯ · Löschen (rot)
+|       |       +-- Platz für typ-eigene Werkzeuge (Bild → PROJ-104, Lehrtext → PROJ-103)
+|       +-- Einfügelinie „+“ zwischen zwei Blöcken (beim Darüberfahren)
+|       +-- Leeres Thema: gestrichelte Fläche mit 6 häufigen Blöcken + „Alle Blöcke …“
+|       +-- Platzhalter für leere/kaputte Blöcke (aus dem Kern, G3)
+|       +-- Handy: Leiste fest am unteren Rand statt schwebend
++-- Schublade (bestehend, öffnet bei „Bearbeiten“/Doppelklick/Enter)
++-- ⋯-Menü der Leiste: ein kleines Menü in der App, an der Stelle des Klicks geöffnet
+    (Typ wechseln, Nach oben, Nach unten, Kopieren, Löschen)
+```
+**Warum das ⋯-Menü in der App und nicht in der Seite?** Es enthält Einträge wie „Typ wechseln“, die Dialoge der App öffnen. Ein shadcn-`DropdownMenu` an der gemeldeten Klickstelle ist barrierefrei und sieht aus wie überall im Lehrkräfte-Bereich. Die Leiste selbst bleibt in der Seite (G1).
+
+### B) Daten
+- **Keine neuen gespeicherten Daten**, keine Datenbank-Änderung, kein neues Format der YAML.
+- Der Modus (Bearbeiten/Ausprobieren) wird nicht gemerkt. Beim Öffnen gilt immer „Bearbeiten“ (Spec E1).
+- Die Auswahl lebt wie heute im Editor-Zustand der App. Die Seite bekommt sie nach jedem Neubau zurückgemeldet (wie heute die Sprungmarke).
+- **Nachrichten zwischen Seite und App** (Text, geprüft wie heute). Seite → App: auswählen, Auswahl aufheben, bearbeiten öffnen, darunter einfügen, duplizieren, löschen, Menü öffnen (mit Klickstelle), Einfügen an Lücke, häufigen Block einfügen (Typ), Taste gedrückt (nur die vereinbarten Kürzel), bereit, Scrollposition. App → Seite: Auswahl/Sprungmarke, Modus, schreibgeschützt ja/nein, Scrollposition.
+- Typen, die die Seite als „häufigen Block“ melden darf, sind fest in der App hinterlegt. Ein unbekannter Typ wird verworfen.
+
+### C) Technische Entscheidungen (begründet)
+| Entscheidung | Warum |
+|---|---|
+| Bedienung im Hilfsskript (G1) | Ruckelfrei, Grundlage für Ziehen, Anfasser und Tippen, baut auf Bewährtem auf |
+| Seite meldet nur Wünsche, App führt aus | Sicherheit (abgeschotteter Rahmen bleibt), Rückgängig, Autosave und Prüfstelle ohne Sonderwege |
+| Kein Neubau beim Moduswechsel, bei Auswahl und Darüberfahren | Unter 100 ms Reaktion (Spec), keine flackernde Seite |
+| Tastenkürzel in beiden Richtungen | Hat die Seite den Fokus, kommen Tastendrücke nicht bei der App an. Das Skript leitet **nur** die vereinbarten Kürzel weiter (Pfeile, Enter, Entf, Esc, ⌘/Strg + D/E/Z), und nur, wenn kein Eingabefeld aktiv ist. Rückgängig mit ⌘/Strg + Z funktioniert dadurch auch mit Fokus in der Vorschau. |
+| Leiste mit eigenem kleinen Stylesheet | shadcn gibt es in der abgeschotteten Seite nicht. Farben an `ws-*` (hell) angelehnt, Kontrast ≥ 4,5 : 1, Mindestgröße 44 px bei Touch, Animation ≤ 200 ms, bei „Bewegung reduzieren“ aus. Ein eigener Test prüft die Kontraste wie `workspace-theme.test.ts`. |
+| Bisherige Knopfzeile über jedem Block entfällt | Ersetzt durch die Leiste am gewählten Block, weniger Unruhe auf der Seite (Spec) |
+| Kern-Ergänzung nur im Vorschau-Modus (G3) | Veröffentlichte Seiten bleiben unverändert. Ein Test vergleicht sie vorher und nachher. |
+| Schreibgeschützt: App sagt der Seite „nur lesen“ | Leiste zeigt nur „Kopieren“ (wirksam ab PROJ-102). Die App lehnt ändernde Wünsche zusätzlich selbst ab (doppelte Sicherung). |
+
+### D) Was neu gebaut wird, was bleibt
+- **Neu/umgebaut:** Hilfsskript der Vorschau (Auswahl, Darüberfahren, Leiste, Einfrieren, Modus, Leerzustände, Einfügelinie, Tastatur, Handy-Leiste), Modus-Schalter in der Vorschau-Kopfzeile, Annahme der neuen Nachrichten in `editor-vorschau.tsx` und `baukasten-editor.tsx`, ⋯-Menü an Klickstelle.
+- **Kern (Repo Werkzeugkiste, Zweig `vercel-kern`):** Deckblatt-Marke und Platzhalter für übersprungene Blöcke, nur bei `marken=True`. Danach Kern-Deploy (siehe Memory „PROJ-88“: CLI-Login-Falle).
+- **Unverändert:** Gliederung, Schublade, Katalog, Formulare, Entwurf/Veröffentlichen, Datenbank, APIs, Proxy-Freigaben.
+- **Pakete:** keine neuen. `AdminSegmented` und shadcn-`DropdownMenu` sind vorhanden.
+
+### E) Tests
+- Einheitstests für das Skript: Auswahl per Klick, Einfrieren (Klick in eine Aufgabe löst nichts aus), Moduswechsel ohne Neubau, Leerzustand bei leerem Thema, nur erlaubte Kürzel werden weitergeleitet.
+- Nachrichten-Prüfung: fremder Absender, falsche Marke, unbekannter Block-Typ und schreibgeschützt werden verworfen.
+- Kern: Seite ohne `marken` ist byte-gleich zu vorher. Mit `marken` gibt es Deckblatt-Marke und Platzhalter.
+- Browser-Test (manuell, kein Dev-Server-Lauf durch Claude, siehe Memory): Laptop, iPad quer, Handy.
+
+### F) Risiken
+- **Aufgaben mit eigener Tastatur- oder Ziehlogik** (Kreuzworträtsel, Memory, Drag & Drop) könnten Ereignisse früher abgreifen als das Skript. Gegenmaßnahme: Das Skript hört in der frühesten Phase auf Dokumentebene mit. Beim Bau wird jede der 32 Typen einmal im Modus Bearbeiten durchgeklickt (Checkliste in QA).
+- **Größe des Skripts:** Es zählt nicht zur 8-MB-Grenze, weil es nur in der Vorschau steckt.
+
+### Modell-Empfehlung
+Diese Grundsatzentscheidung war der Opus-Teil. **`/frontend` für PROJ-101 und die Kern-Ergänzung kann Sonnet bauen.** Für `/architecture` PROJ-103 (Text tippen) bitte wieder Opus.
 
 ## QA Test Results
 _To be added by /qa_
