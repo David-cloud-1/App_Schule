@@ -1,8 +1,8 @@
 # PROJ-112: Baukasten – Vorschau schneller
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-16 (Deployed: App b41e17c, Kern 342cedf; Browser-Test durch den Nutzer offen)
 
 ## Idee in einem Satz
 Nach jeder Änderung im Baukasten soll die Vorschau spürbar früher aktuell sein, ohne dass sich Inhalt oder veröffentlichte Seite ändern.

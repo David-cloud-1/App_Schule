@@ -1,8 +1,8 @@
 # PROJ-111: Baukasten – Eine Bedienstelle statt drei
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-16 (Deployed: App b41e17c, Kern 342cedf; Browser-Test durch den Nutzer offen)
 
 ## Idee in einem Satz
 Im Baukasten gibt es für jede Aktion genau eine Stelle. Die Text-Leiste bleibt nach „Fertig“ nicht stehen, und das Formular zeigt nichts, was die Leiste in der Seite schon kann.
