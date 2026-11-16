@@ -69,6 +69,15 @@ import {
 } from '@/components/werkzeugkiste/editor/einfuege-stelle'
 import { EditorVorschau, type Modus } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
+import {
+  direktBearbeitbar,
+  einfachText,
+  schreibWert,
+  setzeSchreibWert,
+  uebernimmSchreibtext,
+  type SchreibTeil,
+} from '@/components/werkzeugkiste/editor/schreiben'
+import type { SchreibBefehl, SchreibStart } from '@/components/werkzeugkiste/editor/editor-vorschau'
 
 const ZURUECK = `${WERKZEUGKISTE_HREF}?tab=materialien`
 const GLIEDERUNG_SPEICHER = 'wk-editor-gliederung'
@@ -190,7 +199,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const router = useRouter()
   const apple = useIsApplePlatform()
   const z = useEditorZustand(daten.id, daten.struktur, daten.stand)
-  const v = useEditorVorschau(daten.id, z.gespeichertAm)
+  // PROJ-103: Direkt in der Seite schreiben. Solange die Sitzung läuft, baut die Vorschau nicht neu.
+  const [schreiben, setSchreiben] = useState<SchreibStart | null>(null)
+  const [schreibBefehl, setSchreibBefehl] = useState<SchreibBefehl | null>(null)
+  const schreibRef = useRef<{ nr: number; marke: string; teil: SchreibTeil; ort: Auswahl; start: string } | null>(null)
+  const schreibZaehler = useRef(0)
+  const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben)
   const [auswahl, setAuswahlState] = useState<Auswahl>(null)
   // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
   const [markiert, setMarkiert] = useState<Ort[]>([])
@@ -506,6 +520,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       setVollbreit(false)
       return true
     }
+    // PROJ-103: Zwischen-/Endstand und Abbruch gehören zu einer laufenden Sitzung; die Seite ist dabei absichtlich „älter“
+    if (w.art === 'schreibZwischen' || w.art === 'schreibEnde' || w.art === 'schreibAbbruch') {
+      beiSchreiben(w)
+      return true
+    }
     // Alles mit Marke: Die Marken zählen Themen und Blöcke durch – stimmt die gezeigte Seite nicht mehr mit
     // dem Entwurf überein, wäre die Stelle falsch.
     const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
@@ -537,6 +556,23 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         if (vor < 0 || nach === von) return true
         z.aendere((s) => verschiebeThema(s, von, nach))
         setAuswahlRoh({ art: 'thema', thema: nach })
+        return true
+      }
+      case 'schreibe': {
+        if (z.gesperrt || modus !== 'bearbeiten' || viele || schreibRef.current) return true
+        const wert = schreibWert(a, w.teil, z.struktur)
+        if (wert === null) return true
+        if (w.teil === 'text' && !direktBearbeitbar(wert)) {
+          // Gestaltung, die der Schreibmodus nicht verlustfrei kann: wie im Formular die HTML-Ansicht anbieten
+          setAuswahl(a)
+          setVollbreit(false)
+          toast.info('Dieser Text lässt sich nur in der Schublade bearbeiten (HTML-Ansicht), damit keine Gestaltung verloren geht.')
+          return true
+        }
+        setAuswahlRoh(a)
+        const nr = ++schreibZaehler.current
+        schreibRef.current = { nr, marke: w.marke, teil: w.teil, ort: a, start: wert }
+        setSchreiben({ nr, marke: w.marke, teil: w.teil, html: w.teil === 'text' ? wert : undefined })
         return true
       }
       case 'bearbeite':
@@ -587,6 +623,44 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       }
     }
   }
+
+  // PROJ-103: Text aus der Seite übernehmen. Die Seite schreibt nur, die App reinigt und speichert.
+  function beendeSitzung(vorbei: boolean) {
+    schreibRef.current = null
+    setSchreiben(null)
+    if (vorbei) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'vorbei' }))
+  }
+  function beiSchreiben(w: Extract<VorschauWunsch, { art: 'schreibZwischen' | 'schreibEnde' | 'schreibAbbruch' }>) {
+    const sit = schreibRef.current
+    if (!sit || sit.marke !== w.marke) return
+    if (w.art === 'schreibAbbruch') {
+      beendeSitzung(false)
+      return
+    }
+    if (w.teil !== sit.teil) return
+    let wert: string
+    if (sit.teil === 'text') {
+      const r = uebernimmSchreibtext(sit.start, w.html)
+      if (!r.ok) {
+        toast.error(r.grund)
+        beendeSitzung(true)
+        return
+      }
+      wert = r.html
+    } else {
+      wert = einfachText(w.html)
+    }
+    // Eine Sitzung ist im Verlauf immer ein einziger Schritt
+    if (!z.gesperrt) z.aendere((s) => setzeSchreibWert(sit.ort, sit.teil, s, wert), `schreib-${sit.nr}`, true)
+    if (w.art === 'schreibEnde') beendeSitzung(wert === sit.start)
+  }
+
+  // Lage ändert sich (andere Auswahl, Formular, Ausprobieren, Dialog): Schreiben beenden, die Seite meldet den Endstand
+  useEffect(() => {
+    const sit = schreibRef.current
+    if (!sit) return
+    if (modus !== 'bearbeiten' || marke !== sit.marke || schubladeAktiv || dialog) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
+  }, [modus, marke, schubladeAktiv, dialog, schreiben])
 
   // Tasten, die die Seite weitergibt (sie hat den Fokus, die App sähe sie sonst nie)
   function beiTaste(t: Taste) {
@@ -1020,6 +1094,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100svh-7.5rem)]"
         >
           <EditorVorschau
+            schreiben={schreiben}
+            schreibBefehl={schreibBefehl}
+            beiNeueSeite={() => {
+              schreibRef.current = null
+              setSchreiben(null)
+            }}
             html={v.html}
             laedt={v.laedt}
             fehler={v.fehler}

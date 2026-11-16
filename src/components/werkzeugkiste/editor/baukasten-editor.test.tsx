@@ -874,3 +874,103 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(senden).not.toHaveBeenCalled()
   })
 })
+
+describe('Direkt in der Seite schreiben (PROJ-103)', () => {
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+  const gespeichert = (n = 1) => waitFor(() => expect(api.speichereEntwurf.mock.calls.length).toBeGreaterThanOrEqual(n), { timeout: 4000 })
+  function nachricht(data: unknown, rahmen: HTMLIFrameElement | null) {
+    fireEvent(window, new MessageEvent('message', { data, source: rahmen?.contentWindow ?? null }))
+  }
+  async function bereit() {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    return { rahmen, senden }
+  }
+  const ORIGINAL = '<h2>Grundlagen</h2><p>Der Frachtführer haftet.</p>'
+
+  it('der Wunsch startet das Schreiben: erst das Schreibwerk, dann die gespeicherte Fassung', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k0-e0', teil: 'text', html: ORIGINAL } }, '*'), { timeout: 4000 })
+    expect(senden).toHaveBeenCalledWith({ wkSchreibwerk: expect.stringContaining('__wkSchreibwerk') }, '*')
+    const reihenfolge = senden.mock.calls.map((c) => Object.keys(c[0] as object)[0])
+    expect(reihenfolge.indexOf('wkSchreibwerk')).toBeLessThan(reihenfolge.indexOf('wkSchreibStart'))
+    // Das Formular öffnet dabei nicht
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('Zwischenstand und Endstand: ein Rückgängig-Schritt, kein Neubau beim Schreiben, danach Neubau', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    nachricht({ wkSchreibZwischen: 'k0-e0', teil: 'text', html: '<h2>Grundlagen</h2><p>Neu 1</p>' }, rahmen)
+    await gespeichert()
+    // Gespeichert, aber solange geschrieben wird, baut die Vorschau nicht neu
+    await new Promise((r) => setTimeout(r, 1800))
+    expect(api.baueEntwurfVorschau.mock.calls.length).toBe(bauten)
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: '<h2>Grundlagen</h2><p>Neu 2</p>' }, rahmen)
+    await waitFor(() => expect(String(letzteStruktur().chapters[0].elements[0].content)).toContain('Neu 2'), { timeout: 4000 })
+    await waitFor(() => expect(api.baueEntwurfVorschau.mock.calls.length).toBeGreaterThan(bauten), { timeout: 5000 })
+    // Beides war ein einziger Schritt im Verlauf
+    fireEvent.click(screen.getByRole('button', { name: /Rückgängig/ }))
+    await waitFor(() => expect(letzteStruktur().chapters[0].elements[0].content).toBe(ORIGINAL), { timeout: 4000 })
+  }, 20000)
+
+  it('unveränderter Endstand: nichts wird gespeichert, die Seite bekommt „vorbei“', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.anything() }), '*'), { timeout: 4000 })
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: ORIGINAL }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibVorbei: true }, '*'))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it('Überschrift eines Themas und Deckblatt-Titel schreiben direkt (ohne Schreibwerk)', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k1', teil: 'kapitel' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k1', teil: 'kapitel' } }, '*'))
+    expect(senden).not.toHaveBeenCalledWith(expect.objectContaining({ wkSchreibwerk: expect.anything() }), '*')
+    nachricht({ wkSchreibEnde: 'k1', teil: 'kapitel', html: '  Neue\n Grenzen ' }, rahmen)
+    await gespeichert()
+    expect(letzteStruktur().chapters[1].title).toBe('Neue Grenzen')
+  })
+
+  it('Aufgaben lassen sich nicht direkt schreiben (Aufgaben bleiben im Formular)', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e1', teil: 'text' }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e1', teil: 'unterschrift' }, rahmen)
+    await new Promise((r) => setTimeout(r, 200))
+    expect(senden).not.toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.anything() }), '*')
+  })
+
+  it('Schreiben ohne laufende Sitzung oder mit falscher Marke ändert nichts', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: '<p>Fremd</p>' }, rahmen)
+    nachricht({ wkSchreibZwischen: 'k1', teil: 'kapitel', html: 'Fremd' }, rahmen)
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it('ein Endstand mit verändertem geschützten Teil wird nicht übernommen', async () => {
+    const insel = '<table style="border:1px solid red"><tr><td>A</td></tr></table>'
+    api.ladeEditor.mockResolvedValue({
+      ...DATEN,
+      struktur: { ...STRUKTUR, chapters: [{ title: 'Grundlagen', elements: [{ type: 'text', content: `<p>Text</p>${insel}` }] }, STRUKTUR.chapters[1]] },
+    })
+    const { rahmen } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    await new Promise((r) => setTimeout(r, 300))
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: insel.replace('A', 'B') }, rahmen)
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+})

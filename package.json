@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "schreibwerk:bauen": "node scripts/werkzeugkiste/schreibwerk-bauen.mjs",
     "test": "NODE_OPTIONS=--max-old-space-size=4096 vitest run",
     "test:watch": "NODE_OPTIONS=--max-old-space-size=4096 vitest",
     "test:e2e": "playwright test",

@@ -6,11 +6,25 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { liesWunsch, type VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
+import type { SchreibTeil } from '@/components/werkzeugkiste/editor/schreiben'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { SEITE_GRENZE_BYTES } from '@/lib/werkzeugkiste-bilder'
 import { cn } from '@/lib/utils'
 
 export type Modus = 'bearbeiten' | 'ausprobieren'
+
+/** PROJ-103: Die Seite soll einen Teil direkt zum Schreiben öffnen (`html` nur beim Lehrtext: gespeicherte Fassung) */
+export interface SchreibStart {
+  nr: number
+  marke: string
+  teil: SchreibTeil
+  html?: string
+}
+/** PROJ-103: Befehl an die Seite: Schreiben beenden (Endstand melden) oder verwerfen (nichts geändert, gebaute Fassung zurück) */
+export interface SchreibBefehl {
+  nr: number
+  art: 'beende' | 'vorbei'
+}
 
 /**
  * Vorschau des Entwurfs (PROJ-89): die echte Seite mit funktionierenden
@@ -43,6 +57,9 @@ export function EditorVorschau({
   vollbreit = false,
   onVollbreit,
   mehrMarken = [],
+  schreiben = null,
+  schreibBefehl = null,
+  beiNeueSeite,
 }: {
   html: string | null
   laedt: boolean
@@ -72,12 +89,19 @@ export function EditorVorschau({
   onVollbreit?: () => void
   /** PROJ-102: Marken aller gewählten Blöcke, wenn mehrere gewählt sind (sonst leer) */
   mehrMarken?: string[]
+  /** PROJ-103: Start des Schreibens direkt in der Seite */
+  schreiben?: SchreibStart | null
+  schreibBefehl?: SchreibBefehl | null
+  /** Die Seite wurde neu gebaut (eine laufende Schreib-Sitzung ist damit vorbei) */
+  beiNeueSeite?: () => void
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
   const letzte = useRef<string | null>(null)
   const ausVorschau = useRef<string | null>(null)
   const bereit = useRef(false)
+  const schreibwerkGeschickt = useRef(false)
+  const neueSeiteRef = useRef(beiNeueSeite)
   const aktuelleMarke = useRef(marke)
   const aktuellerName = useRef(name)
   const mehrSchluessel = mehrMarken.join(',')
@@ -91,6 +115,7 @@ export function EditorVorschau({
     aktuellerName.current = name
     aktuelleMehr.current = mehrMarken
     wunschRef.current = onWunsch
+    neueSeiteRef.current = beiNeueSeite
     fehlerRef.current = fehler
     zustandRef.current = { modus, lesen, mobil, leer }
   })
@@ -103,7 +128,36 @@ export function EditorVorschau({
   // Neue Seite (neues srcdoc): Das Skript meldet sich gleich mit „bereit“
   useEffect(() => {
     bereit.current = false
+    schreibwerkGeschickt.current = false
   }, [html])
+
+  // PROJ-103: Schreiben starten. Das Schreibwerk (Text-Motor) wird erst jetzt und nur für Lehrtext in die Seite geladen.
+  const startNr = schreiben?.nr ?? 0
+  const startRef = useRef(schreiben)
+  startRef.current = schreiben
+  useEffect(() => {
+    const s = startRef.current
+    if (!s || !bereit.current) return
+    let abgebrochen = false
+    void (async () => {
+      if (s.teil === 'text' && !schreibwerkGeschickt.current) {
+        const m = await import('@/components/werkzeugkiste/editor/schreibwerk/schreibwerk-bundle.generated')
+        if (abgebrochen) return
+        senden({ wkSchreibwerk: m.SCHREIBWERK_CODE })
+        schreibwerkGeschickt.current = true
+      }
+      senden({ wkSchreibStart: { marke: s.marke, teil: s.teil, html: s.html } })
+    })()
+    return () => {
+      abgebrochen = true
+    }
+  }, [startNr, senden])
+
+  const befehlNr = schreibBefehl?.nr ?? 0
+  const befehlArt = schreibBefehl?.art
+  useEffect(() => {
+    if (befehlNr > 0 && befehlArt) senden(befehlArt === 'beende' ? { wkSchreibBeende: true } : { wkSchreibVorbei: true })
+  }, [befehlNr, befehlArt, senden])
 
   // Andere Stelle gewählt (oder anderer Typ-Name), während die Seite steht: hervorheben und hinspringen
   // (kam der Klick aus der Seite selbst, bleibt sie, wo sie ist)
@@ -129,6 +183,7 @@ export function EditorVorschau({
       if (n.wkBereit === true) {
         // Neue Seite steht: Zustand, Auswahl und Scrollposition wiederherstellen
         bereit.current = true
+        neueSeiteRef.current?.()
         letzte.current = `${aktuelleMarke.current ?? ''}|${aktuellerName.current}|${aktuelleMehr.current.join(',')}`
         senden({ wkZustand: zustandRef.current })
         senden({ wk: aktuelleMarke.current, name: aktuellerName.current, mehr: aktuelleMehr.current, scrollY: scrollY.current })
@@ -140,6 +195,11 @@ export function EditorVorschau({
       }
       let w = liesWunsch(n)
       if (!w) return
+      if (w.art === 'schreibZwischen' || w.art === 'schreibEnde' || w.art === 'schreibAbbruch') {
+        // Schreib-Wünsche entscheidet die App selbst; ein Hinweis „Vorschau veraltet“ passt dazu nicht
+        wunschRef.current?.(w)
+        return
+      }
       if (w.art === 'menue') {
         // Die Seite meldet Koordinaten im Rahmen; das Menü gehört der App und braucht Fensterkoordinaten
         const r = rahmen.current.getBoundingClientRect()

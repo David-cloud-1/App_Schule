@@ -1,6 +1,6 @@
 # PROJ-103: Baukasten – Lehrtext direkt in der Seite tippen
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16
 
@@ -191,6 +191,36 @@ Vorschau (bestehend, Modus Bearbeiten)
 - **Bilder im Einfügen:** Der Weg „eingefügtes Bild wird eigener Bild-Block“ hängt an PROJ-104 (noch Planned). Bis dahin wird ein eingefügtes Bild nicht übernommen, mit kurzem Hinweis „Bild bitte als Bild-Block einfügen“. Zu klären bei `/frontend`.
 - **Texte im Einfach-Modus** enthalten keine Formatierung; Zeichen wie `<` und `&` bleiben Text (die App maskiert wie der Kern).
 - **Modellwahl:** Bau mit Sonnet möglich; für den Durchstich (Nachladen in den Rahmen) lohnt Opus, danach wieder Sonnet.
+
+## Umsetzung (Frontend, 2026-11-16, Sonnet)
+**Gebaut nach dem Tech Design (Entscheidungen 1–6), ohne Kern-, Datenbank-, API- oder Paket-Änderung.** Kern bleibt unverändert, also kein Kern-Deploy.
+
+| Datei | Inhalt |
+|---|---|
+| `schreibwerk/eintritt.ts` (neu) | Das Schreibwerk für Lehrtext: derselbe Tiptap-Motor wie im Formular (`textErweiterungen`), Formatleiste (Fett, Kursiv, H2, H3, Liste, Nummerierung, Link mit eigenem Eingabefeld, Box wählen/ändern, Box darunter/auflösen/löschen, Fertig), Zwischenstand nach 2 s Pause, Endstand bei Fertig/Esc, Handy-Leiste über der Tastatur (`visualViewport`), Einfügen mit Einfüge-Reinigung (Bilder werden entfernt, Hinweis), geschützte Inseln |
+| `schreibwerk/schreib-design.ts` (neu) | Schreib-Design (Farben wie Papier-Design und Kern) und Formatleisten-Stylesheet, `SCHREIB_FARBEN` mit Kontrast-Test |
+| `schreibwerk/schreibwerk-bundle.generated.ts` (erzeugt) | Gebündeltes Schreibwerk (~328 KB, ein Test begrenzt auf 700 KB). Bauen mit `npm run schreibwerk:bauen` (`scripts/werkzeugkiste/schreibwerk-bauen.mjs`, nutzt das schon vorhandene Vite). Ein Test prüft, dass der Stand zu den Quellen passt |
+| `schreiben.ts` (neu) | App-Seite: welcher Teil sich direkt bearbeiten lässt, lesen/setzen in der Struktur, Rundreise-Prüfung, **Reinigung** der Seiten-Antwort, **Insel-Prüfung** (jede Insel im Ergebnis muss eine des Originals sein, sonst wird nichts übernommen) |
+| `vorschau-nachrichten.ts` | Neue Wünsche `schreibe`, `schreibZwischen`, `schreibEnde`, `schreibAbbruch` (Marke, Teil aus fester Liste, Textlänge ≤ 200 000) |
+| `vorschau-skript.ts` | Auslöser (Doppelklick, oder Klick auf den schon gewählten Text), Einfach-Schreiber (Themen-Überschrift, Deckblatt-Titel/-Untertitel, Bildunterschrift: reiner Text, Enter/Esc beendet, Einfügen nur als Text), Nachladen des Schreibwerks, Schreibzone vom Einfrieren und von den Tasten-Kürzeln ausgenommen, Klick außerhalb beendet das Schreiben |
+| `editor-vorschau.tsx` | Schickt Schreibwerk und Start (`wkSchreibStart`), Befehle `beende`/`vorbei`, meldet neue Seiten |
+| `baukasten-editor.tsx` | Sitzung, Annahme von Zwischen-/Endstand, Reinigung, ein Verlaufseintrag je Sitzung, Beenden bei anderer Auswahl/Formular/Dialog/Ausprobieren, Hinweis bei nicht direkt bearbeitbarem Text |
+| `use-editor-zustand.ts` | `aendere(…, gruppe, ohneZeitgrenze)` (eine Sitzung = ein Schritt) und `useEditorVorschau(…, pausiert)`: **kein Neubau beim Schreiben**, danach nur bei geändertem Stand |
+
+**Verhalten gegenüber der Spec**
+- Doppelklick auf Lehrtext, Themen-Überschrift, Deckblatt-Titel/-Untertitel und Bildunterschrift schreibt direkt (vorher: Formular). „Bearbeiten“ in der Leiste, Enter und die Gliederung öffnen weiter das Formular.
+- Lässt sich ein Lehrtext nicht verlustfrei bearbeiten (Rundreise-Prüfung), öffnet stattdessen die Schublade mit Hinweis auf die HTML-Ansicht.
+- Kommt der Endstand ohne echte Änderung zurück, wird nichts gespeichert und die gebaute Fassung kommt zurück (`wkSchreibVorbei`).
+
+**Noch nicht umgesetzt (offen für Folgearbeit, bewusst nicht im ersten Wurf)**
+- Kleine Leiste direkt über markiertem Text („In Box setzen“).
+- „/“ am Zeilenanfang (Katalog, Lehrtext teilen) und „Enter in leerer letzter Zeile → + Block darunter“.
+- Tabelle einfügen (Tiptap-Tabellen sind nicht installiert; bestehende Tabellen bleiben als geschützte Inseln erhalten).
+- Eingefügte Bilder werden entfernt (mit Hinweis), solange PROJ-104 fehlt.
+- Link anklicken/bearbeiten außer über die Leiste.
+
+**Tests:** 267 Editor-Tests grün (neu: `schreiben.test.ts` 14, `schreibwerk.test.ts` 13, `schreiben-skript.test.ts` 12, 7 Integrationstests „Direkt in der Seite schreiben“). Gesamtlauf 3592 grün, 1 rot in `werkzeugkiste-auszug.test.ts` (Regal-Kopie, nicht angefasst). `tsc` sauber.
+**Browser-Test (offen, vom Nutzer):** Laptop, iPad quer, Handy: Cursor an der Klickstelle, kein Sprung beim Wechsel gebaute ↔ Schreib-Fassung, Formatleiste und Bildschirmtastatur, Einfügen aus Word, Rechtschreibprüfung, Rückgängig im Text und danach, Boxen im Schreib-Design gegen die fertige Seite vergleichen.
 
 ## QA Test Results
 _To be added by /qa_

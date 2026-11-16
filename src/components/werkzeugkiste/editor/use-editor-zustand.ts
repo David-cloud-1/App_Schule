@@ -123,14 +123,15 @@ export function useEditorZustand(id: string, start: Struktur, startStand: string
     if (zeitgeber.current) clearTimeout(zeitgeber.current)
   }, [])
 
-  const aendere = useCallback((neu: (s: Struktur) => Struktur, gruppe?: string) => {
+  /** `ohneZeitgrenze`: gleiche Gruppe bleibt ein Schritt, egal wie lange es dauert (PROJ-103: Schreiben direkt in der Seite) */
+  const aendere = useCallback((neu: (s: Struktur) => Struktur, gruppe?: string, ohneZeitgrenze?: boolean) => {
     if (konfliktRef.current) return
     setVerlauf((v) => {
       const alt = v.liste[v.index]
       const naechste = neu(alt)
       if (naechste === alt) return v
       const jetzt = Date.now()
-      const zusammen = !!gruppe && gruppe === v.gruppe && jetzt - v.zeit < GRUPPE_MS && v.index > 0
+      const zusammen = !!gruppe && gruppe === v.gruppe && (ohneZeitgrenze || jetzt - v.zeit < GRUPPE_MS) && v.index > 0
       const basis = v.liste.slice(0, zusammen ? v.index : v.index + 1)
       const liste = [...basis, naechste].slice(-RUECKGAENGIG_SCHRITTE - 1)
       return { liste, index: liste.length - 1, gruppe: gruppe ?? null, zeit: jetzt }
@@ -184,7 +185,7 @@ const VORSCHAU_NACH_MS = 1500
  * Vorschau des gespeicherten Entwurfs: baut neu, sobald gespeichert wurde –
  * nie mehrere gleichzeitig und seltener als gespeichert wird.
  */
-export function useEditorVorschau(id: string, gespeichertAm: number) {
+export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = false) {
   const [html, setHtml] = useState<string | null>(null)
   const [laedt, setLaedt] = useState(true)
   const [fehler, setFehler] = useState<string | null>(null)
@@ -196,6 +197,8 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
   stand.current = gespeichertAm
   const laeuft = useRef(false)
   const nochmal = useRef(false)
+  /** Für welchen Speicherstand zuletzt gebaut wurde (nach einer Pause nicht ohne Grund neu bauen) */
+  const gebautStand = useRef(-1)
 
   const bauen = useCallback(async () => {
     if (laeuft.current) {
@@ -213,6 +216,7 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
       setBefunde(r.befunde)
       setGroesse(r.groesse)
       setGebautFuer(fuer)
+      gebautStand.current = fuer
       setFehler(null)
     } catch (e) {
       setFehler(e instanceof Error ? e.message : 'Die Vorschau konnte nicht geladen werden.')
@@ -226,10 +230,12 @@ export function useEditorVorschau(id: string, gespeichertAm: number) {
     }
   }, [id])
 
+  // PROJ-103: Solange direkt in der Seite geschrieben wird, baut die Vorschau nicht neu (der Cursor soll nie springen)
   useEffect(() => {
+    if (pausiert || gebautStand.current === gespeichertAm) return
     const t = setTimeout(() => void bauen(), gespeichertAm === 0 ? 0 : VORSCHAU_NACH_MS)
     return () => clearTimeout(t)
-  }, [gespeichertAm, bauen])
+  }, [gespeichertAm, bauen, pausiert])
 
   return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, neuBauen: bauen }
 }

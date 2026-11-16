@@ -78,6 +78,10 @@ const CSS = [
   `.wk-ende{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0}.wk-ende .wk-b{border:1px dashed ${F.text}}`,
   '@media (hover:none),(pointer:coarse){.wk-b{min-height:44px;min-width:44px;justify-content:center}.wk-plus{display:none!important}}',
   '@media (prefers-reduced-motion:no-preference){.wk-leiste{animation:wkein .15s ease-out}@keyframes wkein{from{opacity:0}to{opacity:1}}}',
+  // PROJ-103: Beim Schreiben verschwinden Leiste, Einfügelinie und Rahmen
+  'body.wk-schreibt .wk-leiste,body.wk-schreibt .wk-plus,body.wk-schreibt .wk-linie{display:none!important}',
+  'body.wk-schreibt .wk-hover{outline:none!important}',
+  '.wk-einfach{outline:2px solid #2563eb;outline-offset:4px;border-radius:4px;cursor:text!important}',
   '@media print{.wk-ui{display:none!important}.wk-aktiv,.wk-hover{outline:none!important}}',
 ].join('')
 
@@ -109,7 +113,7 @@ const SKRIPT_TEXT = String.raw`
 var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
 var ICON=${JSON.stringify(ICONS)};
-var modus="bearbeiten",lesen=false,mobil=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null;
+var modus="bearbeiten",lesen=false,mobil=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null;
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
 function elt(t){return t&&t.nodeType===1?t:(t&&t.parentElement)||null}
@@ -125,6 +129,7 @@ function markeVon(t){
 }
 function istFeld(t){return !!(t&&t.closest&&t.closest("input,textarea,select,[contenteditable='true'],[contenteditable='']"))}
 function stoppe(e){e.preventDefault();e.stopImmediatePropagation()}
+function inZone(t){return !!(t&&t.closest&&t.closest(".wk-schreibzone"))}
 function neu(tag,klasse,html){var n=document.createElement(tag);if(klasse)n.className=klasse;if(html)n.innerHTML=html;return n}
 function knopf(aktion,html,label,klasse){
   var b=neu("button","wk-b"+(klasse?" "+klasse:""),html);
@@ -294,7 +299,7 @@ EINFRIEREN.forEach(function(name){
   addEventListener(name,function(e){
     if(modus!=="bearbeiten")return;
     var t=elt(e.target);
-    if(!t||!t.closest||t.closest(".wk-ui")||!t.closest("[data-wk]"))return;
+    if(!t||!t.closest||t.closest(".wk-ui")||inZone(t)||!t.closest("[data-wk]"))return;
     if(name==="touchstart"||name==="touchend"){e.stopImmediatePropagation();return}
     stoppe(e);
   },true);
@@ -302,7 +307,7 @@ EINFRIEREN.forEach(function(name){
 addEventListener("focusin",function(e){
   if(modus!=="bearbeiten")return;
   var t=elt(e.target);
-  if(t&&t.closest&&t.closest("[data-wk]")&&!t.closest(".wk-ui")&&t.blur)t.blur();
+  if(t&&t.closest&&t.closest("[data-wk]")&&!t.closest(".wk-ui")&&!inZone(t)&&t.blur)t.blur();
 },true);
 addEventListener("click",function(e){
   var t=elt(e.target);
@@ -310,11 +315,16 @@ addEventListener("click",function(e){
   var a=t.closest?t.closest("[data-wk-aktion]"):null;
   if(a){stoppe(e);if(modus==="bearbeiten")aktion(a);return}
   if(modus!=="bearbeiten")return;
+  if(inZone(t))return;
   if(t.closest&&t.closest(".wk-ui")){stoppe(e);return}
   stoppe(e);
+  // Ein Klick außerhalb beendet das Schreiben (und wählt nichts aus)
+  if(schreibt&&!schreibt.fertig){schreibt.beende();return}
   var m=markeVon(t);
   if(!m){p({wkAbwaehle:true});return}
   var mitMod=e.metaKey||e.ctrlKey||e.shiftKey;
+  var sz=(!mitMod&&!lesen&&!schreibt)?schreibZiel(t):null;
+  if(sz&&sz.marke===m&&(e.detail>=2||m===auswahl)){merkeKlick={x:e.clientX,y:e.clientY};p({wkSchreibe:m,teil:sz.teil});return}
   if(mitMod&&/-e\d+$/.test(m)&&!mobil)p({wkMehr:m,wie:e.shiftKey?"bereich":"umschalten"});
   else if(e.detail>=2)p({wkBearbeite:m});else p({wkWaehle:m});
 },true);
@@ -393,6 +403,7 @@ addEventListener("blur",function(){endeZiehen(false)});
 
 // ── Tastatur: nur vereinbarte Kürzel gehen an die App ─────────────────
 function weitergabe(e){
+  if(inZone(elt(e.target)))return false;
   var k=e.key,kl=k&&k.length===1?k.toLowerCase():k,mod=e.metaKey||e.ctrlKey;
   var t=elt(e.target),feld=istFeld(t),knopfZiel=t&&t.closest&&t.closest("button,a,summary");
   var ok=false;
@@ -436,11 +447,83 @@ function anwenden(){
   baueEinfuegestellen();leisteAktualisieren();plaziere();
 }
 
+// ── Direkt schreiben (PROJ-103) ──────────────────────────────────────
+function schreibZiel(t){
+  var e;
+  if((e=t.closest(".lehrtext")))return {teil:"text",marke:markeVon(e)};
+  if((e=t.closest("p.bildunterschrift")))return {teil:"unterschrift",marke:markeVon(e)};
+  if((e=t.closest("h2[data-wk]"))){var mk=e.getAttribute("data-wk");return /^k\d+$/.test(mk)?{teil:"kapitel",marke:mk}:null}
+  if(t.closest('[data-wk="deckblatt"] h1'))return {teil:"titel",marke:"deckblatt"};
+  if(t.closest('[data-wk="deckblatt"] p.unter'))return {teil:"untertitel",marke:"deckblatt"};
+  return null;
+}
+function schreibElement(marke,teil){
+  var b=finde(marke);if(!b)return null;
+  if(teil==="text")return b.querySelector(".lehrtext");
+  if(teil==="unterschrift")return b.querySelector("p.bildunterschrift");
+  if(teil==="kapitel")return b.tagName==="H2"?b:null;
+  if(teil==="titel")return b.querySelector("h1");
+  if(teil==="untertitel")return b.querySelector("p.unter");
+  return null;
+}
+function setzeCursor(el,k){
+  el.focus();if(!k)return;
+  var r=null;
+  if(document.caretRangeFromPoint)r=document.caretRangeFromPoint(k.x,k.y);
+  else if(document.caretPositionFromPoint){var c=document.caretPositionFromPoint(k.x,k.y);if(c){r=document.createRange();r.setStart(c.offsetNode,c.offset)}}
+  if(r&&el.contains(r.startContainer)){var sel=getSelection();sel.removeAllRanges();sel.addRange(r)}
+}
+function schreibEnde(){document.body.classList.remove("wk-schreibt");if(schreibt)schreibt.fertig=true}
+function einfachStart(el,s){
+  el.classList.add("wk-schreibzone","wk-einfach");
+  el.setAttribute("contenteditable","true");el.setAttribute("spellcheck","true");el.setAttribute("lang","de");
+  var letzter=el.textContent.replace(/\s+/g," ").trim(),zeit=null,fertig=false;
+  function text(){return el.textContent.replace(/\s+/g," ").trim()}
+  function zw(){zeit=null;var t=text();if(t!==letzter){letzter=t;p({wkSchreibZwischen:s.marke,teil:s.teil,html:t})}}
+  function ende(){
+    if(fertig)return;fertig=true;if(zeit)clearTimeout(zeit);
+    el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");
+    schreibEnde();p({wkSchreibEnde:s.marke,teil:s.teil,html:text()});
+  }
+  el.addEventListener("input",function(){if(zeit)clearTimeout(zeit);zeit=setTimeout(zw,2000)});
+  el.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key==="Escape"){e.preventDefault();ende()}});
+  el.addEventListener("beforeinput",function(e){if(e.inputType==="insertParagraph"||e.inputType==="insertLineBreak")e.preventDefault()});
+  el.addEventListener("paste",function(e){
+    e.preventDefault();
+    var tx=((e.clipboardData&&e.clipboardData.getData("text/plain"))||"").replace(/\s+/g," ");
+    if(tx)document.execCommand("insertText",false,tx);
+  });
+  el.addEventListener("blur",ende);
+  setzeCursor(el,merkeKlick);
+  schreibt={beende:ende,ab:function(){fertig=true;if(zeit)clearTimeout(zeit);el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");schreibEnde()},fertig:false};
+}
+function startSchreiben(s){
+  if(schreibt&&!schreibt.fertig)return;
+  var el=modus==="bearbeiten"&&!lesen&&typeof s.marke==="string"?schreibElement(s.marke,s.teil):null;
+  if(!el){p({wkSchreibAbbruch:String(s.marke||"")});return}
+  document.body.classList.add("wk-schreibt");
+  if(s.teil==="text"){
+    if(!window.__wkSchreibwerk||typeof s.html!=="string"){document.body.classList.remove("wk-schreibt");p({wkSchreibAbbruch:s.marke});return}
+    var w;
+    try{
+      w=window.__wkSchreibwerk.starte({ziel:el,html:s.html,marke:s.marke,klick:merkeKlick,mobil:mobil,melde:function(n){if(n.wkSchreibEnde){document.body.classList.remove("wk-schreibt");if(schreibt)schreibt.fertig=true;w.element.classList.remove("wk-schreibzone")}p(n)}});
+    }catch(x){document.body.classList.remove("wk-schreibt");p({wkSchreibAbbruch:s.marke});return}
+    schreibt={beende:function(){w.beende()},ab:function(){w.ab();schreibEnde()},fertig:false};
+  }else einfachStart(el,s);
+}
+
 // ── Nachrichten der App ──────────────────────────────────────────────
 addEventListener("message",function(e){
   if(e.source!==parent)return;
   var d=e.data;
   if(!d||typeof d!=="object")return;
+  if(typeof d.wkSchreibwerk==="string"){
+    if(!window.__wkSchreibwerk){var sc=document.createElement("script");sc.textContent=d.wkSchreibwerk;document.head.appendChild(sc)}
+    return;
+  }
+  if(d.wkSchreibStart&&typeof d.wkSchreibStart==="object"){startSchreiben(d.wkSchreibStart);return}
+  if(d.wkSchreibBeende===true){if(schreibt&&!schreibt.fertig)schreibt.beende();return}
+  if(d.wkSchreibVorbei===true){if(schreibt){schreibt.ab();schreibt=null}return}
   if(d.wkZustand&&typeof d.wkZustand==="object"){
     var z=d.wkZustand;
     if(z.modus==="bearbeiten"||z.modus==="ausprobieren")modus=z.modus;

@@ -1,4 +1,5 @@
 import type { Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
+import { SCHREIB_MAX, SCHREIB_TEILE, type SchreibTeil } from '@/components/werkzeugkiste/editor/schreiben'
 
 /**
  * Nachrichten der Editor-Vorschau an die App (PROJ-101).
@@ -51,10 +52,19 @@ export type VorschauWunsch =
   | { art: 'legeThema'; marke: string }
   | { art: 'kopiere'; marke: string }
   | { art: 'neuesThema' }
+  // PROJ-103: Direkt in der Seite schreiben. `html` ist bei Zwischen-/Endstand der Text (Lehrtext: HTML, sonst einfacher Text)
+  | { art: 'schreibe'; marke: string; teil: SchreibTeil }
+  | { art: 'schreibZwischen'; marke: string; teil: SchreibTeil; html: string }
+  | { art: 'schreibEnde'; marke: string; teil: SchreibTeil; html: string }
+  | { art: 'schreibAbbruch'; marke: string }
   | { art: 'taste'; taste: Taste }
 
 function marke(wert: unknown): string | null {
   return auswahlAusMarke(wert) ? (wert as string) : null
+}
+
+function schreibTeil(wert: unknown): SchreibTeil | null {
+  return (SCHREIB_TEILE as readonly unknown[]).includes(wert) ? (wert as SchreibTeil) : null
 }
 
 function zahl(wert: unknown): number | null {
@@ -119,6 +129,26 @@ export function liesWunsch(daten: unknown): VorschauWunsch | null {
     return m && /^k\d+-e\d+$/.test(m) ? { art: 'kopiere', marke: m } : null
   }
   if (n.wkThemaNeu === true) return { art: 'neuesThema' }
+  if (typeof n.wkSchreibe === 'string') {
+    const m = marke(n.wkSchreibe)
+    const teil = schreibTeil(n.teil)
+    return m && teil ? { art: 'schreibe', marke: m, teil } : null
+  }
+  if (typeof n.wkSchreibAbbruch === 'string') {
+    const m = marke(n.wkSchreibAbbruch)
+    return m ? { art: 'schreibAbbruch', marke: m } : null
+  }
+  for (const [schluessel, art] of [
+    ['wkSchreibZwischen', 'schreibZwischen'],
+    ['wkSchreibEnde', 'schreibEnde'],
+  ] as const) {
+    const wert = n[schluessel]
+    if (typeof wert !== 'string') continue
+    const m = marke(wert)
+    const teil = schreibTeil(n.teil)
+    // Größenlimit: Die Seite ist nicht vertrauenswürdig
+    return m && teil && typeof n.html === 'string' && n.html.length <= SCHREIB_MAX ? { art, marke: m, teil, html: n.html } : null
+  }
   if (typeof n.wkTaste === 'string') {
     const key = (WEITERGABE_TASTEN as readonly string[]).includes(n.wkTaste) ? (n.wkTaste as WeitergabeTaste) : null
     return key ? { art: 'taste', taste: { key, mod: n.mod === true, shift: n.shift === true, alt: n.alt === true } } : null
