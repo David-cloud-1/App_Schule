@@ -218,7 +218,7 @@ Baukasten-Editor (bestehend)
 ### Modell-Empfehlung
 Diese Grundsatzentscheidung war der Opus-Teil. **`/frontend` für PROJ-101 und die Kern-Ergänzung kann Sonnet bauen.** Für `/architecture` PROJ-103 (Text tippen) bitte wieder Opus.
 
-## Umsetzung (Frontend, 2026-11-16, Sonnet)
+## Umsetzung (Frontend, 2026-11-16, Sonnet; Kern live)
 **Gebaut nach dem Tech Design (G1–G3), ohne Datenbank-, API- oder Paket-Änderung.**
 
 | Datei | Inhalt |
@@ -249,7 +249,7 @@ Diese Grundsatzentscheidung war der Opus-Teil. **`/frontend` für PROJ-101 und d
 **Aufräumen im Test:** Die Skript-Tests entfernen ihre Ereignis-Abfänger nach jedem Test, damit sie nicht in andere Tests hineinwirken.
 
 **Offen**
-- **Kern-Deploy fehlt.** Bis dahin sind Deckblatt und Platzhalter in der Vorschau nicht klickbar; alles andere funktioniert (Rückfall nach G3). Der Kern-Arbeitsordner enthält ungesicherte Änderungen einer anderen Sitzung (PROJ-99: `prompts.py`, `qualitaet.py`), die beim CLI-Deploy mitgingen. Deshalb vorher klären.
+- ~~Kern-Deploy~~ **erledigt 2026-11-16:** Produktion `werkzeugkiste-kern-3it5x7f6l`, Alias werkzeugkiste-kern.vercel.app, `/api/gesund` ok, ohne Kennwort 401. Deployt aus einer Kopie ohne die ungesicherten PROJ-99-Dateien (`prompts.py`, `qualitaet.py` auf Commit-Stand zurückgesetzt, `einbettungsmodell/` mitgenommen). Kern-Commit `e17b8e6` liegt nur lokal auf `vercel-kern`, nicht gepusht.
 - **Browser-Test** (Laptop, iPad quer, Handy): Optik der Leiste, Einfügelinie, Einfrieren aller 32 Aufgabentypen im Modus Bearbeiten (Risiko F im Tech Design), Menü an der Klickstelle.
 
 ## QA Test Results
