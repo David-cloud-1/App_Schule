@@ -1,8 +1,8 @@
 # PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16 (Tech Design)
+**Last Updated:** 2026-11-16 (Frontend und Kern-Ergänzung gebaut)
 
 ## Idee in einem Satz
 Im Baukasten wählt ein Klick auf einen Block in der Vorschau ihn aus. Direkt am Block erscheint eine schwebende Leiste mit allen Aktionen. Ein Schalter „Bearbeiten | Ausprobieren“ trennt Bearbeiten und Spielen eindeutig, und leere Stellen sagen, was man tun kann.
@@ -217,6 +217,40 @@ Baukasten-Editor (bestehend)
 
 ### Modell-Empfehlung
 Diese Grundsatzentscheidung war der Opus-Teil. **`/frontend` für PROJ-101 und die Kern-Ergänzung kann Sonnet bauen.** Für `/architecture` PROJ-103 (Text tippen) bitte wieder Opus.
+
+## Umsetzung (Frontend, 2026-11-16, Sonnet)
+**Gebaut nach dem Tech Design (G1–G3), ohne Datenbank-, API- oder Paket-Änderung.**
+
+| Datei | Inhalt |
+|---|---|
+| `vorschau-skript.ts` | Hilfsskript in der Seite komplett neu: Modus, Auswahl, Hover-Rahmen, Leiste, Einfrieren (Fenster, Erfassungsphase), Leerzustand, „+ Block/+ Thema“ am Ende, Einfügelinie, Tastatur-Weitergabe. Eigenes Stylesheet, Farbpaare als `LEISTE_FARBEN` exportiert |
+| `vorschau-nachrichten.ts` (neu) | `liesWunsch`: liest jede Nachricht der Seite streng (Marke, Typ aus fester Liste, Tasten aus fester Liste, Zahlen begrenzt). `SCHNELLE_TYPEN`, `auswahlAusMarke` (jetzt auch `deckblatt`) |
+| `editor-vorschau.tsx` | Modus-Schalter (`AdminSegmented`) in der Kopfzeile, sendet `wkZustand` (Modus, Schreibschutz, Handy, leere Themen) und `wk` mit Typ-Namen, nimmt Wünsche über `onWunsch` an, rechnet Menü-Koordinaten in Fensterkoordinaten um |
+| `baukasten-editor.tsx` | Auswahl und Formular getrennt (`schubladeOffen`), `beiWunsch`/`beiTaste`, Modus, ⌘/Strg+E, Duplizieren, Löschen, Schnellauswahl, „+ Thema“ |
+| `block-menue.tsx` (neu) | „⋯“-Menü als shadcn-`DropdownMenu` an der Klickstelle (Nach oben/unten, In anderes Thema, Typ wechseln, Block darüber/darunter einfügen, Löschen) |
+| `auswahl-navigation.ts` (neu) | Pfeil hoch/runter durch Themen und Blöcke |
+| `editor-gliederung.tsx` | `EinfuegeAnfrage.typ`: Schnellauswahl fügt ohne Katalog ein (Bild fragt weiter nach dem Bild) |
+| Kern `seite.py` | Nur mit `marken=True`: Deckblatt trägt `data-wk="deckblatt"`, übersprungene Blöcke erscheinen als Platzhalter mit Marke. Veröffentlichte Seite byte-gleich (Prüfsumme im Test) |
+
+**Verhalten gegenüber der Spec**
+- Ein Klick wählt nur aus. **Das Formular öffnet bei „Bearbeiten“, Doppelklick oder Enter, sowie wie bisher beim Wählen in der Gliederung.** Die Auswahl bleibt nach dem Schließen des Formulars erhalten (Leiste und Rahmen bleiben).
+- Ein Klick auf leere Fläche hebt die Auswahl auf und schließt das Formular (Spec).
+- Wünsche mit Marke werden bei veralteter Vorschau abgelehnt („Bitte gleich noch einmal klicken“), wie bisher.
+
+**Abweichungen von der Spec (bewusst)**
+- **Kein Ziehgriff in der Leiste.** Er wäre bis PROJ-102 ohne Funktion. Der Platz für typ-eigene Werkzeuge (PROJ-103/104) und den Griff ist in der Leiste frei.
+- **„Kopieren“ fehlt im „⋯“-Menü** (kommt mit PROJ-102). Schreibgeschützt zeigt die Leiste deshalb nur „Bearbeiten“.
+- **Einfügelinie nur mit Maus** (kein Hover auf Touch). Am Handy gibt es „+ Darunter“ in der Leiste und die „+ Block“-Knöpfe am Themenende.
+- **Leerzustand:** Er erscheint nur bei Themen mit Titel (die Überschrift trägt die Marke). Ein Thema ohne Titel und ohne Blöcke bleibt über die Gliederung erreichbar.
+- **Handy-Leiste** liegt am unteren Rand der Vorschau (innerhalb des Rahmens), nicht am Bildschirmrand.
+- „Alle gleichen auswählen“ und Mehrfachauswahl gehören zu PROJ-102.
+
+**Tests:** 164 Editor-Tests grün. Neu: `vorschau-skript.test.ts` (28: Auswahl, Einfrieren, Modus, Leiste, Leerzustand, Einfügelinie, Tastatur, Nachrichten-Prüfung, Kontraste) und 13 Integrationstests „Direkt auf der Seite“ in `baukasten-editor.test.tsx`. Kern: `kern_vorschau_marken_test.py` (8), alle 257 Kern-Tests grün. Produktions-Build läuft durch.
+**Aufräumen im Test:** Die Skript-Tests entfernen ihre Ereignis-Abfänger nach jedem Test, damit sie nicht in andere Tests hineinwirken.
+
+**Offen**
+- **Kern-Deploy fehlt.** Bis dahin sind Deckblatt und Platzhalter in der Vorschau nicht klickbar; alles andere funktioniert (Rückfall nach G3). Der Kern-Arbeitsordner enthält ungesicherte Änderungen einer anderen Sitzung (PROJ-99: `prompts.py`, `qualitaet.py`), die beim CLI-Deploy mitgingen. Deshalb vorher klären.
+- **Browser-Test** (Laptop, iPad quer, Handy): Optik der Leiste, Einfügelinie, Einfrieren aller 32 Aufgabentypen im Modus Bearbeiten (Risiko F im Tech Design), Menü an der Klickstelle.
 
 ## QA Test Results
 _To be added by /qa_

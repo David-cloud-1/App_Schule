@@ -23,18 +23,22 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkzeugkiste-api'
-import { befundeJeStelle, hatAufgaben, loescheBlock, sprungmarke, type EditorDaten } from '@/lib/werkzeugkiste-editor'
+import { befundeJeStelle, dupliziereBlock, hatAufgaben, loescheBlock, sprungmarke, typName, type EditorDaten, type Ort } from '@/lib/werkzeugkiste-editor'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl, type EinfuegeAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorSchublade, gueltigeAuswahl } from '@/components/werkzeugkiste/editor/editor-schublade'
 import { MaterialBilderProvider } from '@/components/werkzeugkiste/editor/material-bilder'
 import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
+import type { Taste, VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
+import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/block-menue'
+import { nachbarAuswahl } from '@/components/werkzeugkiste/editor/auswahl-navigation'
 import {
   einfuegeortAusAuswahl,
   einfuegeortAusMarke,
+  neuesThemaNach,
 } from '@/components/werkzeugkiste/editor/einfuege-stelle'
-import { EditorVorschau } from '@/components/werkzeugkiste/editor/editor-vorschau'
+import { EditorVorschau, type Modus } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
 
 const ZURUECK = `${WERKZEUGKISTE_HREF}?tab=materialien`
@@ -158,7 +162,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const apple = useIsApplePlatform()
   const z = useEditorZustand(daten.id, daten.struktur, daten.stand)
   const v = useEditorVorschau(daten.id, z.gespeichertAm)
-  const [auswahl, setAuswahl] = useState<Auswahl>(null)
+  const [auswahl, setAuswahlRoh] = useState<Auswahl>(null)
+  // PROJ-101: Auswählen (Klick in der Vorschau, Leiste am Block) und Formular öffnen (Schublade) sind zwei Dinge
+  const [schubladeOffen, setSchubladeOffen] = useState(false)
+  const [modus, setModus] = useState<Modus>('bearbeiten')
+  const [menue, setMenue] = useState<MenueAnker | null>(null)
+  // Gliederung, Katalog, Typ wechseln: Wer dort wählt, will das Formular sehen (wie vor PROJ-101)
+  const setAuswahl = useCallback((a: Auswahl) => {
+    setAuswahlRoh(a)
+    setSchubladeOffen(a !== null)
+  }, [])
   // Handy: Vorschau zuerst, die Gliederung ist einen Tipp entfernt
   const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('vorschau')
   const [gliederungOffen, setGliederungOffen] = useState(liesGliederungOffen)
@@ -187,8 +200,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
 
   // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
   const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
-  // Ist nichts mehr gewählt (Schublade zu), gilt wieder der gemerkte Zustand der Gliederung
-  if (gliederungTrotzSchublade && !gewaehlt) setGliederungTrotzSchublade(false)
+  // Das Formular ist offen, wenn es gewünscht ist, etwas gewählt ist und wir im Bearbeiten-Modus sind
+  const schubladeAktiv = schubladeOffen && !!gewaehlt && modus === 'bearbeiten'
+  // Ist die Schublade zu, gilt wieder der gemerkte Zustand der Gliederung
+  if (gliederungTrotzSchublade && !schubladeAktiv) setGliederungTrotzSchublade(false)
   // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
   const verwendet = useMemo(() => new Set(JSON.stringify(z.struktur).match(/images\/[^"\\]+/g) ?? []), [z.struktur])
 
@@ -196,48 +211,163 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     gewaehlt === null
       ? null
       : gewaehlt.art === 'deckblatt'
-        ? null
+        ? sprungmarke('deckblatt')
         : gewaehlt.art === 'abschluss'
           ? sprungmarke('abschluss')
           : gewaehlt.art === 'thema'
             ? sprungmarke({ thema: gewaehlt.thema })
             : sprungmarke({ thema: gewaehlt.thema, block: gewaehlt.block })
 
-  // Klick auf „Bearbeiten“ in der Vorschau. Die Marken zählen Themen und Blöcke durch –
-  // stimmt die gezeigte Seite nicht mehr mit dem Entwurf überein, wäre die Stelle falsch.
-  function beiVorschauWahl(m: string): boolean {
-    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
-    if (veraltet) return false
-    const a = gueltigeAuswahl(auswahlAusMarke(m), z.struktur)
-    if (!a) return false
-    setAuswahl(a)
-    // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
-    setVollbreit(false)
-    return true
-  }
+  // Name der gewählten Stelle für die Leiste in der Seite
+  const auswahlName =
+    gewaehlt === null
+      ? ''
+      : gewaehlt.art === 'block'
+        ? typName(String(z.struktur.chapters[gewaehlt.thema]?.elements[gewaehlt.block]?.type ?? ''))
+        : gewaehlt.art === 'thema'
+          ? 'Thema'
+          : gewaehlt.art === 'deckblatt'
+            ? 'Deckblatt'
+            : 'Lernzielkontrolle'
 
-  // PROJ-97: „+ Darunter“ bzw. „+ Block“ in der Vorschau – gleiche Prüfung wie „Bearbeiten“
-  function beiVorschauEinfuegen(m: string): boolean {
-    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
-    if (veraltet) return false
-    const ort = einfuegeortAusMarke(m, z.struktur)
-    if (!ort) return false
-    setVollbreit(false)
-    setEinfuegenAnfrage((a) => ({ nr: a.nr + 1, ort }))
-    return true
-  }
+  // Themen ohne Blöcke: Die Seite zeigt dort Vorschläge statt einer Lücke
+  const leereThemen = useMemo(
+    () => z.struktur.chapters.flatMap((t, i) => (t.elements.length === 0 ? [i] : [])),
+    [z.struktur],
+  )
 
-  // PROJ-98: „Löschen“ an einem Block in der Vorschau – gleiche Prüfung wie „Bearbeiten“, nur echte Blöcke
-  function beiVorschauLoesche(m: string): boolean {
-    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
-    if (veraltet || z.gesperrt) return false
-    const a = auswahlAusMarke(m)
-    if (a?.art !== 'block' || !z.struktur.chapters[a.thema]?.elements[a.block]) return false
-    const ort = { thema: a.thema, block: a.block }
+  function loescheBlockAn(ort: Ort) {
+    if (z.gesperrt || !z.struktur.chapters[ort.thema]?.elements[ort.block]) return
     z.aendere((s) => loescheBlock(s, ort))
     setAuswahl(null)
     toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
-    return true
+  }
+
+  function dupliziereBlockAn(ort: Ort) {
+    if (z.gesperrt || !z.struktur.chapters[ort.thema]?.elements[ort.block]) return
+    z.aendere((s) => dupliziereBlock(s, ort))
+    // Die Kopie steht direkt dahinter und ist danach gewählt; das Formular bleibt, wie es war
+    setAuswahlRoh({ art: 'block', thema: ort.thema, block: ort.block + 1 })
+  }
+
+  // Wünsche aus der Vorschau (PROJ-101). Die Seite zeigt und meldet, die App prüft und führt aus.
+  // Rückgabe false = Vorschau veraltet („Bitte gleich noch einmal klicken“); nicht ausführbares sonst still ignoriert.
+  function beiWunsch(w: VorschauWunsch): boolean {
+    if (w.art === 'taste') {
+      beiTaste(w.taste)
+      return true
+    }
+    if (w.art === 'abwaehlen') {
+      setAuswahl(null)
+      return true
+    }
+    if (w.art === 'neuesThema') {
+      if (z.gesperrt) return true
+      // Hinter dem letzten Thema; das neue Thema ist danach gewählt und sein Formular offen
+      const nach = z.struktur.chapters.length ? z.struktur.chapters.length - 1 : null
+      const { index } = neuesThemaNach(z.struktur, nach)
+      z.aendere((s) => neuesThemaNach(s, nach).struktur)
+      setAuswahl({ art: 'thema', thema: index })
+      setVollbreit(false)
+      return true
+    }
+    // Alles mit Marke: Die Marken zählen Themen und Blöcke durch – stimmt die gezeigte Seite nicht mehr mit
+    // dem Entwurf überein, wäre die Stelle falsch.
+    const veraltet = v.laedt || v.gebautFuer !== z.gespeichertAm || z.speicherstand !== 'gespeichert'
+    if (veraltet) return false
+    const a = gueltigeAuswahl(auswahlAusMarke(w.marke), z.struktur)
+    if (!a) return false
+    switch (w.art) {
+      case 'waehle':
+        setAuswahlRoh(a)
+        return true
+      case 'bearbeite':
+        setAuswahl(a)
+        // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
+        setVollbreit(false)
+        return true
+      case 'einfuegen': {
+        if (z.gesperrt) return true
+        const ort = einfuegeortAusMarke(w.marke, z.struktur)
+        if (!ort) return false
+        setVollbreit(false)
+        setEinfuegenAnfrage((x) => ({ nr: x.nr + 1, ort }))
+        return true
+      }
+      case 'schnell': {
+        if (z.gesperrt) return true
+        const ort = einfuegeortAusMarke(w.marke, z.struktur)
+        if (!ort) return false
+        setVollbreit(false)
+        setEinfuegenAnfrage((x) => ({ nr: x.nr + 1, ort, typ: w.typ }))
+        return true
+      }
+      case 'loesche':
+      case 'dupliziere':
+      case 'menue': {
+        if (a.art !== 'block') return false
+        if (z.gesperrt) return true
+        const ort = { thema: a.thema, block: a.block }
+        if (w.art === 'loesche') loescheBlockAn(ort)
+        else if (w.art === 'dupliziere') dupliziereBlockAn(ort)
+        else {
+          setAuswahlRoh(a)
+          setMenue({ x: w.x, y: w.y, ort })
+        }
+        return true
+      }
+    }
+  }
+
+  // Tasten, die die Seite weitergibt (sie hat den Fokus, die App sähe sie sonst nie)
+  function beiTaste(t: Taste) {
+    if (modus === 'ausprobieren') {
+      if (t.mod && t.key === 'e') setModus('bearbeiten')
+      else if (t.mod && t.key === 'z') (t.shift ? z.wiederholen : z.rueckgaengig)()
+      return
+    }
+    switch (t.key) {
+      case 'Escape':
+        if (menue) setMenue(null)
+        else if (schubladeAktiv) schliesseSchublade()
+        else setAuswahl(null)
+        break
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        const n = nachbarAuswahl(gewaehlt, z.struktur, t.key === 'ArrowDown' ? 1 : -1)
+        if (n) setAuswahlRoh(n)
+        break
+      }
+      case 'Enter':
+        if (gewaehlt) {
+          setSchubladeOffen(true)
+          setVollbreit(false)
+        }
+        break
+      case 'Delete':
+      case 'Backspace':
+        if (gewaehlt?.art === 'block') loescheBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
+        break
+      case 'd':
+        if (t.mod && gewaehlt?.art === 'block') dupliziereBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
+        break
+      case 'e':
+        if (t.mod) wechsleModus('ausprobieren')
+        break
+      case 'z':
+        if (t.mod) (t.shift ? z.wiederholen : z.rueckgaengig)()
+        break
+      case 'b':
+        if (t.alt && t.shift) oeffneKatalog()
+        break
+    }
+  }
+
+  // Beim Wechsel in „Ausprobieren“ schließt das Formular; die Auswahl bleibt gemerkt
+  function wechsleModus(m: Modus) {
+    setModus(m)
+    setMenue(null)
+    if (m === 'ausprobieren') setSchubladeOffen(false)
   }
 
   // Katalog öffnen: Stelle nach der gemeinsamen Regel, gelesen im Moment des Aufrufs (Kürzel und „+“ der schmalen Leiste)
@@ -255,18 +385,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   }
 
   function blockLoeschenAusSchublade() {
-    if (z.gesperrt || gewaehlt?.art !== 'block') return
-    const ort = { thema: gewaehlt.thema, block: gewaehlt.block }
-    z.aendere((s) => loescheBlock(s, ort))
-    setAuswahl(null)
-    toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+    if (gewaehlt?.art !== 'block') return
+    loescheBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
   }
 
   // Schublade schließen. Am Desktop gibt es kein Blatt, das den Fokus zurückgibt: Er geht zur
   // gewählten Zeile der Gliederung, sonst zum Knopf „Gliederung einblenden“, sonst zur Vorschau.
   function schliesseSchublade() {
     const zeile = document.querySelector<HTMLElement>('section[aria-label="Gliederung"] [aria-current="true"]')
-    setAuswahl(null)
+    // Nur das Formular schließt; die Auswahl (Rahmen und Leiste in der Vorschau) bleibt
+    setSchubladeOffen(false)
     if (istMobil) return
     requestAnimationFrame(() => {
       const ziel =
@@ -296,6 +424,18 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     window.addEventListener('keydown', taste)
     return () => window.removeEventListener('keydown', taste)
   }, [z])
+
+  // ⌘/Strg+E wechselt zwischen „Bearbeiten“ und „Ausprobieren“ (hat die Seite den Fokus, gibt sie die Taste weiter)
+  useEffect(() => {
+    function taste(e: KeyboardEvent) {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'e') return
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return
+      e.preventDefault()
+      wechsleModus(modus === 'bearbeiten' ? 'ausprobieren' : 'bearbeiten')
+    }
+    window.addEventListener('keydown', taste)
+    return () => window.removeEventListener('keydown', taste)
+  }, [modus])
 
   // Alt+Umschalt+B („B“ wie Block) öffnet den Katalog – nicht bei offenem Dialog, nicht im Schreibschutz,
   // nicht in Eingabefeldern und im Texteditor (dort gilt zuerst das Feld).
@@ -360,9 +500,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   // außer, sie wurde bewusst aufgeklappt. Der gemerkte Zustand (gliederungOffen) bleibt davon unberührt.
   const gliederungSichtbar = istMobil
     ? ansicht === 'gliederung'
-    : gliederungZeigen && (gewaehlt ? gliederungTrotzSchublade : gliederungOffen)
+    : gliederungZeigen && (schubladeAktiv ? gliederungTrotzSchublade : gliederungOffen)
   const vorschauZeigen = istMobil ? ansicht === 'vorschau' : true
-  const schubladeAngedockt = !istMobil && !!gewaehlt && schubladeZeigen
+  const schubladeAngedockt = !istMobil && schubladeAktiv && schubladeZeigen
   const spalten = istMobil
     ? ''
     : vollbreit
@@ -479,7 +619,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               className="size-11 rounded-xl"
               onClick={() => {
                 // Mit offener Schublade ist unter 1280 px kein Platz für beides: Dort schließt der Knopf die Schublade
-                if (!gewaehlt) schalteGliederung(true)
+                if (!schubladeAktiv) schalteGliederung(true)
                 else if (platzFuerAlles) setGliederungTrotzSchublade(true)
                 else {
                   // Schublade schließen und die Gliederung wirklich aufklappen (auch wenn sie vorher zugeklappt war)
@@ -523,7 +663,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               variant="ghost"
               size="icon"
               className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-              onClick={() => (gewaehlt ? setGliederungTrotzSchublade(false) : schalteGliederung(false))}
+              onClick={() => (schubladeAktiv ? setGliederungTrotzSchublade(false) : schalteGliederung(false))}
               aria-label="Gliederung ausblenden"
               aria-expanded
               title="Gliederung ausblenden"
@@ -555,14 +695,18 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             marke={marke}
             neuLaden={v.neuBauen}
             groesse={v.groesse}
-            onWaehle={beiVorschauWahl}
-            onEinfuegen={beiVorschauEinfuegen}
-            onLoesche={beiVorschauLoesche}
+            name={auswahlName}
+            onWunsch={beiWunsch}
+            modus={modus}
+            onModus={wechsleModus}
+            lesen={!!z.gesperrt}
+            mobil={istMobil}
+            leer={leereThemen}
             vollbreit={vollbreit}
             onVollbreit={() => setVollbreit((b) => !b)}
           />
         </section>
-        {schubladeZeigen && gewaehlt && (
+        {schubladeZeigen && schubladeAktiv && gewaehlt && (
           <EditorSchublade
             auswahl={gewaehlt}
             struktur={z.struktur}
@@ -577,6 +721,17 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           />
         )}
       </div>
+
+      <BlockMenue
+        anker={menue}
+        onClose={() => setMenue(null)}
+        struktur={z.struktur}
+        aendere={z.aendere}
+        rueckgaengig={z.rueckgaengig}
+        einfuegenBei={(ort) => setEinfuegenAnfrage((x) => ({ nr: x.nr + 1, ort }))}
+        folge={setAuswahlRoh}
+        onLoesche={loescheBlockAn}
+      />
 
       <AlertDialog open={dialog === 'veroeffentlichen'} onOpenChange={(o) => !o && !laeuft && setDialog(null)}>
         <AlertDialogContent>

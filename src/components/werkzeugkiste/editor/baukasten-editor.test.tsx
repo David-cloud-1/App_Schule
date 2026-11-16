@@ -393,11 +393,11 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
   })
 
-  it('wählt per „Bearbeiten“-Klick aus der Vorschau den Block aus – wenn die Vorschau aktuell ist', async () => {
+  it('öffnet per „Bearbeiten“ aus der Vorschau das Formular des Blocks – wenn die Vorschau aktuell ist', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
-    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
     const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
     expect(within(schublade).getByLabelText(/^Text/)).toBeInTheDocument()
   })
@@ -408,7 +408,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Vorschau über die ganze Breite' }))
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
     expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vorschau über die ganze Breite' })).toHaveAttribute('aria-pressed', 'false')
   })
@@ -517,58 +517,6 @@ describe('Marken aus der Vorschau', () => {
   it('verwirft alles andere', () => {
     for (const m of ['', 'k', 'k-1', 'k1-e', 'K1', 'k1-e2-x', 'abschluss-', 'abschluss-A', 'k1" onload="x', '<b>', 5, null, undefined, {}, 'k' + '9'.repeat(60)])
       expect(auswahlAusMarke(m)).toBeNull()
-  })
-
-  it('das Hilfsskript hat Knöpfe, prüft den Absender und läuft nur in der Vorschau', () => {
-    const html = mitSprungSkript('<html><body><p>x</p></body></html>')
-    expect(html).toContain('wk-k')
-    expect(html).toContain('e.source!==parent')
-    expect(html).toContain('wkWaehle')
-    expect(html).toContain('@media print{.wk-k{display:none!important}')
-    expect(html).not.toContain('allow-same-origin')
-  })
-})
-
-describe('Hilfsskript in der Seite (PROJ-96)', () => {
-  function laufenLassen() {
-    document.body.innerHTML =
-      '<h2 data-wk="k0">Thema</h2><div data-wk="k0-e0"><p>Block A</p></div><div data-wk="k0-e1"><p>Block B</p></div>' +
-      '<div data-wk="abschluss"><div data-wk="abschluss-summary">Teil</div></div><div data-wk="k1;x">Fremd</div>'
-    const code = mitSprungSkript('<body></body>').match(/<script>([\s\S]*)<\/script>/)![1]
-    Element.prototype.scrollIntoView = vi.fn()
-    const gesendet = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
-    new Function(code)()
-    return gesendet
-  }
-
-  it('setzt an Themen, Blöcken und der Lernzielkontrolle einen Knopf – an sonst nichts', () => {
-    const gesendet = laufenLassen()
-    const knoepfe = [...document.querySelectorAll('.wk-k')].map((k) => k.getAttribute('data-wk-knopf'))
-    expect(knoepfe).toEqual(['k0', 'k0-e0', 'k0-e1', 'abschluss'])
-    expect(document.querySelector('[data-wk="abschluss-summary"] .wk-k')).toBeNull()
-    expect(gesendet).toHaveBeenCalledWith({ wkBereit: true }, '*')
-  })
-
-  it('meldet den Klick auf einen Knopf mit der Marke und lässt sonstige Klicks in Ruhe', () => {
-    const gesendet = laufenLassen()
-    const seitenKlick = vi.fn()
-    document.querySelector('[data-wk="k0-e1"] p')!.addEventListener('click', seitenKlick)
-    ;(document.querySelector('[data-wk-knopf="k0-e1"]') as HTMLElement).click()
-    expect(gesendet).toHaveBeenCalledWith({ wkWaehle: 'k0-e1' }, '*')
-    const davor = gesendet.mock.calls.length
-    document.querySelector<HTMLElement>('[data-wk="k0-e1"] p')!.click()
-    expect(seitenKlick).toHaveBeenCalledTimes(1)
-    expect(gesendet.mock.calls.length).toBe(davor) // ein Klick in die Aufgabe meldet nichts
-  })
-
-  it('hebt die gewählte Stelle hervor, nimmt aber nur Nachrichten vom Elternfenster an', () => {
-    laufenLassen()
-    fireEvent(window, new MessageEvent('message', { data: { wk: 'k0-e1' }, source: window }))
-    expect(document.querySelector('.wk-aktiv')?.getAttribute('data-wk')).toBe('k0-e1')
-    fireEvent(window, new MessageEvent('message', { data: { wk: 'k0-e0' }, source: null }))
-    expect(document.querySelector('.wk-aktiv')?.getAttribute('data-wk')).toBe('k0-e1')
-    fireEvent(window, new MessageEvent('message', { data: { wk: null }, source: window }))
-    expect(document.querySelector('.wk-aktiv')).toBeNull()
   })
 })
 
@@ -720,7 +668,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('bewusst aufgeklappt bleibt die Gliederung bei offener Schublade offen, bis die Schublade schließt', async () => {
     window.localStorage.setItem('wk-editor-gliederung', 'zu')
     const rahmen = await bereit()
-    nachricht({ wkWaehle: 'k0-e1' }, rahmen) // „Bearbeiten“ in der Vorschau
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen) // „Bearbeiten“ in der Vorschau
     await screen.findByRole('complementary')
     // gemerkt „zu“, aber die Schublade ist offen und die Gliederung noch nicht bewusst aufgeklappt
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
@@ -736,66 +684,164 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   })
 })
 
-describe('Hilfsskript: Knopfzeile und Seitenkopf (PROJ-97)', () => {
-  function laufenLassen() {
-    document.head.innerHTML = ''
-    document.body.innerHTML =
-      '<div class="navi">Kopf</div><h2 data-wk="k0">Thema</h2><div data-wk="k0-e0"><p>Block A</p></div><div data-wk="k0-e1"><p>Block B</p></div>' +
-      '<div data-wk="abschluss"><div data-wk="abschluss-summary">Teil</div></div><div data-wk="k1;x">Fremd</div>'
-    const code = mitSprungSkript('<body></body>').match(/<script>([\s\S]*)<\/script>/)![1]
-    Element.prototype.scrollIntoView = vi.fn()
-    const gesendet = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
-    new Function(code)()
-    return gesendet
+describe('Direkt auf der Seite (PROJ-101)', () => {
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+  const typen = (t: number) => letzteStruktur().chapters[t].elements.map((b) => b.type)
+  const gespeichert = () => waitFor(() => expect(api.speichereEntwurf.mock.calls.length).toBeGreaterThan(0), { timeout: 3000 })
+  function nachricht(data: unknown, rahmen: HTMLIFrameElement | null, source?: MessageEventSource | null) {
+    fireEvent(window, new MessageEvent('message', { data, source: source === undefined ? rahmen?.contentWindow : source }))
+  }
+  async function bereit() {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    return { rahmen, senden }
   }
 
-  it('setzt über jeden Thema-, Block- und Abschluss-Bereich eine eigene Knopfzeile (kein Überdecken)', () => {
-    laufenLassen()
-    const zeilen = [...document.querySelectorAll('.wk-leiste')]
-    expect(zeilen.map((z) => z.getAttribute('data-wk-leiste'))).toEqual(['k0', 'k0-e0', 'k0-e1', 'abschluss'])
-    // Die Zeile steht vor dem Bereich, nicht darin
-    for (const z of zeilen) expect(z.nextElementSibling?.getAttribute('data-wk')).toBe(z.getAttribute('data-wk-leiste'))
-    expect(document.querySelector('[data-wk="k0-e0"] .wk-k')).toBeNull()
+  it('sagt der Seite beim „bereit“ Modus, Schreibschutz, Handy und leere Themen', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1] } }, '*')
   })
 
-  it('„+“ gibt es an Themen („Block“) und Blöcken („Darunter“), nicht an der Lernzielkontrolle', () => {
-    laufenLassen()
-    const plus = [...document.querySelectorAll('.wk-p')].map((p) => p.getAttribute('data-wk-plus'))
-    expect(plus).toEqual(['k0', 'k0-e0', 'k0-e1'])
-    expect(document.querySelector('[data-wk-plus="k0"]')!.textContent).toBe('Block')
-    expect(document.querySelector('[data-wk-plus="k0-e1"]')!.textContent).toBe('Darunter')
-    expect(document.querySelector('[data-wk-plus="k0-e1"]')!.getAttribute('aria-label')).toMatch(/^Block darunter einfügen/)
-    expect(document.querySelector('[data-wk-plus="k0"]')!.getAttribute('aria-label')).toMatch(/^Block am Anfang des Themas einfügen/)
+  it('ein Klick in der Seite wählt den Block aus, ohne das Formular zu öffnen, und die Seite bekommt den Typ-Namen', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wk: 'k0-e1', name: 'Lückentext', still: true }, '*'))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    // „Bearbeiten“ (oder Enter) öffnet das Formular, Esc schließt es, ein zweites Esc hebt die Auswahl auf
+    nachricht({ wkTaste: 'Enter' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
+    nachricht({ wkTaste: 'Escape' }, rahmen)
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    nachricht({ wkTaste: 'Escape' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenLastCalledWith(expect.objectContaining({ wk: null, name: '' }), '*'))
   })
 
-  it('„Löschen“ gibt es nur an Blöcken und meldet die Marke (PROJ-98)', () => {
-    const gesendet = laufenLassen()
-    const loeschen = [...document.querySelectorAll('.wk-d')].map((d) => d.getAttribute('data-wk-loesche'))
-    expect(loeschen).toEqual(['k0-e0', 'k0-e1'])
-    ;(document.querySelector('[data-wk-loesche="k0-e1"]') as HTMLElement).click()
-    expect(gesendet).toHaveBeenCalledWith({ wkLoesche: 'k0-e1' }, '*')
+  it('ein Klick neben alle Blöcke hebt die Auswahl auf, auch bei geöffnetem Formular', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
+    await screen.findByRole('complementary')
+    nachricht({ wkAbwaehle: true }, rahmen)
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
   })
 
-  it('meldet den „+“-Klick mit der Marke und „Bearbeiten“ weiter getrennt', () => {
-    const gesendet = laufenLassen()
-    ;(document.querySelector('[data-wk-plus="k0-e1"]') as HTMLElement).click()
-    expect(gesendet).toHaveBeenCalledWith({ wkEinfuegen: 'k0-e1' }, '*')
-    ;(document.querySelector('[data-wk-knopf="k0-e1"]') as HTMLElement).click()
-    expect(gesendet).toHaveBeenCalledWith({ wkWaehle: 'k0-e1' }, '*')
+  it('wählt in der Vorschau einen anderen Block, wechselt das offene Formular mit', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
+    await screen.findByRole('complementary', { name: 'Lückentext' })
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
   })
 
-  it('blendet den Seitenkopf aus, ohne den Kern anzufassen, und lässt den Druck frei von Knöpfen', () => {
-    laufenLassen()
-    const css = document.head.querySelector('style')!.textContent!
-    expect(css).toContain('.navi{display:none!important}')
-    expect(css).toContain('@media print{.wk-k{display:none!important}.wk-p,.wk-d,.wk-leiste{display:none!important}}')
+  it('Pfeil hoch/runter wechselt die Auswahl durch Themen und Blöcke', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    nachricht({ wkTaste: 'ArrowDown' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
+    nachricht({ wkTaste: 'ArrowDown' }, rahmen) // weiter zum nächsten Thema
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k1', name: 'Thema' }), '*'))
+    nachricht({ wkTaste: 'ArrowUp' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenLastCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
   })
 
-  it('hebt mit der gewählten Stelle auch ihre Knopfzeile hervor', () => {
-    laufenLassen()
-    fireEvent(window, new MessageEvent('message', { data: { wk: 'k0-e1' }, source: window }))
-    expect(document.querySelector('.wk-leiste-aktiv')?.getAttribute('data-wk-leiste')).toBe('k0-e1')
-    fireEvent(window, new MessageEvent('message', { data: { wk: null }, source: window }))
-    expect(document.querySelector('.wk-leiste-aktiv')).toBeNull()
+  it('Entf löscht den gewählten Block mit „Rückgängig“, Strg+D dupliziert ihn und wählt die Kopie', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    nachricht({ wkTaste: 'd', mod: true }, rahmen)
+    await gespeichert()
+    expect(typen(0)).toEqual(['text', 'text', 'fill_blanks'])
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
+  })
+
+  it('„Duplizieren“ und „Löschen“ aus der Leiste wirken auf den gemeldeten Block; Ungültiges wird verworfen', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkDupliziere: 'k0-e1' }, rahmen, window) // fremder Absender
+    nachricht({ wkDupliziere: 'k0' }, rahmen) // Thema: nicht duplizierbar
+    nachricht({ wkDupliziere: 'k9-e9' }, rahmen)
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+    nachricht({ wkDupliziere: 'k0-e1' }, rahmen)
+    await gespeichert()
+    expect(typen(0)).toEqual(['text', 'fill_blanks', 'fill_blanks'])
+  })
+
+  it('Schnellauswahl im leeren Thema fügt den Block ohne Katalog ein; unbekannte Typen werden verworfen', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkSchnell: 'k1', typ: 'drag_words' }, rahmen)
+    nachricht({ wkSchnell: 'k1', typ: 'text' }, rahmen, window)
+    expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument()
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+    nachricht({ wkSchnell: 'k1', typ: 'fill_blanks' }, rahmen)
+    await gespeichert()
+    expect(typen(1)).toEqual(['fill_blanks'])
+    expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument()
+    // Der neue Block ist gewählt, sein Formular offen
+    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
+  })
+
+  it('„+ Thema“ am Ende der Seite hängt ein Thema an und öffnet sein Formular', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkThemaNeu: true }, rahmen)
+    await gespeichert()
+    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Haftungsgrenzen', 'Neues Thema'])
+    expect(await screen.findByRole('complementary', { name: 'Thema' })).toBeInTheDocument()
+  })
+
+  it('das „⋯“-Menü öffnet an der Klickstelle und verschiebt den Block; die Auswahl folgt ihm', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkWaehle: 'k0-e1' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
+    nachricht({ wkMenue: 'k0-e1', x: 120, y: 80 }, rahmen)
+    expect(await screen.findByRole('menuitem', { name: /Nach oben/ })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /Nach unten/ })).toHaveAttribute('aria-disabled', 'true') // schon der letzte
+    expect(screen.getByRole('menuitem', { name: /Typ wechseln/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('menuitem', { name: /Nach oben/ }))
+    await gespeichert()
+    expect(typen(0)).toEqual(['fill_blanks', 'text'])
+    await waitFor(() => expect(senden).toHaveBeenLastCalledWith(expect.objectContaining({ wk: 'k0-e0' }), '*'))
+  })
+
+  it('Modus-Schalter: „Ausprobieren“ schließt das Formular, behält die Auswahl und sagt es der Seite; ⌘/Strg+E wechselt zurück', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkBearbeite: 'k0-e1' }, rahmen)
+    await screen.findByRole('complementary')
+    fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
+    expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'ausprobieren', lesen: false, mobil: false, leer: [1] } }, '*')
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    // In der Seite ist Bearbeiten wirkungslos: Wünsche kommen dort gar nicht mehr an; über die Tasten geht es zurück
+    nachricht({ wkTaste: 'e', mod: true }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenLastCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1] } }, '*'))
+    fireEvent.keyDown(window, { key: 'e', ctrlKey: true })
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'Ausprobieren' })).toHaveAttribute('data-state', 'on'))
+    // Die Auswahl blieb gemerkt: ein Enter öffnet das Formular desselben Blocks – im Modus Bearbeiten
+    fireEvent.keyDown(window, { key: 'e', ctrlKey: true })
+    nachricht({ wkTaste: 'Enter' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
+  })
+
+  it('Rückgängig aus der Seite: Strg+Z mit dem Fokus in der Vorschau', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkLoesche: 'k0-e1' }, rahmen)
+    await gespeichert()
+    expect(typen(0)).toEqual(['text'])
+    const gespeicherte = api.speichereEntwurf.mock.calls.length
+    nachricht({ wkTaste: 'z', mod: true }, rahmen)
+    // Der rückgängig gemachte Stand wird nach der Wartezeit wieder gespeichert
+    await waitFor(() => expect(api.speichereEntwurf.mock.calls.length).toBeGreaterThan(gespeicherte), { timeout: 4000 })
+    expect(typen(0)).toEqual(['text', 'fill_blanks'])
+  })
+
+  it('verwirft Wünsche mit ungültiger Marke und Tasten außerhalb der Vereinbarung', async () => {
+    const { rahmen, senden } = await bereit()
+    senden.mockClear()
+    nachricht({ wkTaste: 'F5' }, rahmen)
+    nachricht({ wkMenue: 'k0-e0', x: 'x', y: 1 }, rahmen)
+    nachricht({ wkBearbeite: 'k0-e0"]x' }, rahmen)
+    nachricht({ wkBearbeite: 'k0-e0' }, rahmen, window)
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument()
+    expect(senden).not.toHaveBeenCalled()
   })
 })

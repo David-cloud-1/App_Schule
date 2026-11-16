@@ -113,8 +113,11 @@ type Einfuegestelle = Einfuegeort
 /** `null` = es gibt noch kein Thema: Der Block kommt in ein neues Thema 1 (PROJ-97) */
 type EinfuegenBei = (stelle: Einfuegestelle | null) => void
 
-/** Bitte des Editor-Rahmens (Tastenkürzel, „+“ in der Vorschau), den Katalog zu öffnen – `nr` zählt die Bitten durch */
-export type EinfuegeAnfrage = { nr: number; ort: Einfuegeort | null }
+/**
+ * Bitte des Editor-Rahmens (Tastenkürzel, „+“ in der Vorschau), den Katalog zu öffnen – `nr` zählt die Bitten durch.
+ * Mit `typ` (Schnellauswahl im leeren Thema, PROJ-101) entfällt der Katalog: Der Block dieses Typs wird gleich eingefügt.
+ */
+export type EinfuegeAnfrage = { nr: number; ort: Einfuegeort | null; typ?: string }
 
 /** Ab so vielen Themen starten alle zugeklappt (Edge Case „sehr großes Material“) */
 const ZUKLAPPEN_AB = 20
@@ -215,12 +218,16 @@ export function EditorGliederung({
   const [katalogOffen, setKatalogOffen] = useState(false)
   const [bildFuer, setBildFuer] = useState<string | null>(null)
 
-  const einfuegenBei: EinfuegenBei = (stelle) => {
+  // PROJ-101: Schnellauswahl – der Typ steht schon fest, der Katalog bleibt zu; eingefügt wird, sobald die Stelle gesetzt ist
+  const [direktTyp, setDirektTyp] = useState<string | null>(null)
+
+  const einfuegenBei = (stelle: Einfuegestelle | null, typ?: string) => {
     if (katalogOffen) return // zwei Wege gleichzeitig (Kürzel während eines Klicks): der Dialog steht schon
     setZiel(stelle ?? { thema: 0, index: 0 })
     setZielNeuesThema(stelle === null)
-    setKatalogOffen(true)
     bilder.anfordern()
+    if (typ) setDirektTyp(typ)
+    else setKatalogOffen(true)
   }
 
   // Bitte von außen: jede neue Nummer öffnet den Katalog genau einmal (PROJ-97)
@@ -228,7 +235,7 @@ export function EditorGliederung({
   useEffect(() => {
     if (!einfuegenAnfrage || einfuegenAnfrage.nr === letzteAnfrage.current) return
     letzteAnfrage.current = einfuegenAnfrage.nr
-    einfuegenBei(einfuegenAnfrage.ort)
+    einfuegenBei(einfuegenAnfrage.ort, einfuegenAnfrage.typ)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [einfuegenAnfrage])
 
@@ -277,6 +284,15 @@ export function EditorGliederung({
     if (katalogEintrag(typ)?.brauchtBild) setBildFuer(typ)
     else einfuegen(typ)
   }
+
+  // Schnellauswahl: Die Stelle ist gesetzt (`ziel`), jetzt wie im Katalog den Typ wählen (Bild fragt nach dem Bild)
+  useEffect(() => {
+    if (!direktTyp || !ziel) return
+    const typ = direktTyp
+    setDirektTyp(null)
+    typGewaehlt(typ)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direktTyp, ziel])
 
   function bewegeBlock(von: Ort, nach: Ort) {
     aendere((s) => verschiebeBlock(s, von, nach))

@@ -4,9 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
+import { liesWunsch, type VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { SEITE_GRENZE_BYTES } from '@/lib/werkzeugkiste-bilder'
 import { cn } from '@/lib/utils'
+
+export type Modus = 'bearbeiten' | 'ausprobieren'
 
 /**
  * Vorschau des Entwurfs (PROJ-89): die echte Seite mit funktionierenden
@@ -14,10 +18,12 @@ import { cn } from '@/lib/utils'
  * (`sandbox="allow-scripts"` ohne `allow-same-origin`). Die Seite kann ihre
  * Skripte ausführen, aber weder Anmeldedaten noch Inhalte der App lesen.
  *
- * Nur Text-Nachrichten gehen hin und her (PROJ-96):
- *  - App → Seite: Sprungmarke zum Hervorheben/Springen, Scrollposition nach einem Neubau.
- *  - Seite → App: „Bearbeiten“-Klick und „Block einfügen“-Klick (PROJ-97) mit der Marke,
- *    Scrollposition, „bereit“.
+ * Nur Text-Nachrichten gehen hin und her (PROJ-96, PROJ-101):
+ *  - App → Seite: Zustand (Modus, Schreibschutz, Handy, leere Themen), gewählte Stelle samt
+ *    Typ-Name, Scrollposition nach einem Neubau.
+ *  - Seite → App: **Wünsche** (auswählen, bearbeiten, einfügen, löschen, duplizieren, Menü,
+ *    Schnellauswahl, Tasten), Scrollposition, „bereit“. Die App prüft jede Nachricht streng
+ *    (`liesWunsch`) und führt nur aus, was sie selbst für gültig hält.
  * Die App nimmt Nachrichten nur vom eigenen Rahmen an.
  */
 export function EditorVorschau({
@@ -25,11 +31,15 @@ export function EditorVorschau({
   laedt,
   fehler,
   marke,
+  name = '',
   neuLaden,
   groesse = 0,
-  onWaehle,
-  onEinfuegen,
-  onLoesche,
+  onWunsch,
+  modus = 'bearbeiten',
+  onModus,
+  lesen = false,
+  mobil = false,
+  leer = [],
   vollbreit = false,
   onVollbreit,
 }: {
@@ -38,15 +48,24 @@ export function EditorVorschau({
   fehler: string | null
   /** data-wk der gewählten Stelle (k0, k0-e3, abschluss) */
   marke: string | null
+  /** Typ-Name der gewählten Stelle für die Leiste in der Seite („Lückentext“) */
+  name?: string
   neuLaden: () => void
   /** Größe der gebauten Seite in Bytes (PROJ-92: Platzanzeige zur 8-MB-Grenze); 0 = unbekannt */
   groesse?: number
-  /** Klick auf „Bearbeiten“ in der Seite; false = nicht angenommen (Vorschau veraltet) */
-  onWaehle?: (marke: string) => boolean
-  /** Klick auf „+ Darunter“ bzw. „+ Block“ in der Seite (PROJ-97); false = nicht angenommen (Vorschau veraltet) */
-  onEinfuegen?: (marke: string) => boolean
-  /** Block löschen (PROJ-98): wie `onWaehle` – false, wenn die Vorschau nicht aktuell ist */
-  onLoesche?: (marke: string) => boolean
+  /**
+   * Wunsch aus der Seite. `false` = nicht angenommen, weil die Vorschau veraltet ist
+   * (dann sagt die Kopfzeile, was zu tun ist). Wünsche ohne Marke (Tasten) meldet die App immer als angenommen.
+   */
+  onWunsch?: (w: VorschauWunsch) => boolean
+  modus?: Modus
+  onModus?: (m: Modus) => void
+  /** Schreibgeschützt: die Leiste zeigt nur „Bearbeiten“ */
+  lesen?: boolean
+  /** Unter 1024 px: Leiste fest am unteren Rand */
+  mobil?: boolean
+  /** Nummern der Themen ohne Blöcke (Leerzustand mit Vorschlägen) */
+  leer?: number[]
   /** Vorschau über die ganze Breite (Gliederung und Schublade ausgeblendet) */
   vollbreit?: boolean
   onVollbreit?: () => void
@@ -55,17 +74,19 @@ export function EditorVorschau({
   const scrollY = useRef(0)
   const letzte = useRef<string | null>(null)
   const ausVorschau = useRef<string | null>(null)
+  const bereit = useRef(false)
   const aktuelleMarke = useRef(marke)
-  const waehleRef = useRef(onWaehle)
-  const einfuegenRef = useRef(onEinfuegen)
-  const loescheRef = useRef(onLoesche)
+  const aktuellerName = useRef(name)
+  const wunschRef = useRef(onWunsch)
   const fehlerRef = useRef(fehler)
+  const leerSchluessel = leer.join(',')
+  const zustandRef = useRef({ modus, lesen, mobil, leer })
   useEffect(() => {
     aktuelleMarke.current = marke
-    waehleRef.current = onWaehle
-    einfuegenRef.current = onEinfuegen
-    loescheRef.current = onLoesche
+    aktuellerName.current = name
+    wunschRef.current = onWunsch
     fehlerRef.current = fehler
+    zustandRef.current = { modus, lesen, mobil, leer }
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
 
@@ -73,14 +94,25 @@ export function EditorVorschau({
     rahmen.current?.contentWindow?.postMessage(nachricht, '*')
   }, [])
 
-  // Andere Stelle gewählt, während die Seite steht: hervorheben und hinspringen
+  // Neue Seite (neues srcdoc): Das Skript meldet sich gleich mit „bereit“
+  useEffect(() => {
+    bereit.current = false
+  }, [html])
+
+  // Andere Stelle gewählt (oder anderer Typ-Name), während die Seite steht: hervorheben und hinspringen
   // (kam der Klick aus der Seite selbst, bleibt sie, wo sie ist)
   useEffect(() => {
-    if (letzte.current === marke) return
-    letzte.current = marke
-    senden({ wk: marke, still: ausVorschau.current === marke })
+    const schluessel = `${marke ?? ''}|${name}`
+    if (letzte.current === schluessel) return
+    letzte.current = schluessel
+    senden({ wk: marke, name, still: ausVorschau.current === marke })
     ausVorschau.current = null
-  }, [marke, senden])
+  }, [marke, name, senden])
+
+  // Modus, Schreibschutz, Handy oder leere Themen geändert: der Seite Bescheid geben
+  useEffect(() => {
+    if (bereit.current) senden({ wkZustand: { modus, lesen, mobil, leer: zustandRef.current.leer } })
+  }, [modus, lesen, mobil, leerSchluessel, senden])
 
   useEffect(() => {
     const beiNachricht = (e: MessageEvent) => {
@@ -89,27 +121,35 @@ export function EditorVorschau({
       if (!d || typeof d !== 'object') return
       const n = d as Record<string, unknown>
       if (n.wkBereit === true) {
-        // Neue Seite steht: Auswahl und Scrollposition wiederherstellen
-        letzte.current = aktuelleMarke.current
-        senden({ wk: aktuelleMarke.current, scrollY: scrollY.current })
-      } else if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
+        // Neue Seite steht: Zustand, Auswahl und Scrollposition wiederherstellen
+        bereit.current = true
+        letzte.current = `${aktuelleMarke.current ?? ''}|${aktuellerName.current}`
+        senden({ wkZustand: zustandRef.current })
+        senden({ wk: aktuelleMarke.current, name: aktuellerName.current, scrollY: scrollY.current })
+        return
+      }
+      if (typeof n.wkScroll === 'number' && Number.isFinite(n.wkScroll)) {
         scrollY.current = Math.max(0, n.wkScroll)
-      } else if (typeof n.wkWaehle === 'string' || typeof n.wkEinfuegen === 'string' || typeof n.wkLoesche === 'string') {
-        const einfuegen = typeof n.wkEinfuegen === 'string'
-        const loeschen = typeof n.wkLoesche === 'string'
-        const stelle = (loeschen ? n.wkLoesche : einfuegen ? n.wkEinfuegen : n.wkWaehle) as string
-        const angenommen = (loeschen ? loescheRef.current : einfuegen ? einfuegenRef.current : waehleRef.current)?.(stelle) ?? false
-        if (angenommen) {
-          // Beim Einfügen bleibt die Seite, wo sie ist, und es wird nichts markiert
-          if (!einfuegen && !loeschen) ausVorschau.current = stelle
-          setHinweis(null)
-        } else {
-          setHinweis(
-            fehlerRef.current
-              ? 'Die Vorschau ist nicht aktuell. Bitte „Erneut versuchen“ klicken oder die Stelle in der Gliederung wählen.'
-              : 'Die Vorschau wird gerade aktualisiert. Bitte gleich noch einmal klicken.',
-          )
-        }
+        return
+      }
+      let w = liesWunsch(n)
+      if (!w) return
+      if (w.art === 'menue') {
+        // Die Seite meldet Koordinaten im Rahmen; das Menü gehört der App und braucht Fensterkoordinaten
+        const r = rahmen.current.getBoundingClientRect()
+        w = { ...w, x: r.left + w.x, y: r.top + w.y }
+      }
+      const angenommen = wunschRef.current?.(w) ?? false
+      if (angenommen) {
+        // Ein Klick aus der Seite lässt sie, wo sie ist
+        if (w.art === 'waehle' || w.art === 'bearbeite') ausVorschau.current = w.marke
+        setHinweis(null)
+      } else {
+        setHinweis(
+          fehlerRef.current
+            ? 'Die Vorschau ist nicht aktuell. Bitte „Erneut versuchen“ klicken oder die Stelle in der Gliederung wählen.'
+            : 'Die Vorschau wird gerade aktualisiert. Bitte gleich noch einmal klicken.',
+        )
       }
     }
     window.addEventListener('message', beiNachricht)
@@ -126,6 +166,17 @@ export function EditorVorschau({
     <div className="flex h-full min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-ws-line bg-white">
       <div className="flex min-h-11 items-center gap-2 border-b border-ws-line bg-ws-surface px-3 text-sm text-ws-muted">
         <span className="font-semibold text-ws-text">Vorschau</span>
+        {onModus && (
+          <AdminSegmented
+            value={modus}
+            onChange={onModus}
+            ariaLabel="Modus der Vorschau"
+            options={[
+              { value: 'bearbeiten', label: 'Bearbeiten' },
+              { value: 'ausprobieren', label: 'Ausprobieren' },
+            ]}
+          />
+        )}
         {laedt && (
           <span className="flex items-center gap-1.5" aria-live="polite">
             <Loader2 className="size-3.5 animate-spin" aria-hidden /> Vorschau wird aktualisiert …
