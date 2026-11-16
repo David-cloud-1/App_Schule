@@ -1,6 +1,6 @@
 # PROJ-103: Baukasten – Lehrtext direkt in der Seite tippen
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16
 
@@ -223,7 +223,65 @@ Vorschau (bestehend, Modus Bearbeiten)
 **Browser-Test (offen, vom Nutzer):** Laptop, iPad quer, Handy: Cursor an der Klickstelle, kein Sprung beim Wechsel gebaute ↔ Schreib-Fassung, Formatleiste und Bildschirmtastatur, Einfügen aus Word, Rechtschreibprüfung, Rückgängig im Text und danach, Boxen im Schreib-Design gegen die fertige Seite vergleichen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft:** 2026-11-16 (QA, Sonnet 5.5) – **Code-Review + automatische Tests, kein Browser-Lauf** (Regel „Kein Dev-Server“: `npm run dev`/Playwright stürzen den MacBook ab). Alle Aussagen zur Oberfläche sind deshalb aus dem Code und den Tests abgeleitet, **nicht im Browser gesehen**.
+
+### Automatische Tests
+- `tsc --noEmit`: sauber.
+- `eslint` auf den geänderten Dateien: 0 Fehler, 2 Warnungen, beide Altbestand (`baukasten-editor.tsx:137`, `:1053`), nicht aus PROJ-103.
+- Vitest `src/components/werkzeugkiste/editor`: **18 Dateien, 274 Tests grün** (inkl. `schreiben`, `schreibwerk`, `schreiben-skript`, Integration „Direkt in der Seite schreiben“; Bündel-Stand und Größengrenze werden mitgeprüft).
+- Gesamtlauf nicht neu gemacht; der Entwickler meldet 1 roten Test in `werkzeugkiste-auszug.test.ts` (Regal-Kopie, nicht aus PROJ-103). **Vor dem Deploy prüfen, dass er auch auf `main` rot ist.**
+- Playwright-E2E: nicht geschrieben (siehe oben). Die Browser-Abnahme bleibt beim Nutzer.
+
+### Acceptance Criteria
+| Kriterium | Ergebnis |
+|---|---|
+| Schreibmodus per Doppelklick / Klick auf gewählten Text | Code ✅, Browser offen |
+| Überschrift, Deckblatt, Bildunterschrift als Einfach-Schreiber | Code ✅ (`einfachText`, Enter/Esc), Browser offen |
+| Schreib-Design wie fertige Seite, dezenter Rahmen | Nachbau, Aussehen nur im Browser prüfbar |
+| Esc / Klick außerhalb übernimmt, Autosave + Neubau | Code ✅ (Neubau pausiert, danach nur bei geändertem Stand) |
+| Rückgängig: ⌘Z im Text, danach ein Verlaufsschritt | Code ✅ (Gruppe `schreib-<nr>`, ohne Zeitgrenze), ⌘Z im Text nur im Browser prüfbar |
+| Formatleiste (Fett, Kursiv, H2/H3, Listen, Link, Box) | Code ✅, **Tabelle einfügen fehlt** |
+| Leiste über markiertem Text („In Box setzen“) | ❌ nicht umgesetzt (laut Umsetzungsnotiz) |
+| Cursor in Box: Art ändern, darunter, auflösen, löschen | Code ✅, Browser offen |
+| Kürzel ⌘B/I/K, „- “/„1. “ | Motor-Kürzel ✅; „/“-Katalog ❌, „Enter in leerer letzter Zeile → + Block“ ❌ |
+| Einfügen: Word-Müll entfernt | Code ✅ (Einfüge-Reinigung), Browser offen |
+| Eingefügte Bilder → eigener Bild-Block | ❌ (Bilder werden entfernt, Hinweis; hängt an PROJ-104, im Tech Design so vorgesehen) |
+| Gespeichert im bisherigen Format, identisch im Formular/HTML-Schalter | Code ✅ (Rundreise-Prüfung, Test) |
+| Bereinigung wie heute | ⚠️ teilweise, siehe BUG-1/2 |
+| Geschützte Inseln gesperrt und erhalten | Code ✅ (Insel-Prüfung im Ergebnis), Hinweis „In der Schublade bearbeiten“ nur im Browser prüfbar |
+| Handy: Leiste über Tastatur (Fett, Liste, Box, Fertig) | Code ✅ (`visualViewport`), Browser/iPad offen |
+
+**Zusammenfassung:** 8 Kriterien im Code erfüllt und getestet, 5 nicht umgesetzt (Markierungsleiste, „/“, Enter-leer, Tabelle einfügen, Bild-Block beim Einfügen – alle bewusst zurückgestellt und in der Umsetzungsnotiz benannt), der Rest braucht den Browser-Test.
+
+### Edge Cases
+- Unbekanntes HTML bleibt als Insel erhalten ✅ (Test). Direkt nicht bearbeitbarer Text öffnet die Schublade mit Hinweis ✅.
+- Text geleert: bleibt leerer Lehrtext (`||undefined` nur bei Titel/Caption, Lehrtext bleibt `''`) ✅.
+- Kein Neubau beim Tippen ✅ (`pausiert`).
+- Schreibgeschützt: kein Schreibstart (`z.gesperrt`) ✅; Zwischenstände werden bei gesperrt nicht gespeichert ✅.
+- Sehr langer Text / Tippgeschwindigkeit, Rechtschreibprüfung, geschützte/doppelte Leerzeichen: nur im Browser prüfbar, offen.
+
+### Sicherheits-Audit (Red Team)
+- ✅ Absender der Nachrichten wird geprüft (`e.source === rahmen.contentWindow`), Marke und Teil aus fester Liste, Größenlimit 200 000 Zeichen, Sitzung nur mit passender Marke.
+- ✅ Insel-Prüfung: Jede Insel im Ergebnis muss eine des Originals sein, sonst wird nichts übernommen.
+- ✅ Rahmen bleibt `sandbox="allow-scripts"` ohne `allow-same-origin`; keine neue API, kein neues Datenformat, keine Proxy-Änderung.
+- ⚠️ Siehe BUG-1 und BUG-2 (Reinigung in der App ist schwächer als versprochen).
+- Nicht prüfbar ohne Browser: tatsächliches Verhalten des Einfügens aus Word/Google Docs.
+
+### Bugs
+| ID | Schwere | Befund | Wo |
+|---|---|---|---|
+| BUG-1 | Low | **Reinigung wird übersprungen, wenn der Originaltext schon aktiven Inhalt hat.** `hatAktivenInhalt(html) && !hatAktivenInhalt(original)` → Enthält der Lehrtext z. B. schon einen `onclick` (KI-Text), geht ein neu hinzugefügtes `<script>` oder `javascript:`-Link ungereinigt durch. Der Kern entfernt beim Bauen ebenfalls, deshalb nur Low. Schritte: Lehrtext mit `onclick` anlegen, Seite sendet Endstand mit zusätzlichem `<script>` → wird übernommen. Fix: immer `entschaerfen`, außer das Stück ist identisch mit dem Original. | `schreiben.ts:124` |
+| BUG-2 | Medium | **Die App normalisiert die Antwort der Seite nicht über das Motor-Schema/Aufräumen.** Das Tech Design (Entscheidung 6) verspricht „Einfüge-Reinigung, Motor-Schema, Aufräumen, Link-Prüfung (nur Web und Mail)“; umgesetzt ist nur `entschaerfen` plus Insel-Prüfung. Eine kompromittierte Seite (z. B. durch KI-Text mit Skript im Rahmen) kann beliebiges HTML, `data:`-/`file:`-Links oder fremde Tags in den Entwurf schreiben. Fix: Ergebnis in der App durch `textErweiterungen` parsen und `aufraeumen(alsHtml(…))` neu serialisieren; Links nur `http(s)`/`mailto`. | `schreiben.ts:121-133` |
+| BUG-3 | Medium | **Stiller Textverlust, wenn die Insel-Prüfung fehlschlägt.** `beiSchreiben` ruft dann `beendeSitzung(true)` und zeigt nur einen Fehler-Toast; die Seite wird auf die gebaute Fassung zurückgesetzt und der getippte Text seit dem letzten Zwischenstand ist weg. Fix: Sitzung offen lassen oder den abgelehnten Text anbieten (kopieren). | `baukasten-editor.tsx` `beiSchreiben` |
+| BUG-4 | Low (Verdacht, nicht belegt) | **Ort der Sitzung ist fest (`sit.ort`).** Ändert sich die Struktur während des Schreibens von außen (z. B. Rückgängig-Tasten in der App, Hintergrund-Konflikt/Neuladen), schreibt der Endstand in den Block mit demselben Index, nicht in den ursprünglichen. Der Effekt, der die Sitzung beendet, beobachtet nur Modus, Marke, Schublade und Dialog, nicht die Struktur. Im Browser nachstellen. | `baukasten-editor.tsx` Effekt „Lage ändert sich“ |
+| BUG-5 | Medium | **5 Akzeptanzkriterien nicht umgesetzt** (siehe Tabelle). Ist in der Umsetzungsnotiz offen benannt; Entscheidung des Nutzers nötig, ob das für „Deployed“ reicht oder in eine Folge-Spec (z. B. PROJ-111) gehört. | – |
+
+### Regression
+Editor-Tests (PROJ-89 bis 102) laufen grün mit. Browser-Regression von Auswahl, Ziehen, Kopieren, Löschen (PROJ-101/102) mit dem neuen Doppelklick-Auslöser (vorher: Formular) ist **offen**; besonders prüfen: Doppelklick auf nicht gewählten Block, Enter öffnet weiter das Formular.
+
+### Entscheidung
+**Keine Critical/High-Bugs im Code. NICHT freigegeben (Status bleibt „In Review“)**, bis (1) BUG-2/BUG-3 behoben oder bewusst akzeptiert sind und (2) der Browser-Test des Nutzers (Laptop, iPad quer, Handy) durch ist. Die Browser-Punkte stehen oben in der Umsetzungsnotiz.
 
 ## Deployment
 _To be added by /deploy_
