@@ -119,7 +119,7 @@
 
 | PROJ-99 | Werkzeugkiste – höhere Qualität und Spielspaß für Selbstlerneinheiten | In Progress | [PROJ-99-werkzeugkiste-qualitaet-spielspass.md](PROJ-99-werkzeugkiste-qualitaet-spielspass.md) | 2026-11-16 |
 | PROJ-101 | Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste | Deployed | [PROJ-101-baukasten-direkt-auswaehlen-blockleiste.md](PROJ-101-baukasten-direkt-auswaehlen-blockleiste.md) | 2026-11-16 |
-| PROJ-102 | Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Approved | [PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md](PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md) | 2026-11-16 |
+| PROJ-102 | Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Deployed | [PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md](PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md) | 2026-11-16 |
 | PROJ-103 | Baukasten – Lehrtext direkt in der Seite tippen | Planned | [PROJ-103-baukasten-lehrtext-direkt-tippen.md](PROJ-103-baukasten-lehrtext-direkt-tippen.md) | 2026-11-16 |
 | PROJ-104 | Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Planned | [PROJ-104-baukasten-bild-direkt-bearbeiten.md](PROJ-104-baukasten-bild-direkt-bearbeiten.md) | 2026-11-16 |
 | PROJ-105 | Baukasten – Bild neben Text & Bild-Galerie | Planned | [PROJ-105-baukasten-bild-neben-text-galerie.md](PROJ-105-baukasten-bild-neben-text-galerie.md) | 2026-11-16 |

@@ -1,6 +1,6 @@
 # PROJ-102: Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16
 
@@ -338,4 +338,4 @@ Keine Critical- oder High-Bugs.
 **Approved** (keine Critical/High-Bugs offen). Browser-Test des Nutzers steht aus.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed 2026-11-16** (Push `fa60632` auf `main`, Vercel-Produktion `spedilern-ofic0agll`, Ready). Keine Datenbank-Migration, keine Kern-Änderung. Neue Route ohne Anmeldung liefert 401. Browser-Test des Nutzers steht aus.
