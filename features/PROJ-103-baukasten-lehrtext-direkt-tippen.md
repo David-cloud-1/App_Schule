@@ -1,6 +1,6 @@
 # PROJ-103: Baukasten – Lehrtext direkt in der Seite tippen
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-16
 
@@ -284,4 +284,10 @@ Editor-Tests (PROJ-89 bis 102) laufen grün mit. Browser-Regression von Auswahl,
 **Keine Critical/High-Bugs im Code. NICHT freigegeben (Status bleibt „In Review“)**, bis (1) BUG-2/BUG-3 behoben oder bewusst akzeptiert sind und (2) der Browser-Test des Nutzers (Laptop, iPad quer, Handy) durch ist. Die Browser-Punkte stehen oben in der Umsetzungsnotiz.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-11-16 (Vercel Production, Commit `e117ebe`). Keine Migration, kein Kern-Deploy.
+
+**Nach der QA behoben:** BUG-1 und BUG-2 (Antwort der Seite läuft immer durch das Motor-Schema und `aufraeumen`; Entschärfung bleibt zusätzlich), BUG-3 (bei abgelehntem Text bietet der Hinweis „Text kopieren“ an, nichts geht still verloren). Neue Tests in `schreiben.test.ts` (20 grün), Gesamtlauf 3597 grün, 1 rot (`werkzeugkiste-auszug.test.ts`, nicht aus PROJ-103).
+
+**Bewusst offen beim Deploy (Entscheidung des Nutzers, 2026-11-16):**
+- Browser-Test von Laptop, iPad quer und Handy steht noch aus. Das Feature ging ohne ihn live.
+- BUG-4 (Ort der Sitzung bei Strukturänderung von außen, nur Verdacht) und BUG-5 (Leiste über Markierung, „/“-Katalog, Enter-leer, Tabelle einfügen, Bild-Block beim Einfügen) sind nicht behoben.
