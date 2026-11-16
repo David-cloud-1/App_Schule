@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Plus, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -26,7 +26,7 @@ import { ladeEditor, veroeffentlicheEntwurf, verwirfEntwurf } from '@/lib/werkze
 import { befundeJeStelle, dupliziereBlock, hatAufgaben, loescheBlock, sprungmarke, typName, type EditorDaten, type Ort } from '@/lib/werkzeugkiste-editor'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
-import { EditorGliederung, type Auswahl, type EinfuegeAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
+import { EditorGliederung, type Auswahl, type EinfuegeAnfrage, type ThemaLoeschenAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorSchublade, gueltigeAuswahl } from '@/components/werkzeugkiste/editor/editor-schublade'
 import { MaterialBilderProvider } from '@/components/werkzeugkiste/editor/material-bilder'
 import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
@@ -180,6 +180,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [gliederungTrotzSchublade, setGliederungTrotzSchublade] = useState(false)
   // PROJ-97: Bitte an die Gliederung, den Katalog zu öffnen (Kürzel, „+“ in der schmalen Leiste und in der Vorschau)
   const [einfuegenAnfrage, setEinfuegenAnfrage] = useState<EinfuegeAnfrage>({ nr: 0, ort: null })
+  const [themaLoeschenAnfrage, setThemaLoeschenAnfrage] = useState<ThemaLoeschenAnfrage>({ nr: 0, thema: -1 })
   const istMobil = useIsMobile()
   const platzFuerAlles = useMindestBreite(1280)
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
@@ -241,6 +242,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     z.aendere((s) => loescheBlock(s, ort))
     setAuswahl(null)
     toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+  }
+
+  function frageThemaLoeschen(thema: number) {
+    if (z.gesperrt || !z.struktur.chapters[thema]) return
+    setThemaLoeschenAnfrage((x) => ({ nr: x.nr + 1, thema }))
   }
 
   function dupliziereBlockAn(ort: Ort) {
@@ -305,6 +311,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       case 'loesche':
       case 'dupliziere':
       case 'menue': {
+        // Ein Thema löscht man nur nach Rückfrage (Dialog der Gliederung)
+        if (w.art === 'loesche' && a.art === 'thema') {
+          if (!z.gesperrt) frageThemaLoeschen(a.thema)
+          return true
+        }
         if (a.art !== 'block') return false
         if (z.gesperrt) return true
         const ort = { thema: a.thema, block: a.block }
@@ -347,6 +358,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       case 'Delete':
       case 'Backspace':
         if (gewaehlt?.art === 'block') loescheBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
+        else if (gewaehlt?.art === 'thema') frageThemaLoeschen(gewaehlt.thema)
         break
       case 'd':
         if (t.mod && gewaehlt?.art === 'block') dupliziereBlockAn({ thema: gewaehlt.thema, block: gewaehlt.block })
@@ -410,6 +422,44 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     setGliederungOffen(offen)
     merkeGliederungOffen(offen)
   }
+
+  // PROJ-101 (BUG-3): Hat nicht die Vorschau, sondern die App den Fokus (z. B. nach dem Schließen der Schublade in der
+  // Gliederung), gelten Pfeile, Enter, Entf, Esc und ⌘/Strg+D trotzdem. Die Vorschau gibt ihre Tasten selbst weiter;
+  // ⌘/Strg+E, Z und Alt+Umschalt+B haben eigene Handler unten.
+  const beiTasteRef = useRef(beiTaste)
+  useEffect(() => {
+    beiTasteRef.current = beiTaste
+  })
+  useEffect(() => {
+    function taste(e: KeyboardEvent) {
+      if (e.defaultPrevented || modus !== 'bearbeiten' || !gewaehlt) return
+      const k = e.key
+      const mod = e.metaKey || e.ctrlKey
+      const art =
+        mod && !e.altKey && !e.shiftKey && k.toLowerCase() === 'd'
+          ? 'd'
+          : !mod && !e.altKey && !e.shiftKey && ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape'].includes(k)
+            ? k
+            : null
+      if (!art) return
+      const ziel = e.target as HTMLElement | null
+      if (!ziel?.closest) return
+      // Eingabefelder, Dialoge, Menüs und Texteditor behalten ihre Tasten; Ziehgriffe der Gliederung ebenso
+      if (
+        ziel.closest(
+          'input, textarea, select, [contenteditable="true"], .cm-editor, [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="combobox"], [aria-roledescription="sortable"]',
+        )
+      )
+        return
+      if (document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]')) return
+      // Enter gehört bei Knöpfen und Links dem Knopf selbst
+      if (art === 'Enter' && ziel.closest('button, a, summary, [role="button"], [role="treeitem"]')) return
+      e.preventDefault()
+      beiTasteRef.current({ key: art, mod, shift: false, alt: false } as Taste)
+    }
+    window.addEventListener('keydown', taste)
+    return () => window.removeEventListener('keydown', taste)
+  }, [modus, gewaehlt])
 
   // Strg/⌘+Z und Strg/⌘+Umschalt+Z – nicht in Eingabefeldern (dort gilt zuerst das Feld)
   useEffect(() => {
@@ -680,6 +730,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             befunde={befunde}
             befundKarte={befundKarte}
             einfuegenAnfrage={einfuegenAnfrage}
+            themaLoeschenAnfrage={themaLoeschenAnfrage}
             kuerzel={kuerzel}
           />
         </section>

@@ -780,6 +780,34 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
   })
 
+  it('„Löschen“ am Thema (Leiste) fragt per Dialog nach und löscht erst nach Bestätigung', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkLoesche: 'k1' }, rahmen)
+    expect(await screen.findByText(/Thema „Haftungsgrenzen“ löschen\?/)).toBeInTheDocument()
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Thema löschen' }))
+    await gespeichert()
+    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen'])
+  })
+
+  it('Tasten gelten auch, wenn die App den Fokus hat (nicht die Vorschau): Entf löscht den gewählten Block', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    fireEvent.keyDown(document.body, { key: 'Delete' })
+    await gespeichert()
+    expect(typen(0)).toEqual(['fill_blanks'])
+  })
+
+  it('Tasten in Eingabefeldern löschen nichts', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    const feld = document.createElement('input')
+    document.body.appendChild(feld)
+    fireEvent.keyDown(feld, { key: 'Backspace' })
+    feld.remove()
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
   it('„+ Thema“ am Ende der Seite hängt ein Thema an und öffnet sein Formular', async () => {
     const { rahmen } = await bereit()
     nachricht({ wkThemaNeu: true }, rahmen)

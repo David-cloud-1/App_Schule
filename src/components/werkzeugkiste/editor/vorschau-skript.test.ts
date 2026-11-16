@@ -192,10 +192,19 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     expect(sichtbar()).toEqual(['bearbeite', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
     expect(aktion('einfuegen').textContent).toBe('Darunter')
     vomEditor({ wk: 'k0', name: 'Thema' })
-    expect(sichtbar()).toEqual(['bearbeite', 'einfuegen'])
+    // Am Thema geht auch Löschen (die App fragt per Dialog nach)
+    expect(sichtbar()).toEqual(['bearbeite', 'einfuegen', 'loesche'])
     expect(aktion('einfuegen').textContent).toBe('Block')
+    expect(aktion('loesche').getAttribute('aria-label')).toBe('Thema löschen')
     vomEditor({ wk: 'abschluss', name: 'Lernzielkontrolle' })
     expect(sichtbar()).toEqual(['bearbeite'])
+  })
+
+  it('Handy: die feste Leiste bekommt Platz am Seitenende (Klasse wk-mobil)', () => {
+    laufenLassen({ modus: 'bearbeiten', mobil: true })
+    expect(document.body.classList.contains('wk-mobil')).toBe(true)
+    vomEditor({ wkZustand: { modus: 'bearbeiten', mobil: false } })
+    expect(document.body.classList.contains('wk-mobil')).toBe(false)
   })
 
   it('schreibgeschützt: nur „Bearbeiten“ (zum Ansehen), nichts Verändernes', () => {

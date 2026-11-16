@@ -118,6 +118,8 @@ type EinfuegenBei = (stelle: Einfuegestelle | null) => void
  * Mit `typ` (Schnellauswahl im leeren Thema, PROJ-101) entfällt der Katalog: Der Block dieses Typs wird gleich eingefügt.
  */
 export type EinfuegeAnfrage = { nr: number; ort: Einfuegeort | null; typ?: string }
+/** Bitte von außen (Leiste in der Vorschau, Entf-Taste): Rückfrage „Thema löschen?“ öffnen (PROJ-101) */
+export type ThemaLoeschenAnfrage = { nr: number; thema: number }
 
 /** Ab so vielen Themen starten alle zugeklappt (Edge Case „sehr großes Material“) */
 const ZUKLAPPEN_AB = 20
@@ -184,6 +186,7 @@ export interface GliederungProps {
   befundKarte: Map<BefundSchluessel, number>
   /** PROJ-97: Katalog von außen öffnen (Tastenkürzel, „+ Darunter“ in der Vorschau) */
   einfuegenAnfrage?: EinfuegeAnfrage | null
+  themaLoeschenAnfrage?: ThemaLoeschenAnfrage | null
   /** Tastenkürzel zum Anzeigen im Tooltip, z. B. „⌘⇧A“ */
   kuerzel?: string
 }
@@ -197,6 +200,7 @@ export function EditorGliederung({
   befunde,
   befundKarte,
   einfuegenAnfrage,
+  themaLoeschenAnfrage,
   kuerzel,
 }: GliederungProps) {
   const [zu, setZu] = useState<Set<number>>(
@@ -238,6 +242,15 @@ export function EditorGliederung({
     einfuegenBei(einfuegenAnfrage.ort, einfuegenAnfrage.typ)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [einfuegenAnfrage])
+
+  // Bitte von außen: Rückfrage zum Löschen eines Themas (jede neue Nummer genau einmal)
+  const letzteLoeschAnfrage = useRef(themaLoeschenAnfrage?.nr ?? 0)
+  useEffect(() => {
+    if (!themaLoeschenAnfrage || themaLoeschenAnfrage.nr === letzteLoeschAnfrage.current) return
+    letzteLoeschAnfrage.current = themaLoeschenAnfrage.nr
+    if (themen[themaLoeschenAnfrage.thema]) setThemaLoeschen(themaLoeschenAnfrage.thema)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [themaLoeschenAnfrage])
 
   /** Leiste „+ Block“: dieselbe Regel wie das Kürzel, gelesen im Moment des Klicks */
   function blockHinzu() {

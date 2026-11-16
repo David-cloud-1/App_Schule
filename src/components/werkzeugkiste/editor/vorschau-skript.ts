@@ -52,6 +52,7 @@ const CSS = [
   'body.wk-bearbeiten .wk-aktiv{outline:3px solid #2563eb!important;outline-offset:3px}',
   `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}`,
   '.wk-leiste[hidden],.wk-b[hidden]{display:none!important}',
+  'body.wk-bearbeiten.wk-mobil{padding-bottom:72px}',
   '.wk-leiste-unten{left:0;right:0;bottom:0;justify-content:space-between;border-radius:12px 12px 0 0;border-width:1px 0 0}',
   `.wk-typ{padding:0 8px;color:${F.textTyp};white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}`,
   `.wk-b{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:${F.text};font:inherit;cursor:pointer}`,
@@ -145,7 +146,8 @@ function leisteAktualisieren(){
   bPlus.setAttribute("aria-label",art==="thema"?"Block am Anfang des Themas einfügen":"Block darunter einfügen");
   bKopie.hidden=lesen||art!=="block";
   bMehr.hidden=lesen||art!=="block";
-  bWeg.hidden=lesen||art!=="block";
+  bWeg.hidden=lesen||(art!=="block"&&art!=="thema");
+  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":"Block löschen");
 }
 function plaziere(){
   var e=modus==="bearbeiten"&&auswahl?finde(auswahl):null;
@@ -156,8 +158,11 @@ function plaziere(){
   leiste.className="wk-ui wk-leiste";leiste.hidden=false;
   var h=leiste.offsetHeight||38,w=leiste.offsetWidth||0;
   var top=r.top-h-6;
-  if(top<4)top=4;
-  if(top>r.bottom-h)top=Math.max(4,r.bottom-h);
+  if(top<4){
+    // Kein Platz darüber: Beginnt der Block noch im Bild, steht die Leiste darunter (sonst verdeckt sie seinen Anfang).
+    // Ragt er oben aus dem Bild, bleibt sie am oberen Rand des Blocks kleben.
+    if(r.top>=0&&r.bottom+6+h<=innerHeight)top=r.bottom+6;else top=4;
+  }else if(top>r.bottom-h)top=Math.max(4,r.bottom-h);
   var left=Math.min(Math.max(4,r.right-w),Math.max(4,innerWidth-w-4));
   leiste.style.top=top+"px";leiste.style.left=left+"px";
 }
@@ -324,6 +329,7 @@ addEventListener("resize",plaziere);
 
 function anwenden(){
   document.body.classList.toggle("wk-bearbeiten",modus==="bearbeiten");
+  document.body.classList.toggle("wk-mobil",mobil);
   if(modus!=="bearbeiten"){plus.hidden=true;if(hoverEl){hoverEl.classList.remove("wk-hover");hoverEl=null}}
   baueEinfuegestellen();leisteAktualisieren();plaziere();
 }
