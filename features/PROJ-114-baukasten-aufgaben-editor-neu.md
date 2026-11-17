@@ -348,4 +348,4 @@ Vorschau, Modus Bearbeiten
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+**2026-11-17:** Bauschritt 1–4 (verkürzt, 24 Typen) per Push `proj-114-aufgabenwerk:main` (Commit d5200f6) nach Production, Build Ready, API ohne Login 401. Keine Migration, kein Kern-Deploy. **Nicht im Browser geprüft**, Rest-Typen (Fallakte, Kapiteltest, Video, Bild-Typen, Tabelle, Diagramm) weiter in der Schublade; Status bleibt In Progress.
