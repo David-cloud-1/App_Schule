@@ -1,156 +1,134 @@
-# PROJ-114: Baukasten – Aufgaben-Editor neu (einheitliche Schublade, 6 Muster)
+# PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten
 
 ## Status: Planned
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17
+**Last Updated:** 2026-11-17 (Richtung nach Prototyp v2 geändert: keine Schublade, Bearbeiten in der Seite)
 
 ## Idee in einem Satz
-Die Schublade im Baukasten wird ein richtig guter Aufgaben-Editor: gleicher Aufbau für jeden Aufgabentyp, sechs wiederkehrende Bedienmuster statt 30 Einzelformularen, immer nur das Nötige sichtbar, sodass auch Lehrkräfte ohne Erfahrung sofort zurechtkommen.
+Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
 
-Teil der Reihe „Baukasten direkt“. Folge-Specs: PROJ-115 (Klick in der Seite öffnet den Eintrag), PROJ-116 (Lösungen im Modus Bearbeiten sichtbar).
+Teil der Reihe „Baukasten direkt“ (Leitbild PROJ-101: Die Seite meldet, die App entscheidet). Enthält den früheren Entwurf PROJ-115 (Klick öffnet den Eintrag). Folge-Spec: PROJ-116 (Lösungen im Modus Bearbeiten sichtbar).
 
 ## Anlass
-Rückmeldung des Nutzers (2026-11-17) am Material „Basics rund um den LKW (Kopie)“: Bei „Wörter ziehen“, „Wörter markieren“ und „Begriffe zum Aufklappen“ sei die Bearbeitung „total unübersichtlich und nicht schön gelöst“. Ziel: „Dieses Mal muss das wirklich sitzen, über alle Aufgaben und Boxen im Baukasten. Dieser muss unglaublich gut werden.“
+Rückmeldung des Nutzers (2026-11-17) am Material „Basics rund um den LKW (Kopie)“: Bei „Wörter ziehen“, „Wörter markieren“ und „Begriffe zum Aufklappen“ sei die Bearbeitung „total unübersichtlich und nicht schön gelöst“. Ziel: „Dieses Mal muss das wirklich sitzen, über alle Aufgaben und Boxen im Baukasten.“
 
 ## Warum die bisherigen Schritte nicht gereicht haben
-- PROJ-101–113 haben die **Seite** umgebaut (Auswählen, Leiste, Ziehen, Tippen, Bilder). Die **Formulare** in der Schublade stammen unverändert aus PROJ-89/90.
-- Alle Listen laufen über einen Baustein `Liste` (34 Stellen in 25 Formularen): jeder Eintrag eine große, immer offene Karte mit drei Icons (hoch, runter, löschen). Vier Begriffe füllen zwei Bildschirmhöhen.
-- Jedes Formular wurde für sich gebaut. Gleiche Aufgaben bedienen sich verschieden (z. B. „Zuordnen“: pro Begriff ein Dropdown für die Kategorie).
-- Lückentexte verlangen Sternchen-Schreibweise (`*Wort:Tipp*`) – für Einsteiger eine Programmiersprache.
-- Der Kopf der Schublade („Typ wechseln“, „Formular | Rohfassung“) belegt über 200 px, bevor der Inhalt beginnt. Unter fast jedem Feld steht ein Hinweissatz.
+- PROJ-101–113 haben die Seite umgebaut. Die Formulare in der Schublade stammen unverändert aus PROJ-89/90: jeder Eintrag eine große, immer offene Karte mit drei Icons, Hinweissätze unter fast jedem Feld, über 200 px Kopf vor dem Inhalt.
+- Lückentexte verlangen Sternchen-Schreibweise (`*Wort:Tipp*`).
+- **Grundproblem (erkannt am Prototyp v1):** Schublade neben der Seite heißt, alles doppelt zu sehen – die Antworten in der Seite und noch einmal im Formular. Auch eine gut gestaltete Schublade bleibt dadurch umständlich. Prototyp v1 (Schublade mit Mustern) fand der Nutzer „sehr sehr umständlich und unübersichtlich“, Prototyp v2 (Bearbeiten an Ort und Stelle) „schon viel besser“.
 
-## Grundsatz-Entscheidung (Nutzer, 2026-11-17)
-**Seite zum Anschauen und Anklicken, Schublade als richtig guter Editor.** Aufgaben werden nicht direkt in der Seite bearbeitet (wie Google Forms/Kahoot): Die Aufgaben zeichnet der Python-Kern, jeder der 30 Typen mit eigenem HTML und Skript, und jede Änderung baut die Seite in Sekunden neu. Direktes Bearbeiten wäre langsam und fehleranfällig. Lehrtext und Boxen (PROJ-103) bleiben, wie sie sind, direkt in der Seite.
+## Grundsatz-Entscheidung (Nutzer, 2026-11-17, nach Prototyp v2)
+**Die gewählte Aufgabe wird in der Seite selbst zum Editor.** Die App spielt den Aufgaben-Editor in die Vorschau ein, so wie seit PROJ-103 den Text-Editor für den Lehrtext. Während des Bearbeitens baut der Kern nicht neu; erst nach „Fertig“ wird die Aufgabe neu gebaut. Die Schublade wird für Aufgaben nicht mehr gebraucht.
 
 ## Entscheidungen
-- **E1 – Löschen:** Sofort, mit Toast „Rückgängig“ (kein Rückfrage-Dialog). Rückgängig oben im Editor bleibt zusätzlich. (Nutzer, 2026-11-17)
-- **E2 – Kopfbereich:** „Typ wechseln“ und „Rohfassung“ wandern ins `⋯`-Menü der Schublade. Der Kopf zeigt nur Typ-Name, `⋯` und `✕`. (Nutzer, 2026-11-17)
-- **E3 – Prototyp zuerst:** Vor dem Bau eine klickbare Seite (privater Link) mit 5 Aufgabentypen, hell und dunkel, Desktop und Handy. Erst nach Freigabe wird gebaut. (Nutzer, 2026-11-17)
+- **E1 – Löschen:** Sofort, mit Toast „Rückgängig“ (kein Rückfrage-Dialog). Rückgängig oben im Editor bleibt zusätzlich.
+- **E2 – Seltene Aktionen:** „Typ wechseln“, „Rohfassung“, „Block duplizieren“, „Block löschen“ liegen im `⋯` der Fußleiste der Aufgabe.
+- **E3 – Prototyp zuerst:** v1 (Schublade) verworfen, v2 (an Ort und Stelle) als Richtung freigegeben: https://claude.ai/artifact/9EGpLAjwTLvcn1WUPTsBuu
 - **E4 – Ausliefern:** Jeder Bauschritt zuerst als Vercel-Vorschau-Link (eigener Zweig), live erst nach Freigabe durch den Nutzer.
-- **E5 – Ersetzt:** Die Lücken-Liste aus dem Fix vom 2026-11-17 (Commit `72712d6`) geht in Muster E auf.
+- **E5 – Ersetzt:** die Lücken-Liste aus dem Fix vom 2026-11-17 (Commit `72712d6`) und die Formular-Schublade für Aufgaben (PROJ-96, PROJ-111). Die Schublade bleibt nur, wo sie nötig ist (siehe offene Punkte).
+- **E6 – PROJ-115 aufgegangen:** Ein Klick auf einen Eintrag (Begriff, Antwort, Lücke …) öffnet die Aufgabe genau dort. Das gehört untrennbar zum Bearbeiten an Ort und Stelle.
 
-## Aufbau der Schublade (gilt für jeden Typ)
-```
-┌ Begriffe zum Aufklappen            ⋯  ✕ ┐   ⋯ = Typ wechseln, Rohfassung,
-│                                        │       Duplizieren, Löschen
-│ Arbeitsanweisung                       │   Platzhalter statt Hinweistext
-│ Inhalt  ── nach Muster A–F ──          │   immer offen
-│ ▸ Rückmeldungen & Hilfen   2           │   zugeklappt, Zahl zeigt Inhalt
-│ ▸ Einstellungen                        │   zugeklappt (Punkte, Grenzen …)
-└────────────────────────────────────────┘
-```
+## Aufbau einer Aufgabe im Bearbeiten-Zustand (gilt für jeden Typ)
+- Blauer Rahmen und Schild „Bearbeiten“ oben links an der Aufgabe.
+- Inhalt sieht aus wie für die Schüler; Texte sind Eingabefelder ohne Rahmen (gestrichelte Linie beim Darüberfahren, blau hinterlegt beim Tippen). Platzhalter zeigen ein Beispiel.
+- Arbeitsanweisung als Zeile über der Aufgabe; leer zeigt sie die Standard-Anweisung als Platzhalter.
+- Zeilenwerkzeuge (Griff zum Ziehen, ×, typabhängig Rückmeldung oder Hinweis) erscheinen beim Darüberfahren bzw. Fokus; auf Touch-Geräten immer sichtbar.
+- Fußleiste (bleibt beim Scrollen unten an der Aufgabe stehen): Typ-Name, „Optionen“ (nur wenn der Typ welche hat), `⋯`, „Fertig“.
+- Fehler stehen an der Stelle, die betroffen ist („Klick auf den Kreis vor der richtigen Antwort.“).
 
-## Die sechs Muster
+## Die sechs Muster (Bedienung in der Seite)
 | Muster | Bedienung | Typen |
 |---|---|---|
-| **A Antworten** | Zeilen mit Kreis (eine richtig) bzw. Kästchen (mehrere richtig) davor; Klick darauf macht sie richtig. Graue Zeile „Antwort hinzufügen“ am Ende. Rückmeldung je Antwort hinter einem kleinen Link. | Einfach-/Mehrfachauswahl, Schnellfragen, Zusammenfassung (Fragen), Tippkarten, Hotspot (Bereiche richtig), Richtig/Falsch (zwei feste Zeilen) |
-| **B Zeilen** | Einzeilig, Griff ⠿. Enter = neue Zeile darunter, Rücktaste in leerer Zeile = löschen und Fokus nach oben, Einfügen mehrerer Zeilen = mehrere Einträge. | Reihenfolge, Wörtersuche, Kernaussagen, Störer, Ablenker, Falsche Antworten, Selbsteinschätzung, Bilder ordnen (Texte) |
-| **C Paare** | Kurz: zwei Felder nebeneinander in einer Zeile. Lang: aufklappbare Zeile, nur eine offen, zugeklappt Titel + Anfang des zweiten Felds. | Kurz: Memory, Kopfrechnen, Kreuzwort, Schätzrunde, Bildzuordnung (Begriffe). Lang: Begriffe zum Aufklappen, Karten (dialog_cards) |
-| **D Gruppen** | Kategorien als Abschnitte, Begriffe darin als Chips mit „+ Begriff“. Chip zwischen Gruppen ziehbar, per Tastatur über Menü „Verschieben nach …“. | Zuordnen (drag_drop), Trainer |
-| **E Markieren im Text** | Wort im Textfeld auswählen → Knopf „Als Lücke“ / „Als Lösung“. Gesetzte Stellen farbig hinterlegt, darunter als Chips; Klick auf Chip öffnet kleines Fenster (Wort, Tipp, Entfernen). Keine Sternchen außerhalb der Rohfassung. | Lückentext, erweiterter Lückentext, Wörter ziehen, Wörter markieren |
-| **F Schritte** | Nummerierte, aufklappbare Karten, nur eine offen. Innen beliebige Felder und Muster. | Rechenweg, Fallakte, Rechenbeispiel, Kapiteltest, Video-Fragen |
+| **A Antworten** | Klick auf Kreis bzw. Kästchen vor der Antwort macht sie richtig. Zeile „Antwort hinzufügen“ am Ende. Sprechblase an der Zeile öffnet die Rückmeldung darunter. | Einfach-/Mehrfachauswahl, Schnellfragen, Zusammenfassung (Fragen), Tippkarten, Hotspot (Bereiche richtig), Richtig/Falsch |
+| **B Zeilen** | Nummerierte Liste. Enter = neue Zeile, Rücktaste in leerer Zeile = löschen, Einfügen mehrerer Zeilen = mehrere Einträge (Aufzählungszeichen werden entfernt). | Reihenfolge, Wörtersuche, Kernaussagen, Störer, Ablenker, Selbsteinschätzung, Bilder ordnen (Texte) |
+| **C Paare** | Kurz: beide Teile nebeneinander in einer Zeile. Lang: wie die Schülersicht (z. B. Aufklapp-Leiste), Klick klappt den Eintrag auf, der zweite Teil steht darunter; nur einer offen. | Kurz: Memory, Kopfrechnen, Kreuzwort, Schätzrunde, Bildzuordnung (Begriffe). Lang: Begriffe zum Aufklappen, Karten |
+| **D Gruppen** | Kategorien als Kästen wie bei den Schülern, Begriffe darin; „+ Begriff“ im Kasten, Enter legt an. Begriffe zwischen Kästen ziehen oder anklicken → „Verschieben nach …“. | Zuordnen, Trainer |
+| **E Markieren im Text** | Wort auswählen → schwebender Knopf „Als Lücke“ (bei Wörter markieren „Als Lösung“). Lücken grün im Text; Klick öffnet kleines Fenster (Wort, Tipp, weitere Schreibweisen, „Lücke entfernen“). Die Wörter zum Ziehen entstehen von selbst. Keine Sternchen außerhalb der Rohfassung. | Lückentext, erweiterter Lückentext, Wörter ziehen, Wörter markieren |
+| **F Schritte** | Jeder Schritt eine Zeile (z. B. „Schritt 1: Frage = Ergebnis Einheit“), Hinweis über Fragezeichen-Knopf darunter. | Rechenweg, Fallakte, Rechenbeispiel, Kapiteltest, Video-Fragen |
 
-Einzelfeld-Typen ohne Liste (Rechenaufgabe, Freitext, Bild) bekommen nur den einheitlichen Aufbau. Bild-Typen behalten ihre Bild-Werkzeuge (PROJ-104–107); ihre Listen nutzen A, B oder C. Tabelle und Diagramm behalten ihren Tabellen-Editor im einheitlichen Rahmen. Abschluss und Deckblatt nutzen den Aufbau und Muster B.
+Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. Bild-Typen behalten ihre Bild-Werkzeuge aus PROJ-104–107; ihre Listen nutzen A, B oder C. Tabelle und Diagramm: siehe offene Punkte. Lehrtext und Boxen bleiben wie in PROJ-103 (direkt tippen) und folgen denselben Regeln (Klick, tippen, Fertig/Esc).
 
 ## User Stories
-- Als **Lehrkraft ohne Erfahrung** möchte ich beim Öffnen eines Blocks sofort den Inhalt sehen, nicht Schalter und Hinweistexte, damit ich nicht überlegen muss, wo ich anfange.
-- Als **Lehrkraft** möchte ich lange Listen (Begriffe, Karten, Schritte) als kurze Zeilen sehen und nur den Eintrag aufklappen, an dem ich arbeite, damit ich den Überblick behalte.
-- Als **Lehrkraft** möchte ich bei einer Auswahlfrage die richtige Antwort mit einem Klick auf den Kreis davor festlegen, wie ich es von Google Forms kenne.
+- Als **Lehrkraft ohne Erfahrung** möchte ich auf die Aufgabe klicken, die ich ändern will, und direkt darin tippen, ohne eine zweite Ansicht verstehen zu müssen.
+- Als **Lehrkraft** möchte ich auf einen bestimmten Begriff, eine Antwort oder eine Lücke klicken und genau dort landen.
+- Als **Lehrkraft** möchte ich die richtige Antwort mit einem Klick auf den Kreis festlegen, wie ich es von Google Forms kenne.
 - Als **Lehrkraft** möchte ich bei einem Lückentext ein Wort markieren und „Als Lücke“ klicken, statt Sternchen zu tippen.
-- Als **Lehrkraft** möchte ich eine Liste aus Word in eine Liste einfügen und daraus automatisch mehrere Einträge erhalten, damit ich nicht jeden einzeln anlegen muss.
-- Als **Lehrkraft** möchte ich bei „Zuordnen“ die Begriffe direkt unter ihrer Kategorie sehen und anlegen, statt für jeden Begriff eine Kategorie auszuwählen.
+- Als **Lehrkraft** möchte ich eine Liste aus Word einfügen und daraus automatisch mehrere Einträge erhalten.
+- Als **Lehrkraft** möchte ich bei „Zuordnen“ die Begriffe direkt in ihre Kategorie schreiben und zwischen Kategorien ziehen.
 - Als **Lehrkraft** möchte ich etwas versehentlich Gelöschtes mit einem Klick zurückholen.
-- Als **Lehrkraft am Handy** möchte ich dieselben Muster bequem mit dem Finger bedienen.
+- Als **Lehrkraft** möchte ich beim Tippen nicht auf die Vorschau warten.
+- Als **Lehrkraft am Handy oder Tablet** möchte ich dieselbe Bedienung mit dem Finger nutzen.
 - Als **erfahrene Lehrkraft** möchte ich Typ wechseln und Rohfassung weiterhin erreichen.
 
 ## Acceptance Criteria
 
-### Schritt 0 – Prototyp (vor jedem App-Code)
-- [ ] Klickbare Seite (privater Link) mit den Typen Begriffe zum Aufklappen (C lang), Einfachauswahl (A), Wörter ziehen (E), Zuordnen (D), Rechenweg (F); Muster B kommt in mindestens einem davor (z. B. Ablenker/Falsche Antworten).
-- [ ] Hell und dunkel umschaltbar, Breite Desktop und Handy umschaltbar; Farben aus den `ws-*`-Werten.
-- [ ] Tippen, Aufklappen, Ziehen, Löschen mit Rückgängig, Enter/Rücktaste, Einfügen mehrerer Zeilen und „Als Lücke“ sind bedienbar.
-- [ ] Der Nutzer gibt den Prototyp frei oder nennt Änderungen; Änderungen werden eingearbeitet, bevor Schritt 1 beginnt.
+### Öffnen und Schließen
+- [ ] Im Modus Bearbeiten macht ein Klick auf eine Aufgabe sie an Ort und Stelle bearbeitbar; die übrige Seite bleibt sichtbar und unverändert.
+- [ ] Ein Klick auf einen Eintrag (Begriff, Antwort, Lücke, Kategorie, Schritt) setzt den Fokus genau dorthin (bei C lang: Eintrag aufgeklappt, Fokus in der Erklärung; bei E: Fenster der Lücke offen).
+- [ ] Lässt sich der Eintrag nicht eindeutig zuordnen (unbekannter Typ, veraltete Vorschau), öffnet sich die Aufgabe ohne Eintrag – nie an einem falschen.
+- [ ] „Fertig“, Esc oder ein Klick außerhalb schließen; ein Klick auf eine andere Aufgabe wechselt direkt dorthin (ohne zusätzlichen Klick).
+- [ ] Höchstens eine Aufgabe ist gleichzeitig im Bearbeiten-Zustand; Lehrtext-Schreibmodus und Aufgaben-Bearbeiten schließen sich gegenseitig aus.
+- [ ] Im Modus Ausprobieren, im Download, im öffentlichen Link, im Regal und im Druck gibt es nichts davon.
 
-### Aufbau der Schublade (alle Typen)
-- [ ] Der Kopf zeigt Typ-Name, `⋯` und `✕`; der erste Inhalt beginnt höchstens 120 px unter der Oberkante der Schublade (Desktop).
-- [ ] `⋯` enthält: Typ wechseln, Rohfassung bearbeiten, Block duplizieren, Block löschen (rot, ganz unten).
-- [ ] Rohfassung öffnet sich in der Schublade mit Knopf „Zurück zum Formular“; sie funktioniert wie heute.
-- [ ] Abschnitte „Rückmeldungen & Hilfen“ und „Einstellungen“ sind zugeklappt, zeigen die Zahl ausgefüllter Felder und erscheinen nur, wenn der Typ solche Felder hat.
-- [ ] Felder zeigen ein Beispiel als Platzhalter. Ein Hinweissatz unter dem Feld steht nur, wenn eine Regel verletzt ist, und zwar an dieser Stelle (z. B. „Noch eine falsche Antwort nötig“ an der Liste).
-- [ ] Mehrzeilige Felder wachsen mit dem Inhalt (keine feste Höhe, kein innerer Scrollbalken bis 12 Zeilen).
+### Tempo und Speichern
+- [ ] Tippen, Hinzufügen, Löschen, Umsortieren reagieren sofort (ohne Neubau durch den Kern).
+- [ ] Jede Änderung wird automatisch gespeichert wie heute (Entwurf, Autosave); Tippen in einem Feld ergibt einen Rückgängig-Schritt.
+- [ ] Nach „Fertig“ wird die Aufgabe neu gebaut; bis dahin bleibt die bearbeitete Fassung stehen (kein Flackern, kein Springen).
+- [ ] Die gespeicherte Struktur (YAML, Sternchen-Schreibweise) ändert sich nicht; Rohfassung zeigt sie wie bisher.
 
-### Gemeinsame Regeln aller Muster
-- [ ] Löschen eines Eintrags wirkt sofort und zeigt einen Toast „… gelöscht“ mit „Rückgängig“ (mindestens 6 s sichtbar). Rückgängig stellt Eintrag und Position wieder her.
-- [ ] Jeder Eintrag hat ein `⋯` mit Duplizieren und Löschen; Reihenfolge per Griff ⠿ ziehbar und per Tastatur (Menü „Nach oben/unten“).
-- [ ] Ein neu angelegter Eintrag ist sofort sichtbar (bei C lang/F aufgeklappt) und sein erstes Feld hat den Fokus.
-- [ ] Bei aufklappbaren Mustern ist höchstens ein Eintrag offen; der offene bleibt offen, solange darin getippt wird.
-- [ ] Mindestanzahlen (z. B. „mindestens zwei Kategorien“) sperren das Löschen nicht stillschweigend: Der Menüpunkt ist deaktiviert und nennt den Grund im Tooltip.
-- [ ] Alle Bedienelemente mindestens 44 × 44 px; vollständig per Tastatur bedienbar; sichtbarer Fokus; Icons ohne Text mit `aria-label`.
-- [ ] Jede Änderung speichert automatisch und erzeugt einen Rückgängig-Schritt wie heute (Tippen in einem Feld = ein Schritt).
+### Gemeinsame Regeln
+- [ ] Löschen wirkt sofort, Toast „… gelöscht“ mit „Rückgängig“ (mindestens 6 s); Rückgängig stellt Eintrag und Position wieder her.
+- [ ] Zeilenwerkzeuge erscheinen bei Maus beim Darüberfahren und bei Fokus, auf Touch immer.
+- [ ] Umsortieren per Griff (Maus und Finger) und per Tastatur (Alt + ↑/↓ in der Zeile).
+- [ ] Neuer Eintrag ist sofort sichtbar und hat den Fokus.
+- [ ] Mindestanzahlen verhindern Löschen mit einem erklärenden Hinweis statt stillschweigend.
+- [ ] `⋯` der Fußleiste: Typ wechseln, Rohfassung bearbeiten, Block duplizieren, Block löschen (rot, unten). Rohfassung und Typ wechseln funktionieren wie heute.
+- [ ] Bedienelemente mindestens 44 × 44 px Trefferfläche (Touch), vollständig per Tastatur bedienbar, sichtbarer Fokus, Icons ohne Text mit `aria-label`; Bildschirmleser hört „… wird bearbeitet“ und „… fertig“.
 
-### Muster A – Antworten
-- [ ] Bei „genau eine richtig“ ist der Marker ein Kreis, bei „mehrere richtig“ ein Kästchen; ein Klick setzt bzw. wechselt die richtige Antwort.
-- [ ] Die letzte Zeile „Antwort hinzufügen“ legt beim Hineinklicken oder Tippen eine neue Antwort an.
-- [ ] Enter in einer Antwort springt zur nächsten bzw. legt eine neue an.
-- [ ] Rückmeldung je Antwort ist über „Rückmeldung“ an der Zeile erreichbar; vorhandene Rückmeldungen sind an einem Punkt erkennbar.
-
-### Muster B – Zeilen
-- [ ] Enter legt eine neue Zeile darunter an, Rücktaste in leerer Zeile löscht sie und setzt den Fokus ans Ende der vorigen.
-- [ ] Einfügen von Text mit Zeilenumbrüchen (auch Aufzählungszeichen aus Word: •, -, 1.) erzeugt je Zeile einen Eintrag, ohne Aufzählungszeichen; leere Zeilen werden übersprungen.
-- [ ] Ist eine Höchstzahl erreicht, werden überzählige Zeilen nicht angelegt und ein Hinweis nennt die Zahl.
-
-### Muster C – Paare
-- [ ] Kurze Paare stehen ab 400 px Schubladenbreite nebeneinander, darunter untereinander.
-- [ ] Lange Paare zeigen zugeklappt Titel und die ersten ~60 Zeichen des zweiten Felds; leere Pflichtfelder sind zugeklappt orange markiert.
-
-### Muster D – Gruppen
-- [ ] Jede Kategorie ist ein Abschnitt mit Titel-Feld und ihren Begriffen als Chips; „+ Begriff“ legt einen Begriff in dieser Kategorie an.
-- [ ] Chips lassen sich zwischen Kategorien ziehen und per Menü „Verschieben nach …“ umhängen.
-- [ ] Löschen einer Kategorie mit Begriffen löscht die Begriffe mit (Rückgängig stellt alles her); der Toast nennt die Anzahl.
-
-### Muster E – Markieren im Text
-- [ ] Im Textfeld sind gesetzte Stellen farbig hinterlegt; Sternchen sind dort nicht sichtbar.
-- [ ] Wird Text ausgewählt, erscheint direkt daran ein Knopf „Als Lücke“ (bei Wörter markieren: „Als Lösung“); bei Auswahl über eine bestehende Stelle hinweg oder über mehrere Absätze ist er deaktiviert mit Grund.
-- [ ] Unter dem Text stehen alle Stellen als Chips in Textreihenfolge; Klick auf einen Chip öffnet ein kleines Fenster mit Wort (bei Lückentext zusätzlich „weitere richtige Schreibweisen“), Tipp (Wörter ziehen, erweiterter Lückentext) und „Lücke entfernen“.
-- [ ] „Lücke entfernen“ lässt das Wort als normalen Text stehen.
-- [ ] Die gespeicherte Struktur (Sternchen-Schreibweise) bleibt unverändert, Rohfassung zeigt sie wie bisher.
-- [ ] HTML-Tags im Klartext (`<p>`) werden beim Öffnen erkannt und mit einem Klick entfernt (wie im Fix vom 2026-11-17).
-
-### Muster F – Schritte
-- [ ] Schritte sind nummeriert, zugeklappt mit Nummer und Titel bzw. Anfang des ersten Felds, nur einer offen.
+### Muster A–F
+- [ ] **A:** Kreis bei „genau eine richtig“, Kästchen bei „mehrere richtig“; Klick setzt bzw. wechselt; Enter springt zur nächsten Antwort oder legt eine an; Rückmeldung je Antwort über die Sprechblase, vorhandene ist markiert.
+- [ ] **B:** Enter, Rücktaste und Einfügen wie oben; Höchstzahl wird mit Hinweis eingehalten.
+- [ ] **C:** Kurze Paare nebeneinander (unter 400 px untereinander); lange Paare wie die Schülersicht, nur einer offen, fehlender zweiter Teil zugeklappt orange markiert („Erklärung fehlt“).
+- [ ] **D:** Kästen je Kategorie, „+ Begriff“ mit Enter, Ziehen zwischen Kästen, „Verschieben nach …“ per Klick; Kategorie löschen nimmt ihre Begriffe mit (Rückgängig stellt alles her, Toast nennt die Zahl).
+- [ ] **E:** Auswahl → „Als Lücke“/„Als Lösung“; bei Auswahl über eine Lücke oder mehrere Absätze deaktiviert mit Grund; Satzzeichen und Leerzeichen am Rand der Auswahl werden nicht mitgenommen; Fenster mit Wort, Tipp (Wörter ziehen, erweiterter Lückentext), weitere Schreibweisen (Lückentext), „Lücke entfernen“ (Wort bleibt als Text). HTML-Tags im Klartext (`<p>`) werden erkannt und mit einem Klick entfernt.
+- [ ] **F:** Schritt als Zeile, Hinweis per Knopf darunter.
 
 ### Vollständigkeit
-- [ ] Alle Typen mit Formular (`FORMULARE` inkl. Katalog, derzeit 35 Einträge) nutzen den neuen Aufbau; kein Formular nutzt mehr den alten Baustein `Liste`/`TextListe` (Wächter-Test schlägt sonst fehl).
-- [ ] Für jeden Typ gibt es einen Test, der Anlegen, Ändern, Umsortieren und Löschen eines Eintrags prüft.
-- [ ] Am Ende ein Durchgang mit einer echten Einheit (z. B. „Basics rund um den LKW“): jeden vorkommenden Typ einmal anlegen, ändern, umsortieren, löschen – im Vorschau-Link, vor dem Livegang.
+- [ ] Alle Aufgabentypen mit Formular (derzeit 35 in `FORMULARE` inkl. Katalog) sind an Ort und Stelle bearbeitbar; ein Wächter-Test schlägt fehl, wenn ein Typ fehlt.
+- [ ] Für jeden Typ gibt es Tests für Öffnen, Ändern, Hinzufügen, Umsortieren, Löschen + Rückgängig.
+- [ ] Vor dem Livegang ein Durchgang mit einer echten Einheit (z. B. „Basics rund um den LKW“) im Vorschau-Link: jeden vorkommenden Typ einmal öffnen, ändern, umsortieren, löschen – am Laptop und am Handy.
 
 ## Edge Cases
-- **Sehr lange Listen (30+ Einträge, z. B. Wörtersuche, Kapiteltest):** Zugeklappte Zeilen halten die Liste kurz; die Schublade scrollt, die Kopfzeile bleibt stehen.
-- **Bestandsblöcke mit fehlerhaften Daten** (fehlende Felder, HTML im Klartext, Sternchen ohne Gegenstück): Das Formular zeigt, was lesbar ist, markiert Fehler am Ort und zerstört nichts beim Öffnen. Nicht lesbare Teile bleiben in der Rohfassung erreichbar.
-- **Unbekannte Felder** im Block (z. B. von der KI) bleiben beim Speichern erhalten (wie heute).
-- **Einfügen eines sehr langen Texts in Muster B** (z. B. 200 Zeilen): Nur bis zur Höchstzahl, Hinweis mit Zahl.
-- **Schnelles Tippen während die Vorschau neu baut:** Die Schublade reagiert sofort; die Vorschau folgt verzögert wie heute.
-- **Rückgängig nach Typ wechseln oder Rohfassung:** verhält sich wie heute (ein Schritt).
-- **Schreibschutz** (fremdes Material, nur ansehen): Alle Muster zeigen den Inhalt lesbar ohne Bedienelemente.
-- **Handy:** Schublade als Vollbild-Blatt; Ziehen nur über den Griff (kein versehentliches Ziehen beim Scrollen); Auswahl-Knopf in Muster E erscheint über der Bildschirmtastatur.
-- **Wörter markieren:** Ein Wort, das mehrfach im Text vorkommt, wird nur an der ausgewählten Stelle markiert.
+- **Vorschau wird gerade neu gebaut, während man klickt:** Klick wartet nicht; öffnet, sobald die Seite steht, oder wählt den Block wie heute.
+- **Bestandsblöcke mit fehlerhaften Daten** (fehlende Felder, HTML im Klartext, Sternchen ohne Gegenstück): zeigen, was lesbar ist, Fehler am Ort markieren, beim Öffnen nichts zerstören; Rest über Rohfassung erreichbar.
+- **Unbekannte Felder** im Block bleiben beim Speichern erhalten.
+- **Sehr lange Aufgaben** (30+ Einträge): Fußleiste bleibt sichtbar, Seite scrollt normal.
+- **Gleiches Wort mehrfach im Lückentext:** nur die ausgewählte Stelle wird zur Lücke; Klick auf eine Lücke ordnet nach Reihenfolge im Text zu.
+- **Schreibschutz** (fremdes Material): Aufgabe öffnet sich nicht zum Bearbeiten; Hinweis wie heute.
+- **Mehrfachauswahl** (PROJ-102, Umschalt/Strg-Klick): wählt Blöcke wie heute, öffnet keine Aufgabe.
+- **Handy:** Bildschirmtastatur verdeckt das Feld nicht; „Als Lücke“ erscheint über der Auswahl; Ziehen nur am Griff.
+- **Rückgängig/Wiederholen oben während eine Aufgabe offen ist:** wirkt auf die offene Aufgabe und zeigt den Stand sofort.
+
+## Offene Punkte für `/architecture`
+- Wie der Editor in die Vorschau kommt (Bündel wie das Schreibwerk aus PROJ-103?), wie Änderungen zur App gelangen (Nachrichten, „Seite meldet, App entscheidet“) und wie der Kern-Neubau nach „Fertig“ nur diese Aufgabe betrifft oder die Seite ruhig neu lädt.
+- Wie das Kern-HTML jedes Typs gefunden und ersetzt wird (Marken `data-wk`), ohne Kern-Änderung, falls möglich.
+- Tabelle und Diagramm: an Ort und Stelle oder weiter in der Schublade? Bild-Typen: Zusammenspiel mit den Bild-Werkzeugen aus PROJ-104–107.
+- Was mit der Schublade passiert (nur noch für Sonderfälle oder ganz weg), und mit der Gliederung (PROJ-96).
 
 ## Nicht Teil dieser Spec
-- Klick in der Seite öffnet den Eintrag → PROJ-115.
-- Lösungen im Modus Bearbeiten sichtbar → PROJ-116.
-- Aufgaben direkt in der Seite bearbeiten (verworfen, siehe Grundsatz).
-- Lehrtext und Boxen (bleiben direkt in der Seite, PROJ-103).
-- Vorschau-Tempo Stufe 2 (PROJ-112).
-- Änderungen am Kern oder an der gespeicherten Struktur.
+- Lösungen in der Seite anzeigen → PROJ-116.
+- Änderungen an der gespeicherten Struktur.
+- Vorschau-Tempo Stufe 2 (PROJ-112) – wird durch diese Spec beim Tippen weniger wichtig.
 
 ## Dependencies
-- Requires: PROJ-89/90 (Formulare, Katalog), PROJ-96 (Schublade), PROJ-111 (eine Bedienstelle)
-- Berührt: PROJ-83 (Bedienmuster: `⋯`-Menü, Löschen rot unten), PROJ-45 (Tokens, 44 px, Barrierefreiheit), PROJ-95 (Typ wechseln, jetzt im Menü)
-- Grundlage für: PROJ-115, PROJ-116
+- Requires: PROJ-89/90 (Formulare, Katalog), PROJ-101 (Auswählen, Modus Bearbeiten/Ausprobieren, Nachrichten Seite → App), PROJ-103 (eingespielter Editor in der Vorschau)
+- Berührt: PROJ-96 und PROJ-111 (Schublade), PROJ-102 (Mehrfachauswahl, Ziehen), PROJ-104–107 (Bilder), PROJ-95 (Typ wechseln), PROJ-83 und PROJ-45 (Bedienmuster, Barrierefreiheit)
+- Grundlage für: PROJ-116
 
 ## Modellwahl
-- Schritt 0 (Prototyp) und Schritt 1 (Grundgerüst, Muster-Bausteine): **Opus**
-- Schritt 2 (Formulare umstellen, Typ für Typ): **Sonnet**
+- `/architecture`: **Opus** (neue Architektur: Editor in der Vorschau)
+- Grundgerüst und Muster-Bausteine: **Opus**
+- Typen umstellen (Typ für Typ): **Sonnet**
 - QA: **Opus**
 
 ---

@@ -14,7 +14,7 @@ Nutzer (2026-11-17), Screenshot „Wörter markieren“: In der Seite sieht man 
 
 ## Dependencies
 - Requires: PROJ-101 (Modus Bearbeiten | Ausprobieren, Seiten-Skript)
-- Passt zu: PROJ-114, PROJ-115
+- Passt zu: PROJ-114 (PROJ-115 ist darin aufgegangen)
 
 ## User Stories
 - Als **Lehrkraft** möchte ich auf einen Blick sehen, welche Wörter in einem Lückentext Lücken sind und welche Wörter markiert werden sollen.

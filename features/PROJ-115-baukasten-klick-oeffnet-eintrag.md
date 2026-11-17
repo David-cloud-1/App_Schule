@@ -4,6 +4,8 @@
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-17
 
+> **Aufgegangen in PROJ-114 (2026-11-17):** Nach Prototyp v2 werden Aufgaben an Ort und Stelle bearbeitet; der Klick auf einen Eintrag gehört untrennbar dazu und steht jetzt in den Acceptance Criteria von PROJ-114. Diese Spec wird nicht eigenständig gebaut.
+
 ## Idee in einem Satz
 Ein Klick im Modus „Bearbeiten“ auf einen einzelnen Eintrag einer Aufgabe (einen Begriff, eine Antwort, ein markiertes Wort) öffnet die Schublade genau an diesem Eintrag, aufgeklappt und mit Fokus im Feld.
 
