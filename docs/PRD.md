@@ -143,6 +143,9 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-111: Baukasten – Eine Bedienstelle statt drei | Deployed |
 | P1 | PROJ-112: Baukasten – Vorschau schneller | Deployed |
 | P1 | PROJ-113: Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed |
+| P1 | PROJ-114: Baukasten – Aufgaben-Editor neu (einheitliche Schublade, 6 Muster) | Planned |
+| P1 | PROJ-115: Baukasten – Klick in der Seite öffnet den Eintrag | Planned |
+| P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Planned |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche
