@@ -1,6 +1,6 @@
 # PROJ-107: Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-17
 
@@ -93,4 +93,6 @@ Entschieden am 2026-11-17 (ohne Rückfrage, nach der Grundregel aus PROJ-101):
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-17: Kern `020474f` per `vercel deploy --prod`, App `ec99013` (Push auf main, Vercel Ready). Keine Migration.
+- Geprüft: tsc, ESLint (0 Fehler), Build, Kern-Tests, Hotspot-Laufzeit in jsdom, Vitest der Werkzeugkiste (1039 grün; 1 alter Fehler `werkzeugkiste-auszug.test.ts`, PROJ-100). Kein formaler QA-Durchlauf, kein Browser-Test.
+- Offen: Browser-Test durch den Nutzer.
