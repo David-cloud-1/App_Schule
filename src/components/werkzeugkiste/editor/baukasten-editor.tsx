@@ -570,9 +570,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           toast.info('Dieser Text lässt sich nur in der Schublade bearbeiten (HTML-Ansicht), damit keine Gestaltung verloren geht.')
           return true
         }
-        // Wer direkt in der Seite schreiben will, braucht die Schublade nicht: sie schließt, sonst würde das Schreiben sofort wieder enden
+        // Schublade und Schreiben in der Seite laufen gleichzeitig: Die Schublade bleibt, wie sie ist, und zeigt den Text live
         setAuswahlRoh(a)
-        setSchubladeOffen(false)
         const nr = ++schreibZaehler.current
         schreibRef.current = { nr, marke: w.marke, teil: w.teil, ort: a, start: wert }
         setSchreiben({ nr, marke: w.marke, teil: w.teil, html: w.teil === 'text' ? wert : undefined })
@@ -665,12 +664,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (w.art === 'schreibEnde') beendeSitzung(wert === sit.start)
   }
 
+  function beendeSchreibenInSeite() {
+    if (schreibRef.current) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
+  }
+
   // Lage ändert sich (andere Auswahl, Formular, Ausprobieren, Dialog): Schreiben beenden, die Seite meldet den Endstand
   useEffect(() => {
     const sit = schreibRef.current
     if (!sit) return
-    if (modus !== 'bearbeiten' || marke !== sit.marke || schubladeAktiv || dialog) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
-  }, [modus, marke, schubladeAktiv, dialog, schreiben])
+    if (modus !== 'bearbeiten' || marke !== sit.marke || dialog) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
+  }, [modus, marke, dialog, schreiben])
 
   // Tasten, die die Seite weitergibt (sie hat den Fokus, die App sähe sie sonst nie)
   function beiTaste(t: Taste) {
@@ -1118,16 +1121,19 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           />
         </section>
         {schubladeZeigen && schubladeAktiv && gewaehlt && (
-          <EditorSchublade
-            auswahl={gewaehlt}
-            struktur={z.struktur}
-            aendere={z.aendere}
-            rueckgaengig={z.rueckgaengig}
-            materialId={daten.id}
-            schliessen={schliesseSchublade}
-            angedockt={!istMobil}
-            gesperrt={!!z.gesperrt}
-          />
+          // Wer in die Schublade klickt oder tippt, übernimmt das Schreiben von der Seite (sonst schrieben zwei Stellen in denselben Text)
+          <div className="contents" onPointerDownCapture={beendeSchreibenInSeite} onFocusCapture={beendeSchreibenInSeite}>
+            <EditorSchublade
+              auswahl={gewaehlt}
+              struktur={z.struktur}
+              aendere={z.aendere}
+              rueckgaengig={z.rueckgaengig}
+              materialId={daten.id}
+              schliessen={schliesseSchublade}
+              angedockt={!istMobil}
+              gesperrt={!!z.gesperrt}
+            />
+          </div>
         )}
       </div>
 
