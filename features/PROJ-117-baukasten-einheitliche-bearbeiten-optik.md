@@ -1,6 +1,6 @@
 # PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-17
 
@@ -217,4 +217,4 @@ BUG-1 (Aufgabenwerk nimmt „Fertig“ und Screenreader-Namen aus `FERTIG`), BUG
 3. Playwright-E2E ist nicht geschrieben (kein Dev-Server).
 
 ## Deployment
-_To be added by /deploy_
+**2026-11-17:** Push auf `main` (Commits 5e4a37a, 25f52f8, ddda48e), Vercel-Production Ready, https://spedilern.vercel.app. Keine Migration, keine Datenbank. Build lokal grün, 498 Editor-Tests grün. **Browser-Test und Vorher/Nachher-Bild stehen noch aus** (ohne Browser-Test live gegangen, auf Wunsch des Nutzers).
