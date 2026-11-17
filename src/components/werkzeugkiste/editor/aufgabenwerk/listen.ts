@@ -1,6 +1,6 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
-import type { Eintrag, Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
+import type { Block, Eintrag, Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 import { zeilenAusEinfuegen } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
 /**
@@ -19,6 +19,10 @@ export interface ListenArt {
   neu: (text: string) => Eintrag
   /** `data-aw-fokus` des ersten Felds von Eintrag i */
   fokus: (i: number) => string
+  /** Für Listen, die nicht direkt im Block liegen (Texte, verschachtelte Listen): Einträge lesen … */
+  holen?: () => Eintrag[]
+  /** … und die geänderte Liste in einen neuen Block setzen */
+  schreibe?: (l: Eintrag[]) => Block
 }
 
 interface Ziehen {
@@ -27,8 +31,8 @@ interface Ziehen {
 }
 
 export function listenAktionen(w: Werk, art: ListenArt) {
-  const eintraege = (Array.isArray(w.block[art.feld]) ? w.block[art.feld] : []) as Eintrag[]
-  const mit = (l: Eintrag[]) => ({ ...w.block, [art.feld]: l })
+  const eintraege = art.holen ? art.holen() : ((Array.isArray(w.block[art.feld]) ? w.block[art.feld] : []) as Eintrag[])
+  const mit = (l: Eintrag[]): Block => (art.schreibe ? art.schreibe(l) : { ...w.block, [art.feld]: l })
   const zKey = `ziehen-${art.feld}`
   const ziehen = () => w.zustand[zKey] as Ziehen | undefined
   const hinweis = (text: string) => {

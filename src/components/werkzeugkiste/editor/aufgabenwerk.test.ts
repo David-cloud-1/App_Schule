@@ -87,9 +87,13 @@ const mc = () => ({
 })
 
 describe('Bauplan', () => {
-  it('kennt nach Bauschritt 2 die Muster A, C und E', () => {
+  it('kennt nach Bauschritt 3 die Muster A bis F und die Einzelfeld-Typen', () => {
     expect([...AUFGABENWERK_TYPEN].sort()).toEqual(
-      ['accordion', 'advanced_fill_blanks', 'crossword', 'dialog_cards', 'drag_words', 'fill_blanks', 'mark_words', 'multiple_choice', 'single_choice', 'true_false'].sort(),
+      [
+        'accordion', 'advanced_fill_blanks', 'arithmetic_quiz', 'calculation_example', 'calculation_exercise', 'crossword', 'dialog_cards',
+        'drag_drop', 'drag_words', 'fill_blanks', 'find_words', 'freitext', 'mark_words', 'memory_game', 'multiple_choice', 'reihenfolge',
+        'rechenweg', 'schaetzrunde', 'selbsteinschaetzung', 'single_choice', 'trainer', 'true_false',
+      ].sort(),
     )
     expect(BAUPLAENE.multiple_choice.muster).toBe('A')
     expect(BAUPLAENE.accordion.muster).toBe('C')
@@ -132,7 +136,7 @@ describe('Bauplan', () => {
     expect(eintragFuerBlock(mc(), { art: 'eintrag', nr: 5 }, 3)).toBeNull()
     expect(eintragFuerBlock(mc(), { art: 'frage' }, null)).toEqual({ art: 'frage' })
     expect(eintragFuerBlock({ type: 'true_false' }, { art: 'eintrag', nr: 1 }, 2)).toEqual({ art: 'eintrag', nr: 1 })
-    expect(eintragFuerBlock({ type: 'reihenfolge' }, { art: 'frage' }, null)).toBeNull()
+    expect(eintragFuerBlock({ type: 'hotspot' }, { art: 'frage' }, null)).toBeNull()
     expect(liesEintrag({ art: 'eintrag', nr: -1 })).toBeNull()
     expect(liesEintrag({ art: 'x' })).toBeNull()
   })

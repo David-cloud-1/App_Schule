@@ -1,11 +1,14 @@
 import { html } from 'htm/preact'
 import { render, type VNode } from 'preact'
 import { AW_CSS } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
-import { BAUPLAENE, hatBauplan, hinweise, type EintragOrt, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { BAUPLAENE, hatBauplan, hinweise, loese, type EintragOrt, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenAnsicht, antwortenTeil, wahrFalschTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
+import { zahlTeil, zeilenAnsicht, zeilenTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
+import { gruppenAnsicht, gruppenTeil, zuordnenAnsicht, zuordnenTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-d'
+import { eintraegeAnsicht, eintraegeTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-f'
 import { offenSchluessel, paareAnsicht, paareTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-c'
 import { beobachteAuswahl, lueckenAnsicht, lueckenNeuerStand, lueckenTeil, starteLuecken } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-e'
-import { TIPP_PAUSE_MS, liste, s, wachse, type Block, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
+import { TIPP_PAUSE_MS, liste, s, wachse, type Block, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
 export { TIPP_PAUSE_MS, zeilenAusEinfuegen } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
@@ -50,9 +53,18 @@ export interface Aufgabenbearbeiter {
 /** Was der Kern als „wahr“ liest, wird für die Bearbeitung zu true/false (gespeichert wird erst bei einer Änderung) */
 function normalisiere(b: Block): Block {
   const neu: Block = { ...b }
-  for (const teil of BAUPLAENE[b.type]?.teile ?? []) {
-    if (teil.art === 'antworten' || teil.art === 'paare') neu[teil.feld] = liste(b[teil.feld])
+  for (const teil0 of BAUPLAENE[b.type]?.teile ?? []) {
+    const teil = loese(teil0, b)
+    if (teil.art === 'antworten' || teil.art === 'paare' || teil.art === 'eintraege' || teil.art === 'gruppen') neu[teil.feld] = liste(b[teil.feld])
     if (teil.art === 'wahrfalsch') neu[teil.feld] = [true, 'true', 'wahr', 1].includes(b[teil.feld] as never)
+    if (teil.art === 'zeilen')
+      neu[teil.feld] = (Array.isArray(b[teil.feld]) ? (b[teil.feld] as unknown[]) : []).map((x) =>
+        x && typeof x === 'object' ? s((x as Eintrag).word ?? (x as Eintrag).wort ?? (x as Eintrag).text) : s(x),
+      )
+    if (teil.art === 'zuordnen') {
+      neu[teil.kategorien] = (Array.isArray(b[teil.kategorien]) ? (b[teil.kategorien] as unknown[]) : []).map(s)
+      neu[teil.feld] = liste(b[teil.feld])
+    }
   }
   return neu
 }
@@ -185,20 +197,31 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
 
   /** Erstes Feld eines Teils (für Enter aus dem Teil davor und für den Start) */
   function erstesFeld(i: number): string | null {
-    const t = plan!.teile[i]
-    if (!t) return null
+    const t0 = plan!.teile[i]
+    if (!t0) return null
+    const t = loese(t0, block)
     if (t.art === 'text') return t.feld
     if (t.art === 'antworten' || t.art === 'wahrfalsch') return 'antwort-0'
     if (t.art === 'paare') return `links-${t.feld}-0`
+    if (t.art === 'zeilen') return `zeile-${t.feld}-0`
+    if (t.art === 'eintraege') return 'ef-0-0'
+    if (t.art === 'zahl') return `zahl-${t.feld}`
+    if (t.art === 'zuordnen') return 'kat-0'
+    if (t.art === 'gruppen') return 'gt-0'
     return 'lt-text'
   }
 
   function teilVNode(i: number): VNode {
-    const t = plan!.teile[i]
+    const t = loese(plan!.teile[i], block)
     if (t.art === 'text') return textTeil(t, erstesFeld(i + 1))
     if (t.art === 'antworten') return antwortenTeil(w, t)
     if (t.art === 'wahrfalsch') return wahrFalschTeil(w, t)
     if (t.art === 'paare') return paareTeil(w, t)
+    if (t.art === 'zeilen') return zeilenTeil(w, t)
+    if (t.art === 'eintraege') return eintraegeTeil(w, t)
+    if (t.art === 'zahl') return zahlTeil(w, t)
+    if (t.art === 'zuordnen') return zuordnenTeil(w, t)
+    if (t.art === 'gruppen') return gruppenTeil(w, t)
     return lueckenTeil(w, t)
   }
 
@@ -249,13 +272,19 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   /** Nach „Fertig“ bis zum Neubau: dieselbe Aufgabe in der Schülersicht (ohne Felder) */
   function ansicht(): VNode {
     return html`<div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
-      ${plan!.teile.map((t) => {
+      ${plan!.teile.map((t0) => {
+        const t = loese(t0, block)
         if (t.art === 'text') return s(block[t.feld]) ? html`<p class="frage">${s(block[t.feld])}</p>` : null
         if (t.art === 'antworten' || t.art === 'wahrfalsch') return antwortenAnsicht(w, t)
         if (t.art === 'paare') return paareAnsicht(w, t)
+        if (t.art === 'zeilen') return zeilenAnsicht(w, t)
+        if (t.art === 'eintraege') return eintraegeAnsicht(w, t)
+        if (t.art === 'zuordnen') return zuordnenAnsicht(w, t)
+        if (t.art === 'gruppen') return gruppenAnsicht(w, t)
+        if (t.art === 'zahl') return null
         return lueckenAnsicht(w, t)
       })}
-      <div class="rueckmeldung"></div>`
+            <div class="rueckmeldung"></div>`
   }
 
   function zeichne() {
@@ -301,7 +330,10 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   // ── Start: angeklickter Eintrag (oder das erste Feld) bekommt den Fokus ─
   ziel.innerHTML = ''
   const e = o.eintrag
-  const listenTeil = plan.teile.find((t) => t.art !== 'text')
+  const listenTeil = (() => {
+    const t = plan.teile.find((x) => x.art !== 'text' && x.art !== 'zahl')
+    return t ? loese(t, block) : undefined
+  })()
   fokusZiel = erstesFeld(0)
   for (const t of plan.teile) {
     if (t.art === 'luecken') {
@@ -314,7 +346,11 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
     else if (listenTeil.art === 'paare') {
       if (listenTeil.lang) w.zustand[offenSchluessel(listenTeil.feld)] = e.nr
       fokusZiel = `${listenTeil.lang ? 'rechts' : 'links'}-${listenTeil.feld}-${e.nr}`
-    } else fokusZiel = 'lt-wort'
+    } else if (listenTeil.art === 'zeilen') fokusZiel = `zeile-${listenTeil.feld}-${e.nr}`
+    else if (listenTeil.art === 'eintraege') fokusZiel = `ef-${e.nr}-0`
+    else if (listenTeil.art === 'zuordnen') fokusZiel = `kat-${e.nr}`
+    else if (listenTeil.art === 'gruppen') fokusZiel = `gt-${e.nr}`
+    else fokusZiel = 'lt-wort'
   } else if (!e && listenTeil?.art === 'luecken') fokusZiel = 'lt-text'
   zeichne()
   ansage(`${aufgabeNr} wird bearbeitet. Esc oder „Fertig“ beendet.`)

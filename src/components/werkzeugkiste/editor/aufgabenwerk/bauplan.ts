@@ -30,11 +30,17 @@ export interface TextTeil {
   max: number
   /** Leer = Feld wird entfernt (der Kern zeigt dann seine Standard-Anweisung) */
   leerWeg?: boolean
+  /** Gleichwertige Feldnamen (`question`/`task`): gilt der erste, der im Block steht */
+  namen?: string[]
+  /** Mehr als eine Zeile hoch */
+  hoch?: boolean
 }
 
 /** Gemeinsam für alle Listen */
 interface ListenTeil {
   feld: string
+  /** Gleichwertige Namen der Liste (`cards`/`pairs`): gilt der erste, der im Block steht; sonst `feld` */
+  namen?: string[]
   mindestens: number
   hoechstens: number
   einzahl: string
@@ -90,11 +96,69 @@ export interface LueckenTeil {
   varianten: boolean
 }
 
-export type Teil = TextTeil | AntwortenTeil | WahrFalschTeil | PaareTeil | LueckenTeil
+/** Muster B: nummerierte Zeilen (Liste aus reinem Text) */
+export interface ZeilenTeil extends ListenTeil {
+  art: 'zeilen'
+  platzhalter: string
+  max: number
+}
+
+/** Ein Feld in einem Eintrag (Muster F und C kurz) */
+export interface EintragFeld {
+  /** Gleichwertige Namen im Eintrag; zuerst der übliche */
+  namen: string[]
+  label: string
+  platzhalter: string
+  max: number
+  /** Anteil an der Zeilenbreite */
+  gewicht: number
+  pflicht: boolean
+  /** Hinter dem Fragezeichen-Knopf statt in der Zeile (Hinweis, Kommentar, Quelle …) */
+  knopf?: boolean
+  /** Ganze Zahl wird als Zahl gespeichert, sonst als Text (so liest der Kern beides) */
+  zahl?: boolean
+}
+
+/** Muster F und C kurz: Einträge mit mehreren Feldern in einer Zeile */
+export interface EintraegeTeil extends ListenTeil {
+  art: 'eintraege'
+  felder: EintragFeld[]
+}
+
+/** Eine ganze Zahl (Runden, Mindestzeichen, Höhe) */
+export interface ZahlTeil {
+  art: 'zahl'
+  feld: string
+  label: string
+  platzhalter: string
+  min: number
+  max: number
+}
+
+/** Muster D: Kategorien als Kästen, Begriffe darin (Zuordnen) */
+export interface ZuordnenTeil extends ListenTeil {
+  art: 'zuordnen'
+  /** Liste der Kategorien (Texte) */
+  kategorien: string
+  /** `feld` = Liste der Begriffe mit `text` und `category` */
+  mindestKategorien: number
+}
+
+/** Muster D: Gruppen mit Titel, Hinweis, Einträgen in Reihenfolge und Störern (Trainer) */
+export interface GruppenTeil extends ListenTeil {
+  art: 'gruppen'
+  titel: string[]
+  reihe: string[]
+  mindestensReihe: number
+}
+
+export type Teil = TextTeil | AntwortenTeil | WahrFalschTeil | PaareTeil | LueckenTeil | ZeilenTeil | EintraegeTeil | ZahlTeil | ZuordnenTeil | GruppenTeil
 
 export interface Bauplan {
-  muster: 'A' | 'C' | 'E'
+  muster: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'Einzel'
   teile: Teil[]
+  /** Zusätzliche Hinweise des Typs (z. B. „Formel oder Schritte nötig“) */
+  pruefe?: (block: Block) => Hinweis[]
   /** Seite: CSS-Auswahl der anklickbaren Einträge in der gebauten Aufgabe (fehlt = nur ganze Aufgabe) */
   finder?: string
 }
@@ -159,6 +223,19 @@ const lueckenPlan = (typ: LueckenTyp, standard: string, knopf: string, einzahl: 
       varianten: typ === 'fill_blanks' || typ === 'advanced_fill_blanks',
     },
   ],
+})
+
+/** Muster B: nummerierte Zeilen */
+const zeilen = (feld: string, einzahl: string, mehrzahl: string, schluessel: string, mindestens: number, hoechstens: number, platzhalter: string): ZeilenTeil => ({
+  art: 'zeilen',
+  feld,
+  mindestens,
+  hoechstens,
+  einzahl,
+  mehrzahl,
+  schluessel,
+  platzhalter,
+  max: TEXT_MAX,
 })
 
 export const BAUPLAENE: Record<string, Bauplan> = {
@@ -236,6 +313,216 @@ export const BAUPLAENE: Record<string, Bauplan> = {
       },
     ],
   },
+
+  // ── Muster B ──
+  reihenfolge: {
+    muster: 'B',
+    finder: '.plaetze .platz',
+    teile: [
+      anweisung('Bring die Einträge in die richtige Reihenfolge.'),
+      zeilen('items', 'Schritt', 'Schritte', 'schritt', 3, 20, 'Schritt, in der richtigen Reihenfolge (die Seite mischt sie)'),
+    ],
+  },
+  find_words: {
+    muster: 'B',
+    teile: [
+      anweisung('Finde die versteckten Begriffe.'),
+      {
+        ...zeilen('words', 'Wort', 'Wörter', 'suchwort', 3, 20, 'Wort, z. B. „FRACHTBRIEF“ (nur Buchstaben, 3 bis 16)'),
+        namen: ['words', 'woerter'],
+        max: 60,
+      },
+    ],
+  },
+  // ── Muster C kurz (weitere) ──
+  memory_game: {
+    muster: 'C',
+    teile: [
+      anweisung('Finde die Paare.'),
+      {
+        art: 'eintraege',
+        feld: 'cards',
+        namen: ['cards', 'pairs'],
+        felder: [
+          { namen: ['front', 'a'], label: 'Karte A', platzhalter: 'Karte A, z. B. „CMR“', max: TEXT_MAX, gewicht: 2, pflicht: true },
+          { namen: ['back', 'b'], label: 'Karte B', platzhalter: 'Karte B – kurz halten, sonst passt es nicht', max: TEXT_MAX, gewicht: 3, pflicht: true },
+        ],
+        mindestens: 3,
+        hoechstens: 10,
+        einzahl: 'Paar',
+        mehrzahl: 'Paare',
+        schluessel: 'paar',
+      },
+    ],
+  },
+  arithmetic_quiz: {
+    muster: 'C',
+    finder: '.rechenliste li',
+    teile: [
+      {
+        art: 'eintraege',
+        feld: 'questions',
+        felder: [
+          { namen: ['question'], label: 'Aufgabe', platzhalter: 'Aufgabe, z. B. „12 × 8“', max: TEXT_MAX, gewicht: 3, pflicht: true },
+          { namen: ['answer'], label: 'Ergebnis', platzhalter: 'Ergebnis', max: 200, gewicht: 1, pflicht: true, zahl: true },
+        ],
+        mindestens: 1,
+        hoechstens: 30,
+        einzahl: 'Aufgabe',
+        mehrzahl: 'Aufgaben',
+        schluessel: 'rechenaufgabe',
+      },
+    ],
+  },
+  // ── Muster F ──
+  calculation_example: {
+    muster: 'F',
+    finder: '.schritte li',
+    pruefe: (b) =>
+      !s(b.formula).trim() && listeVon(b.steps).every((x) => !s(x).trim())
+        ? [{ wo: 'formula', text: 'Mindestens Formel oder Rechenschritte nötig, sonst erscheint der Block nicht.' }]
+        : [],
+    teile: [
+      { art: 'text', feld: 'formula', label: 'Formel', platzhalter: 'Formel, z. B. „Preis = Menge × Einzelpreis“', pflicht: false, max: TEXT_MAX },
+      { art: 'text', feld: 'explanation', label: 'Erklärung', platzhalter: 'Erklärung (optional)', pflicht: false, max: 10_000, leerWeg: true, hoch: true },
+      zeilen('steps', 'Schritt', 'Schritte', 'rechenschritt', 0, 20, 'Rechenschritt, z. B. „12 × 8 = 96“'),
+      { art: 'text', feld: 'result', label: 'Ergebnis', platzhalter: 'Ergebnis, z. B. „96 €“', pflicht: false, max: 500 },
+    ],
+  },
+  rechenweg: {
+    muster: 'F',
+    finder: '.rechenweg .rechenschritt',
+    teile: [
+      {
+        art: 'text',
+        feld: 'task',
+        namen: ['task', 'question'],
+        label: 'Aufgabe',
+        platzhalter: 'Aufgabe mit allen Ausgangsdaten',
+        pflicht: true,
+        max: FRAGE_MAX,
+        hoch: true,
+      },
+      {
+        art: 'eintraege',
+        feld: 'schritte',
+        namen: ['schritte', 'steps'],
+        felder: [
+          { namen: ['frage', 'question'], label: 'Frage', platzhalter: 'Zwischenschritt, z. B. „Wie hoch ist der Nettopreis?“', max: TEXT_MAX, gewicht: 4, pflicht: true },
+          { namen: ['ergebnis', 'result'], label: 'Ergebnis', platzhalter: 'Ergebnis, z. B. 400,00', max: 200, gewicht: 2, pflicht: true },
+          { namen: ['einheit'], label: 'Einheit', platzhalter: 'Einheit', max: 40, gewicht: 1, pflicht: false },
+          { namen: ['hinweis'], label: 'Hinweis, falls es klemmt', platzhalter: 'Hinweis, falls es klemmt (optional)', max: TEXT_MAX, gewicht: 1, pflicht: false, knopf: true },
+        ],
+        mindestens: 2,
+        hoechstens: 12,
+        einzahl: 'Schritt',
+        mehrzahl: 'Schritte',
+        schluessel: 'rechenweg-schritt',
+      },
+    ],
+  },
+  schaetzrunde: {
+    muster: 'F',
+    finder: '.schaetzung',
+    teile: [
+      anweisung('Schätz erst – dann wird aufgelöst.'),
+      {
+        art: 'eintraege',
+        feld: 'fragen',
+        namen: ['fragen', 'questions'],
+        felder: [
+          { namen: ['frage', 'question'], label: 'Frage', platzhalter: 'Schätzfrage, z. B. „Wie viele Lkw fahren täglich über den Brenner?“', max: TEXT_MAX, gewicht: 4, pflicht: true },
+          { namen: ['wert', 'value'], label: 'Richtiger Wert', platzhalter: 'Richtiger Wert, z. B. 150.000', max: 100, gewicht: 2, pflicht: true },
+          { namen: ['einheit'], label: 'Einheit', platzhalter: 'Einheit', max: 40, gewicht: 1, pflicht: false },
+          { namen: ['kommentar', 'comment'], label: 'Kommentar zur Auflösung', platzhalter: 'Kommentar zur Auflösung (optional)', max: 10_000, gewicht: 1, pflicht: false, knopf: true },
+          { namen: ['quelle', 'source'], label: 'Quelle', platzhalter: 'Quelle (optional)', max: TEXT_MAX, gewicht: 1, pflicht: false, knopf: true },
+        ],
+        mindestens: 1,
+        hoechstens: 20,
+        einzahl: 'Frage',
+        mehrzahl: 'Fragen',
+        schluessel: 'schaetzfrage',
+      },
+    ],
+  },
+  selbsteinschaetzung: {
+    muster: 'F',
+    finder: '.einschaetzliste .einschaetzung',
+    teile: [
+      { art: 'text', feld: 'titel', namen: ['titel', 'title'], label: 'Überschrift', platzhalter: 'Überschrift (optional)', pflicht: false, max: TEXT_MAX, leerWeg: true },
+      anweisung('Wie sicher bist du?'),
+      {
+        art: 'eintraege',
+        feld: 'punkte',
+        namen: ['punkte', 'items'],
+        felder: [
+          { namen: ['text', 'frage'], label: 'Aussage', platzhalter: 'Aussage, z. B. „Ich kann den Frachtbrief erklären.“', max: TEXT_MAX, gewicht: 1, pflicht: true },
+          { namen: ['hilfe', 'help'], label: 'Wo man nachsieht', platzhalter: 'Wo man nachsieht (optional)', max: TEXT_MAX, gewicht: 1, pflicht: false, knopf: true },
+        ],
+        mindestens: 2,
+        hoechstens: 20,
+        einzahl: 'Aussage',
+        mehrzahl: 'Aussagen',
+        schluessel: 'aussage',
+      },
+    ],
+  },
+  // ── Muster D ──
+  drag_drop: {
+    muster: 'D',
+    finder: '.faecher .fach',
+    teile: [
+      anweisung('Ordne die Begriffe den richtigen Kategorien zu.'),
+      {
+        art: 'zuordnen',
+        feld: 'items',
+        kategorien: 'categories',
+        mindestKategorien: 2,
+        mindestens: 1,
+        hoechstens: 40,
+        einzahl: 'Begriff',
+        mehrzahl: 'Begriffe',
+        schluessel: 'begriff',
+      },
+    ],
+  },
+  trainer: {
+    muster: 'D',
+    teile: [
+      anweisung('Übe, bis es sitzt.'),
+      { art: 'zahl', feld: 'runden', label: 'Runden', platzhalter: 'Standard 2', min: 1, max: 5 },
+      {
+        art: 'gruppen',
+        feld: 'gruppen',
+        namen: ['gruppen', 'groups'],
+        titel: ['titel', 'title'],
+        reihe: ['reihe', 'items'],
+        mindestensReihe: 2,
+        mindestens: 2,
+        hoechstens: 20,
+        einzahl: 'Gruppe',
+        mehrzahl: 'Gruppen',
+        schluessel: 'gruppe',
+      },
+    ],
+  },
+  // ── Einzelfeld ──
+  calculation_exercise: {
+    muster: 'Einzel',
+    teile: [
+      { art: 'text', feld: 'task', label: 'Aufgabe', platzhalter: 'Aufgabenstellung – ohne Formel, Rechenweg oder „Ergebnis:“', pflicht: true, max: FRAGE_MAX, hoch: true },
+      { art: 'text', feld: 'result', label: 'Ergebnis', platzhalter: 'Ergebnis, z. B. 4.165,00 €', pflicht: true, max: 200 },
+    ],
+  },
+  freitext: {
+    muster: 'Einzel',
+    teile: [
+      { art: 'text', feld: 'question', namen: ['question', 'task'], label: 'Frage', platzhalter: 'Frage, die in eigenen Worten beantwortet wird', pflicht: true, max: FRAGE_MAX, hoch: true },
+      { art: 'text', feld: 'solution', label: 'Musterlösung', platzhalter: 'Musterlösung, ausformuliert – sie lässt sich erst aufdecken, wenn selbst geschrieben wurde', pflicht: true, max: FRAGE_MAX, hoch: true },
+      { art: 'zahl', feld: 'min_zeichen', label: 'Mindestens Zeichen', platzhalter: 'Standard 60', min: 0, max: 2000 },
+      { art: 'zahl', feld: 'rows', label: 'Höhe (Zeilen)', platzhalter: 'Standard 4', min: 2, max: 12 },
+    ],
+  },
 }
 
 /** Typen, die das Aufgabenwerk an Ort und Stelle öffnet */
@@ -251,11 +538,20 @@ export const FINDER: Record<string, string> = Object.fromEntries(
 )
 
 /** Verlaufs-Gruppen der Seite, nach denen die App „… gelöscht – Rückgängig“ zeigt */
-export const LOESCH_TEXTE: Record<string, string> = Object.fromEntries(
-  Object.values(BAUPLAENE).flatMap((b) =>
-    b.teile.flatMap((t) => (t.art === 'antworten' || t.art === 'paare' ? [[`loeschen-${t.schluessel}`, `${t.einzahl} gelöscht`]] : [])),
+export const LOESCH_TEXTE: Record<string, string> = {
+  'loeschen-kategorie': 'Kategorie samt ihren Begriffen gelöscht',
+  'loeschen-trainer-eintrag': 'Eintrag gelöscht',
+  'loeschen-trainer-stoerer': 'Störer gelöscht',
+  ...Object.fromEntries(
+    Object.values(BAUPLAENE).flatMap((b) =>
+      b.teile.flatMap((t) =>
+        t.art === 'antworten' || t.art === 'paare' || t.art === 'zeilen' || t.art === 'eintraege' || t.art === 'zuordnen' || t.art === 'gruppen'
+          ? [[`loeschen-${t.schluessel}`, `${t.einzahl} gelöscht`]]
+          : [],
+      ),
+    ),
   ),
-)
+}
 
 /** Worauf in der Seite geklickt wurde: die Frage/Anweisung oder ein Eintrag (Nummer = Stelle in der gebauten Seite) */
 export type EintragOrt = { art: 'frage' } | { art: 'eintrag'; nr: number }
@@ -275,6 +571,23 @@ function istObjekt(v: unknown): v is Record<string, unknown> {
 }
 const listeVon = (v: unknown): unknown[] => (Array.isArray(v) ? v : [])
 
+/** Name, unter dem das Feld im Block wirklich steht (erster gleichwertiger Name, der vorkommt) */
+export function echterName(block: Record<string, unknown>, namen: string[] | undefined, standard: string): string {
+  if (!namen) return standard
+  return namen.find((n) => block[n] !== undefined && block[n] !== null) ?? namen[0] ?? standard
+}
+
+/** Wert eines Eintrags unter dem gültigen Namen */
+export function eintragsName(e: Record<string, unknown>, namen: string[]): string {
+  return namen.find((n) => e[n] !== undefined && e[n] !== null) ?? namen[0]
+}
+
+/** Teil mit dem Feldnamen, der im Block gilt (`cards` oder `pairs`, `question` oder `task`) */
+export function loese<T extends Teil>(teil: T, block: Record<string, unknown>): T {
+  if ('namen' in teil && teil.namen && 'feld' in teil) return { ...teil, feld: echterName(block, teil.namen, teil.feld) }
+  return teil
+}
+
 /**
  * Welche gespeicherten Einträge zeigt der Kern, in welcher Reihenfolge? (Er lässt unvollständige weg.)
  * Ergebnis: je angezeigtem Eintrag die Nummer im Block – oder null, wenn er keinem Eintrag entspricht.
@@ -287,6 +600,24 @@ function sichtbar(block: Block): Array<number | null> | null {
     return listeVon(block.items).flatMap((e, i) => (istObjekt(e) && s(e.term) && s(e.definition).trim() ? [i] : []))
   if (t === 'dialog_cards')
     return listeVon(block.cards).flatMap((e, i) => (istObjekt(e) && s(e.front) && s(e.back).trim() ? [i] : []))
+  const nichtLeer = (x: unknown) => !!s(x).trim()
+  if (t === 'reihenfolge') return listeVon(block.items).flatMap((x, i) => (nichtLeer(x) ? [i] : []))
+  if (t === 'calculation_example') return listeVon(block.steps).flatMap((x, i) => (nichtLeer(x) ? [i] : []))
+  if (t === 'drag_drop') return listeVon(block.categories).flatMap((x, i) => (nichtLeer(x) ? [i] : []))
+  if (t === 'arithmetic_quiz')
+    return listeVon(block.questions).flatMap((e, i) => (istObjekt(e) && s(e.question) && nichtLeer(e.answer) ? [i] : []))
+  const erster = (e: Record<string, unknown>, namen: string[]) => {
+    for (const n of namen) if (e[n]) return s(e[n])
+    return ''
+  }
+  const eintraegeMit = (liste: unknown, a: string[], b: string[]) =>
+    listeVon(liste).flatMap((e, i) => (istObjekt(e) && nichtLeer(erster(e, a)) && nichtLeer(erster(e, b)) ? [i] : []))
+  if (t === 'rechenweg') return eintraegeMit(block[echterName(block, ['schritte', 'steps'], 'schritte')], ['frage', 'question'], ['ergebnis', 'result'])
+  if (t === 'schaetzrunde') return eintraegeMit(block[echterName(block, ['fragen', 'questions'], 'fragen')], ['frage', 'question'], ['wert', 'value'])
+  if (t === 'selbsteinschaetzung')
+    return listeVon(block[echterName(block, ['punkte', 'items'], 'punkte')]).flatMap((e, i) =>
+      nichtLeer(istObjekt(e) ? erster(e, ['text', 'frage']) : e) ? [i] : [],
+    )
   if (t === 'mark_words') return markWoerter(s(block.text))
   if ((LUECKEN_TYPEN as readonly string[]).includes(t)) return luecken(zerlege(t as LueckenTyp, s(block.text))).map((_, i) => i)
   return null
@@ -333,7 +664,7 @@ function fremdeFelder(neu: Record<string, unknown>, bekannt: Set<string>, erlaub
 function uebernimmListe(
   original: Block,
   vorschlag: Record<string, unknown>,
-  teil: AntwortenTeil | PaareTeil,
+  teil: AntwortenTeil | PaareTeil | ZuordnenTeil,
   felder: Array<{ feld: string; max: number }>,
   extra: (roh: Record<string, unknown>) => Record<string, unknown>,
 ): Record<string, unknown>[] | string {
@@ -356,6 +687,72 @@ function uebernimmListe(
   return neu
 }
 
+const ZAHL_GRENZE = 100_000
+
+/** Einträge mit mehreren Feldern (Muster F, C kurz) */
+function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>, teil: EintraegeTeil): Record<string, unknown>[] | string {
+  const liste = vorschlag[teil.feld]
+  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
+  const bekannt = new Set(teil.felder.flatMap((f) => f.namen))
+  const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
+  const neu: Record<string, unknown>[] = []
+  for (const roh of liste) {
+    if (!istObjekt(roh)) return `Ungültiger Eintrag (${teil.einzahl}).`
+    const eintrag: Record<string, unknown> = { ...fremdeFelder(roh, bekannt, erlaubt) }
+    for (const f of teil.felder) {
+      const name = eintragsName(roh, f.namen)
+      const v = roh[name]
+      const t = reinerText(typeof v === 'number' && Number.isFinite(v) ? String(v) : (v ?? ''), f.max)
+      if (t === null) return `${teil.einzahl}: ${f.label} ist zu lang oder ungültig.`
+      if (!f.pflicht && t === '' && !(name in roh)) continue
+      eintrag[name] = f.zahl && /^-?\d{1,15}$/.test(t.trim()) ? Number(t.trim()) : t
+    }
+    neu.push(eintrag)
+  }
+  return neu
+}
+
+/** Liste aus reinem Text (Muster B und Teile von D) */
+function uebernimmTexte(wert: unknown, max: number, hoechstens: number, wort: string): string[] | string {
+  if (!Array.isArray(wert) || wert.length > hoechstens) return `Zu viele ${wort}.`
+  const out: string[] = []
+  for (const x of wert) {
+    const t = reinerText(x ?? '', max)
+    if (t === null) return `${wort}: Text zu lang oder ungültig.`
+    out.push(t)
+  }
+  return out
+}
+
+/** Gruppen des Trainers: Titel, Hinweis, Einträge, Störer */
+function uebernimmGruppen(original: Block, vorschlag: Record<string, unknown>, teil: GruppenTeil): Record<string, unknown>[] | string {
+  const liste = vorschlag[teil.feld]
+  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
+  const bekannt = new Set([...teil.titel, ...teil.reihe, 'hinweis', 'stoerer'])
+  const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
+  const neu: Record<string, unknown>[] = []
+  for (const roh of liste) {
+    if (!istObjekt(roh)) return 'Ungültige Gruppe.'
+    const g: Record<string, unknown> = { ...fremdeFelder(roh, bekannt, erlaubt) }
+    const titel = reinerText(roh[eintragsName(roh, teil.titel)] ?? '', TEXT_MAX)
+    if (titel === null) return 'Titel der Gruppe ist zu lang oder ungültig.'
+    g[eintragsName(roh, teil.titel)] = titel
+    const hinweis = reinerText(roh.hinweis ?? '', TEXT_MAX)
+    if (hinweis === null) return 'Hinweis der Gruppe ist zu lang.'
+    if (hinweis || 'hinweis' in roh) g.hinweis = hinweis
+    const reihe = uebernimmTexte(roh[eintragsName(roh, teil.reihe)], TEXT_MAX, 30, 'Einträge')
+    if (typeof reihe === 'string') return reihe
+    g[eintragsName(roh, teil.reihe)] = reihe
+    if (roh.stoerer !== undefined) {
+      const st = uebernimmTexte(roh.stoerer, TEXT_MAX, 30, 'Störer')
+      if (typeof st === 'string') return st
+      g.stoerer = st
+    }
+    neu.push(g)
+  }
+  return neu
+}
+
 /**
  * Prüft den Vorschlag der Seite gegen den Bauplan und setzt ihn auf den gespeicherten Block.
  * Unbekannte Felder des Blocks kommen immer aus dem Original.
@@ -365,7 +762,8 @@ export function uebernimmAufgabe(original: Block, vorschlag: unknown): Ergebnis 
   if (!plan) return { ok: false, grund: 'Dieser Aufgabentyp lässt sich hier nicht bearbeiten.' }
   if (!istObjekt(vorschlag) || vorschlag.type !== original.type) return { ok: false, grund: 'Die Änderung passt nicht zu dieser Aufgabe.' }
   const block: Block = { ...original }
-  for (const teil of plan.teile) {
+  for (const teil0 of plan.teile) {
+    const teil = loese(teil0, original)
     if (teil.art === 'text' || teil.art === 'luecken') {
       const label = teil.art === 'text' ? teil.label : 'Text'
       const t = reinerText(vorschlag[teil.feld] ?? '', teil.art === 'text' ? teil.max : LUECKENTEXT_MAX)
@@ -394,8 +792,32 @@ export function uebernimmAufgabe(original: Block, vorschlag: unknown): Ergebnis 
       )
       if (typeof l === 'string') return { ok: false, grund: l }
       block[teil.feld] = l
-    } else {
+    } else if (teil.art === 'paare') {
       const l = uebernimmListe(original, vorschlag, teil, [teil.links, teil.rechts], () => ({}))
+      if (typeof l === 'string') return { ok: false, grund: l }
+      block[teil.feld] = l
+    } else if (teil.art === 'zeilen') {
+      const l = uebernimmTexte(vorschlag[teil.feld], teil.max, teil.hoechstens, teil.mehrzahl)
+      if (typeof l === 'string') return { ok: false, grund: l }
+      block[teil.feld] = l
+    } else if (teil.art === 'eintraege') {
+      const l = uebernimmEintraege(original, vorschlag, teil)
+      if (typeof l === 'string') return { ok: false, grund: l }
+      block[teil.feld] = l
+    } else if (teil.art === 'zahl') {
+      const v = vorschlag[teil.feld]
+      if (v === undefined || v === null || v === '') delete block[teil.feld]
+      else if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= ZAHL_GRENZE) block[teil.feld] = v
+      else return { ok: false, grund: `${teil.label}: bitte eine ganze Zahl eingeben.` }
+    } else if (teil.art === 'zuordnen') {
+      const kat = uebernimmTexte(vorschlag[teil.kategorien], TEXT_MAX, 20, 'Kategorien')
+      if (typeof kat === 'string') return { ok: false, grund: kat }
+      const l = uebernimmListe(original, vorschlag, teil, [{ feld: 'text', max: TEXT_MAX }, { feld: 'category', max: TEXT_MAX }], () => ({}))
+      if (typeof l === 'string') return { ok: false, grund: l }
+      block[teil.kategorien] = kat
+      block[teil.feld] = l
+    } else {
+      const l = uebernimmGruppen(original, vorschlag, teil)
       if (typeof l === 'string') return { ok: false, grund: l }
       block[teil.feld] = l
     }
@@ -412,13 +834,48 @@ export function hinweise(block: Block): Hinweis[] {
   const plan = hatBauplan(block.type) ? BAUPLAENE[block.type] : null
   if (!plan) return []
   const out: Hinweis[] = []
-  for (const teil of plan.teile) {
+  for (const teil0 of plan.teile) {
+    const teil = loese(teil0, block)
     if (teil.art === 'text' && teil.pflicht && !s(block[teil.feld]).trim()) {
       out.push({ wo: teil.feld, text: `${teil.label} fehlt.` })
     }
-    if (teil.art === 'antworten' || teil.art === 'paare') {
-      const l = listeVon(block[teil.feld]).filter(istObjekt)
+    if (teil.art === 'antworten' || teil.art === 'paare' || teil.art === 'zeilen' || teil.art === 'eintraege' || teil.art === 'gruppen') {
+      const l = listeVon(block[teil.feld]).filter((x) => (teil.art === 'zeilen' ? true : istObjekt(x)))
       if (l.length < teil.mindestens) out.push({ wo: teil.feld, text: `Mindestens ${teil.mindestens} ${teil.mindestens === 1 ? teil.einzahl : teil.mehrzahl} nötig.` })
+    }
+    if (teil.art === 'zeilen') {
+      if (listeVon(block[teil.feld]).some((x) => !s(x).trim())) out.push({ wo: `${teil.feld}-leer`, text: `Eine ${teil.einzahl} ist noch leer.` })
+    }
+    if (teil.art === 'eintraege') {
+      listeVon(block[teil.feld]).forEach((x, i) => {
+        if (!istObjekt(x)) return
+        const fehlen = teil.felder.filter((f) => f.pflicht && !s(x[eintragsName(x, f.namen)]).trim())
+        if (fehlen.length) out.push({ wo: `${teil.feld}-leer-${i}`, text: `${teil.einzahl} ${i + 1}: ${fehlen.map((f) => f.label).join(' und ')} fehlt.` })
+      })
+    }
+    if (teil.art === 'zahl') {
+      const v = block[teil.feld]
+      if (v !== undefined && v !== null && v !== '' && (typeof v !== 'number' || v < teil.min || v > teil.max))
+        out.push({ wo: teil.feld, text: `${teil.label}: eine Zahl von ${teil.min} bis ${teil.max} (sonst nimmt die Seite ihren Standard).` })
+    }
+    if (teil.art === 'zuordnen') {
+      const kat = listeVon(block[teil.kategorien]).map((k) => s(k).trim())
+      const begriffe = listeVon(block[teil.feld]).filter(istObjekt)
+      if (kat.filter(Boolean).length < teil.mindestKategorien) out.push({ wo: teil.kategorien, text: `Mindestens ${teil.mindestKategorien} Kategorien nötig.` })
+      if (kat.some((k) => !k)) out.push({ wo: `${teil.kategorien}-leer`, text: 'Eine Kategorie hat noch keinen Namen.' })
+      if (new Set(kat.filter(Boolean)).size < kat.filter(Boolean).length) out.push({ wo: `${teil.kategorien}-doppelt`, text: 'Zwei Kategorien heißen gleich.' })
+      if (begriffe.length < 2) out.push({ wo: teil.feld, text: 'Mindestens 2 Begriffe nötig.' })
+      if (begriffe.some((b) => !kat.includes(s(b.category).trim()) || !s(b.category).trim()))
+        out.push({ wo: `${teil.feld}-ohne`, text: 'Ein Begriff gehört noch zu keiner Kategorie.' })
+      if (begriffe.some((b) => !s(b.text).trim())) out.push({ wo: `${teil.feld}-leer`, text: 'Ein Begriff ist noch leer.' })
+    }
+    if (teil.art === 'gruppen') {
+      listeVon(block[teil.feld]).forEach((g, i) => {
+        if (!istObjekt(g)) return
+        if (!s(g[eintragsName(g, teil.titel)]).trim()) out.push({ wo: `${teil.feld}-titel-${i}`, text: `Gruppe ${i + 1}: Titel fehlt.` })
+        const reihe = listeVon(g[eintragsName(g, teil.reihe)]).filter((x) => s(x).trim())
+        if (reihe.length < teil.mindestensReihe) out.push({ wo: `${teil.feld}-reihe-${i}`, text: `Gruppe ${i + 1}: mindestens ${teil.mindestensReihe} Einträge nötig.` })
+      })
     }
     if (teil.art === 'antworten') {
       const l = listeVon(block[teil.feld]).filter(istObjekt)
@@ -436,5 +893,6 @@ export function hinweise(block: Block): Hinweis[] {
       if (hatHtmlReste(text)) out.push({ wo: `${teil.feld}-html`, text: 'Im Text stehen HTML-Zeichen (<p>), die Lernende sehen würden.' })
     }
   }
+  if (plan.pruefe) out.push(...plan.pruefe(block))
   return out
 }

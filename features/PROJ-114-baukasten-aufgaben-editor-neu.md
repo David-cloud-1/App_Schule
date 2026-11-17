@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Bauschritt 2 gebaut, Zweig `proj-114-aufgabenwerk`)
+**Last Updated:** 2026-11-17 (Bauschritt 3 gebaut, Zweig `proj-114-aufgabenwerk`)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -171,6 +171,24 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 - Ein Klick auf „Bearbeiten“ in der Leiste oder Enter öffnet jetzt auch Lückentexte an Ort und Stelle; die Gliederung öffnet weiter die Schublade.
 
 **Tests:** `aufgabenwerk-e-c.test.ts` (35: Übersetzer inkl. Rundreise, Bauplan, Textfeld, Werk E und C), `aufgabenwerk.test.ts` angepasst (37), 10 ältere Editor-Tests auf das neue Verhalten umgestellt (Schublade jetzt am Lehrtext geprüft), 1 neuer App-Test. Gesamtlauf: 3787 grün, 1 alter fremder Fehler (`werkzeugkiste-auszug.test.ts`). `tsc` und Build grün. Bündel 53 KB.
+
+### Bauschritt 3 – Muster B, D, F, Einzelfeld, Memory/Kopfrechnen (2026-11-17, Sonnet, Zweig `proj-114-aufgabenwerk`)
+**Gebaut** (12 neue Typen, jetzt 22 mit Bauplan)
+- **Muster B** (`muster-b.ts`) für `reihenfolge`, `find_words` und die Rechenschritte des Rechenbeispiels: nummerierte Zeilen, Enter/Rücktaste/Einfügen/Alt+Pfeil/Griff wie bei A und C. Bei der Wörtersuche werden Wörter, die als Objekte gespeichert waren, beim ersten Ändern zu Text – wie schon im Formular.
+- **Muster F** (`muster-f.ts`) für `rechenweg`, `schaetzrunde`, `selbsteinschaetzung`: jeder Schritt eine Zeile mit Feldern nebeneinander; Seltenes (Hinweis, Kommentar, Quelle, „Wo man nachsieht“) hinter dem Fragezeichen-Knopf. **C kurz** (gleicher Baustein) für `memory_game` (bleibt bei `cards`/`pairs` und `front`/`a`) und `arithmetic_quiz` (ganze Zahlen werden als Zahl gespeichert).
+- **Muster D** (`muster-d.ts`): `drag_drop` mit Kasten je Kategorie, „＋ Begriff“, „Verschieben nach …“ (Auswahl), Kategorie umbenennen nimmt ihre Begriffe mit (auch beim Leeren und Neutippen), Kategorie löschen nimmt ihre Begriffe mit, Begriffe ohne gültige Kategorie stehen in „Ohne Kategorie“. `trainer` mit Kasten je Gruppe: Titel, Hinweis, Einträge in Reihenfolge, Störer, Runden.
+- **Einzelfeld:** `calculation_exercise`, `freitext` (Frage, Musterlösung, Zahlfelder „Mindestens Zeichen“ und „Höhe“), `calculation_example` (Formel, Erklärung, Schritte, Ergebnis).
+- Bauplan: gleichwertige Feldnamen (`question`/`task`, `cards`/`pairs`, `schritte`/`steps` …) werden erkannt und beim Speichern **beibehalten** (`loese`, `echterName`); neue Teil-Arten `zeilen`, `eintraege`, `zahl`, `zuordnen`, `gruppen`; `pruefe` für typbezogene Hinweise; `uebernimmAufgabe` prüft alle neuen Teile (nur bekannte Felder, Längen, Zahlen 0–100000, Zusatzfelder bleiben).
+- Klick auf einen Eintrag: Finder für `reihenfolge` (`.plaetze .platz`), `calculation_example`, `arithmetic_quiz`, `rechenweg`, `schaetzrunde`, `selbsteinschaetzung`, `drag_drop` (Klick auf eine Kategorie). Die Zählregeln wurden gegen echte Kern-Seiten (`seite.baue_seite`) geprüft: leere Einträge fallen dort weg, die App rechnet um. Ohne Finder (Eintrag-Klick öffnet nur die Aufgabe): `find_words`, `trainer`, `memory_game`, `freitext`, `calculation_exercise` – die Seite zeichnet sie per Skript neu bzw. mischt.
+- `listen.ts` kann jetzt auch Listen, die nicht direkt im Block liegen (`holen`/`schreibe`).
+
+**Abweichungen / offen**
+- **Ziehen von Begriffen zwischen Kästen fehlt noch**; es gibt „Verschieben nach …“ (Auswahl je Begriff). Ziehen zwischen Kästen und Umsortieren der Begriffe innerhalb eines Kastens kommen in Bauschritt 4 oder entfallen nach dem Praxistest.
+- Der Lösch-Toast für eine Kategorie nennt die Zahl der mitgelöschten Begriffe nicht („Kategorie samt ihren Begriffen gelöscht“); Rückgängig stellt alles her.
+- **Fallakte** (verschachtelte Antworten je Schritt) und **Kapiteltest/Video-Fragen** kommen in Bauschritt 4. Ebenso Bild-Typen, Schnellfragen, Zusammenfassung, Tippkarten.
+- Im Rechenbeispiel (Muster F laut Spec) stehen die Rechenschritte als einfache Zeilen (Muster B), weil sie reine Texte sind.
+
+**Tests:** `aufgabenwerk-b-d-f.test.ts` (29: Bauplan, Übernahme inkl. Feldnamen/Zahlen, Hinweise, Werk B, D, F), `aufgabenwerk.test.ts` angepasst. Gesamtlauf: 3816 grün, 1 alter fremder Fehler (`werkzeugkiste-auszug.test.ts`). `tsc`, ESLint und `npm run build` grün. Bündel 76 KB.
 
 ---
 <!-- Sections below are added by subsequent skills -->
