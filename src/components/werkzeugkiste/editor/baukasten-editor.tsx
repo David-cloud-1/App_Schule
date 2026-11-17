@@ -344,7 +344,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   // PROJ-94: eigene Seite ohne veröffentlichte Fassung – es gibt nichts, auf das man zurückkann, außer dem Grundgerüst
   const nie = !!daten.nieVeroeffentlicht
 
-  // Die Auswahl kann ins Leere zeigen (Block gelöscht, Rückgängig): dann ist nichts gewählt
+  // Die Auswahl kann ins Leere zeigen (Element gelöscht, Rückgängig): dann ist nichts gewählt
   const gewaehlt = useMemo(() => gueltigeAuswahl(auswahl, z.struktur), [auswahl, z.struktur])
   // PROJ-102: Alle gewählten Blöcke (bei Einzelauswahl genau einer, sonst keiner)
   const wahlOrte = useMemo<Ort[]>(() => {
@@ -408,7 +408,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (z.gesperrt || !z.struktur.chapters[ort.thema]?.elements[ort.block]) return
     z.aendere((s) => loescheBlock(s, ort))
     setAuswahl(null)
-    toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+    toast.success('Element gelöscht', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
   }
 
   function frageThemaLoeschen(thema: number) {
@@ -450,7 +450,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     }
     z.aendere((s) => loescheBloecke(s, g))
     setAuswahl(null)
-    toast.success(g.length === 1 ? 'Block gelöscht' : `${blockZahl(g.length)} gelöscht`, {
+    toast.success(g.length === 1 ? 'Element gelöscht' : `${blockZahl(g.length)} gelöscht`, {
       action: { label: 'Rückgängig', onClick: z.rueckgaengig },
     })
   }
@@ -990,7 +990,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       }
       return
     }
-    // Hat sich die Seite um die Aufgabe herum verändert (Block gelöscht, verschoben, eingefügt), gehört der Platz
+    // Hat sich die Seite um die Aufgabe herum verändert (Element gelöscht, verschoben, eingefügt), gehört der Platz
     // vielleicht schon einem anderen Block: nichts schreiben, nichts löschen
     if (restSignatur(z.struktur, sit.ort) !== sit.rest) {
       schliesseAufgabe(w.marke, 'vorbei')
@@ -1563,6 +1563,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             aufgabe={aufgabe}
             aufgabeBefehl={aufgabeBefehl}
             aufgaben={aufgabenMarken}
+            bereitetVor={!!vormerkung}
             html={v.html}
             laedt={v.laedt}
             fehler={v.fehler}

@@ -121,7 +121,7 @@ beforeEach(() => {
 })
 
 describe('Baukasten-Editor', () => {
-  it('zeigt Deckblatt, Themen und Blöcke in Klartext und die Hinweise der Prüfstelle', async () => {
+  it('zeigt Deckblatt, Themen und Blöcke in Klartext und die Verbesserungsvorschläge', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     expect(await screen.findByRole('heading', { name: 'Mein Material' })).toBeInTheDocument()
     const gliederung = screen.getByRole('region', { name: 'Gliederung' })
@@ -130,9 +130,9 @@ describe('Baukasten-Editor', () => {
     expect(within(gliederung).getByText('Lehrtext')).toBeInTheDocument()
     expect(within(gliederung).getByText('Lückentext')).toBeInTheDocument()
     expect(within(gliederung).getByText('Der Frachtführer haftet.', { selector: '.truncate' })).toBeInTheDocument()
-    expect(within(gliederung).getByText('Noch keine Blöcke')).toBeInTheDocument()
+    expect(within(gliederung).getByText('Noch keine Elemente')).toBeInTheDocument()
     // Hinweis hängt am Lückentext (Thema 1, Block 2)
-    expect(await screen.findByText(/Hinweise der Prüfstelle \(1\)/)).toBeInTheDocument()
+    expect(await screen.findByText(/Verbesserungsvorschläge \(1\)/)).toBeInTheDocument()
     expect(screen.getAllByTitle(/Hinweis der Prüfstelle zu Lückentext/)).toHaveLength(1)
   })
 
@@ -304,27 +304,27 @@ describe('Block einfügen (PROJ-90)', () => {
     // Mit dem neuen Block öffnet sich die Schublade, und die Gliederung klappt ein (PROJ-97), bleibt aber im Aufbau
     const gliederung = document.querySelector<HTMLElement>('section[aria-label="Gliederung"]')!
     expect(await within(gliederung).findByText('Kreuzworträtsel')).toBeInTheDocument()
-    expect(within(gliederung).queryByText('Noch keine Blöcke')).not.toBeInTheDocument()
-    fireEvent.click(within(gliederung).getByRole('button', { name: /Hinweise der Prüfstelle/, hidden: true }))
+    expect(within(gliederung).queryByText('Noch keine Elemente')).not.toBeInTheDocument()
+    fireEvent.click(within(gliederung).getByRole('button', { name: /Verbesserungsvorschläge/, hidden: true }))
     expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
   })
 
   it('PROJ-111: Die Schublade zeigt keine doppelten Aktionen (Darunter einfügen, Löschen, zweites „Fertig“); sie liegen in der Leiste und im ⋯-Menü', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const schublade = await schubladeUeberAusweg('Lückentext', 'k0-e1')
-    expect(within(schublade).queryByRole('button', { name: /Block löschen/ })).not.toBeInTheDocument()
-    expect(within(schublade).queryByRole('button', { name: /Block darunter einfügen/ })).not.toBeInTheDocument()
+    expect(within(schublade).queryByRole('button', { name: /Element löschen/ })).not.toBeInTheDocument()
+    expect(within(schublade).queryByRole('button', { name: /Element darunter einfügen/ })).not.toBeInTheDocument()
     expect(within(schublade).queryByRole('button', { name: 'Fertig' })).not.toBeInTheDocument()
     // Geschlossen wird mit dem X in der Kopfzeile
     fireEvent.click(within(schublade).getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
   })
 
-  it('„Block darüber einfügen“ setzt den Block vor den gewählten; Rückgängig nimmt ihn zurück', async () => {
+  it('„Element darüber einfügen“ setzt den Block vor den gewählten; Rückgängig nimmt ihn zurück', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     oeffneMenu(/Weitere Aktionen für Lückentext/)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Block darüber einfügen/ }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Element darüber einfügen/ }))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
     expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'memory_game', 'fill_blanks'])
@@ -577,7 +577,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('Leiste „Block“ ohne Auswahl: am Ende des letzten Themas', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: 'Block' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Element' }))
     expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
     await gespeichert()
@@ -634,7 +634,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('zeigt das Tastenkürzel am Leistenknopf', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    expect(screen.getByRole('button', { name: 'Block' }).getAttribute('title')).toMatch(/Alt\+Umschalt\+B|⌥⇧B/)
+    expect(screen.getByRole('button', { name: 'Element' }).getAttribute('title')).toMatch(/Alt\+Umschalt\+B|⌥⇧B/)
   })
 
   it('„+ Darunter“ in der Vorschau öffnet den Katalog, der Block kommt hinter den angeklickten', async () => {
@@ -1128,7 +1128,7 @@ describe('Aufgabe an Ort und Stelle bearbeiten (PROJ-114)', () => {
     await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeBeende: true }, '*'))
   })
 
-  it('⋯ „Block löschen“ beendet ohne Rückmeldung und löscht den Block', async () => {
+  it('⋯ „Element löschen“ beendet ohne Rückmeldung und löscht den Block', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
     nachricht({ wkAufgabeAktion: 'k0-e1', aktion: 'loeschen' }, rahmen)
@@ -1231,7 +1231,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
   it('Rückgängig direkt nach dem Einfügen: Die Vormerkung verfällt, der Block, der jetzt dort steht, öffnet nicht', async () => {
     const { rahmen, senden } = await bereit()
     oeffneMenu(/Weitere Aktionen für Lückentext/)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Block darüber einfügen/ }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Element darüber einfügen/ }))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
     // Neuer Block an k0-e1; Rückgängig stellt den Lückentext wieder an diese Stelle
     fireEvent.click(screen.getByRole('button', { name: /^Rückgängig/ }))
@@ -1299,8 +1299,8 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
 
   it('Klick auf einen Hinweis der Prüfstelle öffnet die Aufgabe in der Seite', async () => {
     const { senden } = await bereit()
-    fireEvent.click(within(gliederung()).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
-    fireEvent.click(await within(gliederung()).findByText('Kapitel 1 – Keine richtige Antwort'))
+    fireEvent.click(within(gliederung()).getByRole('button', { name: /Verbesserungsvorschläge/ }))
+    fireEvent.click(await within(gliederung()).findByText('Thema 1 – Keine richtige Antwort'))
     await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
@@ -1313,7 +1313,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
       stand: null,
     })
     const { senden } = await bereit()
-    fireEvent.click(within(gliederung()).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
+    fireEvent.click(within(gliederung()).getByRole('button', { name: /Verbesserungsvorschläge/ }))
     fireEvent.click(await within(gliederung()).findByText('Thema 2 ist leer'))
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
     expect(gestartet(senden)).toBe(false)

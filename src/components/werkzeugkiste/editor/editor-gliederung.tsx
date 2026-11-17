@@ -79,6 +79,7 @@ import { TypWechsel } from '@/components/werkzeugkiste/editor/typ-wechsel'
 import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
 import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
 import { useMaterialBilder } from '@/components/werkzeugkiste/editor/material-bilder'
+import { uebersetzeHinweis } from '@/lib/werkzeugkiste-hinweise'
 import { beispielBlock, fuegeBlockEin, katalogEintrag, merkeZuletzt } from '@/lib/werkzeugkiste-katalog'
 import {
   dupliziereBlock,
@@ -367,7 +368,7 @@ export function EditorGliederung({
   function blockLoeschen(ort: Ort) {
     aendere((s) => loescheBlock(s, ort))
     setAuswahl(null)
-    toast.success('Block gelöscht', { action: { label: 'Rückgängig', onClick: rueckgaengig } })
+    toast.success('Element gelöscht', { action: { label: 'Rückgängig', onClick: rueckgaengig } })
   }
 
   const istGewaehlt = (a: Auswahl) => JSON.stringify(a) === JSON.stringify(auswahl)
@@ -392,7 +393,7 @@ export function EditorGliederung({
           title={kuerzel ? `Element hinzufügen (${kuerzel})` : 'Element hinzufügen'}
         >
           <Plus className="mr-2 size-4 shrink-0" aria-hidden />
-          Block
+          Element
         </Button>
         <Button
           type="button"
@@ -410,7 +411,7 @@ export function EditorGliederung({
         <Collapsible className="rounded-xl border border-ws-orange/30 bg-ws-orange/10">
           <CollapsibleTrigger className="flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm font-semibold text-ws-orange">
             <AlertTriangle className="size-4" aria-hidden />
-            Hinweise der Prüfstelle ({befunde.length})
+            Verbesserungsvorschläge ({befunde.length})
             <ChevronDown className="ml-auto size-4" aria-hidden />
           </CollapsibleTrigger>
           <CollapsibleContent>
@@ -435,7 +436,7 @@ export function EditorGliederung({
                       <span className={cn('mr-2 font-semibold', b.schwere === 'hoch' ? 'text-ws-red' : 'text-ws-orange')}>
                         {b.schwere === 'hoch' ? 'Wichtig:' : 'Hinweis:'}
                       </span>
-                      {b.text}
+                      <span title={b.text}>{uebersetzeHinweis(b.text)}</span>
                     </button>
                   </li>
                 )
@@ -572,7 +573,7 @@ export function EditorGliederung({
             </AlertDialogTitle>
             <AlertDialogDescription>
               {themaLoeschen !== null && themen[themaLoeschen]
-                ? `Das Thema und seine ${themen[themaLoeschen].elements.length} Blöcke werden aus dem Entwurf entfernt. Mit „Rückgängig“ holst du es zurück.`
+                ? `Das Thema und seine ${themen[themaLoeschen].elements.length} Elemente werden aus dem Entwurf entfernt. Mit „Rückgängig“ holst du es zurück.`
                 : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -687,7 +688,7 @@ function ThemaKarte({
             {name}
           </span>
           <span className="shrink-0 text-xs text-ws-faint">
-            {bloecke.length} {bloecke.length === 1 ? 'Block' : 'Blöcke'}
+            {bloecke.length} {bloecke.length === 1 ? 'Element' : 'Elemente'}
           </span>
         </button>
         <HinweisMarke anzahl={hinweiseImThema} was={`Thema „${name}“`} />
@@ -726,7 +727,7 @@ function ThemaKarte({
 
       {!zu && (
         <SortableContext items={bloecke.map((_, bi) => `b-${index}-${bi}`)} strategy={verticalListSortingStrategy}>
-          <ol className="mt-2 space-y-2 pl-2 sm:pl-6" aria-label={`Blöcke in „${name}“`}>
+          <ol className="mt-2 space-y-2 pl-2 sm:pl-6" aria-label={`Elemente in „${name}“`}>
             {bloecke.map((block, bi) => [
               bi > 0 && <Einfuegestelle key={`plus-${index}-${bi}`} onClick={() => einfuegenBei({ thema: index, index: bi })} />,
               <BlockZeile
@@ -756,7 +757,7 @@ function ThemaKarte({
                 ende.isOver && 'border-ws-green bg-ws-green/10',
               )}
             >
-              {bloecke.length === 0 ? 'Noch keine Blöcke' : <span className="sr-only">Ende des Themas</span>}
+              {bloecke.length === 0 ? 'Noch keine Elemente' : <span className="sr-only">Ende des Themas</span>}
             </li>
           </ol>
           <div className="mt-2 pl-2 sm:pl-6">
@@ -787,7 +788,7 @@ function Einfuegestelle({ onClick }: { onClick: () => void }) {
       <button
         type="button"
         onClick={onClick}
-        aria-label="Block hier einfügen"
+        aria-label="Element hier einfügen"
         className={cn(
           'absolute inset-x-0 top-1/2 flex h-6 -translate-y-1/2 [@media(pointer:coarse)]:h-11 items-center justify-center gap-2 rounded-xl text-xs font-semibold text-ws-green',
           'opacity-0 transition-opacity duration-200 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
@@ -923,10 +924,10 @@ function BlockZeile({
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => einfuegenBei({ thema, index })}>
-              <ArrowUpToLine className="mr-2 size-4" aria-hidden /> Block darüber einfügen …
+              <ArrowUpToLine className="mr-2 size-4" aria-hidden /> Element darüber einfügen …
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => einfuegenBei({ thema, index: index + 1 })}>
-              <ArrowDownToLine className="mr-2 size-4" aria-hidden /> Block darunter einfügen …
+              <ArrowDownToLine className="mr-2 size-4" aria-hidden /> Element darunter einfügen …
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={loeschen} className="text-ws-red focus:text-ws-red">

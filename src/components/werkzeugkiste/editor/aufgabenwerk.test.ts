@@ -342,7 +342,7 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
     starte()
     fireEvent.click(knopf('Weitere Aktionen'))
     const punkte = Array.from(ziel.querySelectorAll<HTMLButtonElement>('.wk-aw-menue button'))
-    expect(punkte.map((p) => p.textContent)).toEqual(['Aufgabentyp ändern …', 'Quelltext bearbeiten', 'Block duplizieren', 'Block löschen'])
+    expect(punkte.map((p) => p.textContent)).toEqual(['Aufgabentyp ändern …', 'Quelltext bearbeiten', 'Element duplizieren', 'Element löschen'])
     expect(punkte[3].classList.contains('wk-aw-gefahr')).toBe(true)
     fireEvent.click(punkte[1])
     expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'roh' })

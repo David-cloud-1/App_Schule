@@ -87,6 +87,7 @@ export function EditorVorschau({
   aufgabe = null,
   aufgabeBefehl = null,
   aufgaben = {},
+  bereitetVor = false,
 }: {
   html: string | null
   laedt: boolean
@@ -130,6 +131,8 @@ export function EditorVorschau({
   aufgabeBefehl?: AufgabeBefehl | null
   /** PROJ-114: Blöcke, die sich an Ort und Stelle bearbeiten lassen (Marke → Typ); die Seite findet so die Einträge */
   aufgaben?: Record<string, string>
+  /** Eine neu eingefügte Aufgabe wartet darauf, in der Seite aufzugehen (vorgemerkte Öffnung) */
+  bereitetVor?: boolean
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -377,9 +380,10 @@ export function EditorVorschau({
             ]}
           />
         )}
-        {laedt && (
+        {(laedt || bereitetVor) && (
           <span className="flex items-center gap-1.5" aria-live="polite">
-            <Loader2 className="size-3.5 animate-spin" aria-hidden /> Vorschau wird aktualisiert …
+            <Loader2 className="size-3.5 animate-spin" aria-hidden />{' '}
+            {bereitetVor ? 'Aufgabe wird vorbereitet …' : 'Vorschau wird aktualisiert …'}
           </span>
         )}
         {!laedt && fehler && html && (
