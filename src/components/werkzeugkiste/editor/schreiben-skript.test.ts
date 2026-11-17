@@ -118,6 +118,32 @@ describe('Schreiben: Einfach-Schreiber (Überschrift, Deckblatt, Bildunterschrif
     }
   })
 
+  it('PROJ-118: einzeilige Texte bekommen dieselbe Leiste (Name, Hinweis, „Fertig“); „Fertig“ beendet, danach ist sie weg', () => {
+    const gesendet = laufenLassen()
+    vomEditor({ wkSchreibStart: { marke: 'k0', teil: 'kapitel' } })
+    const leiste = document.querySelector<HTMLElement>('[role="toolbar"].wk-el')!
+    expect(leiste.getAttribute('aria-label')).toBe('Thema bearbeiten')
+    expect(leiste.querySelector('.wk-el-name')?.textContent).toBe('Thema')
+    expect(leiste.querySelector('.wk-el-hinweis')?.textContent).toBe('Enter = Fertig')
+    // Die Leiste steht direkt über dem Element
+    expect(leiste.nextElementSibling).toBe(id('kapitel'))
+    const md = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    leiste.dispatchEvent(md)
+    expect(md.defaultPrevented).toBe(true)
+    klick(leiste.querySelector('.wk-el-fertig')!)
+    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Thema' }, '*')
+    expect(document.querySelector('.wk-el')).toBeNull()
+  })
+
+  it('PROJ-118: Deckblatt und Bildunterschrift heißen in der Leiste so', () => {
+    laufenLassen()
+    vomEditor({ wkSchreibStart: { marke: 'deckblatt', teil: 'titel' } })
+    expect(document.querySelector('.wk-el .wk-el-name')?.textContent).toBe('Deckblatt')
+    vomEditor({ wkSchreibBeende: true })
+    vomEditor({ wkSchreibStart: { marke: 'k0-e1', teil: 'unterschrift' } })
+    expect(document.querySelector('.wk-el .wk-el-name')?.textContent).toBe('Bildunterschrift')
+  })
+
   it('Esc beendet ebenfalls, Enter fügt keinen Zeilenumbruch ein', () => {
     const gesendet = laufenLassen()
     vomEditor({ wkSchreibStart: { marke: 'k0-e1', teil: 'unterschrift' } })
@@ -181,7 +207,7 @@ describe('Schreiben: Lehrtext mit dem nachgeladenen Schreibwerk', () => {
     expect(document.body.classList.contains('wk-schreibt')).toBe(true)
 
     // Fertig → Endstand an die App, danach ist die Seite wieder bedienbar
-    id('lehr').querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    id('lehr').querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0-e0', teil: 'text', html: '<p>Gespeichert</p>' }, '*')
     expect(document.body.classList.contains('wk-schreibt')).toBe(false)
 

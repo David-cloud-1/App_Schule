@@ -1,7 +1,7 @@
 import { Editor } from '@tiptap/core'
 import { BOX_ARTEN, aufraeumen, eingefuegtesBereinigen, rundreiseOk } from '@/lib/werkzeugkiste-text'
 import { alsHtml, textErweiterungen } from '@/components/werkzeugkiste/editor/text-erweiterungen'
-import { BOX_AKTION, BOX_WAHL, FERTIG, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { ELEMENT_LEISTE, FERTIG, KASTEN, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { SCHREIB_CSS } from '@/components/werkzeugkiste/editor/schreibwerk/schreib-design'
 
 /**
@@ -23,8 +23,10 @@ export interface SchreibOptionen {
   marke: string
   /** Wo geklickt wurde (Fenster-Koordinaten der Seite), für den Cursor */
   klick: { x: number; y: number } | null
-  /** Handy: Formatleiste fest über der Bildschirmtastatur */
+  /** Handy: Leiste fest über der Bildschirmtastatur */
   mobil: boolean
+  /** Name des Elements für die Leiste („Lehrtext“) */
+  name?: string
   melde: (nachricht: Record<string, unknown>) => void
 }
 
@@ -43,7 +45,7 @@ const ZWISCHEN_NACH_MS = 2000
 function knopf(label: string, text: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement('button')
   b.type = 'button'
-  b.className = 'wk-fb'
+  b.className = 'wk-el-k'
   b.setAttribute('aria-label', label)
   b.title = label
   b.textContent = text
@@ -53,22 +55,39 @@ function knopf(label: string, text: string, onClick: () => void): HTMLButtonElem
   return b
 }
 
-function auswahl(label: string, optionen: Array<[string, string]>, beiWahl: (wert: string) => void): HTMLSelectElement {
+/** Auswahlfeld der Leiste; die Optionen setzt `fuelle` (sie wechseln mit der Stelle im Text) */
+function auswahlFeld(beiWahl: (wert: string) => void): HTMLSelectElement {
   const s = document.createElement('select')
-  s.className = 'wk-fs'
-  s.setAttribute('aria-label', label)
-  for (const [wert, text] of optionen) {
-    const o = document.createElement('option')
-    o.value = wert
-    o.textContent = text
-    s.appendChild(o)
-  }
+  s.className = 'wk-el-s'
   s.addEventListener('change', () => {
     const wert = s.value
     s.value = ''
     if (wert) beiWahl(wert)
   })
   return s
+}
+
+type Option = [wert: string, text: string]
+function fuelle(s: HTMLSelectElement, titel: string, gruppen: Array<{ name: string | null; optionen: Option[] }>) {
+  s.textContent = ''
+  const kopf = document.createElement('option')
+  kopf.value = ''
+  kopf.textContent = titel
+  s.appendChild(kopf)
+  for (const g of gruppen) {
+    const ziel = g.name ? document.createElement('optgroup') : s
+    if (g.name) {
+      ;(ziel as HTMLOptGroupElement).label = g.name
+      s.appendChild(ziel)
+    }
+    for (const [wert, text] of g.optionen) {
+      const o = document.createElement('option')
+      o.value = wert
+      o.textContent = text
+      ziel.appendChild(o)
+    }
+  }
+  s.value = ''
 }
 
 function finde(ed: Editor): { pos: number; node: import('@tiptap/pm/model').Node } | null {
@@ -96,10 +115,19 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
 
   const zone = doc.createElement('div')
   zone.className = 'wk-schreibzone'
+  if (opt.mobil) zone.classList.add('wk-mit-unten')
+  const elementName = opt.name || 'Lehrtext'
+  // PROJ-118: die eine Bearbeiten-Leiste – Name links, Mitte, „Fertig“ rechts
   const leiste = doc.createElement('div')
-  leiste.className = 'wk-format' + (opt.mobil ? ' wk-format-unten' : '')
+  leiste.className = 'wk-el' + (opt.mobil ? ' wk-el-unten' : '')
   leiste.setAttribute('role', 'toolbar')
-  leiste.setAttribute('aria-label', LEISTE_NAME)
+  leiste.setAttribute('aria-label', ELEMENT_LEISTE.name(elementName))
+  const nameEl = doc.createElement('span')
+  nameEl.className = 'wk-el-name'
+  nameEl.textContent = elementName
+  nameEl.title = elementName
+  const mitte = doc.createElement('div')
+  mitte.className = 'wk-el-mitte'
   const mount = doc.createElement('div')
   mount.className = 'wk-papier'
   zone.append(leiste, mount)
@@ -181,57 +209,84 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
     link: () => oeffneLink(),
   }
   const textKnoepfe = TEXT_KNOEPFE.map((k) => {
-    const b = knopf(k.lang, k.kurz, aktionen[k.id])
+    const b = knopf(k.lang, k.text, aktionen[k.id])
     if (k.id === 'fett') b.style.fontWeight = '800'
     if (k.id === 'kursiv') b.style.fontStyle = 'italic'
     return b
   })
   const [fett, kursiv, h2, h3, liste, nummer, link] = textKnoepfe
 
-  const boxWahl = auswahl(
-    BOX_WAHL.lang,
-    [['', BOX_WAHL.kurz], ...BOX_ARTEN.map((a): [string, string] => [a.klasse, a.label])],
-    (klasse) => {
-      if (editor.isActive('erhalten')) return
-      if (finde(editor)) {
-        ketten().updateAttributes('box', { klasse }).run()
-        return
-      }
-      if (!ketten().wrapIn('box', { klasse }).run()) ketten().insertContent(`<div class="${klasse}"><p></p></div>`).run()
-    },
-  )
-  const boxAktion = auswahl(
-    BOX_AKTION.lang,
-    [['', BOX_AKTION.kurz], ...BOX_AKTION.aktionen.map((a): [string, string] => [a.id, a.text])],
-    (aktion) => {
-      const b = finde(editor)
-      if (!b) return
-      const ende = b.pos + b.node.nodeSize
-      if (aktion === 'darunter') {
-        ketten().insertContentAt(ende, `<div class="${String(b.node.attrs.klasse || 'merke')}"><p></p></div>`).run()
-      } else if (aktion === 'aufloesen') {
-        ketten()
-          .command(({ tr }) => {
-            tr.replaceWith(b.pos, ende, b.node.content)
-            return true
-          })
-          .run()
-      } else if (aktion === 'loeschen') {
-        ketten()
-          .command(({ tr, state }) => {
-            // Ein Text ohne Inhalt bleibt ein leerer Absatz
-            if (state.doc.childCount === 1) tr.replaceWith(b.pos, ende, state.schema.nodes.paragraph.create())
-            else tr.delete(b.pos, ende)
-            return true
-          })
-          .run()
-      }
-    },
-  )
+  // Kasten (Merke, Tipp …): EIN Feld. Außerhalb eines Kastens „Kasten einfügen …“, darin „Kasten ändern …“
+  const kasten = auswahlFeld((wert) => {
+    if (editor.isActive('erhalten')) return
+    const [art, was] = wert.split(':')
+    const b = finde(editor)
+    if (art === 'art') {
+      if (b) ketten().updateAttributes('box', { klasse: was }).run()
+      else if (!ketten().wrapIn('box', { klasse: was }).run()) ketten().insertContent(`<div class="${was}"><p></p></div>`).run()
+      return
+    }
+    if (!b) return
+    const ende = b.pos + b.node.nodeSize
+    if (was === 'darunter') {
+      ketten().insertContentAt(ende, `<div class="${String(b.node.attrs.klasse || 'merke')}"><p></p></div>`).run()
+    } else if (was === 'aufloesen') {
+      ketten()
+        .command(({ tr }) => {
+          tr.replaceWith(b.pos, ende, b.node.content)
+          return true
+        })
+        .run()
+    } else if (was === 'loeschen') {
+      ketten()
+        .command(({ tr, state }) => {
+          // Ein Text ohne Inhalt bleibt ein leerer Absatz
+          if (state.doc.childCount === 1) tr.replaceWith(b.pos, ende, state.schema.nodes.paragraph.create())
+          else tr.delete(b.pos, ende)
+          return true
+        })
+        .run()
+    }
+  })
+  const arten: Option[] = BOX_ARTEN.map((a) => [`art:${a.klasse}`, a.label])
+  let kastenStand: boolean | null = null
+  function kastenFuellen(imKasten: boolean) {
+    if (kastenStand === imKasten) return
+    kastenStand = imKasten
+    const w = imKasten ? KASTEN.aendern : KASTEN.einfuegen
+    kasten.setAttribute('aria-label', w.lang)
+    kasten.title = w.lang
+    fuelle(
+      kasten,
+      w.text,
+      imKasten
+        ? [
+            { name: KASTEN.artGruppe, optionen: arten },
+            { name: KASTEN.aktionGruppe, optionen: KASTEN.aktionen.map((a): Option => [`aktion:${a.id}`, a.text]) },
+          ]
+        : [{ name: null, optionen: arten }],
+    )
+  }
 
-  const fertig = knopf(FERTIG.lang, FERTIG.kurz, () => beende())
-  fertig.classList.add('wk-fertig')
-  leiste.append(...textKnoepfe, boxWahl, boxAktion, fertig)
+  const trenner = doc.createElement('span')
+  trenner.className = 'wk-el-trenner'
+  trenner.setAttribute('aria-hidden', 'true')
+  // Was nur in der Schublade geht (HTML-Ansicht): erst den Endstand melden, dann die Schublade wünschen
+  const htmlKnopf = knopf(ELEMENT_LEISTE.html.lang, ELEMENT_LEISTE.html.text, () => {
+    beende()
+    melde({ wkFormular: marke })
+  })
+
+  const fertig = knopf(FERTIG.lang, FERTIG.text, () => beende())
+  fertig.classList.add('wk-el-fertig')
+  mitte.append(...textKnoepfe, kasten, trenner, htmlKnopf)
+  leiste.append(nameEl, mitte, fertig)
+  // Esc auf einem Knopf der Leiste = Fertig (im Text erledigt das der Editor selbst, im Link-Feld schließt es nur das Feld)
+  leiste.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return
+    e.preventDefault()
+    beende()
+  })
 
   // Link: eigenes Eingabefeld, denn `prompt()` ist in der abgeschotteten Seite gesperrt
   const linkZeile = doc.createElement('div')
@@ -284,9 +339,11 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
     an(liste, editor.isActive('bulletList'))
     an(nummer, editor.isActive('orderedList'))
     an(link, editor.isActive('link'))
-    boxAktion.hidden = !finde(editor)
+    kastenFuellen(!!finde(editor))
+    // Geschützte Teile (Tabellen u. a.): Knöpfe, die dort nichts dürfen, sind gesperrt statt still wirkungslos
     const gesperrt = editor.isActive('erhalten')
     for (const b of [fett, kursiv, h2, h3, liste, nummer, link]) b.disabled = gesperrt
+    kasten.disabled = gesperrt
   }
   editor.on('selectionUpdate', aktualisiere)
   editor.on('transaction', aktualisiere)
@@ -308,7 +365,9 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
   // Cursor an die Klickstelle (die Zeilen können sich gegenüber der gebauten Seite leicht verschoben haben)
   let treffer: { pos: number } | null = null
   try {
-    treffer = opt.klick ? editor.view.posAtCoords({ left: opt.klick.x, top: opt.klick.y }) : null
+    // Die Leiste steht jetzt über dem Text und schiebt ihn nach unten: um ihre Höhe verschieben (PROJ-118)
+    const versatz = opt.mobil ? 0 : leiste.offsetHeight + (leiste.offsetHeight ? 10 : 0)
+    treffer = opt.klick ? editor.view.posAtCoords({ left: opt.klick.x, top: opt.klick.y + versatz }) : null
   } catch {
     treffer = null
   }

@@ -186,15 +186,16 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
     document.body.innerHTML = ''
   })
 
-  it('zeigt die Aufgabe als Felder, mit Schild, Kopfzeile, Fußleiste; Fokus auf der Frage', () => {
+  it('zeigt die Aufgabe als Felder, mit der einen Bearbeiten-Leiste oben (PROJ-118) und Kopfzeile; Fokus auf der Frage', () => {
     starte()
     expect(ziel.classList.contains('wk-aufgabenzone')).toBe(true)
-    expect(ziel.querySelector('.wk-aw-schild')?.textContent).toBe('Bearbeiten')
+    expect(ziel.querySelector('.wk-aw-schild')).toBeNull()
+    expect(ziel.querySelector('[role="toolbar"]')?.getAttribute('aria-label')).toBe('Einfachauswahl bearbeiten')
     expect(ziel.querySelector('.kopfzeile .marke')?.textContent).toBe('Aufgabe 2')
     expect((ziel.querySelector('textarea.frage') as HTMLTextAreaElement).value).toBe('Wer haftet?')
     expect(felder().map((f) => f.value)).toEqual(['Frachtführer', 'Absender', 'Empfänger'])
     expect(kreise().map((k) => k.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
-    expect(ziel.querySelector('.wk-aw-typ')?.textContent).toBe('Einfachauswahl')
+    expect(ziel.querySelector('.wk-el-name')?.textContent).toBe('Einfachauswahl')
     expect(document.activeElement).toBe(ziel.querySelector('textarea.frage'))
     expect(document.getElementById('wk-aw-ansage')?.textContent).toMatch(/Aufgabe 2 wird bearbeitet/)
   })
@@ -313,7 +314,7 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
   it('„Fertig“ meldet das Ende und zeigt die Schülersicht bis zum Neubau', () => {
     starte()
     tippe(felder()[1], 'Absenderin')
-    fireEvent.click(ziel.querySelector('.wk-aw-fertig')!)
+    fireEvent.click(ziel.querySelector('.wk-el-fertig')!)
     expect(aenderungen()).toHaveLength(1)
     expect(gemeldet.at(-1)).toEqual({ wkAufgabeEnde: 'k0-e1' })
     expect(werk.fertig).toBe(true)
@@ -339,14 +340,23 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
     expect(ziel.querySelector('textarea')).toBeNull()
   })
 
-  it('⋯ bietet Aufgabentyp ändern, Quelltext, Duplizieren, Löschen (rot, unten) und meldet die Wahl', () => {
+  it('PROJ-118: Duplizieren und Löschen stehen sichtbar in der Leiste, „Mehr …“ bietet Aufgabentyp ändern und Quelltext', () => {
     starte()
-    fireEvent.click(knopf('Weitere Aktionen'))
+    fireEvent.click(knopf('Element duplizieren'))
+    expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'duplizieren' })
+    expect(knopf('Element löschen').classList.contains('wk-el-gefahr')).toBe(true)
+    fireEvent.click(knopf('Element löschen'))
+    expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'loeschen' })
+    fireEvent.click(knopf('Weitere Möglichkeiten'))
     const punkte = Array.from(ziel.querySelectorAll<HTMLButtonElement>('.wk-aw-menue button'))
-    expect(punkte.map((p) => p.textContent)).toEqual(['Aufgabentyp ändern …', 'Quelltext bearbeiten', 'Element duplizieren', 'Element löschen'])
-    expect(punkte[3].classList.contains('wk-aw-gefahr')).toBe(true)
+    expect(punkte.map((p) => p.textContent)).toEqual(['Aufgabentyp ändern …', 'Quelltext bearbeiten'])
     fireEvent.click(punkte[1])
     expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'roh' })
+    // Esc schließt zuerst das Menü, erst dann die Aufgabe
+    fireEvent.click(knopf('Weitere Möglichkeiten'))
+    fireEvent.keyDown(ziel.querySelector('.wk-aw-menue button')!, { key: 'Escape' })
+    expect(ziel.querySelector('.wk-aw-menue')).toBeNull()
+    expect(werk.fertig).toBe(false)
   })
 })
 

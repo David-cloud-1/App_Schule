@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderInWorkspace } from '@/components/admin/workspace-test-utils'
 import { BEDIEN_FARBEN, BEDIEN_MASSE } from '@/components/werkzeugkiste/editor/bedien-design'
-import { BOX_AKTION, BOX_WAHL, TEXT_KNOEPFE } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { BLOCK_LEISTE, ELEMENT_LEISTE, FERTIG, KASTEN, TEXT_KNOEPFE } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { starteSchreiben } from '@/components/werkzeugkiste/editor/schreibwerk/eintritt'
+import { starteAufgabe } from '@/components/werkzeugkiste/editor/aufgabenwerk/eintritt'
 import { SCHREIB_FARBEN } from '@/components/werkzeugkiste/editor/schreibwerk/schreib-design'
 import { AW_FARBEN } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
 import { LEISTE_FARBEN } from '@/components/werkzeugkiste/editor/vorschau-skript'
@@ -86,13 +88,10 @@ describe('Bedien-Design: eine Farbquelle', () => {
   )
 })
 
-describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe', () => {
+describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe (PROJ-118: ganze Wörter)', () => {
   it('das Schreibwerk baut seine Knöpfe aus der Liste, ohne eigene Beschriftungen', () => {
     const quelle = lies('schreibwerk/eintritt.ts')
-    expect(quelle).toContain('TEXT_KNOEPFE')
-    expect(quelle).toContain('BOX_WAHL')
-    expect(quelle).toContain('BOX_AKTION')
-    expect(quelle).toContain('FERTIG')
+    for (const name of ['TEXT_KNOEPFE', 'KASTEN', 'FERTIG', 'ELEMENT_LEISTE']) expect(quelle).toContain(name)
     for (const k of TEXT_KNOEPFE) expect(quelle, `eigene Beschriftung ${k.lang}`).not.toContain(`'${k.lang}'`)
   })
 
@@ -101,20 +100,135 @@ describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe', () => {
     const leiste = await screen.findByRole('toolbar', { name: 'Textgestaltung' })
     const knoepfe = Array.from(leiste.querySelectorAll('button'))
     const sichtbar = knoepfe.slice(0, TEXT_KNOEPFE.length + 1)
-    expect(sichtbar.slice(0, TEXT_KNOEPFE.length).map((b) => b.textContent)).toEqual(TEXT_KNOEPFE.map((k) => k.kurz))
+    expect(sichtbar.slice(0, TEXT_KNOEPFE.length).map((b) => b.textContent)).toEqual(TEXT_KNOEPFE.map((k) => k.text))
     expect(sichtbar.slice(0, TEXT_KNOEPFE.length).map((b) => b.getAttribute('aria-label'))).toEqual(TEXT_KNOEPFE.map((k) => k.lang))
-    expect(sichtbar[TEXT_KNOEPFE.length].textContent).toBe(BOX_WAHL.kurz)
-    expect(BOX_AKTION.kurz).toBe('Diese Box …')
+    expect(sichtbar[TEXT_KNOEPFE.length].textContent).toBe(KASTEN.einfuegen.text)
   })
 
-  it('das Aufgabenwerk nimmt „Fertig“ aus der Liste', () => {
+  it('auf keinem Knopf steht ein Kürzel (F, K, H2, „Box …“ …)', () => {
+    const woerter = [
+      ...TEXT_KNOEPFE.map((k) => k.text),
+      KASTEN.einfuegen.text,
+      KASTEN.aendern.text,
+      ...KASTEN.aktionen.map((a) => a.text),
+      FERTIG.text,
+      ELEMENT_LEISTE.html.text,
+      ELEMENT_LEISTE.duplizieren.text,
+      ELEMENT_LEISTE.loeschen.text,
+      ELEMENT_LEISTE.mehr.text,
+      BLOCK_LEISTE.bearbeiten.text,
+      BLOCK_LEISTE.darunter.text,
+      BLOCK_LEISTE.duplizieren.text,
+      BLOCK_LEISTE.loeschen.text,
+    ]
+    for (const w of woerter) {
+      expect(w, w).not.toMatch(/^(F|K|H\d|• Liste|1\. Liste|Box …|Diese Box …|Darunter)$/)
+      expect(w.replace(/[ …]/g, '').length, w).toBeGreaterThanOrEqual(4)
+    }
+    expect(TEXT_KNOEPFE.map((k) => k.text)).toEqual(['Fett', 'Kursiv', 'Überschrift', 'Unterüberschrift', 'Aufzählung', 'Nummerierung', 'Link'])
+  })
+
+  it('das Aufgabenwerk nimmt „Fertig“ und die Leisten-Wörter aus der Liste', () => {
     const quelle = lies('aufgabenwerk/eintritt.ts')
-    expect(quelle).toContain('FERTIG.kurz')
+    expect(quelle).toContain('FERTIG.text')
     expect(quelle).toContain('FERTIG.lang')
+    expect(quelle).toContain('ELEMENT_LEISTE.')
     expect(quelle).not.toContain('>Fertig</button>')
+    expect(quelle).not.toContain('wk-aw-fuss')
   })
 
-  it('die Reihenfolge ist F, K, H2, H3, • Liste, 1. Liste, Link', () => {
-    expect(TEXT_KNOEPFE.map((k) => k.kurz)).toEqual(['F', 'K', 'H2', 'H3', '• Liste', '1. Liste', 'Link'])
+  it('die Block-Leiste der Seite nimmt ihre Wörter aus der Liste', () => {
+    const quelle = lies('vorschau-skript.ts')
+    expect(quelle).toContain('BLOCK_LEISTE')
+    expect(quelle).not.toContain('<span>Bearbeiten</span>')
+    expect(quelle).not.toContain('<span>Darunter</span>')
+    expect(quelle).not.toContain('<span>Duplizieren</span>')
+  })
+})
+
+describe('Eine Leiste für alles (PROJ-118)', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('Schreibwerk, Aufgabenwerk und einzeilige Texte bauen ihre Leiste aus derselben Grundform', () => {
+    for (const datei of ['schreibwerk/schreib-design.ts', 'aufgabenwerk/design.ts', 'vorschau-skript.ts']) {
+      expect(lies(datei), datei).toContain('elementLeisteCss()')
+    }
+  })
+
+  function aufbau(): { leiste: HTMLElement; ziel: HTMLElement } {
+    const ziel = document.createElement('div')
+    ziel.className = 'lehrtext'
+    document.body.appendChild(ziel)
+    starteSchreiben({ ziel, html: '<p>Hallo</p>', marke: 'k0-e0', klick: null, mobil: false, name: 'Lehrtext', melde: vi.fn() })
+    return { leiste: ziel.querySelector<HTMLElement>('[role="toolbar"]')!, ziel }
+  }
+
+  it('Lehrtext: Name links, Wörter in der Mitte, „Fertig“ rechts', () => {
+    const { leiste } = aufbau()
+    expect(leiste.getAttribute('aria-label')).toBe(ELEMENT_LEISTE.name('Lehrtext'))
+    expect(leiste.classList.contains('wk-el')).toBe(true)
+    const kinder = Array.from(leiste.children) as HTMLElement[]
+    expect(kinder[0].className).toBe('wk-el-name')
+    expect(kinder[0].textContent).toBe('Lehrtext')
+    expect(kinder[2].textContent).toBe(FERTIG.text)
+    expect(kinder[2].classList.contains('wk-el-fertig')).toBe(true)
+    const mitte = Array.from(kinder[1].querySelectorAll('button')).map((b) => b.textContent)
+    expect(mitte).toEqual([...TEXT_KNOEPFE.map((k) => k.text), ELEMENT_LEISTE.html.text])
+    expect(kinder[1].querySelector('select')?.options[0].textContent).toBe(KASTEN.einfuegen.text)
+  })
+
+  it('im Kasten heißt das eine Feld „Kasten ändern …“ (Art, darunter, entfernen, löschen)', () => {
+    const ziel = document.createElement('div')
+    document.body.appendChild(ziel)
+    const s = starteSchreiben({ ziel, html: '<div class="merke"><p>Kasten</p></div>', marke: 'k0-e0', klick: null, mobil: false, melde: vi.fn() })
+    s.editor.commands.setTextSelection(3)
+    const feld = ziel.querySelector<HTMLSelectElement>('.wk-el-mitte select')!
+    expect(feld.options[0].textContent).toBe(KASTEN.aendern.text)
+    const gruppen = Array.from(feld.querySelectorAll('optgroup')).map((g) => g.label)
+    expect(gruppen).toEqual([KASTEN.artGruppe, KASTEN.aktionGruppe])
+    expect(Array.from(feld.querySelectorAll('optgroup')[1].querySelectorAll('option')).map((o) => o.textContent)).toEqual(KASTEN.aktionen.map((a) => a.text))
+  })
+
+  it('Aufgabe: dieselbe Leiste oben (Name, Duplizieren, Löschen, Mehr …, Fertig), keine Fußzeile, kein Schild', () => {
+    const ziel = document.createElement('section')
+    ziel.setAttribute('data-wk', 'k0-e0')
+    ziel.innerHTML = '<div class="kopfzeile"><span class="marke">Aufgabe 1</span></div><p class="frage">Frage?</p>'
+    document.body.appendChild(ziel)
+    starteAufgabe({
+      ziel,
+      block: { type: 'multiple_choice', question: 'Frage?', options: ['A', 'B'], correct: 0 } as never,
+      marke: 'k0-e0',
+      typName: 'Einfachauswahl',
+      eintrag: null,
+      melde: () => {},
+    })
+    const leiste = ziel.querySelector<HTMLElement>('[role="toolbar"]')!
+    expect(leiste.classList.contains('wk-el')).toBe(true)
+    expect(leiste.getAttribute('aria-label')).toBe(ELEMENT_LEISTE.name('Einfachauswahl'))
+    expect(leiste.querySelector('.wk-el-name')?.textContent).toBe('Einfachauswahl')
+    const knoepfe = Array.from(leiste.querySelectorAll(':scope button')).map((b) => b.textContent)
+    expect(knoepfe).toEqual([ELEMENT_LEISTE.duplizieren.text, ELEMENT_LEISTE.loeschen.text, ELEMENT_LEISTE.mehr.text, FERTIG.text])
+    // Die Leiste steht vor dem Inhalt (oben), nicht danach
+    expect(ziel.querySelector('.wk-aw')?.firstElementChild).toBe(leiste)
+    expect(ziel.querySelector('.wk-aw-fuss')).toBeNull()
+    expect(ziel.querySelector('.wk-aw-schild')).toBeNull()
+  })
+
+  it('Aufgabe am Handy: Leiste unten', () => {
+    const ziel = document.createElement('section')
+    ziel.setAttribute('data-wk', 'k0-e0')
+    document.body.appendChild(ziel)
+    starteAufgabe({
+      ziel,
+      block: { type: 'multiple_choice', question: 'Frage?', options: ['A', 'B'], correct: 0 } as never,
+      marke: 'k0-e0',
+      typName: 'Einfachauswahl',
+      eintrag: null,
+      mobil: true,
+      melde: () => {},
+    })
+    expect(ziel.querySelector('[role="toolbar"]')?.classList.contains('wk-el-unten')).toBe(true)
   })
 })

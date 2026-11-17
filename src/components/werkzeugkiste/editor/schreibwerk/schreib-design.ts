@@ -7,16 +7,7 @@
  * und `schuldesign.py`. Läuft im Rahmen der Vorschau, deshalb reines CSS ohne Tailwind.
  */
 
-import {
-  BEDIEN_FARBEN,
-  BEDIEN_MASSE,
-  BEDIEN_SCHRIFT,
-  auswahlCss,
-  fertigCss,
-  fokusCss,
-  knopfCss,
-  leistenRahmenCss,
-} from '@/components/werkzeugkiste/editor/bedien-design'
+import { BEDIEN_FARBEN, BEDIEN_MASSE, elementLeisteCss, fokusCss } from '@/components/werkzeugkiste/editor/bedien-design'
 
 /** Farbpaare der Formatleiste (PROJ-117: Ausschnitt der gemeinsamen Quelle `bedien-design.ts`) */
 export const SCHREIB_FARBEN = BEDIEN_FARBEN
@@ -25,7 +16,7 @@ const F = SCHREIB_FARBEN
 
 export const SCHREIB_CSS = [
   `.wk-schreibzone{position:relative;outline:2px solid ${F.akzent};outline-offset:4px;border-radius:4px;cursor:text!important}`,
-  '.wk-schreibzone *{cursor:text!important}.wk-format *{cursor:pointer!important}.wk-fe input{cursor:text!important}',
+  '.wk-schreibzone *{cursor:text!important}.wk-el *{cursor:pointer!important}.wk-el .wk-el-name{cursor:default!important}.wk-fe input{cursor:text!important}',
   '.wk-papier{font:inherit;color:#222;line-height:1.6}',
   '.wk-papier .ProseMirror{outline:none;min-height:3em;white-space:pre-wrap;word-wrap:break-word}',
   '.wk-papier p{margin:.5em 0}.wk-papier ul,.wk-papier ol{margin:.5em 0;padding-left:1.4em}',
@@ -56,17 +47,12 @@ export const SCHREIB_CSS = [
   '.wk-papier .wk-erhalten::before{display:block;margin-bottom:8px;color:#555;font-size:11px;content:"Geschützt – in der Schublade bearbeiten"}',
   '.wk-papier .wk-erhalten table{width:100%;border-collapse:collapse}.wk-papier .wk-erhalten td,.wk-papier .wk-erhalten th{border:1px solid #ddd;padding:6px}',
   '.wk-papier .ProseMirror-selectednode{outline:2px solid #26640C}',
-  // Formatleiste
-  `.wk-format{position:sticky;top:4px;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:0 0 8px;padding:3px;${leistenRahmenCss()};font:${BEDIEN_SCHRIFT}}`,
-  // PROJ-111: Nach „Fertig“ ist die Leiste weg. Ohne diese Regel überstimmt `display:flex` das Attribut `hidden`.
-  '.wk-format[hidden]{display:none!important}',
-  '.wk-format-unten{position:fixed;left:0;right:0;top:auto;bottom:0;margin:0;border-radius:12px 12px 0 0;border-width:1px 0 0}',
-  knopfCss('.wk-fb'),
-  fokusCss('.wk-fs:focus-visible,.wk-fe input:focus-visible'),
-  auswahlCss('.wk-fs'),
+  // PROJ-118: die eine Bearbeiten-Leiste (gemeinsame Grundform aus `bedien-design.ts`)
+  elementLeisteCss(),
+  fokusCss('.wk-fe input:focus-visible'),
   `.wk-fe{display:flex;flex-basis:100%;gap:4px;padding:3px}.wk-fe input{flex:1;min-height:${BEDIEN_MASSE.knopfHoehe}px;padding:4px 8px;border:1px solid ${F.text};border-radius:${BEDIEN_MASSE.knopfRundung}px;font:inherit;color:#111}`,
   '.wk-fe[hidden]{display:none!important}',
   `.wk-fh{flex-basis:100%;padding:3px 6px;color:${F.hinweis};background:${F.hinweisGrund};border-radius:6px}.wk-fh[hidden]{display:none!important}`,
-  '.wk-fertig{margin-left:auto}',
-  fertigCss('.wk-fb.wk-fertig'),
+  // Handy: Unter dem Text Platz für die feste Leiste
+  '.wk-schreibzone.wk-mit-unten{padding-bottom:64px}',
 ].join('')

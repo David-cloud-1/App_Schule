@@ -98,6 +98,7 @@ import {
   uebernimmSchreibtext,
   type SchreibTeil,
 } from '@/components/werkzeugkiste/editor/schreiben'
+import { rundreiseOk } from '@/lib/werkzeugkiste-text'
 import type { AufgabeBefehl, AufgabeStart, SchreibBefehl, SchreibStart } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { LOESCH_TEXTE, eintragFuerBlock, hatBauplan, uebernimmAufgabe, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 
@@ -665,6 +666,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       beiAufgabe(w)
       return true
     }
+    // PROJ-118: „Als HTML bearbeiten“ aus der Leiste: Die Seite hat ihren Endstand schon gemeldet, jetzt die Schublade.
+    // Text bearbeiten verschiebt keine Marken; deshalb ohne Prüfung der gebauten Seite (sie ist absichtlich „älter“).
+    if (w.art === 'formular') {
+      const a = gueltigeAuswahl(auswahlAusMarke(w.marke), z.struktur)
+      if (a && modus === 'bearbeiten') {
+        setAuswahl(a)
+        setVollbreit(false)
+      }
+      return true
+    }
     // Alles mit Marke: Die Marken zählen Themen und Blöcke durch. PROJ-113: Die Seite muss nicht brandneu sein,
     // aber die angeklickte Stelle muss in der gezeigten Seite dieselbe sein wie jetzt im Entwurf (sonst träfe der
     // Klick einen anderen Block). So geht ein Klick auch während des Neubaus.
@@ -709,24 +720,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         setAuswahlRoh({ art: 'thema', thema: nach })
         return true
       }
-      case 'schreibe': {
-        if (z.gesperrt || modus !== 'bearbeiten' || viele || schreibRef.current) return true
-        const wert = schreibWert(a, w.teil, z.struktur)
-        if (wert === null) return true
-        if (w.teil === 'text' && !direktBearbeitbar(wert)) {
-          // Gestaltung, die der Schreibmodus nicht verlustfrei kann: wie im Formular die HTML-Ansicht anbieten
-          setAuswahl(a)
-          setVollbreit(false)
-          toast.info('Dieser Text lässt sich nur in der Schublade bearbeiten (HTML-Ansicht), damit keine Gestaltung verloren geht.')
-          return true
-        }
-        // Schublade und Schreiben in der Seite laufen gleichzeitig: Die Schublade bleibt, wie sie ist, und zeigt den Text live
-        setAuswahlRoh(a)
-        const nr = ++schreibZaehler.current
-        schreibRef.current = { nr, marke: w.marke, teil: w.teil, ort: a, start: wert }
-        setSchreiben({ nr, marke: w.marke, teil: w.teil, html: w.teil === 'text' ? wert : undefined })
+      case 'schreibe':
+        starteSchreibenInSeite(a, w.marke, w.teil)
         return true
-      }
       case 'breite': {
         if (z.gesperrt || a.art !== 'block') return true
         const b = z.struktur.chapters[a.thema]?.elements[a.block]
@@ -769,12 +765,16 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         }))
         return true
       }
-      case 'bearbeite':
+      case 'bearbeite': {
+        // PROJ-118: „Bearbeiten“ führt immer in die eine Bearbeiten-Leiste, wo das in der Seite geht
         if (a.art === 'block' && oeffneAufgabe({ thema: a.thema, block: a.block }, null)) return true
+        const teil = seitenTeil(a)
+        if (teil && starteSchreibenInSeite(a, w.marke, teil)) return true
         setAuswahl(a)
         // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
         setVollbreit(false)
         return true
+      }
       case 'einfuegen': {
         if (z.gesperrt) return true
         const ort = einfuegeortAusMarke(w.marke, z.struktur)
@@ -868,6 +868,37 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     toast.success('Galerie aufgelöst', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
   }
 
+  /** PROJ-118: Was „Bearbeiten“ direkt in der Seite öffnet (sonst `null` = Schublade) */
+  function seitenTeil(a: Auswahl): SchreibTeil | null {
+    if (a?.art === 'thema') return 'kapitel'
+    if (a?.art === 'deckblatt') return 'titel'
+    if (a?.art === 'block') return z.struktur.chapters[a.thema]?.elements[a.block]?.type === 'text' ? 'text' : null
+    return null
+  }
+
+  /**
+   * Schreiben in der Seite starten (Doppelklick, „Bearbeiten“, Enter). `false` = geht hier nicht, der Aufrufer
+   * öffnet dann die Schublade. PROJ-118: Die Schublade schließt dabei, damit nie zwei Leisten offen sind.
+   */
+  function starteSchreibenInSeite(a: Exclude<Auswahl, null>, marke: string, teil: SchreibTeil): boolean {
+    if (z.gesperrt || modus !== 'bearbeiten' || viele || schreibRef.current) return false
+    const wert = schreibWert(a, teil, z.struktur)
+    if (wert === null) return false
+    if (teil === 'text' && !direktBearbeitbar(wert)) {
+      // Gestaltung, die der Schreibmodus nicht verlustfrei kann: wie im Formular die HTML-Ansicht anbieten
+      setAuswahl(a)
+      setVollbreit(false)
+      toast.info('Dieser Text lässt sich nur in der Schublade bearbeiten (HTML-Ansicht), damit keine Gestaltung verloren geht.')
+      return true
+    }
+    setAuswahlRoh(a)
+    setSchubladeOffen(false)
+    const nr = ++schreibZaehler.current
+    schreibRef.current = { nr, marke, teil, ort: a, start: wert }
+    setSchreiben({ nr, marke, teil, html: teil === 'text' ? wert : undefined })
+    return true
+  }
+
   // PROJ-103: Text aus der Seite übernehmen. Die Seite schreibt nur, die App reinigt und speichert.
   function beendeSitzung(vorbei: boolean) {
     schreibRef.current = null
@@ -879,6 +910,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (!sit || sit.marke !== w.marke) return
     if (w.art === 'schreibAbbruch') {
       beendeSitzung(false)
+      // Die Seite fand die Stelle nicht: Schublade statt stummem Nichts
+      if (!z.gesperrt && modus === 'bearbeiten') {
+        setAuswahl(sit.ort)
+        setVollbreit(false)
+      }
       return
     }
     if (w.teil !== sit.teil) return
@@ -897,9 +933,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         beendeSitzung(true)
         return
       }
-      wert = r.html
+      // PROJ-118: Nur andere Schreibweise (z. B. nach „Fertig“ ohne Eingabe) ist keine Änderung
+      wert = rundreiseOk(sit.start, r.html) ? sit.start : r.html
     } else {
       wert = einfachText(w.html)
+      if (wert === einfachText(sit.start)) wert = sit.start
     }
     // Eine Sitzung ist im Verlauf immer ein einziger Schritt
     if (!z.gesperrt) z.aendere((s) => setzeSchreibWert(sit.ort, sit.teil, s, wert), `schreib-${sit.nr}`, true)
@@ -1112,8 +1150,10 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   useEffect(() => {
     const sit = schreibRef.current
     if (!sit) return
-    if (modus !== 'bearbeiten' || marke !== sit.marke || dialog) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
-  }, [modus, marke, dialog, schreiben])
+    // PROJ-118: Öffnet die Schublade (Gliederung, Enter), endet das Schreiben in der Seite – nie zwei Leisten
+    if (modus !== 'bearbeiten' || marke !== sit.marke || dialog || schubladeAktiv)
+      setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
+  }, [modus, marke, dialog, schreiben, schubladeAktiv])
 
   // Tasten, die die Seite weitergibt (sie hat den Fokus, die App sähe sie sonst nie)
   function beiTaste(t: Taste) {
@@ -1138,7 +1178,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         if (n) setAuswahlRoh(n)
         break
       }
-      case 'Enter':
+      case 'Enter': {
+        // PROJ-118: wie „Bearbeiten“ – Lehrtext, Thema und Deckblatt öffnen in der Seite, wenn sie die Stelle zeigt
+        const teil = viele ? null : seitenTeil(gewaehlt)
+        if (gewaehlt && teil && marke && seiteBereit && stelleStimmt(marke, z.struktur, v.gebautSchluessel)) {
+          if (starteSchreibenInSeite(gewaehlt, marke, teil)) break
+        }
         // Schritt 3: wie ein Klick in der Gliederung (Aufgabe in der Seite, auch wenn die Seite gerade neu baut)
         if (gewaehlt?.art === 'block' && !viele) {
           oeffneStelle(gewaehlt)
@@ -1149,6 +1194,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           setVollbreit(false)
         }
         break
+      }
       case 'Delete':
       case 'Backspace':
         if (gewaehlt?.art === 'block') loescheAuswahl()

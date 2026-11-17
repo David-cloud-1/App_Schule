@@ -177,8 +177,10 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - Animationen höchstens 200 ms. Bei „Bewegung reduzieren“ entfallen sie im ganzen Bereich.
 - Lange Namen werden mit „…“ gekürzt, der volle Text steht im `title`.
 
-### Bearbeiten-Leiste im Baukasten (PROJ-117)
-- **Eine Quelle:** Farben, Maße und Grundformen der Bearbeiten-Knöpfe in der Vorschau stehen in `src/components/werkzeugkiste/editor/bedien-design.ts`. Wörter und Reihenfolge der Textleiste stehen in `bedien-woerter.ts`. Block-Leiste, „+“, Schreibwerk und Aufgabenwerk lesen daraus; die Schublade (`text-editor.tsx`) liest die Wörter.
-- **Reihenfolge der Textleiste:** F, K, H2, H3, • Liste, 1. Liste, Link, „Box …“, „Diese Box …“, Fertig (nur in der Vorschau). Die Schublade zeigt zusätzlich Schritt-Liste, Link entfernen und Löschen am Ende.
-- **Maße:** Knopfhöhe 36 px am Rechner, 44 px auf Touch-Geräten. Rundung 8 px, Leiste 10 px.
-- **Regel:** Neue Bearbeitungsstellen übernehmen diese Quelle, statt eine eigene Optik zu erfinden. Der Test `bedien-design.test.tsx` schlägt fehl, wenn eine Stelle eine eigene Bedien-Farbe oder eigene Beschriftungen einbaut. Nach Änderungen an der Quelle `npm run schreibwerk:bauen` und `npm run aufgabenwerk:bauen`.
+### Bearbeiten-Leiste im Baukasten (PROJ-117, PROJ-118)
+- **Eine Leiste für alles:** Lehrtext, Aufgabe, Thema, Deckblatt und Bildunterschrift zeigen beim Bearbeiten in der Seite dieselbe Leiste: links der Name des Elements, in der Mitte nur, was dort geht, rechts immer „Fertig“. Am Rechner klebt sie oben am geöffneten Element, am Handy unten über der Tastatur. Esc = Fertig. Während ein Element in der Seite offen ist, ist die Schublade zu (nie zwei Leisten).
+- **Eine Quelle:** Grundform (`elementLeisteCss`), Farben und Maße in `src/components/werkzeugkiste/editor/bedien-design.ts`; alle Wörter in `bedien-woerter.ts` (Textknöpfe, Kasten, Fertig, Element-Leiste, Block-Leiste). Schreibwerk, Aufgabenwerk, Vorschau-Skript und Schublade (`text-editor.tsx`) lesen daraus.
+- **Ganze Wörter, keine Kürzel:** Fett, Kursiv, Überschrift, Unterüberschrift, Aufzählung, Nummerierung, Link, „Kasten einfügen …“ (im Kasten: „Kasten ändern …“), „Als HTML bearbeiten“, Fertig. Aufgaben: Duplizieren, Löschen, „Mehr …“ (Aufgabentyp ändern, Quelltext), Fertig – keine Formatknöpfe.
+- **Block-Leiste beim Anklicken:** immer Name · Bearbeiten · Darunter einfügen · Duplizieren · ⋯ · Löschen (was nicht geht, fehlt; die Reihenfolge bleibt). „Bearbeiten“, Doppelklick und Enter öffnen die Leiste oben, wo das in der Seite geht, sonst die Schublade.
+- **Maße:** Knopfhöhe 36 px am Rechner, 44 px auf Touch-Geräten. Rundung 8 px, Leiste 10 px. Ist die Leiste schmaler als 560 px, bleibt sie einzeilig und die Mitte scrollt waagerecht.
+- **Regel:** Neue Bearbeitungsstellen übernehmen diese Leiste und Quelle, statt eine eigene Optik oder eigene Wörter zu erfinden. Der Test `bedien-design.test.tsx` schlägt fehl, wenn eine Stelle eine eigene Bedien-Farbe, eigene Beschriftungen oder Kürzel einbaut. Nach Änderungen an der Quelle `npm run schreibwerk:bauen` und `npm run aufgabenwerk:bauen`.

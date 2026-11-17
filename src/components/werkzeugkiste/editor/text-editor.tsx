@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { html as htmlSprache } from '@codemirror/lang-html'
 import { EditorView } from '@codemirror/view'
-import { Columns2, ListChecks, Trash2, Unlink, X } from 'lucide-react'
+import { Columns2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -27,7 +27,7 @@ import {
   rundreiseOk,
   sauberGeschlossen,
 } from '@/lib/werkzeugkiste-text'
-import { BOX_AKTION, BOX_WAHL, GESCHUETZT_LOESCHEN, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { GESCHUETZT_LOESCHEN, KASTEN, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { alsHtml, textErweiterungen } from '@/components/werkzeugkiste/editor/text-erweiterungen'
 
 const CodeMirror = dynamic(() => import('@uiw/react-codemirror'), {
@@ -200,7 +200,7 @@ export function TextEditor({
 }
 
 // ── Werkzeugleiste ────────────────────────────────────────────────────────
-// PROJ-117: Knöpfe, Reihenfolge und Wörter kommen aus `bedien-woerter.ts`, wie in der Vorschau.
+// PROJ-117/118: Knöpfe, Reihenfolge und Wörter kommen aus `bedien-woerter.ts`, wie in der Vorschau (ganze Wörter).
 
 function Knopf({
   aktiv,
@@ -250,7 +250,6 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
     }
   }, [editor])
 
-  const k = 'size-4'
   const inBox = editor.isActive('box')
 
   function boxEinfuegen(klasse: string) {
@@ -263,15 +262,16 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
     }
   }
 
-  // Neue Box hinter die aktuelle Box setzen (statt die vorhandene umzuwandeln)
-  function boxDarunter(klasse: string) {
+  // Neuer Kasten derselben Art hinter dem aktuellen (wie in der Vorschau)
+  function kastenDarunter() {
     const $from = editor.state.selection.$from
     for (let d = $from.depth; d > 0; d--) {
-      if ($from.node(d).type.name === 'box') {
+      const n = $from.node(d)
+      if (n.type.name === 'box') {
         editor
           .chain()
           .focus()
-          .insertContentAt($from.after(d), `<div class="${klasse}"><p></p></div>`)
+          .insertContentAt($from.after(d), `<div class="${String(n.attrs.klasse || 'merke')}"><p></p></div>`)
           .run()
         return
       }
@@ -318,79 +318,58 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
           onClick={befehle[t.id].tun}
           stil={cn(t.id === 'fett' && 'font-extrabold', t.id === 'kursiv' && 'italic')}
         >
-          {t.kurz}
+          {t.text}
         </Knopf>
       ))}
       <span className="mx-1 h-6 w-px bg-ws-line" aria-hidden />
+      {/* PROJ-118: EIN Kasten-Feld – außerhalb eines Kastens „einfügen“, darin „ändern“ (wie in der Vorschau) */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
-            aria-label={BOX_WAHL.lang}
-            title={BOX_WAHL.lang}
+            aria-label={inBox ? KASTEN.aendern.lang : KASTEN.einfuegen.lang}
+            title={inBox ? KASTEN.aendern.lang : KASTEN.einfuegen.lang}
             onMouseDown={(e) => e.preventDefault()}
+            disabled={erhaltenGewaehlt}
             className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ws-text hover:bg-ws-raised"
           >
-            {BOX_WAHL.kurz}
+            {inBox ? KASTEN.aendern.text : KASTEN.einfuegen.text}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
-          <DropdownMenuLabel>{BOX_WAHL.lang}</DropdownMenuLabel>
+          {inBox && <DropdownMenuLabel>{KASTEN.artGruppe}</DropdownMenuLabel>}
           {BOX_ARTEN.map((b) => (
             <DropdownMenuItem key={b.klasse} onSelect={() => boxEinfuegen(b.klasse)}>
               {b.label}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() =>
-              editor
-                .chain()
-                .focus()
-                .insertContent('<div class="vergleich"><div data-titel="Vorteile"><p></p></div><div data-titel="Nachteile"><p></p></div></div>')
-                .run()
-            }
-          >
-            <Columns2 className="mr-2 size-4" aria-hidden /> Vergleich (zwei Spalten)
-          </DropdownMenuItem>
+          {inBox ? (
+            <>
+              <DropdownMenuLabel>{KASTEN.aktionGruppe}</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={kastenDarunter}>{KASTEN.aktionen[0].text}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => editor.chain().focus().lift('box').run()}>{KASTEN.aktionen[1].text}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => editor.chain().focus().deleteNode('box').run()} className="text-ws-red focus:text-ws-red">
+                {KASTEN.aktionen[2].text}
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem
+              onSelect={() =>
+                editor
+                  .chain()
+                  .focus()
+                  .insertContent('<div class="vergleich"><div data-titel="Vorteile"><p></p></div><div data-titel="Nachteile"><p></p></div></div>')
+                  .run()
+              }
+            >
+              <Columns2 className="mr-2 size-4" aria-hidden /> {KASTEN.vergleich}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {inBox && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={BOX_AKTION.lang}
-              title={BOX_AKTION.lang}
-              onMouseDown={(e) => e.preventDefault()}
-              className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ws-text hover:bg-ws-raised"
-            >
-              {BOX_AKTION.kurz}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
-            <DropdownMenuLabel>{BOX_AKTION.aktionen[0].text}</DropdownMenuLabel>
-            {BOX_ARTEN.map((b) => (
-              <DropdownMenuItem key={`darunter-${b.klasse}`} onSelect={() => boxDarunter(b.klasse)}>
-                {b.label}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => editor.chain().focus().lift('box').run()}>
-              <X className="mr-2 size-4" aria-hidden /> {BOX_AKTION.aktionen[1].text}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => editor.chain().focus().deleteNode('box').run()}
-              className="text-ws-red focus:text-ws-red"
-            >
-              <Trash2 className="mr-2 size-4" aria-hidden /> {BOX_AKTION.aktionen[2].text}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-      {/* Zusätzlich in der Schublade (nicht Teil der gemeinsamen Liste): */}
+      {/* Zusätzlich nur in der Schublade (nicht Teil der gemeinsamen Liste): */}
       <span className="mx-1 h-6 w-px bg-ws-line" aria-hidden />
       <Knopf
         label="Schritt-für-Schritt-Liste"
@@ -404,16 +383,16 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
           editor.chain().focus().updateAttributes('orderedList', { class: 'schritte' }).run()
         }}
       >
-        <ListChecks className={k} aria-hidden />
+        Schritte
       </Knopf>
       {editor.isActive('link') && (
         <Knopf label="Link entfernen" onClick={() => editor.chain().focus().unsetLink().run()}>
-          <Unlink className={k} aria-hidden />
+          Link entfernen
         </Knopf>
       )}
       {erhaltenGewaehlt && (
-        <Knopf label={GESCHUETZT_LOESCHEN} onClick={() => editor.chain().focus().deleteSelection().run()}>
-          <Trash2 className={k} aria-hidden />
+        <Knopf label={GESCHUETZT_LOESCHEN} onClick={() => editor.chain().focus().deleteSelection().run()} stil="text-ws-red">
+          {GESCHUETZT_LOESCHEN}
         </Knopf>
       )}
     </div>

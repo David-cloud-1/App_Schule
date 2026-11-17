@@ -1,4 +1,5 @@
-import { BEDIEN_FARBEN, knopfCss, leistenRahmenCss } from '@/components/werkzeugkiste/editor/bedien-design'
+import { BEDIEN_FARBEN, elementLeisteCss, knopfCss, leistenRahmenCss } from '@/components/werkzeugkiste/editor/bedien-design'
+import { BLOCK_LEISTE, ELEMENT_LEISTE, FERTIG } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { typName } from '@/lib/werkzeugkiste-editor'
 import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
@@ -86,14 +87,29 @@ const CSS = [
   'body.wk-schreibt .wk-leiste,body.wk-schreibt .wk-plus,body.wk-schreibt .wk-linie{display:none!important}',
   'body.wk-schreibt .wk-hover{outline:none!important}',
   `.wk-einfach{outline:2px solid ${F.akzent};outline-offset:4px;border-radius:4px;cursor:text!important}`,
-  // PROJ-114: Während eine Aufgabe bearbeitet wird, hat sie ihre eigene Fußleiste
+  // PROJ-114/118: Während eine Aufgabe bearbeitet wird, hat sie ihre eigene Bearbeiten-Leiste
   'body.wk-aufgabe .wk-leiste,body.wk-aufgabe .wk-plus,body.wk-aufgabe .wk-linie{display:none!important}',
   'body.wk-bearbeiten .wk-aufgabenzone[data-wk],body.wk-bearbeiten .wk-aufgabenzone[data-wk] *{cursor:auto!important}',
   'body.wk-bearbeiten .wk-aufgabenzone[data-wk] :is(button,[role=radio]){cursor:pointer!important}',
   'body.wk-bearbeiten .wk-aufgabenzone[data-wk] :is(textarea,input){cursor:text!important}',
   'body.wk-bearbeiten .wk-aufgabenzone.wk-hover{outline:none}',
+  // PROJ-118: die eine Bearbeiten-Leiste auch für Thema, Deckblatt und Bildunterschrift
+  elementLeisteCss(),
   '@media print{.wk-ui{display:none!important}.wk-aktiv,.wk-hover{outline:none!important}}',
 ].join('')
+
+/** Wörter für das Skript in der Seite (aus der einzigen Quelle `bedien-woerter.ts`) */
+const WOERTER = {
+  bearbeiten: BLOCK_LEISTE.bearbeiten,
+  darunter: BLOCK_LEISTE.darunter,
+  duplizieren: BLOCK_LEISTE.duplizieren,
+  mehr: BLOCK_LEISTE.mehr.lang,
+  loeschen: BLOCK_LEISTE.loeschen,
+  fertig: FERTIG,
+  enter: ELEMENT_LEISTE.enterHinweis,
+  leisteName: ELEMENT_LEISTE.name('#'),
+  einfachNamen: { kapitel: 'Thema', titel: 'Deckblatt', untertitel: 'Deckblatt', unterschrift: 'Bildunterschrift' },
+}
 
 const SVG = (pfad: string) =>
   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
@@ -132,6 +148,7 @@ var SCHNELL=${JSON.stringify(SCHNELL)};
 var STUFEN=${JSON.stringify(BREITE_STUFEN)},BMIN=${BREITE_MIN},BMAX=${BREITE_MAX},NAEHE=${EINRAST_NAEHE},HANDY=${JSON.stringify(HANDY_BREITEN)};
 var ICON=${JSON.stringify(ICONS)};
 var FINDER=${JSON.stringify(FINDER)};
+var W=${JSON.stringify(WOERTER)};
 var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null,aufgabe=null,aufgaben={};
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
@@ -183,11 +200,13 @@ var bGriff=knopf("griff",ICON.griff,"Zum Verschieben ziehen","wk-griff");bGriff.
 var bHoch=knopf("hoch",ICON.hoch,"Nach oben");
 var bRunter=knopf("runter",ICON.runter,"Nach unten");
 var bKopiere=knopf("kopiere",ICON.zwischen+"<span>Kopieren</span>","Kopieren");
-var bBearb=knopf("bearbeite",ICON.stift+"<span>Bearbeiten</span>","Bearbeiten");
-var bPlus=knopf("einfuegen",ICON.plus+"<span>Darunter</span>","Element darunter einfügen");
-var bKopie=knopf("dupliziere",ICON.kopie+"<span>Duplizieren</span>","Element duplizieren");
-var bMehr=knopf("menue",ICON.mehr,"Weitere Aktionen");bMehr.setAttribute("aria-haspopup","menu");
-var bWeg=knopf("loesche",ICON.papierkorb,"Element löschen","wk-d");
+// PROJ-118: Gleiche Wörter und Reihenfolge für jede Elementart (Name · Bearbeiten · Darunter einfügen · Duplizieren · ⋯ · Löschen)
+function wort(b,w){b.querySelector("span").textContent=w.text;return b}
+var bBearb=wort(knopf("bearbeite",ICON.stift+"<span></span>",W.bearbeiten.lang),W.bearbeiten);
+var bPlus=wort(knopf("einfuegen",ICON.plus+"<span></span>",W.darunter.lang),W.darunter);
+var bKopie=wort(knopf("dupliziere",ICON.kopie+"<span></span>",W.duplizieren.lang),W.duplizieren);
+var bMehr=knopf("menue",ICON.mehr,W.mehr);bMehr.setAttribute("aria-haspopup","menu");
+var bWeg=wort(knopf("loesche",ICON.papierkorb+"<span></span>",W.loeschen.lang,"wk-d"),W.loeschen);
 var bildAkt=function(a,icon,text,label){var b=knopf("bild",icon+(text?"<span>"+text+"</span>":""),label);b.setAttribute("data-wk-bild",a);b.setAttribute("title",label);return b};
 var bAustausch=bildAkt("austauschen",ICON.austausch,"Austauschen","Bild austauschen");
 var bZuschnitt=bildAkt("zuschneiden",ICON.zuschnitt,"Zuschneiden","Bild zuschneiden");
@@ -213,18 +232,16 @@ function leisteAktualisieren(){
   var art=!auswahl?"":(viele?"viele":(/-e\d+$/.test(auswahl)?"block":(/^k\d+$/.test(auswahl)?"thema":"sonst")));
   typ.textContent=viele?(mehr.length+" Elemente ausgewählt"):auswahlName;
   bGriff.hidden=lesen||mobil||(art!=="block"&&art!=="thema"&&art!=="viele");
-  // PROJ-111: Ist das Formular schon offen, braucht es kein zweites „Bearbeiten“ in der Leiste
-  bBearb.hidden=viele||(schublade&&!mobil);
+  // PROJ-118: „Bearbeiten“ steht immer da und führt in die eine Bearbeiten-Leiste (oder, wo es nur dort geht, in die Schublade)
+  bBearb.hidden=viele;
   bPlus.hidden=lesen||viele||(art!=="block"&&art!=="thema");
-  bPlus.querySelector("span").textContent=art==="thema"?"Element":"Darunter";
-  bPlus.setAttribute("aria-label",art==="thema"?"Element am Anfang des Themas einfügen":"Element darunter einfügen");
   bHoch.hidden=lesen||!mobil||(art!=="block"&&art!=="viele");
   bRunter.hidden=bHoch.hidden;
   bKopiere.hidden=viele?false:true;
   bKopie.hidden=lesen||(art!=="block"&&art!=="viele");
   bMehr.hidden=lesen||(art!=="block"&&art!=="viele");
   bWeg.hidden=lesen||(art!=="block"&&art!=="thema"&&art!=="viele");
-  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Elemente löschen":"Element löschen"));
+  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Elemente löschen":W.loeschen.lang));
   bildLeiste(art);
 }
 // PROJ-104: Knöpfe für Bilder (nur bei genau einem Bild-Block, nicht in der Galerie)
@@ -300,7 +317,7 @@ function baueEinfuegestellen(){
         var b=knopf("schnell","<span></span>",null);b.querySelector("span").textContent=s[1];
         b.setAttribute("data-wk-marke",m);b.setAttribute("data-wk-typ",s[0]);reihe.appendChild(b);
       });
-      var alle=knopf("einfuegen",ICON.plus+"<span>Alle Blöcke …</span>",null);alle.setAttribute("data-wk-marke",m);reihe.appendChild(alle);
+      var alle=knopf("einfuegen",ICON.plus+"<span>Alle Elemente …</span>",null);alle.setAttribute("data-wk-marke",m);reihe.appendChild(alle);
       box.appendChild(reihe);
       k.parentNode.insertBefore(box,k.nextSibling);
       continue;
@@ -359,7 +376,8 @@ addEventListener("mouseover",function(ev){
 // ── Aktionen der eigenen Bedienelemente ───────────────────────────────
 function aktion(a){
   var t=a.getAttribute("data-wk-aktion"),m=a.getAttribute("data-wk-marke")||auswahl;
-  if(t==="bearbeite")p({wkBearbeite:m});
+  if(t==="bearbeite"){merkeKlick=null;p({wkBearbeite:m})}
+  else if(t==="fertig"){if(schreibt&&!schreibt.fertig)schreibt.beende();else if(aufgabeOffen())aufgabe.beende()}
   else if(t==="einfuegen")p({wkEinfuegen:m});
   else if(t==="dupliziere")p({wkDupliziere:m});
   else if(t==="loesche")p({wkLoesche:m});
@@ -656,7 +674,31 @@ function setzeCursor(el,k){
   if(r&&el.contains(r.startContainer)){var sel=getSelection();sel.removeAllRanges();sel.addRange(r)}
 }
 function schreibEnde(){document.body.classList.remove("wk-schreibt");if(schreibt)schreibt.fertig=true}
+// PROJ-118: dieselbe Bearbeiten-Leiste wie beim Lehrtext: Name links, Hinweis, „Fertig“ rechts
+function einfachLeiste(el,s){
+  var name=W.einfachNamen[s.teil]||"Text";
+  var l=neu("div","wk-ui wk-el"+(mobil?" wk-el-unten":""));
+  l.setAttribute("role","toolbar");l.setAttribute("aria-label",W.leisteName.replace("#",name));
+  var n=neu("span","wk-el-name");n.textContent=name;
+  var mi=neu("div","wk-el-mitte"),h=neu("span","wk-el-hinweis");h.textContent=W.enter;mi.appendChild(h);
+  var f=neu("button","wk-el-k wk-el-fertig");f.type="button";f.setAttribute("data-wk-aktion","fertig");
+  f.setAttribute("aria-label",W.fertig.lang);f.setAttribute("title",W.fertig.lang);f.textContent=W.fertig.text;
+  l.appendChild(n);l.appendChild(mi);l.appendChild(f);
+  // Ein Klick auf die Leiste nimmt dem Text nicht den Fokus (sonst endete das Schreiben schon beim Drücken)
+  l.addEventListener("mousedown",function(e){e.preventDefault()});
+  el.parentNode.insertBefore(l,el);
+  // Handy: über der Bildschirmtastatur kleben (wie Lehrtext und Aufgabe)
+  var vv=mobil?window.visualViewport:null;
+  if(vv){
+    var ueber=function(){l.style.bottom=Math.max(0,innerHeight-(vv.height+vv.offsetTop))+"px"};
+    vv.addEventListener("resize",ueber);vv.addEventListener("scroll",ueber);ueber();
+    l.wkWeg=function(){vv.removeEventListener("resize",ueber);vv.removeEventListener("scroll",ueber)};
+  }
+  return l;
+}
+function einfachLeisteWeg(l){if(!l)return;if(l.wkWeg)l.wkWeg();if(l.parentNode)l.parentNode.removeChild(l)}
 function einfachStart(el,s){
+  var leisteE=null;
   el.classList.add("wk-schreibzone","wk-einfach");
   el.setAttribute("contenteditable","true");el.setAttribute("spellcheck","true");el.setAttribute("lang","de");
   var letzter=el.textContent.replace(/\s+/g," ").trim(),zeit=null,fertig=false;
@@ -665,6 +707,7 @@ function einfachStart(el,s){
   function ende(){
     if(fertig)return;fertig=true;if(zeit)clearTimeout(zeit);
     el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");
+    einfachLeisteWeg(leisteE);
     schreibEnde();p({wkSchreibEnde:s.marke,teil:s.teil,html:text()});
   }
   el.addEventListener("input",function(){if(zeit)clearTimeout(zeit);zeit=setTimeout(zw,2000)});
@@ -676,8 +719,10 @@ function einfachStart(el,s){
     if(tx)document.execCommand("insertText",false,tx);
   });
   el.addEventListener("blur",ende);
+  // Erst den Cursor an die Klickstelle, dann die Leiste einfügen (sie verschiebt die Zeile nach unten)
   setzeCursor(el,merkeKlick);
-  schreibt={beende:ende,ab:function(){fertig=true;if(zeit)clearTimeout(zeit);el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");schreibEnde()},fertig:false};
+  leisteE=einfachLeiste(el,s);
+  schreibt={beende:ende,ab:function(){fertig=true;if(zeit)clearTimeout(zeit);el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");einfachLeisteWeg(leisteE);schreibEnde()},fertig:false};
 }
 // ── Aufgabe an Ort und Stelle bearbeiten (PROJ-114) ──────────────────
 function startAufgabe(s){
@@ -686,7 +731,7 @@ function startAufgabe(s){
   if(!el||el.tagName!=="SECTION"||!window.__wkAufgabenwerk||!s.block||typeof s.block!=="object"){p({wkAufgabeAbbruch:String(s.marke||"")});return}
   document.body.classList.add("wk-aufgabe");
   try{
-    aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,
+    aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,mobil:mobil,
       // Die Leiste war während der Bearbeitung ausgeblendet (Breite 0): nach dem Einblenden neu messen und platzieren
       melde:function(n){if(n.wkAufgabeEnde){document.body.classList.remove("wk-aufgabe");leisteAktualisieren();plaziere();requestAnimationFrame(function(){plaziere()})}p(n)}});
   }catch(x){document.body.classList.remove("wk-aufgabe");aufgabe=null;p({wkAufgabeAbbruch:s.marke});return}
@@ -701,7 +746,7 @@ function startSchreiben(s){
     if(!window.__wkSchreibwerk||typeof s.html!=="string"){document.body.classList.remove("wk-schreibt");p({wkSchreibAbbruch:s.marke});return}
     var w;
     try{
-      w=window.__wkSchreibwerk.starte({ziel:el,html:s.html,marke:s.marke,klick:merkeKlick,mobil:mobil,melde:function(n){if(n.wkSchreibEnde){document.body.classList.remove("wk-schreibt");if(schreibt)schreibt.fertig=true;w.element.classList.remove("wk-schreibzone")}p(n)}});
+      w=window.__wkSchreibwerk.starte({ziel:el,html:s.html,marke:s.marke,klick:merkeKlick,mobil:mobil,name:auswahlName||"Lehrtext",melde:function(n){if(n.wkSchreibEnde){document.body.classList.remove("wk-schreibt");if(schreibt)schreibt.fertig=true;w.element.classList.remove("wk-schreibzone")}p(n)}});
     }catch(x){document.body.classList.remove("wk-schreibt");p({wkSchreibAbbruch:s.marke});return}
     schreibt={beende:function(){w.beende()},ab:function(){w.ab();schreibEnde()},fertig:false};
   }else einfachStart(el,s);

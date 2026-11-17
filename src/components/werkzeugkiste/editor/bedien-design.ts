@@ -70,7 +70,41 @@ export function fertigCss(klasse: string): string {
   return `${klasse}{background:${F.akzent};border-color:${F.akzent};color:${F.akzentText};font-weight:700}${klasse}:hover{background:${F.text};border-color:${F.text}}`
 }
 
-/** Auswahlfeld in der Leiste (Box …, Diese Box …) */
+/**
+ * PROJ-118: Die EINE Bearbeiten-Leiste für jedes Element (Lehrtext, Aufgabe, Thema, Deckblatt …).
+ * Aufbau: Name links (`.wk-el-name`), Mitte mit dem, was dort geht (`.wk-el-mitte`), „Fertig“ rechts
+ * (`.wk-el-k.wk-el-fertig`). Am Rechner klebt sie oben am geöffneten Element, am Handy unten
+ * (`.wk-el-unten`, über der Bildschirmtastatur). Knöpfe `.wk-el-k`, Auswahlfelder `.wk-el-s`.
+ * Schreibwerk, Aufgabenwerk und Vorschau-Skript bauen sie mit genau diesen Klassen.
+ */
+export function elementLeisteCss(): string {
+  return [
+    `.wk-el{container-type:inline-size;box-sizing:border-box;width:100%;position:sticky;top:4px;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0 0 10px;padding:4px;${leistenRahmenCss()};font:${BEDIEN_SCHRIFT};color:${F.text};text-align:left;letter-spacing:normal;text-transform:none}`,
+    '.wk-el[hidden]{display:none!important}',
+    '.wk-el *{box-sizing:border-box}',
+    `.wk-el-name{flex:none;max-width:14rem;padding:0 10px 0 6px;border-right:1px solid ${F.trenner};font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`,
+    // Die Mitte füllt den Platz zwischen Name und „Fertig“ und bricht in sich um
+    '.wk-el-mitte{flex:1 1 0;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:2px}',
+    `.wk-el-hinweis{padding:0 6px;color:${F.textTyp};font-weight:500;white-space:nowrap}`,
+    `.wk-el-trenner{width:1px;align-self:stretch;margin:4px 2px;background:${F.trenner}}`,
+    knopfCss('.wk-el-k'),
+    `.wk-el-k[disabled]{opacity:.45;cursor:not-allowed}`,
+    `.wk-el-k.wk-el-gefahr{color:${F.gefahr}}.wk-el-k.wk-el-gefahr:hover{background:${F.gefahrHover};border-color:${F.gefahr}}`,
+    `.wk-el-fertig{flex:none;margin-left:auto}`,
+    fertigCss('.wk-el-k.wk-el-fertig'),
+    auswahlCss('.wk-el-s'),
+    // Handy: fest unten über der Tastatur; die Mitte scrollt waagerecht, Name und „Fertig“ bleiben sichtbar
+    '.wk-el.wk-el-unten{position:fixed;left:0;right:0;top:auto;bottom:0;margin:0;border-radius:12px 12px 0 0;border-width:1px 0 0}',
+    '.wk-el-unten .wk-el-name{max-width:8rem}',
+    '.wk-el-unten .wk-el-mitte{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior:contain}',
+    '.wk-el-unten .wk-el-k,.wk-el-unten .wk-el-s{flex:none}',
+    // Schmale Vorschau am Rechner: wie am Handy eine Zeile, die Mitte scrollt (statt fünf Zeilen hoch zu werden)
+    '@container (max-width:560px){.wk-el-mitte{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior:contain}.wk-el-mitte .wk-el-k,.wk-el-mitte .wk-el-s{flex:none}.wk-el-name{max-width:8rem}}',
+    '@media print{.wk-el{display:none!important}}',
+  ].join('')
+}
+
+/** Auswahlfeld in der Leiste (Kasten einfügen …, Kasten ändern …) */
 export function auswahlCss(klasse: string): string {
   return [
     `${klasse}{min-height:${M.knopfHoehe}px;max-width:11rem;padding:4px 6px;border:1px solid ${F.text};border-radius:${M.knopfRundung}px;background:${F.grund};color:${F.text};font:inherit}`,

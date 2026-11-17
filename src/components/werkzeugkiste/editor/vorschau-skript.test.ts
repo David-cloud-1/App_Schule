@@ -184,28 +184,31 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     expect(leiste.hidden).toBe(true)
   })
 
-  it('an einem Block: alle Aktionen; am Thema: „Block“; an der Lernzielkontrolle: nur „Bearbeiten“', () => {
+  it('an einem Block: alle Aktionen; am Thema dieselben Wörter; an der Lernzielkontrolle: nur „Bearbeiten“ (PROJ-118)', () => {
     laufenLassen()
     const sichtbar = () =>
       [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
     vomEditor({ wk: 'k0-e1', name: 'x' })
     expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
-    expect(aktion('einfuegen').textContent).toBe('Darunter')
+    expect(aktion('einfuegen').textContent).toBe('Darunter einfügen')
+    expect(aktion('bearbeite').textContent).toBe('Bearbeiten')
+    expect(aktion('dupliziere').textContent).toBe('Duplizieren')
+    expect(aktion('loesche').textContent).toBe('Löschen')
     vomEditor({ wk: 'k0', name: 'Thema' })
     // Am Thema geht auch Löschen (die App fragt per Dialog nach)
     expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'loesche'])
-    expect(aktion('einfuegen').textContent).toBe('Element')
+    expect(aktion('einfuegen').textContent).toBe('Darunter einfügen')
     expect(aktion('loesche').getAttribute('aria-label')).toBe('Thema löschen')
     vomEditor({ wk: 'abschluss', name: 'Lernzielkontrolle' })
     expect(sichtbar()).toEqual(['bearbeite'])
   })
 
-  it('PROJ-111: Ist das Formular offen, fehlt „Bearbeiten“ in der Leiste (am Desktop); am Handy bleibt es', () => {
+  it('PROJ-118: „Bearbeiten“ steht immer in der Leiste, auch bei offenem Formular (es führt in die eine Bearbeiten-Leiste)', () => {
     const sichtbar = () =>
       [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
     laufenLassen({ modus: 'bearbeiten', schublade: true })
     vomEditor({ wk: 'k0-e1', name: 'x' })
-    expect(sichtbar()).toEqual(['griff', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
+    expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'dupliziere', 'menue', 'loesche'])
     vomEditor({ wkZustand: { modus: 'bearbeiten', schublade: false } })
     expect(sichtbar()).toContain('bearbeite')
     vomEditor({ wkZustand: { modus: 'bearbeiten', schublade: true, mobil: true } })

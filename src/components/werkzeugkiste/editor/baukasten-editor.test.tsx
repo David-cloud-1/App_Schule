@@ -417,22 +417,63 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
   })
 
-  it('öffnet per „Bearbeiten“ aus der Vorschau das Formular des Blocks – wenn die Vorschau aktuell ist', async () => {
+  it('PROJ-118: „Bearbeiten“ am Lehrtext öffnet ihn in der Seite (eine Leiste), die Schublade bleibt zu; an der Lernzielkontrolle die Schublade', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
-    // Seit PROJ-114 öffnen Aufgaben an Ort und Stelle; der Lehrtext hat weiter sein Formular
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    nachricht({ wkBereit: true }, rahmen)
     nachricht({ wkBearbeite: 'k0-e0' }, rahmen)
+    await waitFor(
+      () => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k0-e0', teil: 'text', html: STRUKTUR.chapters[0].elements[0].content } }, '*'),
+      { timeout: 4000 },
+    )
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    // „Als HTML bearbeiten“ aus der Leiste: erst der Endstand, dann die Schublade
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: STRUKTUR.chapters[0].elements[0].content }, rahmen)
+    nachricht({ wkFormular: 'k0-e0' }, rahmen)
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    // Ohne Bearbeitung in der Seite (Lernzielkontrolle): Schublade
+    nachricht({ wkBearbeite: 'abschluss' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lernzielkontrolle' })).toBeInTheDocument()
   })
 
-  it('beendet die Vollbreite und öffnet die Schublade, wenn man in der Vorschau „Bearbeiten“ klickt (QA BUG-1)', async () => {
+  it('PROJ-118: „Bearbeiten“ am Thema öffnet den Titel in der Seite; eine offene Schublade schließt dabei', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkFormular: 'k1' }, rahmen)
+    await screen.findByRole('complementary', { name: 'Thema' })
+    nachricht({ wkBearbeite: 'k1' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k1', teil: 'kapitel' } }, '*'))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+  })
+
+  it('PROJ-118: Öffnet die Schublade für den Text, der gerade in der Seite offen ist, endet das Schreiben dort (nie zwei Leisten)', async () => {
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.anything() }), '*'), { timeout: 4000 })
+    const gliederung = screen.getByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
+    await screen.findByRole('complementary', { name: 'Lehrtext' })
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibBeende: true }, '*'))
+  })
+
+  it('„Als HTML bearbeiten“ beendet die Vollbreite und öffnet die Schublade (QA BUG-1)', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Vorschau über die ganze Breite' }))
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen)
+    nachricht({ wkFormular: 'k0-e0' }, rahmen)
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Vorschau über die ganze Breite' })).toHaveAttribute('aria-pressed', 'false')
   })
@@ -487,7 +528,9 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen)
+    // Ohne „bereit“ der Seite gibt es kein Schreiben in der Seite, die Stelle geht aber trotzdem sofort
+    nachricht({ wkWaehle: 'k0-e0' }, rahmen)
+    nachricht({ wkTaste: 'Enter' }, rahmen)
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
     expect(screen.queryByText(/Bitte gleich noch einmal klicken/)).not.toBeInTheDocument()
   })
@@ -705,7 +748,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('Schritt 3: Gemerkt „zu“ bleibt die Gliederung zu; „Gliederung einblenden“ öffnet sie dauerhaft, auch neben der Schublade', async () => {
     window.localStorage.setItem('wk-editor-gliederung', 'zu')
     const rahmen = await bereit()
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen) // „Bearbeiten“ am Lehrtext in der Vorschau
+    nachricht({ wkFormular: 'k0-e0' }, rahmen) // „Als HTML bearbeiten“ am Lehrtext in der Vorschau
     await screen.findByRole('complementary')
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Gliederung einblenden' }))
@@ -767,7 +810,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
 
   it('ein Klick neben alle Blöcke hebt die Auswahl auf, auch bei geöffnetem Formular', async () => {
     const { rahmen } = await bereit()
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen)
+    nachricht({ wkFormular: 'k0-e0' }, rahmen)
     await screen.findByRole('complementary')
     nachricht({ wkAbwaehle: true }, rahmen)
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
@@ -879,7 +922,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
   it('Modus-Schalter: „Ausprobieren“ schließt das Formular, behält die Auswahl und sagt es der Seite; ⌘/Strg+E wechselt zurück', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkBereit: true }, rahmen)
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen)
+    nachricht({ wkFormular: 'k0-e0' }, rahmen)
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
     expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'ausprobieren', lesen: false, mobil: false, leer: [1], schublade: false, aufgaben: { 'k0-e1': 'fill_blanks' } } }, '*')
@@ -889,10 +932,13 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     await waitFor(() => expect(senden).toHaveBeenLastCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1], schublade: false, aufgaben: { 'k0-e1': 'fill_blanks' } } }, '*'))
     fireEvent.keyDown(window, { key: 'e', ctrlKey: true })
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Ausprobieren' })).toHaveAttribute('data-state', 'on'))
-    // Die Auswahl blieb gemerkt: ein Enter öffnet das Formular desselben Blocks – im Modus Bearbeiten
+    // Die Auswahl blieb gemerkt: ein Enter öffnet denselben Block – im Modus Bearbeiten; PROJ-118: der Lehrtext in der Seite
     fireEvent.keyDown(window, { key: 'e', ctrlKey: true })
     nachricht({ wkTaste: 'Enter' }, rahmen)
-    expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.objectContaining({ marke: 'k0-e0', teil: 'text' }) }), '*'), {
+      timeout: 4000,
+    })
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 
   it('Rückgängig aus der Seite: Strg+Z mit dem Fokus in der Vorschau', async () => {
@@ -972,6 +1018,36 @@ describe('Direkt in der Seite schreiben (PROJ-103)', () => {
     await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.anything() }), '*'), { timeout: 4000 })
     nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: ORIGINAL }, rahmen)
     await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibVorbei: true }, '*'))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it('PROJ-118: „Fertig“ ohne Eingabe bei einem Text mit Kasten ändert nichts (kein Speichern, kein Rückgängig-Schritt)', async () => {
+    const MIT_KASTEN = '<p>Einleitung</p>\n<div class="merke"><p>Merksatz</p></div>'
+    const k0 = STRUKTUR.chapters[0]
+    api.ladeEditor.mockResolvedValue({
+      ...DATEN,
+      struktur: { ...STRUKTUR, chapters: [{ ...k0, elements: [{ type: 'text', content: MIT_KASTEN }, k0.elements[1]] }, STRUKTUR.chapters[1]] },
+    })
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k0-e0', teil: 'text' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkSchreibStart: expect.anything() }), '*'), { timeout: 4000 })
+    // Das Schreibwerk meldet bei „Fertig“ ohne Eingabe genau die gespeicherte Fassung zurück
+    nachricht({ wkSchreibEnde: 'k0-e0', teil: 'text', html: MIT_KASTEN }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibVorbei: true }, '*'))
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: /Rückgängig/ })).toBeDisabled()
+  })
+
+  it('PROJ-118: Einzeilige Texte: nur andere Leerzeichen gelten nicht als Änderung', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkBereit: true }, rahmen)
+    nachricht({ wkSchreibe: 'k1', teil: 'kapitel' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k1', teil: 'kapitel' } }, '*'))
+    nachricht({ wkSchreibEnde: 'k1', teil: 'kapitel', html: ' Haftungsgrenzen\n' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibVorbei: true }, '*'))
+    await new Promise((r) => setTimeout(r, 1500))
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
   })
 

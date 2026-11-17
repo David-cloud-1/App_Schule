@@ -47,6 +47,8 @@ export type VorschauWunsch =
   | { art: 'waehle'; marke: string }
   | { art: 'abwaehlen' }
   | { art: 'bearbeite'; marke: string }
+  /** PROJ-118: Formular (Schublade) für diese Stelle öffnen, z. B. „Als HTML bearbeiten“ aus der Leiste */
+  | { art: 'formular'; marke: string }
   | { art: 'einfuegen'; marke: string }
   | { art: 'loesche'; marke: string }
   | { art: 'dupliziere'; marke: string }
@@ -174,6 +176,10 @@ export function liesWunsch(daten: unknown): VorschauWunsch | null {
     const m = marke(n.wkSchreibe)
     const teil = schreibTeil(n.teil)
     return m && teil ? { art: 'schreibe', marke: m, teil } : null
+  }
+  if (typeof n.wkFormular === 'string') {
+    const m = marke(n.wkFormular)
+    return m ? { art: 'formular', marke: m } : null
   }
   if (typeof n.wkSchreibAbbruch === 'string') {
     const m = marke(n.wkSchreibAbbruch)

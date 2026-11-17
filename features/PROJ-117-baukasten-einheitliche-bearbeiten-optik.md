@@ -218,3 +218,6 @@ BUG-1 (Aufgabenwerk nimmt „Fertig“ und Screenreader-Namen aus `FERTIG`), BUG
 
 ## Deployment
 **2026-11-17:** Push auf `main` (Commits 5e4a37a, 25f52f8, ddda48e), Vercel-Production Ready, https://spedilern.vercel.app. Keine Migration, keine Datenbank. Build lokal grün, 498 Editor-Tests grün. **Browser-Test und Vorher/Nachher-Bild stehen noch aus** (ohne Browser-Test live gegangen, auf Wunsch des Nutzers).
+
+## Nachtrag (2026-11-17): abgelöst durch PROJ-118
+Die Kürzel-Beschriftungen („F“, „K“, „H2“, „H3“, „• Liste“, „1. Liste“, „Box …“, „Diese Box …“) und die Verteilung der Leisten (Textleiste oben, Aufgaben-Fußzeile unten, doppelte Leiste in der Schublade) waren ein Fehler dieser Spec. Der Live-Test zeigte: nicht erratbar, doppelt, „Fertig“ an zwei Stellen. PROJ-118 („Eine Leiste für alles“) ersetzt sie durch ganze Wörter und eine einzige Bearbeiten-Leiste für alle Elemente. Die gemeinsame Quelle (`bedien-design.ts`, `bedien-woerter.ts`) bleibt.

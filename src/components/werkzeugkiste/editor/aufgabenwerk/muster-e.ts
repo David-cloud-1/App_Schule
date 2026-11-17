@@ -257,7 +257,7 @@ export function lueckenTeil(w: Werk, teil: LueckenTeil): VNode {
           w.tue(setzeText(entferneLuecke(stuecke, k)), 'luecke-weg')
           w.ansage(`${name} entfernt, das Wort bleibt als Text stehen.`)
         }}>${teil.typ === 'mark_words' ? 'Markierung entfernen' : 'Lücke entfernen'}</button>
-        <button type="button" class="wk-aw-knopf" onClick=${schliesse}>Fertig</button>
+        <button type="button" class="wk-aw-knopf" onClick=${schliesse}>Schließen</button>
       </div>
     </div>`
   }

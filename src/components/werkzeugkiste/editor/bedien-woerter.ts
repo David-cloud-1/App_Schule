@@ -1,48 +1,79 @@
 /**
- * Bedien-Wörter des Baukastens (PROJ-117): welche Knöpfe die Textleiste hat, in welcher
- * Reihenfolge und mit welchen Wörtern. Das Schreibwerk in der Vorschau und der Text-Editor in
- * der Formular-Schublade bauen ihre Leiste aus DIESER Liste; ändert man hier ein Wort, ändert
- * es sich an beiden Stellen. Reine Texte, kein Browser, damit sie in die Pakete passt.
+ * Bedien-Wörter des Baukastens (PROJ-117, PROJ-118): EINZIGE Quelle für alle Beschriftungen der
+ * Bearbeiten-Leiste, der Block-Leiste und der Textknöpfe in der Schublade. Schreibwerk, Aufgabenwerk,
+ * Vorschau-Skript und Text-Editor bauen ihre Knöpfe aus diesen Listen; ändert man hier ein Wort,
+ * ändert es sich überall. Reine Texte, kein Browser, damit sie in die Pakete passt.
+ *
+ * PROJ-118: Auf jedem Knopf steht ein ganzes Wort (keine Kürzel wie „F“, „H2“, „Box …“).
  */
 
 export type TextKnopfId = 'fett' | 'kursiv' | 'h2' | 'h3' | 'liste' | 'nummer' | 'link'
 
 export interface TextKnopf {
   id: TextKnopfId
-  /** Was auf dem Knopf steht */
-  kurz: string
+  /** Was auf dem Knopf steht (ganzes Wort) */
+  text: string
   /** Hinweistext und Name für Screenreader */
   lang: string
 }
 
-/** Die Knöpfe der Textleiste in fester Reihenfolge (danach folgen Box-Wahl und Box-Aktion) */
+/** Die Textknöpfe in fester Reihenfolge (danach folgt die Kasten-Auswahl) */
 export const TEXT_KNOEPFE: readonly TextKnopf[] = [
-  { id: 'fett', kurz: 'F', lang: 'Fett' },
-  { id: 'kursiv', kurz: 'K', lang: 'Kursiv' },
-  { id: 'h2', kurz: 'H2', lang: 'Kapitelüberschrift' },
-  { id: 'h3', kurz: 'H3', lang: 'Unterabschnitt' },
-  { id: 'liste', kurz: '• Liste', lang: 'Aufzählung' },
-  { id: 'nummer', kurz: '1. Liste', lang: 'Nummerierte Liste' },
-  { id: 'link', kurz: 'Link', lang: 'Link (Strg/⌘ + K)' },
+  { id: 'fett', text: 'Fett', lang: 'Fett (Strg/⌘ + B)' },
+  { id: 'kursiv', text: 'Kursiv', lang: 'Kursiv (Strg/⌘ + I)' },
+  { id: 'h2', text: 'Überschrift', lang: 'Überschrift' },
+  { id: 'h3', text: 'Unterüberschrift', lang: 'Unterüberschrift' },
+  { id: 'liste', text: 'Aufzählung', lang: 'Aufzählung mit Punkten' },
+  { id: 'nummer', text: 'Nummerierung', lang: 'Nummerierte Liste' },
+  { id: 'link', text: 'Link', lang: 'Link einfügen (Strg/⌘ + K)' },
 ]
 
-/** Wahlfeld „Box …“ (Box einfügen oder Art ändern) */
-export const BOX_WAHL = { kurz: 'Box …', lang: 'Box einfügen oder Art ändern' } as const
-
-/** Wahlfeld „Diese Box …“ mit seinen Aktionen */
-export const BOX_AKTION = {
-  kurz: 'Diese Box …',
-  lang: 'Aktion für die Box',
+/**
+ * Kästen (Merke, Tipp, Achtung …). Außerhalb eines Kastens gibt es nur „Kasten einfügen …“,
+ * in einem Kasten nur „Kasten ändern …“ (Art ändern, neuer Kasten darunter, entfernen, löschen).
+ */
+export const KASTEN = {
+  einfuegen: { text: 'Kasten einfügen …', lang: 'Kasten einfügen (Merke, Tipp, Achtung …)' },
+  aendern: { text: 'Kasten ändern …', lang: 'Diesen Kasten ändern' },
+  /** Überschrift der Arten im Menü „Kasten ändern …“ */
+  artGruppe: 'Art ändern in',
+  /** Überschrift der Aktionen im Menü „Kasten ändern …“ */
+  aktionGruppe: 'Kasten',
   aktionen: [
-    { id: 'darunter', text: 'Neue Box darunter' },
-    { id: 'aufloesen', text: 'Box auflösen (Text bleibt)' },
-    { id: 'loeschen', text: 'Box löschen' },
+    { id: 'darunter', text: 'Neuer Kasten darunter' },
+    { id: 'aufloesen', text: 'Kasten entfernen (Text bleibt)' },
+    { id: 'loeschen', text: 'Kasten löschen' },
   ],
+  /** Nur in der Schublade: zwei Spalten nebeneinander */
+  vergleich: 'Vergleich (zwei Spalten)',
 } as const
 
-export const FERTIG = { kurz: 'Fertig', lang: 'Fertig – Schreiben beenden (Esc)' } as const
+export const FERTIG = { text: 'Fertig', lang: 'Fertig – Bearbeiten beenden (Esc)' } as const
 
-/** Beschriftung der Leiste für Screenreader */
+/** Die eine Bearbeiten-Leiste (PROJ-118), gleich für Lehrtext, Aufgabe, Thema, Deckblatt … */
+export const ELEMENT_LEISTE = {
+  /** Name der Leiste für Screenreader: „Lehrtext bearbeiten“ */
+  name: (element: string) => `${element} bearbeiten`,
+  html: { text: 'Als HTML bearbeiten', lang: 'Diesen Text in der Schublade als HTML bearbeiten' },
+  duplizieren: { text: 'Duplizieren', lang: 'Element duplizieren' },
+  loeschen: { text: 'Löschen', lang: 'Element löschen' },
+  mehr: { text: 'Mehr …', lang: 'Weitere Möglichkeiten' },
+  typ: 'Aufgabentyp ändern …',
+  quelltext: 'Quelltext bearbeiten',
+  /** Einzeilige Texte (Thema, Deckblatt, Bildunterschrift) */
+  enterHinweis: 'Enter = Fertig',
+} as const
+
+/** Block-Leiste beim bloßen Anklicken: gleiche Wörter und Reihenfolge für jede Elementart */
+export const BLOCK_LEISTE = {
+  bearbeiten: { text: 'Bearbeiten', lang: 'Bearbeiten' },
+  darunter: { text: 'Darunter einfügen', lang: 'Element darunter einfügen' },
+  duplizieren: { text: 'Duplizieren', lang: 'Element duplizieren' },
+  mehr: { lang: 'Weitere Aktionen' },
+  loeschen: { text: 'Löschen', lang: 'Element löschen' },
+} as const
+
+/** Beschriftung der Textknöpfe in der Schublade für Screenreader */
 export const LEISTE_NAME = 'Textgestaltung'
 
 /** Löschen eines geschützten (unveränderlichen) Teils, in der Schublade */

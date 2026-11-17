@@ -82,7 +82,7 @@ describe('Schreibwerk: Schreiben', () => {
 
   it('„Fertig“ meldet genau einen Endstand mit dem unveränderten Text, ohne ihn umzubauen', () => {
     const { ziel, melde } = aufbau('<p>Hallo <strong>Welt</strong></p><div class="merke"><p>Box</p></div>')
-    ziel.querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    ziel.querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     expect(melde).toHaveBeenCalledTimes(1)
     expect(melde).toHaveBeenCalledWith({ wkSchreibEnde: 'k0-e0', teil: 'text', html: '<p>Hallo <strong>Welt</strong></p><div class="merke"><p>Box</p></div>' })
     // (Der Text kommt exakt wie gespeichert zurück, auch wenn der Motor <p> in der Box anders schreiben würde)
@@ -91,13 +91,13 @@ describe('Schreibwerk: Schreiben', () => {
   it('Fett, Liste und Box wirken auf den markierten Text', () => {
     const { ziel, melde, s } = aufbau('<p>Hallo Welt</p>')
     s.editor.commands.selectAll()
-    const fett = ziel.querySelector<HTMLButtonElement>('button[aria-label="Fett"]')!
+    const fett = ziel.querySelector<HTMLButtonElement>('button[aria-label^="Fett"]')!
     fett.click()
     expect(fett.getAttribute('aria-pressed')).toBe('true')
-    const box = ziel.querySelector<HTMLSelectElement>('select[aria-label^="Box einfügen"]')!
-    box.value = 'tipp'
+    const box = ziel.querySelector<HTMLSelectElement>('select[aria-label^="Kasten einfügen"]')!
+    box.value = 'art:tipp'
     box.dispatchEvent(new Event('change'))
-    ziel.querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    ziel.querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     const html = melde.mock.calls[0][0].html as string
     expect(html).toContain('<strong>Hallo Welt</strong>')
     expect(html).toContain('class="tipp"')
@@ -106,10 +106,10 @@ describe('Schreibwerk: Schreiben', () => {
   it('eine Box lässt sich auflösen, der Text bleibt', () => {
     const { ziel, melde, s } = aufbau('<div class="merke"><p>Inhalt</p></div>')
     s.editor.commands.focus('end')
-    const aktion = ziel.querySelector<HTMLSelectElement>('select[aria-label="Aktion für die Box"]')!
-    aktion.value = 'aufloesen'
+    const aktion = ziel.querySelector<HTMLSelectElement>('select[aria-label="Diesen Kasten ändern"]')!
+    aktion.value = 'aktion:aufloesen'
     aktion.dispatchEvent(new Event('change'))
-    ziel.querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    ziel.querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     const html = melde.mock.calls[0][0].html as string
     expect(html).not.toContain('merke')
     expect(html).toContain('Inhalt')
@@ -134,26 +134,26 @@ describe('Schreibwerk: Schreiben', () => {
     const insel = '<table style="border:1px solid red"><tr><td>A</td></tr></table>'
     const { ziel, melde } = aufbau(`<p>Text</p>${insel}`)
     expect(ziel.querySelector('.wk-erhalten')).not.toBeNull()
-    ziel.querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    ziel.querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     expect(melde.mock.calls[0][0].html).toContain(insel)
   })
 
   it('Handy: Leiste sitzt fest unten', () => {
     const { ziel } = aufbau('<p>x</p>', true)
-    expect(ziel.querySelector('.wk-format')?.classList.contains('wk-format-unten')).toBe(true)
+    expect(ziel.querySelector('.wk-el')?.classList.contains('wk-el-unten')).toBe(true)
   })
 
   it('Esc beendet, danach meldet das Werk nichts mehr doppelt', () => {
     const { ziel, melde } = aufbau('<p>x</p>')
     const pm = ziel.querySelector('.ProseMirror') as HTMLElement
     pm.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    ziel.querySelector<HTMLButtonElement>('.wk-fertig')!.click()
+    ziel.querySelector<HTMLButtonElement>('.wk-el-fertig')!.click()
     expect(melde).toHaveBeenCalledTimes(1)
   })
 
   it('Link nur mit https:// oder mailto:', () => {
     const { ziel } = aufbau('<p>x</p>')
-    ziel.querySelector<HTMLButtonElement>('button[aria-label^="Link ("]')!.click()
+    ziel.querySelector<HTMLButtonElement>('button[aria-label^="Link einfügen"]')!.click()
     const feld = ziel.querySelector<HTMLInputElement>('.wk-fe input')!
     feld.value = 'javascript:alert(1)'
     ziel.querySelector<HTMLButtonElement>('button[aria-label="Link setzen"]')!.click()

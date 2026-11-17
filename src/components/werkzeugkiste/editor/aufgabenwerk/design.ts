@@ -1,11 +1,12 @@
 /**
  * Aussehen des Aufgabenwerks (PROJ-114). Die Aufgabe behält die Klassen der gebauten Seite
  * (`.frage`, `.antworten`, `.antwort` aus dem Kern) und sieht deshalb aus wie für die Schüler.
- * Dazu kommen nur die Bearbeiten-Zeichen aus dem Prototyp v2: blauer Rahmen, Schild,
- * Felder ohne Rahmen (gestrichelt beim Darüberfahren, blau hinterlegt beim Tippen).
+ * Dazu kommen nur die Bearbeiten-Zeichen aus dem Prototyp v2: blauer Rahmen, Felder ohne Rahmen
+ * (gestrichelt beim Darüberfahren, blau hinterlegt beim Tippen) und – seit PROJ-118 – oben die eine
+ * Bearbeiten-Leiste (`elementLeisteCss`), dieselbe wie beim Lehrtext.
  */
 
-import { BEDIEN_FARBEN, fertigCss, knopfCss } from '@/components/werkzeugkiste/editor/bedien-design'
+import { BEDIEN_FARBEN, elementLeisteCss, fertigCss, knopfCss } from '@/components/werkzeugkiste/editor/bedien-design'
 
 /** Farbpaare (Text auf Grund); ein Test prüft den Kontrast (≥ 4,5 : 1) */
 export const AW_FARBEN = {
@@ -26,8 +27,10 @@ export const AW_FARBEN = {
 const F = AW_FARBEN
 
 export const AW_CSS = [
-  `.wk-aw-offen{position:relative;outline:3px solid ${F.blau}!important;outline-offset:2px;padding-bottom:0!important}`,
-  `.wk-aw-schild{position:absolute;left:-3px;top:-26px;padding:3px 10px;border-radius:6px 6px 0 0;background:${F.blau};color:${F.schildText};font:700 12px/1.4 system-ui,sans-serif;letter-spacing:.02em}`,
+  `.wk-aw-offen{position:relative;outline:3px solid ${F.blau}!important;outline-offset:2px}`,
+  // PROJ-118: die eine Bearbeiten-Leiste (statt Schild oben und Fußleiste unten)
+  elementLeisteCss(),
+  '.wk-el.wk-el-unten{bottom:var(--wk-tastatur,0px)}',
   '.wk-aw *{box-sizing:border-box}',
   // Felder: sehen aus wie Text, zeigen beim Darüberfahren eine gestrichelte Linie, beim Tippen einen hellblauen Grund
   `.wk-aw-feld{display:block;width:100%;margin:0;border:0;border-bottom:1px dashed transparent;border-radius:4px;background:transparent;color:inherit;font:inherit;line-height:1.4;padding:2px 4px;resize:none;overflow:hidden}`,
@@ -61,19 +64,18 @@ export const AW_CSS = [
   `.wk-aw-neu:hover{background:${F.feldGrund};border-color:${F.blau}}`,
   `.wk-aw-tipp{margin:4px 0 0;font-size:.9rem;color:${F.leise}}`,
   `.wk-aw-hinweis{margin:6px 0 0;padding:6px 10px;border-radius:6px;background:${F.orangeGrund};color:${F.orange};font-size:.9rem}`,
-  // Fußleiste: klebt beim Scrollen unten an der Aufgabe
-  `.wk-aw-fuss{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:6px;margin:14px -18px 0;padding:8px 12px;border-top:1px solid #c9cfd8;background:${F.grund};font:14px/1.3 system-ui,sans-serif}`,
-  `.wk-aw-typ{flex:1;min-width:0;color:${F.leise};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`,
   knopfCss('.wk-aw-knopf', false),
   `.wk-aw-knopf{border-color:${F.blauText};background:${F.grund};font:600 14px/1 system-ui,sans-serif}`,
   `.wk-aw-knopf:hover{background:${F.feldGrund};border-color:${F.blauText}}`,
   fertigCss('.wk-aw-knopf.wk-aw-fertig'),
-  `.wk-aw-menue{position:absolute;right:0;bottom:calc(100% + 4px);min-width:220px;padding:4px;border:1px solid #c9cfd8;border-radius:10px;background:${F.grund};box-shadow:0 8px 24px rgba(15,23,42,.18)}`,
+  `.wk-aw-menue{position:absolute;z-index:2;right:0;top:calc(100% + 4px);min-width:220px;padding:4px;border:1px solid #c9cfd8;border-radius:10px;background:${F.grund};box-shadow:0 8px 24px rgba(15,23,42,.18)}`,
   `.wk-aw-menue button{display:flex;width:100%;min-height:36px;align-items:center;padding:6px 10px;border:0;border-radius:6px;background:transparent;color:${F.blauText};font:14px/1.3 system-ui,sans-serif;text-align:left;cursor:pointer}`,
   `.wk-aw-menue button:hover,.wk-aw-menue button:focus-visible{background:${F.feldGrund};outline:none}`,
   `.wk-aw-menue .wk-aw-gefahr{color:${F.rot};border-top:1px solid #e2e8f0;border-radius:0 0 6px 6px}`,
   '.wk-aw-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}',
-  '.wk-aw-mehr-wrap{position:relative}',
+
+  // Am Handy steht die Leiste unten: Das Menü geht nach oben auf
+  '.wk-el-unten .wk-aw-menue{top:auto;bottom:calc(100% + 4px)}',
   // Muster C kurz: beide Teile nebeneinander (schmal untereinander)
   `.wk-aw-nr{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:${F.blauText};color:#fff;font:700 12px/1 system-ui,sans-serif}`,
   '.wk-aw-paar-felder{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:6px}',
@@ -139,5 +141,5 @@ export const AW_CSS = [
   '.wk-aw-neu-reihe .wk-aw-neu{width:auto}',
   // Touch: alles 44 px, Werkzeuge immer sichtbar
   '@media (hover:none),(pointer:coarse){.wk-aw-kreis,.wk-aw-wz{width:44px;height:44px}.wk-aw-zeile .wk-aw-wz{opacity:1}.wk-aw-knopf{min-height:44px;min-width:44px}.wk-aw-neu{min-height:44px}.wk-aw-menue button{min-height:44px}.wk-aw-rueck{margin-left:48px;width:calc(100% - 48px)}.wk-aw-eingabe{min-height:44px}.wk-aw-fach-kopf .wk-aw-wz{width:44px;height:44px}.wk-aw-luecke{padding:4px 8px}}',
-  '@media print{.wk-aw-schild,.wk-aw-fuss{display:none!important}}',
+  '@media print{.wk-aw-offen .wk-el{display:none!important}}',
 ].join('')

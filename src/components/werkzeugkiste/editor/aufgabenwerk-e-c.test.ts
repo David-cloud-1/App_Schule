@@ -318,7 +318,7 @@ describe('Aufgabenwerk: Muster E (Lückentexte)', () => {
 
   it('beim Öffnen wird nichts verändert, auch bei ungewöhnlicher Schreibweise', () => {
     starte({ type: 'advanced_fill_blanks', text: '5 * 3 = *15*(Ergebnis)' })
-    fireEvent.click(ziel.querySelector('.wk-aw-fertig')!)
+    fireEvent.click(ziel.querySelector('.wk-el-fertig')!)
     expect(aenderungen()).toHaveLength(0)
     expect(ziel.innerHTML).toContain('Alt')
   })

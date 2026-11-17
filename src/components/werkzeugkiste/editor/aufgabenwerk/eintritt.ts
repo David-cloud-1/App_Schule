@@ -1,6 +1,6 @@
 import { html } from 'htm/preact'
 import { render, type VNode } from 'preact'
-import { FERTIG } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { ELEMENT_LEISTE, FERTIG } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { AW_CSS } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
 import { BAUPLAENE, hatBauplan, teileVon, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
@@ -22,7 +22,7 @@ export { TIPP_PAUSE_MS, zeilenAusEinfuegen } from '@/components/werkzeugkiste/ed
  * Jede Änderung geht als ganzer neuer Block an die App (`wkAufgabeAenderung`), Aktionen sofort,
  * Tippen nach kurzer Pause. Den Kern-Neubau startet die App erst nach „Fertig“.
  *
- * Aufbau: dieser Rahmen (Schild, Fußleiste, ⋯, Zustand, Meldungen) + je ein Baustein pro Muster
+ * Aufbau: dieser Rahmen (die eine Bearbeiten-Leiste aus PROJ-118, „Mehr …“, Zustand, Meldungen) + je ein Baustein pro Muster
  * (`muster-a.ts`, `muster-c.ts`, `muster-e.ts`) + gemeinsame Listen-Mechanik (`listen.ts`).
  *
  * Gebaut wird es mit `npm run aufgabenwerk:bauen` zu `aufgabenwerk-bundle.generated.ts`.
@@ -34,8 +34,10 @@ export interface AufgabeOptionen {
   /** Gespeicherter Block (von der App) */
   block: Block
   marke: string
-  /** Name des Typs für die Fußleiste („Einfachauswahl“) */
+  /** Name des Typs für die Leiste („Einfachauswahl“) */
   typName: string
+  /** Handy: Leiste fest unten über der Bildschirmtastatur (PROJ-118) */
+  mobil?: boolean
   /** Angeklickter Eintrag (schon von der App geprüft und auf den Block umgerechnet) */
   eintrag: EintragOrt | null
   melde: (nachricht: Record<string, unknown>) => void
@@ -97,6 +99,22 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   const abmelden: Array<() => void> = []
 
   ziel.classList.add('wk-aufgabenzone', 'wk-aw-offen')
+  // Handy: Die Leiste klebt unten über der Bildschirmtastatur (wie im Schreibwerk)
+  const vv = o.mobil ? window.visualViewport : null
+  if (vv) {
+    const uebersTastatur = () => {
+      const unten = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop))
+      ziel.style.setProperty('--wk-tastatur', `${unten}px`)
+    }
+    vv.addEventListener('resize', uebersTastatur)
+    vv.addEventListener('scroll', uebersTastatur)
+    uebersTastatur()
+    abmelden.push(() => {
+      vv.removeEventListener('resize', uebersTastatur)
+      vv.removeEventListener('scroll', uebersTastatur)
+      ziel.style.removeProperty('--wk-tastatur')
+    })
+  }
   ziel.setAttribute('aria-label', `${aufgabeNr} wird bearbeitet`)
 
   function senden(gruppe: string) {
@@ -151,8 +169,9 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   const erstesFeld = (i: number): string | null => erstesFeldVon(teileVon(plan!, block)[i])
   const teilVNode = (i: number): VNode => zeichneTeil(w, i)
 
-  // ── Rahmen: Schild, Fußleiste, ⋯ ─────────────────────────────────────
+  // ── Rahmen: die eine Bearbeiten-Leiste (PROJ-118) ────────────────────
 
+  const elementName = o.typName || aufgabeNr
   function aktion(a: 'typ' | 'roh' | 'duplizieren' | 'loeschen') {
     flush()
     menue = false
@@ -170,28 +189,30 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
         } else beende()
       }
     }}>
-      <span class="wk-aw-schild" aria-hidden="true">Bearbeiten</span>
-      <div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
-      ${teileVon(plan!, block).map((_, i) => teilVNode(i))}
-      <div class="wk-aw-fuss">
-        <span class="wk-aw-typ" title=${o.typName}>${o.typName}</span>
-        <span class="wk-aw-mehr-wrap">
-          <button type="button" class="wk-aw-knopf" aria-label="Weitere Aktionen" aria-haspopup="menu" aria-expanded=${menue ? 'true' : 'false'}
+      <div class=${'wk-el' + (o.mobil ? ' wk-el-unten' : '')} role="toolbar" aria-label=${ELEMENT_LEISTE.name(elementName)}>
+        <span class="wk-el-name" title=${elementName}>${elementName}</span>
+        <div class="wk-el-mitte">
+          <button type="button" class="wk-el-k" aria-label=${ELEMENT_LEISTE.duplizieren.lang} title=${ELEMENT_LEISTE.duplizieren.lang}
+            onClick=${() => aktion('duplizieren')}>${ELEMENT_LEISTE.duplizieren.text}</button>
+          <button type="button" class="wk-el-k wk-el-gefahr" aria-label=${ELEMENT_LEISTE.loeschen.lang} title=${ELEMENT_LEISTE.loeschen.lang}
+            onClick=${() => aktion('loeschen')}>${ELEMENT_LEISTE.loeschen.text}</button>
+          <button type="button" class="wk-el-k" aria-label=${ELEMENT_LEISTE.mehr.lang} title=${ELEMENT_LEISTE.mehr.lang} aria-haspopup="menu" aria-expanded=${menue ? 'true' : 'false'}
             onClick=${() => {
               menue = !menue
               zeichne()
               if (menue) (ziel.querySelector('.wk-aw-menue button') as HTMLElement | null)?.focus()
-            }}>⋯</button>
-          ${menue &&
-          html`<div class="wk-aw-menue" role="menu">
-            <button type="button" role="menuitem" onClick=${() => aktion('typ')}>Aufgabentyp ändern …</button>
-            <button type="button" role="menuitem" onClick=${() => aktion('roh')}>Quelltext bearbeiten</button>
-            <button type="button" role="menuitem" onClick=${() => aktion('duplizieren')}>Element duplizieren</button>
-            <button type="button" role="menuitem" class="wk-aw-gefahr" onClick=${() => aktion('loeschen')}>Element löschen</button>
-          </div>`}
-        </span>
-        <button type="button" class="wk-aw-knopf wk-aw-fertig" aria-label=${FERTIG.lang} title=${FERTIG.lang} onClick=${() => beende()}>${FERTIG.kurz}</button>
+            }}>${ELEMENT_LEISTE.mehr.text}</button>
+        </div>
+        ${menue &&
+        // Das Menü hängt an der Leiste (nicht an der Mitte, die am Handy waagerecht scrollt und es sonst abschnitte)
+        html`<div class="wk-aw-menue" role="menu">
+          <button type="button" role="menuitem" onClick=${() => aktion('typ')}>${ELEMENT_LEISTE.typ}</button>
+          <button type="button" role="menuitem" onClick=${() => aktion('roh')}>${ELEMENT_LEISTE.quelltext}</button>
+        </div>`}
+        <button type="button" class="wk-el-k wk-el-fertig" aria-label=${FERTIG.lang} title=${FERTIG.lang} onClick=${() => beende()}>${FERTIG.text}</button>
       </div>
+      <div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
+      ${teileVon(plan!, block).map((_, i) => teilVNode(i))}
     </div>`
   }
 
