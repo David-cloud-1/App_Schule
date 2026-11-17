@@ -1399,6 +1399,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             markiert={viele ? wahlOrte : []}
             onMehr={waehleMehr}
             onAusMaterial={oeffneUebernehmen}
+            schubladeOffen={schubladeAktiv}
           />
         </section>
         <section

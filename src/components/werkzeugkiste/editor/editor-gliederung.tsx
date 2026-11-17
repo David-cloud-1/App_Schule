@@ -194,6 +194,8 @@ export interface GliederungProps {
   onMehr?: (ort: Ort, wie: 'umschalten' | 'bereich') => void
   /** PROJ-108: „Aus Material übernehmen“ aus dem Katalog; `ziel` ist die Einfügestelle (null = es gibt noch kein Thema) */
   onAusMaterial?: (ziel: Einfuegeort | null) => void
+  /** Ist das Formular (die Schublade) für die gewählte Stelle offen? Nur dann hebt ein erneuter Klick die Wahl auf. */
+  schubladeOffen?: boolean
 }
 
 export function EditorGliederung({
@@ -205,6 +207,7 @@ export function EditorGliederung({
   markiert = [],
   onMehr,
   onAusMaterial,
+  schubladeOffen = true,
   befunde,
   befundKarte,
   einfuegenAnfrage,
@@ -359,7 +362,9 @@ export function EditorGliederung({
   }
 
   const istGewaehlt = (a: Auswahl) => JSON.stringify(a) === JSON.stringify(auswahl)
-  const waehle = (a: Auswahl) => setAuswahl(istGewaehlt(a) ? null : a)
+  // Ein zweiter Klick auf die offene Zeile schließt sie. Ist die Zeile nur gewählt (Klick in der Vorschau, Aufgabe in
+  // der Seite offen) und die Schublade zu, öffnet der Klick die Schublade, statt die Auswahl aufzuheben.
+  const waehle = (a: Auswahl) => setAuswahl(istGewaehlt(a) && schubladeOffen ? null : a)
 
   return (
     <div className="space-y-3">
