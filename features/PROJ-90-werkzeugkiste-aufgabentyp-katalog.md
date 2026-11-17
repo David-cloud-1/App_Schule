@@ -334,3 +334,7 @@ Keine neuen. Genutzt werden die vorhandenen: shadcn/ui (Dialog, Input, Badge …
 - **Datenbank:** keine Änderung.
 - **Geprüft ohne Login:** Bilder-Route → 401, Editor-Seite → Umleitung zum Login.
 - **Offen:** Browser-Durchgang als Lehrkraft (Desktop und Handy): Block einfügen, Katalog-Suche, Bildauswahl mit einem Material mit Bildern, Punkte setzen in der Bildzuordnung, Kapiteltest-Frage hinzufügen, Veröffentlichen-Dialog mit Beispiel-Hinweis.
+
+## Nachtrag 2026-11-17: Bearbeiten-Liste für Lückentexte
+- `LueckenFormular` (Lückentext, erweiterter Lückentext, Wörter ziehen, Wörter markieren) zeigt unter dem Textfeld eine Liste je markierter Stelle (Wort, Tipp, Entfernen). Änderungen schreiben die Markierung im Text um; Entfernen lässt das Wort als normalen Text stehen. Neue Stellen weiter per *Sternchen* im Textfeld.
+- Enthält der Text `<p>`-Tags im Klartext, erscheint ein Hinweis mit „Entfernen“.
