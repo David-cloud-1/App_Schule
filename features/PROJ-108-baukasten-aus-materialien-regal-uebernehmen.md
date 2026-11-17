@@ -181,7 +181,84 @@ So ist nach jedem Schritt etwas Brauchbares fertig.
 **Tests:** 13 reine Funktionen (`werkzeugkiste-uebernahme.test.ts`), 3 für `setzeUebernahmeEin`, 18 Server-Tests (`uebernahme.test.ts`: fremde Quelle/Ziel, Regal ohne Entwurf, nur Auszug, nichts vom Browser, Platzgrenze), 8 Dialog-Tests. `tsc` sauber, Produktions-Build läuft durch. Alle Tests der Werkzeugkiste grün bis auf den bekannten Fehlschlag außerhalb des Features (`werkzeugkiste-auszug.test.ts`, PROJ-100).
 
 ## QA Test Results
-_To be added by /qa_
+**Geprüft:** 2026-11-17 (Opus). Nur Code-Review und automatische Tests. Kein Dev-Server, kein Playwright, kein Build (Vorgabe des Nutzers). Auf Wunsch der Koordination vorzeitig abgeschlossen. Was nicht geprüft wurde, steht ausdrücklich unten.
+
+### Automatische Prüfungen
+| Prüfung | Ergebnis |
+|---|---|
+| `npx tsc --noEmit -p .` | sauber (Exit 0) |
+| `npx vitest run --maxWorkers=2` mit `werkzeugkiste-uebernahme.test.ts`, `uebernahme.test.ts`, `bilder-uebernehmen.test.ts`, `uebernehmen-dialog.test.tsx`, `werkzeugkiste-bloecke.test.ts`, `roles.test.ts`, `teacher-api-gate.test.ts` | 7 Dateien, 88 Tests, alle grün |
+| Neue QA-Tests | keine geschrieben (vorzeitiger Abschluss) |
+
+Testlücken: Es gibt keinen Test für „Quelle = Ziel“ (Bildkopie wird übersprungen), keinen für ein Regal-Material, das nach dem Laden der Gliederung aus dem Regal genommen wurde (nur der Dialog-Test mit einer nachgestellten 404), und keinen für das Abbrechen während einer laufenden Übernahme.
+
+### Acceptance Criteria
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Einstieg im Katalog, „+“-Menü, Leerzustände und ⋯-Menü | ⚠️ Abweichend, wie dokumentiert: Im Katalog ist es ein Knopf statt eines Reiters. Das „+“ führt über den Katalog dorthin. Im ⋯-Menü ist der Eintrag vorhanden. In den Leerzuständen der Vorschau fehlt er (dokumentiert). Im leeren Zustand der Editor-Gliederung gibt es keinen eigenen Eintrag, nur den Weg über den Katalog. |
+| 2 | Zwei Reiter (`AdminTabs`), Suche, Werkzeug-Filter | ✅ Suche mit 300 ms Verzögerung, Filter als natives `<select>` (min-h-11, aria-label) |
+| 3 | Nur Interaktive Seiten | ✅ Eigene: `baukasten === 'bearbeiten'`. Regal: `istEditierbar` und nicht `vonMir`. Der Server prüft zusätzlich (`KEINE_SEITE`). Nicht passende Materialien werden ausgeblendet statt ausgegraut (Tech Design: „ausgegraut mit Grund“). Vertretbar. |
+| 4 | Gliederung und Vorschau des Angeklickten | ⚠️ Abweichend, wie dokumentiert: Die Vorschau öffnet sich über das Auge-Symbol. Sie wird erst beim Klick gebaut. ✅ |
+| 5 | Themen und Blöcke gemischt wählbar | ✅ Ein ganz gewähltes Thema sperrt seine Einzelblöcke, Doppeltes zählt nicht. Fragen der Lernzielkontrolle sind einzeln wählbar. |
+| 6 | Einfügen an der Stelle, Hinweis, ein Rückgängig-Schritt | ✅ `setzeUebernahmeEin`: Blöcke kommen an die Stelle, Themen hinter das Thema der Blöcke. Ohne Thema entsteht „Thema 1“. Ein `z.aendere` ergibt einen Rückgängig-Schritt, die Indizes stimmen. Deckblatt und Lernzielkontrolle bleiben unberührt (Themen gehen nur in `chapters`). Toast mit „Rückgängig“. **Aber:** Nach „Abbrechen“ während des Ladens wird trotzdem eingefügt (BUG-1). |
+| 7 | Bilder in die eigene Ablage, 8-MB- und 2-GB-Grenze vorab | ✅ Erst lesen, dann prüfen (30 eigene Bilder, 8-MB-Schätzung), dann schreiben. Bei einem Fehler wird aufgeräumt. `speicherPruefen` prüft die 2 GB, aber nur „schon voll“, nicht „voll nach dem Kopieren“ (wie der Bestand). Die Seitengröße liefert der Browser (wie PROJ-102, Low). |
+| 8 | Unabhängige Kopie | ✅ Tiefe Kopien (`kopie`) und neue Bildnamen (`randomBytes`). Bei Quelle = Ziel teilen sich beide Blöcke dieselbe Bilddatei. Das ist gewollt, die Datei ist unveränderlich. |
+| 9 | Herkunft „aus: Titel, Lehrkraft“ im Änderungsverlauf | ⚠️ Abweichend, wie dokumentiert: Die Herkunft steht nur im Toast. Im Verlauf wird nichts gespeichert. |
+| 10 | Leerzustände mit Satz und Hinweis auf die Werkzeuge | ⚠️ Bei „Meine Materialien“ ja. Beim Regal steht nur „Im Regal liegt noch keine Interaktive Seite …“, ohne Hinweis auf die Werkzeuge. Weil nur Seite 1 geladen und erst im Browser gefiltert wird, kann der Leerzustand auch dann erscheinen, wenn es passende Materialien auf späteren Seiten gibt (BUG-5). |
+
+**Edge Cases**
+- Anderes Werkzeug: ✅ Unbekannte Typen werden ausgelassen und gezählt. Wie bei PROJ-102 wird nur gegen den Gesamtkatalog geprüft (`istBekannterTyp`), nicht je Ziel-Werkzeug.
+- Lernzielkontrolle: ✅ Ihre Fragen werden zu Blöcken im Ziel-Thema, es entsteht keine zweite Lernzielkontrolle.
+- Bild nicht erreichbar: ⚠️ Es wird als „fehlend“ gezählt und gemeldet. Der alte Bildname bleibt aber im Block stehen und kann im Ziel auf ein **anderes** Bild zeigen (BUG-2).
+- Regal-Material zurückgezogen: ✅ `ladeQuelle` wird bei jedem Aufruf neu ausgeführt und liefert 404. Nichts wird geschrieben, der Dialog zeigt einen verständlichen Satz.
+- Sehr große Quelle: ✅ Die Gliederung enthält nur Titel, Typ und Kurzzeile. Die Vorschau wird nur für das Angeklickte gebaut. Grenze für die Übernahme: 1,5 MB, 40 Themen, 200 Blöcke. Die Ladezeit (< 1 s bei 50 Materialien) ist **nicht geprüft**. Bei Regal-Quellen ruft jede Gliederung den Kern auf, um die Struktur zu übersetzen.
+- Schreibschutz: ⚠️ Der Eintrag im ⋯-Menü ist **deaktiviert** statt ausgeblendet (die Spec sagt „fehlt“). `oeffneUebernehmen` und `uebernommen` prüfen `z.gesperrt`. Ausreichend.
+
+### Bugs
+**Critical:** keine. **High:** keine.
+
+**Medium**
+- **BUG-1: Nach „Abbrechen“ wird trotzdem eingefügt.** `uebernehmen-dialog.tsx:217-231`: Während `laeuft` bleiben „Abbrechen“ (Z. 461), Esc und das Schließen-X aktiv. Die Anfrage läuft weiter. Wenn sie ankommt, ruft der Dialog `onUebernommen(r)` auf, und zwar mit der Funktion aus der Darstellung beim Klick, in der `uebernehmen.ziel` noch gesetzt ist (`baukasten-editor.tsx` `uebernommen`). Die Blöcke landen also im Material, obwohl die Lehrkraft abgebrochen hat. Die Bilder sind ohnehin schon kopiert. Schritte: Viel mit Bildern wählen → „Übernehmen“ → sofort „Abbrechen“ → nach wenigen Sekunden erscheinen die Blöcke und der Toast. Lösung: Während `laeuft` das Schließen sperren oder das Ergebnis verwerfen, wenn der Dialog inzwischen zu ist.
+- **BUG-2: Ein fehlendes Bild kann im Ziel ein falsches Bild zeigen.** `uebernahme/route.ts:62-70` und `werkzeugkiste-bilder-kopie-server.ts:85-99`: Bildnamen unter `fehlend` werden nicht umgeschrieben. Der Block behält zum Beispiel `images/seite3_x42.png`. Solche Namen aus dem Skript-Paket hängen von der Position im Skript ab (Seite und Bildnummer) und kommen deshalb in vielen Skripten vor. Das Ziel löst den Namen über **seine eigene** Einlesung auf und zeigt dann ein fremdes Bild aus dem eigenen Skript statt des Platzhalters „Bild nicht gefunden“ aus der Spec. Am wahrscheinlichsten ist das bei Regal-Quellen ohne oder mit unvollständigem Bilder-Auszug und bei eigenen Quellen, deren Skript nach 12 Monaten entfernt wurde. Kein Datenabfluss, es sind nur eigene Daten, aber ein inhaltlich falsches Material. Dasselbe gilt für Namen, die `BILD_NAME` verwirft (länger als 121 Zeichen): Sie bleiben ungezählt stehen. Lösung: Fehlende Namen auf einen eindeutigen, nicht auflösbaren Platzhalter umschreiben. Der Weg aus PROJ-102 hat dasselbe Verhalten.
+
+**Low**
+- **BUG-3: Vorschau-Datei wird bei schnellen Klicks vertauscht.** `vorschau/route.ts:40`: Alle Vorschauen eines Ziels schreiben dieselbe Datei `uebernahme-vorschau.html`. `vorschauNr` verwirft im Browser nur alte Antworten. Schreibt eine ältere Anfrage nach einer neueren, lädt die neuere Antwort den Inhalt der älteren. Dann steht unter „Vorschau: Block B“ der Inhalt von Block A. Gleiches gilt für zwei Fenster. Nur Anzeige, keine Daten betroffen.
+- **BUG-4: Vorschau-Datei bleibt liegen und zählt zum Speicher.** `uebernahme-vorschau.html` (bis etwa 8 MB) wird nie gelöscht. Beim nächsten `aktualisiereSpeicher` zählt sie zur 2-GB-Summe. Beim Löschen des Materials wird sie mit entfernt ✅ (`loescheDateien` listet den ganzen Ordner). Das Aufräumen alter Skripte erfasst sie nicht, das muss es aber auch nicht.
+- **BUG-5: Listen nur Seite 1, im Browser gefiltert.** `uebernehmen-dialog.tsx:116-128`: Die Auswahl filtert erst nach dem Laden (50 bzw. 30 Einträge). Wer viele Word- oder H5P-Materialien hat, sieht eine kurze oder leere Liste und den falschen Leersatz. Teilweise dokumentiert.
+- **BUG-6: Fokus geht beim Wechsel zwischen Liste und Gliederung verloren.** Der gewählte Knopf bzw. „Zurück“ verschwindet aus dem DOM, und der Fokus landet am Dialog bzw. am `body`. Für Tastatur- und Screenreader-Nutzer ist das ein Bruch. Am Handy steht die Vorschau unter einer langen Gliederung, und nach dem Tippen auf das Auge scrollt nichts dorthin. Der „Schritt-für-Schritt“-Ablauf aus dem Tech Design ist nur teilweise umgesetzt.
+- **BUG-7: Keine Begrenzung der Anfragen.** Gliederung (bei Regal ein Kern-Aufruf), Vorschau (ein Kern-Bau) und Übernahme (bis zu 40 Bild-Aufrufe) lassen sich beliebig oft aufrufen. Nur angemeldete Lehrkräfte kommen dran. Das ist wie im übrigen Editor, dort gibt es auch keine Begrenzung.
+
+### Behebungen nach der QA (2026-11-17, Sonnet)
+| Bug | Stand |
+|---|---|
+| BUG-1 Einfügen trotz Abbrechen | **Behoben:** Der Dialog zählt Sitzungen. Kommt die Antwort nach dem Schließen, wird nichts eingefügt (Test „wird der Dialog geschlossen …“). Die schon kopierten Bilder bleiben als ungenutzte Dateien liegen und werden vom Aufräumen nach Veröffentlichen entfernt. |
+| BUG-2 Falsches Bild statt Platzhalter | **Behoben:** Fehlende Bilder bekommen einen eindeutigen Namen, den es im Ziel nie gibt, dort erscheint der Platzhalter (Test angepasst). Der Weg der Zwischenablage (PROJ-102) bleibt unverändert. |
+| BUG-3 Vorschau vertauscht | **Behoben:** Jede Vorschau schreibt eine eigene Datei `uebernahme-vorschau-<Zufall>.html`. |
+| BUG-4 Datei bleibt liegen | **Entschärft:** Beim nächsten Bau werden ältere Vorschau-Dateien entfernt, es bleibt höchstens eine übrig (und geht mit dem Material). |
+| BUG-5 Listen nur Seite 1 | **Teilweise:** Regal-Leersatz nennt jetzt die Werkzeuge. Die Liste lädt weiter nur die erste Seite; Suche und Werkzeug-Filter helfen. |
+| BUG-6 Fokus / Handy-Scrollen | **Offen (Low)**, mit dem Browser-Test der Lehrkraft zu prüfen. |
+| BUG-7 Keine Anfragenbegrenzung | **Offen (Low)**, wie im übrigen Editor. |
+
+### Security-Audit (Red Team)
+- **Fremdzugriff „eigen“:** ✅ `ladeQuelle` lädt mit dem Nutzer-Client (RLS) und prüft zusätzlich `owner_id === nutzerId`. Fremde, gelöschte und ungültige IDs ergeben dieselbe 404. Eine Regal-Freigabe-ID unter `art=eigen` findet nichts.
+- **Fremdzugriff „regal“:** ✅ `regal_anpassen_quelle` (SECURITY DEFINER, nur `authenticated`) gibt nur dann eine Zeile zurück, wenn `regal_darf_sehen` zustimmt. Dafür muss der Aufrufer eine Lehrer-Rolle haben, die Freigabe darf nicht entnommen sein, der Urheber muss noch eine Lehrer-Rolle haben (Rollenentzug wirkt), und die Stufe muss passen (alle, Fachbereich, ausgewählte Personen, eigene). Außerdem gilt `a.status = 'fertig'`. Die Prüfung läuft bei **jedem** der drei Aufrufe neu, auch beim Übernehmen.
+- **Kein Entwurf oder Skript aus dem Regal:** ✅ Die Funktion liefert nur `antwort` (die veröffentlichte Fassung), nie `entwurf`. Bilder aus dem Skript-Paket werden bei fremden Quellen nur aus `auszug.zip` gelesen (`bildQuelle(…, nurAuszug)`), auch in der Vorschau. Die Antworten enthalten nur Gliederung, Blöcke der veröffentlichten Fassung, Titel und Herkunft. All das kann die Lehrkraft über „Anpassen“ (PROJ-53) ohnehin bekommen.
+- **`eigen_*`-Bilder des Urhebers (Service-Key):** ✅ Die Namen stammen nur aus `bildPfadeIn` über die serverseitig gelesenen, gewählten Blöcke der veröffentlichten Fassung (Übernahme) bzw. über die Mini-Struktur aus Deckblatt und Auswahl (Vorschau, `eigeneFuerBau`). Ein Name kann also nur vorkommen, wenn er im veröffentlichten Inhalt steht. `istEigenerPfad` verlangt genau `^images/eigen_[A-Za-z0-9]{6,32}\.(jpg|png)$`. Damit gibt es keinen `/`, kein `..`, keine Großschreibung der Endung und keine Sonderzeichen. Der Speicherpfad entsteht daraus mit `eigenerPfad(quelle.owner_id, quelle.id, …)`, eine Pfadtraversal ist nicht möglich. `BILD_PFAD` (ohne `/i`, ohne `/` im Namen, erstes Zeichen nicht `.`) findet keine Namen mit Unterordnern. `BILD_NAME` und der `..`-Filter in der Route sind eine zusätzliche Sicherung. Namen aus dem Skript-Paket gehen nur als Eintragsname im ZIP an den Kern, nie als Speicherpfad. Hochgeladene Bilder behalten ihren Namen (`randomBytes`, kein Überschreiben). Ein Entwurf des Urhebers kann deshalb kein veröffentlichtes Bild verändern.
+- **Vorschau-Datei:** ✅ Sie wird nur in den Ordner des Ziels geschrieben, nachdem `zielOderFehler` bestätigt hat, dass das Ziel ein eigenes und bearbeitbares Material ist. Der Name ist fest und passt zu keiner anderen Datei (`vorschau.html`, `entwurf.html`, `ausgabe` bleiben unberührt). Zurück kommt nur eine kurzlebige Leseadresse (120 s). Für Race und Speicher siehe BUG-3 und BUG-4.
+- **Eingaben:** ✅ Alle Schemas sind `.strict()`, Quelle ist `uuid`. Nummern sind ganze Zahlen von 0 bis 1000, höchstens 40 Themen, 200 Blöcke und 200 Fragen. `seitenGroesse` liegt zwischen 0 und 50 Mio. Inhalte oder Bildnamen vom Browser werden mit 400 abgewiesen (Test vorhanden). Die Antwort ist auf 1,5 MB und 40 Bilder begrenzt.
+- **Teilfehler:** ✅ `kopiereBilder` liest erst alles, prüft dann und schreibt erst danach. Im `catch` wird alles Angelegte entfernt. Wird die Funktion bei `maxDuration` abgebrochen, bleiben verwaiste Dateien. Die entfernt das Aufräumen beim Veröffentlichen (Schonfrist 15 min). Bis dahin zählen sie zur Grenze von 30 Bildern.
+- **Proxy:** ✅ `/api/admin/werkzeugkiste` steht in `TEACHER_API_PATH_PREFIXES`, die neuen Routen sind also für reine Lehrkräfte erreichbar. Azubis sperren der Proxy (nur Lehrer- und Verwaltungsrollen unter `/api/admin`) und zusätzlich `requireTeacherOrAdmin` in jeder Route (403). Wächter-Tests sind grün.
+- **XSS:** ✅ `<iframe srcDoc sandbox="allow-scripts">` ohne `allow-same-origin`, `allow-top-navigation` und `allow-popups`. Die Seite läuft damit mit fremdem Ursprung, ohne Zugriff auf Cookies, Speicher oder die App (wie die Editor-Vorschau). Titel, `besitzer_name`, Kurzzeilen und Herkunft werden als React-Text bzw. im Sonner-Toast als Text dargestellt. Der Commit fügt kein `dangerouslySetInnerHTML` und kein `innerHTML` hinzu (geprüft per `git show | grep`). Die Kurzzeile ist auf 70 Zeichen begrenzt, die Herkunft auf 200.
+
+### Nicht geprüft
+- Browser-Test (Desktop, Handy 375 px, Tablet 768 px; Chrome, Firefox, Safari), echte Vorschau-Darstellung, Tastatur-Ablauf im echten Dialog.
+- Ladezeit unter 1 s bei 50 Materialien.
+- Datenbank-Lesezugriffe (Supabase-MCP): nicht ausgeführt. Die Regal-Funktionen wurden nur anhand der Migrationen `20261101_proj53_regal.sql` und `20261102_proj53_paket2.sql` geprüft. Dass der Stand in Produktion dazu passt, ist nicht geprüft.
+- Verhalten des Kerns bei `/api/editor/bild` und `/api/editor/bauen` (z. B. ob `bauen` aus der Einlesung nur benannte Bilder einbettet). Das Namensschema der Paket-Bilder (BUG-2) stammt aus dem Kommentar in `erzeugeAuszug`.
+- Regression der übrigen Werkzeugkiste-Tests (nur die 7 genannten Dateien wurden ausgeführt).
+
+### Empfehlung
+**Deploy: ja, mit Vorbehalt.** Es gibt keine Critical- und keine High-Bugs. Die Sicherheitsprüfung ergab keinen Weg zu fremden Inhalten, Entwürfen, Skripten oder Bildern. BUG-1 (Einfügen trotz Abbrechen) und BUG-2 (falsches Bild statt Platzhalter) sollten vor oder kurz nach dem Deploy behoben werden. Danach ist ein manueller Browser-Test mit dem Regal-Material einer zweiten Person nötig.
 
 ## Deployment
 _To be added by /deploy_

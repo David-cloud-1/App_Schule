@@ -172,4 +172,21 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     fireEvent.click(await screen.findByText('Mein Heft'))
     expect(await screen.findByRole('alert')).toHaveTextContent('gibt es nicht mehr')
   })
+
+  it('wird der Dialog geschlossen, während der Server arbeitet, wird nichts eingefügt', async () => {
+    let fertig: (r: Awaited<ReturnType<typeof api.holeUebernahme>>) => void = () => {}
+    m.hole.mockReturnValue(new Promise((res) => (fertig = res)))
+    const onUebernommen = vi.fn()
+    const props = { zielId: 'ziel', seitenGroesse: 1, onUebernommen, onOpenChange: vi.fn() }
+    const { rerender } = render(<UebernehmenDialog offen {...props} />)
+    fireEvent.click(await screen.findByText('Mein Heft'))
+    await screen.findByText('Lagerarten')
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Thema „Verpackung“/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '1 Thema übernehmen' }))
+    await waitFor(() => expect(m.hole).toHaveBeenCalled())
+    rerender(<UebernehmenDialog offen={false} {...props} />)
+    fertig({ themen: [{ title: 'X', elements: [] }], bloecke: [], ausgelassen: 0, fehlend: 0, titel: 'T' })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(onUebernommen).not.toHaveBeenCalled()
+  })
 })

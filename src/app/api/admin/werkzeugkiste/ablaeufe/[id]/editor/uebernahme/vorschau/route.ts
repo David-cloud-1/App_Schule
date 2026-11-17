@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
@@ -5,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { kernWerkzeug } from '@/lib/werkzeugkiste-editor'
 import { bildQuelle } from '@/lib/werkzeugkiste-editor-server'
 import { eigeneFuerBau } from '@/lib/werkzeugkiste-bilder-server'
-import { ablaufOrdner, fehler, kern, kernFehlerAntwort, leseAdresse, schreibAdresse, ungueltig } from '@/lib/werkzeugkiste-server'
+import { WK_BUCKET, ablaufOrdner, fehler, kern, kernFehlerAntwort, leseAdresse, schreibAdresse, ungueltig } from '@/lib/werkzeugkiste-server'
 import { miniStruktur, waehleInhalte } from '@/lib/werkzeugkiste-uebernahme'
 import { auswahlSchema, ladeQuelle, quelleSchema, zielOderFehler } from '@/lib/werkzeugkiste-uebernahme-server'
 
@@ -39,7 +40,12 @@ export async function POST(request: Request, { params }: Kontext) {
 
   try {
     const service = createServiceClient()
-    const pfad = `${ablaufOrdner(ziel.zeile.owner_id, ziel.zeile.id)}/uebernahme-vorschau.html`
+    // Jede Vorschau bekommt eine eigene Datei (sonst überschreiben schnelle Klicks einander); ältere werden entfernt
+    const ordner = ablaufOrdner(ziel.zeile.owner_id, ziel.zeile.id)
+    const pfad = `${ordner}/uebernahme-vorschau-${randomBytes(6).toString('hex')}.html`
+    const alte = await service.storage.from(WK_BUCKET).list(ordner, { limit: 100, search: 'uebernahme-vorschau' })
+    const alteDateien = (alte.data ?? []).filter((f) => f.name.startsWith('uebernahme-vorschau')).map((f) => `${ordner}/${f.name}`)
+    if (alteDateien.length) await service.storage.from(WK_BUCKET).remove(alteDateien).catch(() => undefined)
     const [quellePaket, schreib] = await Promise.all([bildQuelle(service, k.ablauf, k.nurAuszug), schreibAdresse(service, pfad)])
     if (!schreib) return fehler('Die Vorschau konnte nicht vorbereitet werden.', 502)
     const eigene = await eigeneFuerBau(service, k.ablauf, JSON.stringify(mini))

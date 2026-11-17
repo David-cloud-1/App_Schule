@@ -82,6 +82,8 @@ export function UebernehmenDialog({
   const [laeuft, setLaeuft] = useState(false)
   const [fehler, setFehler] = useState<string | null>(null)
   const vorschauNr = useRef(0)
+  // Zählt Sitzungen des Dialogs: Eine Antwort, die nach dem Schließen eintrifft, wird nie eingefügt
+  const sitzung = useRef(0)
   const [neuLaden, setNeuLaden] = useState(0)
 
   // Beim Öffnen alles zurücksetzen (Zustand während des Renderns angleichen statt im Effekt)
@@ -103,6 +105,7 @@ export function UebernehmenDialog({
       setFehler(null)
       vorschauNr.current += 1
     }
+    sitzung.current += 1
   }
 
   // Liste der Quellen laden (mit kleiner Verzögerung beim Tippen)
@@ -218,11 +221,15 @@ export function UebernehmenDialog({
     if (!quelle || nichtsGewaehlt || laeuft) return
     setLaeuft(true)
     setFehler(null)
+    const meine = sitzung.current
     try {
       const r = await holeUebernahme(zielId, quelle.ref, auswahl, seitenGroesse)
+      // Abgebrochen oder geschlossen, während der Server arbeitete: nichts einfügen
+      if (meine !== sitzung.current) return
       onOpenChange(false)
       onUebernommen(r)
     } catch (e) {
+      if (meine !== sitzung.current) return
       // Das Material kann inzwischen zurückgezogen sein: verständlicher Satz, nichts wurde eingefügt
       setFehler(e instanceof WerkzeugFehler && e.status === 404 ? NICHT_GEFUNDEN_HINWEIS : nachricht(e))
     } finally {
@@ -297,7 +304,7 @@ export function UebernehmenDialog({
                     ? 'Dazu gibt es nichts. Ändere die Suche oder den Filter.'
                     : reiter === 'eigen'
                       ? 'Du hast noch keine fertige Interaktive Seite. Erstelle sie unter „Werkzeuge“, dann kannst du Teile daraus übernehmen.'
-                      : 'Im Regal liegt noch keine Interaktive Seite, die du übernehmen kannst.'}
+                      : 'Im Regal liegt noch keine Interaktive Seite, die du übernehmen kannst. Material erstellst und teilst du unter „Werkzeuge“.'}
                 </p>
               ) : (
                 <ul className="divide-y divide-ws-line rounded-xl border border-ws-line">

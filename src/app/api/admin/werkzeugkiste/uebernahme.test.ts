@@ -239,7 +239,9 @@ describe('Übernehmen (PROJ-108)', () => {
     dateien.delete(`u1/${EIGEN}/eigen_abcdef12.png`)
     const r = await (await uebernehmen(gut({ auswahl: { ...leer, bloecke: [{ thema: 0, block: 1 }] } }), ctx)).json()
     expect(r.fehlend).toBe(1)
-    expect(r.bloecke[0].path).toBe('images/eigen_abcdef12.png')
+    // Neuer Name, den es im Ziel nicht gibt (nie der alte, der dort auf ein anderes Bild zeigen könnte)
+    expect(r.bloecke[0].path).toMatch(/^images\/eigen_[0-9a-f]{16}\.png$/)
+    expect(r.bloecke[0].path).not.toBe('images/eigen_abcdef12.png')
   })
 
   it('nichts gewählt oder nichts passend: 400 mit Satz', async () => {
@@ -282,7 +284,7 @@ describe('Vorschau der Auswahl (PROJ-108)', () => {
     const res = await vorschau(post({ quelle: { art: 'eigen', id: EIGEN }, auswahl: { ...leer, themen: [1] } }), ctx)
     expect(res.status).toBe(200)
     const r = await res.json()
-    expect(r.adresse).toContain(`u1/${ZIEL}/uebernahme-vorschau.html`)
+    expect(r.adresse).toMatch(new RegExp(`u1/${ZIEL}/uebernahme-vorschau-[0-9a-f]{12}\\.html`))
     const bau = kernAufrufe.find((a) => a.pfad === '/api/editor/bauen')!
     const mini = bau.body.struktur as { chapters: { title: string }[] }
     expect(mini.chapters.map((t) => t.title)).toEqual(['B'])

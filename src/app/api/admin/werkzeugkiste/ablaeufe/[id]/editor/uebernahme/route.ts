@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
@@ -62,8 +63,12 @@ export async function POST(request: Request, { params }: Kontext) {
     if (gesperrt) return gesperrt
     const r = await kopiereBilder(createServiceClient(), k.ablauf, ziel.zeile, pfade, eingabe.data.seitenGroesse, k.nurAuszug)
     if (r instanceof NextResponse) return r
-    themen = ersetzeBildPfade(themen, r.zuordnung)
-    bloecke = ersetzeBildPfade(bloecke, r.zuordnung)
+    // Ein Bild, das es nicht mehr gibt, bekommt einen Namen, den es im Ziel nie gibt: Sonst könnte der alte
+    // Name (Seite und Nummer im Skript) im Ziel auf ein ganz anderes Bild zeigen. So erscheint der Platzhalter.
+    const zuordnung = { ...r.zuordnung }
+    for (const p of r.fehlend) zuordnung[p] = `images/eigen_${randomBytes(8).toString('hex')}.png`
+    themen = ersetzeBildPfade(themen, zuordnung)
+    bloecke = ersetzeBildPfade(bloecke, zuordnung)
     fehlend = r.fehlend.length
   }
 
