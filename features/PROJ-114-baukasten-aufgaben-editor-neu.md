@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Bauschritt 3 gebaut, Zweig `proj-114-aufgabenwerk`)
+**Last Updated:** 2026-11-17 (Bauschritt 4 teilweise gebaut, automatisch geprüft, ausgeliefert)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -189,6 +189,13 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 - Im Rechenbeispiel (Muster F laut Spec) stehen die Rechenschritte als einfache Zeilen (Muster B), weil sie reine Texte sind.
 
 **Tests:** `aufgabenwerk-b-d-f.test.ts` (29: Bauplan, Übernahme inkl. Feldnamen/Zahlen, Hinweise, Werk B, D, F), `aufgabenwerk.test.ts` angepasst. Gesamtlauf: 3816 grün, 1 alter fremder Fehler (`werkzeugkiste-auszug.test.ts`). `tsc`, ESLint und `npm run build` grün. Bündel 76 KB.
+
+### Bauschritt 4 (verkürzt) – Schnellfragen, Zusammenfassung, Tippkarten (2026-11-17, Sonnet)
+**Gebaut:** `single_choice_set` (Frage + richtige Antwort in der Zeile, falsche Antworten als Liste darunter, neue Frage bringt zwei leere mit), `summary` (Fragen-Form **und** Aussagen-Form: Teile mit `bedingung`), `flashcards` (Antworten als Text „a / b“; eine vorhandene Liste bleibt eine Liste). Neue Bauplan-Bausteine: `unterliste`, `bedingung`, `liste`, `teileVon`. Finder gegen echte Kern-Seiten geprüft. 24 Typen mit Bauplan.
+
+**Bewusst NICHT umgestellt (öffnen weiter in der Schublade, funktionieren wie bisher):** Fallakte, Kapiteltest, Video mit Fragen (verschachtelte Antworten/Fragen), Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie (Bild-Werkzeuge PROJ-104–107), Tabelle, Diagramm. Auch „Typ wechseln“ und „Rohfassung“ öffnen weiter die Schublade. Das ist der Rest für einen Folge-Schritt (Bauschritt 5); damit ist PROJ-114 **nicht vollständig**, der Status bleibt „In Progress“.
+
+**Prüfung:** nur automatisch (Vitest, tsc, ESLint, Build; 3822 Tests grün bis auf den alten Fehler in `werkzeugkiste-auszug.test.ts`). **Kein Browser-Test, kein Handy-Test, kein Praxisdurchgang mit einer echten Einheit** – laut Spec noch vor einem „Deployed“-Status nötig. Auf Wunsch des Nutzers (2026-11-17, „selbstständig bis deploy“) wurde trotzdem nach `main` ausgeliefert, ohne vorherige Freigabe des Vorschau-Links.
 
 ---
 <!-- Sections below are added by subsequent skills -->

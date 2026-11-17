@@ -47,6 +47,8 @@ interface ListenTeil {
   mehrzahl: string
   /** Kurzname für Verlauf und Toast („loeschen-antwort“) */
   schluessel: string
+  /** Teil gilt nur, wenn das genannte Feld im Block (nicht) als Liste vorkommt (Zusammenfassung: Fragen oder Aussagen) */
+  bedingung?: { feld: string; vorhanden: boolean }
 }
 
 /** Muster A: Antworten mit Kreis (genau eine richtig) und Rückmeldung je Antwort */
@@ -117,12 +119,27 @@ export interface EintragFeld {
   knopf?: boolean
   /** Ganze Zahl wird als Zahl gespeichert, sonst als Text (so liest der Kern beides) */
   zahl?: boolean
+  /** Der Kern liest Text („a / b“) und Liste gleich: Eine vorhandene Liste bleibt eine Liste */
+  liste?: boolean
+}
+
+/** Liste aus reinem Text, die zu jedem Eintrag gehört (falsche Antworten, Falschaussagen) */
+export interface UnterListe {
+  feld: string
+  titel: string
+  einzahl: string
+  mehrzahl: string
+  mindestens: number
+  hoechstens: number
+  schluessel: string
+  platzhalter: string
 }
 
 /** Muster F und C kurz: Einträge mit mehreren Feldern in einer Zeile */
 export interface EintraegeTeil extends ListenTeil {
   art: 'eintraege'
   felder: EintragFeld[]
+  unterliste?: UnterListe
 }
 
 /** Eine ganze Zahl (Runden, Mindestzeichen, Höhe) */
@@ -506,6 +523,66 @@ export const BAUPLAENE: Record<string, Bauplan> = {
       },
     ],
   },
+  // ── Weitere Muster F / C ──
+  single_choice_set: {
+    muster: 'F',
+    finder: '.teilfrage',
+    teile: [
+      {
+        art: 'eintraege',
+        feld: 'questions',
+        felder: [
+          { namen: ['question'], label: 'Frage', platzhalter: 'Frage, z. B. „Wer stellt den Frachtbrief aus?“', max: TEXT_MAX, gewicht: 3, pflicht: true },
+          { namen: ['correct'], label: 'Richtige Antwort', platzhalter: 'Richtige Antwort', max: TEXT_MAX, gewicht: 2, pflicht: true },
+        ],
+        unterliste: { feld: 'wrong', titel: 'Falsche Antworten', einzahl: 'Falsche Antwort', mehrzahl: 'Falsche Antworten', mindestens: 2, hoechstens: 8, schluessel: 'falsch', platzhalter: 'Falsche Antwort' },
+        mindestens: 1,
+        hoechstens: 20,
+        einzahl: 'Frage',
+        mehrzahl: 'Fragen',
+        schluessel: 'schnellfrage',
+      },
+    ],
+  },
+  summary: {
+    muster: 'F',
+    finder: '.teilfrage, .haekchen li',
+    teile: [
+      {
+        art: 'eintraege',
+        feld: 'questions',
+        bedingung: { feld: 'statements', vorhanden: false },
+        felder: [{ namen: ['correct'], label: 'Richtige Aussage', platzhalter: 'Richtige Aussage', max: TEXT_MAX, gewicht: 1, pflicht: true }],
+        unterliste: { feld: 'distractors', titel: 'Falsche Aussagen', einzahl: 'Falsche Aussage', mehrzahl: 'Falsche Aussagen', mindestens: 2, hoechstens: 8, schluessel: 'falschaussage', platzhalter: 'Falsche Aussage' },
+        mindestens: 1,
+        hoechstens: 20,
+        einzahl: 'Frage',
+        mehrzahl: 'Fragen',
+        schluessel: 'zusammenfassung-frage',
+      },
+      { ...zeilen('statements', 'Aussage', 'Aussagen', 'kernaussage', 1, 20, 'Kernaussage, z. B. „Der Frachtführer haftet für Verlust.“'), bedingung: { feld: 'statements', vorhanden: true } },
+    ],
+  },
+  flashcards: {
+    muster: 'C',
+    finder: '.lernkarte',
+    teile: [
+      anweisung('Schreib zu jeder Karte die passende Antwort.'),
+      {
+        art: 'eintraege',
+        feld: 'cards',
+        felder: [
+          { namen: ['front'], label: 'Frage', platzhalter: 'Frage, z. B. „Abkürzung für das Frachtrecht?“', max: TEXT_MAX, gewicht: 2, pflicht: true },
+          { namen: ['back'], label: 'Richtige Antworten', platzhalter: 'Antwort – mehrere Schreibweisen mit / trennen', max: TEXT_MAX, gewicht: 3, pflicht: true, liste: true },
+        ],
+        mindestens: 2,
+        hoechstens: 30,
+        einzahl: 'Karte',
+        mehrzahl: 'Karten',
+        schluessel: 'tippkarte',
+      },
+    ],
+  },
   // ── Einzelfeld ──
   calculation_exercise: {
     muster: 'Einzel',
@@ -525,6 +602,13 @@ export const BAUPLAENE: Record<string, Bauplan> = {
   },
 }
 
+/** Die Teile des Bauplans, die für diesen Block gelten (Namen aufgelöst, Bedingungen geprüft) */
+export function teileVon(plan: Bauplan, block: Record<string, unknown>): Teil[] {
+  return plan.teile
+    .map((t) => loese(t, block))
+    .filter((t) => !('bedingung' in t && t.bedingung) || Array.isArray(block[t.bedingung.feld]) === t.bedingung.vorhanden)
+}
+
 /** Typen, die das Aufgabenwerk an Ort und Stelle öffnet */
 export const AUFGABENWERK_TYPEN = Object.keys(BAUPLAENE)
 
@@ -542,6 +626,11 @@ export const LOESCH_TEXTE: Record<string, string> = {
   'loeschen-kategorie': 'Kategorie samt ihren Begriffen gelöscht',
   'loeschen-trainer-eintrag': 'Eintrag gelöscht',
   'loeschen-trainer-stoerer': 'Störer gelöscht',
+  ...Object.fromEntries(
+    Object.values(BAUPLAENE).flatMap((b) =>
+      b.teile.flatMap((t) => (t.art === 'eintraege' && t.unterliste ? [[`loeschen-${t.unterliste.schluessel}`, `${t.unterliste.einzahl} gelöscht`]] : [])),
+    ),
+  ),
   ...Object.fromEntries(
     Object.values(BAUPLAENE).flatMap((b) =>
       b.teile.flatMap((t) =>
@@ -618,6 +707,21 @@ function sichtbar(block: Block): Array<number | null> | null {
     return listeVon(block[echterName(block, ['punkte', 'items'], 'punkte')]).flatMap((e, i) =>
       nichtLeer(istObjekt(e) ? erster(e, ['text', 'frage']) : e) ? [i] : [],
     )
+  if (t === 'single_choice_set')
+    return listeVon(block.questions).flatMap((e, i) =>
+      istObjekt(e) && s(e.question) && nichtLeer(e.correct) && listeVon(e.wrong).some(nichtLeer) ? [i] : [],
+    )
+  if (t === 'summary') {
+    if (listeVon(block.questions).length)
+      return listeVon(block.questions).flatMap((e, i) => (istObjekt(e) && nichtLeer(e.correct) && listeVon(e.distractors).some(nichtLeer) ? [i] : []))
+    return listeVon(block.statements).flatMap((x, i) => (nichtLeer(x) ? [i] : []))
+  }
+  if (t === 'flashcards')
+    return listeVon(block.cards).flatMap((e, i) => {
+      if (!istObjekt(e) || !nichtLeer(e.front)) return []
+      const antw = Array.isArray(e.back) ? e.back.some(nichtLeer) : s(e.back).split('/').some(nichtLeer)
+      return antw ? [i] : []
+    })
   if (t === 'mark_words') return markWoerter(s(block.text))
   if ((LUECKEN_TYPEN as readonly string[]).includes(t)) return luecken(zerlege(t as LueckenTyp, s(block.text))).map((_, i) => i)
   return null
@@ -693,7 +797,7 @@ const ZAHL_GRENZE = 100_000
 function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>, teil: EintraegeTeil): Record<string, unknown>[] | string {
   const liste = vorschlag[teil.feld]
   if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
-  const bekannt = new Set(teil.felder.flatMap((f) => f.namen))
+  const bekannt = new Set([...teil.felder.flatMap((f) => f.namen), ...(teil.unterliste ? [teil.unterliste.feld] : [])])
   const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
   const neu: Record<string, unknown>[] = []
   for (const roh of liste) {
@@ -702,10 +806,22 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
     for (const f of teil.felder) {
       const name = eintragsName(roh, f.namen)
       const v = roh[name]
+      if (f.liste && Array.isArray(v)) {
+        const l = uebernimmTexte(v, f.max, 20, f.label)
+        if (typeof l === 'string') return l
+        eintrag[name] = l
+        continue
+      }
       const t = reinerText(typeof v === 'number' && Number.isFinite(v) ? String(v) : (v ?? ''), f.max)
       if (t === null) return `${teil.einzahl}: ${f.label} ist zu lang oder ungültig.`
       if (!f.pflicht && t === '' && !(name in roh)) continue
       eintrag[name] = f.zahl && /^-?\d{1,15}$/.test(t.trim()) ? Number(t.trim()) : t
+    }
+    if (teil.unterliste) {
+      const u = teil.unterliste
+      const l = uebernimmTexte(roh[u.feld] ?? [], TEXT_MAX, u.hoechstens, u.mehrzahl)
+      if (typeof l === 'string') return l
+      eintrag[u.feld] = l
     }
     neu.push(eintrag)
   }
@@ -762,8 +878,7 @@ export function uebernimmAufgabe(original: Block, vorschlag: unknown): Ergebnis 
   if (!plan) return { ok: false, grund: 'Dieser Aufgabentyp lässt sich hier nicht bearbeiten.' }
   if (!istObjekt(vorschlag) || vorschlag.type !== original.type) return { ok: false, grund: 'Die Änderung passt nicht zu dieser Aufgabe.' }
   const block: Block = { ...original }
-  for (const teil0 of plan.teile) {
-    const teil = loese(teil0, original)
+  for (const teil of teileVon(plan, original)) {
     if (teil.art === 'text' || teil.art === 'luecken') {
       const label = teil.art === 'text' ? teil.label : 'Text'
       const t = reinerText(vorschlag[teil.feld] ?? '', teil.art === 'text' ? teil.max : LUECKENTEXT_MAX)
@@ -834,8 +949,7 @@ export function hinweise(block: Block): Hinweis[] {
   const plan = hatBauplan(block.type) ? BAUPLAENE[block.type] : null
   if (!plan) return []
   const out: Hinweis[] = []
-  for (const teil0 of plan.teile) {
-    const teil = loese(teil0, block)
+  for (const teil of teileVon(plan, block)) {
     if (teil.art === 'text' && teil.pflicht && !s(block[teil.feld]).trim()) {
       out.push({ wo: teil.feld, text: `${teil.label} fehlt.` })
     }
@@ -850,6 +964,11 @@ export function hinweise(block: Block): Hinweis[] {
       listeVon(block[teil.feld]).forEach((x, i) => {
         if (!istObjekt(x)) return
         const fehlen = teil.felder.filter((f) => f.pflicht && !s(x[eintragsName(x, f.namen)]).trim())
+        if (teil.unterliste) {
+          const u = teil.unterliste
+          if (listeVon(x[u.feld]).filter((y) => s(y).trim()).length < u.mindestens)
+            out.push({ wo: `${teil.feld}-unter-${i}`, text: `${teil.einzahl} ${i + 1}: mindestens ${u.mindestens} ${u.mehrzahl.toLowerCase()} nötig.` })
+        }
         if (fehlen.length) out.push({ wo: `${teil.feld}-leer-${i}`, text: `${teil.einzahl} ${i + 1}: ${fehlen.map((f) => f.label).join(' und ')} fehlt.` })
       })
     }

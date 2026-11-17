@@ -1,7 +1,7 @@
 import { html } from 'htm/preact'
 import { render, type VNode } from 'preact'
 import { AW_CSS } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
-import { BAUPLAENE, hatBauplan, hinweise, loese, type EintragOrt, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { BAUPLAENE, hatBauplan, hinweise, loese, teileVon, type EintragOrt, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenAnsicht, antwortenTeil, wahrFalschTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
 import { zahlTeil, zeilenAnsicht, zeilenTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
 import { gruppenAnsicht, gruppenTeil, zuordnenAnsicht, zuordnenTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-d'
@@ -53,8 +53,7 @@ export interface Aufgabenbearbeiter {
 /** Was der Kern als „wahr“ liest, wird für die Bearbeitung zu true/false (gespeichert wird erst bei einer Änderung) */
 function normalisiere(b: Block): Block {
   const neu: Block = { ...b }
-  for (const teil0 of BAUPLAENE[b.type]?.teile ?? []) {
-    const teil = loese(teil0, b)
+  for (const teil of BAUPLAENE[b.type] ? teileVon(BAUPLAENE[b.type], b) : []) {
     if (teil.art === 'antworten' || teil.art === 'paare' || teil.art === 'eintraege' || teil.art === 'gruppen') neu[teil.feld] = liste(b[teil.feld])
     if (teil.art === 'wahrfalsch') neu[teil.feld] = [true, 'true', 'wahr', 1].includes(b[teil.feld] as never)
     if (teil.art === 'zeilen')
@@ -197,9 +196,8 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
 
   /** Erstes Feld eines Teils (für Enter aus dem Teil davor und für den Start) */
   function erstesFeld(i: number): string | null {
-    const t0 = plan!.teile[i]
-    if (!t0) return null
-    const t = loese(t0, block)
+    const t = teileVon(plan!, block)[i]
+    if (!t) return null
     if (t.art === 'text') return t.feld
     if (t.art === 'antworten' || t.art === 'wahrfalsch') return 'antwort-0'
     if (t.art === 'paare') return `links-${t.feld}-0`
@@ -212,7 +210,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   }
 
   function teilVNode(i: number): VNode {
-    const t = loese(plan!.teile[i], block)
+    const t = teileVon(plan!, block)[i]
     if (t.art === 'text') return textTeil(t, erstesFeld(i + 1))
     if (t.art === 'antworten') return antwortenTeil(w, t)
     if (t.art === 'wahrfalsch') return wahrFalschTeil(w, t)
@@ -246,7 +244,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
     }}>
       <span class="wk-aw-schild" aria-hidden="true">Bearbeiten</span>
       <div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
-      ${plan!.teile.map((_, i) => teilVNode(i))}
+      ${teileVon(plan!, block).map((_, i) => teilVNode(i))}
       <div class="wk-aw-fuss">
         <span class="wk-aw-typ" title=${o.typName}>${o.typName}</span>
         <span class="wk-aw-mehr-wrap">
@@ -272,8 +270,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   /** Nach „Fertig“ bis zum Neubau: dieselbe Aufgabe in der Schülersicht (ohne Felder) */
   function ansicht(): VNode {
     return html`<div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
-      ${plan!.teile.map((t0) => {
-        const t = loese(t0, block)
+      ${teileVon(plan!, block).map((t) => {
         if (t.art === 'text') return s(block[t.feld]) ? html`<p class="frage">${s(block[t.feld])}</p>` : null
         if (t.art === 'antworten' || t.art === 'wahrfalsch') return antwortenAnsicht(w, t)
         if (t.art === 'paare') return paareAnsicht(w, t)
@@ -331,8 +328,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   ziel.innerHTML = ''
   const e = o.eintrag
   const listenTeil = (() => {
-    const t = plan.teile.find((x) => x.art !== 'text' && x.art !== 'zahl')
-    return t ? loese(t, block) : undefined
+    return teileVon(plan, block).find((x) => x.art !== 'text' && x.art !== 'zahl')
   })()
   fokusZiel = erstesFeld(0)
   for (const t of plan.teile) {

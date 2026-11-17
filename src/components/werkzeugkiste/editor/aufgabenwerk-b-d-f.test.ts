@@ -127,7 +127,12 @@ function starte(block: Record<string, unknown>, eintrag: Parameters<typeof start
   werk = starteAufgabe({ ziel, block: block as never, marke: 'k0-e3', typName: 'Typ', eintrag, melde: (n) => gemeldet.push(n) })
   return werk
 }
-const aenderungen = () => gemeldet.filter((n) => n.wkAufgabeAenderung)
+// Jede Gruppe muss die Nachrichten-Prüfung der App bestehen (kleine Buchstaben, Ziffern, _ und -)
+const aenderungen = () => {
+  const l = gemeldet.filter((n) => n.wkAufgabeAenderung)
+  for (const n of l) expect(String(n.gruppe)).toMatch(/^[a-z0-9_-]{1,60}$/)
+  return l
+}
 const letzterBlock = () => aenderungen().at(-1)!.block as Record<string, unknown>
 const eingabe = (el: Element, wert: string) => {
   ;(el as HTMLInputElement).value = wert
@@ -386,5 +391,79 @@ describe('Aufgabenwerk: Muster F und C kurz (Einträge mit mehreren Feldern)', (
     fireEvent.click(ziel.querySelector('[aria-label="Schritt 1 löschen"]')!)
     fireEvent.click(ziel.querySelector('[aria-label="Schritt 1 löschen"]')!)
     expect(letzterBlock().steps).toEqual([])
+  })
+})
+
+// ── Bauschritt 4: Unterlisten, Bedingungen, Listen-Felder ────────────
+
+describe('Aufgabenwerk: Schnellfragen, Zusammenfassung, Tippkarten', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    werk?.ab()
+    vi.useRealTimers()
+    document.body.innerHTML = ''
+  })
+  const schnell = () => ({
+    type: 'single_choice_set',
+    questions: [
+      { question: 'Wer stellt den Frachtbrief aus?', correct: 'Absender', wrong: ['Empfänger', 'Fahrer'] },
+      { question: 'Was ist CMR?', correct: 'Abkommen', wrong: ['Gesetz', 'Fahrzeug'] },
+    ],
+  })
+
+  it('Schnellfragen: Frage und richtige Antwort in der Zeile, falsche Antworten darunter', () => {
+    starte(schnell(), { art: 'eintrag', nr: 1 })
+    expect(ziel.querySelector<HTMLTextAreaElement>('[data-aw-fokus="ef-1-0"]')!.value).toBe('Was ist CMR?')
+    expect(document.activeElement).toBe(ziel.querySelector('[data-aw-fokus="ef-1-0"]'))
+    expect(Array.from(ziel.querySelectorAll<HTMLTextAreaElement>('[data-aw-liste="questions-0-wrong"] textarea')).map((t) => t.value)).toEqual(['Empfänger', 'Fahrer'])
+  })
+
+  it('Schnellfragen: falsche Antwort ändern/löschen wirkt auf die richtige Frage; Mindestzahl erklärt', () => {
+    starte(schnell())
+    eingabe(ziel.querySelector('[data-aw-liste="questions-1-wrong"] textarea')!, 'Vertrag')
+    vi.advanceTimersByTime(700)
+    const q = letzterBlock().questions as Record<string, unknown>[]
+    expect(q[1].wrong).toEqual(['Vertrag', 'Fahrzeug'])
+    expect(q[0].wrong).toEqual(['Empfänger', 'Fahrer'])
+    fireEvent.click(ziel.querySelector('[data-aw-liste="questions-0-wrong"] [aria-label="Falsche Antwort 1 löschen"]')!)
+    expect(ziel.textContent).toMatch(/Mindestens 2 Falsche Antworten nötig/)
+  })
+
+  it('Schnellfragen: neue Frage bringt zwei leere falsche Antworten mit; Enter im Ergebnis springt in die Liste', () => {
+    starte(schnell())
+    fireEvent.click(ziel.querySelector('.wk-aw-eintraege > .wk-aw-neu')!)
+    expect((letzterBlock().questions as Record<string, unknown>[])[2].wrong).toEqual(['', ''])
+    fireEvent.keyDown(ziel.querySelector('[data-aw-fokus="ef-0-1"]')!, { key: 'Enter' })
+    expect(document.activeElement).toBe(ziel.querySelector('[data-aw-liste="questions-0-wrong"] textarea'))
+  })
+
+  it('Schnellfragen: Übernahme prüft die Unterliste', () => {
+    const r = uebernimmAufgabe(schnell(), { ...schnell(), questions: [{ question: 'F', correct: 'R', wrong: ['a', 'b\u0007'], fremd: 'x' }] })
+    expect(r.ok && r.block.questions).toEqual([{ question: 'F', correct: 'R', wrong: ['a', 'b'] }])
+    expect(uebernimmAufgabe(schnell(), { ...schnell(), questions: [{ question: 'F', correct: 'R', wrong: 'x' }] }).ok).toBe(false)
+    expect(hinweise({ type: 'single_choice_set', questions: [{ question: 'F', correct: 'R', wrong: ['a'] }] }).map((h) => h.text)).toContain('Frage 1: mindestens 2 falsche antworten nötig.')
+  })
+
+  it('Zusammenfassung: Fragen-Form und Aussagen-Form öffnen sich je nach Block', () => {
+    starte({ type: 'summary', questions: [{ correct: 'Richtig', distractors: ['A', 'B'] }] })
+    expect(ziel.querySelector('[data-aw-liste="questions"]')).not.toBeNull()
+    expect(ziel.querySelector('[data-aw-liste="statements"]')).toBeNull()
+    werk.ab()
+    starte({ type: 'summary', statements: ['Eins', 'Zwei'] })
+    expect(ziel.querySelector('[data-aw-liste="questions"]')).toBeNull()
+    expect(Array.from(ziel.querySelectorAll<HTMLTextAreaElement>('[data-aw-liste="statements"] textarea')).map((t) => t.value)).toEqual(['Eins', 'Zwei'])
+    expect(eintragFuerBlock({ type: 'summary', statements: ['A', ' ', 'C'] }, { art: 'eintrag', nr: 1 }, 2)).toEqual({ art: 'eintrag', nr: 2 })
+  })
+
+  it('Tippkarten: Antworten als Liste bleiben eine Liste', () => {
+    starte({ type: 'flashcards', cards: [{ front: 'CMR?', back: ['CMR', 'CMR-Frachtbrief'] }, { front: 'HGB?', back: 'Handelsgesetzbuch' }] })
+    const f = (i: number) => ziel.querySelector<HTMLTextAreaElement>(`[data-aw-fokus="ef-${i}-1"]`)!
+    expect(f(0).value).toBe('CMR / CMR-Frachtbrief')
+    eingabe(f(0), 'CMR / Frachtbrief / CIM')
+    eingabe(f(1), 'HGB')
+    vi.advanceTimersByTime(700)
+    const c = letzterBlock().cards as Record<string, unknown>[]
+    expect(c[0].back).toEqual(['CMR', 'Frachtbrief', 'CIM'])
+    expect(c[1].back).toBe('HGB')
   })
 })

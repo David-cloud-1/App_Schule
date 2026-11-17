@@ -87,12 +87,12 @@ const mc = () => ({
 })
 
 describe('Bauplan', () => {
-  it('kennt nach Bauschritt 3 die Muster A bis F und die Einzelfeld-Typen', () => {
+  it('kennt nach Bauschritt 4 die Muster A bis F und die Einzelfeld-Typen', () => {
     expect([...AUFGABENWERK_TYPEN].sort()).toEqual(
       [
         'accordion', 'advanced_fill_blanks', 'arithmetic_quiz', 'calculation_example', 'calculation_exercise', 'crossword', 'dialog_cards',
         'drag_drop', 'drag_words', 'fill_blanks', 'find_words', 'freitext', 'mark_words', 'memory_game', 'multiple_choice', 'reihenfolge',
-        'rechenweg', 'schaetzrunde', 'selbsteinschaetzung', 'single_choice', 'trainer', 'true_false',
+        'rechenweg', 'schaetzrunde', 'selbsteinschaetzung', 'single_choice', 'single_choice_set', 'summary', 'flashcards', 'trainer', 'true_false',
       ].sort(),
     )
     expect(BAUPLAENE.multiple_choice.muster).toBe('A')

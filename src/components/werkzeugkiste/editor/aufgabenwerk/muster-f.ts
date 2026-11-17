@@ -1,6 +1,7 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
 import { eintragsName, hinweise, type EintragFeld, type EintraegeTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { stringListe } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
 import { listenAktionen } from '@/components/werkzeugkiste/editor/aufgabenwerk/listen'
 import { s, wachse, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
@@ -21,7 +22,11 @@ function offene(w: Werk, feld: string): Set<number> {
 /** Ganze Zahl wird als Zahl gespeichert, sonst als Text (so liest der Kern beides) */
 const zahlOderText = (v: string): string | number => (/^-?\d{1,15}$/.test(v.trim()) ? Number(v.trim()) : v)
 
-const wert = (e: Eintrag, f: EintragFeld) => s(e[eintragsName(e, f.namen)])
+const wert = (e: Eintrag, f: EintragFeld) => {
+  const v = e[eintragsName(e, f.namen)]
+  return Array.isArray(v) ? v.map(s).join(' / ') : s(v)
+}
+const texte = (v: unknown): string[] => (Array.isArray(v) ? v.map(s) : [])
 
 export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
   const zeilenFelder = teil.felder.filter((f) => !f.knopf)
@@ -34,7 +39,7 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
     mindestens: teil.mindestens,
     hoechstens: teil.hoechstens,
     schluessel: teil.schluessel,
-    neu: (t) => ({ [erstes.namen[0]]: t }),
+    neu: (t) => ({ [erstes.namen[0]]: t, ...(teil.unterliste ? { [teil.unterliste.feld]: Array<string>(teil.unterliste.mindestens).fill('') } : {}) }),
     fokus: (i) => `ef-${i}-0`,
   })
   const eintraege = L.eintraege
@@ -42,7 +47,13 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
   const fehlt = hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld))
   const setze = (i: number, f: EintragFeld, v: string) =>
     L.mit(
-      eintraege.map((x, j) => (j === i ? { ...x, [eintragsName(x, f.namen)]: f.zahl ? zahlOderText(v) : v } : x)),
+      eintraege.map((x, j) => {
+        if (j !== i) return x
+        const name = eintragsName(x, f.namen)
+        // Eine vorhandene Liste bleibt eine Liste („a / b“ wird zu [a, b])
+        if (f.liste && Array.isArray(x[name])) return { ...x, [name]: v.split('/').map((y) => y.trim()) }
+        return { ...x, [name]: f.zahl ? zahlOderText(v) : v }
+      }),
     )
   const leer = (e: Eintrag) => teil.felder.every((f) => !wert(e, f).trim())
 
@@ -70,6 +81,7 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
           ev.preventDefault()
           // Nächstes Feld der Zeile, sonst der nächste Eintrag (oder ein neuer)
           if (!extra && k < zeilenFelder.length - 1) w.fokus(`ef-${i}-${k + 1}`)
+          else if (!extra && teil.unterliste) w.fokus(`zeile-${teil.feld}-${i}-${teil.unterliste.feld}-0`)
           else if (i < eintraege.length - 1) w.fokus(`ef-${i + 1}-0`)
           else {
             L.neu(i)
@@ -83,6 +95,20 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
       }}
     ></textarea>`
   }
+
+  const unterListe = (i: number, u: NonNullable<EintraegeTeil['unterliste']>) =>
+    stringListe(w, {
+      feld: `${teil.feld}-${i}-${u.feld}`,
+      titel: u.titel,
+      einzahl: u.einzahl,
+      mehrzahl: u.mehrzahl,
+      mindestens: u.mindestens,
+      hoechstens: u.hoechstens,
+      schluessel: u.schluessel,
+      platzhalter: u.platzhalter,
+      holen: () => texte(eintraege[i]?.[u.feld]),
+      schreibe: (l) => L.mit(eintraege.map((x, j) => (j === i ? { ...x, [u.feld]: l } : x))),
+    })
 
   const zeilen = eintraege.map((e, i) => {
     const z = L.zeilenZiehen(i)
@@ -113,6 +139,8 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
         >?</button>`}
         ${L.griff(i)} ${L.weg(i)}
       </div>
+      ${teil.unterliste &&
+      html`<div class="wk-aw-unter">${unterListe(i, teil.unterliste)}</div>`}
       ${offen &&
       html`<div class="wk-aw-extra">${knopfFelder.map((f, k) => html`<label class="wk-aw-extra-feld" key=${k}><span>${f.label}</span>${feldEl(e, i, f, k, true)}</label>`)}</div>`}
     </li>`
