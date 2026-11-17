@@ -1,8 +1,8 @@
 # PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Richtung nach Prototyp v2 geändert: keine Schublade, Bearbeiten in der Seite)
+**Last Updated:** 2026-11-17 (Tech Design freigegeben)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -135,7 +135,148 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+**Erstellt:** 2026-11-17 (Opus 5.5). Baut auf zwei bewährten Grundsätzen auf: *Die Seite zeigt und meldet, die App prüft und speichert* (PROJ-101) und *ein eingespielter Motor in der Seite, nachgeladen beim ersten Gebrauch* (PROJ-103, Schreibwerk).
+
+### Ausgangslage (Bestand, geprüft)
+- Die Vorschau ist eine **abgeschottete Seite** (eigener Rahmen ohne Zugriff auf die App). Die App kann dort **nichts direkt zeichnen** – weder ihre Formulare noch ihre Knöpfe oder Farben. Alles, was in der Seite bedient wird, muss als eigenes kleines Programm in die Seite gebracht werden. Genau so läuft seit PROJ-103 das Schreibwerk für den Lehrtext.
+- Der Kern baut **die ganze Seite** aus dem Entwurf. Marken (`data-wk`) gibt es nur pro Block, nicht pro Eintrag (Antwort, Begriff, Lücke).
+- Die 35 Formulare (`FORMULARE` + Katalog) laufen in der App und bauen fast alle Listen über einen gemeinsamen Baustein. Sie lesen und schreiben bereits genau die gespeicherte Struktur, die wir behalten wollen.
+- Die App hat schon: Wunsch-Prüfung (`liesWunsch`), Editor-Verlauf mit Zusammenfassen gleicher Gruppen, Autosave, „kein Neubau während des Schreibens“ (PROJ-103), Toasts, Rohfassung, Typ wechseln.
+
+### Entscheidung 1: Ein „Aufgabenwerk“ in der Seite
+| | A) Formular der App schwebt über der Seite | **B) Eigenes Aufgabenwerk in der Seite (gewählt)** | C) Kern baut Bearbeiten-Fassung |
+|---|---|---|---|
+| Sieht aus wie die Schülersicht | Nein, liegt darüber, rutscht beim Scrollen | **Ja, ersetzt die Aufgabe an ihrer Stelle** | Ja |
+| Tempo beim Tippen | Sofort | **Sofort** | Jede Taste ein Neubau – zu langsam |
+| Aufwand | Positionen ständig nachführen, Handy heikel | Ein zweites nachgeladenes Paket wie das Schreibwerk | Großer Kern-Umbau in Python |
+| Sicherheit | Unverändert | Unverändert (Seite meldet nur) | Unverändert |
+
+**Warum B:** Nur so wird die Aufgabe wirklich *an Ort und Stelle* zum Editor, wie im freigegebenen Prototyp v2. Das Muster ist im Projekt schon erprobt (Schreibwerk), samt Bauskript, Frische-Test und Nachladen.
+
+- Das Aufgabenwerk wird **erst beim ersten Öffnen einer Aufgabe** nachgeladen, nicht bei jedem Öffnen der Vorschau.
+- Es bekommt ein **eigenes Aussehen, das den Aufgaben der Schülerseite nachempfunden ist** (wie das Schreib-Design aus PROJ-103), plus die Bearbeiten-Zeichen aus dem Prototyp (blauer Rahmen, Schild, gestrichelte Felder). Hell/Dunkel folgt der Vorschau.
+- **Hinweis zur Regel „shadcn first“:** In der abgeschotteten Seite gibt es weder React-Bausteine der App noch Tailwind. Das Aufgabenwerk nutzt deshalb eigene, schlichte Bausteine. Alles außerhalb der Seite (Toast, Rohfassung, Typ wechseln, Optionen-Dialog falls nötig) bleibt shadcn in der App.
+
+### Entscheidung 2: Eine Typ-Beschreibung als einzige Quelle
+Statt 35 neue Formulare zu schreiben, gibt es **eine Tabelle „Typ → Bauplan“**. Jeder Typ sagt in einfachen Daten:
+- welche Teile er hat und nach welchem **Muster (A–F)** sie bedient werden (Beispiel „Zuordnen“: Arbeitsanweisung + Muster D),
+- welche gespeicherten Felder dazugehören, Mindest- und Höchstzahlen, Standard-Anweisung, Platzhalter-Beispiele,
+- welche Einstellungen unter „Optionen“ stehen (z. B. zufällige Reihenfolge, Bestehensgrenze).
+
+Diese Tabelle nutzen **beide Seiten**: das Aufgabenwerk zum Zeichnen, die App zum Prüfen und Zusammenführen. Damit gilt: Ein Typ ohne Bauplan fällt im **Wächter-Test** auf (Kriterium „Vollständigkeit“), und Seite und App können sich nie über Felder uneinig sein.
+
+Die sechs Muster sind sechs Bausteine im Aufgabenwerk. Ein Typ wird umgestellt, indem man seinen Bauplan einträgt – das ist die „Sonnet-Arbeit Typ für Typ“.
+
+### Entscheidung 3: Was hin und her geht (Nachrichten)
+```
+App → Seite
++-- Aufgabe öffnen: Marke, Typ, gespeicherter Block, Eintrag (falls Klick darauf), schreibgeschützt, Handy
++-- Neuer Stand: nach Rückgängig/Wiederholen oder „Rückgängig“ im Toast
++-- Schließen erzwingen: z. B. Wahl in der Gliederung, Moduswechsel, neue Seite
+
+Seite → App
++-- Öffnen wünschen: Marke + Eintrag (Art und Nummer), vom Seiten-Skript beim Klick
++-- Änderung: Marke + ganzer neuer Block + Gruppe für den Verlauf („Antwort 2 Text“, „Löschen“)
++-- Optionen / Typ wechseln / Rohfassung / Duplizieren / Löschen wünschen (aus dem ⋯)
++-- Fertig / Abbruch
+```
+- **Jede Aktion** (Hinzufügen, Löschen, Richtig setzen, Umsortieren) wird **sofort** gemeldet. **Tippen** wird nach kurzer Pause gemeldet und landet mit seiner Gruppe zusammengefasst als **ein** Rückgängig-Schritt pro Feld.
+- Die App speichert jeden Stand in den Entwurf (Autosave wie heute), **baut aber nicht neu**, solange die Aufgabe offen ist. Erst nach „Fertig“ (bzw. beim Wechsel zu einer anderen Aufgabe) baut der Kern die Seite neu; die bearbeitete Fassung bleibt bis dahin stehen, Scrollposition bleibt (wie heute).
+- **Löschen + Toast:** Die Seite meldet nur eine Änderung „gelöscht“. Den Toast mit „Rückgängig“ (≥ 6 s) zeigt die App; „Rückgängig“ ist derselbe Schritt wie im Editor-Verlauf und schickt den alten Stand zurück in die Seite. Ein einziger Rückgängig-Weg für alles.
+
+### Entscheidung 4: Die App prüft, die Seite schlägt nur vor
+Was die Seite als neuen Block schickt, wird **nicht einfach übernommen**:
+1. Wunsch-Prüfung wie bisher (eigener Rahmen, gültige Marke, Block existiert, Vorschau aktuell, nicht schreibgeschützt, Größenlimit).
+2. **Nur die Felder aus dem Bauplan** werden übernommen; alle **unbekannten Felder** kommen aus dem gespeicherten Original (Edge Case „unbekannte Felder bleiben erhalten“).
+3. Texte werden als **reiner Text** behandelt (Längenlimit, keine Tags), Zahlen und Ja/Nein streng geprüft, Mindestzahlen eingehalten.
+4. Erst dann Speichern und Verlaufseintrag.
+Ein Fehler im Aufgabenwerk kann damit höchstens die gerade offene Aufgabe falsch füllen, nie andere Blöcke oder fremde Felder.
+
+### Entscheidung 5: Lückentexte ohne Sternchen (Muster E)
+Ein kleiner **Übersetzer** wandelt die gespeicherte Sternchen-Schreibweise in „Text mit Lücken“ (Wort, Tipp, weitere Schreibweisen) und zurück. Gespeichert wird **unverändert** in Sternchen-Schreibweise.
+- Eine **Rundreise-Prüfung** (hin und zurück muss denselben Text ergeben) läuft beim Öffnen. Besteht ein Bestandsblock sie nicht (Sternchen ohne Gegenstück o. ä.), öffnet die Aufgabe trotzdem, zeigt den lesbaren Teil, markiert die Stelle und **ändert nichts, bis die Lehrkraft dort etwas tut**. Der Weg über die Rohfassung bleibt.
+- HTML-Reste im Klartext (`<p>`) erkennt der Übersetzer und bietet „Entfernen“ an.
+- Der Übersetzer ist reiner, gut testbarer Code und wird von App und Aufgabenwerk gemeinsam genutzt.
+
+### Entscheidung 6: Klick auf einen Eintrag – ohne Kern-Änderung
+Der Kern markiert keine Einträge. Das Seiten-Skript bekommt deshalb je Typ einen **Finder**: „Antworten sind die Zeilen in diesem Block, Lücken die Eingabefelder im Text …“. Er zählt, welcher Eintrag angeklickt wurde.
+- **Sicherheitsregel:** Stimmt die Anzahl der gefundenen Einträge nicht mit dem gespeicherten Block überein (veraltete Vorschau, unbekannter Typ, Sonderfall), öffnet die Aufgabe **ohne Eintrag** – nie an einem falschen (Kriterium erfüllt).
+- Abgesichert durch Tests mit **eingefrorenen Kern-Seiten je Typ** (einmal aus dem Kern erzeugt und eingecheckt). Ändert sich der Kern später, schlagen diese Tests an.
+- **Vorteil:** kein Kern-Deploy für PROJ-114. Falls ein Typ sich nicht sicher zählen lässt, öffnet er eben ohne Eintrag; eine spätere Kern-Marke wäre dann eine kleine Ergänzung.
+
+### Entscheidung 7: Was aus Schublade und Gliederung wird
+| Bereich | Künftig |
+|---|---|
+| Aufgaben (alle mit Muster A–F oder Einzelfeld) | **An Ort und Stelle.** Die Schublade öffnet für sie nicht mehr. |
+| Lehrtext, Überschriften, Deckblatt, Bildunterschrift | Wie PROJ-103 (Schreibwerk), gleiche Regeln für Klick/Esc/Fertig. |
+| Bild, Galerie | Bild-Werkzeuge aus PROJ-104–106, unverändert. |
+| Hotspot, Bildzuordnung, Bilder ordnen | Bild-Werkzeuge bleiben; ihre **Listen** an Ort und Stelle (A, C bzw. B). |
+| **Tabelle, Diagramm** | **Bleiben in der Schublade.** Das Raster-Feld dort ist bereits eine Tabelle zum Tippen; ein zweites in der Seite brächte wenig und kostete viel. Kann später folgen. |
+| Kapiteltest, Lernzielkontrolle | An Ort und Stelle, jede Frage als eigene Karte nach ihrem Muster (letzter Bauschritt, weil verschachtelt). |
+| Rohfassung, Typ wechseln | Aus dem `⋯` der Aufgabe, öffnen die bestehenden Dialoge der App. |
+| Gliederung (PROJ-96) | **Bleibt** als Inhaltsverzeichnis zum Springen und Umsortieren von Blöcken; ein Klick darauf schließt eine offene Aufgabe. |
+| Lücken-Liste aus Commit `72712d6` | Entfällt mit Bauschritt 2. |
+
+Die Schublade bleibt also nur für Tabelle, Diagramm und die Einheiten-Einstellungen.
+
+### A) Aufbau (was die Lehrkraft sieht)
+```
+Vorschau, Modus Bearbeiten
++-- Klick auf Aufgabe / Eintrag  → Aufgabe wird zum Editor (Seiten-Skript meldet, App öffnet)
++-- Aufgabe im Bearbeiten-Zustand (Aufgabenwerk)
+|   +-- Schild „Bearbeiten“, blauer Rahmen
+|   +-- Arbeitsanweisung (Zeile, Standard als Platzhalter)
+|   +-- Inhalt nach Muster
+|   |   +-- A Antworten: Kreis/Kästchen · Text · Sprechblase → Rückmeldung · „Antwort hinzufügen“
+|   |   +-- B Zeilen: Nummer · Text · Griff · ×
+|   |   +-- C Paare: kurz nebeneinander | lang aufklappbar wie Schülersicht
+|   |   +-- D Gruppen: Kasten je Kategorie · Begriffe · „+ Begriff“ · Verschieben nach …
+|   |   +-- E Text mit Lücken: Auswahl → „Als Lücke“/„Als Lösung“ · Lücken-Fenster
+|   |   +-- F Schritte: Zeile je Schritt · Hinweis-Knopf
+|   +-- Fehler am Ort („Klick auf den Kreis vor der richtigen Antwort.“)
+|   +-- Fußleiste (klebt unten): Typ-Name · Optionen · ⋯ · Fertig
+|         ⋯ = Typ wechseln · Rohfassung · Duplizieren · Löschen (rot)
++-- App außerhalb der Seite
+    +-- Toast „… gelöscht – Rückgängig“
+    +-- Rückgängig/Wiederholen oben (wirken auf die offene Aufgabe)
+    +-- Dialoge: Rohfassung, Typ wechseln (bestehend)
+    +-- Schublade nur noch für Tabelle, Diagramm, Einstellungen
+```
+
+### B) Daten
+- **Keine neuen gespeicherten Daten**, keine Datenbank-Änderung, keine neue API, kein neues YAML-Format, keine neue Proxy-Freigabe. Blöcke liegen weiter so im Entwurf wie heute.
+- **Neu im Code (nicht gespeichert):** die Typ-Bauplan-Tabelle, der Lückentext-Übersetzer, die Finder je Typ, die neuen Nachrichten in der Nachrichtenliste (mit Typ- und Längenprüfung).
+- **Kein Kern-Umbau, kein Kern-Deploy.**
+
+### C) Technische Entscheidungen (begründet)
+| Entscheidung | Warum |
+|---|---|
+| Aufgabenwerk in der Seite, nachgeladen | Einziger Weg zu echtem „an Ort und Stelle“; Muster aus PROJ-103 erprobt |
+| Kleine Oberflächen-Bibliothek **Preact** im Aufgabenwerk | Listen mit Hinzufügen, Löschen, Ziehen und Fokus sind mit reinem Browser-Code fehleranfällig; Preact ist sehr klein (wenige KB), funktioniert wie React und ist mit den vorhandenen Test-Werkzeugen ohne Browser-Lauf testbar (wichtig, weil kein Dev-Server) |
+| Ein Bauplan je Typ statt 35 Formulare | Einheitliche Bedienung erzwungen, Wächter-Test möglich, Typen schnell umstellbar |
+| App übernimmt nur Bauplan-Felder | Unbekannte Felder bleiben, Fehler der Seite bleiben eingegrenzt |
+| Neubau erst nach „Fertig“ | Kein Flackern, kein Springen, Tippen ohne Wartezeit |
+| Ein Rückgängig-Weg (Editor-Verlauf) | Toast, Knopf oben und Tastenkürzel verhalten sich gleich |
+| Finder je Typ mit Zählprüfung statt Kern-Marken | Kein Kern-Deploy; im Zweifel „ohne Eintrag“ statt falsch |
+| Ziehen mit eigenem Griff im Aufgabenwerk | Die App-Bibliothek zum Ziehen (`@dnd-kit`) läuft nicht in der Seite; das Seiten-Skript kann Ziehen schon (PROJ-102), derselbe Ansatz für Zeilen |
+
+### D) Bauschritte (jeder als Vercel-Vorschau-Link, live erst nach Freigabe – E4)
+| Schritt | Inhalt | Modell |
+|---|---|---|
+| 1 Grundgerüst | Aufgabenwerk + Bauskript + Frische-Test, Nachrichten, Prüfen/Zusammenführen, Öffnen/Schließen/Wechseln, Fußleiste, `⋯`, Toast-Rückgängig, Optionen, Fehler am Ort; **Muster A** mit Einfach-/Mehrfachauswahl, Richtig/Falsch | Opus |
+| 2 Die Sorgenkinder | **Muster E** (alle 4 Lückentexte, Übersetzer) und **Muster C** (Begriffe zum Aufklappen, Karten, kurze Paare); Lücken-Liste aus `72712d6` entfernen | Opus |
+| 3 Restliche Muster | **B, D, F** und Einzelfeld-Typen | Sonnet |
+| 4 Alle Typen | Übrige Baupläne (Bild-Typen-Listen, Kapiteltest, Lernzielkontrolle), Klick auf Eintrag für alle Finder, Wächter-Test „jeder Typ hat Bauplan“, Schublade für Aufgaben abschalten | Sonnet |
+| QA + Praxisdurchgang | Akzeptanzkriterien, Sicherheit der Nachrichten, Durchgang „Basics rund um den LKW“ am Laptop und Handy | Opus |
+
+### E) Risiken
+- **Aussehen nachempfunden, nicht vom Kern gerechnet:** Beim Öffnen und nach „Fertig“ kann die Aufgabe leicht anders aussehen. Gleiche Ehrlichkeitsgrenze wie bei PROJ-103; im Vorschau-Link prüfen.
+- **Finder hängen am Kern-HTML:** abgefangen durch Zählprüfung und eingefrorene Kern-Seiten in den Tests.
+- **Großer Umfang (35 Typen):** abgefangen durch Bauplan-Tabelle und Freigabe nach jedem Schritt.
+
+### F) Abhängigkeiten (Pakete)
+- `preact` – kleine Oberflächen-Bibliothek für das Aufgabenwerk in der Seite (nur im nachgeladenen Paket, nicht in der App).
+- Sonst nichts Neues: Bauskript (Vite), Toasts (sonner), Tests (Vitest) sind vorhanden.
 
 ## QA Test Results
 _To be added by /qa_
