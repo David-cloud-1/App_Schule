@@ -1,6 +1,6 @@
 # PROJ-108: Baukasten – Blöcke und Themen aus eigenen Materialien & Regal übernehmen
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-17
 
@@ -261,4 +261,5 @@ Testlücken: Es gibt keinen Test für „Quelle = Ziel“ (Bildkopie wird übers
 **Deploy: ja, mit Vorbehalt.** Es gibt keine Critical- und keine High-Bugs. Die Sicherheitsprüfung ergab keinen Weg zu fremden Inhalten, Entwürfen, Skripten oder Bildern. BUG-1 (Einfügen trotz Abbrechen) und BUG-2 (falsches Bild statt Platzhalter) sollten vor oder kurz nach dem Deploy behoben werden. Danach ist ein manueller Browser-Test mit dem Regal-Material einer zweiten Person nötig.
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-11-17 (Push `96cde5f` auf `main`, Vercel Production „Ready“). Keine Migration, kein Kern-Deploy (Kern unverändert). Nachkontrolle: die drei neuen Routen antworten ohne Login mit 401.
+**Offen:** Browser-Test durch die Lehrkraft (Dialog am Laptop und Handy, Regal-Material einer zweiten Person, Vorschau, Bilder). BUG-6 (Fokus, Handy-Scrollen) und BUG-7 (keine Anfragenbegrenzung) bleiben Low.
