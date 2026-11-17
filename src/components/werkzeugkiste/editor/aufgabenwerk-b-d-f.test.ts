@@ -631,3 +631,51 @@ describe('Aufgabenwerk: Fallakte, Video, Kapiteltest', () => {
     expect(eintragFuerBlock({ type: 'question_set', questions: [{ type: 'fill_blanks', text: 'ohne' }, { question: 'Q', answers: [{}, {}] }] }, { art: 'eintrag', nr: 0 }, 1)).toEqual({ art: 'eintrag', nr: 1 })
   })
 })
+
+// ── QA-Korrekturen ───────────────────────────────────────────────────
+
+describe('Aufgabenwerk: QA-Korrekturen', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    werk?.ab()
+    vi.useRealTimers()
+    document.body.innerHTML = ''
+  })
+
+  it('BUG-7: Ein schon vergebener Kategoriename wird nicht übernommen, die Begriffe bleiben getrennt', () => {
+    starte({
+      type: 'drag_drop',
+      categories: ['Bahn', 'Bahnhof'],
+      items: [{ text: 'ICE', category: 'Bahn' }, { text: 'Gleis', category: 'Bahnhof' }],
+    })
+    const feld = ziel.querySelector<HTMLInputElement>('[data-aw-fokus="kat-1"]')!
+    eingabe(feld, 'Bahn')
+    vi.advanceTimersByTime(700)
+    expect(aenderungen()).toHaveLength(0)
+    expect(feld.value).toBe('Bahn')
+    expect(ziel.textContent).toMatch(/gibt es schon/)
+    eingabe(feld, 'Bahnsteig')
+    vi.advanceTimersByTime(700)
+    const b = letzterBlock()
+    expect(b.categories).toEqual(['Bahn', 'Bahnsteig'])
+    expect((b.items as Record<string, string>[]).map((i) => i.category)).toEqual(['Bahn', 'Bahnsteig'])
+  })
+
+  it('BUG-9: Kapiteltest – nach Alt+Pfeil bleibt der Fokus in der verschobenen Frage', () => {
+    starte({
+      type: 'question_set',
+      questions: [
+        { type: 'true_false', question: 'A', correct: true },
+        { type: 'true_false', question: 'B', correct: true },
+        { type: 'true_false', question: 'C', correct: true },
+      ],
+    })
+    fireEvent.keyDown(ziel.querySelector('[data-aw-karte="2"] .wk-aw-griff')!, { key: 'ArrowUp' })
+    expect((letzterBlock().questions as Record<string, string>[]).map((q) => q.question)).toEqual(['A', 'C', 'B'])
+    expect(document.activeElement).toBe(ziel.querySelector('[data-aw-fokus="q1:question"]'))
+  })
+
+  it('BUG-4: Eine abgelehnte Änderung wird gemeldet – hier: Zahl außerhalb der Grenzen', () => {
+    expect(uebernimmAufgabe({ type: 'question_set', questions: [] }, { type: 'question_set', questions: [], pass_percentage: 101 }).ok).toBe(false)
+  })
+})

@@ -109,7 +109,17 @@ interface AufgabeSitzung {
   typ: string
   /** Stand, den die Seite gerade zeigt (als Text), damit Rückgängig dort ankommt */
   bekannt: string
+  /** Fingerabdruck von allem außer dieser Aufgabe: ändert er sich, ist die Stelle nicht mehr sicher (QA BUG-1) */
+  rest: string
 }
+
+/** Alles in der Struktur außer dem Block an `ort` – eigene Änderungen der Aufgabe verändern das nie */
+export function restSignatur(struktur: { chapters: Array<{ elements: unknown[] }> }, ort: Ort): string {
+  return JSON.stringify(struktur.chapters.map((k, t) => (t === ort.thema ? { ...k, elements: k.elements.filter((_, i) => i !== ort.block) } : k)))
+}
+
+/** Aktionen (Hinzufügen, Löschen, Umsortieren …) bilden nie einen gemeinsamen Rückgängig-Schritt */
+const AKTIONS_GRUPPE = /^(neu-|loeschen-|umsortieren|richtig|verschiebe-)/
 
 const ZURUECK = `${WERKZEUGKISTE_HREF}?tab=materialien`
 const GLIEDERUNG_SPEICHER = 'wk-editor-gliederung'
@@ -242,6 +252,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const sitzungen = useRef(new Map<string, AufgabeSitzung>())
   const aktiveAufgabe = useRef<string | null>(null)
   const aufgabeZaehler = useRef(0)
+  const aktionsZaehler = useRef(0)
   const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben || !!aufgabe, z.gespeichertSchluessel)
   const [auswahl, setAuswahlState] = useState<Auswahl>(null)
   // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
@@ -875,7 +886,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     setSchubladeOffen(false)
     if (aktiveAufgabe.current === marke) return true
     const nr = ++aufgabeZaehler.current
-    sitzungen.current.set(marke, { nr, marke, ort, typ: b.type, bekannt: JSON.stringify(b) })
+    sitzungen.current.set(marke, { nr, marke, ort, typ: b.type, bekannt: JSON.stringify(b), rest: restSignatur(z.struktur, ort) })
     aktiveAufgabe.current = marke
     setAufgabe({ nr, marke, block: b, typName: typName(b.type), eintrag })
     return true
@@ -895,6 +906,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (!sit) return
     if (w.art === 'aufgabeEnde' || w.art === 'aufgabeAbbruch') {
       schliesseAufgabe(w.marke, null)
+      return
+    }
+    // Hat sich die Seite um die Aufgabe herum verändert (Block gelöscht, verschoben, eingefügt), gehört der Platz
+    // vielleicht schon einem anderen Block: nichts schreiben, nichts löschen
+    if (restSignatur(z.struktur, sit.ort) !== sit.rest) {
+      schliesseAufgabe(w.marke, 'vorbei')
+      toast.warning('Die Aufgabe wurde geschlossen, weil sich die Seite darum herum geändert hat. Die letzte Eingabe wurde nicht übernommen.')
       return
     }
     if (w.art === 'aufgabeAktion') {
@@ -919,13 +937,17 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     const r = uebernimmAufgabe(alt, w.block)
     if (!r.ok) {
       toast.error(r.grund)
+      // Die Seite zeigt sonst etwas, das nicht gespeichert ist: ihr den gespeicherten Stand zurückgeben
+      sit.bekannt = JSON.stringify(alt)
+      setAufgabeBefehl((x) => ({ nr: (x?.nr ?? 0) + 1, art: 'stand', block: alt }))
       return
     }
     const text = JSON.stringify(r.block)
     sit.bekannt = text
     if (text === JSON.stringify(alt)) return
     const ort = sit.ort
-    z.aendere((s) => setzeBlock(s, ort, r.block), `aufgabe-${sit.nr}-${w.gruppe}`)
+    const gruppe = AKTIONS_GRUPPE.test(w.gruppe) ? `${w.gruppe}-${++aktionsZaehler.current}` : w.gruppe
+    z.aendere((s) => setzeBlock(s, ort, r.block), `aufgabe-${sit.nr}-${gruppe}`)
     const geloescht = LOESCH_TEXTE[w.gruppe]
     if (geloescht) toast.success(geloescht, { duration: 8000, action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
   }
@@ -936,7 +958,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     const sit = marke ? sitzungen.current.get(marke) : null
     if (!marke || !sit) return
     const b = z.struktur.chapters[sit.ort.thema]?.elements[sit.ort.block]
-    if (!b || b.type !== sit.typ) {
+    if (!b || b.type !== sit.typ || restSignatur(z.struktur, sit.ort) !== sit.rest) {
       schliesseAufgabe(marke, 'vorbei')
       return
     }

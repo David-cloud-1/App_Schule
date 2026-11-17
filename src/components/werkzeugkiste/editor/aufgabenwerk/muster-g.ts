@@ -93,7 +93,7 @@ export function unterbloeckeTeil(w: Werk, teil: UnterBloeckeTeil, zeichner: Zeic
     hoechstens: teil.hoechstens,
     schluessel: teil.schluessel,
     neu: () => neueFrage('multiple_choice') as Eintrag,
-    fokus: (i) => `q${i}:frage`,
+    fokus: (i) => `q${i}:question`,
   })
   const liste = L.eintraege as Block[]
   const notizen = hinweise(w.block).filter((h) => h.wo === teil.feld)

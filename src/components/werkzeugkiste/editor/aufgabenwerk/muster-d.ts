@@ -69,7 +69,17 @@ export function zuordnenTeil(w: Werk, teil: ZuordnenTeil): VNode {
     w.tue(mitStand([...kat, `Kategorie ${n}`], begriffe), 'neu-kategorie', `kat-${kat.length}`)
   }
 
+  /** Name, der gerade getippt wird, aber noch nicht gespeichert werden darf (gibt es schon): Ohne diese Sperre würden die Begriffe zweier gleichnamiger Kategorien zusammenfallen */
+  const entwurfKey = (ci: number) => `rueck-katname-${ci}`
   function benenne(ci: number, name: string) {
+    if (kat.some((k, j) => j !== ci && k === name)) {
+      w.zustand[entwurfKey(ci)] = name
+      w.hinweis = { wo: teil.feld, text: `Eine Kategorie „${name || '(ohne Namen)'}“ gibt es schon. Der Name wird erst übernommen, wenn er anders lautet.` }
+      w.zeichne()
+      return
+    }
+    delete w.zustand[entwurfKey(ci)]
+    if (w.hinweis?.wo === teil.feld) w.hinweis = null
     w.tippe(
       mitStand(
         kat.map((k, j) => (j === ci ? name : k)),
@@ -158,8 +168,14 @@ export function zuordnenTeil(w: Werk, teil: ZuordnenTeil): VNode {
             data-aw-fokus=${`kat-${ci}`}
             aria-label=${`Kategorie ${ci + 1}`}
             placeholder="Name der Kategorie"
-            value=${k}
+            value=${typeof w.zustand[entwurfKey(ci)] === 'string' ? (w.zustand[entwurfKey(ci)] as string) : k}
             onInput=${(e: Event) => benenne(ci, (e.currentTarget as HTMLInputElement).value)}
+            onBlur=${() => {
+              if (w.zustand[entwurfKey(ci)] === undefined) return
+              delete w.zustand[entwurfKey(ci)]
+              w.hinweis = null
+              w.zeichne()
+            }}
             onKeyDown=${(e: KeyboardEvent) => {
               if (e.key === 'Enter') {
                 e.preventDefault()

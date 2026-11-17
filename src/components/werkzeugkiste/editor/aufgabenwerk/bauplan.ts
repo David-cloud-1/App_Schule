@@ -202,6 +202,8 @@ export interface Bauplan {
   finder?: string
 }
 
+/** Obergrenze für einen einzelnen Text, auch wenn der Bauplan weniger vorsieht (Bestand, siehe QA BUG-4) */
+const TEXT_GRENZE = 20_000
 export const TEXT_MAX = 2000
 const FRAGE_MAX = 5000
 const LUECKENTEXT_MAX = 20_000
@@ -861,7 +863,8 @@ type Ergebnis = { ok: true; block: Block } | { ok: false; grund: string }
 
 /** Reiner Text: keine Steuerzeichen außer Zeilenumbruch und Tab, Länge begrenzt */
 export function reinerText(wert: unknown, max: number): string | null {
-  if (typeof wert !== 'string' || wert.length > max) return null
+  // Die Längen im Bauplan sind Richtwerte der Oberfläche. Bestand darf länger sein; hart begrenzt nur das Gesamtlimit der Nachricht.
+  if (typeof wert !== 'string' || wert.length > Math.max(max, TEXT_GRENZE)) return null
   return wert.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B-\u001F\u007F]/g, '')
 }
 
@@ -887,7 +890,7 @@ function uebernimmListe(
   extra: (roh: Record<string, unknown>) => Record<string, unknown>,
 ): Record<string, unknown>[] | string {
   const liste = vorschlag[teil.feld]
-  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
+  if (!Array.isArray(liste) || liste.length > grenze(teil.hoechstens, original[teil.feld])) return `Zu viele ${teil.mehrzahl}.`
   const bekannt = new Set([...felder.map((f) => f.feld), ...Object.keys(extra({}))])
   const alt = listeVon(original[teil.feld])
   const erlaubt = new Set(alt.flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
@@ -907,9 +910,12 @@ function uebernimmListe(
 
 const ZAHL_GRENZE = 100_000
 
+/** Höchstzahl der Oberfläche, aber nie weniger als der Bestand (sonst ließe sich ein langer Bestandsblock nicht mehr ändern) */
+const grenze = (hoechstens: number, alt: unknown) => Math.max(hoechstens, Array.isArray(alt) ? alt.length : 0)
+
 /** Antworten mit Kreis: Text und Rückmeldung als reiner Text, richtig als Ja/Nein */
 function uebernimmAntworten(wert: unknown, u: UnterAntworten): Record<string, unknown>[] | string {
-  if (!Array.isArray(wert) || wert.length > u.hoechstens) return `Zu viele ${u.mehrzahl}.`
+  if (!Array.isArray(wert) || wert.length > Math.max(u.hoechstens, 30)) return `Zu viele ${u.mehrzahl}.`
   const out: Record<string, unknown>[] = []
   for (const roh of wert) {
     if (!istObjekt(roh)) return `Ungültige ${u.einzahl}.`
@@ -926,7 +932,7 @@ function uebernimmAntworten(wert: unknown, u: UnterAntworten): Record<string, un
 /** Einträge mit mehreren Feldern (Muster F, C kurz) */
 function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>, teil: EintraegeTeil): Record<string, unknown>[] | string {
   const liste = vorschlag[teil.feld]
-  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
+  if (!Array.isArray(liste) || liste.length > grenze(teil.hoechstens, original[teil.feld])) return `Zu viele ${teil.mehrzahl}.`
   const bekannt = new Set([...teil.felder.flatMap((f) => f.namen), ...(teil.unterliste ? [teil.unterliste.feld] : []), ...(teil.unterAntworten?.namen ?? [])])
   const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
   const neu: Record<string, unknown>[] = []
@@ -943,7 +949,7 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
         continue
       }
       if (f.liste && Array.isArray(v)) {
-        const l = uebernimmTexte(v, f.max, 20, f.label)
+        const l = uebernimmTexte(v, f.max, 50, f.label)
         if (typeof l === 'string') return l
         eintrag[name] = l
         continue
@@ -962,7 +968,7 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
     }
     if (teil.unterliste) {
       const u = teil.unterliste
-      const l = uebernimmTexte(roh[u.feld] ?? [], TEXT_MAX, u.hoechstens, u.mehrzahl)
+      const l = uebernimmTexte(roh[u.feld] ?? [], TEXT_MAX, Math.max(u.hoechstens, 50), u.mehrzahl)
       if (typeof l === 'string') return l
       eintrag[u.feld] = l
     }
@@ -986,7 +992,7 @@ function uebernimmTexte(wert: unknown, max: number, hoechstens: number, wort: st
 /** Gruppen des Trainers: Titel, Hinweis, Einträge, Störer */
 function uebernimmGruppen(original: Block, vorschlag: Record<string, unknown>, teil: GruppenTeil): Record<string, unknown>[] | string {
   const liste = vorschlag[teil.feld]
-  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
+  if (!Array.isArray(liste) || liste.length > grenze(teil.hoechstens, original[teil.feld])) return `Zu viele ${teil.mehrzahl}.`
   const bekannt = new Set([...teil.titel, ...teil.reihe, 'hinweis', 'stoerer'])
   const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
   const neu: Record<string, unknown>[] = []
@@ -999,11 +1005,11 @@ function uebernimmGruppen(original: Block, vorschlag: Record<string, unknown>, t
     const hinweis = reinerText(roh.hinweis ?? '', TEXT_MAX)
     if (hinweis === null) return 'Hinweis der Gruppe ist zu lang.'
     if (hinweis || 'hinweis' in roh) g.hinweis = hinweis
-    const reihe = uebernimmTexte(roh[eintragsName(roh, teil.reihe)], TEXT_MAX, 30, 'Einträge')
+    const reihe = uebernimmTexte(roh[eintragsName(roh, teil.reihe)], TEXT_MAX, 50, 'Einträge')
     if (typeof reihe === 'string') return reihe
     g[eintragsName(roh, teil.reihe)] = reihe
     if (roh.stoerer !== undefined) {
-      const st = uebernimmTexte(roh.stoerer, TEXT_MAX, 30, 'Störer')
+      const st = uebernimmTexte(roh.stoerer, TEXT_MAX, 50, 'Störer')
       if (typeof st === 'string') return st
       g.stoerer = st
     }
@@ -1015,15 +1021,21 @@ function uebernimmGruppen(original: Block, vorschlag: Record<string, unknown>, t
 /** Fragen des Kapiteltests: jede nach dem Bauplan ihres Typs (rekursiv, mit demselben Prüfer) */
 function uebernimmFragen(original: Block, vorschlag: Record<string, unknown>, teil: UnterBloeckeTeil): Record<string, unknown>[] | string {
   const liste = vorschlag[teil.feld]
-  if (!Array.isArray(liste) || liste.length > teil.hoechstens) return `Zu viele ${teil.mehrzahl}.`
-  const alt = listeVon(original[teil.feld])
+  if (!Array.isArray(liste) || liste.length > grenze(teil.hoechstens, original[teil.feld])) return `Zu viele ${teil.mehrzahl}.`
+  // Zusatzfelder bleiben bei ihrer Frage, egal wohin sie verschoben wurde: erlaubt sind nur Namen, die es in
+  // irgendeiner Original-Frage gab, und nur einfache Werte (die Seite ist nicht vertrauenswürdig)
+  const bekannteNamen = new Set(listeVon(original[teil.feld]).flatMap((f) => (istObjekt(f) ? Object.keys(f) : [])))
+  bekannteNamen.delete('type')
   const out: Record<string, unknown>[] = []
   for (let i = 0; i < liste.length; i++) {
     const roh = liste[i]
     if (!istObjekt(roh) || typeof roh.type !== 'string' || !teil.erlaubt.includes(roh.type)) return `${teil.einzahl} ${i + 1}: Dieser Typ ist im Kapiteltest nicht möglich.`
-    const vorher = alt[i]
-    const basis: Block = istObjekt(vorher) && vorher.type === roh.type ? ({ ...vorher } as Block) : ({ type: roh.type } as Block)
-    const r = uebernimmAufgabe(basis, roh)
+    const basis: Record<string, unknown> = { type: roh.type }
+    for (const [k, v] of Object.entries(roh)) {
+      if (!bekannteNamen.has(k) || k === '__proto__') continue
+      if ((typeof v === 'string' && v.length <= TEXT_MAX) || typeof v === 'number' || typeof v === 'boolean') basis[k] = v
+    }
+    const r = uebernimmAufgabe(basis as Block, roh)
     if (!r.ok) return `${teil.einzahl} ${i + 1}: ${r.grund}`
     out.push(r.block)
   }
@@ -1073,7 +1085,7 @@ export function uebernimmAufgabe(original: Block, vorschlag: unknown): Ergebnis 
       if (typeof l === 'string') return { ok: false, grund: l }
       block[teil.feld] = l
     } else if (teil.art === 'zeilen') {
-      const l = uebernimmTexte(vorschlag[teil.feld], teil.max, teil.hoechstens, teil.mehrzahl)
+      const l = uebernimmTexte(vorschlag[teil.feld], teil.max, grenze(teil.hoechstens, original[teil.feld]), teil.mehrzahl)
       if (typeof l === 'string') return { ok: false, grund: l }
       block[teil.feld] = l
     } else if (teil.art === 'eintraege') {
@@ -1083,10 +1095,10 @@ export function uebernimmAufgabe(original: Block, vorschlag: unknown): Ergebnis 
     } else if (teil.art === 'zahl') {
       const v = vorschlag[teil.feld]
       if (v === undefined || v === null || v === '') delete block[teil.feld]
-      else if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= ZAHL_GRENZE) block[teil.feld] = v
-      else return { ok: false, grund: `${teil.label}: bitte eine ganze Zahl eingeben.` }
+      else if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= ZAHL_GRENZE && ((v >= teil.min && v <= teil.max) || v === original[teil.feld])) block[teil.feld] = v
+      else return { ok: false, grund: `${teil.label}: bitte eine ganze Zahl von ${teil.min} bis ${teil.max} eingeben.` }
     } else if (teil.art === 'zuordnen') {
-      const kat = uebernimmTexte(vorschlag[teil.kategorien], TEXT_MAX, 20, 'Kategorien')
+      const kat = uebernimmTexte(vorschlag[teil.kategorien], TEXT_MAX, grenze(20, original[teil.kategorien]), 'Kategorien')
       if (typeof kat === 'string') return { ok: false, grund: kat }
       const l = uebernimmListe(original, vorschlag, teil, [{ feld: 'text', max: TEXT_MAX }, { feld: 'category', max: TEXT_MAX }], () => ({}))
       if (typeof l === 'string') return { ok: false, grund: l }

@@ -1,6 +1,6 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
-import { BAUPLAENE, hinweise, teileVon, type Teil, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { BAUPLAENE, echterName, hinweise, teileVon, type Teil, type TextTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenTeil, wahrFalschTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
 import { zahlTeil, zeilenTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
 import { paareTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-c'
@@ -15,11 +15,26 @@ import { liste, s, wachse, type Block, type Eintrag, type Werk } from '@/compone
  * (dort mit einem Unter-Werk, das nur die Frage kennt).
  */
 
+/** Python-Wahrheit des Kerns: 0, leer und fehlend sind falsch, alles andere wahr */
+const wahr = (v: unknown) => !!v && !(Array.isArray(v) && v.length === 0)
+
 /** Was der Kern als „wahr“ liest, wird für die Bearbeitung zu true/false (gespeichert wird erst bei einer Änderung) */
 export function normalisiere(b: Block): Block {
   const neu: Block = { ...b }
   for (const teil of BAUPLAENE[b.type] ? teileVon(BAUPLAENE[b.type], b) : []) {
-    if (teil.art === 'antworten' || teil.art === 'paare' || teil.art === 'eintraege' || teil.art === 'gruppen') neu[teil.feld] = liste(b[teil.feld])
+    if (teil.art === 'antworten') {
+      // Der Kern liest jeden wahren Wert (1, „ja“ …) als richtig: für die Bearbeitung zu true/false, sonst ginge es beim Speichern verloren
+      neu[teil.feld] = liste(b[teil.feld]).map((a) => ({ ...a, [teil.richtigFeld]: wahr(a[teil.richtigFeld]) }))
+    }
+    if (teil.art === 'paare' || teil.art === 'gruppen') neu[teil.feld] = liste(b[teil.feld])
+    if (teil.art === 'eintraege') {
+      neu[teil.feld] = liste(b[teil.feld]).map((e) => {
+        const u = teil.unterAntworten
+        if (!u) return e
+        const name = echterName(e, u.namen, u.namen[0])
+        return { ...e, [name]: liste(e[name]).map((a) => ({ ...a, correct: wahr(a.correct) })) }
+      })
+    }
     if (teil.art === 'wahrfalsch') neu[teil.feld] = [true, 'true', 'wahr', 1].includes(b[teil.feld] as never)
     if (teil.art === 'zeilen')
       neu[teil.feld] = (Array.isArray(b[teil.feld]) ? (b[teil.feld] as unknown[]) : []).map((x) =>
@@ -46,7 +61,7 @@ export function erstesFeldVon(t: Teil | undefined): string | null {
   if (t.art === 'zahl') return `zahl-${t.feld}`
   if (t.art === 'zuordnen') return 'kat-0'
   if (t.art === 'gruppen') return 'gt-0'
-  if (t.art === 'unterbloecke') return 'q0:antwort-0'
+  if (t.art === 'unterbloecke') return 'q0:question'
   return 'lt-text'
 }
 

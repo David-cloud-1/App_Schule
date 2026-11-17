@@ -119,7 +119,9 @@ describe('Bauplan', () => {
   it('lehnt falschen Typ, zu viele Antworten und zu lange Texte ab', () => {
     expect(uebernimmAufgabe(mc(), { ...mc(), type: 'true_false' }).ok).toBe(false)
     expect(uebernimmAufgabe(mc(), { ...mc(), answers: Array.from({ length: 11 }, () => ({ text: 'a' })) }).ok).toBe(false)
-    expect(uebernimmAufgabe(mc(), { ...mc(), question: 'x'.repeat(6000) }).ok).toBe(false)
+    expect(uebernimmAufgabe(mc(), { ...mc(), question: 'x'.repeat(25_000) }).ok).toBe(false)
+    // Bis zur harten Grenze lassen sich lange Bestandstexte weiter ändern (QA BUG-4)
+    expect(uebernimmAufgabe(mc(), { ...mc(), question: 'x'.repeat(6000) }).ok).toBe(true)
     expect(uebernimmAufgabe({ type: 'accordion' }, { type: 'accordion' }).ok).toBe(false)
   })
 

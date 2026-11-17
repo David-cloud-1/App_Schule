@@ -269,7 +269,7 @@ Seite → App
 Was die Seite als neuen Block schickt, wird **nicht einfach übernommen**:
 1. Wunsch-Prüfung wie bisher (eigener Rahmen, gültige Marke, Block existiert, Vorschau aktuell, nicht schreibgeschützt, Größenlimit).
 2. **Nur die Felder aus dem Bauplan** werden übernommen; alle **unbekannten Felder** kommen aus dem gespeicherten Original (Edge Case „unbekannte Felder bleiben erhalten“).
-3. Texte werden als **reiner Text** behandelt (Längenlimit, keine Tags), Zahlen und Ja/Nein streng geprüft, Mindestzahlen eingehalten.
+3. Texte werden als **reiner Text** behandelt (Steuerzeichen raus, Längenlimit; Tags bleiben als Text stehen und werden vom Kern maskiert bzw. bereinigt, wie bisher in der Schublade), Zahlen und Ja/Nein streng geprüft, Mindestzahlen eingehalten.
 4. Erst dann Speichern und Verlaufseintrag.
 Ein Fehler im Aufgabenwerk kann damit höchstens die gerade offene Aufgabe falsch füllen, nie andere Blöcke oder fremde Felder.
 
@@ -360,7 +360,97 @@ Vorschau, Modus Bearbeiten
 - Sonst nichts Neues: Bauskript (Vite), Toasts (sonner), Tests (Vitest) sind vorhanden.
 
 ## QA Test Results
-_To be added by /qa_
+**Geprüft:** 2026-11-17 (Opus 5.5), Zweig `proj-114-aufgabenwerk` (Stand a1e7644). Nur Code-Prüfung und automatische Läufe. Kein Dev-Server, kein Browser. Die QA wurde wegen des Zeitlimits vorzeitig abgeschlossen. Was nur im Code gelesen und nicht per Test belegt ist, steht unten als **„nicht verifiziert“**.
+
+### Zusammenfassung
+- **Freigabe-Empfehlung: Nein** (Status bleibt „In Progress“). Es gibt keinen kritischen Sicherheitsfund. Die Nachrichtenprüfung und `uebernimmAufgabe` grenzen eine manipulierte Seite auf die offene Aufgabe ein. Offen sind aber ein **High-Fund (Datenverlust oder falscher Block nach einer Strukturänderung bei offener Aufgabe, nicht verifiziert)** und mehrere Medium-Funde zum Datenverlust in der Übernahme, davon 3 per Test belegt. Dazu ist die Spec selbst unvollständig (Bauschritt 6, Ziehen bei Zuordnen, Sternchen im Kapiteltest), und der Praxisdurchgang im Browser fehlt.
+- **Automatische Läufe:** `npx vitest run` ergibt 3832 grün und 1 roten Test, den bekannten fremden Fehler in `werkzeugkiste-auszug.test.ts`. `tsc --noEmit` ist grün. `eslint src/components/werkzeugkiste/editor` meldet 0 Fehler und 5 Warnungen. `npm run build` ist grün.
+- **Neue Belegtests:** `src/components/werkzeugkiste/editor/aufgabenwerk-qa.test.ts` (5 Fälle). Der Sicherheitsfall ist grün. **4 Fälle sind absichtlich rot** und belegen BUG-2, BUG-3, BUG-4 und BUG-6. Vor dem nächsten Commit beheben oder auf `it.fails` stellen, sonst ist der Gesamtlauf rot.
+
+### Akzeptanzkriterien
+| # | Kriterium | Ergebnis | Beleg / Bemerkung |
+|---|---|---|---|
+| 1 | Klick macht die Aufgabe an Ort und Stelle bearbeitbar, die übrige Seite bleibt | Erfüllt (Code) | `vorschau-skript.ts` Klick → `wkAufgabe` → `oeffneAufgabe` (`baukasten-editor.tsx:869`). Für 27 Typen. Bild-Typen, Tabelle und Diagramm öffnen die Schublade (Bauschritt 6). |
+| 2 | Klick auf einen Eintrag setzt den Fokus genau dorthin | Teilweise | Finder für 21 Typen. Ohne Finder (öffnen ohne Eintrag): `find_words`, `trainer`, `memory_game`, `crossword`, `freitext`, `calculation_exercise`. Die Zählung gegen echte Kern-Seiten wurde in dieser QA **nicht neu nachgerechnet** (Zeitlimit). Bauschritt 2–5 melden das als geprüft. |
+| 3 | Unklarer Eintrag öffnet ohne Eintrag, nie falsch | Erfüllt (Code) | `eintragFuerBlock` (`bauplan.ts:849`) vergleicht die Anzahl, sonst `null`. Unbekannter Typ ergibt `null`. |
+| 4 | Fertig / Esc / Klick daneben schließen, Klick auf andere Aufgabe wechselt direkt | Erfüllt (Code) | `eintritt.ts:163`, `vorschau-skript.ts:417–420`. Einschränkung: Siehe BUG-5 (Neubau während einer offenen Aufgabe). |
+| 5 | Höchstens eine Aufgabe offen, schließt Lehrtext-Schreiben aus | Erfüllt (Code) | `oeffneAufgabe` prüft `schreibRef`. `startAufgabe` beendet die vorherige Aufgabe. |
+| 6 | Nichts davon in Ausprobieren, Download, Link, Regal, Druck | Erfüllt (Code) | Nur bei `modus==="bearbeiten"` und `!lesen`. Das Werk wird nur in die Editor-Vorschau nachgeladen. |
+| 7 | Tippen, Hinzufügen usw. sofort, ohne Neubau | Erfüllt (Code) | `pausiert` in `useEditorVorschau`. |
+| 8 | Autosave; Tippen in einem Feld ergibt einen Rückgängig-Schritt | Teilweise | Gruppe `aufgabe-{nr}-{gruppe}` (`baukasten-editor.tsx:928`). Gleiche Aktionsgruppen direkt nacheinander werden aber zusammengefasst (BUG-8). |
+| 9 | Nach „Fertig“ Neubau, bis dahin kein Flackern | Teilweise | Beim **Wechsel** zu einer anderen Aufgabe gibt es keinen Neubau. Die vorige Aufgabe bleibt bis zum nächsten „Fertig“ in der vereinfachten Ersatz-Ansicht (`eintritt.ts:198`). Das weicht vom Tech Design ab (Low, BUG-11). |
+| 10 | Gespeicherte Struktur ändert sich nicht | Teilweise | Leere `feedback`-Felder kommen dazu. Zahl und Text tauschen bei Kopfrechnen. `correct: 1` geht verloren (BUG-2). Zusatzfelder im Kapiteltest wandern (BUG-3). |
+| 11 | Löschen sofort, Toast mit „Rückgängig“ ≥ 6 s | Erfüllt (Code) | 8000 ms (`baukasten-editor.tsx:930`). Der Toast bei einer Kategorie nennt die Zahl nicht (bekannt). |
+| 12 | Zeilenwerkzeuge bei Hover/Fokus, auf Touch immer | Nicht geprüft | CSS in `design.ts`. Braucht Browser. |
+| 13 | Umsortieren per Griff und Alt+↑/↓ | Teilweise | In A, B, C, F und Trainer vorhanden. Im Kapiteltest geht der Fokus nach dem Umsortieren oder Löschen verloren (BUG-9). Begriffe bei Zuordnen lassen sich nicht sortieren oder ziehen (bekannt). |
+| 14 | Neuer Eintrag sichtbar und mit Fokus | Erfüllt (Code) | `listen.ts:71`. |
+| 15 | Mindestzahlen mit Hinweis | Erfüllt (Code) | `listen.ts:45`. |
+| 16 | `⋯`: Typ wechseln, Rohfassung, Duplizieren, Löschen | Teilweise | Typ wechseln und Rohfassung öffnen die Schublade (bewusste Abweichung). |
+| 17 | 44 px, Tastatur, Fokus, aria-label, Ansagen | Teilweise / nicht geprüft | Labels und Ansagen sind im Code vorhanden (`eintritt.ts:279`, `:250`). Trefferflächen und sichtbarer Fokus nicht geprüft (Browser). |
+| 18 | Muster A | Teilweise | Nur Kreis, keine Kästchen (bewusst). Sonst erfüllt. |
+| 19 | Muster B | Erfüllt (Code) | — |
+| 20 | Muster C | Erfüllt (Code) | Darstellung unter 400 px nicht geprüft. |
+| 21 | Muster D | Nicht erfüllt | Ziehen zwischen Kästen fehlt (bekannt). Fehler beim Umbenennen von Kategorien (BUG-7). |
+| 22 | Muster E | Teilweise | Für die 4 Lückentext-Typen im Code vorhanden. Im Kapiteltest Sternchen (bekannt). |
+| 23 | Muster F | Erfüllt (Code) | — |
+| 24 | Alle 35 Typen an Ort und Stelle, Wächter-Test | Nicht erfüllt | 27 von 35 (Bauschritt 6 offen). |
+| 25 | Tests je Typ für Öffnen, Ändern, Hinzufügen, Umsortieren, Löschen + Rückgängig | Teilweise | Nicht für jeden Typ jeder Fall. Rückgängig nur auf App-Ebene. |
+| 26 | Praxisdurchgang mit echter Einheit (Laptop + Handy) | Nicht erfüllt | Fehlt. |
+
+### Funde
+
+#### Critical
+Keine.
+
+#### High
+- **BUG-1 – Offene Sitzung zeigt nach einer Strukturänderung auf einen anderen Block (nicht verifiziert, aus dem Code abgeleitet).** `baukasten-editor.tsx:878` merkt sich die Sitzung mit festem `ort` (Thema/Blocknummer). Bei `beende` (`:886`) bleibt sie in `sitzungen`, bis die Seite „fertig“ meldet. `beiAufgabe` (`:917–928`) schreibt jede spätere `aufgabeAenderung` auf den Block, der **jetzt** an `ort` steht, sofern der Typ gleich ist.
+  - **Ablauf:** Aufgabe k0-e3 (Auswahl) offen, eben getippt, Zeitgeber 600 ms läuft noch. Die Lehrkraft löscht in der Gliederung k0-e3 oder einen Block darüber, oder verschiebt einen Block. Der Effekt `:953` schickt `beende`, die Seite sendet den letzten Stand (`eintritt.ts:244`). Dieser landet auf dem Block, der nachgerückt ist. Ist es ebenfalls eine Auswahlfrage, überschreibt er dessen Frage und Antworten.
+  - Ähnlich, ohne Zeitgeber: Rückgängig oder Wiederholen oben, das einen Block vor der offenen Aufgabe einfügt oder entfernt. Der Effekt `:934–946` schickt dann den Stand des **anderen** Blocks in den offenen Editor, und weitere Änderungen gehen an diesen.
+  - **Empfehlung:** Die Sitzung an die Block-Identität binden (z. B. den Fingerabdruck aus `gespeichertSchluessel` oder ein Vergleich mit `sit.bekannt` vor dem Schreiben). Bei jeder Strukturänderung außerhalb der Aufgabe mit `vorbei` schließen. Nach `beende` nur noch eine Meldung annehmen, und nur, wenn der Block noch derselbe ist.
+
+#### Medium
+- **BUG-2 – „Richtig“ geht verloren, wenn es nicht als `true` gespeichert ist (Test rot).** In `bauplan.ts:1067` und `:919` steht `correct: roh.correct === true`. Der Kern wertet aber jeden wahren Wert (`seite.py:375`, `:1267`). Ein Bestandsblock mit `correct: 1`, `"true"` oder `"ja"` zeigt beim Öffnen keinen gesetzten Kreis (`muster-a.ts:84`) und verliert bei der ersten Änderung irgendwo im Block die richtige Antwort. Betrifft Auswahl, Fallakte, Video und Kapiteltest. **Empfehlung:** In `normalisiere` wie bei `wahrfalsch` auf boolean umrechnen.
+- **BUG-3 – Kapiteltest: Zusatzfelder wandern beim Umsortieren oder Löschen zur falschen Frage (Test rot).** `uebernimmFragen` (`bauplan.ts:1024–1025`) nimmt die Grundlage nach **Position** (`alt[i]`) statt nach Herkunft. Nach dem Tauschen trägt Frage 1 die Zusatzfelder (z. B. `quelle`) von Frage 0. Fragen ohne `type` (der Kern nimmt dann Auswahl an) verlieren alle Zusatzfelder, weil `normalisiere` den Typ ergänzt und die Grundlage dann `{type}` ist. **Empfehlung:** Zusatzfelder aus dem Vorschlag übernehmen, wenn es sie in irgendeiner Original-Frage gab (wie `fremdeFelder`), statt nach Position.
+- **BUG-4 – Bestandsblöcke über der Höchstzahl lassen sich nicht mehr ändern (Test rot).** Eine Auswahl mit 11 Antworten (Höchstzahl 10) wird bei **jeder** Änderung abgelehnt („Zu viele Antworten.“, Toast nach jeder Tipp-Pause). Getipptes wird nicht gespeichert und ist nach „Fertig“ weg. Dasselbe gilt für jede Höchstlänge (z. B. Kreuzwort-Wort 60 Zeichen) und alle Listen-Höchstzahlen. Der Kern kennt diese Grenzen nicht. **Empfehlung:** Beim Öffnen am Ort warnen und Listen nur „nicht wachsen lassen“. Mindestens sollte das Werk nach einer Ablehnung den gespeicherten Stand zurückbekommen, damit nichts scheinbar gespeichert ist.
+- **BUG-5 – Ein Neubau, der schon läuft, schließt die gerade geöffnete Aufgabe (nicht verifiziert).** `bauen()` (`use-editor-zustand.ts:249–276`) prüft `pausiert` nur vor dem Start. Ablauf: „Fertig“ an Aufgabe A, Neubau startet, innerhalb von ca. 1–3 s Klick auf Aufgabe B. Kommt dann die neue Seite an, gilt `beiNeueSeite` (`baukasten-editor.tsx:1390–1397`): B verschwindet ohne Hinweis, und bis zu 600 ms Getipptes gehen verloren. **Empfehlung:** Eine Seite, die eintrifft, während eine Aufgabe oder ein Schreibvorgang offen ist, zurückhalten, bis die Sitzung endet. Oder vorher `flush` anstoßen und die Aufgabe nach dem Laden wieder öffnen.
+- **BUG-6 – Zahlengrenzen des Bauplans werden in der Übernahme nicht geprüft (Test rot).** `bauplan.ts:1086` prüft nur 0–100000. Ein Bauplan mit `min`/`max` (Bestehensgrenze 0–100, Runden 1–5, Höhe 2–12) lässt z. B. `pass_percentage: 500` speichern. Der Kern zeigt dann „500 % zum Bestehen“, und Bestehen wird unmöglich. **Empfehlung:** In der Übernahme `teil.min` und `teil.max` erzwingen.
+- **BUG-7 – Zuordnen: Beim Umbenennen einer Kategorie auf einen bestehenden Namen wandern deren Begriffe endgültig (nicht verifiziert).** `muster-d.ts:30–33` ordnet nach `indexOf`, also nach dem ersten gleichnamigen Kasten. `benenne` (`:72–79`) nimmt nur Begriffe mit, die gerade dem Kasten zugeordnet sind. Beispiel: „Bahn“ und „Bahnhof“. Löscht man bei „Bahnhof“ rückwärts, landet man kurz bei „Bahn“, und alle Begriffe von „Bahnhof“ gehen in den ersten Kasten über. Beim Weitertippen bleiben sie dort. Dasselbe passiert, wenn zwei Kategorien leer geräumt werden. **Empfehlung:** Begriffe beim Umbenennen nach Kastennummer führen (Zustand je Begriff) statt nach Namen. Oder doppelte Namen beim Tippen nicht übernehmen.
+
+#### Low
+- **BUG-8 – Gleiche Aktionen direkt nacheinander bilden einen einzigen Rückgängig-Schritt.** Die Gruppen heißen `loeschen-antwort`, `umsortieren`, `richtig` usw. (`baukasten-editor.tsx:928`). Zusammen mit `GRUPPE_MS` in `use-editor-zustand.ts:165` holt „Rückgängig“ im zweiten Lösch-Toast **beide** gelöschten Einträge zurück. Das ist verständlich, entspricht aber nicht „Rückgängig stellt Eintrag und Position wieder her“. Ebenso: Rückgängig oben, während die Tipp-Pause läuft, verwirft den noch nicht gemeldeten Text (`eintritt.ts:284–286`) und macht zusätzlich den vorigen Schritt rückgängig. **Empfehlung:** Für Aktionen eine laufende Nummer an die Gruppe hängen. Vor Rückgängig oben `flush` anfordern.
+- **BUG-9 – Kapiteltest: Fokus nach Löschen und Umsortieren geht ins Leere.** `muster-g.ts:96` setzt den Fokus-Schlüssel `q{i}:frage`, das Feld heißt aber `q{i}:question`. Nach Alt+Pfeil am Griff bleibt der Fokus am alten Platz (`key=${i}`). Das nächste Alt+Pfeil verschiebt dann die **andere** Frage. Dazu gibt `erstesFeldVon` für `unterbloecke` `q0:antwort-0` statt `q0:question` zurück (`teile.ts:49`).
+- **BUG-10 – Kleinere Strukturänderungen beim Speichern.** Jede Antwort und jedes Paar bekommt ein leeres `feedback` bzw. ein leeres zweites Feld (`bauplan.ts:898–902`). Kopfrechnen speichert Text „96“ als Zahl 96 und 12.5 als Text „12.5“ (`:954`). Video: Ein als Kommazahl oder Text gespeicherter Zeitpunkt blockiert jede Änderung am Block (`:941`). Zusatzfelder, die Objekte oder Listen sind, gehen in Einträgen verloren (`fremdeFelder`, `:876`). Der Kern liest alle diese Fälle gleich. Es widerspricht nur der Regel „gespeicherte Struktur ändert sich nicht“.
+- **BUG-11 – Beim Wechsel A → B bleibt A bis zum nächsten „Fertig“ in der vereinfachten Ersatz-Ansicht** (`eintritt.ts:198–212`, z. B. Gruppen nur als Titelliste). Das Tech Design sah einen Neubau beim Wechsel vor.
+- **Hinweis (kein Fehler):** `reinerText` entfernt keine Tags. Das Tech Design (Entscheidung 4, Punkt 3) verspricht „keine Tags“. Getestet ist: HTML landet unverändert im Block. Das ist dasselbe Verhalten wie in der Schublade. Der Kern gibt diese Felder mit `_esc` aus (Frage, Antworten) oder mit `_saeubern` (Erklärung, Rückseite, Fallakte, Schätzrunde u. a., `seite.py:361`, `:559`, `:1222–1319`). Ein neuer Angriffsweg entsteht also nicht. Die Doku sollte das richtigstellen.
+
+### Korrekturrunde nach der QA (2026-11-17, Sonnet)
+| Fund | Stand | Was geändert wurde |
+|---|---|---|
+| BUG-1 High | **behoben** | Jede Sitzung merkt sich einen Fingerabdruck von allem außer ihrer Aufgabe (`restSignatur`). Ändert er sich (Block gelöscht, eingefügt, verschoben, Rückgängig davon), wird die Aufgabe geschlossen und nichts geschrieben; Hinweis-Toast. Gleiches gilt vor „Duplizieren/Löschen“. |
+| BUG-2 | **behoben** | `normalisiere` rechnet `correct` wie der Kern (Python-Wahrheit) auf true/false um – für Antworten, Fallakte, Video, Kapiteltest. |
+| BUG-3 | **behoben** | Kapiteltest-Zusatzfelder werden nach Namen aus dem Original behalten statt nach Position; Fragen ohne `type` behalten ihre Zusatzfelder. |
+| BUG-4 | **behoben** | Höchstzahlen gelten mindestens für den Bestand; Textlängen als harte Grenze 20 000 statt Richtwert. Eine abgelehnte Änderung schickt der Seite den gespeicherten Stand zurück. |
+| BUG-5 | **behoben** | Eine fertig gebaute Seite wird verworfen, solange eine Aufgabe/ein Schreibvorgang offen ist; danach baut die Vorschau neu. |
+| BUG-6 | **behoben** | `min`/`max` der Zahlenfelder werden erzwungen (ein unveränderter Bestandswert bleibt erlaubt). |
+| BUG-7 | **behoben** | Ein Kategoriename, den es schon gibt, wird nicht übernommen (Entwurf im Feld, Hinweis), so fallen keine Begriffe zusammen. |
+| BUG-8 | **behoben** | Aktionsgruppen (Löschen, Neu, Umsortieren, Richtig, Verschieben) bekommen eine laufende Nummer: ein Rückgängig-Schritt je Aktion. |
+| BUG-9 | **behoben** | Fokus-Schlüssel im Kapiteltest `q{i}:question`. |
+| BUG-10 | offen (Low) | Leere `feedback`-Felder, Zahl/Text bei Kopfrechnen, verschachtelte Zusatzfelder. Kern liest alles gleich. |
+| BUG-11 | offen (Low) | Beim Wechsel A → B bleibt A bis zum nächsten Neubau in der Ersatz-Ansicht. |
+Tests: `aufgabenwerk-qa.test.ts` (alle grün, 4 ehemals rote Fälle + 7 neue), 3 Fälle in `aufgabenwerk-b-d-f.test.ts`. Nicht im Browser geprüft: BUG-1, -5, -7 sind per Einheitentest abgesichert (Fingerabdruck, Entwurfsname), der echte Ablauf nicht.
+
+### Sicherheit (Red Team) – Ergebnis
+- `liesWunsch` (`vorschau-nachrichten.ts:194–226`) prüft: Marke nur als Block, Gruppe nach `^[a-z0-9_-]{1,60}$`, Größe ≤ 200 000 Zeichen per `JSON.stringify` (Zyklen und zu tiefe Verschachtelung landen im `catch` und ergeben `null`). Eintrag und Anzahl werden als ganze Zahlen geprüft.
+- Die App schreibt nur auf den Block der Sitzung und nur bei gleichem Typ. `uebernimmAufgabe` übernimmt nur Bauplan-Felder. Unbekannte Block-Felder kommen aus dem Original, fremde Eintragsfelder nur, wenn es sie im Original gab und sie einfache Werte sind. Steuerzeichen werden entfernt, Längen begrenzt, `correct` als strenges boolean gelesen. **Belegt im Test „Sicherheit“:** `__proto__` und `constructor` als Schlüssel, ein neues Feld, ein Typwechsel und ein Kapiteltest im Kapiteltest werden abgewiesen bzw. verworfen. Kein Prototype-Pollution. Die Rekursion hat höchstens Tiefe 1, weil `erlaubt` keinen `question_set` enthält.
+- Restrisiko: Eine manipulierte Seite kann nur die geöffnete Aufgabe falsch füllen, oder über BUG-1 den Block, der danach an derselben Stelle steht. Das ist kein Rechteproblem (eigener Entwurf, Schreibschutz greift über `z.gesperrt`), aber ein Fehler in der Datenintegrität.
+
+### Nicht geprüft (braucht Browser)
+- Gesamter Praxisdurchgang „Basics rund um den LKW“ am Laptop und am Handy (Kriterium 26), Bildschirmtastatur, „Als Lücke“ über der Auswahl auf Touch-Geräten.
+- Trefferflächen 44 px, sichtbarer Fokus, Zeilenwerkzeuge bei Hover und Touch, klebende Fußleiste bei 30+ Einträgen, Darstellung unter 400 px, Hell/Dunkel.
+- Ansagen im Bildschirmleser, Ziehen am Griff mit Maus und Finger.
+- BUG-1, BUG-5 und BUG-7 im echten Ablauf, Klick während eines Neubaus.
+- Erneuter Abgleich der Finder-Zählung (`FINDER`/`sichtbar()`) mit frisch gebauten Kern-Seiten für Randfälle (leere oder ungültige Einträge, Aliasnamen). Er wurde in dieser QA wegen des Zeitlimits **nicht wiederholt**.
+- Cross-Browser (Chrome, Firefox, Safari).
 
 ## Deployment
 **2026-11-17:** Bauschritt 1–4 (verkürzt, 24 Typen) per Push `proj-114-aufgabenwerk:main` (Commit d5200f6) nach Production, Build Ready, API ohne Login 401. Keine Migration, kein Kern-Deploy. **Nicht im Browser geprüft**, Rest-Typen (Fallakte, Kapiteltest, Video, Bild-Typen, Tabelle, Diagramm) weiter in der Schublade; Status bleibt In Progress.

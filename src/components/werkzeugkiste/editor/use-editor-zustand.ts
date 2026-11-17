@@ -240,6 +240,9 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
   /** PROJ-113: Fingerabdrücke der Struktur, aus der die gezeigte Seite gebaut wurde (null = unsicher, z. B. während des Baus gespeichert) */
   const [gebautSchluessel, setGebautSchluessel] = useState<Record<string, string> | null>(null)
   const laeuft = useRef(false)
+  /** Gibt es gerade eine offene Aufgabe oder einen Schreibvorgang? Dann darf eine fertig gebaute Seite sie nicht ersetzen (QA BUG-5) */
+  const pausiertRef = useRef(pausiert)
+  pausiertRef.current = pausiert
   const nochmal = useRef(false)
   /** Für welchen Speicherstand zuletzt gebaut wurde (nach einer Pause nicht ohne Grund neu bauen) */
   const gebautStand = useRef(-1)
@@ -263,6 +266,9 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
       if (!res.ok) throw new Error('Die Vorschau konnte nicht geladen werden.')
       const text = await res.text()
       const t2 = performance.now()
+      // Inzwischen wird direkt in der Seite bearbeitet: Ergebnis verwerfen. `gebautStand` bleibt alt, deshalb baut der
+      // Effekt unten nach dem Ende von selbst neu.
+      if (pausiertRef.current) return
       setHtml(mitSprungSkript(text))
       letzteDauer.current = t2 - t0
       // Messwerte für die Fehlersuche (nur Konsole, nichts wird gesendet)
