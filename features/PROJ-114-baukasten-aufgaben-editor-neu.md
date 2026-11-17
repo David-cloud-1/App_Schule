@@ -454,3 +454,13 @@ Tests: `aufgabenwerk-qa.test.ts` (alle grün, 4 ehemals rote Fälle + 7 neue), 3
 
 ## Deployment
 **2026-11-17:** Bauschritt 1–4 (verkürzt, 24 Typen) per Push `proj-114-aufgabenwerk:main` (Commit d5200f6) nach Production, Build Ready, API ohne Login 401. Keine Migration, kein Kern-Deploy. **Nicht im Browser geprüft**, Rest-Typen (Fallakte, Kapiteltest, Video, Bild-Typen, Tabelle, Diagramm) weiter in der Schublade; Status bleibt In Progress.
+
+**Stand 2026-11-17 (Abend):** Production = Commit `d5e7ba3` (Bauschritt 1–5 + QA-Korrekturen BUG-1 bis BUG-9). Build Ready. Offen: siehe Liste „Offene Aufgaben“ unten.
+
+### Offene Aufgaben
+1. **Praxisdurchgang im Browser** (Laptop + Handy) mit „Basics rund um den LKW": jeden Typ öffnen, ändern, umsortieren, löschen + Rückgängig; besonders Kapiteltest, Lückentexte, Block löschen bei offener Aufgabe.
+2. **Bauschritt 6:** Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie (Bild-Werkzeuge in der Seite), Tabelle, Diagramm – vorher kurze Planung (Opus).
+3. „Typ wechseln“ und „Rohfassung" als eigene Dialoge statt Schublade.
+4. Ziehen von Begriffen zwischen Kästen (Zuordnen); Lückentext im Kapiteltest ohne Sternchen.
+5. Low-Funde BUG-10 (Strukturänderungen beim Speichern) und BUG-11 (Ersatz-Ansicht beim Wechsel A → B).
+6. Zweite QA-Runde (Opus) nach Bauschritt 6; erst danach Status Deployed.
