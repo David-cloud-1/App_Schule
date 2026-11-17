@@ -1,6 +1,7 @@
 import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { typName } from '@/lib/werkzeugkiste-editor'
 import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
+import { AUFGABENWERK_TYPEN } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 
 export { auswahlAusMarke }
 
@@ -97,6 +98,12 @@ const CSS = [
   'body.wk-schreibt .wk-leiste,body.wk-schreibt .wk-plus,body.wk-schreibt .wk-linie{display:none!important}',
   'body.wk-schreibt .wk-hover{outline:none!important}',
   '.wk-einfach{outline:2px solid #2563eb;outline-offset:4px;border-radius:4px;cursor:text!important}',
+  // PROJ-114: Während eine Aufgabe bearbeitet wird, hat sie ihre eigene Fußleiste
+  'body.wk-aufgabe .wk-leiste,body.wk-aufgabe .wk-plus,body.wk-aufgabe .wk-linie{display:none!important}',
+  'body.wk-bearbeiten .wk-aufgabenzone[data-wk],body.wk-bearbeiten .wk-aufgabenzone[data-wk] *{cursor:auto!important}',
+  'body.wk-bearbeiten .wk-aufgabenzone[data-wk] :is(button,[role=radio]){cursor:pointer!important}',
+  'body.wk-bearbeiten .wk-aufgabenzone[data-wk] :is(textarea,input){cursor:text!important}',
+  'body.wk-bearbeiten .wk-aufgabenzone.wk-hover{outline:none}',
   '@media print{.wk-ui{display:none!important}.wk-aktiv,.wk-hover{outline:none!important}}',
 ].join('')
 
@@ -136,7 +143,8 @@ var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
 var STUFEN=${JSON.stringify(BREITE_STUFEN)},BMIN=${BREITE_MIN},BMAX=${BREITE_MAX},NAEHE=${EINRAST_NAEHE},HANDY=${JSON.stringify(HANDY_BREITEN)};
 var ICON=${JSON.stringify(ICONS)};
-var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null;
+var AUFGABEN=${JSON.stringify(AUFGABENWERK_TYPEN)};
+var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null,aufgabe=null;
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
 function elt(t){return t&&t.nodeType===1?t:(t&&t.parentElement)||null}
@@ -152,7 +160,24 @@ function markeVon(t){
 }
 function istFeld(t){return !!(t&&t.closest&&t.closest("input,textarea,select,[contenteditable='true'],[contenteditable='']"))}
 function stoppe(e){e.preventDefault();e.stopImmediatePropagation()}
-function inZone(t){return !!(t&&t.closest&&t.closest(".wk-schreibzone"))}
+function inZone(t){return !!(t&&t.closest&&t.closest(".wk-schreibzone,.wk-aufgabenzone"))}
+// PROJ-114: Welche Aufgabe (und welcher Eintrag darin) wurde angeklickt? Gezählt wird nur in der Seite;
+// ob die Zahl zum gespeicherten Block passt, prüft die App (sonst öffnet sie ohne Eintrag).
+function aufgabeZiel(t){
+  var sec=t.closest?t.closest("section.aufgabe[data-wk]"):null;
+  if(!sec)return null;
+  var m=sec.getAttribute("data-wk");
+  if(!/^k\d+-e\d+$/.test(m)||AUFGABEN.indexOf(sec.getAttribute("data-typ"))<0)return null;
+  var a=t.closest(".antwort"),f=t.closest(".frage");
+  if(a&&sec.contains(a)){
+    var alle=Array.prototype.slice.call(sec.querySelectorAll(".antworten .antwort"));
+    var i=alle.indexOf(a);
+    return {marke:m,eintrag:i>=0?{art:"antwort",nr:i}:null,anzahl:alle.length};
+  }
+  if(f&&sec.contains(f))return {marke:m,eintrag:{art:"frage"},anzahl:null};
+  return {marke:m,eintrag:null,anzahl:null};
+}
+function aufgabeOffen(){return !!(aufgabe&&!aufgabe.fertig)}
 function neu(tag,klasse,html){var n=document.createElement(tag);if(klasse)n.className=klasse;if(html)n.innerHTML=html;return n}
 function knopf(aktion,html,label,klasse){
   var b=neu("button","wk-b"+(klasse?" "+klasse:""),html);
@@ -385,9 +410,13 @@ addEventListener("click",function(e){
   stoppe(e);
   // Ein Klick außerhalb beendet das Schreiben (und wählt nichts aus)
   if(schreibt&&!schreibt.fertig){schreibt.beende();return}
+  var mitMod=e.metaKey||e.ctrlKey||e.shiftKey;
+  // PROJ-114: Ein Klick neben die offene Aufgabe beendet sie; auf eine andere Aufgabe wechselt er direkt dorthin
+  var az=(!mitMod&&!lesen)?aufgabeZiel(t):null;
+  if(aufgabeOffen()){aufgabe.beende();if(!az)return}
   var m=markeVon(t);
   if(!m){p({wkAbwaehle:true});return}
-  var mitMod=e.metaKey||e.ctrlKey||e.shiftKey;
+  if(az&&az.marke===m){p({wkAufgabe:m,eintrag:az.eintrag,anzahl:az.anzahl});return}
   var sz=(!mitMod&&!lesen&&!schreibt)?schreibZiel(t):null;
   if(sz&&sz.marke===m&&(e.detail>=2||m===auswahl)){merkeKlick={x:e.clientX,y:e.clientY};p({wkSchreibe:m,teil:sz.teil});return}
   if(mitMod&&/-e\d+$/.test(m)&&!mobil)p({wkMehr:m,wie:e.shiftKey?"bereich":"umschalten"});
@@ -661,6 +690,18 @@ function einfachStart(el,s){
   setzeCursor(el,merkeKlick);
   schreibt={beende:ende,ab:function(){fertig=true;if(zeit)clearTimeout(zeit);el.setAttribute("contenteditable","false");el.classList.remove("wk-schreibzone","wk-einfach");schreibEnde()},fertig:false};
 }
+// ── Aufgabe an Ort und Stelle bearbeiten (PROJ-114) ──────────────────
+function startAufgabe(s){
+  if(aufgabeOffen())aufgabe.beende();
+  var el=modus==="bearbeiten"&&!lesen&&typeof s.marke==="string"?finde(s.marke):null;
+  if(!el||el.tagName!=="SECTION"||!window.__wkAufgabenwerk||!s.block||typeof s.block!=="object"){p({wkAufgabeAbbruch:String(s.marke||"")});return}
+  document.body.classList.add("wk-aufgabe");
+  try{
+    aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,
+      melde:function(n){if(n.wkAufgabeEnde)document.body.classList.remove("wk-aufgabe");p(n)}});
+  }catch(x){document.body.classList.remove("wk-aufgabe");aufgabe=null;p({wkAufgabeAbbruch:s.marke});return}
+  leisteAktualisieren();
+}
 function startSchreiben(s){
   if(schreibt&&!schreibt.fertig)return;
   var el=modus==="bearbeiten"&&!lesen&&typeof s.marke==="string"?schreibElement(s.marke,s.teil):null;
@@ -686,6 +727,14 @@ addEventListener("message",function(e){
     return;
   }
   if(d.wkSchreibStart&&typeof d.wkSchreibStart==="object"){startSchreiben(d.wkSchreibStart);return}
+  if(typeof d.wkAufgabenwerk==="string"){
+    if(!window.__wkAufgabenwerk){var sa=document.createElement("script");sa.textContent=d.wkAufgabenwerk;document.head.appendChild(sa)}
+    return;
+  }
+  if(d.wkAufgabeStart&&typeof d.wkAufgabeStart==="object"){startAufgabe(d.wkAufgabeStart);return}
+  if(d.wkAufgabeStand&&typeof d.wkAufgabeStand==="object"){if(aufgabeOffen())aufgabe.setze(d.wkAufgabeStand);return}
+  if(d.wkAufgabeBeende===true){if(aufgabeOffen())aufgabe.beende();return}
+  if(d.wkAufgabeVorbei===true){if(aufgabeOffen())aufgabe.ab();document.body.classList.remove("wk-aufgabe");aufgabe=null;return}
   if("wkDropZeiger" in d){dropZeiger(d.wkDropZeiger);return}
   if(d.wkSchreibBeende===true){if(schreibt&&!schreibt.fertig)schreibt.beende();return}
   if(d.wkSchreibVorbei===true){if(schreibt){schreibt.ab();schreibt=null}return}

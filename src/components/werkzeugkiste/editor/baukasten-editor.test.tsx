@@ -978,3 +978,121 @@ describe('Direkt in der Seite schreiben (PROJ-103)', () => {
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
   })
 })
+
+describe('Aufgabe an Ort und Stelle bearbeiten (PROJ-114)', () => {
+  const MC_STRUKTUR: Struktur = {
+    cover: { title: 'Haftung' },
+    chapters: [
+      {
+        title: 'Grundlagen',
+        elements: [
+          { type: 'text', content: '<p>Lehrtext</p>' },
+          {
+            type: 'multiple_choice',
+            question: 'Wer haftet?',
+            quelle: 'Heft 2',
+            answers: [
+              { text: 'Frachtführer', correct: true, feedback: '' },
+              { text: 'Absender', correct: false, feedback: '' },
+              { text: 'Empfänger', correct: false, feedback: '' },
+            ],
+          },
+        ],
+      },
+    ],
+  }
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+  const mcBlock = () => letzteStruktur().chapters[0].elements[1] as Record<string, unknown>
+  function nachricht(data: unknown, rahmen: HTMLIFrameElement | null) {
+    fireEvent(window, new MessageEvent('message', { data, source: rahmen?.contentWindow ?? null }))
+  }
+  async function bereit() {
+    api.ladeEditor.mockResolvedValue({ ...DATEN, struktur: MC_STRUKTUR })
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    nachricht({ wkBereit: true }, rahmen)
+    return { rahmen, senden }
+  }
+  const neuerBlock = (answers: unknown[]) => ({ ...MC_STRUKTUR.chapters[0].elements[1], answers })
+
+  it('Klick auf eine Antwort: erst das Aufgabenwerk, dann der Start mit gespeichertem Block und Eintrag; keine Schublade', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: { art: 'antwort', nr: 2 }, anzahl: 3 }, rahmen)
+    await waitFor(() =>
+      expect(senden).toHaveBeenCalledWith(
+        { wkAufgabeStart: { marke: 'k0-e1', block: MC_STRUKTUR.chapters[0].elements[1], typName: expect.any(String), eintrag: { art: 'antwort', nr: 2 } } },
+        '*',
+      ),
+      { timeout: 4000 },
+    )
+    const reihenfolge = senden.mock.calls.map((c) => Object.keys(c[0] as object)[0])
+    expect(reihenfolge.indexOf('wkAufgabenwerk')).toBeLessThan(reihenfolge.indexOf('wkAufgabeStart'))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('passt die gezählte Anzahl nicht, öffnet die Aufgabe ohne Eintrag', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: { art: 'antwort', nr: 2 }, anzahl: 4 }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeStart: expect.objectContaining({ eintrag: null }) }, '*'), { timeout: 4000 })
+  })
+
+  it('Änderungen werden geprüft gespeichert, unbekannte Felder bleiben; kein Neubau, solange offen', async () => {
+    const { rahmen } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    nachricht(
+      { wkAufgabeAenderung: 'k0-e1', gruppe: 'richtig', block: { ...neuerBlock([{ text: 'Frachtführer' }, { text: 'Absender', correct: true }, { text: 'Empfänger' }]), quelle: 'gefälscht' } },
+      rahmen,
+    )
+    await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 4000 })
+    expect(mcBlock().quelle).toBe('Heft 2')
+    expect((mcBlock().answers as { correct: boolean }[]).map((a) => a.correct)).toEqual([false, true, false])
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(api.baueEntwurfVorschau.mock.calls.length).toBe(bauten)
+    nachricht({ wkAufgabeEnde: 'k0-e1' }, rahmen)
+    await waitFor(() => expect(api.baueEntwurfVorschau.mock.calls.length).toBeGreaterThan(bauten), { timeout: 5000 })
+  }, 15000)
+
+  it('Löschen in der Seite: Toast mit Rückgängig; Rückgängig schickt den alten Stand in die Seite', async () => {
+    const { toast } = await import('sonner')
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    nachricht({ wkAufgabeAenderung: 'k0-e1', gruppe: 'loeschen-antwort', block: neuerBlock((MC_STRUKTUR.chapters[0].elements[1].answers as unknown[]).slice(0, 2)) }, rahmen)
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Antwort gelöscht', expect.objectContaining({ action: expect.objectContaining({ label: 'Rückgängig' }) })))
+    const aufruf = vi.mocked(toast.success).mock.calls.find((c) => c[0] === 'Antwort gelöscht')!
+    senden.mockClear()
+    ;(aufruf[1] as unknown as { action: { onClick: () => void } }).action.onClick()
+    await waitFor(() =>
+      expect(senden).toHaveBeenCalledWith({ wkAufgabeStand: expect.objectContaining({ answers: expect.arrayContaining([expect.objectContaining({ text: 'Empfänger' })]) }) }, '*'),
+    )
+  })
+
+  it('fremde Marken, falsche Typen und zu lange Texte werden nicht gespeichert', async () => {
+    const { toast } = await import('sonner')
+    const { rahmen } = await bereit()
+    nachricht({ wkAufgabeAenderung: 'k0-e1', gruppe: 'richtig', block: neuerBlock([]) }, rahmen)
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    nachricht({ wkAufgabeAenderung: 'k0-e1', gruppe: 'x', block: { type: 'true_false', correct: true } }, rahmen)
+    await waitFor(() => expect(toast.error).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 1200))
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
+  it('im Modus Ausprobieren schließt die Aufgabe', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wkAufgabeStart: expect.anything() }), '*'), { timeout: 4000 })
+    fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeBeende: true }, '*'))
+  })
+
+  it('⋯ „Block löschen“ beendet ohne Rückmeldung und löscht den Block', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    nachricht({ wkAufgabeAktion: 'k0-e1', aktion: 'loeschen' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeVorbei: true }, '*'))
+    await waitFor(() => expect(letzteStruktur().chapters[0].elements.map((e) => e.type)).toEqual(['text']), { timeout: 4000 })
+  })
+})

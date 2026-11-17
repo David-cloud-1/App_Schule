@@ -131,7 +131,7 @@
 | PROJ-111 | Baukasten – Eine Bedienstelle statt drei | Deployed | [PROJ-111-baukasten-eine-bedienstelle.md](PROJ-111-baukasten-eine-bedienstelle.md) | 2026-11-16 |
 | PROJ-112 | Baukasten – Vorschau schneller | Deployed | [PROJ-112-baukasten-vorschau-schneller.md](PROJ-112-baukasten-vorschau-schneller.md) | 2026-11-16 |
 | PROJ-113 | Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed | [PROJ-113-baukasten-klicks-nie-blockieren.md](PROJ-113-baukasten-klicks-nie-blockieren.md) | 2026-11-16 |
-| PROJ-114 | Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | Architected | [PROJ-114-baukasten-aufgaben-editor-neu.md](PROJ-114-baukasten-aufgaben-editor-neu.md) | 2026-11-17 |
+| PROJ-114 | Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | In Progress | [PROJ-114-baukasten-aufgaben-editor-neu.md](PROJ-114-baukasten-aufgaben-editor-neu.md) | 2026-11-17 |
 | PROJ-115 | Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned | [PROJ-115-baukasten-klick-oeffnet-eintrag.md](PROJ-115-baukasten-klick-oeffnet-eintrag.md) | 2026-11-17 |
 | PROJ-116 | Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Planned | [PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md](PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md) | 2026-11-17 |
 

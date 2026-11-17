@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { liesWunsch, type VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import type { SchreibTeil } from '@/components/werkzeugkiste/editor/schreiben'
+import type { EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { SEITE_GRENZE_BYTES } from '@/lib/werkzeugkiste-bilder'
 import { cn } from '@/lib/utils'
@@ -24,6 +25,21 @@ export interface SchreibStart {
 export interface SchreibBefehl {
   nr: number
   art: 'beende' | 'vorbei'
+}
+
+/** PROJ-114: Die Seite soll eine Aufgabe an Ort und Stelle zum Bearbeiten öffnen (`block` = gespeicherte Fassung) */
+export interface AufgabeStart {
+  nr: number
+  marke: string
+  block: Record<string, unknown>
+  typName: string
+  eintrag: EintragOrt | null
+}
+/** PROJ-114: Befehl an die offene Aufgabe: beenden, verwerfen (ohne Meldung) oder neuen Stand zeigen (Rückgängig) */
+export interface AufgabeBefehl {
+  nr: number
+  art: 'beende' | 'vorbei' | 'stand'
+  block?: Record<string, unknown>
 }
 
 /** PROJ-104: Wohin eine abgelegte Datei zielt (so hat die Seite die Stelle zuletzt gemeldet) */
@@ -68,6 +84,8 @@ export function EditorVorschau({
   beiNeueSeite,
   schubladeOffen = false,
   onDateien,
+  aufgabe = null,
+  aufgabeBefehl = null,
 }: {
   html: string | null
   laedt: boolean
@@ -106,6 +124,9 @@ export function EditorVorschau({
   schubladeOffen?: boolean
   /** PROJ-104: Dateien wurden auf die Vorschau gelegt (`ziel` = zuletzt gemeldete Stelle der Seite, sonst null) */
   onDateien?: (dateien: File[], ziel: DateiZielMarke | null) => void
+  /** PROJ-114: Aufgabe an Ort und Stelle bearbeiten */
+  aufgabe?: AufgabeStart | null
+  aufgabeBefehl?: AufgabeBefehl | null
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -113,6 +134,7 @@ export function EditorVorschau({
   const ausVorschau = useRef<string | null>(null)
   const bereit = useRef(false)
   const schreibwerkGeschickt = useRef(false)
+  const aufgabenwerkGeschickt = useRef(false)
   const neueSeiteRef = useRef(beiNeueSeite)
   const aktuelleMarke = useRef(marke)
   const aktuellerName = useRef(name)
@@ -148,7 +170,41 @@ export function EditorVorschau({
   useEffect(() => {
     bereit.current = false
     schreibwerkGeschickt.current = false
+    aufgabenwerkGeschickt.current = false
   }, [html])
+
+  // PROJ-114: Aufgabe öffnen. Das Aufgabenwerk wird erst beim ersten Mal in die Seite geladen.
+  const aufgabeNr = aufgabe?.nr ?? 0
+  const aufgabeRef = useRef(aufgabe)
+  aufgabeRef.current = aufgabe
+  useEffect(() => {
+    const a = aufgabeRef.current
+    if (!a || !bereit.current) return
+    let abgebrochen = false
+    void (async () => {
+      if (!aufgabenwerkGeschickt.current) {
+        const m = await import('@/components/werkzeugkiste/editor/aufgabenwerk/aufgabenwerk-bundle.generated')
+        if (abgebrochen) return
+        senden({ wkAufgabenwerk: m.AUFGABENWERK_CODE })
+        aufgabenwerkGeschickt.current = true
+      }
+      senden({ wkAufgabeStart: { marke: a.marke, block: a.block, typName: a.typName, eintrag: a.eintrag } })
+    })()
+    return () => {
+      abgebrochen = true
+    }
+  }, [aufgabeNr, senden])
+
+  const aBefehlNr = aufgabeBefehl?.nr ?? 0
+  const aBefehlRef = useRef(aufgabeBefehl)
+  aBefehlRef.current = aufgabeBefehl
+  useEffect(() => {
+    const b = aBefehlRef.current
+    if (!b || aBefehlNr === 0) return
+    if (b.art === 'beende') senden({ wkAufgabeBeende: true })
+    else if (b.art === 'vorbei') senden({ wkAufgabeVorbei: true })
+    else if (b.block) senden({ wkAufgabeStand: b.block })
+  }, [aBefehlNr, senden])
 
   // PROJ-103: Schreiben starten. Das Schreibwerk (Text-Motor) wird erst jetzt und nur für Lehrtext in die Seite geladen.
   const startNr = schreiben?.nr ?? 0
@@ -219,7 +275,15 @@ export function EditorVorschau({
         dropZiel.current = w.marke && w.wo ? { marke: w.marke, wo: w.wo } : null
         return
       }
-      if (w.art === 'schreibZwischen' || w.art === 'schreibEnde' || w.art === 'schreibAbbruch') {
+      if (
+        w.art === 'schreibZwischen' ||
+        w.art === 'schreibEnde' ||
+        w.art === 'schreibAbbruch' ||
+        w.art === 'aufgabeAenderung' ||
+        w.art === 'aufgabeEnde' ||
+        w.art === 'aufgabeAbbruch' ||
+        w.art === 'aufgabeAktion'
+      ) {
         // Schreib-Wünsche entscheidet die App selbst; ein Hinweis „Vorschau veraltet“ passt dazu nicht
         wunschRef.current?.(w)
         return
@@ -232,7 +296,7 @@ export function EditorVorschau({
       const angenommen = wunschRef.current?.(w) ?? false
       if (angenommen) {
         // Ein Klick aus der Seite lässt sie, wo sie ist
-        if (w.art === 'waehle' || w.art === 'bearbeite' || w.art === 'mehr') ausVorschau.current = w.marke
+        if (w.art === 'waehle' || w.art === 'bearbeite' || w.art === 'mehr' || w.art === 'aufgabe') ausVorschau.current = w.marke
         setHinweis(null)
       } else {
         setHinweis(

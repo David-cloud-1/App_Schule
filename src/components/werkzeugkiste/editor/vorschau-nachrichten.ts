@@ -1,5 +1,6 @@
 import type { Auswahl } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { SCHREIB_MAX, SCHREIB_TEILE, type SchreibTeil } from '@/components/werkzeugkiste/editor/schreiben'
+import { liesEintrag, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 
 /**
  * Nachrichten der Editor-Vorschau an die App (PROJ-101).
@@ -66,6 +67,19 @@ export type VorschauWunsch =
   | { art: 'schreibEnde'; marke: string; teil: SchreibTeil; html: string }
   | { art: 'schreibAbbruch'; marke: string }
   | { art: 'taste'; taste: Taste }
+  // PROJ-114: Aufgabe an Ort und Stelle bearbeiten. `anzahl` = Einträge dieser Art, die die Seite gezählt hat
+  | { art: 'aufgabe'; marke: string; eintrag: EintragOrt | null; anzahl: number | null }
+  | { art: 'aufgabeAenderung'; marke: string; block: Record<string, unknown>; gruppe: string }
+  | { art: 'aufgabeEnde'; marke: string }
+  | { art: 'aufgabeAbbruch'; marke: string }
+  | { art: 'aufgabeAktion'; marke: string; aktion: AufgabeAktion }
+
+/** PROJ-114: Aktionen aus dem ⋯ der Aufgabe */
+export const AUFGABE_AKTIONEN = ['typ', 'roh', 'duplizieren', 'loeschen'] as const
+export type AufgabeAktion = (typeof AUFGABE_AKTIONEN)[number]
+
+/** Größter Block (als Text), den die App von der Seite annimmt */
+export const AUFGABE_MAX = 200_000
 
 function marke(wert: unknown): string | null {
   return auswahlAusMarke(wert) ? (wert as string) : null
@@ -175,6 +189,40 @@ export function liesWunsch(daten: unknown): VorschauWunsch | null {
     const teil = schreibTeil(n.teil)
     // Größenlimit: Die Seite ist nicht vertrauenswürdig
     return m && teil && typeof n.html === 'string' && n.html.length <= SCHREIB_MAX ? { art, marke: m, teil, html: n.html } : null
+  }
+  // PROJ-114: Aufgaben an Ort und Stelle (nur Blöcke)
+  if (typeof n.wkAufgabe === 'string') {
+    const m = marke(n.wkAufgabe)
+    const anzahl = zahl(n.anzahl)
+    return m && /^k\d+-e\d+$/.test(m)
+      ? { art: 'aufgabe', marke: m, eintrag: liesEintrag(n.eintrag), anzahl: anzahl !== null && Number.isInteger(anzahl) && anzahl >= 0 ? anzahl : null }
+      : null
+  }
+  if (typeof n.wkAufgabeAenderung === 'string') {
+    const m = marke(n.wkAufgabeAenderung)
+    const b = n.block
+    if (!m || !/^k\d+-e\d+$/.test(m) || !b || typeof b !== 'object' || Array.isArray(b)) return null
+    if (typeof n.gruppe !== 'string' || !/^[a-z0-9_-]{1,60}$/.test(n.gruppe)) return null
+    let laenge: number
+    try {
+      laenge = JSON.stringify(b).length
+    } catch {
+      return null
+    }
+    return laenge <= AUFGABE_MAX ? { art: 'aufgabeAenderung', marke: m, block: b as Record<string, unknown>, gruppe: n.gruppe } : null
+  }
+  if (typeof n.wkAufgabeEnde === 'string') {
+    const m = marke(n.wkAufgabeEnde)
+    return m ? { art: 'aufgabeEnde', marke: m } : null
+  }
+  if (typeof n.wkAufgabeAbbruch === 'string') {
+    const m = marke(n.wkAufgabeAbbruch)
+    return m ? { art: 'aufgabeAbbruch', marke: m } : null
+  }
+  if (typeof n.wkAufgabeAktion === 'string') {
+    const m = marke(n.wkAufgabeAktion)
+    const aktion = (AUFGABE_AKTIONEN as readonly unknown[]).includes(n.aktion) ? (n.aktion as AufgabeAktion) : null
+    return m && /^k\d+-e\d+$/.test(m) && aktion ? { art: 'aufgabeAktion', marke: m, aktion } : null
   }
   if (typeof n.wkTaste === 'string') {
     const key = (WEITERGABE_TASTEN as readonly string[]).includes(n.wkTaste) ? (n.wkTaste as WeitergabeTaste) : null

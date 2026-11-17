@@ -98,7 +98,18 @@ import {
   uebernimmSchreibtext,
   type SchreibTeil,
 } from '@/components/werkzeugkiste/editor/schreiben'
-import type { SchreibBefehl, SchreibStart } from '@/components/werkzeugkiste/editor/editor-vorschau'
+import type { AufgabeBefehl, AufgabeStart, SchreibBefehl, SchreibStart } from '@/components/werkzeugkiste/editor/editor-vorschau'
+import { LOESCH_TEXTE, eintragFuerBlock, hatBauplan, uebernimmAufgabe, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+
+/** PROJ-114: Eine offene Aufgabe in der Seite (je Marke; eine alte darf ihre letzten Meldungen noch schicken) */
+interface AufgabeSitzung {
+  nr: number
+  marke: string
+  ort: Ort
+  typ: string
+  /** Stand, den die Seite gerade zeigt (als Text), damit Rückgängig dort ankommt */
+  bekannt: string
+}
 
 const ZURUECK = `${WERKZEUGKISTE_HREF}?tab=materialien`
 const GLIEDERUNG_SPEICHER = 'wk-editor-gliederung'
@@ -225,7 +236,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [schreibBefehl, setSchreibBefehl] = useState<SchreibBefehl | null>(null)
   const schreibRef = useRef<{ nr: number; marke: string; teil: SchreibTeil; ort: Auswahl; start: string } | null>(null)
   const schreibZaehler = useRef(0)
-  const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben, z.gespeichertSchluessel)
+  // PROJ-114: Aufgabe an Ort und Stelle bearbeiten. Solange sie offen ist, baut die Vorschau nicht neu.
+  const [aufgabe, setAufgabe] = useState<AufgabeStart | null>(null)
+  const [aufgabeBefehl, setAufgabeBefehl] = useState<AufgabeBefehl | null>(null)
+  const sitzungen = useRef(new Map<string, AufgabeSitzung>())
+  const aktiveAufgabe = useRef<string | null>(null)
+  const aufgabeZaehler = useRef(0)
+  const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben || !!aufgabe, z.gespeichertSchluessel)
   const [auswahl, setAuswahlState] = useState<Auswahl>(null)
   // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
   const [markiert, setMarkiert] = useState<Ort[]>([])
@@ -586,6 +603,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       beiSchreiben(w)
       return true
     }
+    // PROJ-114: Meldungen einer offenen Aufgabe (auch sie gehören zu einer Sitzung, nicht zur gerade gebauten Seite)
+    if (w.art === 'aufgabeAenderung' || w.art === 'aufgabeEnde' || w.art === 'aufgabeAbbruch' || w.art === 'aufgabeAktion') {
+      beiAufgabe(w)
+      return true
+    }
     // Alles mit Marke: Die Marken zählen Themen und Blöcke durch. PROJ-113: Die Seite muss nicht brandneu sein,
     // aber die angeklickte Stelle muss in der gezeigten Seite dieselbe sein wie jetzt im Entwurf (sonst träfe der
     // Klick einen anderen Block). So geht ein Klick auch während des Neubaus.
@@ -593,8 +615,19 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     const a = gueltigeAuswahl(auswahlAusMarke(w.marke), z.struktur)
     if (!a) return false
     switch (w.art) {
+      case 'aufgabe': {
+        if (a.art !== 'block') return false
+        const b = z.struktur.chapters[a.thema]?.elements[a.block]
+        anker.current = { thema: a.thema, block: a.block }
+        if (!b || !oeffneAufgabe({ thema: a.thema, block: a.block }, eintragFuerBlock(b, w.eintrag, w.anzahl))) setAuswahlRoh(a)
+        return true
+      }
       case 'waehle':
-        if (a.art === 'block') anker.current = { thema: a.thema, block: a.block }
+        if (a.art === 'block') {
+          anker.current = { thema: a.thema, block: a.block }
+          // PROJ-114: Auch eine Aufgabe, die der Kern (noch) nicht zeigen kann, öffnet an Ort und Stelle
+          if (oeffneAufgabe({ thema: a.thema, block: a.block }, null)) return true
+        }
         setAuswahlRoh(a)
         return true
       case 'mehr':
@@ -680,6 +713,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         return true
       }
       case 'bearbeite':
+        if (a.art === 'block' && oeffneAufgabe({ thema: a.thema, block: a.block }, null)) return true
         setAuswahl(a)
         // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
         setVollbreit(false)
@@ -819,6 +853,95 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (schreibRef.current) setSchreibBefehl((b) => ({ nr: (b?.nr ?? 0) + 1, art: 'beende' }))
   }
 
+  // ── PROJ-114: Aufgabe an Ort und Stelle ──────────────────────────────
+  /** Öffnet die Aufgabe in der Seite; `false` = geht hier nicht (Schreibschutz, anderer Typ …), der Aufrufer wählt dann wie bisher */
+  function oeffneAufgabe(ort: Ort, eintrag: EintragOrt | null): boolean {
+    if (z.gesperrt || modus !== 'bearbeiten' || viele || schreibRef.current) return false
+    const b = z.struktur.chapters[ort.thema]?.elements[ort.block]
+    if (!b || !hatBauplan(b.type)) return false
+    const marke = sprungmarke(ort)
+    setAuswahlRoh({ art: 'block', thema: ort.thema, block: ort.block })
+    setSchubladeOffen(false)
+    if (aktiveAufgabe.current === marke) return true
+    const nr = ++aufgabeZaehler.current
+    sitzungen.current.set(marke, { nr, marke, ort, typ: b.type, bekannt: JSON.stringify(b) })
+    aktiveAufgabe.current = marke
+    setAufgabe({ nr, marke, block: b, typName: typName(b.type), eintrag })
+    return true
+  }
+
+  function schliesseAufgabe(marke: string, art: 'beende' | 'vorbei' | null) {
+    // Bei „beende“ schickt die Seite noch ihren letzten Stand und dann „fertig“: so lange bleibt die Sitzung bekannt
+    if (art !== 'beende') sitzungen.current.delete(marke)
+    if (aktiveAufgabe.current !== marke) return
+    aktiveAufgabe.current = null
+    setAufgabe(null)
+    if (art) setAufgabeBefehl((x) => ({ nr: (x?.nr ?? 0) + 1, art }))
+  }
+
+  function beiAufgabe(w: Extract<VorschauWunsch, { art: 'aufgabeAenderung' | 'aufgabeEnde' | 'aufgabeAbbruch' | 'aufgabeAktion' }>) {
+    const sit = sitzungen.current.get(w.marke)
+    if (!sit) return
+    if (w.art === 'aufgabeEnde' || w.art === 'aufgabeAbbruch') {
+      schliesseAufgabe(w.marke, null)
+      return
+    }
+    if (w.art === 'aufgabeAktion') {
+      const a: Auswahl = { art: 'block', thema: sit.ort.thema, block: sit.ort.block }
+      if (w.aktion === 'loeschen') {
+        schliesseAufgabe(w.marke, 'vorbei')
+        loescheBlockAn(sit.ort)
+      } else if (w.aktion === 'duplizieren') {
+        schliesseAufgabe(w.marke, 'beende')
+        dupliziereBlockAn(sit.ort)
+      } else {
+        // Typ wechseln und Rohfassung wohnen (noch) in der Schublade
+        schliesseAufgabe(w.marke, 'beende')
+        setAuswahl(a)
+        setVollbreit(false)
+      }
+      return
+    }
+    if (z.gesperrt) return
+    const alt = z.struktur.chapters[sit.ort.thema]?.elements[sit.ort.block]
+    if (!alt || alt.type !== sit.typ) return
+    const r = uebernimmAufgabe(alt, w.block)
+    if (!r.ok) {
+      toast.error(r.grund)
+      return
+    }
+    const text = JSON.stringify(r.block)
+    sit.bekannt = text
+    if (text === JSON.stringify(alt)) return
+    const ort = sit.ort
+    z.aendere((s) => setzeBlock(s, ort, r.block), `aufgabe-${sit.nr}-${w.gruppe}`)
+    const geloescht = LOESCH_TEXTE[w.gruppe]
+    if (geloescht) toast.success(geloescht, { duration: 8000, action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+  }
+
+  // Rückgängig, Wiederholen, Toast oder Schublade haben die offene Aufgabe geändert: der Seite den neuen Stand zeigen
+  useEffect(() => {
+    const marke = aktiveAufgabe.current
+    const sit = marke ? sitzungen.current.get(marke) : null
+    if (!marke || !sit) return
+    const b = z.struktur.chapters[sit.ort.thema]?.elements[sit.ort.block]
+    if (!b || b.type !== sit.typ) {
+      schliesseAufgabe(marke, 'vorbei')
+      return
+    }
+    const text = JSON.stringify(b)
+    if (text === sit.bekannt) return
+    sit.bekannt = text
+    setAufgabeBefehl((x) => ({ nr: (x?.nr ?? 0) + 1, art: 'stand', block: b }))
+  }, [z.struktur])
+
+  // Lage ändert sich (andere Auswahl, Ausprobieren, Dialog, Mehrfachauswahl, Schreibschutz): Aufgabe schließen
+  useEffect(() => {
+    const m = aktiveAufgabe.current
+    if (!m) return
+    if (modus !== 'bearbeiten' || marke !== m || dialog || viele || z.gesperrt) schliesseAufgabe(m, 'beende')
+  }, [modus, marke, dialog, viele, z.gesperrt, aufgabe])
+
   // Lage ändert sich (andere Auswahl, Formular, Ausprobieren, Dialog): Schreiben beenden, die Seite meldet den Endstand
   useEffect(() => {
     const sit = schreibRef.current
@@ -850,6 +973,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         break
       }
       case 'Enter':
+        if (gewaehlt?.art === 'block' && oeffneAufgabe({ thema: gewaehlt.thema, block: gewaehlt.block }, null)) break
         if (gewaehlt) {
           setSchubladeOffen(true)
           setVollbreit(false)
@@ -1255,7 +1379,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             beiNeueSeite={() => {
               schreibRef.current = null
               setSchreiben(null)
+              // Neue Seite: Eine offene Aufgabe ist dort nicht mehr offen (Änderungen sind schon gespeichert)
+              sitzungen.current.clear()
+              aktiveAufgabe.current = null
+              setAufgabe(null)
             }}
+            aufgabe={aufgabe}
+            aufgabeBefehl={aufgabeBefehl}
             html={v.html}
             laedt={v.laedt}
             fehler={v.fehler}

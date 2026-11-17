@@ -1,8 +1,8 @@
 # PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Tech Design freigegeben)
+**Last Updated:** 2026-11-17 (Bauschritt 1 gebaut, Zweig `proj-114-aufgabenwerk`)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -130,6 +130,28 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 - Grundgerüst und Muster-Bausteine: **Opus**
 - Typen umstellen (Typ für Typ): **Sonnet**
 - QA: **Opus**
+
+## Umsetzung
+
+### Bauschritt 1 – Grundgerüst + Muster A (2026-11-17, Opus, Zweig `proj-114-aufgabenwerk`)
+**Gebaut**
+- `editor/aufgabenwerk/bauplan.ts`: Baupläne für `multiple_choice`, `single_choice`, `true_false`; Prüfen/Zusammenführen (`uebernimmAufgabe`), Eintrags-Zählprüfung (`eintragFuerBlock`), Hinweise am Ort, Lösch-Texte für den Toast. Wird in App und Seite gleichermaßen genutzt.
+- `editor/aufgabenwerk/eintritt.ts` + `design.ts`: Aufgabenwerk mit Preact + htm (kein JSX-Umbau nötig), nachgeladen beim ersten Öffnen; gebaut mit `npm run aufgabenwerk:bauen` (30 KB), Frische-Test wie beim Schreibwerk.
+- Muster A: Kreis setzt die richtige Antwort, Enter zur nächsten/neuen Antwort, Rücktaste in leerer Zeile löscht, Einfügen mehrerer Zeilen = mehrere Antworten, Alt+↑/↓ und Griff (Zeiger) zum Umsortieren, Sprechblase öffnet die Rückmeldung (vorhandene markiert), Mindestzahl erklärt statt still zu verweigern, Hinweise am Ort („Klick auf den Kreis …“). Richtig/Falsch: Rückmeldungen hängen an ihrer Antwort und tauschen beim Umstellen mit.
+- Rahmen: Schild „Bearbeiten“, klebende Fußleiste (Typ · ⋯ · Fertig), `⋯` = Typ wechseln, Rohfassung, Duplizieren, Löschen (rot, unten); Esc/Fertig/Klick daneben beenden; Klick auf eine andere Aufgabe wechselt direkt; Ansage für Bildschirmleser.
+- Seiten-Skript: Klick auf Aufgabe meldet `wkAufgabe` mit Eintrag und gezählter Anzahl; Klicks und Tasten in der offenen Aufgabe bleiben in der Seite (`wk-aufgabenzone`).
+- App: Sitzungen je Marke, Prüfen + Speichern jeder Änderung (eine Verlaufs-Gruppe je Feld/Aktion), kein Neubau solange offen, Rückgängig/Toast/Schublade schicken den neuen Stand zurück in die Seite, Schließen bei Moduswechsel, anderer Auswahl, Dialog, Mehrfachauswahl, Schreibschutz.
+
+**Abweichungen / Entscheidungen beim Bau**
+- `multiple_choice` und `single_choice` haben im Kern dieselbe Form (genau eine richtig) → beide mit **Kreis**. Kästchen („mehrere richtig“) kommen erst mit einem Typ, der das braucht.
+- Auch ein Klick auf eine Aufgabe, die der Kern als Platzhalter zeigt („noch nicht fertig ausgefüllt“), öffnet sie an Ort und Stelle; ebenso „Bearbeiten“ in der Leiste, Doppelklick und Enter.
+- „Typ wechseln“ und „Rohfassung“ öffnen vorerst die Schublade an dieser Stelle (dort wohnen die Dialoge); eigene Dialoge folgen, wenn die Schublade für Aufgaben wegfällt (Bauschritt 4).
+- Zusatzfelder einer Antwort bleiben erhalten, wenn es sie im gespeicherten Block schon gab; neue Felder aus der Seite werden verworfen.
+- „Optionen“ erscheint noch nicht – keiner der drei Typen hat welche.
+
+**Tests:** `aufgabenwerk.test.ts` (37: Bündel, Kontrast, Bauplan, Werk, Nachrichten, Seiten-Skript), 7 neue Fälle in `baukasten-editor.test.tsx`. Gesamtlauf: 3751 grün, 1 alter Fehler in `werkzeugkiste-auszug.test.ts` (schlägt auch ohne diese Änderung fehl). `tsc` und `npm run build` grün.
+
+**Offen:** Vorschau-Link (E4) und Durchgang am Laptop/Handy durch den Nutzer.
 
 ---
 <!-- Sections below are added by subsequent skills -->
