@@ -103,6 +103,10 @@ export interface ZeilenTeil extends ListenTeil {
   art: 'zeilen'
   platzhalter: string
   max: number
+  /** Überschrift über der Liste (z. B. „Zusatzwörter“) */
+  titel?: string
+  /** Nach „Fertig“ als Auswahl-Kärtchen statt als nummerierte Liste zeigen */
+  kaertchen?: boolean
 }
 
 /** Ein Feld in einem Eintrag (Muster F und C kurz) */
@@ -293,7 +297,21 @@ export const BAUPLAENE: Record<string, Bauplan> = {
   // ── Muster E ──
   fill_blanks: lueckenPlan('fill_blanks', 'Ergänze die fehlenden Wörter.', 'Als Lücke', 'Lücke', 'Lücken', '.lueckentext .luecke'),
   advanced_fill_blanks: lueckenPlan('advanced_fill_blanks', 'Ergänze die fehlenden Wörter.', 'Als Lücke', 'Lücke', 'Lücken', '.lueckentext .luecke'),
-  drag_words: lueckenPlan('drag_words', 'Zieh die Wörter an die richtige Stelle.', 'Als Lücke', 'Lücke', 'Lücken', '.lueckentext .luecke'),
+  drag_words: (() => {
+    const plan = lueckenPlan('drag_words', 'Zieh die Wörter an die richtige Stelle.', 'Als Lücke', 'Lücke', 'Lücken', '.lueckentext .luecke')
+    return {
+      ...plan,
+      teile: [
+        ...plan.teile,
+        {
+          ...zeilen('distractors', 'Zusatzwort', 'Zusatzwörter', 'zusatzwort', 0, 10, 'Falsches Wort, das nur zur Auswahl steht'),
+          titel: 'Zusatzwörter (optional) – stehen zur Auswahl, passen aber in keine Lücke',
+          kaertchen: true,
+          max: 100,
+        },
+      ],
+    }
+  })(),
   mark_words: lueckenPlan('mark_words', 'Markiere die Fachbegriffe im Text.', 'Als Lösung', 'Lösung', 'Lösungen', '.markiertext .wort'),
   // ── Muster C ──
   accordion: {

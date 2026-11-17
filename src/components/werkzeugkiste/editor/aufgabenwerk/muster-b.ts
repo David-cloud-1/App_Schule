@@ -103,12 +103,14 @@ export function zeilenTeil(w: Werk, teil: ZeilenTeil): VNode {
     holen: () => (Array.isArray(w.block[teil.feld]) ? (w.block[teil.feld] as unknown[]) : []).map(s),
     schreibe: (l) => ({ ...w.block, [teil.feld]: l }),
     notizen: hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld)),
+    titel: teil.titel,
   })
 }
 
 /** Ansicht nach „Fertig“ (bis zum Neubau) */
-export function zeilenAnsicht(w: Werk, teil: ZeilenTeil): VNode {
+export function zeilenAnsicht(w: Werk, teil: ZeilenTeil): VNode | null {
   const l = (Array.isArray(w.block[teil.feld]) ? (w.block[teil.feld] as unknown[]) : []).map(s).filter((x) => x.trim())
+  if (teil.kaertchen) return l.length ? html`<div class="vorrat">${l.map((x, i) => html`<span class="chip" key=${i}>${x}</span>`)}</div>` : null
   return html`<ol>${l.map((x) => html`<li>${x}</li>`)}</ol>`
 }
 

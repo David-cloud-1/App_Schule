@@ -173,6 +173,14 @@ export function LueckenFormular({ block, onChange }: FormProps) {
           </Button>
         </div>
       )}
+      {typ === 'drag_words' && (
+        <TextListe
+          titel="Zusatzwörter (stehen zur Auswahl, passen aber in keine Lücke)"
+          einzahl="Zusatzwort"
+          werte={texte(block.distractors)}
+          onChange={(w) => onChange({ ...block, distractors: w.length ? w : undefined }, 'distractors')}
+        />
+      )}
       <div className="rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm" aria-live="polite">
         {gefunden.length === 0 ? (
           <span className="text-ws-orange">Noch keine {typ === 'mark_words' ? 'markierten Wörter' : 'Lücken'} – mit *Sternchen* markieren.</span>

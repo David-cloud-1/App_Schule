@@ -69,7 +69,7 @@ const BEKANNT: Record<string, string[]> = {
   single_choice_set: ['type', 'questions'],
   fill_blanks: ['type', 'text', 'description'],
   advanced_fill_blanks: ['type', 'text', 'description'],
-  drag_words: ['type', 'text', 'description'],
+  drag_words: ['type', 'text', 'description', 'distractors'],
   mark_words: ['type', 'text', 'description'],
   dialog_cards: ['type', 'cards', 'title'],
   flashcards: ['type', 'cards', 'description'],
