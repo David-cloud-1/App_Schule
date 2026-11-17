@@ -88,6 +88,15 @@ const SKIZZEN: Record<string, () => ReactNode> = {
       <Z x={34} y={60} w={52} />
     </Kette>
   ),
+  hotspot: () => (
+    <Kette>
+      <K x={14} y={6} w={92} h={52} />
+      <path d="M20 52 L44 30 L62 44 L78 32 L100 52 Z" className="fill-ws-muted/30" />
+      <circle cx={52} cy={28} r={11} className="fill-ws-green/25 stroke-ws-green" strokeWidth={2} />
+      <rect x={78} y={14} width={20} height={14} rx={3} className="fill-ws-red/20 stroke-ws-red" strokeWidth={2} />
+      <Z x={34} y={62} w={52} />
+    </Kette>
+  ),
   gallery: () => (
     <Kette>
       {[0, 1, 2].map((i) => (

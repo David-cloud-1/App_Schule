@@ -1,8 +1,8 @@
 # PROJ-107: Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-17
 
 ## Idee in einem Satz
 Aus einem Bild wird eine Aufgabe. Entweder klicken Schüler die richtigen Stellen an („Wo ist das Kühlaggregat?“), oder sie ziehen Beschriftungen an die passenden Punkte („Ordne zu: Zugmaschine, Auflieger, Plane“). Die Lehrkraft setzt die Punkte direkt auf dem Bild.
@@ -78,7 +78,16 @@ Teil der Reihe „Baukasten direkt“, Übersicht und Leitbild in PROJ-101.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+Entschieden am 2026-11-17 (ohne Rückfrage, nach der Grundregel aus PROJ-101):
+- **„Bild beschriften“ gibt es schon:** `bildzuordnung` (PROJ-90) setzt Begriffe auf Punkte, das Formular hat einen Punkte-Setzer auf dem Bild. PROJ-107 baut deshalb nur dazu: Ablenker-Begriffe und die Umwandlung Bild → Aufgabe.
+- **Neuer Typ `hotspot` („Stelle im Bild finden“):** `bereiche[]` mit `art` (kreis/rechteck), Rahmen `x/y/x2/y2` in Prozent, `richtig`, `label`, `feedback`; Fragetext in `description`/`question`. Der Kern baut daraus eine prüfbare Aufgabe (zählt im Fortschritt, Lösung im Lösungsblock wie bei den anderen Typen).
+- **Schüler:** Klick/Tipp auf das Bild; die Trefferfläche ist mindestens 44 × 44 px; oberster (zuletzt genannter) Bereich zählt; richtig = grüne Fläche + Rückmeldung, falsch = roter Ring + Rückmeldung; Zähler „n von m gefunden“; „Nochmal“. Ohne Maus: aufklappbare Auswahlliste (`details`) mit allen Bereichen.
+- **Lehrkraft:** `HotspotFormular` zeichnet Bereiche durch Ziehen auf dem Bild (wie der Punkte-Setzer), Liste mit Form, richtig/falsch, Beschreibung, Rückmeldung. Im „⋯“-Menü: „In Aufgabe umwandeln“ (Bild → Hotspot oder Bildzuordnung) und „Zurück zum einfachen Bild“.
+
+## Umsetzung (2026-11-17)
+- Gebaut: Kern-Baustein `hotspot` (Bau, Laufzeit, Druck: Markierungen ausgeblendet), Ablenker für `bildzuordnung` (`ablenker:`, gemischte Karten ohne Stelle), Prüfstelle (kein Bild, kein richtiger Bereich, Alternativtext), Katalog-Eintrag mit Skizze und Beispiel, `HotspotFormular`, Ablenker-Liste im Bildzuordnung-Formular, Menü „In Aufgabe umwandeln“ / „Zurück zum einfachen Bild“. Tests: Kern (`kern_bild_test.py`, Laufzeit zusätzlich in jsdom geprüft), `werkzeugkiste-bild-block.test.ts`, `hotspot-formular.test.tsx`.
+- **Abweichungen:** (1) Bereiche werden im Formular der Schublade auf dem Bild gezeichnet, nicht direkt in der Vorschau. (2) „Zurück zum Bild“ fragt nicht nach, sondern bietet „Rückgängig“ an. (3) Die Bereiche folgen nicht automatisch dem Zuschneiden/Drehen (Zuschneiden ist bei Aufgaben nicht angeboten). (4) Die Reihenfolge der überlappenden Bereiche steht in der Liste (letzter = oben), eine eigene Anzeige gibt es nicht. (5) Der Hinweis „über 12 Punkte“ entfällt (Grenze: 20 Bereiche). (6) Druck: Das Bild mit Fragetext, ohne Lösungsmarkierungen; Nummern an Punkten (Beschriften) unverändert wie bisher. (7) Ob der Typ in den KI-Prompt kommt: nein, er bleibt dem Baukasten vorbehalten (Bereiche kann die KI nicht setzen).
+- **Offen:** Browser-Test durch den Nutzer (Zeichnen im Formular, Tippen auf dem Handy, Auswahlliste mit Tastatur).
 
 ## QA Test Results
 _To be added by /qa_

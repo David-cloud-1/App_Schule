@@ -193,6 +193,14 @@ const ROH: Roh[] = [
     bild: true,
   },
   {
+    typ: 'hotspot',
+    gruppe: 'ordnen',
+    beschreibung: 'Die Schüler tippen auf die richtige Stelle im Bild und sehen sofort, ob es stimmt.',
+    gutFuer: 'Bauteile und Stellen suchen lassen, z. B. „Wo sitzt das Kühlaggregat?“ am Foto eines Fahrzeugs.',
+    suchbegriffe: ['Hotspot', 'Stelle', 'Bild', 'Finden', 'Anklicken', 'Foto', 'Suchen'],
+    bild: true,
+  },
+  {
     typ: 'image_sequencing',
     gruppe: 'ordnen',
     beschreibung: 'Abbildungen oder Schritte werden in die richtige Reihenfolge gebracht.',

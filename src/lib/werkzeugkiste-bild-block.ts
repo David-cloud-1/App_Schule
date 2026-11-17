@@ -416,3 +416,103 @@ export function nurBilder<T extends { type: string; name: string }>(
 }
 
 export const NUR_BILDER_FEHLER = 'Nur PNG, JPG und WebP können als Bild eingefügt werden.'
+
+// ── Stelle im Bild finden / Bild als Aufgabe (PROJ-107) ──────────────────
+
+export const BEREICHE_MAX = 20
+export type BereichArt = 'kreis' | 'rechteck'
+
+/** Ein anklickbarer Bereich: Rahmen in Prozent des Bildes (wie `bild-beschriften`), `richtig` und kurze Texte */
+export interface Bereich {
+  art: BereichArt
+  x: number
+  y: number
+  x2: number
+  y2: number
+  richtig: boolean
+  label: string
+  feedback: string
+}
+
+const kurz = (v: unknown, max: number): string => (typeof v === 'string' ? v : '').replace(/\s+/g, ' ').trim().slice(0, max)
+
+/** Liest Bereiche aus einem Block oder einer Nachricht; Unbrauchbares fällt weg (wie `seite.baue_hotspot` im Kern) */
+export function bereinigeBereiche(roh: unknown): Bereich[] {
+  if (!Array.isArray(roh)) return []
+  const liste: Bereich[] = []
+  for (const r of roh.slice(0, BEREICHE_MAX)) {
+    if (!r || typeof r !== 'object') continue
+    const o = r as Record<string, unknown>
+    const zahlen = [o.x, o.y, o.x2, o.y2].map((v) => (typeof v === 'number' ? v : Number(v)))
+    if (zahlen.some((z) => !Number.isFinite(z))) continue
+    const [x, y, x2, y2] = zahlen.map((z) => Math.round(Math.max(0, Math.min(100, z)) * 100) / 100)
+    liste.push({
+      art: o.art === 'kreis' ? 'kreis' : 'rechteck',
+      x,
+      y,
+      x2,
+      y2,
+      richtig: o.richtig === true,
+      label: kurz(o.label, 80),
+      feedback: kurz(o.feedback, 300),
+    })
+  }
+  return liste
+}
+
+export const leseBereiche = (block: Block): Bereich[] => bereinigeBereiche(block.bereiche)
+
+export function setzeBereiche(block: Block, bereiche: Bereich[]): Block {
+  return { ...block, bereiche: bereinigeBereiche(bereiche) } as Block
+}
+
+/** Ein neuer, noch nicht gezeichneter Bereich (kleine Mitte), damit er sichtbar ist und gezogen werden kann */
+export function neuerBereich(art: BereichArt = 'kreis', richtig = false): Bereich {
+  return { art, x: 40, y: 40, x2: 60, y2: 60, richtig, label: '', feedback: '' }
+}
+
+/** Beim Ziehen von Punkt A nach Punkt B: Rahmen (Ecken in beliebiger Richtung) */
+export function rahmenAusZiehen(ax: number, ay: number, bx: number, by: number) {
+  const k = (v: number) => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10
+  return { x: k(Math.min(ax, bx)), y: k(Math.min(ay, by)), x2: k(Math.max(ax, bx)), y2: k(Math.max(ay, by)) }
+}
+
+/** Reicht es für eine Aufgabe? Mindestens ein richtiger Bereich */
+export const hatRichtigenBereich = (bereiche: Bereich[]) => bereiche.some((b) => b.richtig)
+
+export const BILD_AUFGABEN = ['hotspot', 'bildzuordnung'] as const
+export type BildAufgabe = (typeof BILD_AUFGABEN)[number]
+
+export const BILD_AUFGABE_NAME: Record<BildAufgabe, string> = {
+  hotspot: 'Stelle im Bild finden',
+  bildzuordnung: 'Bild beschriften',
+}
+
+/**
+ * Ein Bild-Block wird zur Aufgabe. Bild und Alternativtext bleiben; bei „Stelle im Bild finden“ auch die Unterschrift.
+ * Breite, Ausrichtung, „Text daneben“ und Markierungen gelten in der Aufgabe nicht (Aufgaben zeigen das Bild immer ganz).
+ */
+export function bildInAufgabe(block: Block, ziel: BildAufgabe): Block {
+  const grund = { path: typeof block.path === 'string' ? block.path : '', alt: typeof block.alt === 'string' ? block.alt : '' }
+  if (ziel === 'hotspot') {
+    const caption = typeof block.caption === 'string' && block.caption.trim() ? { caption: block.caption } : {}
+    return { type: 'hotspot', description: 'Finde die gesuchte Stelle im Bild.', ...grund, ...caption, bereiche: [] }
+  }
+  return { type: 'bildzuordnung', description: 'Setze die Begriffe an die richtige Stelle.', ...grund, punkte: [{ label: '' }, { label: '' }] }
+}
+
+/** Zurück zum reinen Bild: Die Aufgabe (Bereiche, Punkte, Texte) entfällt, das Bild bleibt */
+export function aufgabeInBild(block: Block): Block {
+  const caption = typeof block.caption === 'string' && block.caption.trim() ? { caption: block.caption } : {}
+  return { type: 'image', path: typeof block.path === 'string' ? block.path : '', alt: typeof block.alt === 'string' ? block.alt : '', ...caption, width: '100%' }
+}
+
+/** Geht beim Zurückverwandeln etwas verloren, das die Lehrkraft gebaut hat? (für den Hinweis) */
+export function aufgabeHatInhalt(block: Block): boolean {
+  if (block.type === 'hotspot') return leseBereiche(block).length > 0
+  if (block.type === 'bildzuordnung') {
+    const p = Array.isArray(block.punkte) ? block.punkte : Array.isArray(block.points) ? block.points : []
+    return p.some((x) => x && typeof x === 'object' && typeof (x as { label?: unknown }).label === 'string' && (x as { label: string }).label.trim() !== '')
+  }
+  return false
+}

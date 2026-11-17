@@ -244,6 +244,34 @@
       }
     ]
   },
+  "hotspot": {
+    "type": "hotspot",
+    "path": "",
+    "description": "Finde die gesuchte Stelle im Bild.",
+    "alt": "Beschreibe hier in einem Satz, was auf dem Bild zu sehen ist.",
+    "bereiche": [
+      {
+        "art": "kreis",
+        "x": 30,
+        "y": 30,
+        "x2": 50,
+        "y2": 50,
+        "richtig": true,
+        "label": "Gesuchte Stelle",
+        "feedback": "Richtig, hier ist es."
+      },
+      {
+        "art": "rechteck",
+        "x": 60,
+        "y": 55,
+        "x2": 85,
+        "y2": 80,
+        "richtig": false,
+        "label": "Falsche Stelle",
+        "feedback": "Das ist es nicht – schau noch einmal genau hin."
+      }
+    ]
+  },
   "image_sequencing": {
     "type": "image_sequencing",
     "description": "Bring die Abbildungen in die richtige Reihenfolge.",

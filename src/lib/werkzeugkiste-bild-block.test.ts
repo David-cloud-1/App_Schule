@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { Block, Struktur } from '@/lib/werkzeugkiste-editor'
 import {
+  BEREICHE_MAX,
   BREITE_MAX,
   BREITE_MIN,
+  aufgabeHatInhalt,
+  aufgabeInBild,
+  bereinigeBereiche,
   bereinigeMarken,
+  bildInAufgabe,
+  hatRichtigenBereich,
+  neuerBereich,
+  rahmenAusZiehen,
+  setzeBereiche,
   bildAlsGalerieBild,
   ersetzeBild,
   fasseZurGalerieZusammen,
@@ -250,3 +259,58 @@ describe('Bild austauschen', () => {
     expect(ersetzeBild(alt, 'images/neu.png', '  ').alt).toBe('Alt')
   })
 })
+
+describe('Stelle im Bild finden (PROJ-107)', () => {
+  it('liest Bereiche streng: Zahlen begrenzt, Unbrauchbares weg, Texte gekürzt, höchstens 20', () => {
+    const b = bereinigeBereiche([
+      { art: 'kreis', x: -5, y: 10, x2: 500, y2: '40', richtig: true, label: '  Kühl   aggregat ', feedback: 'x'.repeat(400) },
+      { art: 'dreieck', x: 1, y: 1, x2: 2, y2: 2 },
+      { art: 'kreis', x: 'a', y: 1, x2: 2, y2: 2 },
+      'kaputt',
+      null,
+    ])
+    expect(b).toHaveLength(2)
+    expect(b[0]).toMatchObject({ art: 'kreis', x: 0, x2: 100, y2: 40, richtig: true, label: 'Kühl aggregat' })
+    expect(b[0].feedback).toHaveLength(300)
+    // Unbekannte Formen werden zum Rechteck, „richtig“ gilt nur bei genau true
+    expect(b[1]).toMatchObject({ art: 'rechteck', richtig: false })
+    expect(bereinigeBereiche(Array.from({ length: 50 }, () => ({ x: 1, y: 1, x2: 2, y2: 2 })))).toHaveLength(BEREICHE_MAX)
+    expect(bereinigeBereiche('x')).toEqual([])
+  })
+
+  it('schreibt Bereiche in den Block und erkennt, ob mindestens einer richtig ist', () => {
+    const block = setzeBereiche({ type: 'hotspot', path: 'a.png' }, [neuerBereich('kreis', false), neuerBereich('rechteck', true)])
+    expect(block.bereiche).toHaveLength(2)
+    expect(hatRichtigenBereich(bereinigeBereiche(block.bereiche))).toBe(true)
+    expect(hatRichtigenBereich([neuerBereich()])).toBe(false)
+  })
+
+  it('der Rahmen aus dem Ziehen ist in jeder Richtung geordnet und im Bild', () => {
+    expect(rahmenAusZiehen(80, 70, 20, 10)).toEqual({ x: 20, y: 10, x2: 80, y2: 70 })
+    expect(rahmenAusZiehen(-10, 50, 130, 60)).toEqual({ x: 0, y: 50, x2: 100, y2: 60 })
+  })
+
+  it('wandelt ein Bild in eine Aufgabe um: Bild und Alternativtext bleiben, Markierungen und Breite entfallen', () => {
+    const bild = bild_('images/a.png', { alt: 'LKW', caption: 'Foto', width: '40%', marks: [{ art: 'nummer', x: 1, y: 1 }] })
+    const h = bildInAufgabe(bild, 'hotspot')
+    expect(h).toMatchObject({ type: 'hotspot', path: 'images/a.png', alt: 'LKW', caption: 'Foto', bereiche: [] })
+    expect('marks' in h).toBe(false)
+    expect('width' in h).toBe(false)
+    const z = bildInAufgabe(bild, 'bildzuordnung')
+    expect(z).toMatchObject({ type: 'bildzuordnung', path: 'images/a.png', alt: 'LKW' })
+    expect(Array.isArray(z.punkte)).toBe(true)
+  })
+
+  it('wandelt zurück: das Bild bleibt, die Aufgabe entfällt', () => {
+    const h = { type: 'hotspot', path: 'images/a.png', alt: 'LKW', caption: 'Foto', bereiche: [neuerBereich('kreis', true)] }
+    expect(aufgabeInBild(h)).toEqual({ type: 'image', path: 'images/a.png', alt: 'LKW', caption: 'Foto', width: '100%' })
+    expect(aufgabeHatInhalt(h)).toBe(true)
+    expect(aufgabeHatInhalt({ type: 'hotspot', bereiche: [] })).toBe(false)
+    expect(aufgabeHatInhalt({ type: 'bildzuordnung', punkte: [{ label: 'Zugmaschine' }] })).toBe(true)
+    expect(aufgabeHatInhalt({ type: 'bildzuordnung', punkte: [{ label: ' ' }] })).toBe(false)
+  })
+})
+
+function bild_(pfad: string, mehr: Record<string, unknown> = {}): Block {
+  return bild(pfad, mehr)
+}

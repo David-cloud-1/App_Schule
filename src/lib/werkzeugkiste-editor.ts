@@ -133,6 +133,7 @@ export const TYP_NAMEN: Record<string, string> = {
   freitext: 'Offene Frage',
   trainer: 'Trainer',
   bildzuordnung: 'Bildzuordnung',
+  hotspot: 'Stelle im Bild finden',
   find_words: 'Wörtersuche',
   memory_game: 'Memory',
   flashcards: 'Lernkarten zum Tippen',

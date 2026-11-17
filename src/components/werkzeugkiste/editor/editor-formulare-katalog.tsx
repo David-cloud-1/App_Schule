@@ -17,25 +17,33 @@ import { cn } from '@/lib/utils'
 import { BildBeschriften } from '@/components/werkzeugkiste/editor/bild-beschriften'
 import {
   AUSRICHTUNGEN,
+  BEREICHE_MAX,
   GALERIE_MAX,
   GALERIE_MIN,
   BREITE_MAX,
   BREITE_MIN,
   galerieAlsEinzelbild,
   hatBild,
+  hatRichtigenBereich,
   leseAusrichtung,
+  leseBereiche,
   leseBreite,
   leseGalerieBilder,
   leseMarken,
   leseSpalten,
   leseTextDaneben,
+  neuerBereich,
+  rahmenAusZiehen,
   rasteEin,
   setzeAusrichtung,
+  setzeBereiche,
   setzeBreite,
   setzeGalerieBilder,
   setzeMarken,
   setzeTextDaneben,
   wendeBildAenderungAn,
+  type Bereich,
+  type BereichArt,
   type BildAenderung,
   type GalerieBild,
   type TextDaneben,
@@ -812,6 +820,12 @@ export function BildzuordnungFormular({ block, onChange }: FormProps) {
           setzePunkte(punkte.map((p, j) => (j === i ? { ...p, x, y } : p)))
         }}
       />
+      <TextListe
+        titel="Ablenker (optional): Begriffe, die an keine Stelle gehören"
+        einzahl="Ablenker"
+        werte={texte(block.ablenker)}
+        onChange={(w) => onChange(w.length ? { ...block, ablenker: w } : (({ ablenker: _a, ...rest }) => (void _a, rest))(block), 'ablenker')}
+      />
       <RadioGroup value={String(aktiv)} onValueChange={(v) => setAktiv(Number(v))} aria-label="Punkt, der auf dem Bild gesetzt wird">
         <Liste
           titel="Punkte"
@@ -846,6 +860,161 @@ export function BildzuordnungFormular({ block, onChange }: FormProps) {
               </>
             )
           }}
+        </Liste>
+      </RadioGroup>
+    </div>
+  )
+}
+
+// ── Stelle im Bild finden (hotspot, PROJ-107) ───────────────────────────────
+
+function BereichSetzer({
+  pfad,
+  bereiche,
+  aktiv,
+  setAktiv,
+  setzeRahmen,
+}: {
+  pfad: string
+  bereiche: Bereich[]
+  aktiv: number
+  setAktiv: (i: number) => void
+  setzeRahmen: (i: number, rahmen: { x: number; y: number; x2: number; y2: number }) => void
+}) {
+  const bild = useGrossesBild(pfad)
+  const flaeche = useRef<HTMLDivElement>(null)
+  const start = useRef<{ x: number; y: number } | null>(null)
+
+  const position = (e: ReactPointerEvent) => {
+    const r = flaeche.current!.getBoundingClientRect()
+    return { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100 }
+  }
+
+  if (!pfad) return <p className="text-sm text-ws-orange">Wähle zuerst ein Bild.</p>
+  if (bild === null)
+    return (
+      <p className="flex items-center gap-2 text-sm text-ws-muted" role="status">
+        <Loader2 className="size-4 animate-spin" aria-hidden /> Bild wird geladen …
+      </p>
+    )
+  if (bild === 'fehler') return <p className="text-sm text-ws-orange">Das Bild fehlt im Material. Wähle ein anderes.</p>
+  if (bereiche.length === 0) return <p className="text-sm text-ws-muted">Füge unten einen Bereich hinzu, dann zeichnest du ihn hier auf dem Bild.</p>
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-ws-muted">
+        Ziehe auf dem Bild, um <strong className="text-ws-text">Bereich {aktiv + 1}</strong> zu zeichnen. Ein Klick auf einen Bereich wählt ihn.
+      </p>
+      <div
+        ref={flaeche}
+        className="relative touch-none select-none overflow-hidden rounded-xl border border-ws-line bg-white"
+        data-testid="bereich-flaeche"
+        onPointerDown={(e) => {
+          const ziel = (e.target as HTMLElement).dataset.bereich
+          if (ziel !== undefined) {
+            setAktiv(Number(ziel))
+            return
+          }
+          e.currentTarget.setPointerCapture(e.pointerId)
+          start.current = position(e)
+        }}
+        onPointerMove={(e) => {
+          if (!start.current) return
+          const p = position(e)
+          setzeRahmen(aktiv, rahmenAusZiehen(start.current.x, start.current.y, p.x, p.y))
+        }}
+        onPointerUp={() => (start.current = null)}
+        onPointerCancel={() => (start.current = null)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- data:-Adresse vom Kern */}
+        <img src={bild} alt="" draggable={false} className="block w-full" />
+        {bereiche.map((b, i) => (
+          <span
+            key={i}
+            data-bereich={i}
+            title={b.label || `Bereich ${i + 1}`}
+            style={{ left: `${Math.min(b.x, b.x2)}%`, top: `${Math.min(b.y, b.y2)}%`, width: `${Math.max(Math.abs(b.x2 - b.x), 1.5)}%`, height: `${Math.max(Math.abs(b.y2 - b.y), 1.5)}%` }}
+            className={cn(
+              'absolute flex items-start justify-start border-2 text-[11px] font-bold text-white',
+              b.art === 'kreis' ? 'rounded-full' : 'rounded-md',
+              b.richtig ? 'border-ws-green bg-ws-green/25' : 'border-ws-red bg-ws-red/20',
+              i === aktiv && 'z-10 ring-2 ring-white ring-offset-1',
+            )}
+          >
+            <span className="pointer-events-none m-0.5 rounded bg-black/70 px-1">{i + 1}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function HotspotFormular({ block, onChange }: FormProps) {
+  const name = useId()
+  const [aktiv, setAktiv] = useState(0)
+  const bereiche = leseBereiche(block)
+  const setze = (l: Bereich[], feld = 'bereiche') => onChange(setzeBereiche(block, l), feld)
+  const wahl = Math.min(aktiv, Math.max(0, bereiche.length - 1))
+  return (
+    <div className="space-y-4">
+      <BildWahl pfad={s(block.path)} onWaehle={(p) => onChange({ ...block, path: p }, 'path')} />
+      <Feld
+        label="Aufgabe"
+        pflicht
+        wert={s(block.description ?? block.question)}
+        onChange={(v) => onChange(optional({ ...block }, block.question !== undefined ? 'question' : 'description', v), 'description')}
+        hinweis="Zum Beispiel: Wo sitzt das Kühlaggregat? Tippe darauf."
+      />
+      <Feld label="Alternativtext" pflicht wert={s(block.alt)} onChange={(v) => onChange({ ...block, alt: v }, 'alt')} hinweis="Beschreibe das Bild, ohne die Lösung zu verraten." />
+      <BereichSetzer
+        pfad={s(block.path)}
+        bereiche={bereiche}
+        aktiv={wahl}
+        setAktiv={setAktiv}
+        setzeRahmen={(i, rahmen) => setze(bereiche.map((b, j) => (j === i ? { ...b, ...rahmen } : b)), 'rahmen')}
+      />
+      {bereiche.length > 0 && !hatRichtigenBereich(bereiche) && (
+        <p className="text-sm text-ws-orange" role="status">
+          Mindestens ein Bereich muss „richtig“ sein, sonst bleibt die Aufgabe leer.
+        </p>
+      )}
+      <RadioGroup value={String(wahl)} onValueChange={(v) => setAktiv(Number(v))} aria-label="Bereich, der auf dem Bild gezeichnet wird">
+        <Liste
+          titel={`Bereiche (${bereiche.length} von ${BEREICHE_MAX})`}
+          einzahl="Bereich"
+          mindestens={1}
+          eintraege={bereiche}
+          neu={() => neuerBereich('kreis', bereiche.length === 0)}
+          hinzufuegen={bereiche.length >= BEREICHE_MAX ? () => undefined : () => { setze([...bereiche, neuerBereich('kreis', bereiche.length === 0)]); setAktiv(bereiche.length) }}
+          onChange={(l) => setze(l)}
+        >
+          {(b, i, setzeEintrag) => (
+            <>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value={String(i)} id={`${name}-${i}`} />
+                <Label htmlFor={`${name}-${i}`} className="text-xs text-ws-muted">
+                  {i === wahl ? 'Wird beim Ziehen aufs Bild gezeichnet' : 'Auf dem Bild zeichnen'}
+                </Label>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <AdminSegmented<BereichArt>
+                  value={b.art}
+                  onChange={(v) => setzeEintrag({ ...b, art: v })}
+                  ariaLabel={`Form von Bereich ${i + 1}`}
+                  options={[
+                    { value: 'kreis', label: 'Kreis' },
+                    { value: 'rechteck', label: 'Rechteck' },
+                  ]}
+                />
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <Switch checked={b.richtig} onCheckedChange={(v) => setzeEintrag({ ...b, richtig: v })} aria-label={`Bereich ${i + 1} ist richtig`} />
+                  Richtig
+                </label>
+              </div>
+              <Feld label={`Beschreibung ${i + 1} (für die Auswahlliste ohne Maus)`} wert={b.label} onChange={(v) => setzeEintrag({ ...b, label: v })} />
+              <Feld label={`Rückmeldung ${i + 1}`} wert={b.feedback} onChange={(v) => setzeEintrag({ ...b, feedback: v })} hinweis="Wird gezeigt, wenn jemand diese Stelle antippt." />
+            </>
+          )}
         </Liste>
       </RadioGroup>
     </div>
@@ -1166,6 +1335,7 @@ export const KATALOG_FORMULARE: Record<string, (p: FormProps) => React.ReactNode
   freitext: FreitextFormular,
   trainer: TrainerFormular,
   bildzuordnung: BildzuordnungFormular,
+  hotspot: HotspotFormular,
   find_words: WoertersucheFormular,
   memory_game: MemoryFormular,
   flashcards: TippkartenFormular,

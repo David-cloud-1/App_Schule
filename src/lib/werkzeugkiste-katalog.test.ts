@@ -20,10 +20,10 @@ import {
 } from './werkzeugkiste-katalog'
 
 describe('Katalog (PROJ-90)', () => {
-  it('zeigt 34 Einträge: alle Typen außer single_choice (E8), jeder genau einmal', () => {
-    expect(KATALOG).toHaveLength(34)
+  it('zeigt 35 Einträge: alle Typen außer single_choice (E8), jeder genau einmal', () => {
+    expect(KATALOG).toHaveLength(35)
     const typen = KATALOG.map((e) => e.typ)
-    expect(new Set(typen).size).toBe(34)
+    expect(new Set(typen).size).toBe(35)
     expect(typen.sort()).toEqual(Object.keys(TYP_NAMEN).filter((t) => t !== 'single_choice').sort())
   })
 
@@ -56,8 +56,8 @@ describe('Katalog (PROJ-90)', () => {
     )
   })
 
-  it('Bild und Bildzuordnung brauchen ein Bild, sonst keiner', () => {
-    expect(KATALOG.filter((e) => e.brauchtBild).map((e) => e.typ).sort()).toEqual(['bildzuordnung', 'image'])
+  it('Bild, Bildzuordnung und Hotspot brauchen ein Bild, sonst keiner', () => {
+    expect(KATALOG.filter((e) => e.brauchtBild).map((e) => e.typ).sort()).toEqual(['bildzuordnung', 'hotspot', 'image'])
   })
 
   it('stimmt mit den Bausteinen des Kerns überein (wenn der Kern-Ordner daneben liegt)', () => {
@@ -87,7 +87,7 @@ describe('Suche', () => {
 
   it('liefert ohne Treffer eine leere Liste und mit leerer Suche alles', () => {
     expect(sucheKatalog('xyzabc')).toEqual([])
-    expect(sucheKatalog('  ')).toHaveLength(34)
+    expect(sucheKatalog('  ')).toHaveLength(35)
   })
 
   it('filtert im Kapiteltest auf die drei erlaubten Typen', () => {

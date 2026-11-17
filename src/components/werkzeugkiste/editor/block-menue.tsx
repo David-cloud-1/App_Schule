@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   ArrowDown,
   ArrowDownToLine,
@@ -10,7 +11,9 @@ import {
   ClipboardCopy,
   ClipboardPaste,
   Copy,
+  ImageIcon,
   LayoutGrid,
+  ListChecks,
   Rows3,
   SquareDashedMousePointer,
   Scissors,
@@ -29,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
+import { BILD_AUFGABEN, BILD_AUFGABE_NAME, aufgabeHatInhalt, aufgabeInBild, bildInAufgabe, hatBild, type BildAufgabe } from '@/lib/werkzeugkiste-bild-block'
 import { blockZahl, eineStelle, type Ziel } from '@/lib/werkzeugkiste-bloecke'
 import { setzeBlock, typName, type Ort, type Struktur } from '@/lib/werkzeugkiste-editor'
 import type { Aendere } from '@/components/werkzeugkiste/editor/editor-gliederung'
@@ -99,6 +103,20 @@ export function BlockMenue({
   const typ = String(block?.type ?? '')
   const name = viele ? blockZahl(orte.length) : typName(typ)
   const wechselBlock = wechsel ? struktur.chapters[wechsel.thema]?.elements[wechsel.block] : undefined
+  // PROJ-107: Bild ↔ Bild-Aufgabe. Zurück zum Bild entfernt die Aufgabe; „Rückgängig“ stellt sie wieder her.
+  const bildAufgabe = !viele && (typ === 'hotspot' || typ === 'bildzuordnung')
+  const mitUndo = (text: string) => toast.success(text, { action: { label: 'Rückgängig', onClick: rueckgaengig } })
+  const zurAufgabe = (ziel: BildAufgabe) => {
+    if (!ort || !block || block.type !== 'image') return
+    aendere((s) => setzeBlock(s, ort, bildInAufgabe(block, ziel)))
+    mitUndo(`Das Bild ist jetzt eine Aufgabe („${BILD_AUFGABE_NAME[ziel]}“). Ergänze sie im Formular.`)
+  }
+  const zumBild = () => {
+    if (!ort || !block) return
+    const verlust = aufgabeHatInhalt(block)
+    aendere((s) => setzeBlock(s, ort, aufgabeInBild(block)))
+    mitUndo(verlust ? 'Die Aufgabe wurde entfernt, das Bild bleibt.' : 'Wieder ein einfaches Bild.')
+  }
   const hoch = eineStelle(struktur, orte, -1)
   const runter = eineStelle(struktur, orte, 1)
 
@@ -133,6 +151,25 @@ export function BlockMenue({
               {!viele && wechselZiele(typ).length > 0 && (
                 <DropdownMenuItem onSelect={() => setWechsel(ort)}>
                   <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln …
+                </DropdownMenuItem>
+              )}
+              {!viele && typ === 'image' && hatBild(block) && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <ListChecks className="mr-2 size-4" aria-hidden /> In Aufgabe umwandeln
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {BILD_AUFGABEN.map((z) => (
+                      <DropdownMenuItem key={z} onSelect={() => zurAufgabe(z)}>
+                        {BILD_AUFGABE_NAME[z]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
+              {bildAufgabe && hatBild(block ? { ...block, type: 'image' } : block) && (
+                <DropdownMenuItem onSelect={zumBild}>
+                  <ImageIcon className="mr-2 size-4" aria-hidden /> Zurück zum einfachen Bild
                 </DropdownMenuItem>
               )}
               {viele && kannGalerie && onGalerie && (
