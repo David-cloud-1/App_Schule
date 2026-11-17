@@ -208,6 +208,9 @@ Keine neuen Datenwege, keine API, keine Datenbank. Link-Eingabe in der Schublade
 ### Regression
 Alle 497 Editor-Tests und die Bündel-Frische-Tests grün; Schüler-Spiel unberührt.
 
+### Nachbesserung (2026-11-17)
+BUG-1 (Aufgabenwerk nimmt „Fertig“ und Screenreader-Namen aus `FERTIG`), BUG-2 (Schublade: gleiche Beschriftungen wie Vorschau, `GESCHUETZT_LOESCHEN`) und BUG-3 (Wächter prüft jetzt jede feste Farbe gegen Quelle + benannte Ausnahmenliste) behoben; 498 Editor-Tests grün.
+
 ### Offen vor Livegang
 1. Browser-Test: Schublade (Rechner/Handy, hell/dunkel), Textleiste in der Vorschau, offene Aufgabe (alle Muster A–G) – Höhen, Blau, „Fertig“, Fokus.
 2. Vorher/Nachher-Bild in `docs/vorschau`.

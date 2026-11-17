@@ -60,14 +60,28 @@ describe('Bedien-Design: eine Farbquelle', () => {
     expect(BEDIEN_MASSE.knopfTouch).toBeGreaterThanOrEqual(44)
   })
 
-  // Keine eigenen Blautöne: Blau kommt aus der Quelle. Papier-Farben der Boxen und die neutralen
-  // oder inhaltlichen Farben (grün, orange, Grautöne) sind bewusst ausgenommen.
-  const VERBOTENE_BLAUS = ['#2563eb', '#1d4ed8', '#1e3a8a', '#dbeafe', '#eff6ff', '#fef2f2', '#991b1b', '#cbd5e1', '#475569']
+  // Jede feste Farbe in den drei Stellen muss aus der Quelle stammen oder auf der benannten Liste
+  // der Ausnahmen stehen: Papier-Farben der Boxen, Inhaltsfarben (grün/orange), Grautöne, Weiß/Schwarz.
+  const AUSNAHMEN = new Set(
+    [
+      // Papier (Boxen wie im Schuldesign)
+      '#222222', '#095f90', '#c4bc96', '#1f497d', '#4f81bd', '#f0f7ee', '#eef4fb', '#faf7ee', '#7a6800', '#5a8a3c',
+      '#f5faf0', '#3a6a20', '#d4870f', '#fdf5e6', '#a05c00', '#fdf9f0', '#3a50b0', '#eef0fb', '#c0392b', '#fff5f5',
+      '#999999', '#555555', '#dddddd', '#26640c', '#e6e6e6', '#f2f9f0',
+      // Inhaltsfarben im Aufgabenwerk und in der Seite (richtig = grün, Hinweis = orange)
+      '#166534', '#dcfce7', '#bbf7d0', '#9a3412', '#fff7ed', '#16a34a', '#facc15',
+      // Neutrale Linien und Schriften
+      '#c9cfd8', '#e2e8f0', '#94a3b8', '#64748b', '#0f172a', '#111111', '#ffffff', '#000000',
+    ].map((h) => h.toLowerCase()),
+  )
+  const ERLAUBT = new Set<string>([...AUSNAHMEN, ...Object.values(BEDIEN_FARBEN).map((h) => h.toLowerCase())])
+  const voll = (h: string) => (h.length === 4 ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}` : h)
   it.each(['vorschau-skript.ts', 'schreibwerk/schreib-design.ts', 'schreibwerk/eintritt.ts', 'aufgabenwerk/design.ts'])(
-    'in %s steht keine Bedien-Farbe fest im Code',
+    'in %s steht keine eigene Bedien-Farbe fest im Code',
     (datei) => {
-      const quelle = lies(datei).toLowerCase()
-      for (const hex of VERBOTENE_BLAUS) expect(quelle, `${datei}: ${hex}`).not.toContain(hex)
+      const funde = (lies(datei).match(/#[0-9a-fA-F]{3,6}\b/g) ?? []).map((h) => voll(h.toLowerCase()))
+      const fremd = funde.filter((h) => !ERLAUBT.has(h))
+      expect(fremd, `${datei}: Farben nicht aus der Quelle`).toEqual([])
     },
   )
 })
@@ -78,6 +92,7 @@ describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe', () => {
     expect(quelle).toContain('TEXT_KNOEPFE')
     expect(quelle).toContain('BOX_WAHL')
     expect(quelle).toContain('BOX_AKTION')
+    expect(quelle).toContain('FERTIG')
     for (const k of TEXT_KNOEPFE) expect(quelle, `eigene Beschriftung ${k.lang}`).not.toContain(`'${k.lang}'`)
   })
 
@@ -90,6 +105,13 @@ describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe', () => {
     expect(sichtbar.slice(0, TEXT_KNOEPFE.length).map((b) => b.getAttribute('aria-label'))).toEqual(TEXT_KNOEPFE.map((k) => k.lang))
     expect(sichtbar[TEXT_KNOEPFE.length].textContent).toBe(BOX_WAHL.kurz)
     expect(BOX_AKTION.kurz).toBe('Diese Box …')
+  })
+
+  it('das Aufgabenwerk nimmt „Fertig“ aus der Liste', () => {
+    const quelle = lies('aufgabenwerk/eintritt.ts')
+    expect(quelle).toContain('FERTIG.kurz')
+    expect(quelle).toContain('FERTIG.lang')
+    expect(quelle).not.toContain('>Fertig</button>')
   })
 
   it('die Reihenfolge ist F, K, H2, H3, • Liste, 1. Liste, Link', () => {

@@ -1,5 +1,6 @@
 import { html } from 'htm/preact'
 import { render, type VNode } from 'preact'
+import { FERTIG } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { AW_CSS } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
 import { BAUPLAENE, hatBauplan, teileVon, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
@@ -189,7 +190,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
             <button type="button" role="menuitem" class="wk-aw-gefahr" onClick=${() => aktion('loeschen')}>Element löschen</button>
           </div>`}
         </span>
-        <button type="button" class="wk-aw-knopf wk-aw-fertig" onClick=${() => beende()}>Fertig</button>
+        <button type="button" class="wk-aw-knopf wk-aw-fertig" aria-label=${FERTIG.lang} title=${FERTIG.lang} onClick=${() => beende()}>${FERTIG.kurz}</button>
       </div>
     </div>`
   }

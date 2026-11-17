@@ -27,7 +27,7 @@ import {
   rundreiseOk,
   sauberGeschlossen,
 } from '@/lib/werkzeugkiste-text'
-import { BOX_AKTION, BOX_WAHL, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
+import { BOX_AKTION, BOX_WAHL, GESCHUETZT_LOESCHEN, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { alsHtml, textErweiterungen } from '@/components/werkzeugkiste/editor/text-erweiterungen'
 
 const CodeMirror = dynamic(() => import('@uiw/react-codemirror'), {
@@ -336,7 +336,7 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
-          <DropdownMenuLabel>{inBox ? 'Art der Box ändern in …' : 'Box einfügen'}</DropdownMenuLabel>
+          <DropdownMenuLabel>{BOX_WAHL.lang}</DropdownMenuLabel>
           {BOX_ARTEN.map((b) => (
             <DropdownMenuItem key={b.klasse} onSelect={() => boxEinfuegen(b.klasse)}>
               {b.label}
@@ -412,7 +412,7 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
         </Knopf>
       )}
       {erhaltenGewaehlt && (
-        <Knopf label="Gewählten unveränderten Teil löschen" onClick={() => editor.chain().focus().deleteSelection().run()}>
+        <Knopf label={GESCHUETZT_LOESCHEN} onClick={() => editor.chain().focus().deleteSelection().run()}>
           <Trash2 className={k} aria-hidden />
         </Knopf>
       )}

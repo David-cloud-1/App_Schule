@@ -44,3 +44,6 @@ export const FERTIG = { kurz: 'Fertig', lang: 'Fertig – Schreiben beenden (Esc
 
 /** Beschriftung der Leiste für Screenreader */
 export const LEISTE_NAME = 'Textgestaltung'
+
+/** Löschen eines geschützten (unveränderlichen) Teils, in der Schublade */
+export const GESCHUETZT_LOESCHEN = 'Geschützten Teil löschen'
