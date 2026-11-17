@@ -457,6 +457,8 @@ Tests: `aufgabenwerk-qa.test.ts` (alle grün, 4 ehemals rote Fälle + 7 neue), 3
 
 **Stand 2026-11-17 (Abend):** Production = Commit `d5e7ba3` (Bauschritt 1–5 + QA-Korrekturen BUG-1 bis BUG-9). Build Ready. Offen: siehe Liste „Offene Aufgaben“ unten.
 
+**Zusatzwörter bei „Wörter ziehen“ (2026-11-17, live):** Rückmeldung des Nutzers: Im Editor ließen sich keine zusätzlichen Begriffe und Auswahlmöglichkeiten anlegen. Neues Feld `distractors` (0–10 Zusatzwörter, stehen im Vorrat, passen in keine Lücke). App: Bauplan `drag_words` mit zweitem Teil (Zeilenliste, Überschrift, nach „Fertig“ als Kärtchen), Schublade (`LueckenFormular`) mit Textliste, Feld bei „Typ wechseln“ als bekannt. Kern: `seite.py` (Zusatzwörter nach den Lücken im Vorrat, kein Ablenker kann „richtig“ sein), `h5p_generator.py` (Parameter `distractors`, nur wenn vorhanden; ob H5P.DragText 1.10 ihn auswertet, ist nicht geprüft), Test `kern_zusatzwoerter_test.py`. Commits App f7f4f24, Kern 58311ad (Kern vor der App deployt). Nicht im Browser geprüft. Bekannt: „Typ wechseln“ öffnet weiter die Schublade und setzt dort einen Platzhaltertext. Fremder Fehlschlag `werkzeugkiste-auszug.test.ts` (Urheber-Untertitel) ist nicht von dieser Änderung.
+
 ### Offene Aufgaben
 1. **Praxisdurchgang im Browser** (Laptop + Handy) mit „Basics rund um den LKW": jeden Typ öffnen, ändern, umsortieren, löschen + Rückgängig; besonders Kapiteltest, Lückentexte, Block löschen bei offener Aufgabe.
 2. **Bauschritt 6:** Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie (Bild-Werkzeuge in der Seite), Tabelle, Diagramm – vorher kurze Planung (Opus).
