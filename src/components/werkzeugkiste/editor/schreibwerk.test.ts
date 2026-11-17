@@ -16,6 +16,8 @@ const QUELLEN = [
   'src/components/werkzeugkiste/editor/schreibwerk/eintritt.ts',
   'src/components/werkzeugkiste/editor/schreibwerk/schreib-design.ts',
   'src/components/werkzeugkiste/editor/text-erweiterungen.ts',
+  'src/components/werkzeugkiste/editor/bedien-design.ts',
+  'src/components/werkzeugkiste/editor/bedien-woerter.ts',
   'src/lib/werkzeugkiste-text.ts',
 ]
 

@@ -176,3 +176,9 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - Link „Zum Inhalt springen“, sichtbarer Fokus (`focus-visible:ring-ws-green`), Icons ohne Text mit `aria-label`.
 - Animationen höchstens 200 ms. Bei „Bewegung reduzieren“ entfallen sie im ganzen Bereich.
 - Lange Namen werden mit „…“ gekürzt, der volle Text steht im `title`.
+
+### Bearbeiten-Leiste im Baukasten (PROJ-117)
+- **Eine Quelle:** Farben, Maße und Grundformen der Bearbeiten-Knöpfe in der Vorschau stehen in `src/components/werkzeugkiste/editor/bedien-design.ts`. Wörter und Reihenfolge der Textleiste stehen in `bedien-woerter.ts`. Block-Leiste, „+“, Schreibwerk und Aufgabenwerk lesen daraus; die Schublade (`text-editor.tsx`) liest die Wörter.
+- **Reihenfolge der Textleiste:** F, K, H2, H3, • Liste, 1. Liste, Link, „Box …“, „Diese Box …“, Fertig (nur in der Vorschau). Die Schublade zeigt zusätzlich Schritt-Liste, Link entfernen und Löschen am Ende.
+- **Maße:** Knopfhöhe 36 px am Rechner, 44 px auf Touch-Geräten. Rundung 8 px, Leiste 10 px.
+- **Regel:** Neue Bearbeitungsstellen übernehmen diese Quelle, statt eine eigene Optik zu erfinden. Der Test `bedien-design.test.tsx` schlägt fehl, wenn eine Stelle eine eigene Bedien-Farbe oder eigene Beschriftungen einbaut. Nach Änderungen an der Quelle `npm run schreibwerk:bauen` und `npm run aufgabenwerk:bauen`.

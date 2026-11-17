@@ -7,19 +7,24 @@
  * und `schuldesign.py`. Läuft im Rahmen der Vorschau, deshalb reines CSS ohne Tailwind.
  */
 
-/** Farbpaare der Formatleiste; `schreib-design.test.ts` prüft den Kontrast (≥ 4,5 : 1) */
-export const SCHREIB_FARBEN = {
-  grund: '#ffffff',
-  text: '#1e3a8a',
-  aktivGrund: '#dbeafe',
-  hinweis: '#92400e',
-  hinweisGrund: '#fffbeb',
-} as const
+import {
+  BEDIEN_FARBEN,
+  BEDIEN_MASSE,
+  BEDIEN_SCHRIFT,
+  auswahlCss,
+  fertigCss,
+  fokusCss,
+  knopfCss,
+  leistenRahmenCss,
+} from '@/components/werkzeugkiste/editor/bedien-design'
+
+/** Farbpaare der Formatleiste (PROJ-117: Ausschnitt der gemeinsamen Quelle `bedien-design.ts`) */
+export const SCHREIB_FARBEN = BEDIEN_FARBEN
 
 const F = SCHREIB_FARBEN
 
 export const SCHREIB_CSS = [
-  '.wk-schreibzone{position:relative;outline:2px solid #2563eb;outline-offset:4px;border-radius:4px;cursor:text!important}',
+  `.wk-schreibzone{position:relative;outline:2px solid ${F.akzent};outline-offset:4px;border-radius:4px;cursor:text!important}`,
   '.wk-schreibzone *{cursor:text!important}.wk-format *{cursor:pointer!important}.wk-fe input{cursor:text!important}',
   '.wk-papier{font:inherit;color:#222;line-height:1.6}',
   '.wk-papier .ProseMirror{outline:none;min-height:3em;white-space:pre-wrap;word-wrap:break-word}',
@@ -52,18 +57,16 @@ export const SCHREIB_CSS = [
   '.wk-papier .wk-erhalten table{width:100%;border-collapse:collapse}.wk-papier .wk-erhalten td,.wk-papier .wk-erhalten th{border:1px solid #ddd;padding:6px}',
   '.wk-papier .ProseMirror-selectednode{outline:2px solid #26640C}',
   // Formatleiste
-  `.wk-format{position:sticky;top:4px;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:0 0 8px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2);font:600 13px/1.2 system-ui,sans-serif}`,
+  `.wk-format{position:sticky;top:4px;z-index:2147483000;display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:0 0 8px;padding:3px;${leistenRahmenCss()};font:${BEDIEN_SCHRIFT}}`,
   // PROJ-111: Nach „Fertig“ ist die Leiste weg. Ohne diese Regel überstimmt `display:flex` das Attribut `hidden`.
   '.wk-format[hidden]{display:none!important}',
   '.wk-format-unten{position:fixed;left:0;right:0;top:auto;bottom:0;margin:0;border-radius:12px 12px 0 0;border-width:1px 0 0}',
-  `.wk-fb{display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:34px;min-height:34px;padding:4px 8px;border:1px solid transparent;border-radius:8px;background:transparent;color:${F.text};font:inherit;cursor:pointer}`,
-  `.wk-fb:hover{background:#eff6ff;border-color:${F.text}}`,
-  `.wk-fb[aria-pressed="true"]{background:${F.aktivGrund};border-color:${F.text}}`,
-  '.wk-fb:focus-visible,.wk-fs:focus-visible,.wk-fe input:focus-visible{outline:3px solid #2563eb;outline-offset:1px}',
-  `.wk-fs{min-height:34px;max-width:11rem;padding:4px 6px;border:1px solid ${F.text};border-radius:8px;background:${F.grund};color:${F.text};font:inherit}`,
-  `.wk-fe{display:flex;flex-basis:100%;gap:4px;padding:3px}.wk-fe input{flex:1;min-height:34px;padding:4px 8px;border:1px solid ${F.text};border-radius:8px;font:inherit;color:#111}`,
+  knopfCss('.wk-fb'),
+  fokusCss('.wk-fs:focus-visible,.wk-fe input:focus-visible'),
+  auswahlCss('.wk-fs'),
+  `.wk-fe{display:flex;flex-basis:100%;gap:4px;padding:3px}.wk-fe input{flex:1;min-height:${BEDIEN_MASSE.knopfHoehe}px;padding:4px 8px;border:1px solid ${F.text};border-radius:${BEDIEN_MASSE.knopfRundung}px;font:inherit;color:#111}`,
   '.wk-fe[hidden]{display:none!important}',
   `.wk-fh{flex-basis:100%;padding:3px 6px;color:${F.hinweis};background:${F.hinweisGrund};border-radius:6px}.wk-fh[hidden]{display:none!important}`,
-  '.wk-fertig{margin-left:auto;font-weight:700}',
-  '@media (hover:none),(pointer:coarse){.wk-fb,.wk-fs{min-height:44px;min-width:44px}}',
+  '.wk-fertig{margin-left:auto}',
+  fertigCss('.wk-fb.wk-fertig'),
 ].join('')

@@ -1,6 +1,7 @@
 import { Editor } from '@tiptap/core'
 import { BOX_ARTEN, aufraeumen, eingefuegtesBereinigen, rundreiseOk } from '@/lib/werkzeugkiste-text'
 import { alsHtml, textErweiterungen } from '@/components/werkzeugkiste/editor/text-erweiterungen'
+import { BOX_AKTION, BOX_WAHL, FERTIG, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { SCHREIB_CSS } from '@/components/werkzeugkiste/editor/schreibwerk/schreib-design'
 
 /**
@@ -98,7 +99,7 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
   const leiste = doc.createElement('div')
   leiste.className = 'wk-format' + (opt.mobil ? ' wk-format-unten' : '')
   leiste.setAttribute('role', 'toolbar')
-  leiste.setAttribute('aria-label', 'Textgestaltung')
+  leiste.setAttribute('aria-label', LEISTE_NAME)
   const mount = doc.createElement('div')
   mount.className = 'wk-papier'
   zone.append(leiste, mount)
@@ -169,19 +170,27 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
 
   // ── Formatleiste ────────────────────────────────────────────────────
   const ketten = () => editor.chain().focus()
-  const fett = knopf('Fett', 'F', () => ketten().toggleBold().run())
-  fett.style.fontWeight = '800'
-  const kursiv = knopf('Kursiv', 'K', () => ketten().toggleItalic().run())
-  kursiv.style.fontStyle = 'italic'
-  const h2 = knopf('Kapitelüberschrift', 'H2', () => ketten().toggleHeading({ level: 2 }).run())
-  const h3 = knopf('Unterabschnitt', 'H3', () => ketten().toggleHeading({ level: 3 }).run())
-  const liste = knopf('Aufzählung', '• Liste', () => ketten().toggleBulletList().run())
-  const nummer = knopf('Nummerierte Liste', '1. Liste', () => ketten().toggleOrderedList().run())
-  const link = knopf('Link (Strg/⌘ + K)', 'Link', () => oeffneLink())
+  // Knöpfe, Reihenfolge und Wörter kommen aus der gemeinsamen Liste (PROJ-117)
+  const aktionen: Record<TextKnopfId, () => void> = {
+    fett: () => ketten().toggleBold().run(),
+    kursiv: () => ketten().toggleItalic().run(),
+    h2: () => ketten().toggleHeading({ level: 2 }).run(),
+    h3: () => ketten().toggleHeading({ level: 3 }).run(),
+    liste: () => ketten().toggleBulletList().run(),
+    nummer: () => ketten().toggleOrderedList().run(),
+    link: () => oeffneLink(),
+  }
+  const textKnoepfe = TEXT_KNOEPFE.map((k) => {
+    const b = knopf(k.lang, k.kurz, aktionen[k.id])
+    if (k.id === 'fett') b.style.fontWeight = '800'
+    if (k.id === 'kursiv') b.style.fontStyle = 'italic'
+    return b
+  })
+  const [fett, kursiv, h2, h3, liste, nummer, link] = textKnoepfe
 
   const boxWahl = auswahl(
-    'Box einfügen oder Art ändern',
-    [['', 'Box …'], ...BOX_ARTEN.map((a): [string, string] => [a.klasse, a.label])],
+    BOX_WAHL.lang,
+    [['', BOX_WAHL.kurz], ...BOX_ARTEN.map((a): [string, string] => [a.klasse, a.label])],
     (klasse) => {
       if (editor.isActive('erhalten')) return
       if (finde(editor)) {
@@ -192,13 +201,8 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
     },
   )
   const boxAktion = auswahl(
-    'Aktion für die Box',
-    [
-      ['', 'Diese Box …'],
-      ['darunter', 'Neue Box darunter'],
-      ['aufloesen', 'Box auflösen (Text bleibt)'],
-      ['loeschen', 'Box löschen'],
-    ],
+    BOX_AKTION.lang,
+    [['', BOX_AKTION.kurz], ...BOX_AKTION.aktionen.map((a): [string, string] => [a.id, a.text])],
     (aktion) => {
       const b = finde(editor)
       if (!b) return
@@ -225,9 +229,9 @@ export function starteSchreiben(opt: SchreibOptionen): Schreiber {
     },
   )
 
-  const fertig = knopf('Fertig – Schreiben beenden (Esc)', 'Fertig', () => beende())
+  const fertig = knopf(FERTIG.lang, FERTIG.kurz, () => beende())
   fertig.classList.add('wk-fertig')
-  leiste.append(fett, kursiv, h2, h3, liste, nummer, link, boxWahl, boxAktion, fertig)
+  leiste.append(...textKnoepfe, boxWahl, boxAktion, fertig)
 
   // Link: eigenes Eingabefeld, denn `prompt()` ist in der abgeschotteten Seite gesperrt
   const linkZeile = doc.createElement('div')

@@ -5,21 +5,7 @@ import dynamic from 'next/dynamic'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import { html as htmlSprache } from '@codemirror/lang-html'
 import { EditorView } from '@codemirror/view'
-import {
-  Bold,
-  Columns2,
-  Heading2,
-  Heading3,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  ListChecks,
-  PanelTop,
-  Trash2,
-  Unlink,
-  X,
-} from 'lucide-react'
+import { Columns2, ListChecks, Trash2, Unlink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -35,13 +21,13 @@ import { cn } from '@/lib/utils'
 import {
   BOX_ARTEN,
   aufraeumen,
-  boxArt,
   eingefuegtesBereinigen,
   hatAktivenInhalt,
   hatExterneBilder,
   rundreiseOk,
   sauberGeschlossen,
 } from '@/lib/werkzeugkiste-text'
+import { BOX_AKTION, BOX_WAHL, LEISTE_NAME, TEXT_KNOEPFE, type TextKnopfId } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { alsHtml, textErweiterungen } from '@/components/werkzeugkiste/editor/text-erweiterungen'
 
 const CodeMirror = dynamic(() => import('@uiw/react-codemirror'), {
@@ -214,6 +200,7 @@ export function TextEditor({
 }
 
 // ── Werkzeugleiste ────────────────────────────────────────────────────────
+// PROJ-117: Knöpfe, Reihenfolge und Wörter kommen aus `bedien-woerter.ts`, wie in der Vorschau.
 
 function Knopf({
   aktiv,
@@ -221,25 +208,30 @@ function Knopf({
   label,
   children,
   disabled,
+  stil,
 }: {
   aktiv?: boolean
   onClick: () => void
   label: string
   children: React.ReactNode
   disabled?: boolean
+  stil?: string
 }) {
   return (
     <Button
       type="button"
       variant="ghost"
-      size="icon"
       aria-label={label}
       aria-pressed={aktiv}
       title={label}
       disabled={disabled}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
-      className={cn('size-11 shrink-0 rounded-lg text-ws-muted hover:bg-ws-raised hover:text-ws-text', aktiv && 'bg-ws-green/15 text-ws-green')}
+      className={cn(
+        'min-h-11 min-w-11 shrink-0 rounded-lg px-2.5 text-sm font-semibold text-ws-muted hover:bg-ws-raised hover:text-ws-text',
+        aktiv && 'bg-ws-green/15 text-ws-green',
+        stil,
+      )}
     >
       {children}
     </Button>
@@ -260,7 +252,6 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
 
   const k = 'size-4'
   const inBox = editor.isActive('box')
-  const boxJetzt = inBox ? boxArt(String(editor.getAttributes('box').klasse ?? '')) : undefined
 
   function boxEinfuegen(klasse: string) {
     if (inBox) {
@@ -304,80 +295,48 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
 
   const schritte = editor.isActive('orderedList', { class: 'schritte' })
 
+  const befehle: Record<TextKnopfId, { aktiv: boolean; tun: () => void }> = {
+    fett: { aktiv: editor.isActive('bold'), tun: () => editor.chain().focus().toggleBold().run() },
+    kursiv: { aktiv: editor.isActive('italic'), tun: () => editor.chain().focus().toggleItalic().run() },
+    h2: { aktiv: editor.isActive('heading', { level: 2 }), tun: () => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    h3: { aktiv: editor.isActive('heading', { level: 3 }), tun: () => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    liste: { aktiv: editor.isActive('bulletList'), tun: () => editor.chain().focus().toggleBulletList().run() },
+    nummer: {
+      aktiv: editor.isActive('orderedList') && !schritte,
+      tun: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    link: { aktiv: editor.isActive('link'), tun: linkSetzen },
+  }
+
   return (
-    <div role="toolbar" aria-label="Textgestaltung" className="flex flex-wrap items-center gap-0.5 border-b border-ws-line bg-ws-surface px-1 py-1">
-      <Knopf label="Fett" aktiv={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
-        <Bold className={k} aria-hidden />
-      </Knopf>
-      <Knopf label="Kursiv" aktiv={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
-        <Italic className={k} aria-hidden />
-      </Knopf>
-      <Knopf
-        label="Kapitelüberschrift"
-        aktiv={editor.isActive('heading', { level: 2 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-      >
-        <Heading2 className={k} aria-hidden />
-      </Knopf>
-      <Knopf
-        label="Unterabschnitt"
-        aktiv={editor.isActive('heading', { level: 3 })}
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-      >
-        <Heading3 className={k} aria-hidden />
-      </Knopf>
-      <Knopf label="Aufzählung" aktiv={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-        <List className={k} aria-hidden />
-      </Knopf>
-      <Knopf
-        label="Nummerierte Liste"
-        aktiv={editor.isActive('orderedList') && !schritte}
-        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-      >
-        <ListOrdered className={k} aria-hidden />
-      </Knopf>
-      <Knopf
-        label="Schritt-für-Schritt-Liste"
-        aktiv={schritte}
-        onClick={() => {
-          if (schritte) {
-            editor.chain().focus().updateAttributes('orderedList', { class: null }).run()
-            return
-          }
-          if (!editor.isActive('orderedList')) editor.chain().focus().toggleOrderedList().run()
-          editor.chain().focus().updateAttributes('orderedList', { class: 'schritte' }).run()
-        }}
-      >
-        <ListChecks className={k} aria-hidden />
-      </Knopf>
-      <Knopf label={editor.isActive('link') ? 'Link ändern' : 'Link'} aktiv={editor.isActive('link')} onClick={linkSetzen}>
-        <Link2 className={k} aria-hidden />
-      </Knopf>
-      {editor.isActive('link') && (
-        <Knopf label="Link entfernen" onClick={() => editor.chain().focus().unsetLink().run()}>
-          <Unlink className={k} aria-hidden />
+    <div role="toolbar" aria-label={LEISTE_NAME} className="flex flex-wrap items-center gap-0.5 border-b border-ws-line bg-ws-surface px-1 py-1">
+      {TEXT_KNOEPFE.map((t) => (
+        <Knopf
+          key={t.id}
+          label={t.lang}
+          aktiv={befehle[t.id].aktiv}
+          onClick={befehle[t.id].tun}
+          stil={cn(t.id === 'fett' && 'font-extrabold', t.id === 'kursiv' && 'italic')}
+        >
+          {t.kurz}
         </Knopf>
-      )}
+      ))}
       <span className="mx-1 h-6 w-px bg-ws-line" aria-hidden />
-      {erhaltenGewaehlt && (
-        <Knopf label="Gewählten unveränderten Block löschen" onClick={() => editor.chain().focus().deleteSelection().run()}>
-          <Trash2 className={k} aria-hidden />
-        </Knopf>
-      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="ghost"
+            aria-label={BOX_WAHL.lang}
+            title={BOX_WAHL.lang}
             onMouseDown={(e) => e.preventDefault()}
-            className="min-h-11 rounded-lg px-3 text-sm text-ws-text hover:bg-ws-raised"
+            className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ws-text hover:bg-ws-raised"
           >
-            <PanelTop className="mr-1.5 size-4" aria-hidden />
-            {boxJetzt ? `Box: ${boxJetzt.label}` : 'Box einfügen'}
+            {BOX_WAHL.kurz}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
-          <DropdownMenuLabel>{inBox ? 'Box ändern in …' : 'Box einfügen'}</DropdownMenuLabel>
+          <DropdownMenuLabel>{inBox ? 'Art der Box ändern in …' : 'Box einfügen'}</DropdownMenuLabel>
           {BOX_ARTEN.map((b) => (
             <DropdownMenuItem key={b.klasse} onSelect={() => boxEinfuegen(b.klasse)}>
               {b.label}
@@ -395,29 +354,68 @@ function Werkzeugleiste({ editor }: { editor: Editor }) {
           >
             <Columns2 className="mr-2 size-4" aria-hidden /> Vergleich (zwei Spalten)
           </DropdownMenuItem>
-          {inBox && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Neue Box darunter einfügen</DropdownMenuLabel>
-              {BOX_ARTEN.map((b) => (
-                <DropdownMenuItem key={`darunter-${b.klasse}`} onSelect={() => boxDarunter(b.klasse)}>
-                  {b.label}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => editor.chain().focus().lift('box').run()}>
-                <X className="mr-2 size-4" aria-hidden /> Box auflösen (Text bleibt)
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => editor.chain().focus().deleteNode('box').run()}
-                className="text-ws-red focus:text-ws-red"
-              >
-                <Trash2 className="mr-2 size-4" aria-hidden /> Box samt Inhalt löschen
-              </DropdownMenuItem>
-            </>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
+      {inBox && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={BOX_AKTION.lang}
+              title={BOX_AKTION.lang}
+              onMouseDown={(e) => e.preventDefault()}
+              className="min-h-11 rounded-lg px-3 text-sm font-semibold text-ws-text hover:bg-ws-raised"
+            >
+              {BOX_AKTION.kurz}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-96 overflow-y-auto">
+            <DropdownMenuLabel>{BOX_AKTION.aktionen[0].text}</DropdownMenuLabel>
+            {BOX_ARTEN.map((b) => (
+              <DropdownMenuItem key={`darunter-${b.klasse}`} onSelect={() => boxDarunter(b.klasse)}>
+                {b.label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => editor.chain().focus().lift('box').run()}>
+              <X className="mr-2 size-4" aria-hidden /> {BOX_AKTION.aktionen[1].text}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => editor.chain().focus().deleteNode('box').run()}
+              className="text-ws-red focus:text-ws-red"
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden /> {BOX_AKTION.aktionen[2].text}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+      {/* Zusätzlich in der Schublade (nicht Teil der gemeinsamen Liste): */}
+      <span className="mx-1 h-6 w-px bg-ws-line" aria-hidden />
+      <Knopf
+        label="Schritt-für-Schritt-Liste"
+        aktiv={schritte}
+        onClick={() => {
+          if (schritte) {
+            editor.chain().focus().updateAttributes('orderedList', { class: null }).run()
+            return
+          }
+          if (!editor.isActive('orderedList')) editor.chain().focus().toggleOrderedList().run()
+          editor.chain().focus().updateAttributes('orderedList', { class: 'schritte' }).run()
+        }}
+      >
+        <ListChecks className={k} aria-hidden />
+      </Knopf>
+      {editor.isActive('link') && (
+        <Knopf label="Link entfernen" onClick={() => editor.chain().focus().unsetLink().run()}>
+          <Unlink className={k} aria-hidden />
+        </Knopf>
+      )}
+      {erhaltenGewaehlt && (
+        <Knopf label="Gewählten unveränderten Teil löschen" onClick={() => editor.chain().focus().deleteSelection().run()}>
+          <Trash2 className={k} aria-hidden />
+        </Knopf>
+      )}
     </div>
   )
 }

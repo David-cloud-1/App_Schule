@@ -21,6 +21,7 @@ const QUELLEN = readdirSync(path.join(wurzel, 'src/components/werkzeugkiste/edit
   .filter((d) => d.endsWith('.ts') && !d.endsWith('.generated.ts'))
   .sort()
   .map((d) => `src/components/werkzeugkiste/editor/aufgabenwerk/${d}`)
+  .concat(['src/components/werkzeugkiste/editor/bedien-design.ts'])
 
 describe('Aufgabenwerk: gebautes Bündel', () => {
   it('passt zu den Quellen (sonst: npm run aufgabenwerk:bauen)', () => {

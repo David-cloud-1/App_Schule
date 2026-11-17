@@ -1,3 +1,4 @@
+import { BEDIEN_FARBEN, knopfCss, leistenRahmenCss } from '@/components/werkzeugkiste/editor/bedien-design'
 import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { typName } from '@/lib/werkzeugkiste-editor'
 import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
@@ -33,17 +34,7 @@ export { auswahlAusMarke }
  */
 
 /** Farbpaare der Leiste; ein Test prüft den Kontrast (≥ 4,5 : 1) */
-export const LEISTE_FARBEN = {
-  grund: '#ffffff',
-  text: '#1e3a8a',
-  textTyp: '#475569',
-  gefahr: '#991b1b',
-  gefahrGrund: '#ffffff',
-  plusGrund: '#2563eb',
-  plusText: '#ffffff',
-  leerText: '#334155',
-  leerGrund: '#ffffff',
-} as const
+export const LEISTE_FARBEN = BEDIEN_FARBEN
 
 const F = LEISTE_FARBEN
 
@@ -53,16 +44,15 @@ const CSS = [
   '.wk-ui{box-sizing:border-box;font:600 13px/1.2 system-ui,sans-serif}',
   'body:not(.wk-bearbeiten) .wk-ui{display:none!important}',
   'body.wk-bearbeiten [data-wk],body.wk-bearbeiten [data-wk] *{cursor:pointer!important}',
-  'body.wk-bearbeiten .wk-hover{outline:2px dashed #2563eb;outline-offset:2px}',
-  'body.wk-bearbeiten .wk-aktiv{outline:3px solid #2563eb!important;outline-offset:3px}',
-  `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}`,
+  `body.wk-bearbeiten .wk-hover{outline:2px dashed ${F.akzent};outline-offset:2px}`,
+  `body.wk-bearbeiten .wk-aktiv{outline:3px solid ${F.akzent}!important;outline-offset:3px}`,
+  `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;${leistenRahmenCss()}}`,
   '.wk-leiste[hidden],.wk-b[hidden]{display:none!important}',
   '.wk-leiste:not(.wk-leiste-unten){flex-wrap:wrap;max-width:calc(100% - 8px)}',
-  '.wk-trenner{width:1px;align-self:stretch;margin:3px 2px;background:#cbd5e1}.wk-trenner[hidden]{display:none!important}',
-  '.wk-b[aria-pressed="true"]{background:#dbeafe;border-color:#1e3a8a}',
+  `.wk-trenner{width:1px;align-self:stretch;margin:3px 2px;background:${F.trenner}}.wk-trenner[hidden]{display:none!important}`,
   // PROJ-104: Anfasser zum Größenziehen, Breiten-Etikett, Ablegen von Dateien
   '.wk-griffe{position:fixed;z-index:2147482990;pointer-events:none}.wk-griffe[hidden]{display:none!important}',
-  `.wk-gr{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;padding:0;border:2px solid #fff;border-radius:50%;background:${F.plusGrund};box-shadow:0 0 0 1px ${F.text};pointer-events:auto;touch-action:none}`,
+  `.wk-gr{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;padding:0;border:2px solid #fff;border-radius:50%;background:${F.akzent};box-shadow:0 0 0 1px ${F.text};pointer-events:auto;touch-action:none}`,
   '.wk-gr::after{content:"";position:absolute;inset:-10px}',
   '.wk-gr:focus-visible{outline:3px solid #facc15;outline-offset:2px}',
   '.wk-gr[data-gr="nw"]{left:0;top:0;cursor:nwse-resize}.wk-gr[data-gr="ne"]{left:100%;top:0;cursor:nesw-resize}',
@@ -74,20 +64,18 @@ const CSS = [
   'body.wk-bearbeiten.wk-mobil{padding-bottom:72px}',
   '.wk-leiste-unten{left:0;right:0;bottom:0;flex-wrap:wrap;justify-content:space-between;border-radius:12px 12px 0 0;border-width:1px 0 0}',
   `.wk-typ{padding:0 8px;color:${F.textTyp};white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}`,
-  `.wk-b{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:${F.text};font:inherit;cursor:pointer}`,
-  `.wk-b:hover{background:#eff6ff;border-color:${F.text}}`,
-  '.wk-b:focus-visible{outline:3px solid #2563eb;outline-offset:1px}',
-  `.wk-d{color:${F.gefahr}}.wk-d:hover{background:#fef2f2;border-color:${F.gefahr}}`,
+  knopfCss('.wk-b'),
+  `.wk-d{color:${F.gefahr}}.wk-d:hover{background:${F.gefahrHover};border-color:${F.gefahr}}`,
   '.wk-griff{cursor:grab!important;touch-action:none;padding:4px 6px}',
   'body.wk-zieht-aktiv,body.wk-zieht-aktiv *{cursor:grabbing!important;user-select:none!important}',
   'body.wk-bearbeiten .wk-zieht{opacity:.4}',
-  '.wk-linie{position:fixed;z-index:2147483001;height:4px;margin-top:-2px;border-radius:2px;background:#2563eb;pointer-events:none;box-shadow:0 0 0 2px rgba(37,99,235,.25)}',
+  `.wk-linie{position:fixed;z-index:2147483001;height:4px;margin-top:-2px;border-radius:2px;background:${F.akzent};pointer-events:none;box-shadow:0 0 0 2px rgba(37,99,235,.25)}`,
   '.wk-linie[hidden]{display:none!important}',
   '.wk-plus{position:fixed;z-index:2147482999;height:24px;display:flex;align-items:center;justify-content:center;pointer-events:none}',
   '.wk-plus[hidden]{display:none!important}',
-  '.wk-plus::before{content:"";position:absolute;left:0;right:0;top:11px;height:2px;background:#2563eb}',
-  `.wk-plus .wk-b{pointer-events:auto;position:relative;background:${F.plusGrund};color:${F.plusText};border-radius:999px;min-height:24px;padding:0 10px}`,
-  '.wk-plus .wk-b:hover{background:#1d4ed8;border-color:#1d4ed8}',
+  `.wk-plus::before{content:"";position:absolute;left:0;right:0;top:11px;height:2px;background:${F.akzent}}`,
+  `.wk-plus .wk-b{pointer-events:auto;position:relative;background:${F.akzent};color:${F.akzentText};border-radius:999px;min-height:24px;padding:0 10px}`,
+  `.wk-plus .wk-b:hover{background:${F.text};border-color:${F.text}}`,
   `.wk-leer{margin:12px 0;padding:16px;border:2px dashed #64748b;border-radius:12px;background:${F.leerGrund};color:${F.leerText}}`,
   '.wk-leer p{margin:0 0 10px;font-weight:600}',
   `.wk-leer-knoepfe{display:flex;flex-wrap:wrap;gap:8px}.wk-leer .wk-b{border-color:${F.text};background:#fff}`,
@@ -97,7 +85,7 @@ const CSS = [
   // PROJ-103: Beim Schreiben verschwinden Leiste, Einfügelinie und Rahmen
   'body.wk-schreibt .wk-leiste,body.wk-schreibt .wk-plus,body.wk-schreibt .wk-linie{display:none!important}',
   'body.wk-schreibt .wk-hover{outline:none!important}',
-  '.wk-einfach{outline:2px solid #2563eb;outline-offset:4px;border-radius:4px;cursor:text!important}',
+  `.wk-einfach{outline:2px solid ${F.akzent};outline-offset:4px;border-radius:4px;cursor:text!important}`,
   // PROJ-114: Während eine Aufgabe bearbeitet wird, hat sie ihre eigene Fußleiste
   'body.wk-aufgabe .wk-leiste,body.wk-aufgabe .wk-plus,body.wk-aufgabe .wk-linie{display:none!important}',
   'body.wk-bearbeiten .wk-aufgabenzone[data-wk],body.wk-bearbeiten .wk-aufgabenzone[data-wk] *{cursor:auto!important}',
@@ -196,10 +184,10 @@ var bHoch=knopf("hoch",ICON.hoch,"Nach oben");
 var bRunter=knopf("runter",ICON.runter,"Nach unten");
 var bKopiere=knopf("kopiere",ICON.zwischen+"<span>Kopieren</span>","Kopieren");
 var bBearb=knopf("bearbeite",ICON.stift+"<span>Bearbeiten</span>","Bearbeiten");
-var bPlus=knopf("einfuegen",ICON.plus+"<span>Darunter</span>","Block darunter einfügen");
-var bKopie=knopf("dupliziere",ICON.kopie+"<span>Duplizieren</span>","Block duplizieren");
+var bPlus=knopf("einfuegen",ICON.plus+"<span>Darunter</span>","Element darunter einfügen");
+var bKopie=knopf("dupliziere",ICON.kopie+"<span>Duplizieren</span>","Element duplizieren");
 var bMehr=knopf("menue",ICON.mehr,"Weitere Aktionen");bMehr.setAttribute("aria-haspopup","menu");
-var bWeg=knopf("loesche",ICON.papierkorb,"Block löschen","wk-d");
+var bWeg=knopf("loesche",ICON.papierkorb,"Element löschen","wk-d");
 var bildAkt=function(a,icon,text,label){var b=knopf("bild",icon+(text?"<span>"+text+"</span>":""),label);b.setAttribute("data-wk-bild",a);b.setAttribute("title",label);return b};
 var bAustausch=bildAkt("austauschen",ICON.austausch,"Austauschen","Bild austauschen");
 var bZuschnitt=bildAkt("zuschneiden",ICON.zuschnitt,"Zuschneiden","Bild zuschneiden");
@@ -217,26 +205,26 @@ var BILDKNOEPFE=[bAustausch,bZuschnitt,bDrehL,bDrehR,bAusL,bAusM,bAusR,bBeschr,b
 document.body.appendChild(leiste);
 
 var plus=neu("div","wk-ui wk-plus");plus.hidden=true;
-var plusKnopf=knopf("einfuegen",ICON.plus+"<span>Block</span>","Block hier einfügen");
+var plusKnopf=knopf("einfuegen",ICON.plus+"<span>Element</span>","Element hier einfügen");
 plus.appendChild(plusKnopf);document.body.appendChild(plus);
 
 function leisteAktualisieren(){
   var viele=mehr.length>1;
   var art=!auswahl?"":(viele?"viele":(/-e\d+$/.test(auswahl)?"block":(/^k\d+$/.test(auswahl)?"thema":"sonst")));
-  typ.textContent=viele?(mehr.length+" Blöcke ausgewählt"):auswahlName;
+  typ.textContent=viele?(mehr.length+" Elemente ausgewählt"):auswahlName;
   bGriff.hidden=lesen||mobil||(art!=="block"&&art!=="thema"&&art!=="viele");
   // PROJ-111: Ist das Formular schon offen, braucht es kein zweites „Bearbeiten“ in der Leiste
   bBearb.hidden=viele||(schublade&&!mobil);
   bPlus.hidden=lesen||viele||(art!=="block"&&art!=="thema");
-  bPlus.querySelector("span").textContent=art==="thema"?"Block":"Darunter";
-  bPlus.setAttribute("aria-label",art==="thema"?"Block am Anfang des Themas einfügen":"Block darunter einfügen");
+  bPlus.querySelector("span").textContent=art==="thema"?"Element":"Darunter";
+  bPlus.setAttribute("aria-label",art==="thema"?"Element am Anfang des Themas einfügen":"Element darunter einfügen");
   bHoch.hidden=lesen||!mobil||(art!=="block"&&art!=="viele");
   bRunter.hidden=bHoch.hidden;
   bKopiere.hidden=viele?false:true;
   bKopie.hidden=lesen||(art!=="block"&&art!=="viele");
   bMehr.hidden=lesen||(art!=="block"&&art!=="viele");
   bWeg.hidden=lesen||(art!=="block"&&art!=="thema"&&art!=="viele");
-  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Blöcke löschen":"Block löschen"));
+  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Elemente löschen":"Element löschen"));
   bildLeiste(art);
 }
 // PROJ-104: Knöpfe für Bilder (nur bei genau einem Bild-Block, nicht in der Galerie)
@@ -324,7 +312,7 @@ function baueEinfuegestellen(){
       if(nm&&/^k\d+-e\d+$/.test(nm))letzterBlock=nm;
       n=n.nextElementSibling;
     }
-    var bb=knopf("einfuegen",ICON.plus+"<span>Block</span>","Block am Ende des Themas einfügen");
+    var bb=knopf("einfuegen",ICON.plus+"<span>Element</span>","Element am Ende des Themas einfügen");
     bb.setAttribute("data-wk-marke",letzterBlock);ende.appendChild(bb);
     if(i===letzte){
       var bt=knopf("thema",ICON.plus+"<span>Thema</span>","Neues Thema am Ende einfügen");ende.appendChild(bt);
@@ -356,7 +344,7 @@ function bewegt(ev){
   }
   if(!ziel){plus.hidden=true;plusZiel=null;return}
   plusZiel=ziel;plusKnopf.setAttribute("data-wk-marke",ziel);
-  plusKnopf.querySelector("span").textContent="Block";
+  plusKnopf.querySelector("span").textContent="Element";
   plus.hidden=false;plus.style.top=(y-12)+"px";plus.style.left=Math.max(0,r.left)+"px";plus.style.width=r.width+"px";
 }
 addEventListener("mousemove",bewegt,{passive:true});

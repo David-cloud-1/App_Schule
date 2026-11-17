@@ -15,6 +15,8 @@ export const QUELLEN = readdirSync(ordner)
   .filter((d) => d.endsWith('.ts') && !d.endsWith('.generated.ts'))
   .sort()
   .map((d) => `src/components/werkzeugkiste/editor/aufgabenwerk/${d}`)
+  // PROJ-117: gemeinsame Quelle des Bedien-Designs steckt im Bündel
+  .concat(['src/components/werkzeugkiste/editor/bedien-design.ts'])
 
 export function quellStand() {
   const h = createHash('sha256')
