@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Bauschritt 5 gebaut, nur Zweig; Bauschritt 1–4 live)
+**Last Updated:** 2026-11-17 (Bauschritt 1–5 live, nur automatisch geprüft)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -197,7 +197,7 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 
 **Prüfung:** nur automatisch (Vitest, tsc, ESLint, Build; 3822 Tests grün bis auf den alten Fehler in `werkzeugkiste-auszug.test.ts`). **Kein Browser-Test, kein Handy-Test, kein Praxisdurchgang mit einer echten Einheit** – laut Spec noch vor einem „Deployed“-Status nötig. Auf Wunsch des Nutzers (2026-11-17, „selbstständig bis deploy“) wurde trotzdem nach `main` ausgeliefert, ohne vorherige Freigabe des Vorschau-Links.
 
-### Bauschritt 5 – Fallakte, Video-Fragen, Kapiteltest (2026-11-17, Sonnet, Zweig `proj-114-aufgabenwerk`, noch nicht auf `main`)
+### Bauschritt 5 – Fallakte, Video-Fragen, Kapiteltest (2026-11-17, Sonnet, Zweig `proj-114-aufgabenwerk`, live seit 2026-11-17, Commit 7aa8821)
 **Gebaut** (27 Typen mit Bauplan)
 - **Fallakte:** Titel, Ausgangssituation, Urteil als Texte; Schritte mit Frage, „Wird danach enthüllt“ und eigener Antwortenliste (Kreis = richtig, Rückmeldung per Sprechblase). Feldnamen `titel/title`, `schritte/steps`, `antworten/answers` bleiben erhalten.
 - **Video mit Fragen:** Adresse als Text (Hinweis ohne https), Fragen mit Zeitpunkt (getippt als mm:ss, gespeichert in Sekunden, Unsinn wird markiert und nicht gespeichert), Frage und Antwortenliste.
