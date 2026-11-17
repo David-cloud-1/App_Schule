@@ -133,9 +133,9 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste | Deployed |
 | P1 | PROJ-102: Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Deployed |
 | P1 | PROJ-103: Baukasten – Lehrtext direkt in der Seite tippen | Deployed |
-| P1 | PROJ-104: Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Planned |
-| P2 | PROJ-105: Baukasten – Bild neben Text & Bild-Galerie | Planned |
-| P2 | PROJ-106: Baukasten – Bild beschriften & markieren | Planned |
+| P1 | PROJ-104: Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Deployed |
+| P2 | PROJ-105: Baukasten – Bild neben Text & Bild-Galerie | Deployed |
+| P2 | PROJ-106: Baukasten – Bild beschriften & markieren | Deployed |
 | P2 | PROJ-107: Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen) | Planned |
 | P2 | PROJ-108: Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Planned |
 | P2 | PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) | Planned |

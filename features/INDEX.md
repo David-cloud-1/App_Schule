@@ -121,9 +121,9 @@
 | PROJ-101 | Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste | Deployed | [PROJ-101-baukasten-direkt-auswaehlen-blockleiste.md](PROJ-101-baukasten-direkt-auswaehlen-blockleiste.md) | 2026-11-16 |
 | PROJ-102 | Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Deployed | [PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md](PROJ-102-baukasten-ziehen-mehrfachauswahl-kopieren.md) | 2026-11-16 |
 | PROJ-103 | Baukasten – Lehrtext direkt in der Seite tippen | Deployed | [PROJ-103-baukasten-lehrtext-direkt-tippen.md](PROJ-103-baukasten-lehrtext-direkt-tippen.md) | 2026-11-16 |
-| PROJ-104 | Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Planned | [PROJ-104-baukasten-bild-direkt-bearbeiten.md](PROJ-104-baukasten-bild-direkt-bearbeiten.md) | 2026-11-16 |
-| PROJ-105 | Baukasten – Bild neben Text & Bild-Galerie | Planned | [PROJ-105-baukasten-bild-neben-text-galerie.md](PROJ-105-baukasten-bild-neben-text-galerie.md) | 2026-11-16 |
-| PROJ-106 | Baukasten – Bild beschriften & markieren | Planned | [PROJ-106-baukasten-bild-beschriften-markieren.md](PROJ-106-baukasten-bild-beschriften-markieren.md) | 2026-11-16 |
+| PROJ-104 | Baukasten – Bild direkt bearbeiten (Größe ziehen, Zuschneiden, Drehen, Datei ziehen) | Deployed | [PROJ-104-baukasten-bild-direkt-bearbeiten.md](PROJ-104-baukasten-bild-direkt-bearbeiten.md) | 2026-11-16 |
+| PROJ-105 | Baukasten – Bild neben Text & Bild-Galerie | Deployed | [PROJ-105-baukasten-bild-neben-text-galerie.md](PROJ-105-baukasten-bild-neben-text-galerie.md) | 2026-11-16 |
+| PROJ-106 | Baukasten – Bild beschriften & markieren | Deployed | [PROJ-106-baukasten-bild-beschriften-markieren.md](PROJ-106-baukasten-bild-beschriften-markieren.md) | 2026-11-16 |
 | PROJ-107 | Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen) | Planned | [PROJ-107-baukasten-bild-als-aufgabe.md](PROJ-107-baukasten-bild-als-aufgabe.md) | 2026-11-16 |
 | PROJ-108 | Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Planned | [PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md](PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md) | 2026-11-16 |
 | PROJ-109 | Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung | Planned | [PROJ-109-baukasten-externe-einbettung.md](PROJ-109-baukasten-externe-einbettung.md) | 2026-11-16 |

@@ -1,6 +1,6 @@
 # PROJ-106: Baukasten – Bild beschriften & markieren
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-17
 
@@ -85,4 +85,6 @@ Siehe PROJ-104. Markierungen sind eine eigene Ebene `marks` im Bild-Block (Orte 
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+- 2026-11-17: Kern `16f779f`/`584f51f` per `vercel deploy --prod`, App `c6a0020` (Push auf main, Vercel Ready). Keine Migration. Mit ausgeliefert: fremder Commit `1a17eee` (PROJ-103: Schreiben in der Seite und Schublade gleichzeitig).
+- Geprüft: tsc, Build, Kern-Tests (90), Vitest je Datei grün; im Gesamtlauf unter Last wechselnde Zeitüberschreitungen in Baukasten-Tests (einzeln grün). Kein formaler QA-Durchlauf mit Bug-Liste, kein Browser-Test.
+- Offen: Browser-Test durch den Nutzer.
