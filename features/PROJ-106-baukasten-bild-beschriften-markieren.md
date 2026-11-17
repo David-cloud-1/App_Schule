@@ -1,8 +1,8 @@
 # PROJ-106: Baukasten – Bild beschriften & markieren
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-17
 
 ## Idee in einem Satz
 Auf ein Bild lassen sich Pfeile, Kreise, Rechtecke, Nummern und kurze Texte setzen, verschieben und wieder entfernen. Die Markierungen bleiben veränderbar und liegen über dem Bild, statt in die Datei eingebrannt zu sein.
@@ -74,7 +74,12 @@ Teil der Reihe „Baukasten direkt“, Übersicht und Leitbild in PROJ-101.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+Siehe PROJ-104. Markierungen sind eine eigene Ebene `marks` im Bild-Block (Orte in Prozent des Bildes, `art` pfeil/linie/kreis/rechteck/nummer/text/marker, `farbe` aus fünf festen Werten, `staerke`, `text` ≤ 80 Zeichen, `aus` für ausgeblendet). Der Kern (`bildmarken.py`) liest sie streng und zeichnet ein SVG über dem Bild (1000 Einheiten Breite, Höhe nach Seitenverhältnis, Kreise bleiben rund); Texte sind nie HTML. Der Editor (`bild-beschriften.tsx`, `marken-svg.tsx`) arbeitet auf einer Kopie und gibt die Liste bei „Fertig“ zurück. Drehen und Zuschneiden rechnen die Markierungen mit (`markenNachDrehung`, `markenNachAusschnitt`).
+
+## Umsetzung (2026-11-17)
+- Gebaut: Werkzeuge Auswählen, Pfeil, Linie, Kreis, Rechteck, Nummer (zählt automatisch), Text, Marker; 5 Farben, 3 Stärken; Verschieben per Ziehen und Pfeiltasten, Endpunkte ziehen, Entf, Rückgängig/Wiederholen im Dialog, Esc beendet Werkzeug, zweites Esc übernimmt; Liste aller Markierungen (per Tab erreichbar), „Alle entfernen“, Hinweis ab 30; Leserliste für Bildschirmleser im Kern; Galerie-Bilder können beschriftet werden; Markierungen laufen beim Drehen/Zuschneiden mit, was außerhalb liegt wird ausgeblendet, nicht gelöscht (im Dialog wieder einblendbar).
+- **Abweichungen:** (1) Beschriften öffnet einen Dialog statt direkt am Bild in der Vorschau. (2) Austauschen entfernt die Markierungen ohne Rückfrage (Hinweis mit Rückgängig). (3) „Zurücksetzen auf Original“ blendet ausgeblendete Markierungen nicht automatisch ein. (4) Mindestschriftgröße beim Verkleinern und Leuchtkasten-Texte nicht umgesetzt. (5) Kein Nummernpunkt-Neunummerieren-Schalter (immer automatisch). (6) Am Handy nicht verfügbar (Knopf ausgeblendet).
+- **Offen:** Browser-Test (Zeichnen mit Maus/Touch).
 
 ## QA Test Results
 _To be added by /qa_

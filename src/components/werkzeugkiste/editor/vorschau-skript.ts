@@ -1,5 +1,6 @@
 import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { typName } from '@/lib/werkzeugkiste-editor'
+import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
 
 export { auswahlAusMarke }
 
@@ -55,6 +56,20 @@ const CSS = [
   'body.wk-bearbeiten .wk-aktiv{outline:3px solid #2563eb!important;outline-offset:3px}',
   `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;background:${F.grund};border:1px solid ${F.text};border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.2)}`,
   '.wk-leiste[hidden],.wk-b[hidden]{display:none!important}',
+  '.wk-leiste:not(.wk-leiste-unten){flex-wrap:wrap;max-width:calc(100% - 8px)}',
+  '.wk-trenner{width:1px;align-self:stretch;margin:3px 2px;background:#cbd5e1}.wk-trenner[hidden]{display:none!important}',
+  '.wk-b[aria-pressed="true"]{background:#dbeafe;border-color:#1e3a8a}',
+  // PROJ-104: Anfasser zum Größenziehen, Breiten-Etikett, Ablegen von Dateien
+  '.wk-griffe{position:fixed;z-index:2147482990;pointer-events:none}.wk-griffe[hidden]{display:none!important}',
+  `.wk-gr{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;padding:0;border:2px solid #fff;border-radius:50%;background:${F.plusGrund};box-shadow:0 0 0 1px ${F.text};pointer-events:auto;touch-action:none}`,
+  '.wk-gr::after{content:"";position:absolute;inset:-10px}',
+  '.wk-gr:focus-visible{outline:3px solid #facc15;outline-offset:2px}',
+  '.wk-gr[data-gr="nw"]{left:0;top:0;cursor:nwse-resize}.wk-gr[data-gr="ne"]{left:100%;top:0;cursor:nesw-resize}',
+  '.wk-gr[data-gr="sw"]{left:0;top:100%;cursor:nesw-resize}.wk-gr[data-gr="se"]{left:100%;top:100%;cursor:nwse-resize}',
+  '.wk-gr[data-gr="w"]{left:0;top:50%;cursor:ew-resize}.wk-gr[data-gr="e"]{left:100%;top:50%;cursor:ew-resize}',
+  `.wk-bl{position:fixed;z-index:2147483002;padding:3px 8px;border-radius:6px;background:${F.text};color:#fff;font:700 12px/1.3 system-ui,sans-serif;pointer-events:none;white-space:nowrap}`,
+  '.wk-bl[hidden]{display:none!important}',
+  'body.wk-bearbeiten .wk-dropauf{outline:4px solid #16a34a!important;outline-offset:2px}',
   'body.wk-bearbeiten.wk-mobil{padding-bottom:72px}',
   '.wk-leiste-unten{left:0;right:0;bottom:0;flex-wrap:wrap;justify-content:space-between;border-radius:12px 12px 0 0;border-width:1px 0 0}',
   `.wk-typ{padding:0 8px;color:${F.textTyp};white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}`,
@@ -99,6 +114,13 @@ const ICONS = {
   zwischen: SVG('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'),
   hoch: SVG('<path d="m18 15-6-6-6 6"/>'),
   runter: SVG('<path d="m6 9 6 6 6-6"/>'),
+  austausch: SVG('<path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/>'),
+  zuschnitt: SVG('<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>'),
+  drehLinks: SVG('<path d="M3 2v6h6"/><path d="M3.5 13a9 9 0 1 0 2.6-7.4L3 8"/>'),
+  drehRechts: SVG('<path d="M21 2v6h-6"/><path d="M20.5 13a9 9 0 1 1-2.6-7.4L21 8"/>'),
+  ausLinks: SVG('<path d="M21 6H3M15 12H3M17 18H3"/>'),
+  ausMitte: SVG('<path d="M21 6H3M17 12H7M19 18H5"/>'),
+  ausRechts: SVG('<path d="M21 6H3M21 12H9M21 18H7"/>'),
   papierkorb: SVG('<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>'),
 }
 
@@ -112,6 +134,7 @@ const SKRIPT_TEXT = String.raw`
 (function(){
 var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
+var STUFEN=${JSON.stringify(BREITE_STUFEN)},BMIN=${BREITE_MIN},BMAX=${BREITE_MAX},NAEHE=${EINRAST_NAEHE},HANDY=${JSON.stringify(HANDY_BREITEN)};
 var ICON=${JSON.stringify(ICONS)};
 var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null;
 function p(x){parent.postMessage(x,"*")}
@@ -151,7 +174,20 @@ var bPlus=knopf("einfuegen",ICON.plus+"<span>Darunter</span>","Block darunter ei
 var bKopie=knopf("dupliziere",ICON.kopie+"<span>Duplizieren</span>","Block duplizieren");
 var bMehr=knopf("menue",ICON.mehr,"Weitere Aktionen");bMehr.setAttribute("aria-haspopup","menu");
 var bWeg=knopf("loesche",ICON.papierkorb,"Block löschen","wk-d");
-[bGriff,typ,bBearb,bPlus,bHoch,bRunter,bKopiere,bKopie,bMehr,bWeg].forEach(function(x){leiste.appendChild(x)});
+var bildAkt=function(a,icon,text,label){var b=knopf("bild",icon+(text?"<span>"+text+"</span>":""),label);b.setAttribute("data-wk-bild",a);b.setAttribute("title",label);return b};
+var bAustausch=bildAkt("austauschen",ICON.austausch,"Austauschen","Bild austauschen");
+var bZuschnitt=bildAkt("zuschneiden",ICON.zuschnitt,"Zuschneiden","Bild zuschneiden");
+var bDrehL=bildAkt("drehenLinks",ICON.drehLinks,"","Nach links drehen");
+var bDrehR=bildAkt("drehenRechts",ICON.drehRechts,"","Nach rechts drehen");
+var bAusL=bildAkt("links",ICON.ausLinks,"","Bild links ausrichten");
+var bAusM=bildAkt("mitte",ICON.ausMitte,"","Bild mittig ausrichten");
+var bAusR=bildAkt("rechts",ICON.ausRechts,"","Bild rechts ausrichten");
+var bBeschr=bildAkt("beschriften",ICON.stift,"Beschriften","Bild beschriften und markieren");
+var bAlt=bildAkt("alt",ICON.stift,"Alternativtext","Alternativtext eingeben");
+var bTrenn=neu("span","wk-trenner");bTrenn.setAttribute("aria-hidden","true");
+var bBreiten=HANDY.map(function(h){var b=knopf("breite","<span>"+h.name+"</span>","Bildbreite "+h.name);b.setAttribute("data-wk-prozent",String(h.prozent));return b});
+var BILDKNOEPFE=[bAustausch,bZuschnitt,bDrehL,bDrehR,bAusL,bAusM,bAusR,bBeschr,bAlt].concat(bBreiten);
+[bGriff,typ,bBearb,bTrenn].concat(BILDKNOEPFE).concat([bPlus,bHoch,bRunter,bKopiere,bKopie,bMehr,bWeg]).forEach(function(x){leiste.appendChild(x)});
 document.body.appendChild(leiste);
 
 var plus=neu("div","wk-ui wk-plus");plus.hidden=true;
@@ -175,8 +211,34 @@ function leisteAktualisieren(){
   bMehr.hidden=lesen||(art!=="block"&&art!=="viele");
   bWeg.hidden=lesen||(art!=="block"&&art!=="thema"&&art!=="viele");
   bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Blöcke löschen":"Block löschen"));
+  bildLeiste(art);
 }
-function plaziere(){
+// PROJ-104: Knöpfe für Bilder (nur bei genau einem Bild-Block, nicht in der Galerie)
+function bildFigur(){
+  var e=auswahl&&mehr.length<2?finde(auswahl):null;
+  return e&&/-e\d+$/.test(auswahl)?e.querySelector("figure.bild"):null;
+}
+function bildBreite(fig){var w=parseFloat(fig&&fig.style?fig.style.width:"");return isFinite(w)?w:100}
+function bildLeiste(art){
+  var fig=art==="block"&&!lesen?bildFigur():null,hat=!!(fig&&fig.querySelector("img")),klein=hat&&bildBreite(fig)<99.5;
+  BILDKNOEPFE.forEach(function(b){b.hidden=true});
+  bTrenn.hidden=!fig;
+  if(!fig)return;
+  bAustausch.hidden=false;
+  bAlt.hidden=!(fig.querySelector(".wk-altwarnung"));
+  if(!hat)return;
+  bZuschnitt.hidden=bDrehL.hidden=bDrehR.hidden=bBeschr.hidden=false;
+  bAusL.hidden=bAusM.hidden=bAusR.hidden=!klein||mobil;
+  bAusL.setAttribute("aria-pressed",String(fig.classList.contains("bild-links")));
+  bAusR.setAttribute("aria-pressed",String(fig.classList.contains("bild-rechts")));
+  bAusM.setAttribute("aria-pressed",String(!fig.classList.contains("bild-links")&&!fig.classList.contains("bild-rechts")));
+  if(mobil){
+    bZuschnitt.hidden=true;bBeschr.hidden=true;
+    bBreiten.forEach(function(b){b.hidden=false;b.setAttribute("aria-pressed",String(Math.abs(Number(b.getAttribute("data-wk-prozent"))-bildBreite(fig))<4))});
+  }
+}
+function plaziere(){plaziereLeiste();griffeAktualisieren()}
+function plaziereLeiste(){
   var e=modus==="bearbeiten"&&auswahl?finde(auswahl):null;
   if(!e){leiste.hidden=true;return}
   var r=e.getBoundingClientRect();
@@ -290,6 +352,8 @@ function aktion(a){
   else if(t==="thema")p({wkThemaNeu:true});
   else if(t==="schnell")p({wkSchnell:m,typ:a.getAttribute("data-wk-typ")});
   else if(t==="kopiere")p({wkKopiere:m});
+  else if(t==="bild")p({wkBild:m,aktion:a.getAttribute("data-wk-bild")});
+  else if(t==="breite")p({wkBreite:m,prozent:Number(a.getAttribute("data-wk-prozent"))});
   else if(t==="hoch"||t==="runter")p({wkTaste:t==="hoch"?"ArrowUp":"ArrowDown",mod:false,shift:false,alt:true});
   else if(t==="menue"){var r=a.getBoundingClientRect();p({wkMenue:m,x:Math.round(r.right),y:Math.round(r.bottom)})}
 }
@@ -402,6 +466,104 @@ addEventListener("pointerup",function(){endeZiehen(true)});
 addEventListener("pointercancel",function(){endeZiehen(false)});
 addEventListener("blur",function(){endeZiehen(false)});
 
+// ── Bildgröße ziehen (PROJ-104): Die Seite zeigt live und meldet am Ende genau einen Wunsch ─
+var griffe=neu("div","wk-ui wk-griffe");griffe.hidden=true;
+["nw","ne","sw","se","w","e"].forEach(function(g){var b=neu("button","wk-gr");b.type="button";b.setAttribute("data-gr",g);b.setAttribute("aria-label","Bildbreite ändern (Pfeiltasten: nächste Stufe, Doppelklick: ganze Breite)");griffe.appendChild(b)});
+var etikett=neu("div","wk-ui wk-bl");etikett.hidden=true;
+document.body.appendChild(griffe);document.body.appendChild(etikett);
+var gz=null;
+function bildImg(){var f=bildFigur();return f?f.querySelector("img"):null}
+function griffeAktualisieren(){
+  var img=modus==="bearbeiten"&&!lesen&&!mobil&&!ziehen&&!schreibt?bildImg():null;
+  if(!img){griffe.hidden=true;return}
+  var r=img.getBoundingClientRect();
+  if(r.width<8||r.bottom<0||r.top>innerHeight){griffe.hidden=true;return}
+  griffe.hidden=false;griffe.style.left=r.left+"px";griffe.style.top=r.top+"px";griffe.style.width=r.width+"px";griffe.style.height=r.height+"px";
+}
+function innenBreite(el){
+  var cs=getComputedStyle(el);
+  return el.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
+}
+function rastePunkt(p,raster){
+  p=Math.max(BMIN,Math.min(BMAX,p));
+  if(raster){var b=null,i;for(i=0;i<STUFEN.length;i++)if(Math.abs(STUFEN[i]-p)<=NAEHE&&(b===null||Math.abs(STUFEN[i]-p)<Math.abs(b-p)))b=STUFEN[i];if(b!==null)return b}
+  return Math.round(p);
+}
+function naechsteStufe(p,r){
+  var i;
+  if(r>0){for(i=0;i<STUFEN.length;i++)if(STUFEN[i]>p+0.5)return STUFEN[i];return BMAX}
+  for(i=STUFEN.length-1;i>=0;i--)if(STUFEN[i]<p-0.5)return STUFEN[i];
+  return Math.max(BMIN,Math.min(p,STUFEN[0]));
+}
+function breiteAnwenden(fig,p){
+  var paar=fig.closest&&fig.closest(".paar");
+  if(paar)paar.style.setProperty("--bw",Math.min(p,50)+"%");else fig.style.width=p+"%";
+}
+function griffStart(ev){
+  if(modus!=="bearbeiten"||lesen||mobil||gz||(typeof ev.button==="number"&&ev.button!==0))return;
+  var fig=bildFigur(),img=fig&&fig.querySelector("img"),sec=fig&&fig.closest("[data-wk]");
+  if(!img||!sec)return;
+  var paar=!!(fig.closest&&fig.closest(".paar")),cont=paar?fig.closest(".paar"):sec,cb=innenBreite(cont);
+  if(cb<=0)return;
+  var seite=ev.currentTarget.getAttribute("data-gr"),startB=img.getBoundingClientRect().width/cb*100;
+  gz={fig:fig,img:img,paar:paar,cb:cb,seite:seite,x:ev.clientX,startB:startB,p:startB,zentriert:!fig.classList.contains("bild-links")&&!fig.classList.contains("bild-rechts")&&!paar,id:ev.pointerId,knopf:ev.currentTarget};
+  try{ev.currentTarget.setPointerCapture(ev.pointerId)}catch(x){}
+  document.body.classList.add("wk-zieht-aktiv");plus.hidden=true;stoppe(ev);
+}
+function griffBewegt(ev){
+  if(!gz)return;
+  var dx=(ev.clientX-gz.x)*(/w/.test(gz.seite)?-1:1)*(gz.zentriert?2:1);
+  var p=rastePunkt(gz.startB+dx/gz.cb*100,!ev.altKey);
+  if(gz.paar)p=Math.min(p,50);
+  gz.p=p;breiteAnwenden(gz.fig,p);
+  var r=gz.img.getBoundingClientRect(),unscharf=gz.img.naturalWidth>0&&r.width>gz.img.naturalWidth*1.5;
+  etikett.textContent=Math.round(p)+" %"+(unscharf?" – Bild wird unscharf":"");
+  etikett.hidden=false;etikett.style.left=Math.max(4,Math.min(innerWidth-190,r.left+r.width/2-30))+"px";etikett.style.top=Math.max(4,r.top-30)+"px";
+  griffeAktualisieren();
+}
+function griffEnde(senden){
+  if(!gz)return;
+  var z=gz;gz=null;etikett.hidden=true;document.body.classList.remove("wk-zieht-aktiv");
+  if(senden&&Math.abs(z.p-z.startB)>=0.5&&auswahl)p({wkBreite:auswahl,prozent:z.p});
+  else if(!senden||Math.abs(z.p-z.startB)<0.5){breiteAnwenden(z.fig,z.startB);plaziere()}
+}
+Array.prototype.forEach.call(griffe.querySelectorAll(".wk-gr"),function(g){
+  g.addEventListener("pointerdown",griffStart);
+  g.addEventListener("dblclick",function(e){stoppe(e);if(auswahl)p({wkBreite:auswahl,prozent:100})});
+  g.addEventListener("keydown",function(e){
+    var r=(e.key==="ArrowRight"||e.key==="ArrowUp")?1:((e.key==="ArrowLeft"||e.key==="ArrowDown")?-1:0);
+    if(!r||!auswahl)return;
+    var fig=bildFigur();if(!fig)return;
+    stoppe(e);p({wkBreite:auswahl,prozent:naechsteStufe(bildBreite(fig),r)});
+  });
+});
+addEventListener("pointermove",griffBewegt,{passive:true});
+addEventListener("pointerup",function(){griffEnde(true)});
+addEventListener("pointercancel",function(){griffEnde(false)});
+
+// ── Datei auf die Seite ziehen (PROJ-104): Die App meldet den Zeiger, die Seite zeigt die Stelle ─
+var dropEl=null;
+function dropAus(){
+  linie.hidden=true;
+  if(dropEl){dropEl.classList.remove("wk-dropauf");dropEl=null}
+}
+function dropZeiger(z){
+  if(!z||typeof z.x!=="number"||typeof z.y!=="number"||modus!=="bearbeiten"||lesen){dropAus();p({wkDropZiel:null});return}
+  var t=document.elementFromPoint(z.x,z.y),fig=t&&t.closest?t.closest("figure.bild"):null,m=fig?markeVon(fig):null;
+  if(fig&&fig.querySelector("img")&&m&&/-e\d+$/.test(m)){
+    var sec=finde(m);
+    if(dropEl&&dropEl!==sec)dropEl.classList.remove("wk-dropauf");
+    dropEl=sec;if(sec)sec.classList.add("wk-dropauf");
+    linie.hidden=true;p({wkDropZiel:m,wo:"auf"});return;
+  }
+  if(dropEl){dropEl.classList.remove("wk-dropauf");dropEl=null}
+  var liste=grenzen(false,{}),beste=null,d=1e9,i;
+  for(i=0;i<liste.length;i++){var dd=Math.abs(liste[i].y-z.y);if(dd<d){d=dd;beste=liste[i]}}
+  if(!beste){linie.hidden=true;p({wkDropZiel:null});return}
+  linie.hidden=false;linie.style.top=beste.y+"px";linie.style.left=beste.x+"px";linie.style.width=beste.b+"px";
+  p({wkDropZiel:beste.marke,wo:beste.wo});
+}
+
 // ── Tastatur: nur vereinbarte Kürzel gehen an die App ─────────────────
 function weitergabe(e){
   if(inZone(elt(e.target)))return false;
@@ -445,6 +607,7 @@ function anwenden(){
   document.body.classList.toggle("wk-bearbeiten",modus==="bearbeiten");
   document.body.classList.toggle("wk-mobil",mobil);
   if(modus!=="bearbeiten"){endeZiehen(false);plus.hidden=true;if(hoverEl){hoverEl.classList.remove("wk-hover");hoverEl=null}}
+  if(modus!=="bearbeiten"){griffEnde(false);dropAus()}
   baueEinfuegestellen();leisteAktualisieren();plaziere();
 }
 
@@ -523,6 +686,7 @@ addEventListener("message",function(e){
     return;
   }
   if(d.wkSchreibStart&&typeof d.wkSchreibStart==="object"){startSchreiben(d.wkSchreibStart);return}
+  if("wkDropZeiger" in d){dropZeiger(d.wkDropZeiger);return}
   if(d.wkSchreibBeende===true){if(schreibt&&!schreibt.fertig)schreibt.beende();return}
   if(d.wkSchreibVorbei===true){if(schreibt){schreibt.ab();schreibt=null}return}
   if(d.wkZustand&&typeof d.wkZustand==="object"){

@@ -58,6 +58,14 @@ const ROH: Roh[] = [
     bild: true,
   },
   {
+    typ: 'gallery',
+    gruppe: 'lesen',
+    beschreibung: 'Mehrere Bilder in einem Raster, die sich per Klick groß ansehen lassen.',
+    gutFuer: 'Fotos zum Vergleichen nebeneinander zeigen, zum Beispiel verschiedene Fahrzeugtypen.',
+    suchbegriffe: ['Galerie', 'Bilder', 'Fotos', 'Raster', 'Vergleichen', 'Bildergalerie'],
+    ohneAuswertung: true,
+  },
+  {
     typ: 'accordion',
     gruppe: 'lesen',
     beschreibung: 'Begriffe, deren Erklärung sich beim Antippen aufklappt.',

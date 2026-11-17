@@ -88,6 +88,20 @@ const SKIZZEN: Record<string, () => ReactNode> = {
       <Z x={34} y={60} w={52} />
     </Kette>
   ),
+  gallery: () => (
+    <Kette>
+      {[0, 1, 2].map((i) => (
+        <g key={i}>
+          <K x={10 + i * 35} y={8} w={30} h={26} />
+          <path d={`M${13 + i * 35} 30 L${20 + i * 35} 20 L${26 + i * 35} 26 L${31 + i * 35} 18 L${37 + i * 35} 30 Z`} className="fill-ws-green/40" />
+          <Z x={12 + i * 35} y={40} w={24} />
+        </g>
+      ))}
+      <K x={10} y={50} w={30} h={14} />
+      <K x={45} y={50} w={30} h={14} />
+      <K x={80} y={50} w={30} h={14} />
+    </Kette>
+  ),
   accordion: () => (
     <Kette>
       {[6, 26, 46].map((y, i) => (

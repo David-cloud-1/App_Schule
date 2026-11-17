@@ -110,6 +110,7 @@ export function bearbeitenHref(id: string): string {
 export const TYP_NAMEN: Record<string, string> = {
   text: 'Lehrtext',
   image: 'Bild',
+  gallery: 'Bildergalerie',
   accordion: 'Begriffe zum Aufklappen',
   multiple_choice: 'Auswahlfrage',
   single_choice: 'Auswahlfrage (eine richtig)',

@@ -13,6 +13,7 @@ import { bildName, useMaterialBilder } from '@/components/werkzeugkiste/editor/m
 import { cn } from '@/lib/utils'
 import { ladeBildHoch } from '@/lib/werkzeugkiste-api'
 import { dataAdresseZuBlob, formatErlaubt, type Ergebnis } from '@/lib/werkzeugkiste-bild-bearbeiten'
+import type { BildAenderung } from '@/lib/werkzeugkiste-bild-block'
 import { FORMAT_FEHLER, ORIGINAL_MAX_BYTES, ZU_GROSS_FEHLER, istEigenerPfad } from '@/lib/werkzeugkiste-bilder'
 
 /**
@@ -26,7 +27,8 @@ export interface BildDialogProps {
   offen: boolean
   onOpenChange: (offen: boolean) => void
   /** Das gewählte Bild (Name im Material) und, wenn danach gefragt wurde, der Alternativtext */
-  onWaehle: (pfad: string, alt?: string) => void
+  /** `aenderung` nur, wenn ein vorhandenes Bild zugeschnitten oder gedreht wurde (nicht beim Austauschen) */
+  onWaehle: (pfad: string, alt?: string, aenderung?: BildAenderung) => void
   /** Das Bild, das der Block heute hat (in der Galerie markiert) */
   aktuell?: string
   /** Nach dem Alternativtext fragen (Bild-Block) */
@@ -97,14 +99,15 @@ export function BildAuswahl({ offen, onOpenChange, onWaehle, aktuell, mitAlt = f
     setSchritt({ art: 'bearbeiten', quelle: datei, laedt: false, fehler: null, hochfehler: null })
   }, [])
 
-  async function hochladen(ergebnis: Ergebnis, altText: string) {
+  async function hochladen(ergebnis: Ergebnis, altText: string, aenderung?: BildAenderung) {
     setFortschritt(0)
     setSchritt((s) => (s.art === 'bearbeiten' ? { ...s, hochfehler: null } : s))
     try {
       const bild = await ladeBildHoch(materialId, ergebnis.blob, setFortschritt)
       eigenesHinzufuegen(bild)
       setFortschritt(null)
-      onWaehle(bild.pfad, mitAlt ? altText : undefined)
+      if (aenderung) onWaehle(bild.pfad, mitAlt ? altText : undefined, aenderung)
+      else onWaehle(bild.pfad, mitAlt ? altText : undefined)
     } catch (e) {
       setFortschritt(null)
       const text = e instanceof Error ? e.message : 'Das Hochladen hat nicht geklappt. Bitte versuche es erneut.'
@@ -142,7 +145,7 @@ export function BildAuswahl({ offen, onOpenChange, onWaehle, aktuell, mitAlt = f
                 fehler={schritt.hochfehler}
                 seitenGroesse={seitenGroesse}
                 onZurueck={() => (bearbeite ? onOpenChange(false) : setSchritt(WAEHLEN))}
-                onFertig={(e, a) => void hochladen(e, a)}
+                onFertig={(e, a, ae) => void hochladen(e, a, bearbeite ? ae : undefined)}
               />
             ) : (
               <div className="flex flex-col items-center gap-3 py-12 text-center" role="alert">

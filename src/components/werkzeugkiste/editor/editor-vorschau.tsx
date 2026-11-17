@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
+import { ImagePlus, Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
@@ -24,6 +24,12 @@ export interface SchreibStart {
 export interface SchreibBefehl {
   nr: number
   art: 'beende' | 'vorbei'
+}
+
+/** PROJ-104: Wohin eine abgelegte Datei zielt (so hat die Seite die Stelle zuletzt gemeldet) */
+export interface DateiZielMarke {
+  marke: string
+  wo: 'vor' | 'nach' | 'anfang' | 'auf'
 }
 
 /**
@@ -61,6 +67,7 @@ export function EditorVorschau({
   schreibBefehl = null,
   beiNeueSeite,
   schubladeOffen = false,
+  onDateien,
 }: {
   html: string | null
   laedt: boolean
@@ -97,6 +104,8 @@ export function EditorVorschau({
   beiNeueSeite?: () => void
   /** PROJ-111: Das Formular zur gewählten Stelle ist offen; die Leiste in der Seite zeigt dann kein zweites „Bearbeiten“ */
   schubladeOffen?: boolean
+  /** PROJ-104: Dateien wurden auf die Vorschau gelegt (`ziel` = zuletzt gemeldete Stelle der Seite, sonst null) */
+  onDateien?: (dateien: File[], ziel: DateiZielMarke | null) => void
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -123,6 +132,13 @@ export function EditorVorschau({
     zustandRef.current = { modus, lesen, mobil, leer, schublade: schubladeOffen }
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
+  const [dateiZieht, setDateiZieht] = useState(false)
+  const dropZiel = useRef<DateiZielMarke | null>(null)
+  const dateienRef = useRef(onDateien)
+  const zeigerTakt = useRef<number | null>(null)
+  useEffect(() => {
+    dateienRef.current = onDateien
+  })
 
   const senden = useCallback((nachricht: Record<string, unknown>) => {
     rahmen.current?.contentWindow?.postMessage(nachricht, '*')
@@ -198,6 +214,11 @@ export function EditorVorschau({
       }
       let w = liesWunsch(n)
       if (!w) return
+      if (w.art === 'dropZiel') {
+        // Nur merken: Ablegen entscheidet die App erst beim Loslassen
+        dropZiel.current = w.marke && w.wo ? { marke: w.marke, wo: w.wo } : null
+        return
+      }
       if (w.art === 'schreibZwischen' || w.art === 'schreibEnde' || w.art === 'schreibAbbruch') {
         // Schreib-Wünsche entscheidet die App selbst; ein Hinweis „Vorschau veraltet“ passt dazu nicht
         wunschRef.current?.(w)
@@ -224,6 +245,49 @@ export function EditorVorschau({
     window.addEventListener('message', beiNachricht)
     return () => window.removeEventListener('message', beiNachricht)
   }, [senden])
+
+  // PROJ-104: Wird eine Datei über das Fenster gezogen, legt sich eine Fläche über die Seite (Ziehen über einen
+  // Rahmen erreicht die App sonst nicht). Die Seite zeigt dann die Einfügestelle.
+  const dateienErlaubt = !!onDateien && modus === 'bearbeiten' && !lesen
+  useEffect(() => {
+    if (!dateienErlaubt) return
+    const hatDatei = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
+    const ein = (e: DragEvent) => {
+      if (hatDatei(e)) setDateiZieht(true)
+    }
+    const aus = (e: DragEvent) => {
+      if (!e.relatedTarget) setDateiZieht(false)
+    }
+    const ende = () => setDateiZieht(false)
+    window.addEventListener('dragenter', ein)
+    window.addEventListener('dragleave', aus)
+    window.addEventListener('drop', ende)
+    window.addEventListener('dragend', ende)
+    return () => {
+      window.removeEventListener('dragenter', ein)
+      window.removeEventListener('dragleave', aus)
+      window.removeEventListener('drop', ende)
+      window.removeEventListener('dragend', ende)
+    }
+  }, [dateienErlaubt])
+
+  const zeigerMelden = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      const r = rahmen.current?.getBoundingClientRect()
+      if (!r) return
+      // Nur Dateien, die keine Bilder sind (PDF, Word): keine Einfügelinie
+      const items = Array.from(e.dataTransfer.items ?? [])
+      const nurFremde = items.length > 0 && items.every((i) => i.kind === 'file' && i.type !== '' && !/^image\/(png|jpeg|webp)$/.test(i.type))
+      const x = e.clientX - r.left
+      const y = e.clientY - r.top
+      if (zeigerTakt.current !== null) cancelAnimationFrame(zeigerTakt.current)
+      zeigerTakt.current = requestAnimationFrame(() => {
+        zeigerTakt.current = null
+        senden({ wkDropZeiger: nurFremde ? null : { x: Math.round(x), y: Math.round(y) } })
+      })
+    },
+    [senden],
+  )
 
   useEffect(() => {
     if (!hinweis) return
@@ -285,14 +349,44 @@ export function EditorVorschau({
         </div>
       </div>
       {html ? (
-        <iframe
-          ref={rahmen}
-          title="Vorschau der Seite"
-          srcDoc={html}
-          sandbox="allow-scripts"
-          referrerPolicy="no-referrer"
-          className="w-full flex-1 bg-white"
-        />
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <iframe
+            ref={rahmen}
+            title="Vorschau der Seite"
+            srcDoc={html}
+            sandbox="allow-scripts"
+            referrerPolicy="no-referrer"
+            className="w-full flex-1 bg-white"
+          />
+          {dateiZieht && dateienErlaubt && (
+            <div
+              className="absolute inset-0 z-10 flex items-start justify-center border-4 border-dashed border-ws-green/60 bg-ws-green/5 pt-3"
+              data-testid="ablege-flaeche"
+              onDragOver={(e) => {
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'copy'
+                zeigerMelden(e)
+              }}
+              onDragLeave={() => {
+                dropZiel.current = null
+                senden({ wkDropZeiger: null })
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const dateien = Array.from(e.dataTransfer.files ?? [])
+                const ziel = dropZiel.current
+                dropZiel.current = null
+                senden({ wkDropZeiger: null })
+                setDateiZieht(false)
+                if (dateien.length > 0) dateienRef.current?.(dateien, ziel)
+              }}
+            >
+              <span className="pointer-events-none flex items-center gap-2 rounded-full bg-ws-green px-4 py-1.5 text-sm font-semibold text-ws-on-accent shadow">
+                <ImagePlus className="size-4" aria-hidden /> Bild hier ablegen
+              </span>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-ws-bg p-6 text-center text-sm text-ws-muted">
           {fehler ? (

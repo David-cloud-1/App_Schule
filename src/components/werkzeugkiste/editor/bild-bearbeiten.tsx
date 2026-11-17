@@ -20,6 +20,7 @@ import {
   type Ergebnis,
 } from '@/lib/werkzeugkiste-bild-bearbeiten'
 import { SEITE_GRENZE_BYTES, seiteMitBild } from '@/lib/werkzeugkiste-bilder'
+import type { BildAenderung } from '@/lib/werkzeugkiste-bild-block'
 
 /**
  * Zuschneiden, Drehen und Übernehmen eines Bildes (PROJ-92). Alles passiert im
@@ -39,7 +40,8 @@ export interface BildBearbeitenProps {
   /** Geschätzte Seitengröße vor dem Bild in Bytes; 0 = unbekannt */
   seitenGroesse: number
   onZurueck: () => void
-  onFertig: (ergebnis: Ergebnis, alt: string) => void
+  /** `aenderung`: wie weit das Bild gedreht und zugeschnitten wurde (PROJ-106: Markierungen laufen mit) */
+  onFertig: (ergebnis: Ergebnis, alt: string, aenderung: BildAenderung) => void
 }
 
 export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, fehler, seitenGroesse, onZurueck, onFertig }: BildBearbeitenProps) {
@@ -52,6 +54,7 @@ export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, feh
   const [rechnet, setRechnet] = useState(false)
   const [rechenfehler, setRechenfehler] = useState<string | null>(null)
   const [warnung, setWarnung] = useState<Ergebnis | null>(null)
+  const [drehungen, setDrehungen] = useState(0)
   const bild = useRef<HTMLImageElement>(null)
 
   // Arbeitskopie bereitstellen (und die Adresse für die Anzeige verwalten)
@@ -69,6 +72,7 @@ export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, feh
 
   const zuruecksetzen = useCallback(() => {
     setLadefehler(null)
+    setDrehungen(0)
     arbeitskopie(quelle)
       .then(zeige)
       .catch((e: unknown) => setLadefehler(e instanceof Error ? e.message : 'Das Bild lässt sich nicht öffnen.'))
@@ -80,7 +84,9 @@ export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, feh
   useEffect(() => () => setUrl((u) => (u && URL.revokeObjectURL(u), null)), [])
 
   const dreheUm = (richtung: 1 | -1) => {
-    if (arbeit) void zeige(drehe(arbeit, richtung))
+    if (!arbeit) return
+    setDrehungen((d) => (d + richtung + 4) % 4)
+    void zeige(drehe(arbeit, richtung))
   }
 
   /** Ausschnitt in Bildpunkten der Arbeitskopie; null = ganzes Bild */
@@ -110,7 +116,10 @@ export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, feh
         return
       }
       setWarnung(null)
-      onFertig(ergebnis, alt.trim())
+      onFertig(ergebnis, alt.trim(), {
+        drehungen,
+        ausschnitt: a ? { x: (a.x / arbeit.width) * 100, y: (a.y / arbeit.height) * 100, breite: (a.breite / arbeit.width) * 100, hoehe: (a.hoehe / arbeit.height) * 100 } : null,
+      })
     } catch (e) {
       setRechenfehler(e instanceof Error ? e.message : 'Das Bild konnte nicht vorbereitet werden.')
     } finally {

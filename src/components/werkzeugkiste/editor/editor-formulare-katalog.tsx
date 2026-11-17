@@ -1,17 +1,45 @@
 'use client'
 
 import { useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ImageIcon, Loader2 } from 'lucide-react'
+import { ImageIcon, Loader2, Plus, Tag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
 import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
 import { bildName, useGrossesBild } from '@/components/werkzeugkiste/editor/material-bilder'
 import { DiagrammFormular, TabelleFormular } from '@/components/werkzeugkiste/editor/editor-formulare-tabelle'
 import { cn } from '@/lib/utils'
+import { BildBeschriften } from '@/components/werkzeugkiste/editor/bild-beschriften'
+import {
+  AUSRICHTUNGEN,
+  GALERIE_MAX,
+  GALERIE_MIN,
+  BREITE_MAX,
+  BREITE_MIN,
+  galerieAlsEinzelbild,
+  hatBild,
+  leseAusrichtung,
+  leseBreite,
+  leseGalerieBilder,
+  leseMarken,
+  leseSpalten,
+  leseTextDaneben,
+  rasteEin,
+  setzeAusrichtung,
+  setzeBreite,
+  setzeGalerieBilder,
+  setzeMarken,
+  setzeTextDaneben,
+  wendeBildAenderungAn,
+  type BildAenderung,
+  type GalerieBild,
+  type TextDaneben,
+} from '@/lib/werkzeugkiste-bild-block'
 import type { Block } from '@/lib/werkzeugkiste-editor'
 
 /**
@@ -62,12 +90,6 @@ const HTML_HINWEIS = 'Einfaches HTML wie <p> und <strong> ist erlaubt.'
 
 // ── Bild (image) ────────────────────────────────────────────────────────────
 
-const BREITEN = [
-  { wert: '40%', name: 'klein' },
-  { wert: '70%', name: 'mittel' },
-  { wert: '100%', name: 'ganze Breite' },
-]
-
 /** Gewähltes Bild mit „Anderes Bild wählen“ und „Bild bearbeiten“ */
 function BildWahl({
   pfad,
@@ -77,7 +99,7 @@ function BildWahl({
   alt = '',
 }: {
   pfad: string
-  onWaehle: (pfad: string, alt?: string) => void
+  onWaehle: (pfad: string, alt?: string, aenderung?: BildAenderung) => void
   label?: string
   /** Im Bild-Block: Alternativtext im Bild-Fenster mitfragen */
   mitAlt?: boolean
@@ -129,24 +151,42 @@ function BildWahl({
         mitAlt={mitAlt}
         alt={alt}
         bearbeite={offen === 'bearbeiten' ? pfad : undefined}
-        onWaehle={(p, a) => {
+        onWaehle={(p, a, ae) => {
           setOffen(null)
-          onWaehle(p, a)
+          onWaehle(p, a, ae)
         }}
       />
     </div>
   )
 }
 
+/** Breite, Ausrichtung und „Text daneben“ – gleiche Werte wie das Ziehen an den Anfassern in der Vorschau */
 export function BildFormular({ block, onChange }: FormProps) {
-  const breite = BREITEN.some((b) => b.wert === s(block.width)) ? s(block.width) : undefined
+  const breite = leseBreite(block.width)
+  const ausrichtung = leseAusrichtung(block.align)
+  const textDaneben = leseTextDaneben(block.text_neben)
+  const marken = leseMarken(block)
+  const [beschriften, setBeschriften] = useState(false)
+  const pfad = s(block.path)
+  const reglerId = useId()
+  const klein = breite < 100
   return (
     <div className="space-y-4">
       <BildWahl
-        pfad={s(block.path)}
+        pfad={pfad}
         mitAlt
         alt={s(block.alt)}
-        onWaehle={(p, a) => onChange({ ...block, path: p, ...(a !== undefined ? { alt: a } : {}) }, a !== undefined ? 'alt' : 'path')}
+        onWaehle={(p, a, ae) => {
+          if (ae) {
+            // Bild zugeschnitten oder gedreht: Die Markierungen laufen mit
+            const r = wendeBildAenderungAn(block, p, a, ae)
+            onChange(r.block, 'path')
+          } else {
+            const neu: Block = { ...block, path: p, ...(a !== undefined && a.trim() ? { alt: a } : {}) }
+            // Ein anderes Bild: Die Markierungen gehörten zum alten
+            onChange(p !== pfad ? setzeMarken(neu, []) : neu, a !== undefined ? 'alt' : 'path')
+          }
+        }}
       />
       <Feld
         label="Alternativtext"
@@ -156,21 +196,220 @@ export function BildFormular({ block, onChange }: FormProps) {
         hinweis="Ein Satz, was auf dem Bild zu sehen ist – für Menschen, die es nicht sehen können."
       />
       <Feld label="Bildunterschrift (optional)" wert={s(block.caption)} onChange={(v) => onChange(optional(block, 'caption', v), 'caption')} />
-      <div className="max-w-60 space-y-1.5">
-        <Label>Breite</Label>
-        <Select value={breite} onValueChange={(v) => onChange({ ...block, width: v }, 'width')}>
-          <SelectTrigger className="min-h-11 rounded-xl" aria-label="Breite des Bildes">
-            <SelectValue placeholder={s(block.width) || 'ganze Breite'} />
-          </SelectTrigger>
-          <SelectContent>
-            {BREITEN.map((b) => (
-              <SelectItem key={b.wert} value={b.wert}>
-                {b.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <Label htmlFor={reglerId}>Breite</Label>
+          <span className="text-sm tabular-nums text-ws-muted" aria-live="polite">
+            {breite} % der Seitenbreite
+          </span>
+        </div>
+        <input
+          id={reglerId}
+          type="range"
+          min={BREITE_MIN}
+          max={BREITE_MAX}
+          step={1}
+          value={breite}
+          onChange={(e) => onChange(setzeBreite(block, rasteEin(Number(e.target.value), true)), 'width')}
+          className="block min-h-11 w-full accent-ws-green"
+        />
+        <div className="flex flex-wrap gap-2">
+          {[33, 50, 100].map((p) => (
+            <Button key={p} type="button" variant="outline" className={cn(NEBENAKTION, breite === p && 'border-ws-green bg-ws-green/15 text-ws-green hover:bg-ws-green/15')} aria-pressed={breite === p} onClick={() => onChange(setzeBreite(block, p), 'width')}>
+              {p === 100 ? 'Ganz' : p === 50 ? 'Halb' : 'Klein'} ({p} %)
+            </Button>
+          ))}
+        </div>
+        <p className="text-xs text-ws-muted">In der Vorschau lässt sich die Breite auch an den Ecken des Bildes ziehen. Beim Ziehen rastet sie ein; mit Alt (⌥) geht es stufenlos.</p>
       </div>
+      {klein && textDaneben === 'aus' && (
+        <div className="space-y-1.5">
+          <Label>Ausrichtung</Label>
+          <AdminSegmented
+            value={ausrichtung}
+            onChange={(v) => onChange(setzeAusrichtung(block, v), 'align')}
+            ariaLabel="Ausrichtung des Bildes"
+            options={AUSRICHTUNGEN.map((x) => ({ value: x.wert, label: x.name }))}
+          />
+        </div>
+      )}
+      <div className="space-y-1.5">
+        <Label>Text daneben</Label>
+        <AdminSegmented<TextDaneben>
+          value={textDaneben}
+          onChange={(v) => onChange(setzeTextDaneben(block, v), 'text_neben')}
+          ariaLabel="Text neben dem Bild"
+          options={[
+            { value: 'aus', label: 'Aus' },
+            { value: 'links', label: 'Bild links' },
+            { value: 'rechts', label: 'Bild rechts' },
+          ]}
+        />
+        <p className="text-xs text-ws-muted">
+          {textDaneben === 'aus' ? 'Der nächste Lehrtext kann neben dem Bild stehen. Auf dem Handy steht das Bild immer über dem Text.' : 'Der Lehrtext direkt nach dem Bild steht daneben (höchstens halbe Bildbreite).'}
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label>Beschriften</Label>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="outline" className={NEBENAKTION} disabled={!hatBild(block)} onClick={() => setBeschriften(true)}>
+            <Tag className="mr-1.5 size-4" aria-hidden /> Bild beschriften …
+          </Button>
+          <span className="text-sm text-ws-muted">{marken.length === 0 ? 'Keine Markierungen' : marken.length === 1 ? '1 Markierung' : `${marken.length} Markierungen`}</span>
+        </div>
+      </div>
+      <BildBeschriften offen={beschriften} onOpenChange={setBeschriften} pfad={pfad} marken={marken} onFertig={(m) => onChange(setzeMarken(block, m), 'marks')} />
+    </div>
+  )
+}
+
+// ── Galerie (gallery, PROJ-105) ─────────────────────────────────────────────
+
+export function GalerieFormular({ block, onChange }: FormProps) {
+  const bilder = leseGalerieBilder(block)
+  const spalten = leseSpalten(block.columns)
+  const gleich = s(block.shape) !== 'original'
+  const nummeriert = block.numbered === true
+  const [offen, setOffen] = useState<{ art: 'hinzufuegen' } | { art: 'bild' | 'bearbeiten' | 'beschriften'; index: number } | null>(null)
+  const setzeBilder = (neu: GalerieBild[], feld: string) => onChange(setzeGalerieBilder(block, neu), feld)
+  const einzel = galerieAlsEinzelbild(block)
+  const aktiv = offen && offen.art !== 'hinzufuegen' ? bilder[offen.index] : undefined
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label>Spalten</Label>
+          <AdminSegmented
+            value={String(spalten) as '2' | '3' | '4'}
+            onChange={(v) => onChange({ ...block, columns: Number(v) }, 'columns')}
+            ariaLabel="Anzahl der Spalten"
+            options={[
+              { value: '2', label: '2' },
+              { value: '3', label: '3' },
+              { value: '4', label: '4' },
+            ]}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Bildform</Label>
+          <AdminSegmented
+            value={gleich ? 'gleich' : 'original'}
+            onChange={(v) => onChange({ ...block, shape: v }, 'shape')}
+            ariaLabel="Form der Bilder"
+            options={[
+              { value: 'gleich', label: 'Gleich hoch' },
+              { value: 'original', label: 'Originalform' },
+            ]}
+          />
+        </div>
+      </div>
+      <label className="flex min-h-11 items-center gap-3 text-sm">
+        <Switch checked={nummeriert} onCheckedChange={(v) => onChange({ ...block, numbered: v }, 'numbered')} aria-label="Fotos automatisch nummerieren" />
+        Fotos automatisch nummerieren („Foto 1“, „Foto 2“ …)
+      </label>
+      {bilder.length === 1 && einzel && (
+        <div className="rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3 text-sm" role="status">
+          <p>Eine Galerie braucht mindestens {GALERIE_MIN} Bilder.</p>
+          <Button type="button" variant="outline" className={cn(NEBENAKTION, 'mt-2')} onClick={() => onChange(einzel, 'type')}>
+            In Einzelbild umwandeln
+          </Button>
+        </div>
+      )}
+      <Liste
+        titel={`Bilder (${bilder.length} von ${GALERIE_MAX})`}
+        einzahl="Bild"
+        eintraege={bilder}
+        neu={(): GalerieBild => ({ path: '', alt: '' })}
+        onChange={(l) => setzeBilder(l, 'images')}
+        hinzufuegen={bilder.length >= GALERIE_MAX ? () => undefined : () => setOffen({ art: 'hinzufuegen' })}
+      >
+        {(b, i, setze) => (
+          <>
+            <div className="flex flex-wrap items-center gap-2">
+              <GalerieVorschau pfad={b.path} />
+              <div className="flex min-w-0 flex-wrap gap-2">
+                <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setOffen({ art: 'bild', index: i })}>
+                  {b.path ? 'Anderes Bild' : 'Bild wählen'}
+                </Button>
+                {b.path && (
+                  <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setOffen({ art: 'bearbeiten', index: i })}>
+                    Zuschneiden und drehen
+                  </Button>
+                )}
+                {b.path && (
+                  <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setOffen({ art: 'beschriften', index: i })}>
+                    <Tag className="mr-1.5 size-4" aria-hidden /> Beschriften{b.marks?.length ? ` (${b.marks.length})` : ''}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <Feld label={`Alternativtext Bild ${i + 1}`} pflicht wert={b.alt} onChange={(v) => setze({ ...b, alt: v })} />
+            <Feld label={`Unterschrift Bild ${i + 1} (optional)`} wert={b.caption ?? ''} onChange={(v) => setze(v ? { ...b, caption: v } : (({ caption: _c, ...rest }) => (void _c, rest))(b))} />
+          </>
+        )}
+      </Liste>
+      {bilder.length >= GALERIE_MAX && <p className="text-sm text-ws-muted">Mehr als {GALERIE_MAX} Bilder passen nicht in eine Galerie.</p>}
+      <BildAuswahl
+        offen={!!offen && offen.art !== 'beschriften'}
+        onOpenChange={(o) => !o && setOffen(null)}
+        mitAlt
+        alt={aktiv?.alt ?? ''}
+        aktuell={aktiv?.path}
+        bearbeite={offen?.art === 'bearbeiten' && aktiv ? aktiv.path : undefined}
+        onWaehle={(p, a, ae) => {
+          const o = offen
+          setOffen(null)
+          if (!o) return
+          if (o.art === 'hinzufuegen') {
+            setzeBilder([...bilder, { path: p, alt: a ?? '' }], 'images')
+            return
+          }
+          setzeBilder(
+            bilder.map((x, j) => {
+              if (j !== o.index) return x
+              const marken = ae ? wendeBildAenderungAn({ type: 'image', marks: x.marks }, p, undefined, ae).block : null
+              const rest: GalerieBild = { ...x, path: p, ...(a !== undefined && a.trim() ? { alt: a } : {}) }
+              if (ae) return { ...rest, marks: leseMarken(marken as Block) }
+              // Anderes Bild: Markierungen gehörten zum alten
+              return p !== x.path ? (({ marks: _m, ...r }) => (void _m, r))(rest) : rest
+            }),
+            'images',
+          )
+        }}
+      />
+      <BildBeschriften
+        offen={offen?.art === 'beschriften'}
+        onOpenChange={(o) => !o && setOffen(null)}
+        pfad={offen?.art === 'beschriften' && aktiv ? aktiv.path : ''}
+        marken={aktiv?.marks ?? []}
+        onFertig={(m) => {
+          if (offen?.art !== 'beschriften') return
+          const index = offen.index
+          setzeBilder(
+            bilder.map((x, j) => (j === index ? (m.length ? { ...x, marks: m } : (({ marks: _m, ...r }) => (void _m, r))(x)) : x)),
+            'images',
+          )
+        }}
+      />
+      <div className="flex items-center gap-2 text-xs text-ws-muted">
+        <Plus className="size-3.5" aria-hidden /> Mehrere Bild-Blöcke lassen sich in der Vorschau wählen und über „⋯“ als Galerie zusammenfassen.
+      </div>
+    </div>
+  )
+}
+
+function GalerieVorschau({ pfad }: { pfad: string }) {
+  const bild = useGrossesBild(pfad)
+  return (
+    <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-ws-line bg-white">
+      {pfad && bild === null ? (
+        <Loader2 className="size-4 animate-spin text-ws-muted" aria-label="Bild wird geladen" />
+      ) : bild && bild !== 'fehler' ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data:-Adresse vom Kern
+        <img src={bild} alt="" className="size-full object-cover" />
+      ) : (
+        <ImageIcon className="size-5 text-ws-faint" aria-hidden />
+      )}
     </div>
   )
 }
@@ -917,6 +1156,7 @@ export const KATALOG_FORMULARE: Record<string, (p: FormProps) => React.ReactNode
   tabelle: TabelleFormular,
   diagramm: DiagrammFormular,
   image: BildFormular,
+  gallery: GalerieFormular,
   drag_drop: ZuordnenFormular,
   crossword: KreuzwortFormular,
   reihenfolge: ReihenfolgeFormular,

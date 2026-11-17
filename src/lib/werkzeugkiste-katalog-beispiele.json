@@ -10,6 +10,23 @@
     "caption": "Abb.: Bildunterschrift",
     "width": "100%"
   },
+  "gallery": {
+    "type": "gallery",
+    "columns": 3,
+    "shape": "gleich",
+    "images": [
+      {
+        "path": "",
+        "alt": "Beschreibe hier in einem Satz, was auf dem ersten Bild zu sehen ist.",
+        "caption": "Bild 1"
+      },
+      {
+        "path": "",
+        "alt": "Beschreibe hier in einem Satz, was auf dem zweiten Bild zu sehen ist.",
+        "caption": "Bild 2"
+      }
+    ]
+  },
   "accordion": {
     "type": "accordion",
     "items": [

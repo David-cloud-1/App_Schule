@@ -1,8 +1,8 @@
 # PROJ-105: Baukasten – Bild neben Text & Bild-Galerie
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-17
 
 ## Idee in einem Satz
 Ein Bild kann links oder rechts neben einem Lehrtext stehen, und mehrere Bilder lassen sich als Galerie nebeneinander anordnen, zum Beispiel „Foto 1–4“ in einer Reihe. Auf dem Handy der Schüler stapelt sich alles sauber untereinander.
@@ -81,7 +81,15 @@ Teil der Reihe „Baukasten direkt“, Übersicht und Leitbild in PROJ-101.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+Siehe PROJ-104 (gemeinsame Architektur).
+- **Text neben Bild:** Eigenschaft `text_neben` (links/rechts) am Bild. Der Kern verbindet das Bild mit dem **folgenden** Lehrtext zu `div.paar` (beide Abschnitte behalten ihre Marke `data-wk`, bleiben einzeln anklickbar). Das Bild schwebt (`float`) mit höchstens der halben Breite, der Text fließt darum und darunter weiter; unter 600 px steht das Bild darüber.
+- **Galerie:** Eigener Block `gallery` (`images[]` mit `path`, `alt`, `caption`, `marks`; `columns` 2–4, `shape` gleich/original, `numbered`). Höchstens 12 Bilder. Raster, Leuchtkasten (Tastatur, Fokus-Einschluss, Esc) im Laufzeit-Skript der Seite; im Druck ohne Leuchtkasten.
+- **Zusammenfassen/Auflösen:** reine Funktionen in `werkzeugkiste-bild-block.ts`, aufgerufen vom „⋯“-Menü.
+
+## Umsetzung (2026-11-17)
+- Gebaut: „Text daneben“ (Aus/Bild links/Bild rechts) im Bild-Formular, Kern-Darstellung mit Paar; Galerie-Block im Katalog (Gruppe Lesen, Skizze, Beispiel), Formular (Spalten, Bildform, Nummerierung, je Bild Alternativtext/Unterschrift/Zuschneiden/Beschriften, Reihenfolge per Pfeilen, Entfernen, +Bild bis 12), „Galerie mit nur einem Bild“ mit Angebot „In Einzelbild umwandeln“, „Als Galerie zusammenfassen“ (mind. 2 gewählte Bilder) und „Galerie auflösen“ im „⋯“-Menü; Prüfstelle meldet wenig Bilder, fehlenden Pfad und Alternativtext.
+- **Abweichungen:** (1) Reihenfolge in der Galerie per Pfeil-Knöpfen statt Ziehen; Dateien/Bild-Blöcke lassen sich nicht in die Galerie ziehen. (2) Neue Galerie startet mit zwei leeren Plätzen statt Mehrfachauswahl-Bildfenster. (3) Platzhalter „Text hier schreiben“ bei fehlendem Text daneben entfällt: Ohne folgenden Lehrtext bleibt das Bild allein. (4) Ein Verschieben löst die Verbindung nicht aktiv; sie besteht nur, solange ein Lehrtext direkt folgt. (5) „Bild mit Text daneben zur Galerie“: `text_neben` wird beim Zusammenfassen nicht übernommen (still gelöst).
+- **Offen:** Browser-Test (Leuchtkasten, Raster auf 320 px).
 
 ## QA Test Results
 _To be added by /qa_

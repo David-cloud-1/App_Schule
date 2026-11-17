@@ -30,6 +30,10 @@ export const SCHNELLE_TYPEN = ['text', 'image', 'multiple_choice', 'fill_blanks'
 export const WEITERGABE_TASTEN = ['ArrowUp', 'ArrowDown', 'Enter', 'Delete', 'Backspace', 'Escape', 'd', 'e', 'z', 'b', 'c', 'x', 'v'] as const
 export type WeitergabeTaste = (typeof WEITERGABE_TASTEN)[number]
 
+/** PROJ-104: Aktionen der Bild-Leiste in der Seite – nur diese darf die Seite wünschen */
+export const BILD_AKTIONEN = ['austauschen', 'zuschneiden', 'drehenLinks', 'drehenRechts', 'links', 'mitte', 'rechts', 'beschriften', 'alt'] as const
+export type BildAktion = (typeof BILD_AKTIONEN)[number]
+
 export interface Taste {
   key: WeitergabeTaste
   /** ⌘ oder Strg */
@@ -52,6 +56,10 @@ export type VorschauWunsch =
   | { art: 'legeThema'; marke: string }
   | { art: 'kopiere'; marke: string }
   | { art: 'neuesThema' }
+  // PROJ-104: Bildbreite in Prozent (die App begrenzt sie noch einmal), Aktion der Bild-Leiste, Ziel einer abgelegten Datei
+  | { art: 'breite'; marke: string; prozent: number }
+  | { art: 'bildAktion'; marke: string; aktion: BildAktion }
+  | { art: 'dropZiel'; marke: string | null; wo: 'vor' | 'nach' | 'anfang' | 'auf' | null }
   // PROJ-103: Direkt in der Seite schreiben. `html` ist bei Zwischen-/Endstand der Text (Lehrtext: HTML, sonst einfacher Text)
   | { art: 'schreibe'; marke: string; teil: SchreibTeil }
   | { art: 'schreibZwischen'; marke: string; teil: SchreibTeil; html: string }
@@ -129,6 +137,25 @@ export function liesWunsch(daten: unknown): VorschauWunsch | null {
     return m && /^k\d+-e\d+$/.test(m) ? { art: 'kopiere', marke: m } : null
   }
   if (n.wkThemaNeu === true) return { art: 'neuesThema' }
+  if (typeof n.wkBreite === 'string') {
+    const m = marke(n.wkBreite)
+    const prozent = zahl(n.prozent)
+    return m && /^k\d+-e\d+$/.test(m) && prozent !== null && prozent >= 1 && prozent <= 100 ? { art: 'breite', marke: m, prozent } : null
+  }
+  if (typeof n.wkBild === 'string') {
+    const m = marke(n.wkBild)
+    const aktion = (BILD_AKTIONEN as readonly unknown[]).includes(n.aktion) ? (n.aktion as BildAktion) : null
+    return m && /^k\d+-e\d+$/.test(m) && aktion ? { art: 'bildAktion', marke: m, aktion } : null
+  }
+  if ('wkDropZiel' in n) {
+    if (n.wkDropZiel === null) return { art: 'dropZiel', marke: null, wo: null }
+    const m = marke(n.wkDropZiel)
+    const wo = n.wo === 'vor' || n.wo === 'nach' || n.wo === 'anfang' || n.wo === 'auf' ? n.wo : null
+    if (!m || !wo) return null
+    // „anfang“ gehört einem Thema, „vor/nach/auf“ einem Block
+    if (wo === 'anfang' ? !/^k\d+$/.test(m) : !/^k\d+-e\d+$/.test(m)) return null
+    return { art: 'dropZiel', marke: m, wo }
+  }
   if (typeof n.wkSchreibe === 'string') {
     const m = marke(n.wkSchreibe)
     const teil = schreibTeil(n.teil)

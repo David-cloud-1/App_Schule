@@ -28,6 +28,7 @@ import {
   dupliziereBlock,
   hatAufgaben,
   loescheBlock,
+  setzeBlock,
   sprungmarke,
   typName,
   verschiebeThema,
@@ -53,10 +54,26 @@ import {
   type Ziel,
 } from '@/lib/werkzeugkiste-bloecke'
 import { beispielBefunde, editorBefunde } from '@/lib/werkzeugkiste-katalog'
+import {
+  fasseZurGalerieZusammen,
+  kannZurGalerie,
+  loeseGalerieAuf,
+  setzeAusrichtung,
+  setzeBreite,
+  hatBild,
+  begrenzeBreite,
+} from '@/lib/werkzeugkiste-bild-block'
 import { HAUPTAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { EditorGliederung, type Auswahl, type EinfuegeAnfrage, type ThemaLoeschenAnfrage } from '@/components/werkzeugkiste/editor/editor-gliederung'
 import { EditorSchublade, gueltigeAuswahl } from '@/components/werkzeugkiste/editor/editor-schublade'
 import { MaterialBilderProvider } from '@/components/werkzeugkiste/editor/material-bilder'
+import {
+  BildWerkzeuge,
+  KEINE_BILDANFRAGE,
+  liesBilderAusZwischenablage,
+  type BildAnfrage,
+  type DateiZiel,
+} from '@/components/werkzeugkiste/editor/bild-werkzeuge'
 import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
 import type { Taste, VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/block-menue'
@@ -67,7 +84,7 @@ import {
   einfuegeortAusMarke,
   neuesThemaNach,
 } from '@/components/werkzeugkiste/editor/einfuege-stelle'
-import { EditorVorschau, type Modus } from '@/components/werkzeugkiste/editor/editor-vorschau'
+import { EditorVorschau, type DateiZielMarke, type Modus } from '@/components/werkzeugkiste/editor/editor-vorschau'
 import { stelleStimmt, useEditorVorschau, useEditorZustand } from '@/components/werkzeugkiste/editor/use-editor-zustand'
 import {
   direktBearbeitbar,
@@ -237,6 +254,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   // PROJ-97: Bitte an die Gliederung, den Katalog zu öffnen (Kürzel, „+“ in der schmalen Leiste und in der Vorschau)
   const [einfuegenAnfrage, setEinfuegenAnfrage] = useState<EinfuegeAnfrage>({ nr: 0, ort: null })
   const [themaLoeschenAnfrage, setThemaLoeschenAnfrage] = useState<ThemaLoeschenAnfrage>({ nr: 0, thema: -1 })
+  // PROJ-104/106: Aufträge an die Bild-Werkzeuge (Austauschen, Zuschneiden, Drehen, Beschriften, Dateien)
+  const [bildAnfrage, setBildAnfrage] = useState<BildAnfrage>(KEINE_BILDANFRAGE)
   const istMobil = useIsMobile()
   const platzFuerAlles = useMindestBreite(1280)
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
@@ -469,6 +488,12 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         }
       }
     } else {
+      // PROJ-104: Ein kopiertes Bild (Screenshot) wird ein Bild-Block
+      const bilder = await liesBilderAusZwischenablage()
+      if (bilder.length > 0) {
+        setBildAnfrage((x) => ({ nr: x.nr + 1, art: 'dateien', dateien: bilder, ziel: { art: 'einfuegen', ziel } }))
+        return
+      }
       // Nichts Eigenes kopiert: normaler Text aus der Zwischenablage des Systems wird ein Lehrtext
       let text = ''
       try {
@@ -511,6 +536,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       setAuswahl(null)
       return true
     }
+    // PROJ-104: Die Vorschau merkt sich das Ziel einer abgelegten Datei selbst
+    if (w.art === 'dropZiel') return true
     if (w.art === 'neuesThema') {
       if (z.gesperrt) return true
       // Hinter dem letzten Thema; das neue Thema ist danach gewählt und sein Formular offen
@@ -577,6 +604,48 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         setSchreiben({ nr, marke: w.marke, teil: w.teil, html: w.teil === 'text' ? wert : undefined })
         return true
       }
+      case 'breite': {
+        if (z.gesperrt || a.art !== 'block') return true
+        const b = z.struktur.chapters[a.thema]?.elements[a.block]
+        if (!b || b.type !== 'image' || !hatBild(b)) return true
+        const prozent = begrenzeBreite(w.prozent)
+        // Mit „Text daneben“ ist höchstens die halbe Breite sinnvoll
+        const grenze = b.text_neben === 'links' || b.text_neben === 'rechts' ? Math.min(prozent, 50) : prozent
+        z.aendere((s) => {
+          const alt = s.chapters[a.thema]?.elements[a.block]
+          if (!alt || alt.type !== 'image') return s
+          return setzeBlock(s, { thema: a.thema, block: a.block }, setzeBreite(alt, grenze))
+        })
+        return true
+      }
+      case 'bildAktion': {
+        if (a.art !== 'block') return false
+        const ort = { thema: a.thema, block: a.block }
+        const b = z.struktur.chapters[a.thema]?.elements[a.block]
+        if (!b || b.type !== 'image') return true
+        if (w.aktion === 'alt') {
+          setAuswahl(a)
+          setVollbreit(false)
+          return true
+        }
+        if (z.gesperrt) return true
+        if (w.aktion === 'links' || w.aktion === 'mitte' || w.aktion === 'rechts') {
+          z.aendere((s) => {
+            const alt = s.chapters[ort.thema]?.elements[ort.block]
+            return alt && alt.type === 'image'
+              ? setzeBlock(s, ort, setzeAusrichtung(alt, w.aktion as 'links' | 'mitte' | 'rechts'))
+              : s
+          })
+          return true
+        }
+        if (w.aktion !== 'austauschen' && !hatBild(b)) return true
+        setBildAnfrage((x) => ({
+          nr: x.nr + 1,
+          art: w.aktion as 'austauschen' | 'zuschneiden' | 'beschriften' | 'drehenLinks' | 'drehenRechts',
+          ort,
+        }))
+        return true
+      }
       case 'bearbeite':
         setAuswahl(a)
         // Die Schublade ist in der Vollbreite-Ansicht ausgeblendet: Wer „Bearbeiten“ klickt, will sie sehen
@@ -624,6 +693,55 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         return true
       }
     }
+  }
+
+  // PROJ-104: Dateien wurden auf die Vorschau gelegt. `ziel` ist die Stelle, die die Seite zuletzt gemeldet hat.
+  function beiDateien(dateien: File[], ziel: DateiZielMarke | null) {
+    if (z.gesperrt) return
+    let dz: DateiZiel | null = null
+    if (ziel) {
+      const a = gueltigeAuswahl(auswahlAusMarke(ziel.marke), z.struktur)
+      if (!a || !stelleStimmt(ziel.marke, z.struktur, v.gebautSchluessel)) {
+        toast.info('Die Vorschau wird gerade aktualisiert. Bitte lege die Datei gleich noch einmal ab.')
+        return
+      }
+      if (ziel.wo === 'auf' && a.art === 'block') dz = { art: 'auf', ort: { thema: a.thema, block: a.block } }
+      else if (ziel.wo === 'anfang' && a.art === 'thema') dz = { art: 'einfuegen', ziel: { thema: a.thema, index: 0 } }
+      else if (a.art === 'block')
+        dz = { art: 'einfuegen', ziel: { thema: a.thema, index: a.block + (ziel.wo === 'vor' ? 0 : 1) } }
+    }
+    if (!dz) {
+      const zl = einfuegeZiel()
+      if (!zl) {
+        toast.info('Lege zuerst ein Thema an.')
+        return
+      }
+      dz = { art: 'einfuegen', ziel: zl }
+    }
+    const endgueltig = dz
+    setBildAnfrage((x) => ({ nr: x.nr + 1, art: 'dateien', dateien, ziel: endgueltig }))
+  }
+
+  // PROJ-105: Mehrere gewählte Bilder zu einer Galerie zusammenfassen und wieder auflösen
+  function zurGalerie() {
+    if (z.gesperrt) return
+    const r = fasseZurGalerieZusammen(z.struktur, wahlOrte)
+    if (!r) {
+      toast.info('Wähle mindestens zwei Bilder (höchstens 12), die schon ein Bild haben.')
+      return
+    }
+    z.aendere((s) => fasseZurGalerieZusammen(s, wahlOrte)?.struktur ?? s)
+    waehleOrte([r.ort])
+    toast.success('Galerie angelegt', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
+  }
+  function galerieAufloesen() {
+    const ort = wahlOrte[0]
+    if (z.gesperrt || !ort) return
+    const r = loeseGalerieAuf(z.struktur, ort)
+    if (!r) return
+    z.aendere((s) => loeseGalerieAuf(s, ort)?.struktur ?? s)
+    waehleOrte(r.orte)
+    toast.success('Galerie aufgelöst', { action: { label: 'Rückgängig', onClick: z.rueckgaengig } })
   }
 
   // PROJ-103: Text aus der Seite übernehmen. Die Seite schreibt nur, die App reinigt und speichert.
@@ -1118,6 +1236,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             onVollbreit={() => setVollbreit((b) => !b)}
             mehrMarken={mehrMarken}
             schubladeOffen={schubladeZeigen && schubladeAktiv}
+            onDateien={beiDateien}
           />
         </section>
         {schubladeZeigen && schubladeAktiv && gewaehlt && (
@@ -1159,6 +1278,17 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         }}
         onAufheben={() => setAuswahl(null)}
         onLoesche={loescheAuswahl}
+        onGalerie={zurGalerie}
+        onGalerieAufloesen={galerieAufloesen}
+        kannGalerie={kannZurGalerie(z.struktur, wahlOrte)}
+      />
+      <BildWerkzeuge
+        materialId={daten.id}
+        anfrage={bildAnfrage}
+        struktur={z.struktur}
+        aendere={z.aendere}
+        gesperrt={!!z.gesperrt}
+        beiNeuesBild={(orte) => waehleOrte(orte)}
       />
 
       <AlertDialog open={!!loeschenFrage} onOpenChange={(o) => !o && setLoeschenFrage(null)}>

@@ -10,6 +10,8 @@ import {
   ClipboardCopy,
   ClipboardPaste,
   Copy,
+  LayoutGrid,
+  Rows3,
   SquareDashedMousePointer,
   Scissors,
   Trash2,
@@ -62,6 +64,9 @@ export function BlockMenue({
   onGleiche,
   onAufheben,
   onLoesche,
+  onGalerie,
+  onGalerieAufloesen,
+  kannGalerie = false,
 }: {
   anker: MenueAnker | null
   onClose: () => void
@@ -79,6 +84,10 @@ export function BlockMenue({
   onGleiche: (imThema: boolean) => void
   onAufheben: () => void
   onLoesche: () => void
+  /** PROJ-105: Gewählte Bilder zur Galerie zusammenfassen / Galerie auflösen */
+  onGalerie?: () => void
+  onGalerieAufloesen?: () => void
+  kannGalerie?: boolean
 }) {
   const apple = useIsApplePlatform()
   const mod = apple ? '⌘' : 'Strg+'
@@ -124,6 +133,16 @@ export function BlockMenue({
               {!viele && wechselZiele(typ).length > 0 && (
                 <DropdownMenuItem onSelect={() => setWechsel(ort)}>
                   <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln …
+                </DropdownMenuItem>
+              )}
+              {viele && kannGalerie && onGalerie && (
+                <DropdownMenuItem onSelect={onGalerie}>
+                  <LayoutGrid className="mr-2 size-4" aria-hidden /> Als Galerie zusammenfassen
+                </DropdownMenuItem>
+              )}
+              {!viele && typ === 'gallery' && onGalerieAufloesen && (
+                <DropdownMenuItem onSelect={onGalerieAufloesen}>
+                  <Rows3 className="mr-2 size-4" aria-hidden /> Galerie auflösen
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
