@@ -64,8 +64,8 @@ function titelUndZeile(auswahl: Exclude<Auswahl, null>, struktur: Struktur): { t
 
 /**
  * Schublade des Baukasten-Editors (PROJ-96): Hier – und nicht mehr mitten in
- * der Gliederung – wird die gewählte Stelle bearbeitet (Formular, Rohfassung,
- * Text-Editor, „Typ wechseln“). Am Desktop steht sie als Spalte neben der
+ * der Gliederung – wird die gewählte Stelle bearbeitet (Formular, Quelltext,
+ * Text-Editor, „Aufgabentyp ändern“). Am Desktop steht sie als Spalte neben der
  * Vorschau, damit die Seite sichtbar und bedienbar bleibt; auf Handy und
  * Tablet hochkant ist sie ein Blatt von unten.
  */
@@ -177,7 +177,7 @@ function SchubladeInhalt({ auswahl, struktur, aendere, rueckgaengig, materialId,
     return (
       <MitRohfassung
         materialId={materialId}
-        beschriftung="Rohfassung: Lernzielkontrolle"
+        beschriftung="Quelltext: Lernzielkontrolle"
         // Der Kern liest einzelne Blöcke nur mit `type` – die Lernzielkontrolle bekommt dafür eine Hilfsmarke
         block={{ type: 'final_chapter', ...(struktur.final_chapter ?? { title: 'Lernzielkontrolle' }) }}
         onRohUebernommen={(b) => {
@@ -241,7 +241,7 @@ function BlockInhalt({
       {kannWechseln && (
         <div className="mb-3 flex justify-end">
           <Button type="button" variant="outline" className={NEBENAKTION} onClick={() => setWechselOffen(true)}>
-            <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln
+            <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Aufgabentyp ändern
           </Button>
         </div>
       )}
@@ -276,8 +276,8 @@ function BlockInhalt({
 
 /**
  * Bearbeitungsfeld eines Blocks (Paket 2): Lehrtext im Text-Editor, die
- * häufigen Aufgabentypen im Formular (mit Umschalter zur Rohfassung), alles
- * andere als Rohfassung. Formular und Text-Editor ändern sofort.
+ * häufigen Aufgabentypen im Formular (mit Umschalter zum Quelltext), alles
+ * andere als Quelltext. Formular und Text-Editor ändern sofort.
  */
 function BlockBearbeiten({
   materialId,
@@ -314,20 +314,20 @@ function BlockBearbeiten({
       <EditorRohfassung
         materialId={materialId}
         block={block}
-        beschriftung={`Rohfassung: ${name}`}
+        beschriftung={`Quelltext: ${name}`}
         onUebernehmen={onRohUebernommen}
         onAbbrechen={schliessen}
       />
     )
   }
   return (
-    <MitRohfassung materialId={materialId} block={block} beschriftung={`Rohfassung: ${name}`} onRohUebernommen={onRohUebernommen}>
+    <MitRohfassung materialId={materialId} block={block} beschriftung={`Quelltext: ${name}`} onRohUebernommen={onRohUebernommen}>
       <Formular block={block} onChange={(neu, feld) => onChange(neu, `${gruppe}-${feld}`)} />
     </MitRohfassung>
   )
 }
 
-/** Formular mit Umschalter zur Rohfassung (für Sonderfälle, die das Formular nicht abdeckt) */
+/** Formular mit Umschalter zum Quelltext (für Sonderfälle, die das Formular nicht abdeckt) */
 function MitRohfassung({
   materialId,
   block,
@@ -350,7 +350,7 @@ function MitRohfassung({
         onChange={setAnsicht}
         options={[
           { value: 'formular', label: 'Formular' },
-          { value: 'roh', label: 'Rohfassung' },
+          { value: 'roh', label: 'Quelltext' },
         ]}
       />
       {ansicht === 'formular' ? (

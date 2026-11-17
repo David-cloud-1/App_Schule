@@ -20,7 +20,7 @@ import { planeWechsel, wechselZiele, type WechselPlan } from '@/lib/werkzeugkist
 import { typName, type Block } from '@/lib/werkzeugkiste-editor'
 
 /**
- * Typ wechseln (PROJ-95): Katalog im Wechsel-Modus, dann ein Dialog mit „Wird übernommen /
+ * Aufgabentyp ändern (PROJ-95): Katalog im Wechsel-Modus, dann ein Dialog mit „Wird übernommen /
  * Geht verloren / Bitte prüfen“. Erst „Wechseln“ ändert den Block. Unveränderte Beispielblöcke
  * bekommen ohne Dialog das Beispiel des Zieltyps (E4).
  */
@@ -140,12 +140,12 @@ function Abschnitt({ titel, icon, eintraege, warnung }: { titel: string; icon: R
   )
 }
 
-/** Knopf „Typ wechseln“ für geöffnete Blöcke und Kapiteltest-Fragen; fehlt bei Typen ohne Familie */
+/** Knopf „Aufgabentyp ändern“ für geöffnete Blöcke und Kapiteltest-Fragen; fehlt bei Typen ohne Familie */
 export function TypWechselKnopf({
   block,
   onWechsel,
   erlaubt,
-  beschriftung = 'Typ wechseln',
+  beschriftung = 'Aufgabentyp ändern',
   rueckgaengig,
 }: {
   block: Block

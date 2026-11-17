@@ -56,6 +56,7 @@ export const AW_CSS = [
   `.wk-aw-rueck{margin:2px 0 4px 36px;width:calc(100% - 36px);font-size:.9rem;color:${F.blauText}}`,
   `.wk-aw-neu{display:flex;align-items:center;gap:8px;margin-top:6px;padding:6px 8px;border:1px dashed ${F.leise};border-radius:6px;background:transparent;color:${F.blauText};font:inherit;cursor:pointer;width:100%;text-align:left}`,
   `.wk-aw-neu:hover{background:${F.feldGrund};border-color:${F.blau}}`,
+  `.wk-aw-tipp{margin:4px 0 0;font-size:.9rem;color:${F.leise}}`,
   `.wk-aw-hinweis{margin:6px 0 0;padding:6px 10px;border-radius:6px;background:${F.orangeGrund};color:${F.orange};font-size:.9rem}`,
   // Fußleiste: klebt beim Scrollen unten an der Aufgabe
   `.wk-aw-fuss{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:6px;margin:14px -18px 0;padding:8px 12px;border-top:1px solid #c9cfd8;background:${F.grund};font:14px/1.3 system-ui,sans-serif}`,

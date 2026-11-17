@@ -320,6 +320,7 @@ export function lueckenTeil(w: Werk, teil: LueckenTeil): VNode {
         }
       }}
     ></div>
+    <p class="wk-aw-tipp">So geht’s: Wort im Text markieren, dann „${teil.knopf}“ wählen.</p>
     ${schwebe && schwebeVNode(schwebe)}
     ${fenster !== null && fensterVNode(fenster)}
     ${teil.typ === 'drag_words' &&

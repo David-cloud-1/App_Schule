@@ -5,7 +5,7 @@ import { SeitenGroesse } from './editor-vorschau'
 describe('Platzanzeige der Seite (PROJ-92)', () => {
   it('zeigt Größe in MB von 8 MB', () => {
     render(<SeitenGroesse bytes={3_200_000} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Seite: 3,2 MB von 8 MB')
+    expect(screen.getByRole('status')).toHaveTextContent('Seitengröße: 3,2 MB von 8 MB')
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '40')
   })
 

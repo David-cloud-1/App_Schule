@@ -176,7 +176,7 @@
   },
   "fill_blanks": {
     "type": "fill_blanks",
-    "text": "Eine Woche hat *sieben/7* Tage, ein Jahr hat *zwölf/12* Monate. Ersetze diesen Text durch deinen eigenen und markiere die Lücken mit Sternchen."
+    "text": "Eine Woche hat *sieben/7* Tage, ein Jahr hat *zwölf/12* Monate. Ersetze diesen Text durch deinen eigenen. Markiere ein Wort und wähle „Als Lücke“."
   },
   "advanced_fill_blanks": {
     "type": "advanced_fill_blanks",

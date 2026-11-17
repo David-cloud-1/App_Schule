@@ -48,7 +48,7 @@ export interface MenueAnker {
 
 /**
  * „⋯“-Menü der Block-Leiste in der Vorschau (PROJ-101, PROJ-102). Die Leiste selbst steckt in der
- * Seite, das Menü gehört der App: Es öffnet Dialoge der App (Typ wechseln) und sieht aus
+ * Seite, das Menü gehört der App: Es öffnet Dialoge der App (Aufgabentyp ändern) und sieht aus
  * wie überall im Lehrkräfte-Bereich. Es geht an der Stelle des Klicks auf.
  * Sind mehrere Blöcke gewählt (`orte`), gilt das Menü für alle zusammen.
  */
@@ -150,7 +150,7 @@ export function BlockMenue({
               </DropdownMenuSub>
               {!viele && wechselZiele(typ).length > 0 && (
                 <DropdownMenuItem onSelect={() => setWechsel(ort)}>
-                  <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln …
+                  <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Aufgabentyp ändern …
                 </DropdownMenuItem>
               )}
               {!viele && typ === 'image' && hatBild(block) && (

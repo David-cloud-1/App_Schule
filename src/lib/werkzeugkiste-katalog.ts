@@ -351,11 +351,24 @@ function gleich(a: unknown, b: unknown): boolean {
   return false
 }
 
+/**
+ * Frühere Fassungen der Beispiele: Blöcke, die damit angelegt wurden, gelten weiter als „Beispiel noch nicht ersetzt“,
+ * auch wenn der Beispieltext inzwischen verbessert wurde.
+ */
+const FRUEHERE_BEISPIELE: Record<string, Block[]> = {
+  fill_blanks: [
+    {
+      type: 'fill_blanks',
+      text: 'Eine Woche hat *sieben/7* Tage, ein Jahr hat *zwölf/12* Monate. Ersetze diesen Text durch deinen eigenen und markiere die Lücken mit Sternchen.',
+    } as Block,
+  ],
+}
+
 /** Enthält der Block noch genau den Beispielinhalt seines Typs? (E2) */
 export function istBeispiel(block: Block | null | undefined): boolean {
   if (!block || typeof block.type !== 'string') return false
-  const vorlage = BEISPIEL[block.type]
-  return !!vorlage && gleich(ohneBild(block), ohneBild(vorlage))
+  const vorlagen = [BEISPIEL[block.type], ...(FRUEHERE_BEISPIELE[block.type] ?? [])].filter(Boolean)
+  return vorlagen.some((v) => gleich(ohneBild(block), ohneBild(v)))
 }
 
 /** Ist eine Frage im Kapiteltest noch eine unveränderte Beispielfrage? */

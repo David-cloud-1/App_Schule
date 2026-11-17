@@ -21,7 +21,7 @@ const CodeMirror = dynamic(() => import('@uiw/react-codemirror'), {
 const ERWEITERUNGEN = [yaml(), EditorView.lineWrapping]
 
 /**
- * Rohfassung eines Blocks (PROJ-89, Paket 1): der Block als YAML, so wie er in
+ * Quelltext eines Blocks (PROJ-89, Paket 1): der Block als YAML, so wie er in
  * der KI-Antwort steht. Übersetzt wird in beide Richtungen vom Kern – so liest
  * der Editor genau wie der Bau. „Übernehmen“ ersetzt den Block im Entwurf.
  */
@@ -36,7 +36,7 @@ export function EditorRohfassung({
   block: Block
   onUebernehmen: (block: Block) => void
   onAbbrechen: () => void
-  /** Zugängliche Beschriftung des Feldes, z. B. „Rohfassung: Lückentext“ */
+  /** Zugängliche Beschriftung des Feldes, z. B. „Quelltext: Lückentext“ */
   beschriftung: string
 }) {
   const { theme } = useWorkspace()
@@ -98,7 +98,7 @@ export function EditorRohfassung({
   return (
     <div className="space-y-3">
       <p className="text-xs text-ws-muted">
-        Rohfassung (YAML): so, wie der Block in der Antwort der KI steht. Einrückung beachten.
+        Quelltext (YAML): so, wie der Block in der Antwort der KI steht. Einrückung beachten.
       </p>
       {text === null ? (
         <div className="flex h-24 items-center gap-2 text-sm text-ws-muted">

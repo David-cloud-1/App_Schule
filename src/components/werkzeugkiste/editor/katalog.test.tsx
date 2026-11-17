@@ -33,7 +33,7 @@ afterEach(() => window.localStorage.clear())
 describe('Katalog-Fenster (PROJ-90)', () => {
   it('zeigt sieben Gruppen und 35 Einträge mit „Gut für“', () => {
     katalog()
-    expect(screen.getByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     for (const g of ['Lesen & Nachschlagen', 'Abfragen', 'Lücken & Wörter', 'Zuordnen & Ordnen', 'Rechnen', 'Spiele & Rätsel', 'Selbstcheck & Wiederholen']) {
       expect(screen.getByRole('heading', { name: g })).toBeInTheDocument()
     }

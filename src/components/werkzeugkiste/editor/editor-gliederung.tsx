@@ -379,7 +379,7 @@ export function EditorGliederung({
           variant="outline"
           className={cn(NEBENAKTION, 'min-w-0 flex-1 justify-center')}
           onClick={blockHinzu}
-          title={kuerzel ? `Block hinzufügen (${kuerzel})` : 'Block hinzufügen'}
+          title={kuerzel ? `Element hinzufügen (${kuerzel})` : 'Element hinzufügen'}
         >
           <Plus className="mr-2 size-4 shrink-0" aria-hidden />
           Block
@@ -698,7 +698,7 @@ function ThemaKarte({
               <ArrowDown className="mr-2 size-4" aria-hidden /> Nach unten
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => einfuegenBei({ thema: index, index: bloecke.length })}>
-              <Plus className="mr-2 size-4" aria-hidden /> Block hinzufügen …
+              <Plus className="mr-2 size-4" aria-hidden /> Element hinzufügen …
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={themaDarunter}>
               <Plus className="mr-2 size-4" aria-hidden /> Thema darunter einfügen
@@ -754,10 +754,10 @@ function ThemaKarte({
               variant="outline"
               className={cn(NEBENAKTION, 'w-full justify-center border-dashed')}
               onClick={() => einfuegenBei({ thema: index, index: bloecke.length })}
-              aria-label={`Block hinzufügen in „${name}“`}
+              aria-label={`Element hinzufügen in „${name}“`}
             >
               <Plus className="mr-2 size-4" aria-hidden />
-              Block hinzufügen
+              Element hinzufügen
             </Button>
           </div>
         </SortableContext>
@@ -836,7 +836,7 @@ function BlockZeile({
   const name = typName(typ)
   const kurz = kurzzeile(block)
   const ort = { thema, block: index }
-  // Typ wechseln (PROJ-95): nur Blöcke mit verwandten Typen
+  // Aufgabentyp ändern (PROJ-95): nur Blöcke mit verwandten Typen
   const [wechselOffen, setWechselOffen] = useState(false)
   const kannWechseln = wechselZiele(typ).length > 0
 
@@ -908,7 +908,7 @@ function BlockZeile({
             </DropdownMenuItem>
             {kannWechseln && (
               <DropdownMenuItem onSelect={() => setWechselOffen(true)}>
-                <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Typ wechseln …
+                <ArrowRightLeft className="mr-2 size-4" aria-hidden /> Aufgabentyp ändern …
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />

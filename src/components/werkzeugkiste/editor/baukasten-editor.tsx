@@ -271,7 +271,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [schubladeOffen, setSchubladeOffen] = useState(false)
   const [modus, setModus] = useState<Modus>('bearbeiten')
   const [menue, setMenue] = useState<MenueAnker | null>(null)
-  // Gliederung, Katalog, Typ wechseln: Wer dort wählt, will das Formular sehen (wie vor PROJ-101)
+  // Gliederung, Katalog, Aufgabentyp ändern: Wer dort wählt, will das Formular sehen (wie vor PROJ-101)
   const setAuswahl = useCallback((a: Auswahl) => {
     setAuswahlRoh(a)
     setSchubladeOffen(a !== null)
@@ -924,7 +924,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         schliesseAufgabe(w.marke, 'beende')
         dupliziereBlockAn(sit.ort)
       } else {
-        // Typ wechseln und Rohfassung wohnen (noch) in der Schublade
+        // Aufgabentyp ändern und Rohfassung wohnen (noch) in der Schublade
         schliesseAufgabe(w.marke, 'beende')
         setAuswahl(a)
         setVollbreit(false)
@@ -1354,8 +1354,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               size="icon"
               className="size-11 rounded-xl"
               onClick={oeffneKatalog}
-              aria-label="Block hinzufügen"
-              title={`Block hinzufügen (${kuerzel})`}
+              aria-label="Element hinzufügen"
+              title={`Element hinzufügen (${kuerzel})`}
               disabled={!!z.gesperrt}
             >
               <Plus className="size-5" aria-hidden />

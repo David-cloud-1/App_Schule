@@ -217,7 +217,7 @@ describe('Bearbeiten im Formular und im Text-Editor (Paket 2)', () => {
       type: 'fill_blanks',
       text: 'Der *Spediteur* haftet.',
     })
-    // Umschalter zur Rohfassung ist da
+    // Umschalter zur Quelltext ist da
     expect(screen.getByRole('radiogroup', { name: 'Bearbeiten als' })).toBeInTheDocument()
   })
 
@@ -248,11 +248,11 @@ describe('Sprung-Skript', () => {
 describe('Block einfügen (PROJ-90)', () => {
   const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
 
-  it('„Block hinzufügen“ fügt am Ende des Themas mit Beispiel ein, öffnet ihn und speichert', async () => {
+  it('„Element hinzufügen“ fügt am Ende des Themas mit Beispiel ein, öffnet ihn und speichert', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
-    expect(screen.getByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     fireEvent.click(document.querySelector('[data-katalog-eintrag="true_false"]')!)
     // Formular des neuen Blocks ist offen
     expect(await screen.findByLabelText(/^Aussage/)).toHaveValue('Eine Woche hat sieben Tage. (Ersetze diese Aussage durch deine eigene.)')
@@ -264,7 +264,7 @@ describe('Block einfügen (PROJ-90)', () => {
   it('fügt in ein leeres Thema ein und meldet den Beispielinhalt als Hinweis', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Haftungsgrenzen“/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Haftungsgrenzen“/ }))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="crossword"]')!)
     // Mit dem neuen Block öffnet sich die Schublade, und die Gliederung klappt ein (PROJ-97), bleibt aber im Aufbau
     const gliederung = document.querySelector<HTMLElement>('section[aria-label="Gliederung"]')!
@@ -302,9 +302,9 @@ describe('Block einfügen (PROJ-90)', () => {
   it('Abbrechen im Katalog fügt nichts ein', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Element hinzufügen' })).not.toBeInTheDocument())
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
   })
 
@@ -316,7 +316,7 @@ describe('Block einfügen (PROJ-90)', () => {
     api.ladeMaterialBild.mockResolvedValue({ pfad: 'images/seite2.png', bild: 'data:image/jpeg;base64,BB', breite: 600, hoehe: 300 })
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
     await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
     fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
@@ -333,7 +333,7 @@ describe('Block einfügen (PROJ-90)', () => {
     api.ladeMaterialBild.mockResolvedValue({ pfad: 'images/seite2.png', bild: 'data:image/jpeg;base64,QUJD', breite: 600, hoehe: 300 })
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    fireEvent.click(screen.getByRole('button', { name: /Block hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
     await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
     fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
     fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
@@ -534,7 +534,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   function nachricht(data: unknown, rahmen: HTMLIFrameElement | null, source?: MessageEventSource | null) {
     fireEvent(window, new MessageEvent('message', { data, source: source === undefined ? rahmen?.contentWindow : source }))
   }
-  const katalogOffen = () => screen.queryByRole('heading', { name: 'Block hinzufügen' })
+  const katalogOffen = () => screen.queryByRole('heading', { name: 'Element hinzufügen' })
   async function bereit() {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
@@ -547,7 +547,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: 'Block' }))
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
     await gespeichert()
     expect(typen(1)).toEqual(['memory_game'])
@@ -570,8 +570,8 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
     fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     await screen.findByRole('complementary')
-    fireEvent.click(screen.getByRole('button', { name: 'Block hinzufügen' }))
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Element hinzufügen' }))
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
     await gespeichert()
     expect(typen(0)).toEqual(['text', 'memory_game', 'fill_blanks'])
@@ -583,7 +583,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     fireEvent.keyDown(document.body, { key: 'b', code: 'KeyB', ctrlKey: true, shiftKey: true })
     expect(katalogOffen()).not.toBeInTheDocument()
     fireEvent.keyDown(document.body, { key: 'B', code: 'KeyB', altKey: true, shiftKey: true })
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
   })
 
   it('Tastenkürzel wirkt nicht, solange der Fokus in einem Eingabefeld steht', async () => {
@@ -595,7 +595,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(katalogOffen()).not.toBeInTheDocument()
     feld.remove()
     fireEvent.keyDown(document.body, { key: 'B', code: 'KeyB', altKey: true, shiftKey: true })
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
   })
 
   it('zeigt das Tastenkürzel am Leistenknopf', async () => {
@@ -607,7 +607,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('„+ Darunter“ in der Vorschau öffnet den Katalog, der Block kommt hinter den angeklickten', async () => {
     const rahmen = await bereit()
     nachricht({ wkEinfuegen: 'k0-e0' }, rahmen)
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
     await gespeichert()
     expect(typen(0)).toEqual(['text', 'memory_game', 'fill_blanks'])
@@ -616,7 +616,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   it('„+ Block“ an einem Thema in der Vorschau fügt am Anfang des Themas ein', async () => {
     const rahmen = await bereit()
     nachricht({ wkEinfuegen: 'k0' }, rahmen)
-    expect(await screen.findByRole('heading', { name: 'Block hinzufügen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
     await gespeichert()
     expect(typen(0)).toEqual(['memory_game', 'text', 'fill_blanks'])
@@ -775,12 +775,12 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     const { rahmen } = await bereit()
     nachricht({ wkSchnell: 'k1', typ: 'drag_words' }, rahmen)
     nachricht({ wkSchnell: 'k1', typ: 'text' }, rahmen, window)
-    expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Element hinzufügen' })).not.toBeInTheDocument()
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
     nachricht({ wkSchnell: 'k1', typ: 'fill_blanks' }, rahmen)
     await gespeichert()
     expect(typen(1)).toEqual(['fill_blanks'])
-    expect(screen.queryByRole('heading', { name: 'Block hinzufügen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Element hinzufügen' })).not.toBeInTheDocument()
     // Der neue Block ist gewählt, sein Formular offen
     expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
   })

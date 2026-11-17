@@ -183,8 +183,8 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
             }}>⋯</button>
           ${menue &&
           html`<div class="wk-aw-menue" role="menu">
-            <button type="button" role="menuitem" onClick=${() => aktion('typ')}>Typ wechseln …</button>
-            <button type="button" role="menuitem" onClick=${() => aktion('roh')}>Rohfassung bearbeiten</button>
+            <button type="button" role="menuitem" onClick=${() => aktion('typ')}>Aufgabentyp ändern …</button>
+            <button type="button" role="menuitem" onClick=${() => aktion('roh')}>Quelltext bearbeiten</button>
             <button type="button" role="menuitem" onClick=${() => aktion('duplizieren')}>Block duplizieren</button>
             <button type="button" role="menuitem" class="wk-aw-gefahr" onClick=${() => aktion('loeschen')}>Block löschen</button>
           </div>`}

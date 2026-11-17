@@ -365,8 +365,7 @@ export function EditorVorschau({
 
   return (
     <div className="flex h-full min-h-[60vh] flex-col overflow-hidden rounded-2xl border border-ws-line bg-white">
-      <div className="flex min-h-11 items-center gap-2 border-b border-ws-line bg-ws-surface px-3 text-sm text-ws-muted">
-        <span className="font-semibold text-ws-text">Vorschau</span>
+      <div className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 border-b border-ws-line bg-ws-surface px-3 py-1 text-sm text-ws-muted">
         {onModus && (
           <AdminSegmented
             value={modus}
@@ -394,7 +393,8 @@ export function EditorVorschau({
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {groesse > 0 && <SeitenGroesse bytes={groesse} />}
+          {/* Die Seitengröße zeigt sich erst, wenn es eng wird (ab 80 %), damit die Kopfzeile ruhig bleibt */}
+          {groesse / SEITE_GRENZE_BYTES >= 0.8 && <SeitenGroesse bytes={groesse} />}
           {!laedt && fehler && (
             <Button variant="ghost" size="sm" className="min-h-9 rounded-lg" onClick={neuLaden}>
               <RotateCw className="mr-1.5 size-3.5" aria-hidden /> Erneut versuchen
@@ -490,7 +490,7 @@ export function SeitenGroesse({ bytes }: { bytes: number }) {
       title={voll ? 'Die Seite ist zu groß zum Veröffentlichen. Entferne Bilder oder teile das Material auf.' : undefined}
     >
       <span className="whitespace-nowrap" role="status">
-        Seite: {mb} MB von 8 MB
+        Seitengröße: {mb} MB von 8 MB
       </span>
       <Progress
         value={Math.min(100, Math.round(anteil * 100))}

@@ -43,11 +43,11 @@ beforeEach(() => {
   toast.success.mockClear()
 })
 
-describe('Typ wechseln (PROJ-95)', () => {
+describe('Aufgabentyp ändern (PROJ-95)', () => {
   it('Wechsel-Modus: Titel, nur verwandte Typen wählbar, aktueller Typ markiert, kein „Zuletzt verwendet“', () => {
     window.localStorage.setItem('wk-katalog-zuletzt', JSON.stringify(['crossword']))
     zeige()
-    expect(screen.getByRole('heading', { name: 'Typ wechseln – aktuell: Auswahlfrage' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Aufgabentyp ändern – aktuell: Auswahlfrage' })).toBeInTheDocument()
     expect(screen.queryByText('Zuletzt verwendet')).toBeNull()
     expect(eintrag('true_false')).not.toHaveAttribute('aria-disabled')
     expect(eintrag('single_choice_set')).not.toHaveAttribute('aria-disabled')
@@ -116,7 +116,7 @@ describe('Typ wechseln (PROJ-95)', () => {
 })
 
 describe('Kapiteltest-Formular', () => {
-  it('hat keine Auswahlliste „Fragetyp“ mehr, aber „Typ wechseln“ je Frage (nicht bei Lückentext)', () => {
+  it('hat keine Auswahlliste „Fragetyp“ mehr, aber „Aufgabentyp ändern“ je Frage (nicht bei Lückentext)', () => {
     const block: Block = { type: 'question_set', pass_percentage: 70, questions: [eigeneFrage, { type: 'fill_blanks', text: 'Ein *Test*.' }] }
     render(<KapiteltestFormular block={block} onChange={() => {}} />)
     expect(screen.queryByLabelText(/Fragetyp von/)).toBeNull()

@@ -271,7 +271,7 @@ function wechselLuecken(block: Block, ziel: string): Ergebnis {
   if (mitVarianten && !zielHatVarianten) erg.verloren.push(`Alternative Schreibweisen (${zahl(mitVarianten, 'Lücke', 'Lücken')})`)
   if (mitTipp && !zielHatTipp) erg.verloren.push(zahl(mitTipp, 'Hinweis', 'Hinweise'))
   if (mitTipp && zielHatTipp) erg.uebernommen.push(zahl(mitTipp, 'Tipp', 'Tipps'))
-  if (ziel === 'advanced_fill_blanks') erg.pruefen.push('Die Lücken haben keinen Hinweis. Bei Bedarf in der Rohfassung ergänzen.')
+  if (ziel === 'advanced_fill_blanks') erg.pruefen.push('Die Lücken haben keinen Hinweis. Bei Bedarf im Quelltext ergänzen.')
   if (!luecken.length) erg.pruefen.push('Der Text enthält keine mit Sternchen markierten Wörter.')
 
   const neuerBlock: Block = { type: ziel, text, ...(desc.trim() ? { description: desc } : {}) }

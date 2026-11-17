@@ -38,7 +38,7 @@ export function KatalogDialog({
   erlaubt?: readonly string[]
   /** Wechsel-Modus (PROJ-95): nur diese Typen sind wählbar, `aktuell` ist der Typ des Blocks */
   wechsel?: { aktuell: string; waehlbar: readonly string[] }
-  /** PROJ-108: Weg „Aus Material übernehmen“ (nur beim normalen Hinzufügen, nicht bei Kapiteltest und Typ wechseln) */
+  /** PROJ-108: Weg „Aus Material übernehmen“ (nur beim normalen Hinzufügen, nicht bei Kapiteltest und Aufgabentyp ändern) */
   onAusMaterial?: () => void
 }) {
   const [suche, setSuche] = useState('')
@@ -111,7 +111,7 @@ export function KatalogDialog({
         }}
       >
         <DialogHeader className="space-y-1 border-b border-ws-line p-4 pr-14 text-left sm:p-6 sm:pr-16">
-          <DialogTitle className="text-xl font-bold">{wechsel ? `Typ wechseln – aktuell: ${katalogEintrag(aktuellerKatalogTyp ?? '')?.name ?? 'Block'}` : erlaubt ? 'Frage hinzufügen' : 'Block hinzufügen'}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">{wechsel ? `Aufgabentyp ändern – aktuell: ${katalogEintrag(aktuellerKatalogTyp ?? '')?.name ?? 'Block'}` : erlaubt ? 'Frage hinzufügen' : 'Element hinzufügen'}</DialogTitle>
           <DialogDescription className="text-ws-muted">
             {wechsel
               ? `${erlaubt ? 'Im Kapiteltest sind nur diese Fragetypen möglich. ' : ''}Wähle einen verwandten Typ. Der Inhalt wird soweit möglich übernommen.`
