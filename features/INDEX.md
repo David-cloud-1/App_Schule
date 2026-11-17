@@ -135,6 +135,6 @@
 | PROJ-115 | Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned | [PROJ-115-baukasten-klick-oeffnet-eintrag.md](PROJ-115-baukasten-klick-oeffnet-eintrag.md) | 2026-11-17 |
 | PROJ-116 | Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Planned | [PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md](PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md) | 2026-11-17 |
 | PROJ-117 | Baukasten – Einheitliche Bearbeiten-Optik | Deployed | [PROJ-117-baukasten-einheitliche-bearbeiten-optik.md](PROJ-117-baukasten-einheitliche-bearbeiten-optik.md) | 2026-11-17 |
-| PROJ-118 | Baukasten – Eine Leiste für alles | Approved | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
+| PROJ-118 | Baukasten – Eine Leiste für alles | Deployed | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
 
 ## Next Available ID: PROJ-119

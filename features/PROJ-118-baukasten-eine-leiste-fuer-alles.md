@@ -1,6 +1,6 @@
 # PROJ-118: Baukasten – Eine Leiste für alles
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-17
 
@@ -144,3 +144,13 @@ Ziel: **Eine** Bearbeiten-Leiste, gleich gebaut für jedes Element, mit ganzen W
 **Nicht geprüft:** echtes Handy (Tastatur), Safari/Firefox, Live-Durchgang vor dem Deploy (kein Dev-Server). Live-Sicht nach dem Deploy siehe unten.
 
 **Ergebnis:** keine offenen Critical/High-Fehler → bereit.
+
+## Deployment
+**2026-11-17:** Push auf `main` (Commit b51a7f1; mitgefahren: b4ed8b7, nur der Status-Eintrag „Deployed“ von PROJ-117). Vercel-Production Ready (erstellt 22:07:48), https://spedilern.vercel.app antwortet (Startseite/Admin 307 ohne Anmeldung, /login 200). Keine Migration, keine Datenbank.
+
+### Live-Sicht nach dem Deploy (Chrome, Super-Admin, Material „Basics rund um den LKW (Kopie)“, nichts verändert)
+- Block-Leiste: „Thema · Bearbeiten · Darunter einfügen · Löschen“ und „Lehrtext · Bearbeiten · Darunter einfügen · Duplizieren · ⋯ · Löschen“ ✅. Bei ca. 690 px Vorschaubreite bricht die Block-Leiste am Lehrtext in zwei Zeilen um (⋯ und Löschen in Zeile 2) – kosmetisch, offen.
+- Thema „Bearbeiten“: Leiste „Thema · Enter = Fertig · Fertig“ über der Überschrift ✅; „Fertig“ ohne Eingabe: Rückgängig bleibt aus ✅.
+- Lehrtext (Doppelklick, zweiter Klick und „Bearbeiten“): eine Leiste mit ganzen Wörtern, „Kasten ändern …“, „Als HTML bearbeiten“, „Fertig“ rechts; keine Schublade daneben ✅. Cursor landet an der Klickstelle ✅. „Fertig“ und Esc ohne Eingabe bei einem Text mit Kasten: „Entwurf gespeichert“, Rückgängig aus ✅ (der gemeldete stille Fehler ist live behoben).
+- Lückentext (Klick in den Text): dieselbe Leiste oben „Lückentext · Duplizieren · Löschen · Mehr … · Fertig“, keine Fußzeile ✅; „Fertig“ ohne Eingabe ändert nichts ✅.
+- **Einmal beobachtet, nicht reproduzierbar:** Gleich nach dem ersten Laden (Vorschau wurde noch 13 s neu gebaut) führte „Bearbeiten“ am Lehrtext zu nichts Sichtbarem. Nach Neuladen klappte dieselbe Folge (Thema → Fertig → Lehrtext per Doppelklick, „Bearbeiten“, zweiter Klick) dreimal. Vermutung: Start fiel in den Neubau der Vorschau (die Seite war noch nicht „bereit“). Weiter beobachten.
