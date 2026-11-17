@@ -48,3 +48,18 @@ export function wachse(el: HTMLTextAreaElement | null) {
   el.style.height = 'auto'
   if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight}px`
 }
+
+/** Sekunden als m:ss („90“ → „1:30“); Unsinn ergibt leeren Text */
+export function alsZeit(sek: unknown): string {
+  const n = Number(sek)
+  if (sek === '' || sek == null || !Number.isFinite(n) || n < 0) return ''
+  return `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`
+}
+
+/** „1:30“ oder „90“ ergibt Sekunden; alles andere ergibt null */
+export function ausZeit(text: string): number | null {
+  const t = text.trim()
+  const m = /^(\d{1,3}):([0-5]?\d)$/.exec(t)
+  if (m) return Number(m[1]) * 60 + Number(m[2])
+  return /^\d{1,5}$/.test(t) ? Number(t) : null
+}

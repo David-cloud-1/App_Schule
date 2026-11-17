@@ -1,9 +1,9 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
-import type { AntwortenTeil, WahrFalschTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import type { AntwortenTeil, Hinweis, WahrFalschTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { listenAktionen } from '@/components/werkzeugkiste/editor/aufgabenwerk/listen'
 import { hinweise } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
-import { s, wachse, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
+import { s, wachse, type Block, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
 /**
  * Muster A – Antworten (PROJ-114): Kreis vor der Antwort macht sie richtig, Sprechblase öffnet
@@ -37,7 +37,33 @@ function blase(w: Werk, schluessel: string, nr: number, label: string, voll: boo
   >💬</button>`
 }
 
+/** Eine Antwortenliste – direkt im Block oder verschachtelt (Fallakte, Video, Kapiteltest) */
+export interface AntwortenOptionen {
+  /** Eindeutige Kennung der Liste in der Seite */
+  feld: string
+  einzahl: string
+  mehrzahl: string
+  mindestens: number
+  hoechstens: number
+  schluessel: string
+  textFeld: string
+  richtigFeld: string
+  rueckmeldungFeld: string
+  /** Vorsatz der Fokus-Schlüssel (Standard „antwort“) */
+  praefix?: string
+  holen?: () => Eintrag[]
+  schreibe?: (l: Eintrag[]) => Block
+  notizen: Hinweis[]
+}
+
 export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
+  return antwortenListe(w, { ...teil, notizen: hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld)) })
+}
+
+export function antwortenListe(w: Werk, teil: AntwortenOptionen): VNode {
+  const p = teil.praefix ?? 'antwort'
+  const antKey = (i: number) => `${p}-${i}`
+  const kreisKey = (i: number) => (p === 'antwort' ? `kreis-${i}` : `kreis-${p}-${i}`)
   const L = listenAktionen(w, {
     feld: teil.feld,
     einzahl: teil.einzahl,
@@ -46,10 +72,12 @@ export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
     hoechstens: teil.hoechstens,
     schluessel: teil.schluessel,
     neu: (t) => ({ [teil.textFeld]: t, [teil.richtigFeld]: false, [teil.rueckmeldungFeld]: '' }),
-    fokus: (i) => `antwort-${i}`,
+    fokus: antKey,
+    holen: teil.holen,
+    schreibe: teil.schreibe,
   })
   const antworten = L.eintraege
-  const fehlt = hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld))
+  const fehlt = teil.notizen
   const o = offen(w, teil.feld)
 
   const zeilen = antworten.map((a, i) => {
@@ -64,7 +92,7 @@ export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
           role="radio"
           aria-checked=${richtig ? 'true' : 'false'}
           aria-label=${`${teil.einzahl} ${nr} ist richtig`}
-          data-aw-fokus=${`kreis-${i}`}
+          data-aw-fokus=${kreisKey(i)}
           onClick=${() => {
             w.tue(L.mit(antworten.map((x, j) => ({ ...x, [teil.richtigFeld]: j === i }))), 'richtig')
             w.ansage(`${teil.einzahl} ${nr} ist jetzt richtig.`)
@@ -73,7 +101,7 @@ export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
         <textarea
           class="wk-aw-feld antwort"
           rows="1"
-          data-aw-fokus=${`antwort-${i}`}
+          data-aw-fokus=${antKey(i)}
           aria-label=${`${teil.einzahl} ${nr}`}
           placeholder=${`${teil.einzahl} ${nr}`}
           value=${s(a[teil.textFeld])}
@@ -91,7 +119,7 @@ export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               if (i < antworten.length - 1) {
-                w.fokus(`antwort-${i + 1}`)
+                w.fokus(antKey(i + 1))
                 w.zeichne()
               } else L.neu(i)
             } else if (e.key === 'Backspace' && el.value === '' && antworten.length > teil.mindestens) {
@@ -115,7 +143,7 @@ export function antwortenTeil(w: Werk, teil: AntwortenTeil): VNode {
           onKeyDown=${(e: KeyboardEvent) => {
             if (e.key === 'Enter') {
               e.preventDefault()
-              w.fokus(`antwort-${i}`)
+              w.fokus(antKey(i))
               w.zeichne()
             }
           }}

@@ -126,6 +126,12 @@ export const AW_CSS = [
   '.wk-aw-begriff .wk-aw-feld{flex:1;min-width:0}',
   '.wk-aw-verschieben{flex:none;max-width:9rem}',
   '.wk-aw-unter{margin:0 0 8px 28px}',
+  '.wk-aw-fragenset .wk-aw-liste{gap:12px}',
+  '.wk-aw-karte{list-style:none;border:1px solid #c9cfd8;border-radius:8px;padding:8px 12px 10px}',
+  `.wk-aw-karte-kopf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;color:${F.blauText};font:600 13px/1.4 system-ui,sans-serif}`,
+  '.wk-aw-karte-kopf .wk-aw-wz{opacity:1}',
+  '.wk-aw-neu-reihe{display:flex;flex-wrap:wrap;gap:6px}',
+  '.wk-aw-neu-reihe .wk-aw-neu{width:auto}',
   // Touch: alles 44 px, Werkzeuge immer sichtbar
   '@media (hover:none),(pointer:coarse){.wk-aw-kreis,.wk-aw-wz{width:44px;height:44px}.wk-aw-zeile .wk-aw-wz{opacity:1}.wk-aw-knopf{min-height:44px;min-width:44px}.wk-aw-neu{min-height:44px}.wk-aw-menue button{min-height:44px}.wk-aw-rueck{margin-left:48px;width:calc(100% - 48px)}.wk-aw-eingabe{min-height:44px}.wk-aw-fach-kopf .wk-aw-wz{width:44px;height:44px}.wk-aw-luecke{padding:4px 8px}}',
   '@media print{.wk-aw-schild,.wk-aw-fuss{display:none!important}}',

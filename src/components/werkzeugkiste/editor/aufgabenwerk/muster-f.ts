@@ -1,9 +1,10 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
-import { eintragsName, hinweise, type EintragFeld, type EintraegeTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { echterName, eintragsName, hinweise, type EintragFeld, type EintraegeTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { antwortenListe } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
 import { stringListe } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
 import { listenAktionen } from '@/components/werkzeugkiste/editor/aufgabenwerk/listen'
-import { s, wachse, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
+import { alsZeit, ausZeit, liste, s, wachse, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
 /**
  * Muster F (Schritte) und C kurz (Memory, Kopfrechnen) – PROJ-114: jeder Eintrag eine Zeile mit
@@ -39,12 +40,13 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
     mindestens: teil.mindestens,
     hoechstens: teil.hoechstens,
     schluessel: teil.schluessel,
-    neu: (t) => ({ [erstes.namen[0]]: t, ...(teil.unterliste ? { [teil.unterliste.feld]: Array<string>(teil.unterliste.mindestens).fill('') } : {}) }),
+    neu: (t) => ({ ...(teil.vorlage ? JSON.parse(JSON.stringify(teil.vorlage)) : {}), [erstes.namen[0]]: t, ...(teil.unterliste ? { [teil.unterliste.feld]: Array<string>(teil.unterliste.mindestens).fill('') } : {}) }),
     fokus: (i) => `ef-${i}-0`,
   })
   const eintraege = L.eintraege
   const auf = offene(w, teil.feld)
-  const fehlt = hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld))
+  // Hinweise zu Antworten stehen an der Antwortenliste, nicht unten
+  const fehlt = hinweise(w.block).filter((h) => h.wo.startsWith(teil.feld) && !/-(unter|richtig)-\d+$|-antwort$/.test(h.wo))
   const setze = (i: number, f: EintragFeld, v: string) =>
     L.mit(
       eintraege.map((x, j) => {
@@ -59,6 +61,45 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
 
   const feldEl = (e: Eintrag, i: number, f: EintragFeld, k: number, extra: boolean): VNode => {
     const nr = i + 1
+    if (f.zeit) {
+      const zKey = `rueck-zeit-${i}`
+      const text = typeof w.zustand[zKey] === 'string' ? (w.zustand[zKey] as string) : alsZeit(e[eintragsName(e, f.namen)])
+      const gueltig = text.trim() === '' || ausZeit(text) !== null
+      return html`<input
+        class="wk-aw-feld wk-aw-ef-feld"
+        data-aw-fokus=${`ef-${i}-${k}`}
+        aria-label=${`${f.label} (${teil.einzahl} ${nr}), als mm:ss`}
+        aria-invalid=${gueltig ? 'false' : 'true'}
+        title=${gueltig ? 'Minute:Sekunde, z. B. 2:30' : 'Bitte als mm:ss eingeben, z. B. 2:30'}
+        placeholder=${f.platzhalter}
+        inputmode="numeric"
+        value=${text}
+        onInput=${(ev: Event) => {
+          const v = (ev.currentTarget as HTMLInputElement).value
+          w.zustand[zKey] = v
+          const sek = ausZeit(v)
+          if (sek === null && v.trim() !== '') {
+            w.zeichne()
+            return
+          }
+          const name = eintragsName(e, f.namen)
+          const neu = L.mit(eintraege.map((x, j) => (j === i ? { ...x, [name]: sek ?? 0 } : x)))
+          w.tippe(neu, `${teil.schluessel}-${i}-zeit`)
+        }}
+        onBlur=${() => {
+          delete w.zustand[zKey]
+          w.zeichne()
+        }}
+        onKeyDown=${(ev: KeyboardEvent) => {
+          if (L.tasten(i, ev)) return
+          if (ev.key === 'Enter') {
+            ev.preventDefault()
+            w.fokus(`ef-${i}-${k + 1}`)
+            w.zeichne()
+          }
+        }}
+      />`
+    }
     return html`<textarea
       class="wk-aw-feld wk-aw-ef-feld"
       rows="1"
@@ -81,6 +122,7 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
           ev.preventDefault()
           // Nächstes Feld der Zeile, sonst der nächste Eintrag (oder ein neuer)
           if (!extra && k < zeilenFelder.length - 1) w.fokus(`ef-${i}-${k + 1}`)
+          else if (!extra && teil.unterAntworten) w.fokus(`a${i}-0`)
           else if (!extra && teil.unterliste) w.fokus(`zeile-${teil.feld}-${i}-${teil.unterliste.feld}-0`)
           else if (i < eintraege.length - 1) w.fokus(`ef-${i + 1}-0`)
           else {
@@ -109,6 +151,26 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
       holen: () => texte(eintraege[i]?.[u.feld]),
       schreibe: (l) => L.mit(eintraege.map((x, j) => (j === i ? { ...x, [u.feld]: l } : x))),
     })
+
+  const unterAntworten = (i: number, u: NonNullable<EintraegeTeil['unterAntworten']>) => {
+    const name = echterName(eintraege[i] ?? {}, u.namen, u.namen[0])
+    const id = `${teil.feld}-${i}-antw`
+    return antwortenListe(w, {
+      feld: id,
+      einzahl: u.einzahl,
+      mehrzahl: u.mehrzahl,
+      mindestens: u.mindestens,
+      hoechstens: u.hoechstens,
+      schluessel: u.schluessel,
+      textFeld: 'text',
+      richtigFeld: 'correct',
+      rueckmeldungFeld: 'feedback',
+      praefix: `a${i}`,
+      holen: () => liste(eintraege[i]?.[name]),
+      schreibe: (l) => L.mit(eintraege.map((x, j) => (j === i ? { ...x, [name]: l } : x))),
+      notizen: hinweise(w.block).filter((h) => h.wo === `${teil.feld}-unter-${i}` || h.wo === `${teil.feld}-richtig-${i}` || h.wo === `${teil.feld}-leer-${i}-antwort`),
+    })
+  }
 
   const zeilen = eintraege.map((e, i) => {
     const z = L.zeilenZiehen(i)
@@ -141,6 +203,7 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
       </div>
       ${teil.unterliste &&
       html`<div class="wk-aw-unter">${unterListe(i, teil.unterliste)}</div>`}
+      ${teil.unterAntworten && html`<div class="wk-aw-unter">${unterAntworten(i, teil.unterAntworten)}</div>`}
       ${offen &&
       html`<div class="wk-aw-extra">${knopfFelder.map((f, k) => html`<label class="wk-aw-extra-feld" key=${k}><span>${f.label}</span>${feldEl(e, i, f, k, true)}</label>`)}</div>`}
     </li>`

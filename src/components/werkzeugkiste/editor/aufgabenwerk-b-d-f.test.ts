@@ -467,3 +467,167 @@ describe('Aufgabenwerk: Schnellfragen, Zusammenfassung, Tippkarten', () => {
     expect(c[1].back).toBe('HGB')
   })
 })
+
+// ── Bauschritt 5: Fallakte, Video, Kapiteltest ───────────────────────
+
+const fall = () => ({
+  type: 'fallakte',
+  title: 'Der verschwundene Lkw',
+  description: 'Ein Lkw kommt nicht an.',
+  steps: [
+    {
+      question: 'Wer haftet?',
+      answers: [
+        { text: 'Der Frachtführer', correct: true, feedback: 'Genau' },
+        { text: 'Der Empfänger', correct: false },
+      ],
+      reveal: 'Es gilt die CMR.',
+    },
+    {
+      question: 'Welche Frist gilt?',
+      answers: [
+        { text: '30 Tage', correct: false },
+        { text: '60 Tage', correct: true },
+      ],
+    },
+  ],
+  verdict: 'Fall gelöst.',
+})
+
+describe('Aufgabenwerk: Fallakte, Video, Kapiteltest', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    werk?.ab()
+    vi.useRealTimers()
+    document.body.innerHTML = ''
+  })
+
+  it('Fallakte: Texte unter ihren gültigen Namen, Schritte mit Antworten und Kreis', () => {
+    starte(fall(), { art: 'eintrag', nr: 1 })
+    expect(ziel.querySelector<HTMLTextAreaElement>('[data-aw-fokus="title"]')!.value).toBe('Der verschwundene Lkw')
+    expect(ziel.querySelector<HTMLTextAreaElement>('[data-aw-fokus="description"]')!.value).toBe('Ein Lkw kommt nicht an.')
+    expect(document.activeElement).toBe(ziel.querySelector('[data-aw-fokus="ef-1-0"]'))
+    expect(ziel.querySelectorAll('[data-aw-liste="steps-0-antw"] > li')).toHaveLength(2)
+    expect(ziel.querySelectorAll('[data-aw-liste="steps-1-antw"] > li')).toHaveLength(2)
+  })
+
+  it('Fallakte: richtige Antwort setzen und Antwort ändern wirkt nur im eigenen Schritt', () => {
+    starte(fall())
+    fireEvent.click(ziel.querySelector('[data-aw-fokus="kreis-a1-0"]')!)
+    let s = (letzterBlock().steps as Record<string, unknown>[])
+    expect((s[1].answers as Record<string, unknown>[]).map((a) => a.correct)).toEqual([true, false])
+    expect((s[0].answers as Record<string, unknown>[]).map((a) => a.correct)).toEqual([true, false])
+    eingabe(ziel.querySelector('[data-aw-fokus="a0-1"]')!, 'Der Absender')
+    vi.advanceTimersByTime(700)
+    s = letzterBlock().steps as Record<string, unknown>[]
+    expect((s[0].answers as Record<string, string>[])[1].text).toBe('Der Absender')
+    expect('antworten' in s[0]).toBe(false)
+    expect(s[0].reveal).toBe('Es gilt die CMR.')
+  })
+
+  it('Fallakte: Antwort löschen, Mindestzahl; neuer Schritt bringt zwei Antworten mit', () => {
+    starte(fall())
+    fireEvent.click(ziel.querySelector('[data-aw-liste="steps-0-antw"] [aria-label="Antwort 2 löschen"]')!)
+    expect(ziel.textContent).toMatch(/Mindestens 2 Antworten nötig/)
+    fireEvent.click(ziel.querySelector('.wk-aw-eintraege > .wk-aw-neu')!)
+    const neu = (letzterBlock().steps as Record<string, unknown>[])[2]
+    expect((neu.antworten as Record<string, unknown>[]).length).toBe(2)
+    expect((neu.antworten as Record<string, unknown>[]).filter((a) => a.correct).length).toBe(1)
+  })
+
+  it('Fallakte: Übernahme prüft Antworten und behält die Feldnamen', () => {
+    const r = uebernimmAufgabe(fall(), {
+      ...fall(),
+      steps: [{ question: 'F?', answers: [{ text: 'a\u0007', correct: true }, { text: 'b', correct: 'ja' }], reveal: 'r', fremd: 'x' }],
+    })
+    expect(r.ok && r.block.steps).toEqual([{ question: 'F?', answers: [{ text: 'a', correct: true }, { text: 'b', correct: false }], reveal: 'r' }])
+    expect(uebernimmAufgabe(fall(), { ...fall(), steps: [{ question: 'F?', answers: 'x' }] }).ok).toBe(false)
+    expect(
+      hinweise({ type: 'fallakte', situation: 's', steps: [{ frage: 'F', antworten: [{ text: 'a', correct: false }, { text: 'b', correct: false }] }, { frage: 'G', antworten: [] }] }).map((h) => h.text),
+    ).toEqual(expect.arrayContaining(['Schritt 1: Klick auf den Kreis vor der richtigen Antwort.', 'Schritt 2: mindestens 2 Antworten nötig.']))
+    expect(eintragFuerBlock({ type: 'fallakte', steps: [{ question: 'a', answers: [{ correct: true }, {}] }, { question: '', answers: [{}, {}] }, { question: 'c', answers: [{}, { correct: true }] }] }, { art: 'eintrag', nr: 1 }, 2)).toEqual({ art: 'eintrag', nr: 2 })
+  })
+
+  const video = () => ({
+    type: 'interactive_video',
+    url: 'https://www.youtube.com/watch?v=1',
+    questions: [{ time: 90, question: 'Was siehst du?', answers: [{ text: 'Lkw', correct: true }, { text: 'Zug', correct: false }] }],
+  })
+
+  it('Video: Zeitpunkt als mm:ss, Eingabe wird in Sekunden gespeichert, Unsinn nicht', () => {
+    starte(video())
+    const z = ziel.querySelector<HTMLInputElement>('[data-aw-fokus="ef-0-0"]')!
+    expect(z.value).toBe('1:30')
+    eingabe(z, '2:05')
+    vi.advanceTimersByTime(700)
+    expect((letzterBlock().questions as Record<string, unknown>[])[0].time).toBe(125)
+    const n = aenderungen().length
+    eingabe(z, 'bald')
+    vi.advanceTimersByTime(700)
+    expect(aenderungen().length).toBe(n)
+    expect(z.getAttribute('aria-invalid')).toBe('true')
+  })
+
+  it('Video: Adresse als Text, Hinweis bei fehlendem https; neue Frage bringt Vorlage mit', () => {
+    starte({ ...video(), url: 'youtu.be/x' })
+    expect(ziel.textContent).toMatch(/mit https:\/\/ beginnen/)
+    fireEvent.click(ziel.querySelector('.wk-aw-eintraege > .wk-aw-neu')!)
+    const q = (letzterBlock().questions as Record<string, unknown>[])[1]
+    expect(q.type).toBe('multiple_choice')
+    expect((q.answers as unknown[]).length).toBe(2)
+    expect(uebernimmAufgabe(video(), { ...video(), questions: [{ ...video().questions[0], time: -5 }] }).ok).toBe(false)
+  })
+
+  const kapitel = () => ({
+    type: 'question_set',
+    pass_percentage: 70,
+    questions: [
+      { type: 'multiple_choice', question: 'Frage A?', answers: [{ text: 'a', correct: true, feedback: '' }, { text: 'b', correct: false, feedback: '' }] },
+      { type: 'true_false', question: 'Stimmt das?', correct: true, feedback_correct: '', feedback_wrong: '' },
+      { type: 'fill_blanks', text: 'Der *Frachtführer* haftet.' },
+    ],
+  })
+
+  it('Kapiteltest: jede Frage als Karte nach ihrem Typ; Fokus bleibt in der eigenen Karte', () => {
+    starte(kapitel())
+    const karten = ziel.querySelectorAll('[data-aw-karte]')
+    expect(karten).toHaveLength(3)
+    expect(karten[0].querySelector<HTMLTextAreaElement>('[data-aw-fokus="q0:question"]')!.value).toBe('Frage A?')
+    expect(karten[1].querySelector<HTMLTextAreaElement>('[data-aw-fokus="q1:question"]')!.value).toBe('Stimmt das?')
+    expect(karten[2].querySelector<HTMLTextAreaElement>('textarea')!.value).toContain('*Frachtführer*')
+    expect(ziel.querySelector<HTMLInputElement>('[data-aw-fokus="zahl-pass_percentage"]')!.value).toBe('70')
+  })
+
+  it('Kapiteltest: Ändern und Löschen wirkt nur auf die richtige Frage', () => {
+    starte(kapitel())
+    eingabe(ziel.querySelector('[data-aw-fokus="q0:antwort-1"]')!, 'neu')
+    vi.advanceTimersByTime(700)
+    const f = letzterBlock().questions as Record<string, unknown>[]
+    expect((f[0].answers as Record<string, string>[])[1].text).toBe('neu')
+    expect(f[1]).toEqual(kapitel().questions[1])
+    fireEvent.click(ziel.querySelector('[data-aw-karte="0"] [data-aw-liste="answers"] [aria-label="Antwort 1 löschen"]')!)
+    expect(ziel.querySelector('[data-aw-karte="0"] [role="alert"]')?.textContent).toMatch(/Mindestens 2 Antworten nötig/)
+    // Hinweis erscheint nur in der eigenen Karte
+    expect(ziel.querySelector('[data-aw-karte="1"] [role="alert"]')).toBeNull()
+  })
+
+  it('Kapiteltest: Richtig/Falsch-Frage umstellen, neue Frage am Ende, Frage löschen', () => {
+    starte(kapitel())
+    fireEvent.click(ziel.querySelector('[data-aw-karte="1"] [aria-label="Die Aussage ist falsch"]')!)
+    expect((letzterBlock().questions as Record<string, unknown>[])[1].correct).toBe(false)
+    fireEvent.click(Array.from(ziel.querySelectorAll('.wk-aw-neu-reihe button')).find((b) => b.textContent?.includes('Auswahlfrage'))!)
+    expect((letzterBlock().questions as unknown[]).length).toBe(4)
+    fireEvent.click(ziel.querySelector('[aria-label="Frage 1 löschen"]')!)
+    expect(aenderungen().at(-1)!.gruppe).toBe('loeschen-kapitelfrage')
+    expect((letzterBlock().questions as unknown[]).length).toBe(3)
+  })
+
+  it('Kapiteltest: Übernahme prüft jede Frage mit dem Bauplan ihres Typs', () => {
+    const r = uebernimmAufgabe(kapitel(), { ...kapitel(), pass_percentage: 80, questions: [{ type: 'true_false', question: 'F\u0007', correct: false, evil: 1 }] })
+    expect(r.ok && r.block.questions).toEqual([{ type: 'true_false', question: 'F', correct: false }])
+    expect(r.ok && r.block.pass_percentage).toBe(80)
+    expect(uebernimmAufgabe(kapitel(), { ...kapitel(), questions: [{ type: 'trainer', gruppen: [] }] }).ok).toBe(false)
+    expect(uebernimmAufgabe(kapitel(), { ...kapitel(), pass_percentage: 'x' }).ok).toBe(false)
+    expect(eintragFuerBlock({ type: 'question_set', questions: [{ type: 'fill_blanks', text: 'ohne' }, { question: 'Q', answers: [{}, {}] }] }, { art: 'eintrag', nr: 0 }, 1)).toEqual({ art: 'eintrag', nr: 1 })
+  })
+})
