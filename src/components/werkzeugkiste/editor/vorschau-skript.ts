@@ -699,7 +699,8 @@ function startAufgabe(s){
   document.body.classList.add("wk-aufgabe");
   try{
     aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,
-      melde:function(n){if(n.wkAufgabeEnde)document.body.classList.remove("wk-aufgabe");p(n)}});
+      // Die Leiste war während der Bearbeitung ausgeblendet (Breite 0): nach dem Einblenden neu messen und platzieren
+      melde:function(n){if(n.wkAufgabeEnde){document.body.classList.remove("wk-aufgabe");leisteAktualisieren();plaziere();requestAnimationFrame(function(){plaziere()})}p(n)}});
   }catch(x){document.body.classList.remove("wk-aufgabe");aufgabe=null;p({wkAufgabeAbbruch:s.marke});return}
   leisteAktualisieren();
 }
@@ -735,7 +736,7 @@ addEventListener("message",function(e){
   if(d.wkAufgabeStart&&typeof d.wkAufgabeStart==="object"){startAufgabe(d.wkAufgabeStart);return}
   if(d.wkAufgabeStand&&typeof d.wkAufgabeStand==="object"){if(aufgabeOffen())aufgabe.setze(d.wkAufgabeStand);return}
   if(d.wkAufgabeBeende===true){if(aufgabeOffen())aufgabe.beende();return}
-  if(d.wkAufgabeVorbei===true){if(aufgabeOffen())aufgabe.ab();document.body.classList.remove("wk-aufgabe");aufgabe=null;return}
+  if(d.wkAufgabeVorbei===true){if(aufgabeOffen())aufgabe.ab();document.body.classList.remove("wk-aufgabe");aufgabe=null;leisteAktualisieren();plaziere();return}
   if("wkDropZeiger" in d){dropZeiger(d.wkDropZeiger);return}
   if(d.wkSchreibBeende===true){if(schreibt&&!schreibt.fertig)schreibt.beende();return}
   if(d.wkSchreibVorbei===true){if(schreibt){schreibt.ab();schreibt=null}return}
