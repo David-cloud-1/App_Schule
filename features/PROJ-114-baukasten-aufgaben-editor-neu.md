@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Bauschritt 1 gebaut, Zweig `proj-114-aufgabenwerk`)
+**Last Updated:** 2026-11-17 (Bauschritt 2 gebaut, Zweig `proj-114-aufgabenwerk`)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -151,7 +151,26 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 
 **Tests:** `aufgabenwerk.test.ts` (37: Bündel, Kontrast, Bauplan, Werk, Nachrichten, Seiten-Skript), 7 neue Fälle in `baukasten-editor.test.tsx`. Gesamtlauf: 3751 grün, 1 alter Fehler in `werkzeugkiste-auszug.test.ts` (schlägt auch ohne diese Änderung fehl). `tsc` und `npm run build` grün.
 
-**Offen:** Vorschau-Link (E4) und Durchgang am Laptop/Handy durch den Nutzer.
+**Vorschau-Link:** https://spedilern-git-proj-114-aufgabenwerk-david-cloud-1s-projects.vercel.app (Supabase-Variablen dafür am 2026-11-17 auch für „Preview“ eingetragen; die Vorschau nutzt die echte Datenbank).
+
+### Bauschritt 2 – Muster E und C (2026-11-17, Opus, Zweig `proj-114-aufgabenwerk`)
+**Gebaut**
+- **Muster E** für `fill_blanks`, `advanced_fill_blanks`, `drag_words`, `mark_words`: Text direkt in der Seite tippen; Lücken (bzw. Lösungen) als grüne Marken. Wort auswählen → schwebender Knopf „Als Lücke“/„Als Lösung“ (oder Enter); gesperrt mit Grund bei Auswahl über eine Lücke oder mehrere Zeilen; Satz- und Leerzeichen am Rand bleiben draußen; bei „Wörter markieren“ immer ganze Wörter. Klick auf eine Lücke öffnet ein Fenster: Wort, „Auch richtig“ (Lückentext, erweiterter Lückentext), Tipp (erweiterter Lückentext, Wörter ziehen), „Lücke entfernen“ (Wort bleibt als Text). Leeres Wort wird erklärt statt übernommen. Bei „Wörter ziehen“ erscheinen die Wörter zum Ziehen von selbst unter dem Text. HTML-Reste (`<p>`) und einzelne Sternchen werden am Ort gemeldet, `<p>` mit einem Klick entfernt.
+- **Lückentext-Übersetzer** (`aufgabenwerk/luecken.ts`) mit denselben Regeln wie der Kern (`_LUECKE`, `_LUECKE_HINWEIS`, Wort-Zählung bei „Wörter markieren“). Unveränderte Lücken behalten ihre Original-Schreibweise → Rundreise immer verlustfrei; beim Öffnen wird nichts verändert.
+- **Muster C lang** für `accordion` und `dialog_cards`: Aufklapp-Leiste wie in der Schülersicht, immer nur ein Eintrag offen, fehlende Erklärung/Rückseite zugeklappt orange markiert. Enter im Begriff → Erklärung, Enter in der Erklärung → nächster bzw. neuer Begriff (Umschalt+Enter = neue Zeile).
+- **Muster C kurz** für `crossword`: Wort und Umschreibung nebeneinander (unter 400 px untereinander).
+- Gemeinsame Listen-Mechanik (`listen.ts`) für A und C (und später B, D, F): Hinzufügen, Löschen mit Mindestzahl, Griff/Alt+Pfeil, Einfügen mehrerer Zeilen.
+- Arbeitsanweisung (`description`) als Zeile über der Aufgabe, leer mit der Standard-Anweisung des Kerns als Platzhalter; leer gespeichert wird das Feld entfernt.
+- **Klick auf einen Eintrag** für alle neuen Typen: Die App schickt der Seite eine Liste „Block → Typ“ (der Kern kennzeichnet Aufklapp-Begriffe und Karten nicht als Aufgabe); das Seiten-Skript zählt Einträge über einen Finder je Typ. Der Kern lässt unvollständige Begriffe/Karten weg – die App rechnet die angezeigte Nummer auf den gespeicherten Eintrag um; bei „Wörter markieren“ öffnet ein Klick auf eine Lösung ihr Fenster, ein anderes Wort öffnet die Aufgabe ohne Eintrag.
+- Die Lücken-Liste aus Commit `72712d6` ist aus dem Formular entfernt (E5).
+
+**Abweichungen / Entscheidungen beim Bau**
+- `memory_game` und `arithmetic_quiz` (ebenfalls „C kurz“) kommen erst in Bauschritt 3: Memory speichert je nach Alter `cards`/`pairs` und `front`/`a`, Kopfrechnen Zahlen statt Text – das braucht eigene Regeln in der Übernahme.
+- Enter im Lückentext legt keine neue Zeile an (der Kern zeigt Zeilenumbrüche nicht), sondern macht aus einer Auswahl eine Lücke. Bestehende Zeilenumbrüche bleiben erhalten und sichtbar.
+- Beim Öffnen von „Begriffe zum Aufklappen“ ohne angeklickten Eintrag ist der erste Begriff aufgeklappt (er hat den Fokus).
+- Ein Klick auf „Bearbeiten“ in der Leiste oder Enter öffnet jetzt auch Lückentexte an Ort und Stelle; die Gliederung öffnet weiter die Schublade.
+
+**Tests:** `aufgabenwerk-e-c.test.ts` (35: Übersetzer inkl. Rundreise, Bauplan, Textfeld, Werk E und C), `aufgabenwerk.test.ts` angepasst (37), 10 ältere Editor-Tests auf das neue Verhalten umgestellt (Schublade jetzt am Lehrtext geprüft), 1 neuer App-Test. Gesamtlauf: 3787 grün, 1 alter fremder Fehler (`werkzeugkiste-auszug.test.ts`). `tsc` und Build grün. Bündel 53 KB.
 
 ---
 <!-- Sections below are added by subsequent skills -->

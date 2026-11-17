@@ -4,17 +4,17 @@
 // (eingecheckt; ein Test prüft, dass es zu den Quellen passt)
 import { build } from 'vite'
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const wurzel = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const ordner = path.join(wurzel, 'src/components/werkzeugkiste/editor/aufgabenwerk')
-export const QUELLEN = [
-  'src/components/werkzeugkiste/editor/aufgabenwerk/eintritt.ts',
-  'src/components/werkzeugkiste/editor/aufgabenwerk/design.ts',
-  'src/components/werkzeugkiste/editor/aufgabenwerk/bauplan.ts',
-]
+/** Alle Quellen im Ordner (ohne das erzeugte Bündel), sortiert – ein Test rechnet genauso */
+export const QUELLEN = readdirSync(ordner)
+  .filter((d) => d.endsWith('.ts') && !d.endsWith('.generated.ts'))
+  .sort()
+  .map((d) => `src/components/werkzeugkiste/editor/aufgabenwerk/${d}`)
 
 export function quellStand() {
   const h = createHash('sha256')

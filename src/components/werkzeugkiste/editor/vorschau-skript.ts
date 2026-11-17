@@ -1,7 +1,7 @@
 import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { typName } from '@/lib/werkzeugkiste-editor'
 import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
-import { AUFGABENWERK_TYPEN } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { FINDER } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 
 export { auswahlAusMarke }
 
@@ -143,8 +143,8 @@ var MUSTER=${MARKE_KNOPF.toString()};
 var SCHNELL=${JSON.stringify(SCHNELL)};
 var STUFEN=${JSON.stringify(BREITE_STUFEN)},BMIN=${BREITE_MIN},BMAX=${BREITE_MAX},NAEHE=${EINRAST_NAEHE},HANDY=${JSON.stringify(HANDY_BREITEN)};
 var ICON=${JSON.stringify(ICONS)};
-var AUFGABEN=${JSON.stringify(AUFGABENWERK_TYPEN)};
-var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null,aufgabe=null;
+var FINDER=${JSON.stringify(FINDER)};
+var modus="bearbeiten",lesen=false,mobil=false,schublade=false,leer=[],auswahl=null,auswahlName="",hoverEl=null,plusZiel=null,mehr=[],ziehen=null,schreibt=null,merkeKlick=null,aufgabe=null,aufgaben={};
 function p(x){parent.postMessage(x,"*")}
 function finde(m){return document.querySelector('[data-wk="'+String(m).replace(/[^a-z0-9_-]/gi,"")+'"]')}
 function elt(t){return t&&t.nodeType===1?t:(t&&t.parentElement)||null}
@@ -161,19 +161,20 @@ function markeVon(t){
 function istFeld(t){return !!(t&&t.closest&&t.closest("input,textarea,select,[contenteditable='true'],[contenteditable='']"))}
 function stoppe(e){e.preventDefault();e.stopImmediatePropagation()}
 function inZone(t){return !!(t&&t.closest&&t.closest(".wk-schreibzone,.wk-aufgabenzone"))}
-// PROJ-114: Welche Aufgabe (und welcher Eintrag darin) wurde angeklickt? Gezählt wird nur in der Seite;
-// ob die Zahl zum gespeicherten Block passt, prüft die App (sonst öffnet sie ohne Eintrag).
+// PROJ-114: Welche Aufgabe (und welcher Eintrag darin) wurde angeklickt? Welche Blöcke Aufgaben sind, sagt
+// die App (\`aufgaben\`: Marke → Typ). Gezählt wird nur in der Seite; ob die Zahl zum gespeicherten Block passt,
+// prüft die App (sonst öffnet sie ohne Eintrag).
 function aufgabeZiel(t){
-  var sec=t.closest?t.closest("section.aufgabe[data-wk]"):null;
+  var sec=t.closest?t.closest("section[data-wk]"):null;
   if(!sec)return null;
-  var m=sec.getAttribute("data-wk");
-  if(!/^k\d+-e\d+$/.test(m)||AUFGABEN.indexOf(sec.getAttribute("data-typ"))<0)return null;
-  var a=t.closest(".antwort"),f=t.closest(".frage");
-  if(a&&sec.contains(a)){
-    var alle=Array.prototype.slice.call(sec.querySelectorAll(".antworten .antwort"));
-    var i=alle.indexOf(a);
-    return {marke:m,eintrag:i>=0?{art:"antwort",nr:i}:null,anzahl:alle.length};
+  var m=sec.getAttribute("data-wk"),typ=aufgaben[m];
+  if(!/^k\d+-e\d+$/.test(m)||typeof typ!=="string")return null;
+  var sel=FINDER[typ],i;
+  if(sel){
+    var alle=Array.prototype.slice.call(sec.querySelectorAll(sel));
+    for(i=0;i<alle.length;i++)if(alle[i].contains(t))return {marke:m,eintrag:{art:"eintrag",nr:i},anzahl:alle.length};
   }
+  var f=t.closest(".frage");
   if(f&&sec.contains(f))return {marke:m,eintrag:{art:"frage"},anzahl:null};
   return {marke:m,eintrag:null,anzahl:null};
 }
@@ -743,6 +744,8 @@ addEventListener("message",function(e){
     if(z.modus==="bearbeiten"||z.modus==="ausprobieren")modus=z.modus;
     lesen=z.lesen===true;mobil=z.mobil===true;schublade=z.schublade===true;
     leer=Array.isArray(z.leer)?z.leer.filter(function(n){return typeof n==="number"&&n>=0&&n%1===0}).slice(0,500):[];
+    aufgaben={};
+    if(z.aufgaben&&typeof z.aufgaben==="object")Object.keys(z.aufgaben).slice(0,2000).forEach(function(k){var v=z.aufgaben[k];if(/^k\d+-e\d+$/.test(k)&&typeof v==="string"&&v.length<40)aufgaben[k]=v});
     anwenden();
     return;
   }

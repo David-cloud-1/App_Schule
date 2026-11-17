@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent } from '@testing-library/react'
@@ -17,11 +17,10 @@ import { mitSprungSkript } from './vorschau-skript'
  */
 
 const wurzel = path.resolve(__dirname, '../../../..')
-const QUELLEN = [
-  'src/components/werkzeugkiste/editor/aufgabenwerk/eintritt.ts',
-  'src/components/werkzeugkiste/editor/aufgabenwerk/design.ts',
-  'src/components/werkzeugkiste/editor/aufgabenwerk/bauplan.ts',
-]
+const QUELLEN = readdirSync(path.join(wurzel, 'src/components/werkzeugkiste/editor/aufgabenwerk'))
+  .filter((d) => d.endsWith('.ts') && !d.endsWith('.generated.ts'))
+  .sort()
+  .map((d) => `src/components/werkzeugkiste/editor/aufgabenwerk/${d}`)
 
 describe('Aufgabenwerk: gebautes Bündel', () => {
   it('passt zu den Quellen (sonst: npm run aufgabenwerk:bauen)', () => {
@@ -67,6 +66,7 @@ describe('Aufgabenwerk: Farben', () => {
       [F.rot, F.grund],
       [F.leise, F.grund],
       [F.gruen, F.grund],
+      [F.gruen, F.gruenGrund],
     ]) {
       expect(kontrast(t, g), `${t} auf ${g}`).toBeGreaterThanOrEqual(4.5)
     }
@@ -87,9 +87,13 @@ const mc = () => ({
 })
 
 describe('Bauplan', () => {
-  it('kennt in Bauschritt 1 genau Auswahl und Richtig/Falsch', () => {
-    expect([...AUFGABENWERK_TYPEN].sort()).toEqual(['multiple_choice', 'single_choice', 'true_false'])
-    for (const t of AUFGABENWERK_TYPEN) expect(BAUPLAENE[t].muster).toBe('A')
+  it('kennt nach Bauschritt 2 die Muster A, C und E', () => {
+    expect([...AUFGABENWERK_TYPEN].sort()).toEqual(
+      ['accordion', 'advanced_fill_blanks', 'crossword', 'dialog_cards', 'drag_words', 'fill_blanks', 'mark_words', 'multiple_choice', 'single_choice', 'true_false'].sort(),
+    )
+    expect(BAUPLAENE.multiple_choice.muster).toBe('A')
+    expect(BAUPLAENE.accordion.muster).toBe('C')
+    expect(BAUPLAENE.mark_words.muster).toBe('E')
   })
 
   it('übernimmt nur Bauplan-Felder; unbekannte Felder kommen aus dem Original', () => {
@@ -123,13 +127,13 @@ describe('Bauplan', () => {
   })
 
   it('öffnet einen Eintrag nur, wenn die gezählte Anzahl zum Block passt', () => {
-    expect(eintragFuerBlock(mc(), { art: 'antwort', nr: 2 }, 3)).toEqual({ art: 'antwort', nr: 2 })
-    expect(eintragFuerBlock(mc(), { art: 'antwort', nr: 2 }, 4)).toBeNull()
-    expect(eintragFuerBlock(mc(), { art: 'antwort', nr: 5 }, 3)).toBeNull()
+    expect(eintragFuerBlock(mc(), { art: 'eintrag', nr: 2 }, 3)).toEqual({ art: 'eintrag', nr: 2 })
+    expect(eintragFuerBlock(mc(), { art: 'eintrag', nr: 2 }, 4)).toBeNull()
+    expect(eintragFuerBlock(mc(), { art: 'eintrag', nr: 5 }, 3)).toBeNull()
     expect(eintragFuerBlock(mc(), { art: 'frage' }, null)).toEqual({ art: 'frage' })
-    expect(eintragFuerBlock({ type: 'true_false' }, { art: 'antwort', nr: 1 }, 2)).toEqual({ art: 'antwort', nr: 1 })
-    expect(eintragFuerBlock({ type: 'accordion' }, { art: 'frage' }, null)).toBeNull()
-    expect(liesEintrag({ art: 'antwort', nr: -1 })).toBeNull()
+    expect(eintragFuerBlock({ type: 'true_false' }, { art: 'eintrag', nr: 1 }, 2)).toEqual({ art: 'eintrag', nr: 1 })
+    expect(eintragFuerBlock({ type: 'reihenfolge' }, { art: 'frage' }, null)).toBeNull()
+    expect(liesEintrag({ art: 'eintrag', nr: -1 })).toBeNull()
     expect(liesEintrag({ art: 'x' })).toBeNull()
   })
 
@@ -189,7 +193,7 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
   })
 
   it('setzt den Fokus auf die angeklickte Antwort', () => {
-    starte(mc(), { art: 'antwort', nr: 2 })
+    starte(mc(), { art: 'eintrag', nr: 2 })
     expect(document.activeElement).toBe(felder()[2])
   })
 
@@ -356,10 +360,10 @@ describe('Aufgabenwerk: Richtig/Falsch', () => {
 
 describe('Nachrichten der Aufgabe', () => {
   it('liest Öffnen, Änderung, Ende, Abbruch und Aktion streng', () => {
-    expect(liesWunsch({ wkAufgabe: 'k0-e1', eintrag: { art: 'antwort', nr: 1 }, anzahl: 3 })).toEqual({
+    expect(liesWunsch({ wkAufgabe: 'k0-e1', eintrag: { art: 'eintrag', nr: 1 }, anzahl: 3 })).toEqual({
       art: 'aufgabe',
       marke: 'k0-e1',
-      eintrag: { art: 'antwort', nr: 1 },
+      eintrag: { art: 'eintrag', nr: 1 },
       anzahl: 3,
     })
     expect(liesWunsch({ wkAufgabe: 'k0', eintrag: null })).toBeNull()
@@ -387,13 +391,15 @@ describe('Seiten-Skript: Klick auf eine Aufgabe', () => {
     document.head.innerHTML = ''
   })
 
-  function seite(zustand: Record<string, unknown> = { modus: 'bearbeiten' }) {
+  const AUFGABEN = { 'k0-e0': 'multiple_choice', 'k0-e3': 'accordion' }
+  function seite(zustand: Record<string, unknown> = { modus: 'bearbeiten', aufgaben: AUFGABEN }) {
     document.body.innerHTML =
       '<h2 data-wk="k0">Thema</h2>' +
       '<section class="aufgabe" data-typ="multiple_choice" data-wk="k0-e0"><div class="kopfzeile"><span class="marke">Aufgabe 1</span></div>' +
       '<p class="frage" id="frage">Wer?</p><div class="antworten"><button class="antwort">A</button><button class="antwort" id="b">B</button></div></section>' +
       '<section class="aufgabe" data-typ="reihenfolge" data-wk="k0-e1"><p class="frage" id="andere">Ordne</p></section>' +
-      '<section class="inhalt" data-wk="k0-e2"><p id="text">Text</p></section>'
+      '<section class="inhalt" data-wk="k0-e2"><p id="text">Text</p></section>' +
+      '<section class="inhalt" data-wk="k0-e3"><div class="klappliste"><details><summary>A</summary></details><details><summary id="kb">B</summary><div class="klapptext">x</div></details></div></section>'
     const code = mitSprungSkript('<body></body>').match(/<script>([\s\S]*)<\/script>/)![1]
     Element.prototype.scrollIntoView = vi.fn()
     const gesendet = vi.spyOn(window, 'postMessage').mockImplementation(() => {})
@@ -416,7 +422,7 @@ describe('Seiten-Skript: Klick auf eine Aufgabe', () => {
     klick(document.getElementById('frage')!)
     klick(document.querySelector('.kopfzeile')!)
     expect(nachrichten(g)).toEqual([
-      { wkAufgabe: 'k0-e0', eintrag: { art: 'antwort', nr: 1 }, anzahl: 2 },
+      { wkAufgabe: 'k0-e0', eintrag: { art: 'eintrag', nr: 1 }, anzahl: 2 },
       { wkAufgabe: 'k0-e0', eintrag: { art: 'frage' }, anzahl: null },
       { wkAufgabe: 'k0-e0', eintrag: null, anzahl: null },
     ])
@@ -430,7 +436,7 @@ describe('Seiten-Skript: Klick auf eine Aufgabe', () => {
   })
 
   it('im Schreibschutz wählt ein Klick nur aus', () => {
-    const g2 = seite({ modus: 'bearbeiten', lesen: true })
+    const g2 = seite({ modus: 'bearbeiten', lesen: true, aufgaben: AUFGABEN })
     klick(document.getElementById('b')!)
     expect(nachrichten(g2)).toEqual([{ wkWaehle: 'k0-e0' }])
   })
@@ -467,9 +473,8 @@ describe('Seiten-Skript: Klick auf eine Aufgabe', () => {
         source: window,
       }),
     )
-    // zweite Aufgabe mit Bauplan anlegen
-    const zweite = document.querySelector('[data-wk="k0-e1"]')!
-    zweite.setAttribute('data-typ', 'true_false')
+    // die zweite Aufgabe hat jetzt (laut App) einen Bauplan
+    fireEvent(window, new MessageEvent('message', { data: { wkZustand: { modus: 'bearbeiten', aufgaben: { ...AUFGABEN, 'k0-e1': 'true_false' } } }, source: window }))
     g.mockClear()
     klick(document.getElementById('andere')!)
     expect(nachrichten(g)).toEqual([{ wkAufgabeEnde: 'k0-e0' }, { wkAufgabe: 'k0-e1', eintrag: { art: 'frage' }, anzahl: null }])

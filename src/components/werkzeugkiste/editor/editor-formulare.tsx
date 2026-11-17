@@ -1,7 +1,6 @@
 'use client'
 
 import { useId, useState } from 'react'
-import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -141,71 +140,6 @@ export function luecken(typ: string, text: string): string[] {
   return out
 }
 
-type Stelle = { start: number; ende: number; wort: string; tipp: string }
-
-/** Die markierten Stellen mit Position im Text – Grundlage der Bearbeiten-Liste */
-function stellen(typ: string, text: string): Stelle[] {
-  const out: Stelle[] = []
-  const re = typ === 'advanced_fill_blanks' ? /\*([^*]+)\*(?:\s*\(([^)]*)\))?/g : /\*([^*]+)\*/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text))) {
-    let wort = m[1].trim()
-    let tipp = ''
-    if (typ === 'drag_words' && wort.includes(':')) {
-      const i = wort.indexOf(':')
-      tipp = wort.slice(i + 1).trim()
-      wort = wort.slice(0, i).trim()
-    } else if (typ === 'advanced_fill_blanks' && m[2]) tipp = m[2].trim()
-    out.push({ start: m.index, ende: m.index + m[0].length, wort, tipp })
-  }
-  return out
-}
-
-function markierung(typ: string, wort: string, tipp: string): string {
-  const w = wort.replace(/[*]/g, '')
-  const t = tipp.replace(/[*()]/g, '')
-  if (typ === 'drag_words') return t ? `*${w.replace(/:/g, '')}:${t}*` : `*${w.replace(/:/g, '')}*`
-  if (typ === 'advanced_fill_blanks') return t ? `*${w}* (${t})` : `*${w}*`
-  return `*${w}*`
-}
-
-/** Bearbeiten-Liste: jede markierte Stelle als eigene Zeile (Wort, Tipp, Entfernen) */
-function StellenListe({ typ, text, onText }: { typ: string; text: string; onText: (t: string) => void }) {
-  const alle = stellen(typ, text)
-  if (alle.length === 0) return null
-  const hatTipp = typ === 'drag_words' || typ === 'advanced_fill_blanks'
-  const ersetze = (i: number, neu: string) => {
-    const st = alle[i]
-    onText(text.slice(0, st.start) + neu + text.slice(st.ende))
-  }
-  const einzahl = typ === 'mark_words' ? 'Markiertes Wort' : typ === 'drag_words' ? 'Wort' : 'Lücke'
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-semibold">{typ === 'mark_words' ? 'Markierte Wörter bearbeiten' : 'Lücken bearbeiten'}</p>
-      <ul className="space-y-2">
-        {alle.map((st, i) => (
-          <li key={i} className="flex items-end gap-2 rounded-xl border border-ws-line bg-ws-surface p-2">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Feld label={`${einzahl} ${i + 1}`} wert={st.wort} onChange={(v) => v.trim() && ersetze(i, markierung(typ, v, st.tipp))} />
-              {hatTipp && <Feld label="Tipp (optional)" wert={st.tipp} onChange={(v) => ersetze(i, markierung(typ, st.wort, v))} />}
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-11 shrink-0"
-              aria-label={`${einzahl} ${i + 1} entfernen (bleibt als normaler Text stehen)`}
-              onClick={() => ersetze(i, st.wort)}
-            >
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <p className="text-xs text-ws-muted">Neue Stellen setzt du im Textfeld mit *Sternchen*. Entfernen lässt das Wort im Text stehen.</p>
-    </div>
-  )
-}
-
 export function LueckenFormular({ block, onChange }: FormProps) {
   const typ = s(block.type)
   const text = s(block.text)
@@ -239,7 +173,6 @@ export function LueckenFormular({ block, onChange }: FormProps) {
           </Button>
         </div>
       )}
-      <StellenListe typ={typ} text={text} onText={(v) => onChange({ ...block, text: v }, 'text')} />
       <div className="rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm" aria-live="polite">
         {gefunden.length === 0 ? (
           <span className="text-ws-orange">Noch keine {typ === 'mark_words' ? 'markierten Wörter' : 'Lücken'} – mit *Sternchen* markieren.</span>

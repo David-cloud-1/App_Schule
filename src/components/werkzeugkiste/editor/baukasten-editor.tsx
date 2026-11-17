@@ -341,6 +341,17 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             ? 'Deckblatt'
             : 'Lernzielkontrolle'
 
+  // PROJ-114: Blöcke, die sich an Ort und Stelle bearbeiten lassen (Marke → Typ) – die Seite findet damit Einträge
+  const aufgabenMarken = useMemo(() => {
+    const out: Record<string, string> = {}
+    z.struktur.chapters.forEach((k, thema) =>
+      k.elements.forEach((b, block) => {
+        if (hatBauplan(b.type)) out[sprungmarke({ thema, block })] = b.type
+      }),
+    )
+    return out
+  }, [z.struktur])
+
   // Themen ohne Blöcke: Die Seite zeigt dort Vorschläge statt einer Lücke
   const leereThemen = useMemo(
     () => z.struktur.chapters.flatMap((t, i) => (t.elements.length === 0 ? [i] : [])),
@@ -1386,6 +1397,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             }}
             aufgabe={aufgabe}
             aufgabeBefehl={aufgabeBefehl}
+            aufgaben={aufgabenMarken}
             html={v.html}
             laedt={v.laedt}
             fehler={v.fehler}

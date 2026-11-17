@@ -86,6 +86,7 @@ export function EditorVorschau({
   onDateien,
   aufgabe = null,
   aufgabeBefehl = null,
+  aufgaben = {},
 }: {
   html: string | null
   laedt: boolean
@@ -127,6 +128,8 @@ export function EditorVorschau({
   /** PROJ-114: Aufgabe an Ort und Stelle bearbeiten */
   aufgabe?: AufgabeStart | null
   aufgabeBefehl?: AufgabeBefehl | null
+  /** PROJ-114: Blöcke, die sich an Ort und Stelle bearbeiten lassen (Marke → Typ); die Seite findet so die Einträge */
+  aufgaben?: Record<string, string>
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -143,7 +146,8 @@ export function EditorVorschau({
   const wunschRef = useRef(onWunsch)
   const fehlerRef = useRef(fehler)
   const leerSchluessel = leer.join(',')
-  const zustandRef = useRef({ modus, lesen, mobil, leer, schublade: schubladeOffen })
+  const aufgabenSchluessel = JSON.stringify(aufgaben)
+  const zustandRef = useRef({ modus, lesen, mobil, leer, schublade: schubladeOffen, aufgaben })
   useEffect(() => {
     aktuelleMarke.current = marke
     aktuellerName.current = name
@@ -151,7 +155,7 @@ export function EditorVorschau({
     wunschRef.current = onWunsch
     neueSeiteRef.current = beiNeueSeite
     fehlerRef.current = fehler
-    zustandRef.current = { modus, lesen, mobil, leer, schublade: schubladeOffen }
+    zustandRef.current = { modus, lesen, mobil, leer, schublade: schubladeOffen, aufgaben }
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
   const [dateiZieht, setDateiZieht] = useState(false)
@@ -246,8 +250,8 @@ export function EditorVorschau({
 
   // Modus, Schreibschutz, Handy oder leere Themen geändert: der Seite Bescheid geben
   useEffect(() => {
-    if (bereit.current) senden({ wkZustand: { modus, lesen, mobil, leer: zustandRef.current.leer, schublade: schubladeOffen } })
-  }, [modus, lesen, mobil, leerSchluessel, schubladeOffen, senden])
+    if (bereit.current) senden({ wkZustand: zustandRef.current })
+  }, [modus, lesen, mobil, leerSchluessel, schubladeOffen, aufgabenSchluessel, senden])
 
   useEffect(() => {
     const beiNachricht = (e: MessageEvent) => {
