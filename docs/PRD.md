@@ -128,7 +128,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-96: Werkzeugkiste – Baukasten: Vorschau als Hauptfläche mit Formular-Schublade | Deployed |
 | P1 | PROJ-97: Werkzeugkiste – Baukasten: Hinzufügen präsenter & Vorschau aufgeräumt | Deployed |
 | P1 | PROJ-98: Werkzeugkiste – Baukasten: Löschen & Einfügen an der Bearbeitungsstelle | Deployed |
-| P1 | PROJ-100: Werkzeugkiste – „Meine Materialien“: Herkunft sichtbar & übersichtlicher | In Progress |
+| P1 | PROJ-100: Werkzeugkiste – „Meine Materialien“: Herkunft sichtbar & übersichtlicher | Deployed |
 | P1 | PROJ-99: Werkzeugkiste – höhere Qualität und Spielspaß für Selbstlerneinheiten | In Progress |
 | P1 | PROJ-101: Baukasten – Direkt auf der Seite: Auswählen & Block-Leiste | Deployed |
 | P1 | PROJ-102: Baukasten – Ziehen in der Vorschau, Mehrfachauswahl, Kopieren & Einfügen | Deployed |

@@ -1,8 +1,9 @@
 # PROJ-100: Werkzeugkiste – „Meine Materialien“: Herkunft sichtbar & übersichtlicher
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-17
+**Deployed:** 2026-11-17 (Commit 60aa3e2, live mit dem Produktions-Deployment von PROJ-108)
 
 ## Idee in einem Satz
 In „Meine Materialien“ sieht man auf einen Blick, wer ein Material angelegt hat (Ich oder der Name aus dem Regal), kann nach Herkunft filtern, und das Übernehmen aus dem Regal legt nicht unbemerkt Dubletten an.
