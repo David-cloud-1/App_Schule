@@ -1,6 +1,6 @@
 # PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-17
 
@@ -167,7 +167,51 @@ Keine neuen.
 **Offen:** Vorher/Nachher-Bild in `docs/vorschau`, Browser-Test. Hinweis: `werkzeugkiste-auszug.test.ts` ist rot, unabhängig von dieser Arbeit.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft am:** 2026-11-17 (Code-Prüfung und automatische Tests; kein Dev-Server und kein Browser, siehe Memory „Kein Dev-Server“). **Ergebnis: bedingt bereit** – keine Critical/High-Fehler, aber der Browser-Test steht noch aus.
+
+**Automatische Tests:** `npm test`: 3880 von 3881 grün. Der eine rote Test (`werkzeugkiste-auszug.test.ts`, Urheber-Zeile im Regal) liegt in `src/lib` und ist ohne Zusammenhang mit PROJ-117 (schon vor dieser Arbeit rot, getrennt zu klären). `tsc` sauber, ESLint ohne Fehler. Die Frische-Tests beider Bündel sind grün.
+
+### Akzeptanzkriterien
+| Bereich | Kriterium | Ergebnis |
+|---|---|---|
+| Quelle | Eine Quelle für Reihenfolge, Wörter, Farben, Maße | ✅ `bedien-design.ts` / `bedien-woerter.ts`, Test prüft Identität der Tabellen |
+| Quelle | Kontrast ≥ 4,5 : 1 | ✅ Wächtertest prüft 10 Farbpaare |
+| Quelle | Reihenfolge F, K, H2, H3, • Liste, 1. Liste, Link, Box …, Diese Box … | ✅ Schreibwerk und Schublade, per Test |
+| Aufgabenwerk | Form, Höhe, Farben, Fokus wie Textleiste | ✅ per Quelltext (Browser offen) |
+| Aufgabenwerk | Keine Formatknöpfe | ✅ |
+| Aufgabenwerk | „Fertig“ heißt/sitzt wie im Schreibwerk, Esc gleich | ⚠️ Sitz/Optik gleich, Wort ist aber ein eigener Text (BUG-1); Esc unverändert, nicht im Browser geprüft |
+| Aufgabenwerk | Gespeicherter Inhalt unverändert | ✅ nur CSS geändert |
+| Schublade | Sichtbare Leiste mit denselben Knöpfen/Wörtern | ✅ per Test |
+| Schublade | ≥ 44 px, Fokus, Screenreader-Name | ✅ `min-h-11 min-w-11`, `aria-label`, `role=toolbar` (Browser offen) |
+| Übrige Knöpfe | Block-Leiste, „+“ nutzen Farben/Rundung der Quelle | ✅ |
+| Übrige Knöpfe | Katalog-Dialog übernimmt Formensprache | ➖ bewusst nur Begriffe (Tech Design C5); Begriffe ✅ |
+| Übrige Knöpfe | Gleiche Begriffe überall | ✅ „Element“ statt „Block“ in der Seite; Rest-Fund siehe BUG-2 |
+| Wächter | Test bei Abweichung von Wörtern/Reihenfolge/Farben | ✅ |
+| Wächter | Test bei fest eingebauter Bedien-Farbe | ⚠️ prüft nur eine Verbotsliste von 9 Farbwerten, nicht jede Farbe (BUG-3) |
+| Wächter | Läuft in `npm test`, unabhängig vom Frische-Test | ✅ |
+| Doku | DESIGN.md-Abschnitt; Bündel neu gebaut | ✅ |
+
+### Edge Cases (nur Code-Prüfung)
+- Handy-Leiste über der Tastatur, zwei Leisten, Lücken-Marken, Tastenkürzel: Logik unverändert, nur CSS/Beschriftungen berührt → kein neues Risiko erkannt, **im Browser zu bestätigen**.
+- Dunkelmodus: Schublade nutzt `ws-*`-Tokens, Vorschau bleibt Papier-hell ✅.
+- Lange Leiste schmal: `flex-wrap` unverändert ✅.
+
+### Gefundene Fehler
+- **BUG-1 (Low):** Aufgabenwerk nutzt für „Fertig“ eigenen Text statt `FERTIG` aus `bedien-woerter.ts`; Name für Screenreader fehlt dort („Fertig – Schreiben beenden (Esc)“). Wortgleich heute, kann auseinanderlaufen.
+- **BUG-2 (Low):** Die Schublade hat zwei Beschriftungen für dasselbe in den Box-Menüs („Art der Box ändern in …“ / „Box einfügen“) gegenüber „Box …“ in der Vorschau; ferner heißt der Löschen-Knopf für geschützte Teile „unveränderten Teil“, in der Vorschau „Geschützt“. Kosmetisch.
+- **BUG-3 (Low):** Der Farb-Wächter ist eine Verbotsliste. Eine neu erfundene Farbe, die nicht auf der Liste steht, fällt nicht auf.
+
+### Sicherheit
+Keine neuen Datenwege, keine API, keine Datenbank. Link-Eingabe in der Schublade (`prompt`) und Schreibwerk unverändert; Zulässigkeit nur `https?:`/`mailto:`. Kein Befund.
+
+### Regression
+Alle 497 Editor-Tests und die Bündel-Frische-Tests grün; Schüler-Spiel unberührt.
+
+### Offen vor Livegang
+1. Browser-Test: Schublade (Rechner/Handy, hell/dunkel), Textleiste in der Vorschau, offene Aufgabe (alle Muster A–G) – Höhen, Blau, „Fertig“, Fokus.
+2. Vorher/Nachher-Bild in `docs/vorschau`.
+3. Playwright-E2E ist nicht geschrieben (kein Dev-Server).
 
 ## Deployment
 _To be added by /deploy_
