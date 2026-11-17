@@ -311,6 +311,112 @@ export const KATALOG: KatalogEintrag[] = ROH.map(({ ohneAuswertung, bild, ...r }
   brauchtBild: !!bild,
 }))
 
+// ── Familien (Katalog-Straffung, PROJ-114 Schritt 5) ──────────────────────
+// Sehr ähnliche Typen stehen beim Hinzufügen als ein Eintrag mit „Arten“. Beim Ändern des Aufgabentyps
+// und im Kapiteltest bleiben sie einzeln, dort geht es genau um den Unterschied.
+
+export interface KatalogFamilie {
+  id: string
+  name: string
+  /** Typ und Kurzname der Art; die erste ist voreingestellt */
+  arten: { typ: string; label: string }[]
+}
+
+export const FAMILIEN: KatalogFamilie[] = [
+  {
+    id: 'familie-bild',
+    name: 'Bild',
+    arten: [
+      { typ: 'image', label: 'Ein Bild' },
+      { typ: 'gallery', label: 'Galerie' },
+    ],
+  },
+  {
+    id: 'familie-auswahl',
+    name: 'Auswahlfrage',
+    arten: [
+      { typ: 'multiple_choice', label: 'Eine Frage' },
+      { typ: 'single_choice_set', label: 'Mehrere Fragen' },
+    ],
+  },
+  {
+    id: 'familie-luecken',
+    name: 'Lückentext',
+    arten: [
+      { typ: 'fill_blanks', label: 'Eintippen' },
+      { typ: 'advanced_fill_blanks', label: 'Mit Tipp' },
+      { typ: 'drag_words', label: 'Wörter ziehen' },
+    ],
+  },
+  {
+    id: 'familie-rechnen',
+    name: 'Rechenaufgabe',
+    arten: [
+      { typ: 'calculation_exercise', label: 'Eine Rechnung' },
+      { typ: 'arithmetic_quiz', label: 'Viele kurze' },
+    ],
+  },
+  {
+    id: 'familie-lernkarten',
+    name: 'Lernkarten',
+    arten: [
+      { typ: 'dialog_cards', label: 'Umdrehen' },
+      { typ: 'flashcards', label: 'Antwort tippen' },
+    ],
+  },
+]
+
+/** Eine Zeile im Katalog: ein einzelner Typ oder eine Familie mit mehreren Arten */
+export interface KatalogZeile {
+  id: string
+  name: string
+  gruppe: GruppeId
+  /** Einträge der Zeile in der Reihenfolge der Arten (bei Einzeltypen genau einer) */
+  eintraege: KatalogEintrag[]
+  /** Kurznamen der Arten (nur bei Familien) */
+  arten?: { typ: string; label: string }[]
+}
+
+const FAMILIE_VON = new Map(FAMILIEN.flatMap((f) => f.arten.map((a) => [a.typ, f] as const)))
+
+/**
+ * Macht aus Katalog-Einträgen (schon gefiltert, in Katalog-Reihenfolge) die Zeilen der Liste.
+ * Mit `familien` stehen verwandte Typen als eine Zeile an der Stelle ihres ersten Treffers.
+ */
+export function katalogZeilen(eintraege: KatalogEintrag[], familien: boolean): KatalogZeile[] {
+  const out: KatalogZeile[] = []
+  const gesehen = new Map<string, KatalogZeile>()
+  for (const e of eintraege) {
+    const f = familien ? FAMILIE_VON.get(e.typ) : undefined
+    if (!f) {
+      out.push({ id: e.typ, name: e.name, gruppe: e.gruppe, eintraege: [e] })
+      continue
+    }
+    const da = gesehen.get(f.id)
+    if (da) continue
+    const zeile: KatalogZeile = {
+      id: f.id,
+      name: f.name,
+      gruppe: e.gruppe,
+      // Alle Arten der Familie, die in den Treffern stehen – in der festgelegten Reihenfolge
+      eintraege: f.arten.map((a) => eintraege.find((x) => x.typ === a.typ)).filter((x): x is KatalogEintrag => !!x),
+      arten: f.arten.filter((a) => eintraege.some((x) => x.typ === a.typ)),
+    }
+    gesehen.set(f.id, zeile)
+    out.push(zeile)
+  }
+  return out
+}
+
+/** Zeile, in der ein Typ steht (für „Zuletzt verwendet“) */
+export function zeileFuerTyp(typ: string, familien: boolean): KatalogZeile | null {
+  const e = katalogEintrag(typ)
+  if (!e) return null
+  const f = familien ? FAMILIE_VON.get(typ) : undefined
+  if (!f) return { id: e.typ, name: e.name, gruppe: e.gruppe, eintraege: [e] }
+  return katalogZeilen(KATALOG.filter((x) => f.arten.some((a) => a.typ === x.typ)), true)[0] ?? null
+}
+
 /** Im Kapiteltest erlaubte Typen im Katalog (single_choice zeigt der Katalog nicht, E8) */
 export const KAPITELTEST_KATALOG = ['multiple_choice', 'true_false', 'fill_blanks'] as const
 

@@ -241,6 +241,29 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 5. **Schmales Fenster:** Unter 1280 px Breite einen Lehrtext öffnen. Die Gliederung weicht der Schublade und kommt beim Schließen zurück. Ab 1280 px bleibt sie offen, und nichts scrollt seitlich.
 6. **Handy:** In der Gliederung eine Aufgabe antippen. Die Ansicht wechselt zu „Vorschau“, und die Aufgabe ist offen.
 
+**Stand nach Livegang (2026-11-17, cf5376f):** Im Browser geprüft wurden Gliederungs-Klick, Einfügen (öffnet nach ca. 15 s Neubau in der Seite) und Rückgängig direkt nach dem Einfügen. Alle drei sind ok. Hinweis-Klick, Handy und schmales Fenster sind nicht geprüft.
+
+### Schritt 4 – Verbesserungsvorschläge in Alltagssprache (2026-11-17, Sonnet, 21481e7)
+- „Hinweise der Prüfstelle“ heißt jetzt **„Verbesserungsvorschläge“**. Die Kern-Texte („Kapitel 4 – Kapitel zu groß“) übersetzt die App in ganze Sätze mit Vorschlag (`src/lib/werkzeugkiste-hinweise.ts`, etwa 20 häufige Titel). „Kapitel“ wird zu „Thema“, „gesamte Datei“ zu „Ganzes Material“. Unbekannte Titel bleiben stehen, damit nichts verschluckt wird. Der Originaltext steht im `title`.
+- **„Element“ statt „Block“** in Gliederung, Menüs und Meldungen. „+ Block“ heißt jetzt „+ Element“.
+- Solange eine neue Aufgabe auf ihre Öffnung wartet, zeigt die Kopfzeile **„Aufgabe wird vorbereitet …“**.
+- Abweichung: Die Hinweise werden nicht nach Stelle gruppiert, die Liste bleibt flach.
+
+### Schritt 5 – Katalog gestrafft, „Liste mit Vorschau“ (2026-11-17, Opus)
+Vor dem Bau gab es einen klickbaren Prototyp mit zwei Varianten: https://claude.ai/artifact/BMvUHDj8UDu1Sssch8ABYa. Der Nutzer hat **Variante B** gewählt und Familien und Aufbau so freigegeben.
+- **Links** steht eine kurze Liste aller Typen nach Gruppen (eine Zeile je Typ, Mini-Skizze, ✓ = wird ausgewertet). **Rechts** stehen große Skizze, Erklärung, „Gut für“ und **„Einfügen“**. Ein Klick wählt aus, Einfügen geschieht per Knopf, Doppelklick oder Enter. Die Pfeiltasten wandern durch die Liste und wählen dabei aus. Am Handy (unter 768 px) klappt die Erklärung unter der Zeile auf.
+- **Familien** (`FAMILIEN`, `katalogZeilen` in `werkzeugkiste-katalog.ts`): Aus 35 Typen werden 29 Zeilen. Die Art wählt man im Segment:
+  - Bild: Ein Bild, Galerie
+  - Auswahlfrage: Eine Frage, Mehrere Fragen
+  - Lückentext: Eintippen, Mit Tipp, Wörter ziehen
+  - Rechenaufgabe: Eine Rechnung, Viele kurze
+  - Lernkarten: Umdrehen, Antwort tippen
+
+  Familien gibt es nur beim Hinzufügen. Beim „Aufgabentyp ändern“ und im Kapiteltest bleiben die Typen einzeln.
+- „Aus Material übernehmen“ ist jetzt ein leiser Link neben der Suche. Die Pille „wird ausgewertet“ ist durch ✓ ersetzt, die Fußzeile erklärt sie.
+- Tests: `katalog-test-hilfe.ts` (`waehleImKatalog`, `zeigeImKatalog`) für den Zwei-Schritt-Ablauf. `katalog.test.tsx` ist neu gefasst (Familien, Doppelklick/Enter, Art-Wahl). Die übrigen Katalog-Klicks in `baukasten-editor.test.tsx` und `typ-wechsel.test.tsx` laufen über den Helfer. Vitest 1224 grün, 1 alter fremder Fehler.
+- Nicht im Browser geprüft: Handy-Ansicht, Fokus nach Doppelklick.
+
 ---
 <!-- Sections below are added by subsequent skills -->
 

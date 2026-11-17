@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { katalogZeile, waehleImKatalog } from './katalog-test-hilfe'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { mockViewport, renderInWorkspace } from '@/components/admin/workspace-test-utils'
 import type { EditorDaten, Struktur } from '@/lib/werkzeugkiste-editor'
@@ -288,7 +289,7 @@ describe('Block einfügen (PROJ-90)', () => {
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
     expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="true_false"]')!)
+    waehleImKatalog('true_false')
     // PROJ-114, Schritt 3: Die neue Aufgabe geht in der Seite auf (sobald die Seite sie zeigt), nicht in der Schublade
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
@@ -300,7 +301,7 @@ describe('Block einfügen (PROJ-90)', () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Haftungsgrenzen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="crossword"]')!)
+    waehleImKatalog('crossword')
     // Mit dem neuen Block öffnet sich die Schublade, und die Gliederung klappt ein (PROJ-97), bleibt aber im Aufbau
     const gliederung = document.querySelector<HTMLElement>('section[aria-label="Gliederung"]')!
     expect(await within(gliederung).findByText('Kreuzworträtsel')).toBeInTheDocument()
@@ -325,7 +326,7 @@ describe('Block einfügen (PROJ-90)', () => {
     await screen.findByRole('heading', { name: 'Mein Material' })
     oeffneMenu(/Weitere Aktionen für Lückentext/)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Element darüber einfügen/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
     expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'memory_game', 'fill_blanks'])
     fireEvent.click(screen.getByRole('button', { name: /Rückgängig/ }))
@@ -350,8 +351,8 @@ describe('Block einfügen (PROJ-90)', () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
+    await waitFor(() => expect(katalogZeile('image')).not.toBeNull())
+    waehleImKatalog('image')
     fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
     expect(letzteStruktur().chapters[0].elements[2]).toMatchObject({ type: 'image', path: 'images/seite2.png' })
@@ -367,8 +368,8 @@ describe('Block einfügen (PROJ-90)', () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    await waitFor(() => expect(document.querySelector('[data-katalog-eintrag="image"]')).not.toHaveAttribute('aria-disabled'))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="image"]')!)
+    await waitFor(() => expect(katalogZeile('image')).not.toBeNull())
+    waehleImKatalog('image')
     fireEvent.click(await screen.findByRole('button', { name: /seite2\.png/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Bild bearbeiten' }))
     expect(await screen.findByRole('heading', { name: 'Bild bearbeiten' })).toBeInTheDocument()
@@ -572,7 +573,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     return rahmen
   }
-  const waehleTyp = (typ: string) => fireEvent.click(document.querySelector(`[data-katalog-eintrag="${typ}"]`)!)
+  const waehleTyp = (typ: string) => waehleImKatalog(typ)
 
   it('Leiste „Block“ ohne Auswahl: am Ende des letzten Themas', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
@@ -1189,7 +1190,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
     const { rahmen, senden } = await bereit()
     const bauten = api.baueEntwurfVorschau.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     await neuGebaut(bauten)
     expect(typen(0)).toEqual(['text', 'fill_blanks', 'memory_game'])
@@ -1203,7 +1204,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
   it('neuer Block ohne Bauplan (Tabelle) öffnet sofort die Schublade', async () => {
     const { senden } = await bereit()
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="tabelle"]')!)
+    waehleImKatalog('tabelle')
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
     expect(gestartet(senden)).toBe(false)
   })
@@ -1213,7 +1214,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
     const bauten = api.baueEntwurfVorschau.mock.calls.length
     api.baueEntwurfVorschau.mockRejectedValue(new Error('Die Vorschau konnte nicht gebaut werden.'))
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     await waitFor(() => expect(api.baueEntwurfVorschau.mock.calls.length).toBeGreaterThan(bauten), { timeout: 8000 })
     expect(await screen.findByRole('complementary', {}, { timeout: 8000 })).toBeInTheDocument()
@@ -1232,7 +1233,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
     const { rahmen, senden } = await bereit()
     oeffneMenu(/Weitere Aktionen für Lückentext/)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Element darüber einfügen/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     // Neuer Block an k0-e1; Rückgängig stellt den Lückentext wieder an diese Stelle
     fireEvent.click(screen.getByRole('button', { name: /^Rückgängig/ }))
     // Die Seite ist bereit und zeigt an k0-e1 genau den Lückentext von jetzt: Ohne Fingerabdruck der Vormerkung ginge er auf
@@ -1247,7 +1248,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
     const { rahmen, senden } = await bereit()
     const bauten = api.baueEntwurfVorschau.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     fireEvent.click(within(gliederung()).getByText('Lehrtext').closest('button')!)
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
     await neuGebaut(bauten)
@@ -1261,7 +1262,7 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
     const { rahmen, senden } = await bereit()
     const bauten = api.baueEntwurfVorschau.mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    waehleImKatalog('memory_game')
     fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
     await neuGebaut(bauten)
     ausSeite({ wkBereit: true }, rahmen)

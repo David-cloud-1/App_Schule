@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { zeigeImKatalog } from './katalog-test-hilfe'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TypWechsel } from './typ-wechsel'
 import { KapiteltestFormular } from './editor-formulare'
@@ -36,7 +37,8 @@ function zeige(block: Block = eigeneFrage, erlaubt?: readonly string[]) {
   return { onWechsel, onOpenChange, rueckgaengig }
 }
 
-const eintrag = (typ: string) => document.querySelector<HTMLButtonElement>(`[data-katalog-eintrag="${typ}"]`)!
+// Wählt den Typ im Katalog aus und liefert den Knopf „Zu diesem Typ wechseln“ (null, wenn der Typ fehlt)
+const eintrag = (typ: string) => zeigeImKatalog(typ) as HTMLButtonElement
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -52,9 +54,9 @@ describe('Aufgabentyp ändern (PROJ-95)', () => {
     expect(eintrag('true_false')).not.toHaveAttribute('aria-disabled')
     expect(eintrag('single_choice_set')).not.toHaveAttribute('aria-disabled')
     expect(eintrag('multiple_choice')).toHaveAttribute('aria-disabled', 'true')
-    expect(eintrag('multiple_choice').textContent).toContain('Aktueller Typ')
+    expect(eintrag('multiple_choice').closest('[aria-live]')?.textContent).toContain('Aktueller Typ')
     expect(eintrag('crossword')).toHaveAttribute('aria-disabled', 'true')
-    expect(eintrag('crossword').textContent).toContain('Nicht möglich')
+    expect(eintrag('crossword').closest('[aria-live]')?.textContent).toContain('Nicht möglich')
   })
 
   it('ein gesperrter Typ löst nichts aus', () => {

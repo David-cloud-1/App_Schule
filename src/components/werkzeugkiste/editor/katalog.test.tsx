@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { KatalogDialog } from './katalog-dialog'
+import { katalogZeile, waehleImKatalog, zeigeImKatalog } from './katalog-test-hilfe'
 import { KatalogSkizze, SKIZZEN_TYPEN } from './katalog-skizzen'
 import { FORMULARE, KapiteltestFormular } from './editor-formulare'
 import { alsZeit, ausZeit, feldName } from './editor-formulare-katalog'
@@ -30,16 +31,21 @@ function katalog(props: Partial<Parameters<typeof KatalogDialog>[0]> = {}) {
 beforeEach(() => window.localStorage.clear())
 afterEach(() => window.localStorage.clear())
 
-describe('Katalog-Fenster (PROJ-90)', () => {
-  it('zeigt sieben Gruppen und 35 Einträge mit „Gut für“', () => {
+const zeilen = () => [...document.querySelectorAll<HTMLElement>('[data-katalog-zeile]')]
+const zeilenIds = () => zeilen().map((z) => z.getAttribute('data-katalog-zeile'))
+
+describe('Katalog-Fenster (PROJ-90, Liste mit Vorschau aus PROJ-114 Schritt 5)', () => {
+  it('zeigt sieben Gruppen und alle 35 Typen in 29 Zeilen (verwandte Typen als Familie)', () => {
     katalog()
     expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     for (const g of ['Lesen & Nachschlagen', 'Abfragen', 'Lücken & Wörter', 'Zuordnen & Ordnen', 'Rechnen', 'Spiele & Rätsel', 'Selbstcheck & Wiederholen']) {
       expect(screen.getByRole('heading', { name: g })).toBeInTheDocument()
     }
-    const eintraege = document.querySelectorAll('[data-katalog-eintrag]')
-    expect(eintraege).toHaveLength(35)
-    expect(screen.getAllByText('Gut für:')).toHaveLength(35)
+    expect(zeilen()).toHaveLength(29)
+    const typen = zeilen().flatMap((z) => (z.getAttribute('data-katalog-typen') ?? '').split(' '))
+    expect(typen.sort()).toEqual(KATALOG.map((e) => e.typ).sort())
+    // „Gut für“ steht einmal: in der Vorschau des gewählten Typs
+    expect(screen.getAllByText('Gut für:')).toHaveLength(1)
     expect(screen.queryByText('Zuletzt verwendet')).not.toBeInTheDocument()
   })
 
@@ -48,9 +54,15 @@ describe('Katalog-Fenster (PROJ-90)', () => {
     const suche = screen.getByLabelText('Aufgabentyp suchen')
     expect(suche).toHaveFocus()
     fireEvent.change(suche, { target: { value: 'kreuzwort' } })
-    const eintraege = document.querySelectorAll('[data-katalog-eintrag]')
-    expect([...eintraege].map((e) => e.getAttribute('data-katalog-eintrag'))).toEqual(['crossword'])
+    expect(zeilenIds()).toEqual(['crossword'])
     expect(screen.queryByRole('heading', { name: 'Abfragen' })).not.toBeInTheDocument()
+  })
+
+  it('findet eine Familie auch über den Namen einer Art', () => {
+    katalog()
+    fireEvent.change(screen.getByLabelText('Aufgabentyp suchen'), { target: { value: 'wörter ziehen' } })
+    expect(zeilenIds()).toEqual(['familie-luecken'])
+    expect(document.querySelector('[data-katalog-einfuegen]')).toHaveAttribute('data-katalog-eintrag', 'drag_words')
   })
 
   it('zeigt ohne Treffer einen Leerzustand mit „Suche löschen“', () => {
@@ -58,30 +70,50 @@ describe('Katalog-Fenster (PROJ-90)', () => {
     fireEvent.change(screen.getByLabelText('Aufgabentyp suchen'), { target: { value: 'zzzz' } })
     expect(screen.getByText('Kein Aufgabentyp passt zu „zzzz“.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Suche löschen/ }))
-    expect(document.querySelectorAll('[data-katalog-eintrag]')).toHaveLength(35)
+    expect(zeilen()).toHaveLength(29)
   })
 
-  it('fügt per Klick sofort ein', () => {
+  it('Klick zeigt die Erklärung, erst „Einfügen“ fügt ein', () => {
     const { onWaehle } = katalog()
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    fireEvent.click(katalogZeile('memory_game')!)
+    expect(onWaehle).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Memory' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Einfügen' }))
     expect(onWaehle).toHaveBeenCalledWith('memory_game')
   })
 
-  it('wandert mit Pfeiltasten durch die Einträge', () => {
+  it('Doppelklick und Enter auf einer Zeile fügen direkt ein', () => {
+    const { onWaehle } = katalog()
+    fireEvent.doubleClick(katalogZeile('crossword')!)
+    expect(onWaehle).toHaveBeenLastCalledWith('crossword')
+    fireEvent.keyDown(katalogZeile('reihenfolge')!, { key: 'Enter' })
+    expect(onWaehle).toHaveBeenLastCalledWith('reihenfolge')
+  })
+
+  it('Familie: die Art wählt den Typ, der eingefügt wird', () => {
+    const { onWaehle } = katalog()
+    fireEvent.click(katalogZeile('fill_blanks')!)
+    expect(screen.getByRole('radio', { name: 'Eintippen' })).toHaveAttribute('data-state', 'on')
+    waehleImKatalog('drag_words')
+    expect(onWaehle).toHaveBeenLastCalledWith('drag_words')
+  })
+
+  it('wandert mit Pfeiltasten durch die Zeilen und wählt dabei aus', () => {
     katalog()
     fireEvent.keyDown(screen.getByLabelText('Aufgabentyp suchen'), { key: 'ArrowDown' })
-    expect(document.activeElement?.getAttribute('data-katalog-eintrag')).toBe('text')
+    expect(document.activeElement?.getAttribute('data-katalog-zeile')).toBe('text')
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })
-    expect(document.activeElement?.getAttribute('data-katalog-eintrag')).toBe('image')
+    expect(document.activeElement?.getAttribute('data-katalog-zeile')).toBe('familie-bild')
+    expect(screen.getByRole('heading', { name: 'Bild' })).toBeInTheDocument()
     fireEvent.keyDown(document.activeElement!, { key: 'End' })
-    expect(document.activeElement?.getAttribute('data-katalog-eintrag')).toBe('selbsteinschaetzung')
+    expect(document.activeElement?.getAttribute('data-katalog-zeile')).toBe('selbsteinschaetzung')
   })
 
   it('zeigt „Zuletzt verwendet“ oben und blendet es bei der Suche aus', () => {
     window.localStorage.setItem('wk-katalog-zuletzt', JSON.stringify(['fallakte', 'text']))
     katalog()
     const zuletzt = screen.getByRole('heading', { name: 'Zuletzt verwendet' }).parentElement!
-    expect([...zuletzt.querySelectorAll('[data-katalog-eintrag]')].map((e) => e.getAttribute('data-katalog-eintrag'))).toEqual(['fallakte', 'text'])
+    expect([...zuletzt.querySelectorAll('[data-katalog-zeile]')].map((e) => e.getAttribute('data-katalog-zeile'))).toEqual(['fallakte', 'text'])
     // Kennungen bleiben eindeutig, obwohl „Fallakte“ zweimal steht
     const ids = [...document.querySelectorAll('[id^="katalog-"]')].map((e) => e.id)
     expect(new Set(ids).size).toBe(ids.length)
@@ -91,27 +123,23 @@ describe('Katalog-Fenster (PROJ-90)', () => {
 
   it('lässt Bild-Typen immer wählbar, weil das Bild-Fenster auch Hochladen anbietet (PROJ-92)', () => {
     const { onWaehle } = katalog()
-    const bild = document.querySelector('[data-katalog-eintrag="image"]')!
-    expect(bild).not.toHaveAttribute('aria-disabled')
-    fireEvent.click(bild)
+    const knopf = zeigeImKatalog('image')!
+    expect(knopf).not.toHaveAttribute('aria-disabled')
+    fireEvent.click(knopf)
     expect(onWaehle).toHaveBeenCalledWith('image')
   })
 
-  it('zeigt im Kapiteltest nur die drei erlaubten Typen mit Begründung', () => {
+  it('zeigt im Kapiteltest nur die drei erlaubten Typen, einzeln (ohne Familien)', () => {
     katalog({ erlaubt: ['multiple_choice', 'true_false', 'fill_blanks'] })
     expect(screen.getByRole('heading', { name: 'Frage hinzufügen' })).toBeInTheDocument()
     expect(screen.getByText('Im Kapiteltest sind nur diese Fragetypen möglich.')).toBeInTheDocument()
-    expect([...document.querySelectorAll('[data-katalog-eintrag]')].map((e) => e.getAttribute('data-katalog-eintrag'))).toEqual([
-      'multiple_choice',
-      'true_false',
-      'fill_blanks',
-    ])
+    expect(zeilenIds()).toEqual(['multiple_choice', 'true_false', 'fill_blanks'])
   })
 
-  it('markiert ausgewertete Typen', () => {
+  it('markiert ausgewertete Typen mit einem Haken', () => {
     katalog()
-    expect(within(document.querySelector('[data-katalog-eintrag="crossword"]') as HTMLElement).getByText('wird ausgewertet')).toBeInTheDocument()
-    expect(within(document.querySelector('[data-katalog-eintrag="text"]') as HTMLElement).queryByText('wird ausgewertet')).not.toBeInTheDocument()
+    expect(within(katalogZeile('crossword')!).getByText(', wird ausgewertet')).toBeInTheDocument()
+    expect(within(katalogZeile('text')!).queryByText(', wird ausgewertet')).not.toBeInTheDocument()
   })
 })
 
@@ -225,7 +253,7 @@ describe('Kapiteltest über den Katalog (E6)', () => {
     render(<KapiteltestFormular block={block} onChange={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: /Frage hinzufügen/ }))
     expect(screen.getByText('Im Kapiteltest sind nur diese Fragetypen möglich.')).toBeInTheDocument()
-    fireEvent.click(document.querySelector('[data-katalog-eintrag="fill_blanks"]')!)
+    waehleImKatalog('fill_blanks')
     const neu = letzter(onChange)[0]
     expect(neu.questions).toHaveLength(2)
     expect(neu.questions[1]).toEqual(beispielBlock('fill_blanks'))
