@@ -212,6 +212,35 @@ Einzelfeld-Typen (Rechenaufgabe, Freitext) nutzen nur den einheitlichen Aufbau. 
 
 **Tests:** 10 neue Fälle in `aufgabenwerk-b-d-f.test.ts`; Gesamtlauf 3832 grün, 1 alter fremder Fehler. `tsc`, ESLint (nur Warnungen), Build grün. Bündel 89 KB.
 
+### Schritt 3 – Ein Weg zum Bearbeiten (2026-11-17, Opus, Zweig `proj-114-ein-weg`, nur lokal committet)
+**Gebaut**
+- **Gliederung, Hinweis der Prüfstelle und neuer Block aus dem Katalog** (auch Schnellauswahl und „+ Darunter“) öffnen Aufgaben mit Bauplan jetzt **in der Seite**. Die Schublade bleibt zu. Enter auf einem gewählten Block macht dasselbe. Typen ohne Bauplan (Tabelle, Diagramm, Bild-Typen), Lehrtext, Themen, Deckblatt und Lernzielkontrolle öffnen weiter die Schublade.
+- **Vorgemerkte Öffnung** (`Vormerkung` in `baukasten-editor.tsx`): Die App merkt sich Stelle und Marke. Sie öffnet erst, wenn die Seite für die aktuelle gebaute Fassung „bereit“ gemeldet hat (`bereitFuer === v.html`) und die Stelle in der Seite der Stelle im Entwurf entspricht (`stelleStimmt` mit `v.gebautSchluessel`). Zeigt die Seite den Block schon, öffnet sie sofort, wie ein Klick in der Seite.
+- **Auswege, nie ein stummes Nichts:** Der Neubau nach dem Vormerken scheitert (`v.bauFertig` zählt Bauversuche) → Schublade. Die Seite meldet beim Start „Abbruch“ (Block nicht auffindbar) → Schublade (gilt jetzt für jede Aufgabe). Nach 30 s ohne Ergebnis (`VORMERKUNG_MS`) → Schublade.
+- **Verworfen (nichts öffnet):** andere Auswahl, Ausprobieren, Mehrfachauswahl, Schreibschutz, Dialog, oder der Block an der Stelle ist weg oder anders (Fingerabdruck beim ersten Blick). Beispiel: Nach Rückgängig steht dort wieder ein alter Block.
+- **Zweiter Klick** auf eine schon in der Seite offene Aufgabe ändert nichts. Der Fix aus Commit 3167999 bleibt: Ist die Zeile nur gewählt, öffnet der Klick die Stelle. Bei offener Schublade hebt er die Auswahl auf.
+- **Handy:** Ein Klick auf eine Aufgabe in der Gliederung schaltet auf „Vorschau“, damit man die Aufgabe sieht.
+- **Layout:** Die Gliederung klappt beim Öffnen und Schließen der Schublade nicht mehr von selbst. Es gilt immer der gemerkte Zustand. Ausnahme: Unter 1280 px weicht sie der offenen Schublade, weil die drei Spalten (18/30/22 rem plus Abstände ≈ 1200 px) sonst seitlich überliefen. Begründung steht im Code. `gliederungTrotzSchublade` ist entfallen.
+
+**Abweichungen**
+- Ein „Abbruch“ der Seite öffnet jetzt auch bei einem Klick in der Seite die Schublade (bisher still geschlossen).
+- Eine Vormerkung wird auch durch einen Build-Fehler beendet, der schon vor ihr lief. Die Vorschau ist dann ohnehin kaputt, die Schublade ist der sichere Weg.
+
+**Tests:** In `baukasten-editor.test.tsx` gibt es 12 neue Fälle (Block „Ein Weg zum Bearbeiten“). Dazu kommen 3 Layout-Fälle, die 2 alte zum Einklappen ersetzen. 11 bestehende Fälle sind angepasst: Sie erreichen das Formular einer Aufgabe jetzt über den Ausweg „Abbruch“ oder nutzen den Lehrtext. Der Schutz bei Rückgängig ist per Gegenprobe belegt (Test schlägt ohne Fingerabdruck fehl). `tsc` grün; Vitest `src/components/werkzeugkiste` + `src/lib/werkzeugkiste` 1217 grün, 1 alter fremder Fehler (`werkzeugkiste-auszug.test.ts`).
+
+**Offen / nicht geprüft (braucht Browser)**
+- Die Zeitgrenze von 30 s ist nicht automatisch getestet.
+- Handy: Ob die Seite nach dem Umschalten zur neuen Aufgabe scrollt.
+- Das echte Timing mit dem Kern (Speichern → Neubau → „bereit“): Wie lange es bis zum Öffnen dauert.
+
+**Prüfliste für den Nutzer (nach dem Livegang)**
+1. **Block einfügen:** Katalog → z. B. Memory. Die Schublade bleibt zu. Nach kurzer Wartezeit („Vorschau wird aktualisiert“) geht die Aufgabe in der Seite auf (blauer Rahmen, „Bearbeiten“). Mit Tabelle oder Diagramm öffnet sofort die Schublade.
+2. **Gliederung klicken:** Ein Klick auf eine Aufgabe öffnet sie in der Seite. Ein zweiter Klick auf dieselbe Zeile ändert nichts, das Getippte bleibt. Ein Klick auf Lehrtext oder Thema öffnet die Schublade.
+3. **Hinweis klicken:** „Hinweise der Prüfstelle“ aufklappen und einen Hinweis zu einer Aufgabe anklicken. Die Aufgabe geht in der Seite auf.
+4. **Rückgängig direkt nach dem Einfügen:** Block einfügen und sofort ⌘/Strg+Z drücken. Weder der alte Block an dieser Stelle noch die Schublade gehen auf.
+5. **Schmales Fenster:** Unter 1280 px Breite einen Lehrtext öffnen. Die Gliederung weicht der Schublade und kommt beim Schließen zurück. Ab 1280 px bleibt sie offen, und nichts scrollt seitlich.
+6. **Handy:** In der Gliederung eine Aufgabe antippen. Die Ansicht wechselt zu „Vorschau“, und die Aufgabe ist offen.
+
 ---
 <!-- Sections below are added by subsequent skills -->
 

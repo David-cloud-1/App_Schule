@@ -67,6 +67,41 @@ function oeffneMenu(name: RegExp) {
   fireEvent.keyDown(screen.getByRole('button', { name, hidden: true }), { key: 'Enter' })
 }
 
+/** Fensterbreite genau nachbilden (min-width und max-width), anders als `mockViewport` auch für 1280 px */
+function mockBreite(px: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: px })
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const min = /min-width:\s*(\d+)/.exec(query)
+    const max = /max-width:\s*(\d+)/.exec(query)
+    return {
+      matches: min ? px >= Number(min[1]) : max ? px <= Number(max[1]) : false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }
+  })
+}
+
+/** Nachricht „aus dem Vorschau-Rahmen“ an die App */
+function ausSeite(data: unknown, rahmen: HTMLIFrameElement) {
+  fireEvent(window, new MessageEvent('message', { data, source: rahmen.contentWindow }))
+}
+
+/**
+ * PROJ-114, Schritt 3: Eine Aufgabe aus der Gliederung geht in der Seite auf. Die Schublade bleibt der Ausweg,
+ * wenn die Seite sie nicht öffnen kann („Abbruch“) – darüber erreichen diese Tests das Formular einer Aufgabe.
+ */
+async function schubladeUeberAusweg(name: string, marke: string) {
+  const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+  await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+  ausSeite({ wkBereit: true }, rahmen)
+  const gliederung = screen.getByRole('region', { name: 'Gliederung', hidden: true })
+  fireEvent.click(within(gliederung).getByText(name).closest('button')!)
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  ausSeite({ wkAufgabeAbbruch: marke }, rahmen)
+  return screen.findByRole('complementary', { name })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mockViewport(1440)
@@ -208,7 +243,7 @@ describe('Baukasten-Editor', () => {
 describe('Bearbeiten im Formular und im Text-Editor (Paket 2)', () => {
   it('ändert einen Lückentext im Formular und speichert die Änderung', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
-    fireEvent.click((await screen.findByText('Lückentext')).closest('button')!)
+    await schubladeUeberAusweg('Lückentext', 'k0-e1')
     const feld = await screen.findByLabelText(/^Text/)
     fireEvent.change(feld, { target: { value: 'Der *Spediteur* haftet.' } })
     expect(screen.getByText('Spediteur')).toBeInTheDocument()
@@ -248,14 +283,14 @@ describe('Sprung-Skript', () => {
 describe('Block einfügen (PROJ-90)', () => {
   const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
 
-  it('„Element hinzufügen“ fügt am Ende des Themas mit Beispiel ein, öffnet ihn und speichert', async () => {
+  it('„Element hinzufügen“ fügt am Ende des Themas mit Beispiel ein, wählt ihn und speichert', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
     expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     fireEvent.click(document.querySelector('[data-katalog-eintrag="true_false"]')!)
-    // Formular des neuen Blocks ist offen
-    expect(await screen.findByLabelText(/^Aussage/)).toHaveValue('Eine Woche hat sieben Tage. (Ersetze diese Aussage durch deine eigene.)')
+    // PROJ-114, Schritt 3: Die neue Aufgabe geht in der Seite auf (sobald die Seite sie zeigt), nicht in der Schublade
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     await waitFor(() => expect(api.speichereEntwurf).toHaveBeenCalled(), { timeout: 3000 })
     expect(letzteStruktur().chapters[0].elements.map((b) => b.type)).toEqual(['text', 'fill_blanks', 'true_false'])
     expect(JSON.parse(window.localStorage.getItem('wk-katalog-zuletzt')!)).toEqual(['true_false'])
@@ -276,9 +311,7 @@ describe('Block einfügen (PROJ-90)', () => {
 
   it('PROJ-111: Die Schublade zeigt keine doppelten Aktionen (Darunter einfügen, Löschen, zweites „Fertig“); sie liegen in der Leiste und im ⋯-Menü', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
-    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
-    const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
+    const schublade = await schubladeUeberAusweg('Lückentext', 'k0-e1')
     expect(within(schublade).queryByRole('button', { name: /Block löschen/ })).not.toBeInTheDocument()
     expect(within(schublade).queryByRole('button', { name: /Block darunter einfügen/ })).not.toBeInTheDocument()
     expect(within(schublade).queryByRole('button', { name: 'Fertig' })).not.toBeInTheDocument()
@@ -371,12 +404,11 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     lesen.mockRestore()
   })
 
-  it('öffnet die Schublade mit dem Formular, wenn man in der Gliederung einen Block wählt, und schließt sie mit Esc', async () => {
+  it('öffnet die Schublade mit dem Formular (Ausweg für eine Aufgabe) und schließt sie mit Esc', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
-    const schublade = await screen.findByRole('complementary', { name: 'Lückentext' })
+    const schublade = await schubladeUeberAusweg('Lückentext', 'k0-e1')
     expect(within(schublade).getByLabelText(/^Text/)).toBeInTheDocument()
     // Das Formular steht nicht mehr in der Gliederung
     expect(within(gliederung).queryByLabelText(/^Text/)).not.toBeInTheDocument()
@@ -407,7 +439,8 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
   it('verliert den Fokus beim Schließen der Schublade nicht (Zeile der Gliederung, sonst Vorschau; QA BUG-2)', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    const zeile = within(gliederung).getByText('Lückentext').closest('button')!
+    // Lehrtext hat keinen Bauplan: Er öffnet weiter die Schublade
+    const zeile = within(gliederung).getByText('Lehrtext').closest('button')!
     fireEvent.click(zeile)
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
@@ -474,25 +507,23 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
   it('blendet Gliederung und Schublade aus, wenn die Vorschau die ganze Breite bekommt', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Vorschau über die ganze Breite' }))
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeitung wieder einblenden' }))
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
-    // Bei offener Schublade bleibt die Gliederung eingeklappt (PROJ-97) und lässt sich bewusst aufklappen
-    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Gliederung einblenden' }))
+    // PROJ-114, Schritt 3: Die Gliederung folgt dem gemerkten Zustand, auch neben der offenen Schublade
     expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
   })
 
   it('schließt die Schublade, wenn der gewählte Block verschwindet (Löschen)', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     await screen.findByRole('complementary')
-    oeffneMenu(/Weitere Aktionen für Lückentext/)
+    oeffneMenu(/Weitere Aktionen für Lehrtext/)
     fireEvent.click(await screen.findByRole('menuitem', { name: /Löschen/ }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
   })
@@ -503,9 +534,9 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await screen.findByRole('radiogroup', { name: 'Ansicht' })
     fireEvent.click(screen.getByRole('radio', { name: 'Gliederung' }))
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     const blatt = await screen.findByRole('dialog')
-    expect(within(blatt).getByLabelText(/^Text/)).toBeInTheDocument()
+    expect(within(blatt).getByRole('toolbar', { name: 'Textgestaltung' })).toBeInTheDocument()
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 })
@@ -570,6 +601,8 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
     fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     await screen.findByRole('complementary')
+    // Die Gliederung bleibt neben der Schublade offen (Schritt 3); eingeklappt zeigt sie die schmale Leiste
+    fireEvent.click(screen.getByRole('button', { name: 'Gliederung ausblenden' }))
     fireEvent.click(screen.getByRole('button', { name: 'Element hinzufügen' }))
     expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     waehleTyp('memory_game')
@@ -656,35 +689,43 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(katalogOffen()).not.toBeInTheDocument()
   })
 
-  it('Gliederung klappt bei offener Schublade ein und kehrt danach zurück; der gemerkte Zustand bleibt', async () => {
+  it('Schritt 3: Ab 1280 px bleibt die Gliederung bei offener Schublade offen; der gemerkte Zustand gilt immer', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(gliederung).getByText('Lückentext').closest('button')!)
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
     await screen.findByRole('complementary')
-    expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
-    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
     expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
     expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
   })
 
-  it('bewusst aufgeklappt bleibt die Gliederung bei offener Schublade offen, bis die Schublade schließt', async () => {
+  it('Schritt 3: Gemerkt „zu“ bleibt die Gliederung zu; „Gliederung einblenden“ öffnet sie dauerhaft, auch neben der Schublade', async () => {
     window.localStorage.setItem('wk-editor-gliederung', 'zu')
     const rahmen = await bereit()
-    nachricht({ wkBearbeite: 'k0-e0' }, rahmen) // „Bearbeiten“ in der Vorschau
+    nachricht({ wkBearbeite: 'k0-e0' }, rahmen) // „Bearbeiten“ am Lehrtext in der Vorschau
     await screen.findByRole('complementary')
-    // gemerkt „zu“, aber die Schublade ist offen und die Gliederung noch nicht bewusst aufgeklappt
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Gliederung einblenden' }))
-    const offen = screen.getByRole('region', { name: 'Gliederung' })
-    fireEvent.click(within(offen).getByText('Lückentext').closest('button')!) // anderer Block: kein erneutes Einklappen
-    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
+  })
+
+  it('Schritt 3: Unter 1280 px weicht die Gliederung der offenen Schublade und kommt danach zurück', async () => {
+    mockBreite(1100)
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const gliederung = await screen.findByRole('region', { name: 'Gliederung' })
+    fireEvent.click(within(gliederung).getByText('Lehrtext').closest('button')!)
+    await screen.findByRole('complementary')
     expect(screen.queryByRole('region', { name: 'Gliederung' })).not.toBeInTheDocument()
-    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('zu')
+    expect(window.localStorage.getItem('wk-editor-gliederung')).toBe('offen')
+    fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
+    await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
+    expect(screen.getByRole('region', { name: 'Gliederung' })).toBeInTheDocument()
   })
 })
 
@@ -733,9 +774,8 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
 
   it('wählt in der Vorschau einen anderen Block, wechselt das offene Formular mit', async () => {
     const { rahmen } = await bereit()
-    // Die Gliederung öffnet weiter das Formular, auch für Aufgaben
-    fireEvent.click(within(screen.getByRole('region', { name: 'Gliederung' })).getByText('Lückentext').closest('button')!)
-    await screen.findByRole('complementary', { name: 'Lückentext' })
+    // Formular einer Aufgabe (über den Ausweg der Seite), dann Klick auf den Lehrtext
+    await schubladeUeberAusweg('Lückentext', 'k0-e1')
     nachricht({ wkWaehle: 'k0-e0' }, rahmen)
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
   })
@@ -772,7 +812,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
   })
 
   it('Schnellauswahl im leeren Thema fügt den Block ohne Katalog ein; unbekannte Typen werden verworfen', async () => {
-    const { rahmen } = await bereit()
+    const { rahmen, senden } = await bereit()
     nachricht({ wkSchnell: 'k1', typ: 'drag_words' }, rahmen)
     nachricht({ wkSchnell: 'k1', typ: 'text' }, rahmen, window)
     expect(screen.queryByRole('heading', { name: 'Element hinzufügen' })).not.toBeInTheDocument()
@@ -781,9 +821,11 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     await gespeichert()
     expect(typen(1)).toEqual(['fill_blanks'])
     expect(screen.queryByRole('heading', { name: 'Element hinzufügen' })).not.toBeInTheDocument()
-    // Der neue Block ist gewählt, sein Formular offen
-    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
-  })
+    // PROJ-114, Schritt 3: Der neue Block geht in der Seite auf, sobald sie ihn zeigt (hier: gleiche Seite, schon bereit)
+    nachricht({ wkBereit: true }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeStart: expect.objectContaining({ marke: 'k1-e0' }) }, '*'), { timeout: 8000 })
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+ }, 15000)
 
   it('„Löschen“ am Thema (Leiste) fragt per Dialog nach und löscht erst nach Bestätigung', async () => {
     const { rahmen } = await bereit()
@@ -1114,5 +1156,176 @@ describe('Lückentext an Ort und Stelle (PROJ-114, Bauschritt 2)', () => {
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
     nachricht({ wkAufgabeAenderung: 'k0-e1', gruppe: 'luecke-neu', block: { type: 'fill_blanks', text: 'Der *Frachtführer* *haftet*.' } }, rahmen)
     await waitFor(() => expect(letzteStruktur().chapters[0].elements[1]).toEqual({ type: 'fill_blanks', text: 'Der *Frachtführer* *haftet*.' }), { timeout: 4000 })
+  })
+})
+
+describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
+  const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
+  const typen = (t: number) => letzteStruktur().chapters[t].elements.map((b) => b.type)
+  const gestartet = (senden: { mock: { calls: unknown[][] } }, marke?: string) =>
+    senden.mock.calls.some((c) => {
+      const n = c[0] as { wkAufgabeStart?: { marke: string } }
+      return !!n.wkAufgabeStart && (marke === undefined || n.wkAufgabeStart.marke === marke)
+    })
+  /** Wie im Browser: Jeder Neubau liefert eine andere Seite, die erst nach „bereit“ einen Start annimmt */
+  async function bereit() {
+    let nr = 0
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(`<html><body><p>Seite ${++nr}</p></body></html>`)))
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    ausSeite({ wkBereit: true }, rahmen)
+    return { rahmen, senden }
+  }
+  /** Warten, bis nach dem Speichern die neue Seite gebaut ist (noch ohne „bereit“) */
+  async function neuGebaut(bauten: number) {
+    await waitFor(() => expect(api.baueEntwurfVorschau.mock.calls.length).toBeGreaterThan(bauten), { timeout: 8000 })
+    await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument(), { timeout: 8000 })
+  }
+  const gliederung = () => screen.getByRole('region', { name: 'Gliederung', hidden: true })
+
+  it('neuer Block mit Bauplan: keine Schublade; erst nach Neubau und „bereit“ geht er in der Seite auf', async () => {
+    const { rahmen, senden } = await bereit()
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    await neuGebaut(bauten)
+    expect(typen(0)).toEqual(['text', 'fill_blanks', 'memory_game'])
+    // Die neue Seite hat noch nicht „bereit“ gemeldet: Ein Start ginge verloren, also wartet die App
+    expect(gestartet(senden)).toBe(false)
+    ausSeite({ wkBereit: true }, rahmen)
+    await waitFor(() => expect(gestartet(senden, 'k0-e2')).toBe(true))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  }, 20000)
+
+  it('neuer Block ohne Bauplan (Tabelle) öffnet sofort die Schublade', async () => {
+    const { senden } = await bereit()
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="tabelle"]')!)
+    expect(await screen.findByRole('complementary')).toBeInTheDocument()
+    expect(gestartet(senden)).toBe(false)
+  })
+
+  it('scheitert der Neubau, öffnet der neue Block die Schublade (Ausweg)', async () => {
+    const { senden } = await bereit()
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    api.baueEntwurfVorschau.mockRejectedValue(new Error('Die Vorschau konnte nicht gebaut werden.'))
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    await waitFor(() => expect(api.baueEntwurfVorschau.mock.calls.length).toBeGreaterThan(bauten), { timeout: 8000 })
+    expect(await screen.findByRole('complementary', {}, { timeout: 8000 })).toBeInTheDocument()
+    expect(gestartet(senden)).toBe(false)
+  }, 20000)
+
+  it('meldet die Seite „Abbruch“ (Block dort nicht auffindbar), öffnet die Schublade', async () => {
+    const { rahmen, senden } = await bereit()
+    fireEvent.click(within(gliederung()).getByText('Lückentext').closest('button')!)
+    await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
+    ausSeite({ wkAufgabeAbbruch: 'k0-e1' }, rahmen)
+    expect(await screen.findByRole('complementary', { name: 'Lückentext' })).toBeInTheDocument()
+  })
+
+  it('Rückgängig direkt nach dem Einfügen: Die Vormerkung verfällt, der Block, der jetzt dort steht, öffnet nicht', async () => {
+    const { rahmen, senden } = await bereit()
+    oeffneMenu(/Weitere Aktionen für Lückentext/)
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Block darüber einfügen/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    // Neuer Block an k0-e1; Rückgängig stellt den Lückentext wieder an diese Stelle
+    fireEvent.click(screen.getByRole('button', { name: /^Rückgängig/ }))
+    // Die Seite ist bereit und zeigt an k0-e1 genau den Lückentext von jetzt: Ohne Fingerabdruck der Vormerkung ginge er auf
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(gestartet(senden)).toBe(false)
+    expect(senden).not.toHaveBeenCalledWith(expect.objectContaining({ wkAufgabenwerk: expect.anything() }), '*')
+    void rahmen
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  }, 20000)
+
+  it('andere Auswahl vor dem Neubau: Die Vormerkung verfällt', async () => {
+    const { rahmen, senden } = await bereit()
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    fireEvent.click(within(gliederung()).getByText('Lehrtext').closest('button')!)
+    expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
+    await neuGebaut(bauten)
+    ausSeite({ wkBereit: true }, rahmen)
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(gestartet(senden)).toBe(false)
+    expect(screen.getByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
+  }, 20000)
+
+  it('Wechsel zu „Ausprobieren“ vor dem Neubau: Die Vormerkung verfällt', async () => {
+    const { rahmen, senden } = await bereit()
+    const bauten = api.baueEntwurfVorschau.mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
+    fireEvent.click(document.querySelector('[data-katalog-eintrag="memory_game"]')!)
+    fireEvent.click(screen.getByRole('radio', { name: 'Ausprobieren' }))
+    await neuGebaut(bauten)
+    ausSeite({ wkBereit: true }, rahmen)
+    fireEvent.click(screen.getByRole('radio', { name: 'Bearbeiten' }))
+    await new Promise((r) => setTimeout(r, 1500))
+    expect(gestartet(senden)).toBe(false)
+  }, 20000)
+
+  it('Klick in der Gliederung öffnet eine Aufgabe in der Seite; ein zweiter Klick ändert nichts', async () => {
+    const { senden } = await bereit()
+    fireEvent.click(within(gliederung()).getByText('Lückentext').closest('button')!)
+    await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    senden.mockClear()
+    fireEvent.click(within(gliederung()).getByText('Lückentext').closest('button')!)
+    await new Promise((r) => setTimeout(r, 100))
+    expect(gestartet(senden)).toBe(false)
+    expect(senden).not.toHaveBeenCalledWith({ wkAufgabeBeende: true }, '*')
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('Klick in der Gliederung, bevor die Seite bereit ist: öffnet, sobald sie „bereit“ meldet', async () => {
+    let nr = 0
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(`<html><body><p>Seite ${++nr}</p></body></html>`)))
+    renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
+    const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
+    const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
+    fireEvent.click(within(gliederung()).getByText('Lückentext').closest('button')!)
+    await new Promise((r) => setTimeout(r, 100))
+    expect(gestartet(senden)).toBe(false)
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+    ausSeite({ wkBereit: true }, rahmen)
+    await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
+  })
+
+  it('Klick auf einen Hinweis der Prüfstelle öffnet die Aufgabe in der Seite', async () => {
+    const { senden } = await bereit()
+    fireEvent.click(within(gliederung()).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
+    fireEvent.click(await within(gliederung()).findByText('Kapitel 1 – Keine richtige Antwort'))
+    await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
+    expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  })
+
+  it('Hinweis zum Lehrtext oder Thema öffnet weiter die Schublade', async () => {
+    api.baueEntwurfVorschau.mockResolvedValue({
+      adresse: 'https://speicher.test/entwurf.html',
+      befunde: [{ text: 'Thema 2 ist leer', schwere: 'mittel', stellen: [{ kapitel: 1 }] }],
+      groesse: 1000,
+      stand: null,
+    })
+    const { senden } = await bereit()
+    fireEvent.click(within(gliederung()).getByRole('button', { name: /Hinweise der Prüfstelle/ }))
+    fireEvent.click(await within(gliederung()).findByText('Thema 2 ist leer'))
+    expect(await screen.findByRole('complementary')).toBeInTheDocument()
+    expect(gestartet(senden)).toBe(false)
+  })
+
+  it('Handy: Klick auf eine Aufgabe in der Gliederung zeigt die Seite statt des Blatts', async () => {
+    mockViewport(390)
+    const { senden } = await bereit()
+    fireEvent.click(screen.getByRole('radio', { name: 'Gliederung' }))
+    fireEvent.click(within(await screen.findByRole('region', { name: 'Gliederung' })).getByText('Lückentext').closest('button')!)
+    await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
+    expect(screen.getByRole('radio', { name: 'Vorschau' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

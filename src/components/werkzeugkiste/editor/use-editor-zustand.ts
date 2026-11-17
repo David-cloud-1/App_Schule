@@ -239,6 +239,8 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
   schluesselRef.current = gespeichertSchluessel
   /** PROJ-113: Fingerabdrücke der Struktur, aus der die gezeigte Seite gebaut wurde (null = unsicher, z. B. während des Baus gespeichert) */
   const [gebautSchluessel, setGebautSchluessel] = useState<Record<string, string> | null>(null)
+  /** PROJ-114, Schritt 3: Zahl der beendeten Bauversuche (gelungen oder gescheitert) – „ist seitdem gebaut worden?“ */
+  const [bauFertig, setBauFertig] = useState(0)
   const laeuft = useRef(false)
   /** Gibt es gerade eine offene Aufgabe oder einen Schreibvorgang? Dann darf eine fertig gebaute Seite sie nicht ersetzen (QA BUG-5) */
   const pausiertRef = useRef(pausiert)
@@ -285,6 +287,7 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
     } finally {
       laeuft.current = false
       setLaedt(false)
+      setBauFertig((n) => n + 1)
       if (nochmal.current) {
         nochmal.current = false
         void bauen()
@@ -299,5 +302,5 @@ export function useEditorVorschau(id: string, gespeichertAm: number, pausiert = 
     return () => clearTimeout(t)
   }, [gespeichertAm, bauen, pausiert])
 
-  return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, gebautSchluessel, neuBauen: bauen }
+  return { html, laedt, fehler, befunde, setBefunde, groesse, gebautFuer, gebautSchluessel, bauFertig, neuBauen: bauen }
 }

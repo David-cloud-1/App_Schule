@@ -113,6 +113,36 @@ interface AufgabeSitzung {
   rest: string
 }
 
+/**
+ * PROJ-114, Schritt 3 („Ein Weg zum Bearbeiten“): vorgemerkte Öffnung einer Aufgabe in der Seite.
+ *
+ * Gliederung (Klick, Hinweis der Prüfstelle) und Katalog (neuer Block) öffnen Aufgaben mit Bauplan in der Seite.
+ * Die Seite zeigt einen neuen oder geänderten Block aber erst nach dem nächsten Neubau, und sie nimmt einen Start
+ * nur an, wenn sie „bereit“ gemeldet hat. Deshalb merkt sich die App die Stelle und öffnet erst, wenn alles passt:
+ *
+ *   vorgemerkt ──(Block gesehen, ohne Bauplan)──────────────────────────────► Schublade
+ *       │ (Block gesehen: Fingerabdruck merken)
+ *       ▼
+ *   wartet ──(Seite bereit UND Stelle in der Seite = Stelle im Entwurf)──────► Aufgabe in der Seite
+ *       │──(Neubau seit dem Vormerken gescheitert / nach VORMERKUNG_MS nichts)► Schublade (nie ein stummes Nichts)
+ *       └──(andere Auswahl, Ausprobieren, Mehrfachauswahl, Schreibschutz, Dialog,
+ *            Block weg oder anders, z. B. Rückgängig)─────────────────────────► verworfen (nichts öffnet)
+ *
+ * Meldet die Seite beim Start „Abbruch“ (Block dort nicht auffindbar), öffnet ebenfalls die Schublade.
+ */
+interface Vormerkung {
+  nr: number
+  ort: Ort
+  marke: string
+  /** Fingerabdruck des Blocks beim ersten Blick nach dem Vormerken (null = noch nicht gesehen, z. B. direkt nach dem Einfügen) */
+  block: string | null
+  /** Bauversuche, die beim ersten Blick schon beendet waren: Erst ein späterer, gescheiterter zählt als „geht nicht“ */
+  bau: number
+}
+
+/** Spätestens dann öffnet eine vorgemerkte Aufgabe die Schublade (Seite wird nie bereit, Kern hängt) */
+export const VORMERKUNG_MS = 30_000
+
 /** Alles in der Struktur außer dem Block an `ort` – eigene Änderungen der Aufgabe verändern das nie */
 export function restSignatur(struktur: { chapters: Array<{ elements: unknown[] }> }, ort: Ort): string {
   return JSON.stringify(struktur.chapters.map((k, t) => (t === ort.thema ? { ...k, elements: k.elements.filter((_, i) => i !== ort.block) } : k)))
@@ -254,6 +284,15 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const aufgabeZaehler = useRef(0)
   const aktionsZaehler = useRef(0)
   const v = useEditorVorschau(daten.id, z.gespeichertAm, !!schreiben || !!aufgabe, z.gespeichertSchluessel)
+  // PROJ-114, Schritt 3: Für welche gebaute Seite hat der Rahmen „bereit“ gemeldet? Erst dann nimmt sie einen Start an.
+  const [bereitFuer, setBereitFuer] = useState<string | null>(null)
+  const htmlRef = useRef(v.html)
+  htmlRef.current = v.html
+  const seiteBereit = !!v.html && bereitFuer === v.html
+  const [vormerkung, setVormerkung] = useState<Vormerkung | null>(null)
+  const vormerkungRef = useRef(vormerkung)
+  vormerkungRef.current = vormerkung
+  const vormerkZaehler = useRef(0)
   const [auswahl, setAuswahlState] = useState<Auswahl>(null)
   // PROJ-102: Mehrfachauswahl (mindestens zwei Blöcke); `auswahl` bleibt der zuletzt gewählte Block, an dem die Leiste hängt
   const [markiert, setMarkiert] = useState<Ort[]>([])
@@ -280,8 +319,6 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [ansicht, setAnsicht] = useState<'gliederung' | 'vorschau'>('vorschau')
   const [gliederungOffen, setGliederungOffen] = useState(liesGliederungOffen)
   const [vollbreit, setVollbreit] = useState(false)
-  // PROJ-97: Gliederung bewusst aufgeklappt, obwohl die Schublade offen ist (gilt nur, solange eine Stelle gewählt ist)
-  const [gliederungTrotzSchublade, setGliederungTrotzSchublade] = useState(false)
   // PROJ-97: Bitte an die Gliederung, den Katalog zu öffnen (Kürzel, „+“ in der schmalen Leiste und in der Vorschau)
   const [einfuegenAnfrage, setEinfuegenAnfrage] = useState<EinfuegeAnfrage>({ nr: 0, ort: null })
   const [themaLoeschenAnfrage, setThemaLoeschenAnfrage] = useState<ThemaLoeschenAnfrage>({ nr: 0, thema: -1 })
@@ -324,8 +361,6 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const mehrMarken = viele ? wahlOrte.map((o) => sprungmarke(o)) : []
   // Das Formular ist offen, wenn es gewünscht ist, etwas gewählt ist und wir im Bearbeiten-Modus sind (nicht bei Mehrfachauswahl)
   const schubladeAktiv = schubladeOffen && !!gewaehlt && modus === 'bearbeiten' && !viele
-  // Ist die Schublade zu, gilt wieder der gemerkte Zustand der Gliederung
-  if (gliederungTrotzSchublade && !schubladeAktiv) setGliederungTrotzSchublade(false)
   // Bilder, die der Entwurf schon benutzt (Marke „Verwendet“ in der Bildauswahl)
   const verwendet = useMemo(() => new Set(JSON.stringify(z.struktur).match(/images\/[^"\\]+/g) ?? []), [z.struktur])
 
@@ -901,11 +936,58 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (art) setAufgabeBefehl((x) => ({ nr: (x?.nr ?? 0) + 1, art }))
   }
 
+  /**
+   * PROJ-114, Schritt 3: Stelle aus der App heraus öffnen (Gliederung, Hinweis der Prüfstelle, neuer Block, Enter).
+   * Aufgaben mit Bauplan gehen in der Seite auf (vorgemerkt, siehe `Vormerkung`), alles andere in der Schublade.
+   * `typ` kennt nur das Einfügen: Der neue Block steht dann erst im nächsten Zustand in der Struktur.
+   */
+  function oeffneStelle(a: Auswahl, typ?: string) {
+    if (a?.art === 'block' && !z.gesperrt && modus === 'bearbeiten') {
+      const ort = { thema: a.thema, block: a.block }
+      const marke = sprungmarke(ort)
+      const t = typ ?? z.struktur.chapters[a.thema]?.elements[a.block]?.type
+      if (t && hatBauplan(t)) {
+        // Zweiter Klick auf die schon in der Seite offene Aufgabe: nichts ändern (sie bleibt offen, nichts geht verloren)
+        if (typ === undefined && aktiveAufgabe.current === marke) return
+        if (istMobil) setAnsicht('vorschau')
+        // Zeigt die Seite den Block schon (unverändert, bereit), sofort öffnen – wie ein Klick in der Seite. So wechselt
+        // eine offene Aufgabe direkt zur neuen, ohne dass die App die alte erst schließt (die Seite tut das selbst).
+        if (typ === undefined && seiteBereit && stelleStimmt(marke, z.struktur, v.gebautSchluessel) && oeffneAufgabe(ort, null)) {
+          setVormerkung(null)
+          setVollbreit(false)
+          return
+        }
+        // Wählen beendet eine Mehrfachauswahl; die Schublade bleibt zu
+        setAuswahlRoh(a)
+        setSchubladeOffen(false)
+        setVollbreit(false)
+        setVormerkung({ nr: ++vormerkZaehler.current, ort, marke, block: null, bau: 0 })
+        return
+      }
+    }
+    setVormerkung(null)
+    setAuswahl(a)
+    setVollbreit(false)
+  }
+
+  /** Ausweg einer Vormerkung: Die gewählte Stelle öffnet wie bisher in der Schublade */
+  function vormerkungAusweg() {
+    setVormerkung(null)
+    setSchubladeOffen(true)
+    setVollbreit(false)
+  }
+
   function beiAufgabe(w: Extract<VorschauWunsch, { art: 'aufgabeAenderung' | 'aufgabeEnde' | 'aufgabeAbbruch' | 'aufgabeAktion' }>) {
     const sit = sitzungen.current.get(w.marke)
     if (!sit) return
     if (w.art === 'aufgabeEnde' || w.art === 'aufgabeAbbruch') {
+      const offen = aktiveAufgabe.current === w.marke
       schliesseAufgabe(w.marke, null)
+      // Schritt 3: Die Seite konnte die Aufgabe nicht öffnen (Block dort nicht auffindbar): Schublade statt stummem Nichts
+      if (w.art === 'aufgabeAbbruch' && offen && !z.gesperrt && modus === 'bearbeiten') {
+        setAuswahlRoh({ art: 'block', thema: sit.ort.thema, block: sit.ort.block })
+        vormerkungAusweg()
+      }
       return
     }
     // Hat sich die Seite um die Aufgabe herum verändert (Block gelöscht, verschoben, eingefügt), gehört der Platz
@@ -975,6 +1057,57 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (modus !== 'bearbeiten' || marke !== m || dialog || viele || z.gesperrt) schliesseAufgabe(m, 'beende')
   }, [modus, marke, dialog, viele, z.gesperrt, aufgabe])
 
+  // PROJ-114, Schritt 3: vorgemerkte Öffnung auflösen (Zustände siehe `Vormerkung`). Steht absichtlich hinter den
+  // Effekten oben: Eine Aufgabe, die eine Einfügung gerade geschlossen hat, ist hier schon zu.
+  useEffect(() => {
+    const vm = vormerkung
+    if (!vm) return
+    const gleich = gewaehlt?.art === 'block' && gewaehlt.thema === vm.ort.thema && gewaehlt.block === vm.ort.block
+    if (modus !== 'bearbeiten' || viele || z.gesperrt || dialog || !gleich) {
+      setVormerkung(null)
+      return
+    }
+    const b = z.struktur.chapters[vm.ort.thema]?.elements[vm.ort.block]
+    if (!b) {
+      setVormerkung(null)
+      return
+    }
+    const text = JSON.stringify(b)
+    if (vm.block === null) {
+      if (!hatBauplan(b.type)) vormerkungAusweg()
+      else setVormerkung({ ...vm, block: text, bau: v.bauFertig })
+      return
+    }
+    // Rückgängig/Wiederholen: An der Stelle steht ein anderer Block oder ein anderer Stand – nichts Falsches öffnen
+    if (text !== vm.block || aktiveAufgabe.current === vm.marke) {
+      setVormerkung(null)
+      return
+    }
+    // Schreiben in der Seite endet gerade (die Auswahl hat gewechselt): danach weiter
+    if (schreibRef.current) return
+    // Eine Aufgabe wurde in diesem Durchgang gerade geschlossen: erst ihr „beenden“ an die Seite schicken lassen,
+    // sonst käme es nach dem Start der neuen an und schlösse diese gleich wieder
+    if (aufgabe && !aktiveAufgabe.current) return
+    if (seiteBereit && stelleStimmt(vm.marke, z.struktur, v.gebautSchluessel)) {
+      setVormerkung(null)
+      if (!oeffneAufgabe(vm.ort, null)) vormerkungAusweg()
+      return
+    }
+    // Ein Bau nach dem Vormerken ist gescheitert: Die Seite zeigt den Block nicht, also die Schublade
+    if (!v.laedt && v.fehler && v.bauFertig > vm.bau) vormerkungAusweg()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vormerkung, modus, viele, z.gesperrt, dialog, gewaehlt, z.struktur, seiteBereit, v.gebautSchluessel, v.laedt, v.fehler, v.bauFertig, schreiben, aufgabe])
+
+  // Zeitgrenze einer Vormerkung: Wird die Seite nie bereit, öffnet die Schublade
+  const vormerkNr = vormerkung?.nr
+  useEffect(() => {
+    if (vormerkNr === undefined) return
+    const t = setTimeout(() => {
+      if (vormerkungRef.current?.nr === vormerkNr) vormerkungAusweg()
+    }, VORMERKUNG_MS)
+    return () => clearTimeout(t)
+  }, [vormerkNr])
+
   // Lage ändert sich (andere Auswahl, Formular, Ausprobieren, Dialog): Schreiben beenden, die Seite meldet den Endstand
   useEffect(() => {
     const sit = schreibRef.current
@@ -1006,7 +1139,11 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         break
       }
       case 'Enter':
-        if (gewaehlt?.art === 'block' && oeffneAufgabe({ thema: gewaehlt.thema, block: gewaehlt.block }, null)) break
+        // Schritt 3: wie ein Klick in der Gliederung (Aufgabe in der Seite, auch wenn die Seite gerade neu baut)
+        if (gewaehlt?.art === 'block' && !viele) {
+          oeffneStelle(gewaehlt)
+          break
+        }
         if (gewaehlt) {
           setSchubladeOffen(true)
           setVollbreit(false)
@@ -1207,11 +1344,15 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   // Was zu sehen ist: Handy = Umschalter, sonst Vorschau groß, Gliederung nach Wunsch
   const schubladeZeigen = !vollbreit || istMobil
   const gliederungZeigen = !istMobil && !vollbreit
-  // PROJ-97: Bei offener Schublade klappt die Gliederung ein, damit die Vorschau breit bleibt –
-  // außer, sie wurde bewusst aufgeklappt. Der gemerkte Zustand (gliederungOffen) bleibt davon unberührt.
+  // PROJ-114, Schritt 3: Die Gliederung folgt immer dem gemerkten Zustand (gliederungOffen), sie klappt beim Öffnen
+  // und Schließen der Schublade nicht mehr von selbst. Ausnahme: unter 1280 px. Drei Spalten brauchen mindestens
+  // 18 + 30 + 22 rem = 70 rem (1120 px) plus Abstände (2 × 1 rem Spaltenabstand, 2 × 1,5 rem Rand) ≈ 1200 px; bei
+  // 1024–1279 px liefe das Raster sonst seitlich über. Dort weicht die Gliederung der offenen Schublade (schmale Leiste
+  // mit „Gliederung einblenden“) und kommt beim Schließen zurück. Seit Schritt 3 öffnet die Schublade nur noch für
+  // Themen, Deckblatt, Abschluss, Lehrtext und Typen ohne Bauplan, deshalb ist das selten.
   const gliederungSichtbar = istMobil
     ? ansicht === 'gliederung'
-    : gliederungZeigen && (schubladeAktiv ? gliederungTrotzSchublade : gliederungOffen)
+    : gliederungZeigen && gliederungOffen && (!schubladeAktiv || platzFuerAlles)
   const vorschauZeigen = istMobil ? ansicht === 'vorschau' : true
   const schubladeAngedockt = !istMobil && schubladeAktiv && schubladeZeigen
   const spalten = istMobil
@@ -1333,8 +1474,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               className="size-11 rounded-xl"
               onClick={() => {
                 // Mit offener Schublade ist unter 1280 px kein Platz für beides: Dort schließt der Knopf die Schublade
-                if (!schubladeAktiv) schalteGliederung(true)
-                else if (platzFuerAlles) setGliederungTrotzSchublade(true)
+                if (!schubladeAktiv || platzFuerAlles) schalteGliederung(true)
                 else {
                   // Schublade schließen und die Gliederung wirklich aufklappen (auch wenn sie vorher zugeklappt war)
                   setAuswahl(null)
@@ -1377,7 +1517,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               variant="ghost"
               size="icon"
               className="size-11 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text"
-              onClick={() => (schubladeAktiv ? setGliederungTrotzSchublade(false) : schalteGliederung(false))}
+              onClick={() => schalteGliederung(false)}
               aria-label="Gliederung ausblenden"
               aria-expanded
               title="Gliederung ausblenden"
@@ -1400,6 +1540,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             onMehr={waehleMehr}
             onAusMaterial={oeffneUebernehmen}
             schubladeOffen={schubladeAktiv}
+            oeffne={oeffneStelle}
           />
         </section>
         <section
@@ -1411,6 +1552,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             schreiben={schreiben}
             schreibBefehl={schreibBefehl}
             beiNeueSeite={() => {
+              setBereitFuer(htmlRef.current)
               schreibRef.current = null
               setSchreiben(null)
               // Neue Seite: Eine offene Aufgabe ist dort nicht mehr offen (Änderungen sind schon gespeichert)

@@ -174,7 +174,7 @@ function lies(id: string): { art: 'thema'; thema: number } | { art: 'block'; the
 /**
  * Gliederung des Baukasten-Editors (PROJ-89): Deckblatt, Themen mit ihren
  * Blöcken (ziehbar, auch in andere Themen) und Lernzielkontrolle. Ein Klick
- * wählt die Stelle aus; bearbeitet wird sie in der Schublade (PROJ-96).
+ * öffnet die Stelle: Aufgaben in der Seite (PROJ-114), alles andere in der Schublade (PROJ-96).
  */
 export interface GliederungProps {
   struktur: Struktur
@@ -196,6 +196,12 @@ export interface GliederungProps {
   onAusMaterial?: (ziel: Einfuegeort | null) => void
   /** Ist das Formular (die Schublade) für die gewählte Stelle offen? Nur dann hebt ein erneuter Klick die Wahl auf. */
   schubladeOffen?: boolean
+  /**
+   * PROJ-114 (Ein Weg zum Bearbeiten): Stelle öffnen – Klick auf eine Zeile, auf einen Hinweis der Prüfstelle und
+   * ein neu eingefügter Block. Die App entscheidet, ob die Aufgabe in der Seite oder in der Schublade aufgeht.
+   * `typ` kennt nur das Einfügen (der Block steht dann noch nicht in der Struktur). Ohne: wie `setAuswahl`.
+   */
+  oeffne?: (a: Auswahl, typ?: string) => void
 }
 
 export function EditorGliederung({
@@ -208,6 +214,7 @@ export function EditorGliederung({
   onMehr,
   onAusMaterial,
   schubladeOffen = true,
+  oeffne,
   befunde,
   befundKarte,
   einfuegenAnfrage,
@@ -294,7 +301,9 @@ export function EditorGliederung({
       n.delete(thema)
       return n
     })
-    setAuswahl({ art: 'block', thema, block: Math.max(0, Math.min(index, laenge)) })
+    const neuerOrt: Auswahl = { art: 'block', thema, block: Math.max(0, Math.min(index, laenge)) }
+    if (oeffne) oeffne(neuerOrt, typ)
+    else setAuswahl(neuerOrt)
     setZiel(null)
     // Gliederung scrollt zum neuen Block (sobald er gezeichnet ist)
     requestAnimationFrame(() =>
@@ -362,9 +371,10 @@ export function EditorGliederung({
   }
 
   const istGewaehlt = (a: Auswahl) => JSON.stringify(a) === JSON.stringify(auswahl)
-  // Ein zweiter Klick auf die offene Zeile schließt sie. Ist die Zeile nur gewählt (Klick in der Vorschau, Aufgabe in
-  // der Seite offen) und die Schublade zu, öffnet der Klick die Schublade, statt die Auswahl aufzuheben.
-  const waehle = (a: Auswahl) => setAuswahl(istGewaehlt(a) && schubladeOffen ? null : a)
+  const oeffneStelle = (a: Auswahl) => (oeffne ? oeffne(a) : setAuswahl(a))
+  // Ein zweiter Klick auf die Zeile mit offener Schublade schließt sie. Ist die Zeile nur gewählt (Klick in der Vorschau,
+  // Aufgabe in der Seite offen), öffnet der Klick die Stelle (Commit 3167999); eine schon offene Aufgabe bleibt, wie sie ist.
+  const waehle = (a: Auswahl) => (istGewaehlt(a) && schubladeOffen ? setAuswahl(null) : oeffneStelle(a))
 
   return (
     <div className="space-y-3">
@@ -419,7 +429,7 @@ export function EditorGliederung({
                     <button
                       type="button"
                       disabled={!ziel}
-                      onClick={() => ziel && setAuswahl(ziel)}
+                      onClick={() => ziel && oeffneStelle(ziel)}
                       className="min-h-9 w-full rounded-lg px-2 py-1 text-left text-ws-text hover:bg-ws-raised disabled:cursor-default disabled:hover:bg-transparent"
                     >
                       <span className={cn('mr-2 font-semibold', b.schwere === 'hoch' ? 'text-ws-red' : 'text-ws-orange')}>
