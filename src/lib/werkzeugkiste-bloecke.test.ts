@@ -142,3 +142,40 @@ describe('Bildnamen', () => {
     expect(JSON.stringify(r)).toContain('images/eigen_abc12345.jpg')
   })
 })
+
+describe('setzeUebernahmeEin (PROJ-108)', () => {
+  const S = {
+    cover: {},
+    chapters: [
+      { title: 'A', elements: [{ type: 'text', content: '1' }, { type: 'text', content: '2' }] },
+      { title: 'B', elements: [] },
+    ],
+  } as Struktur
+  const neuB = { type: 'true_false', statement: 'x' }
+  const neuT = { title: 'Neu', elements: [{ type: 'text', content: 'n' }] }
+
+  it('setzt Blöcke an die Stelle und gibt ihre Orte zurück', async () => {
+    const { setzeUebernahmeEin } = await import('@/lib/werkzeugkiste-bloecke')
+    const r = setzeUebernahmeEin(S, { thema: 0, index: 1 }, [], [neuB])
+    expect(r.struktur.chapters[0].elements.map((b) => b.type)).toEqual(['text', 'true_false', 'text'])
+    expect(r.orte).toEqual([{ thema: 0, block: 1 }])
+    expect(S.chapters[0].elements).toHaveLength(2)
+  })
+  it('setzt Themen hinter das Thema der Blöcke bzw. des Ziels', async () => {
+    const { setzeUebernahmeEin } = await import('@/lib/werkzeugkiste-bloecke')
+    const r = setzeUebernahmeEin(S, { thema: 0, index: 0 }, [neuT], [neuB])
+    expect(r.struktur.chapters.map((t) => t.title)).toEqual(['A', 'Neu', 'B'])
+    expect(r.themaIndizes).toEqual([1])
+    const nur = setzeUebernahmeEin(S, { thema: 1, index: 0 }, [neuT], [])
+    expect(nur.struktur.chapters.map((t) => t.title)).toEqual(['A', 'B', 'Neu'])
+  })
+  it('ohne Ziel: ans Ende, ohne Thema in ein neues Thema 1, Themen ans Ende', async () => {
+    const { setzeUebernahmeEin } = await import('@/lib/werkzeugkiste-bloecke')
+    const leer = { cover: {}, chapters: [] } as Struktur
+    const r = setzeUebernahmeEin(leer, null, [neuT], [neuB])
+    expect(r.struktur.chapters.map((t) => t.title)).toEqual(['Thema 1', 'Neu'])
+    expect(r.struktur.chapters[0].elements).toHaveLength(1)
+    const ende = setzeUebernahmeEin(S, null, [], [neuB])
+    expect(ende.struktur.chapters[1].elements).toHaveLength(1)
+  })
+})

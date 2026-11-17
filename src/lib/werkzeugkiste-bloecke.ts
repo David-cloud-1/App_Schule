@@ -6,7 +6,7 @@
  * Reihenfolge bleibt, ein Rückgängig-Schritt, nie ein Block doppelt.
  */
 
-import { kopie, istBekannterTyp, type Block, type Ort, type Struktur } from '@/lib/werkzeugkiste-editor'
+import { kopie, istBekannterTyp, type Block, type Ort, type Struktur, type Thema } from '@/lib/werkzeugkiste-editor'
 
 /** Wo Blöcke hinkommen: Thema und Position im Thema (vor dem Entfernen gezählt) */
 export type Ziel = { thema: number; index: number }
@@ -129,15 +129,15 @@ export function passendeBloecke(bloecke: Block[]): { passend: Block[]; ausgelass
 
 const BILD_PFAD = /images\/[A-Za-z0-9_][A-Za-z0-9_.-]*\.(?:png|jpe?g|webp|gif)/g
 
-/** Alle Bildnamen, die in den Blöcken vorkommen */
-export function bildPfadeIn(bloecke: Block[]): string[] {
+/** Alle Bildnamen, die in den Blöcken (oder in beliebig verschachteltem JSON) vorkommen */
+export function bildPfadeIn(bloecke: unknown): string[] {
   return [...new Set(JSON.stringify(bloecke).match(BILD_PFAD) ?? [])]
 }
 
 /** Ersetzt Bildnamen; was nicht in der Zuordnung steht, bleibt */
-export function ersetzeBildPfade(bloecke: Block[], zuordnung: Record<string, string>): Block[] {
+export function ersetzeBildPfade<T>(bloecke: T, zuordnung: Record<string, string>): T {
   const text = JSON.stringify(bloecke).replace(BILD_PFAD, (p) => zuordnung[p] ?? p)
-  return JSON.parse(text) as Block[]
+  return JSON.parse(text) as T
 }
 
 /** „3 Blöcke“ / „1 Block“ */
@@ -152,4 +152,45 @@ export function textAlsBlock(text: string): Block | null {
   const maskiert = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const absaetze = sauber.split(/\n{2,}/).map((a) => `<p>${maskiert(a.trim()).replace(/\n/g, '<br>')}</p>`)
   return { type: 'text', content: absaetze.join('') }
+}
+
+/**
+ * Übernommene Inhalte einsetzen (PROJ-108) — ein Schritt für Rückgängig:
+ *  - Blöcke kommen an `ziel` (Thema und Position). Ohne `ziel` (es gibt kein Thema) entsteht ein neues Thema 1.
+ *  - Ganze Themen kommen als neue Themen hinter das Thema, in dem die Blöcke gelandet sind
+ *    (sonst hinter `ziel.thema`, sonst ans Ende).
+ * Liefert die Orte der eingesetzten Blöcke und die Nummern der neuen Themen.
+ */
+export function setzeUebernahmeEin(
+  s: Struktur,
+  ziel: Ziel | null,
+  themen: Thema[],
+  bloecke: Block[],
+): { struktur: Struktur; orte: Ort[]; themaIndizes: number[] } {
+  let n = s
+  let orte: Ort[] = []
+  let blockThema = ziel && s.chapters[ziel.thema] ? ziel.thema : -1
+  if (bloecke.length > 0) {
+    if (blockThema < 0) {
+      // Kein gültiges Ziel: ans Ende des letzten Themas, ohne Thema in ein neues Thema 1
+      if (n.chapters.length === 0) n = { ...n, chapters: [{ title: 'Thema 1', elements: [] }] }
+      blockThema = n.chapters.length - 1
+      const r = fuegeBloeckeEin(n, { thema: blockThema, index: n.chapters[blockThema].elements.length }, bloecke)
+      n = r.struktur
+      orte = r.orte
+    } else {
+      const r = fuegeBloeckeEin(n, ziel as Ziel, bloecke)
+      n = r.struktur
+      orte = r.orte
+    }
+  }
+  const themaIndizes: number[] = []
+  if (themen.length > 0) {
+    const nach = blockThema >= 0 ? blockThema : n.chapters.length - 1
+    const kapitel = [...n.chapters]
+    kapitel.splice(nach + 1, 0, ...themen.map((t) => kopie(t)))
+    n = { ...n, chapters: kapitel }
+    themen.forEach((_, i) => themaIndizes.push(nach + 1 + i))
+  }
+  return { struktur: n, orte, themaIndizes }
 }

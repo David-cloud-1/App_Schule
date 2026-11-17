@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Check, CloudOff, Loader2, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Plus, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
+import { AlertTriangle, Check, CloudOff, Loader2, FolderInput, MoreHorizontal, PanelLeftClose, PanelLeftOpen, Plus, Redo2, RotateCcw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
@@ -49,6 +49,7 @@ import {
   loescheBloecke,
   ordneOrte,
   passendeBloecke,
+  setzeUebernahmeEin,
   textAlsBlock,
   verschiebeBloecke,
   type Ziel,
@@ -79,6 +80,8 @@ import type { Taste, VorschauWunsch } from '@/components/werkzeugkiste/editor/vo
 import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/block-menue'
 import { nachbarAuswahl } from '@/components/werkzeugkiste/editor/auswahl-navigation'
 import { kopiereBloecke, liesZwischenablage } from '@/components/werkzeugkiste/editor/block-zwischenablage'
+import { UebernehmenDialog } from '@/components/werkzeugkiste/editor/uebernehmen-dialog'
+import type { UebernahmeErgebnis } from '@/lib/werkzeugkiste-api'
 import {
   einfuegeortAusAuswahl,
   einfuegeortAusMarke,
@@ -260,6 +263,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const platzFuerAlles = useMindestBreite(1280)
   const [dialog, setDialog] = useState<'veroeffentlichen' | 'verwerfen' | 'schliessen' | null>(null)
   const [laeuft, setLaeuft] = useState(false)
+  // PROJ-108: Dialog „Aus Material übernehmen“; `ziel` ist die Stelle, an der er geöffnet wurde (null = es gibt noch kein Thema)
+  const [uebernehmen, setUebernehmen] = useState<{ ziel: Ziel | null } | null>(null)
   // Solange es noch keine Vorschau-Befunde gibt, gelten die gespeicherten
   const kernBefunde = v.befunde ?? daten.befunde
   // PROJ-90: Blöcke mit unverändertem Beispielinhalt – berechnet, nie gespeichert
@@ -523,6 +528,34 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       toast.info(ausgelassen === 1 ? '1 Block passt nicht in dieses Material und wurde ausgelassen.' : `${ausgelassen} Blöcke passen nicht in dieses Material und wurden ausgelassen.`)
     }
     if (ohneBild > 0) toast.info(ohneBild === 1 ? '1 Bild war nicht mehr erreichbar und fehlt.' : `${ohneBild} Bilder waren nicht mehr erreichbar und fehlen.`)
+  }
+
+  // PROJ-108: „Aus Material übernehmen“ öffnen. Stelle nach der gemeinsamen Regel (oder die des Katalogs)
+  function oeffneUebernehmen(ziel?: Ziel | null) {
+    if (z.gesperrt) return
+    setVollbreit(false)
+    setUebernehmen({ ziel: ziel === undefined ? einfuegeortAusAuswahl(gewaehlt, z.struktur) : ziel })
+  }
+
+  // PROJ-108: Der Server hat Inhalte gelesen und Bilder kopiert; hier wird eingesetzt – ein Rückgängig-Schritt
+  function uebernommen(r: UebernahmeErgebnis) {
+    if (z.gesperrt) return
+    const ziel = uebernehmen?.ziel ?? null
+    const { themen, bloecke } = r
+    if (themen.length === 0 && bloecke.length === 0) return
+    const ergebnis = setzeUebernahmeEin(z.struktur, ziel, themen, bloecke)
+    z.aendere((s) => setzeUebernahmeEin(s, ziel, themen, bloecke).struktur)
+    if (ergebnis.orte.length > 0) waehleOrte(ergebnis.orte)
+    else if (ergebnis.themaIndizes.length > 0) setAuswahl({ art: 'thema', thema: ergebnis.themaIndizes[0] })
+    setVollbreit(false)
+    const teile = [themen.length === 1 ? '1 Thema' : themen.length > 1 ? `${themen.length} Themen` : '', bloecke.length > 0 ? blockZahl(bloecke.length) : '']
+    toast.success(`${teile.filter(Boolean).join(' und ')} übernommen${r.herkunft ? ` (aus: ${r.herkunft})` : ''}`, {
+      action: { label: 'Rückgängig', onClick: z.rueckgaengig },
+    })
+    if (r.ausgelassen > 0) {
+      toast.info(r.ausgelassen === 1 ? '1 Block passt nicht in dieses Material und wurde ausgelassen.' : `${r.ausgelassen} Blöcke passen nicht in dieses Material und wurden ausgelassen.`)
+    }
+    if (r.fehlend > 0) toast.info(r.fehlend === 1 ? '1 Bild war nicht mehr erreichbar und fehlt.' : `${r.fehlend} Bilder waren nicht mehr erreichbar und fehlen.`)
   }
 
   // Wünsche aus der Vorschau (PROJ-101). Die Seite zeigt und meldet, die App prüft und führt aus.
@@ -1080,6 +1113,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={!!z.gesperrt} onSelect={() => oeffneUebernehmen()}>
+            <FolderInput className="mr-2 size-4" aria-hidden /> Aus Material übernehmen
+          </DropdownMenuItem>
           <DropdownMenuItem
             disabled={!hatAenderungen}
             onSelect={() => setDialog('verwerfen')}
@@ -1205,6 +1241,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             kuerzel={kuerzel}
             markiert={viele ? wahlOrte : []}
             onMehr={waehleMehr}
+            onAusMaterial={oeffneUebernehmen}
           />
         </section>
         <section
@@ -1291,6 +1328,13 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         beiNeuesBild={(orte) => waehleOrte(orte)}
       />
 
+      <UebernehmenDialog
+        offen={uebernehmen !== null}
+        onOpenChange={(o) => !o && setUebernehmen(null)}
+        zielId={daten.id}
+        seitenGroesse={v.groesse}
+        onUebernommen={uebernommen}
+      />
       <AlertDialog open={!!loeschenFrage} onOpenChange={(o) => !o && setLoeschenFrage(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

@@ -192,6 +192,8 @@ export interface GliederungProps {
   /** PROJ-102: Blöcke der Mehrfachauswahl (hervorgehoben) und Klick mit ⌘/Strg bzw. Umschalt auf einen Block */
   markiert?: Ort[]
   onMehr?: (ort: Ort, wie: 'umschalten' | 'bereich') => void
+  /** PROJ-108: „Aus Material übernehmen“ aus dem Katalog; `ziel` ist die Einfügestelle (null = es gibt noch kein Thema) */
+  onAusMaterial?: (ziel: Einfuegeort | null) => void
 }
 
 export function EditorGliederung({
@@ -202,6 +204,7 @@ export function EditorGliederung({
   setAuswahl,
   markiert = [],
   onMehr,
+  onAusMaterial,
   befunde,
   befundKarte,
   einfuegenAnfrage,
@@ -518,6 +521,17 @@ export function EditorGliederung({
           if (!o && !bildFuer) setZiel(null)
         }}
         onWaehle={typGewaehlt}
+        onAusMaterial={
+          onAusMaterial
+            ? () => {
+                const stelle = zielNeuesThema ? null : ziel
+                setKatalogOffen(false)
+                setZiel(null)
+                setZielNeuesThema(false)
+                onAusMaterial(stelle)
+              }
+            : undefined
+        }
       />
       <BildAuswahl
         offen={bildFuer !== null}

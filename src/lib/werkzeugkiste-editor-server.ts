@@ -136,8 +136,14 @@ export async function aktuelleStruktur(zeile: EditorZeile): Promise<Struktur> {
  * der Bilder-Auszug (PROJ-53). Bei Regal-Kopien liegt der Auszug schon unter dem
  * Pfad der Einlesung. Fehlt beides, baut der Kern ohne Bilder.
  */
-export async function bildQuelle(service: SupabaseClient, zeile: AblaufZeile): Promise<{ pfad: string; url: string } | null> {
-  for (const pfad of [einlesungPfad(zeile.owner_id, zeile.id), auszugPfad(zeile.owner_id, zeile.id)]) {
+export async function bildQuelle(
+  service: SupabaseClient,
+  zeile: Pick<AblaufZeile, 'owner_id' | 'id'>,
+  /** PROJ-108: Bei Material aus dem Regal nie das Skript des Urhebers anfassen, nur den Bilder-Auszug */
+  nurAuszug = false,
+): Promise<{ pfad: string; url: string } | null> {
+  const kandidaten = nurAuszug ? [auszugPfad(zeile.owner_id, zeile.id)] : [einlesungPfad(zeile.owner_id, zeile.id), auszugPfad(zeile.owner_id, zeile.id)]
+  for (const pfad of kandidaten) {
     if (await dateiVorhanden(service, pfad)) {
       const url = await leseAdresse(service, pfad)
       if (url) return { pfad, url }

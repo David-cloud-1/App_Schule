@@ -1,5 +1,6 @@
 import type { Ablauf, AblaufAuswahl, AblaufEinstellungen, AblaufTeil, DirektSperre, LaufInfo } from '@/lib/werkzeugkiste'
-import type { Block, EditorBefund, EditorDaten, MaterialBild, Struktur } from '@/lib/werkzeugkiste-editor'
+import type { Block, EditorBefund, EditorDaten, MaterialBild, Struktur, Thema } from '@/lib/werkzeugkiste-editor'
+import type { Gliederung, QuelleRef, UebernahmeAuswahl } from '@/lib/werkzeugkiste-uebernahme'
 import type { HilfeAngebot, HilfeAngebotAntwort } from '@/lib/werkzeugkiste-hilfe-angebot'
 import type { ModellPreis } from '@/lib/werkzeugkiste-kosten'
 import type { LinkAdminListe, LinkStand } from '@/lib/werkzeugkiste-links'
@@ -538,6 +539,46 @@ export function uebernehmeBilder(id: string, von: string, pfade: string[], seite
   return anfrage<{ zuordnung: Record<string, string>; fehlend: string[] }>(`/ablaeufe/${id}/editor/bilder/uebernehmen`, {
     method: 'POST',
     body: JSON.stringify({ von, pfade, seitenGroesse }),
+  })
+}
+
+// ── Aus Material übernehmen (PROJ-108) ────────────────────────────────────
+
+/** Themen und Blöcke einer eigenen oder Regal-Quelle (nur Titel, Typ, Kurzzeile) */
+export function ladeUebernahmeGliederung(zielId: string, quelle: QuelleRef) {
+  const q = new URLSearchParams({ art: quelle.art, id: quelle.id })
+  return anfrage<Gliederung>(`/ablaeufe/${encodeURIComponent(zielId)}/editor/uebernahme/gliederung?${q.toString()}`)
+}
+
+/** Mini-Seite aus dem Gewählten bauen; zurück kommt eine Leseadresse (Seite als Text über `ladeSeitenText`) */
+export function baueUebernahmeVorschau(zielId: string, quelle: QuelleRef, auswahl: UebernahmeAuswahl) {
+  return anfrage<{ adresse: string; groesse: number }>(`/ablaeufe/${encodeURIComponent(zielId)}/editor/uebernahme/vorschau`, {
+    method: 'POST',
+    body: JSON.stringify({ quelle, auswahl }),
+  })
+}
+
+/** Die Seite hinter einer Leseadresse als Text (für die abgeschottete Vorschau per srcdoc) */
+export async function ladeSeitenText(adresse: string): Promise<string> {
+  const res = await fetch(adresse).catch(() => null)
+  if (!res?.ok) throw new WerkzeugFehler('Die Vorschau konnte nicht geladen werden.', res?.status ?? 0)
+  return res.text()
+}
+
+export interface UebernahmeErgebnis {
+  themen: Thema[]
+  bloecke: Block[]
+  ausgelassen: number
+  fehlend: number
+  titel: string
+  herkunft?: string
+}
+
+/** Gewähltes aus der Quelle holen: Der Server liest die Inhalte, kopiert die Bilder und gibt alles zurück */
+export function holeUebernahme(zielId: string, quelle: QuelleRef, auswahl: UebernahmeAuswahl, seitenGroesse: number) {
+  return anfrage<UebernahmeErgebnis>(`/ablaeufe/${encodeURIComponent(zielId)}/editor/uebernahme`, {
+    method: 'POST',
+    body: JSON.stringify({ quelle, auswahl, seitenGroesse }),
   })
 }
 

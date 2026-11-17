@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { Search, X } from 'lucide-react'
+import { FolderInput, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -29,6 +29,7 @@ export function KatalogDialog({
   onWaehle,
   erlaubt,
   wechsel,
+  onAusMaterial,
 }: {
   offen: boolean
   onOpenChange: (offen: boolean) => void
@@ -37,6 +38,8 @@ export function KatalogDialog({
   erlaubt?: readonly string[]
   /** Wechsel-Modus (PROJ-95): nur diese Typen sind wählbar, `aktuell` ist der Typ des Blocks */
   wechsel?: { aktuell: string; waehlbar: readonly string[] }
+  /** PROJ-108: Weg „Aus Material übernehmen“ (nur beim normalen Hinzufügen, nicht bei Kapiteltest und Typ wechseln) */
+  onAusMaterial?: () => void
 }) {
   const [suche, setSuche] = useState('')
   const [zuletzt, setZuletzt] = useState<string[]>([])
@@ -116,6 +119,14 @@ export function KatalogDialog({
                 ? 'Im Kapiteltest sind nur diese Fragetypen möglich.'
                 : 'Wähle einen Aufgabentyp. Er startet mit einem Beispiel, das du anpasst.'}
           </DialogDescription>
+          {onAusMaterial && !wechsel && !erlaubt && (
+            <div className="pt-2">
+              <Button type="button" variant="outline" className={`${NEBENAKTION} min-h-11 gap-2`} onClick={onAusMaterial}>
+                <FolderInput className="size-5" aria-hidden />
+                Aus Material übernehmen
+              </Button>
+            </div>
+          )}
           <div className="relative pt-3">
             <Search className="pointer-events-none absolute left-3 top-1/2 mt-1.5 size-4 -translate-y-1/2 text-ws-muted" aria-hidden />
             <Input
