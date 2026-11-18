@@ -276,6 +276,9 @@ function plaziereLeiste(){
   if(mobil){leiste.className="wk-ui wk-leiste wk-leiste-unten";leiste.hidden=false;leiste.style.top="";leiste.style.left="";return}
   if(r.bottom<0||r.top>innerHeight){leiste.hidden=true;return}
   leiste.className="wk-ui wk-leiste";leiste.hidden=false;
+  // Erst an den linken Rand, dann messen: Ein fixiertes Element darf nur bis zum rechten Rand breit werden.
+  // Am alten Platz gemessen wäre die Leiste schon umgebrochen und bliebe es (Befund PROJ-118, ~690 px).
+  leiste.style.left="0px";
   var h=leiste.offsetHeight||38,w=leiste.offsetWidth||0;
   var top=r.top-h-6;
   if(top<4){
