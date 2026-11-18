@@ -542,3 +542,5 @@ Tests: `aufgabenwerk-praxis.test.ts` (7 Fälle). Werkzeugkiste 771/771 grün, `t
 4. Ziehen von Begriffen zwischen Kästen (Zuordnen); Lückentext im Kapiteltest ohne Sternchen.
 5. Low-Funde BUG-10 (Strukturänderungen beim Speichern) und BUG-11 (Ersatz-Ansicht beim Wechsel A → B).
 6. Zweite QA-Runde (Opus) nach Bauschritt 6; erst danach Status Deployed.
+
+**2026-11-18 (Production, Commit a0dcd2b, Vercel Ready nach ca. 2,5 Min.; Keine Migration, kein Kern-Deploy):** Korrekturen aus dem Browser-Durchgang live. Live geprüft (Chrome): Fallakte (Ausgangssituation beschriftet, keine `<p>`-Tags), Offene Frage (Musterlösung beschriftet), Block-Leiste nach Esc einzeilig; nichts verändert (Rückgängig blieb aus). Status bleibt **In Progress** (Handy, Bauschritt 6 u. a. offen).
