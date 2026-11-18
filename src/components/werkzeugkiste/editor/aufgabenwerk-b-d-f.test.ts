@@ -594,7 +594,11 @@ describe('Aufgabenwerk: Fallakte, Video, Kapiteltest', () => {
     expect(karten).toHaveLength(3)
     expect(karten[0].querySelector<HTMLTextAreaElement>('[data-aw-fokus="q0:question"]')!.value).toBe('Frage A?')
     expect(karten[1].querySelector<HTMLTextAreaElement>('[data-aw-fokus="q1:question"]')!.value).toBe('Stimmt das?')
-    expect(karten[2].querySelector<HTMLTextAreaElement>('textarea')!.value).toContain('*Frachtführer*')
+    // Lückentext: Wörter sind Marken im Textfeld, keine Sternchen
+    const feld = karten[2].querySelector<HTMLElement>('.wk-aw-lt')!
+    expect(feld.textContent).toContain('Frachtführer')
+    expect(feld.textContent).not.toContain('*')
+    expect(feld.querySelector('[data-luecke="0"]')).not.toBeNull()
     expect(ziel.querySelector<HTMLInputElement>('[data-aw-fokus="zahl-pass_percentage"]')!.value).toBe('70')
   })
 

@@ -132,6 +132,7 @@ export const AW_CSS = [
   `.wk-aw-fach-kopf .wk-aw-wz{opacity:1}`,
   `.wk-aw-fach-name{flex:1;min-width:0;font-weight:700;color:${F.blauText}}`,
   `.wk-aw-fach-hinweis{margin-bottom:6px;color:${F.leise}}`,
+  `.wk-aw-ziel{outline:2px solid ${F.blau};outline-offset:2px;background:${F.feldGrund}}`,
   `.wk-aw-fach-ohne{border-style:dashed;border-color:${F.orange}}`,
   '.wk-aw-begriff{margin-bottom:4px}',
   '.wk-aw-begriff .wk-aw-feld{flex:1;min-width:0}',

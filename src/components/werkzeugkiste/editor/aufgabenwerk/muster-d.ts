@@ -89,11 +89,55 @@ export function zuordnenTeil(w: Werk, teil: ZuordnenTeil): VNode {
     )
   }
 
+  /** Ziehen mit Zeiger (Maus, Finger, Stift): am Griff greifen, über einem Kasten loslassen */
+  function kastenUnter(e: PointerEvent): number {
+    const ziel = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-aw-kat]')
+    const n = ziel ? Number(ziel.getAttribute('data-aw-kat')) : NaN
+    return Number.isInteger(n) ? n : -1
+  }
+  function markiere(ci: number) {
+    document.querySelectorAll('.wk-aw-ziel').forEach((el) => el.classList.remove('wk-aw-ziel'))
+    if (ci >= 0) document.querySelector(`[data-aw-kat="${ci}"]`)?.classList.add('wk-aw-ziel')
+  }
+  function starteZiehen(e: PointerEvent, gi: number) {
+    if (e.button !== undefined && e.button > 0) return
+    const griff = e.currentTarget as HTMLElement
+    griff.setPointerCapture?.(e.pointerId)
+    const bewegt = (m: PointerEvent) => markiere(kastenUnter(m))
+    const ende = (m: PointerEvent) => {
+      griff.removeEventListener('pointermove', bewegt)
+      griff.removeEventListener('pointerup', ende)
+      griff.removeEventListener('pointercancel', abbruch)
+      const ci = kastenUnter(m)
+      markiere(-1)
+      const b = begriffe[gi]
+      if (ci < 0 || !b || ci === kastenVon(b)) return
+      w.tue(setzeBegriff(gi, { category: kat[ci] }), 'verschiebe-begriff', `beg-${gi}`)
+      w.ansage(`${teil.einzahl} ${gi + 1} ist jetzt in „${kat[ci] || 'Kategorie ohne Namen'}“.`)
+    }
+    const abbruch = () => {
+      griff.removeEventListener('pointermove', bewegt)
+      griff.removeEventListener('pointerup', ende)
+      griff.removeEventListener('pointercancel', abbruch)
+      markiere(-1)
+    }
+    griff.addEventListener('pointermove', bewegt)
+    griff.addEventListener('pointerup', ende)
+    griff.addEventListener('pointercancel', abbruch)
+  }
+
   function begriffZeile(gi: number): VNode {
     const b = begriffe[gi]
     const ci = kastenVon(b)
     const nr = gi + 1
     return html`<li class="wk-aw-zeile wk-aw-begriff" data-aw-zeile key=${gi}>
+      <button
+        type="button"
+        class="wk-aw-wz wk-aw-griff"
+        aria-label=${`${teil.einzahl} ${nr} in einen anderen Kasten ziehen (oder „Verschieben nach …“ nutzen)`}
+        title="In einen anderen Kasten ziehen"
+        onPointerDown=${(e: PointerEvent) => starteZiehen(e, gi)}
+      >⠿</button>
       <textarea
         class="wk-aw-feld"
         rows="1"
@@ -161,7 +205,7 @@ export function zuordnenTeil(w: Werk, teil: ZuordnenTeil): VNode {
 
   return html`<div class="faecher wk-aw-faecher">
     ${kat.map(
-      (k, ci) => html`<div class="fach wk-aw-fach" key=${ci}>
+      (k, ci) => html`<div class="fach wk-aw-fach" key=${ci} data-aw-kat=${String(ci)}>
         <div class="wk-aw-fach-kopf">
           <input
             class="wk-aw-feld wk-aw-fach-name"

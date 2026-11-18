@@ -445,7 +445,7 @@ Vorschau, Modus Bearbeiten
 | 21 | Muster D | Nicht erfüllt | Ziehen zwischen Kästen fehlt (bekannt). Fehler beim Umbenennen von Kategorien (BUG-7). |
 | 22 | Muster E | Teilweise | Für die 4 Lückentext-Typen im Code vorhanden. Im Kapiteltest Sternchen (bekannt). |
 | 23 | Muster F | Erfüllt (Code) | — |
-| 24 | Alle 35 Typen an Ort und Stelle, Wächter-Test | Nicht erfüllt | 27 von 35 (Bauschritt 6 offen). |
+| 24 | Alle 35 Typen an Ort und Stelle, Wächter-Test | Bewusst begrenzt (2026-11-18) | 27 von 35; Bauschritt 6 zurückgestellt, die 7 Bild-/Tabellen-/Diagramm-Typen bleiben in der Schublade. |
 | 25 | Tests je Typ für Öffnen, Ändern, Hinzufügen, Umsortieren, Löschen + Rückgängig | Teilweise | Nicht für jeden Typ jeder Fall. Rückgängig nur auf App-Ebene. |
 | 26 | Praxisdurchgang mit echter Einheit (Laptop + Handy) | Nicht erfüllt | Fehlt. |
 
@@ -536,11 +536,13 @@ Tests: `aufgabenwerk-praxis.test.ts` (7 Fälle). Werkzeugkiste 771/771 grün, `t
 **Zusatzwörter bei „Wörter ziehen“ (2026-11-17, live):** Rückmeldung des Nutzers: Im Editor ließen sich keine zusätzlichen Begriffe und Auswahlmöglichkeiten anlegen. Neues Feld `distractors` (0–10 Zusatzwörter, stehen im Vorrat, passen in keine Lücke). App: Bauplan `drag_words` mit zweitem Teil (Zeilenliste, Überschrift, nach „Fertig“ als Kärtchen), Schublade (`LueckenFormular`) mit Textliste, Feld bei „Typ wechseln“ als bekannt. Kern: `seite.py` (Zusatzwörter nach den Lücken im Vorrat, kein Ablenker kann „richtig“ sein), `h5p_generator.py` (Parameter `distractors`, nur wenn vorhanden; ob H5P.DragText 1.10 ihn auswertet, ist nicht geprüft), Test `kern_zusatzwoerter_test.py`. Commits App f7f4f24, Kern 58311ad (Kern vor der App deployt). Nicht im Browser geprüft. Bekannt: „Typ wechseln“ öffnet weiter die Schublade und setzt dort einen Platzhaltertext. Fremder Fehlschlag `werkzeugkiste-auszug.test.ts` (Urheber-Untertitel) ist nicht von dieser Änderung.
 
 ### Offene Aufgaben
-1. **Praxisdurchgang im Browser:** Laptop erledigt 2026-11-18 (siehe oben). Offen: Handy (Bildschirmtastatur, Leiste unten, „Als Lücke“ auf Touch).
-2. **Bauschritt 6:** Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie (Bild-Werkzeuge in der Seite), Tabelle, Diagramm – vorher kurze Planung (Opus).
-3. „Typ wechseln“ und „Rohfassung" als eigene Dialoge statt Schublade.
-4. Ziehen von Begriffen zwischen Kästen (Zuordnen); Lückentext im Kapiteltest ohne Sternchen.
-5. Low-Funde BUG-10 (Strukturänderungen beim Speichern) und BUG-11 (Ersatz-Ansicht beim Wechsel A → B).
-6. Zweite QA-Runde (Opus) nach Bauschritt 6; erst danach Status Deployed.
+**Entscheidung des Nutzers (2026-11-18):** Bauschritt 6 wird **bewusst zurückgestellt**. Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie, Tabelle und Diagramm bleiben in der Schublade (selten genutzt, eigene Bild-Werkzeuge aus PROJ-104–107, hohes Risiko für Datenverlust). Kriterium 24 („alle 35 Typen“) gilt dadurch als bewusst auf 27 von 35 begrenzt. Nur nachziehen, wenn der Praxisbetrieb zeigt, dass die Schublade bei diesen Typen häufig stört. Handy ist im Baukasten nachrangig (gebaut wird nur am PC und Tablet), der Handy-Durchgang entfällt vorerst.
+
+1. ~~Praxisdurchgang im Browser~~ Laptop erledigt 2026-11-18. Handy zurückgestellt (nachrangig). Tablet bei Gelegenheit prüfen.
+2. ~~Bauschritt 6~~ zurückgestellt (siehe Entscheidung oben).
+3. ~~„Typ wechseln“ und „Rohfassung“ als eigene Dialoge~~ gebaut 2026-11-18 (`baukasten-editor.tsx`: `aufgabeDialog`; Typ wechseln = bestehender `TypWechsel`-Dialog, Quelltext = `Dialog` mit `EditorRohfassung`). Die Aufgabe schließt vorher; die Schublade öffnet dafür nicht mehr. Nicht im Browser geprüft.
+4. ~~Ziehen zwischen Kästen (Zuordnen)~~ gebaut: Griff „⠿“ je Begriff, Zeiger-basiert (Maus, Finger, Stift), Ziel-Kasten wird markiert, „Verschieben nach …“ bleibt als Tastatur-Weg (`muster-d.ts`, `data-aw-kat`). ~~Lückentext im Kapiteltest ohne Sternchen~~ gebaut: die Frage nutzt jetzt Muster E in ihrer Karte (`muster-g.ts`: `beobachteKapitelLuecken`, `kapitelLueckenNeuerStand`); gespeichert wird weiter mit Sternchen.
+5. ~~BUG-10~~ teilweise behoben (`bauplan.ts`, `uebernimmEintraege`): ein als Text gespeicherter Zeitpunkt (Video) blockiert Änderungen nicht mehr und bleibt Text; Zahlfelder, die im Bestand Text waren (Kopfrechnen), bleiben Text. Leere `feedback`-Felder und Hinweis waren schon vorher behoben. Offen bleibt: verschachtelte Zusatzfelder (Objekte/Listen) in Einträgen gehen weiter verloren; der Kern liest alles gleich. **BUG-11** bewusst nicht geändert: Die Ersatz-Ansicht nach „Fertig“ gilt bis zum nächsten Neubau, der nach jeder Änderung ohnehin kommt; ein sofortiger Neubau beim Wechsel würde das Tempo (PROJ-112) kosten.
+6. Zweite QA-Runde (Opus) – jetzt dran, dazu Browser-Prüfung der neuen Dialoge, des Ziehens und des Kapiteltest-Lückentexts (Tests `aufgabenwerk-restarbeiten.test.ts` laufen grün, Werkzeugkiste-Editor 522/522); erst danach Status Deployed.
 
 **2026-11-18 (Production, Commit a0dcd2b, Vercel Ready nach ca. 2,5 Min.; Keine Migration, kein Kern-Deploy):** Korrekturen aus dem Browser-Durchgang live. Live geprüft (Chrome): Fallakte (Ausgangssituation beschriftet, keine `<p>`-Tags), Offene Frage (Musterlösung beschriftet), Block-Leiste nach Esc einzeilig; nichts verändert (Rückgängig blieb aus). Status bleibt **In Progress** (Handy, Bauschritt 6 u. a. offen).

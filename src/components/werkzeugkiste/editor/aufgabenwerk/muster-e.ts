@@ -342,6 +342,13 @@ export function lueckenTeil(w: Werk, teil: LueckenTeil): VNode {
 
 /** Beobachtet die Auswahl im Textfeld und zeigt den schwebenden Knopf; Rückgabe: zum Abmelden */
 export function beobachteAuswahl(w: Werk, teil: LueckenTeil): () => void {
+  const pruefe = () => pruefeAuswahlImFeld(w, teil)
+  document.addEventListener('selectionchange', pruefe)
+  return () => document.removeEventListener('selectionchange', pruefe)
+}
+
+/** Prüft einmal die Auswahl im Textfeld dieses Werks (auch für die Lückentext-Fragen im Kapiteltest) */
+export function pruefeAuswahlImFeld(w: Werk, teil: LueckenTeil) {
   const pruefe = () => {
     const el = w.ziel.querySelector<HTMLElement>('.wk-aw-lt')
     const sel = getSelection()
@@ -366,8 +373,7 @@ export function beobachteAuswahl(w: Werk, teil: LueckenTeil): () => void {
     } satisfies Schwebe
     w.zeichne()
   }
-  document.addEventListener('selectionchange', pruefe)
-  return () => document.removeEventListener('selectionchange', pruefe)
+  pruefe()
 }
 
 /** Beim Öffnen: Text erstmals schreiben; Klick auf eine Lücke öffnet ihr Fenster */

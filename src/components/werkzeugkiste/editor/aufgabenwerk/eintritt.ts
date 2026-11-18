@@ -9,6 +9,7 @@ import { zeilenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/mu
 import { gruppenAnsicht, zuordnenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-d'
 import { eintraegeAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-f'
 import { offenSchluessel, paareAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-c'
+import { beobachteKapitelLuecken, kapitelLueckenNeuerStand } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-g'
 import { beobachteAuswahl, lueckenAnsicht, lueckenNeuerStand, starteLuecken } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-e'
 import { TIPP_PAUSE_MS, s, wachse, type Block, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
@@ -286,6 +287,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
       abmelden.push(beobachteAuswahl(w, t))
     }
   }
+  if (plan.teile.some((t) => t.art === 'unterbloecke')) abmelden.push(beobachteKapitelLuecken(w))
   if (e?.art === 'eintrag' && listenTeil) {
     if (listenTeil.art === 'antworten' || listenTeil.art === 'wahrfalsch') fokusZiel = `antwort-${e.nr}`
     else if (listenTeil.art === 'paare') {
@@ -310,6 +312,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
       w.hinweis = null
       for (const k of Object.keys(w.zustand)) if (k.startsWith('rueck-') || k.startsWith('ziehen-')) delete w.zustand[k]
       if (plan.teile.some((t) => t.art === 'luecken')) lueckenNeuerStand(w)
+      if (plan.teile.some((t) => t.art === 'unterbloecke')) kapitelLueckenNeuerStand(w)
       zeichne()
     },
     beende,

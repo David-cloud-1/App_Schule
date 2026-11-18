@@ -1,8 +1,9 @@
 import { html } from 'htm/preact'
 import type { VNode } from 'preact'
 import { BAUPLAENE, hatBauplan, hinweise, teileVon, type UnterBloeckeTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { lueckenNeuerStand, pruefeAuswahlImFeld } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-e'
 import { listenAktionen } from '@/components/werkzeugkiste/editor/aufgabenwerk/listen'
-import { s, wachse, type Block, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
+import { s, type Block, type Eintrag, type Werk } from '@/components/werkzeugkiste/editor/aufgabenwerk/werk'
 
 /**
  * Muster G – Fragen als Karten (Kapiteltest, PROJ-114): jede Frage wird nach dem Bauplan ihres eigenen
@@ -122,27 +123,9 @@ export function unterbloeckeTeil(w: Werk, teil: UnterBloeckeTeil, zeichner: Zeic
     let inhalt: VNode | VNode[]
     if (!hatBauplan(typ) || !teil.erlaubt.includes(typ)) {
       inhalt = html`<p class="wk-aw-hinweis" role="note">Nicht im Kapiteltest möglich – wird übersprungen. Entferne die Frage.</p>`
-    } else if (typ === 'fill_blanks') {
-      // Die Lücken-Auswahl braucht eine eigene Aufgabe; hier bleibt der Text mit Sternchen sichtbar
-      inhalt = html`<div>
-        <textarea
-          class="wk-aw-feld frage"
-          rows="2"
-          data-aw-fokus="lueckentext"
-          aria-label=${`Lückentext (Frage ${i + 1})`}
-          placeholder="Text mit *Lücken* in Sternchen, z. B. Der *Frachtführer* haftet."
-          value=${s(f.text)}
-          spellcheck="true"
-          lang="de"
-          onInput=${(e: Event) => {
-            const el = e.currentTarget as HTMLTextAreaElement
-            wachse(el)
-            sub.tippe({ ...f, text: el.value }, 'text')
-          }}
-        ></textarea>
-        <p class="wk-aw-hinweis" role="note">Lücken markierst du mit Sternchen. Bequemer geht es in einem eigenen Lückentext-Block.</p>
-      </div>`
     } else {
+      // Lückentext: Textfeld wird beim ersten Zeichnen der Karte geschrieben (Wörter markieren statt Sternchen)
+      if (typ === 'fill_blanks' && !w.ziel.querySelector(`[data-aw-karte="${i}"] .wk-aw-lt`)) lueckenNeuerStand(sub)
       const n = teileVon(BAUPLAENE[typ], f).length
       inhalt = Array.from({ length: n }, (_, k) => zeichner.zeichne(sub, k))
     }
@@ -165,4 +148,27 @@ export function unterbloeckeTeil(w: Werk, teil: UnterBloeckeTeil, zeichner: Zeic
     ${L.hinweisZeile()}
     ${notizen.map((h) => html`<p class="wk-aw-hinweis" role="note" key=${h.wo}>${h.text}</p>`)}
   </div>`
+}
+
+const lueckenTeilVon = (typ: string) => BAUPLAENE[typ]?.teile.find((t) => t.art === 'luecken')
+
+/** Kapiteltest: beobachtet die Textauswahl in allen Lückentext-Fragen; Rückgabe: zum Abmelden */
+export function beobachteKapitelLuecken(w: Werk): () => void {
+  const pruefe = () => {
+    const fragen = (): Block[] => (Array.isArray(w.block[ortFeld(w)]) ? (w.block[ortFeld(w)] as Block[]) : [])
+    fragen().forEach((f, i) => {
+      const t = lueckenTeilVon(s(f.type))
+      if (t && t.art === 'luecken' && w.ziel.querySelector(`[data-aw-karte="${i}"] .wk-aw-lt`)) pruefeAuswahlImFeld(unterWerk(w, i, fragen), t)
+    })
+  }
+  document.addEventListener('selectionchange', pruefe)
+  return () => document.removeEventListener('selectionchange', pruefe)
+}
+
+/** Neuer Stand von der App: die Textfelder aller Lückentext-Fragen neu schreiben */
+export function kapitelLueckenNeuerStand(w: Werk) {
+  const fragen = (): Block[] => (Array.isArray(w.block[ortFeld(w)]) ? (w.block[ortFeld(w)] as Block[]) : [])
+  fragen().forEach((f, i) => {
+    if (s(f.type) === 'fill_blanks') lueckenNeuerStand(unterWerk(w, i, fragen))
+  })
 }

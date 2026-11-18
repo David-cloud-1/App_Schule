@@ -952,7 +952,10 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
   const liste = vorschlag[teil.feld]
   if (!Array.isArray(liste) || liste.length > grenze(teil.hoechstens, original[teil.feld])) return `Zu viele ${teil.mehrzahl}.`
   const bekannt = new Set([...teil.felder.flatMap((f) => f.namen), ...(teil.unterliste ? [teil.unterliste.feld] : []), ...(teil.unterAntworten?.namen ?? [])])
-  const erlaubt = new Set(listeVon(original[teil.feld]).flatMap((a) => (istObjekt(a) ? Object.keys(a) : [])))
+  const alt = listeVon(original[teil.feld]).filter(istObjekt)
+  const erlaubt = new Set(alt.flatMap((a) => Object.keys(a)))
+  /** Werte, die im gespeicherten Block als Text standen (z. B. Zeitpunkt „75“, Zahl „12.5“): unverändert zurück, nichts wird umgeschrieben */
+  const altText = (name: string) => new Set(alt.flatMap((a) => (typeof a[name] === 'string' ? [a[name] as string] : [])))
   const neu: Record<string, unknown>[] = []
   for (const roh of liste) {
     if (!istObjekt(roh)) return `Ungültiger Eintrag (${teil.einzahl}).`
@@ -962,6 +965,10 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
       const v = roh[name]
       if (f.zeit) {
         if (v === undefined || v === null || v === '') continue
+        if (typeof v === 'string' && altText(name).has(v)) {
+          eintrag[name] = v
+          continue
+        }
         if (typeof v !== 'number' || !Number.isInteger(v) || v < 0 || v > 86_400) return `${teil.einzahl}: Zeitpunkt bitte als mm:ss angeben.`
         eintrag[name] = v
         continue
@@ -975,7 +982,7 @@ function uebernimmEintraege(original: Block, vorschlag: Record<string, unknown>,
       const t = reinerText(typeof v === 'number' && Number.isFinite(v) ? String(v) : (v ?? ''), f.max)
       if (t === null) return `${teil.einzahl}: ${f.label} ist zu lang oder ungültig.`
       if (!f.pflicht && t === '' && !(name in roh)) continue
-      eintrag[name] = f.zahl && /^-?\d{1,15}$/.test(t.trim()) ? Number(t.trim()) : t
+      eintrag[name] = f.zahl && /^-?\d{1,15}$/.test(t.trim()) && !altText(name).has(t) ? Number(t.trim()) : t
     }
     if (teil.unterAntworten) {
       const u = teil.unterAntworten

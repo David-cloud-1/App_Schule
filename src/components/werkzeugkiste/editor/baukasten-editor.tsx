@@ -81,6 +81,10 @@ import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/b
 import { nachbarAuswahl } from '@/components/werkzeugkiste/editor/auswahl-navigation'
 import { kopiereBloecke, liesZwischenablage } from '@/components/werkzeugkiste/editor/block-zwischenablage'
 import { UebernehmenDialog } from '@/components/werkzeugkiste/editor/uebernehmen-dialog'
+import { TypWechsel } from '@/components/werkzeugkiste/editor/typ-wechsel'
+import { EditorRohfassung } from '@/components/werkzeugkiste/editor/editor-rohfassung'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { wechselZiele } from '@/lib/werkzeugkiste-blocktyp-wechsel'
 import type { UebernahmeErgebnis } from '@/lib/werkzeugkiste-api'
 import {
   einfuegeortAusAuswahl,
@@ -331,6 +335,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
   const [laeuft, setLaeuft] = useState(false)
   // PROJ-108: Dialog „Aus Material übernehmen“; `ziel` ist die Stelle, an der er geöffnet wurde (null = es gibt noch kein Thema)
   const [uebernehmen, setUebernehmen] = useState<{ ziel: Ziel | null } | null>(null)
+  // PROJ-114: „Aufgabentyp ändern“ und „Quelltext“ einer Aufgabe in der Seite öffnen eigene Dialoge (keine Schublade)
+  const [aufgabeDialog, setAufgabeDialog] = useState<{ art: 'typ' | 'roh'; ort: Ort } | null>(null)
   // Solange es noch keine Vorschau-Befunde gibt, gelten die gespeicherten
   const kernBefunde = v.befunde ?? daten.befunde
   // PROJ-90: Blöcke mit unverändertem Beispielinhalt – berechnet, nie gespeichert
@@ -1036,7 +1042,6 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       return
     }
     if (w.art === 'aufgabeAktion') {
-      const a: Auswahl = { art: 'block', thema: sit.ort.thema, block: sit.ort.block }
       if (w.aktion === 'loeschen') {
         schliesseAufgabe(w.marke, 'vorbei')
         loescheBlockAn(sit.ort)
@@ -1044,10 +1049,15 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         schliesseAufgabe(w.marke, 'beende')
         dupliziereBlockAn(sit.ort)
       } else {
-        // Aufgabentyp ändern und Rohfassung wohnen (noch) in der Schublade
+        // Aufgabentyp ändern und Quelltext öffnen einen eigenen Dialog; die Aufgabe wird vorher geschlossen
         schliesseAufgabe(w.marke, 'beende')
-        setAuswahl(a)
-        setVollbreit(false)
+        const b = z.struktur.chapters[sit.ort.thema]?.elements[sit.ort.block]
+        if (z.gesperrt || !b) return
+        if (w.aktion === 'typ' && !wechselZiele(String(b.type ?? '')).length) {
+          toast.info('Für diese Aufgabe gibt es keinen anderen Typ zum Wechseln.')
+          return
+        }
+        setAufgabeDialog({ art: w.aktion === 'typ' ? 'typ' : 'roh', ort: sit.ort })
       }
       return
     }
@@ -1689,6 +1699,44 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         seitenGroesse={v.groesse}
         onUebernommen={uebernommen}
       />
+      {aufgabeDialog && (() => {
+        const ort = aufgabeDialog.ort
+        const b = z.struktur.chapters[ort.thema]?.elements[ort.block]
+        if (!b) return null
+        const schliesse = () => setAufgabeDialog(null)
+        if (aufgabeDialog.art === 'typ') {
+          return (
+            <TypWechsel
+              offen
+              onOpenChange={(o) => !o && schliesse()}
+              block={b}
+              rueckgaengig={z.rueckgaengig}
+              onWechsel={(neu) => z.aendere((s) => setzeBlock(s, ort, neu))}
+            />
+          )
+        }
+        const name = typName(String(b.type ?? ''))
+        return (
+          <Dialog open onOpenChange={(o) => !o && schliesse()}>
+            <DialogContent className="max-h-[90svh] max-w-2xl overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Quelltext bearbeiten</DialogTitle>
+                <DialogDescription>{name}</DialogDescription>
+              </DialogHeader>
+              <EditorRohfassung
+                materialId={daten.id}
+                block={b}
+                beschriftung={`Quelltext: ${name}`}
+                onUebernehmen={(neu) => {
+                  z.aendere((s) => setzeBlock(s, ort, neu))
+                  schliesse()
+                }}
+                onAbbrechen={schliesse}
+              />
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
       <AlertDialog open={!!loeschenFrage} onOpenChange={(o) => !o && setLoeschenFrage(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
