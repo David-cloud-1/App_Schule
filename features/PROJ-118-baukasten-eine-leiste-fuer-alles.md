@@ -2,7 +2,7 @@
 
 ## Status: Deployed
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17
+**Last Updated:** 2026-11-18
 
 ## Hintergrund
 PROJ-117 hat Farben, Höhen und Wörter angeglichen, das Ziel „einheitlich, selbsterklärend, sehr einfach“ aber verfehlt. Befund aus dem Live-Test (Chrome, spedilern.vercel.app, 2026-11-17):
@@ -45,7 +45,7 @@ Ziel: **Eine** Bearbeiten-Leiste, gleich gebaut für jedes Element, mit ganzen W
 
 ### Inhalt der Leiste je Element
 - [ ] **Lehrtext:** Textknöpfe, Kasten-Auswahl, „Als HTML bearbeiten“ (öffnet die Schublade), Fertig.
-- [ ] **Aufgabe:** keine Formatknöpfe (Aufgabentext bleibt reiner Text), „Duplizieren“, „Löschen“, „Mehr …“ (Aufgabentyp ändern, Quelltext bearbeiten), Fertig. „Antwort hinzufügen“ bleibt am Ende der Liste, wo der neue Eintrag erscheint.
+- [ ] **Aufgabe:** keine Formatknöpfe (Aufgabentext bleibt reiner Text), „Darunter einfügen“ (Nachtrag 2026-11-18), „Duplizieren“, „Löschen“, „Mehr …“ (Aufgabentyp ändern, Quelltext bearbeiten), Fertig. „Antwort hinzufügen“ bleibt am Ende der Liste, wo der neue Eintrag erscheint.
 - [ ] **Thema, Deckblatt, Bildunterschrift:** Name, kurzer Hinweis „Enter = Fertig“, Fertig.
 
 ### Keine doppelte Leiste
@@ -154,3 +154,10 @@ Ziel: **Eine** Bearbeiten-Leiste, gleich gebaut für jedes Element, mit ganzen W
 - Lehrtext (Doppelklick, zweiter Klick und „Bearbeiten“): eine Leiste mit ganzen Wörtern, „Kasten ändern …“, „Als HTML bearbeiten“, „Fertig“ rechts; keine Schublade daneben ✅. Cursor landet an der Klickstelle ✅. „Fertig“ und Esc ohne Eingabe bei einem Text mit Kasten: „Entwurf gespeichert“, Rückgängig aus ✅ (der gemeldete stille Fehler ist live behoben).
 - Lückentext (Klick in den Text): dieselbe Leiste oben „Lückentext · Duplizieren · Löschen · Mehr … · Fertig“, keine Fußzeile ✅; „Fertig“ ohne Eingabe ändert nichts ✅.
 - **Einmal beobachtet, nicht reproduzierbar:** Gleich nach dem ersten Laden (Vorschau wurde noch 13 s neu gebaut) führte „Bearbeiten“ am Lehrtext zu nichts Sichtbarem. Nach Neuladen klappte dieselbe Folge (Thema → Fertig → Lehrtext per Doppelklick, „Bearbeiten“, zweiter Klick) dreimal. Vermutung: Start fiel in den Neubau der Vorschau (die Seite war noch nicht „bereit“). Weiter beobachten.
+
+## Nachtrag 2026-11-18: „Darunter einfügen“ auch in der Aufgaben-Leiste
+**Anlass:** Nutzerfrage am Browser-Bild: In der Leiste einer geöffneten Aufgabe fehlte „Darunter einfügen“, obwohl der Grundsatz „Name · Bearbeiten · Darunter einfügen · Duplizieren · ⋯ · Löschen“ für alle Elementarten gilt. Die Block-Leiste (beim Anklicken) hat den Knopf, die Aufgaben-Leiste ersetzt sie beim Bearbeiten und ließ ihn aus (Lücke in der Spec, keine bewusste Entscheidung).
+- **Gebaut:** Knopf „Darunter einfügen“ vor „Duplizieren“ (`aufgabenwerk/eintritt.ts`), Wörter aus `bedien-woerter.ts` (`ELEMENT_LEISTE.darunter`), neue Aktion `darunter` in `AUFGABE_AKTIONEN` (`vorschau-nachrichten.ts`). In `baukasten-editor.tsx` (`beiAufgabe`): Aufgabe schließt (ohne Änderung), der Katalog „Element hinzufügen“ öffnet hinter ihr, gleiche Stelle wie bei der Block-Leiste. Gesperrter Entwurf oder verschwundener Block: nichts passiert.
+- **Bewusst nicht gebaut:** Kasten (Merke, Tipp …) *innerhalb* einer Aufgabe. Aufgabenfelder sind reiner Text mit festem Aufbau; ein Kasten bräuchte ein neues Datenformat samt Kern und Schüleransicht. Der Weg dafür: „Darunter einfügen“ und dort einen Lehrtext mit Kasten wählen.
+- **Neu gebaut:** `npm run aufgabenwerk:bauen` und `npm run schreibwerk:bauen` (die Quelle der Wörter hat sich geändert).
+- **Tests:** `aufgabenwerk.test.ts` (Knopf meldet `darunter`, Wunsch wird gelesen), `bedien-design.test.tsx` (Knopfreihenfolge, ganze Wörter), `baukasten-editor.test.tsx` (Aufgabe schließt, Katalog öffnet, nichts gespeichert). Vitest `src/components/werkzeugkiste` + `src/lib/werkzeugkiste` 1264 grün, 1 alter Fehler in `werkzeugkiste-auszug.test.ts`; `tsc` grün.

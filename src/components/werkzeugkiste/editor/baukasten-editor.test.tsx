@@ -1205,6 +1205,15 @@ describe('Aufgabe an Ort und Stelle bearbeiten (PROJ-114)', () => {
     await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeBeende: true }, '*'))
   })
 
+  it('„Darunter einfügen“ schließt die Aufgabe und öffnet den Katalog hinter ihr, ohne etwas zu ändern', async () => {
+    const { rahmen, senden } = await bereit()
+    nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)
+    nachricht({ wkAufgabeAktion: 'k0-e1', aktion: 'darunter' }, rahmen)
+    await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkAufgabeBeende: true }, '*'))
+    expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
+    expect(api.speichereEntwurf).not.toHaveBeenCalled()
+  })
+
   it('⋯ „Element löschen“ beendet ohne Rückmeldung und löscht den Block', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkAufgabe: 'k0-e1', eintrag: null, anzahl: null }, rahmen)

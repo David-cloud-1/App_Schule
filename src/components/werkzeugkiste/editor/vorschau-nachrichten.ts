@@ -77,7 +77,7 @@ export type VorschauWunsch =
   | { art: 'aufgabeAktion'; marke: string; aktion: AufgabeAktion }
 
 /** PROJ-114: Aktionen aus dem ⋯ der Aufgabe */
-export const AUFGABE_AKTIONEN = ['typ', 'roh', 'duplizieren', 'loeschen'] as const
+export const AUFGABE_AKTIONEN = ['typ', 'roh', 'darunter', 'duplizieren', 'loeschen'] as const
 export type AufgabeAktion = (typeof AUFGABE_AKTIONEN)[number]
 
 /** Größter Block (als Text), den die App von der Seite annimmt */

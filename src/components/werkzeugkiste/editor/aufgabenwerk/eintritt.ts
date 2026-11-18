@@ -173,7 +173,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   // ── Rahmen: die eine Bearbeiten-Leiste (PROJ-118) ────────────────────
 
   const elementName = o.typName || aufgabeNr
-  function aktion(a: 'typ' | 'roh' | 'duplizieren' | 'loeschen') {
+  function aktion(a: 'typ' | 'roh' | 'darunter' | 'duplizieren' | 'loeschen') {
     flush()
     menue = false
     zeichne()
@@ -193,6 +193,8 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
       <div class=${'wk-el' + (o.mobil ? ' wk-el-unten' : '')} role="toolbar" aria-label=${ELEMENT_LEISTE.name(elementName)}>
         <span class="wk-el-name" title=${elementName}>${elementName}</span>
         <div class="wk-el-mitte">
+          <button type="button" class="wk-el-k" aria-label=${ELEMENT_LEISTE.darunter.lang} title=${ELEMENT_LEISTE.darunter.lang}
+            onClick=${() => aktion('darunter')}>${ELEMENT_LEISTE.darunter.text}</button>
           <button type="button" class="wk-el-k" aria-label=${ELEMENT_LEISTE.duplizieren.lang} title=${ELEMENT_LEISTE.duplizieren.lang}
             onClick=${() => aktion('duplizieren')}>${ELEMENT_LEISTE.duplizieren.text}</button>
           <button type="button" class="wk-el-k wk-el-gefahr" aria-label=${ELEMENT_LEISTE.loeschen.lang} title=${ELEMENT_LEISTE.loeschen.lang}

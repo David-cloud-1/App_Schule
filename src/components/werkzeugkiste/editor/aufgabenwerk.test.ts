@@ -342,6 +342,8 @@ describe('Aufgabenwerk: Muster A (Auswahl)', () => {
 
   it('PROJ-118: Duplizieren und Löschen stehen sichtbar in der Leiste, „Mehr …“ bietet Aufgabentyp ändern und Quelltext', () => {
     starte()
+    fireEvent.click(knopf('Element darunter einfügen'))
+    expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'darunter' })
     fireEvent.click(knopf('Element duplizieren'))
     expect(gemeldet.at(-1)).toEqual({ wkAufgabeAktion: 'k0-e1', aktion: 'duplizieren' })
     expect(knopf('Element löschen').classList.contains('wk-el-gefahr')).toBe(true)
@@ -392,6 +394,7 @@ describe('Nachrichten der Aufgabe', () => {
     expect(liesWunsch({ wkAufgabeEnde: 'k0-e1' })).toEqual({ art: 'aufgabeEnde', marke: 'k0-e1' })
     expect(liesWunsch({ wkAufgabeAbbruch: 'k0-e1' })).toEqual({ art: 'aufgabeAbbruch', marke: 'k0-e1' })
     expect(liesWunsch({ wkAufgabeAktion: 'k0-e1', aktion: 'loeschen' })).toEqual({ art: 'aufgabeAktion', marke: 'k0-e1', aktion: 'loeschen' })
+    expect(liesWunsch({ wkAufgabeAktion: 'k0-e1', aktion: 'darunter' })).toEqual({ art: 'aufgabeAktion', marke: 'k0-e1', aktion: 'darunter' })
     expect(liesWunsch({ wkAufgabeAktion: 'k0-e1', aktion: 'alles' })).toBeNull()
   })
 })

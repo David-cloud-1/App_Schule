@@ -113,6 +113,7 @@ describe('Bedien-Wörter: Schreibwerk und Schublade zeigen dasselbe (PROJ-118: g
       ...KASTEN.aktionen.map((a) => a.text),
       FERTIG.text,
       ELEMENT_LEISTE.html.text,
+      ELEMENT_LEISTE.darunter.text,
       ELEMENT_LEISTE.duplizieren.text,
       ELEMENT_LEISTE.loeschen.text,
       ELEMENT_LEISTE.mehr.text,
@@ -191,7 +192,7 @@ describe('Eine Leiste für alles (PROJ-118)', () => {
     expect(Array.from(feld.querySelectorAll('optgroup')[1].querySelectorAll('option')).map((o) => o.textContent)).toEqual(KASTEN.aktionen.map((a) => a.text))
   })
 
-  it('Aufgabe: dieselbe Leiste oben (Name, Duplizieren, Löschen, Mehr …, Fertig), keine Fußzeile, kein Schild', () => {
+  it('Aufgabe: dieselbe Leiste oben (Name, Darunter einfügen, Duplizieren, Löschen, Mehr …, Fertig), keine Fußzeile, kein Schild', () => {
     const ziel = document.createElement('section')
     ziel.setAttribute('data-wk', 'k0-e0')
     ziel.innerHTML = '<div class="kopfzeile"><span class="marke">Aufgabe 1</span></div><p class="frage">Frage?</p>'
@@ -209,7 +210,7 @@ describe('Eine Leiste für alles (PROJ-118)', () => {
     expect(leiste.getAttribute('aria-label')).toBe(ELEMENT_LEISTE.name('Einfachauswahl'))
     expect(leiste.querySelector('.wk-el-name')?.textContent).toBe('Einfachauswahl')
     const knoepfe = Array.from(leiste.querySelectorAll(':scope button')).map((b) => b.textContent)
-    expect(knoepfe).toEqual([ELEMENT_LEISTE.duplizieren.text, ELEMENT_LEISTE.loeschen.text, ELEMENT_LEISTE.mehr.text, FERTIG.text])
+    expect(knoepfe).toEqual([ELEMENT_LEISTE.darunter.text, ELEMENT_LEISTE.duplizieren.text, ELEMENT_LEISTE.loeschen.text, ELEMENT_LEISTE.mehr.text, FERTIG.text])
     // Die Leiste steht vor dem Inhalt (oben), nicht danach
     expect(ziel.querySelector('.wk-aw')?.firstElementChild).toBe(leiste)
     expect(ziel.querySelector('.wk-aw-fuss')).toBeNull()

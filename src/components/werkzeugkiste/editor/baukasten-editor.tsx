@@ -1048,6 +1048,14 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       } else if (w.aktion === 'duplizieren') {
         schliesseAufgabe(w.marke, 'beende')
         dupliziereBlockAn(sit.ort)
+      } else if (w.aktion === 'darunter') {
+        // PROJ-118 Nachtrag: wie „Darunter einfügen“ der Block-Leiste (Aufgabe schließt, Katalog öffnet hinter ihr)
+        schliesseAufgabe(w.marke, 'beende')
+        if (z.gesperrt) return
+        const t = z.struktur.chapters[sit.ort.thema]
+        if (!t || sit.ort.block >= t.elements.length) return
+        setVollbreit(false)
+        setEinfuegenAnfrage((x) => ({ nr: x.nr + 1, ort: { thema: sit.ort.thema, index: sit.ort.block + 1 } }))
       } else {
         // Aufgabentyp ändern und Quelltext öffnen einen eigenen Dialog; die Aufgabe wird vorher geschlossen
         schliesseAufgabe(w.marke, 'beende')

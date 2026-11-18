@@ -55,6 +55,7 @@ export const ELEMENT_LEISTE = {
   /** Name der Leiste für Screenreader: „Lehrtext bearbeiten“ */
   name: (element: string) => `${element} bearbeiten`,
   html: { text: 'Als HTML bearbeiten', lang: 'Diesen Text in der Schublade als HTML bearbeiten' },
+  darunter: { text: 'Darunter einfügen', lang: 'Element darunter einfügen' },
   duplizieren: { text: 'Duplizieren', lang: 'Element duplizieren' },
   loeschen: { text: 'Löschen', lang: 'Element löschen' },
   mehr: { text: 'Mehr …', lang: 'Weitere Möglichkeiten' },
