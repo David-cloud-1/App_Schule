@@ -33,6 +33,8 @@ export interface AufgabeStart {
   marke: string
   block: Record<string, unknown>
   typName: string
+  /** Gibt es einen verwandten Typ zum Wechseln? */
+  typWechsel: boolean
   eintrag: EintragOrt | null
 }
 /** PROJ-114: Befehl an die offene Aufgabe: beenden, verwerfen (ohne Meldung) oder neuen Stand zeigen (Rückgängig) */
@@ -195,7 +197,7 @@ export function EditorVorschau({
         senden({ wkAufgabenwerk: m.AUFGABENWERK_CODE })
         aufgabenwerkGeschickt.current = true
       }
-      senden({ wkAufgabeStart: { marke: a.marke, block: a.block, typName: a.typName, eintrag: a.eintrag } })
+      senden({ wkAufgabeStart: { marke: a.marke, block: a.block, typName: a.typName, typWechsel: a.typWechsel, eintrag: a.eintrag } })
     })()
     return () => {
       abgebrochen = true

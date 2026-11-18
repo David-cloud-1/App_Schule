@@ -139,6 +139,7 @@ export function lueckenTeil(w: Werk, teil: LueckenTeil): VNode {
     if (!el || !w.zustand[NEU]) return
     w.zustand[NEU] = false
     el.innerHTML = lueckenHtml(teil, stuecke)
+    el.dataset.awText = text
     // Cursor hinter die neue Lücke
     const nach = w.zustand[CURSOR]
     delete w.zustand[CURSOR]
@@ -193,7 +194,9 @@ export function lueckenTeil(w: Werk, teil: LueckenTeil): VNode {
     const el = feldEl()
     if (!el) return
     const neu = liesTextfeld(el, stuecke)
-    w.tippe(setzeText(neu), 'luecken-text')
+    const block = setzeText(neu)
+    el.dataset.awText = s(block[teil.feld])
+    w.tippe(block, 'luecken-text')
   }
 
   const fensterAendern = (k: number, felder: FensterFelder) => {

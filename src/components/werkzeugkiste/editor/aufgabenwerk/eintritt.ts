@@ -39,6 +39,8 @@ export interface AufgabeOptionen {
   typName: string
   /** Handy: Leiste fest unten über der Bildschirmtastatur (PROJ-118) */
   mobil?: boolean
+  /** Gibt es einen verwandten Typ zum Wechseln? Sonst fehlt „Aufgabentyp ändern“ im Menü */
+  typWechsel?: boolean
   /** Angeklickter Eintrag (schon von der App geprüft und auf den Block umgerechnet) */
   eintrag: EintragOrt | null
   melde: (nachricht: Record<string, unknown>) => void
@@ -209,7 +211,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
         ${menue &&
         // Das Menü hängt an der Leiste (nicht an der Mitte, die am Handy waagerecht scrollt und es sonst abschnitte)
         html`<div class="wk-aw-menue" role="menu">
-          <button type="button" role="menuitem" onClick=${() => aktion('typ')}>${ELEMENT_LEISTE.typ}</button>
+          ${o.typWechsel !== false && html`<button type="button" role="menuitem" onClick=${() => aktion('typ')}>${ELEMENT_LEISTE.typ}</button>`}
           <button type="button" role="menuitem" onClick=${() => aktion('roh')}>${ELEMENT_LEISTE.quelltext}</button>
         </div>`}
         <button type="button" class="wk-el-k wk-el-fertig" aria-label=${FERTIG.lang} title=${FERTIG.lang} onClick=${() => beende()}>${FERTIG.text}</button>

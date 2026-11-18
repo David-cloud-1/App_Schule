@@ -82,3 +82,57 @@ describe('BUG-10: Bestand bleibt, wie er gespeichert ist', () => {
     expect(uebernimmAufgabe(alt as never, { ...alt, questions: [{ ...alt.questions[0], time: '-5' }] }).ok).toBe(false)
   })
 })
+
+describe('QA-Korrekturen (BUG-13, BUG-14, BUG-15)', () => {
+  const zwei = () => ({
+    type: 'question_set',
+    pass_percentage: 70,
+    questions: [
+      { type: 'fill_blanks', text: 'Erster *Text* hier.' },
+      { type: 'fill_blanks', text: 'Zweiter *Satz* dort.' },
+    ],
+  })
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => {
+    werk?.ab()
+    vi.useRealTimers()
+    document.body.innerHTML = ''
+  })
+
+  it('BUG-13: Nach dem Löschen der ersten Frage zeigt Karte 1 den Text der zweiten – Tippen mischt nichts', () => {
+    starte(zwei())
+    fireEvent.click(ziel.querySelector<HTMLElement>('[data-aw-karte="0"] .wk-aw-weg')!)
+    vi.advanceTimersByTime(700)
+    const feld = ziel.querySelector<HTMLElement>('[data-aw-karte="0"] .wk-aw-lt')!
+    expect(feld.textContent).toBe('Zweiter Satz dort.')
+    feld.appendChild(document.createTextNode('!'))
+    fireEvent.input(feld)
+    vi.advanceTimersByTime(700)
+    const stand = gemeldet.filter((n) => n.wkAufgabeAenderung).pop()!.block as { questions: { text: string }[] }
+    expect(stand.questions).toEqual([{ type: 'fill_blanks', text: 'Zweiter *Satz* dort.!' }])
+  })
+
+  it('BUG-13: Nach dem Tauschen zeigen beide Karten ihren eigenen Text', () => {
+    starte(zwei())
+    fireEvent.keyDown(ziel.querySelector<HTMLElement>('[data-aw-karte="0"] .wk-aw-griff')!, { key: 'ArrowDown', altKey: true })
+    vi.advanceTimersByTime(700)
+    expect(ziel.querySelector('[data-aw-karte="0"] .wk-aw-lt')!.textContent).toBe('Zweiter Satz dort.')
+    expect(ziel.querySelector('[data-aw-karte="1"] .wk-aw-lt')!.textContent).toBe('Erster Text hier.')
+  })
+
+  it('BUG-14: Eine neue Lückentext-Frage bekommt den Fokus im Textfeld', () => {
+    starte({ type: 'question_set', pass_percentage: 70, questions: [{ type: 'true_false', question: 'X', correct: true }] })
+    const knopf = [...ziel.querySelectorAll<HTMLButtonElement>('.wk-aw-neu')].find((b) => b.textContent?.includes('Lückentext'))!
+    fireEvent.click(knopf)
+    expect(document.activeElement?.classList.contains('wk-aw-lt')).toBe(true)
+  })
+
+  it('BUG-15: Ohne Wechselziel fehlt „Aufgabentyp ändern“ im Menü', () => {
+    document.body.innerHTML = '<section data-wk="k0-e3"><p>Alt</p></section>'
+    const z = document.querySelector('section')!
+    werk = starteAufgabe({ ziel: z, block: { type: 'drag_drop', categories: ['A', 'B'], items: [] } as never, marke: 'k0-e3', typName: 'T', eintrag: null, typWechsel: false, melde: () => {} })
+    fireEvent.click([...z.querySelectorAll<HTMLButtonElement>('.wk-el-k')].find((b) => b.textContent === 'Mehr …')!)
+    const eintraege = [...z.querySelectorAll('.wk-aw-menue button')].map((b) => b.textContent)
+    expect(eintraege).toEqual(['Quelltext bearbeiten'])
+  })
+})

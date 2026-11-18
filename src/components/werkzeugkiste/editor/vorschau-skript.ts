@@ -50,6 +50,8 @@ const CSS = [
   `.wk-leiste{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:2px;padding:3px;${leistenRahmenCss()}}`,
   '.wk-leiste[hidden],.wk-b[hidden]{display:none!important}',
   '.wk-leiste:not(.wk-leiste-unten){flex-wrap:wrap;max-width:calc(100% - 8px)}',
+  // Der Typname gibt zuerst nach: In einer Seite um 680 px passen sonst die Knöpfe nicht mehr in eine Zeile (QA PROJ-114, BUG-16)
+  '.wk-leiste:not(.wk-leiste-unten) .wk-typ{max-width:104px}',
   `.wk-trenner{width:1px;align-self:stretch;margin:3px 2px;background:${F.trenner}}.wk-trenner[hidden]{display:none!important}`,
   // PROJ-104: Anfasser zum Größenziehen, Breiten-Etikett, Ablegen von Dateien
   '.wk-griffe{position:fixed;z-index:2147482990;pointer-events:none}.wk-griffe[hidden]{display:none!important}',
@@ -734,7 +736,7 @@ function startAufgabe(s){
   if(!el||el.tagName!=="SECTION"||!window.__wkAufgabenwerk||!s.block||typeof s.block!=="object"){p({wkAufgabeAbbruch:String(s.marke||"")});return}
   document.body.classList.add("wk-aufgabe");
   try{
-    aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,mobil:mobil,
+    aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,mobil:mobil,typWechsel:s.typWechsel!==false,
       // Die Leiste war während der Bearbeitung ausgeblendet (Breite 0): nach dem Einblenden neu messen und platzieren
       melde:function(n){if(n.wkAufgabeEnde){document.body.classList.remove("wk-aufgabe");leisteAktualisieren();plaziere();requestAnimationFrame(function(){plaziere()})}p(n)}});
   }catch(x){document.body.classList.remove("wk-aufgabe");aufgabe=null;p({wkAufgabeAbbruch:s.marke});return}

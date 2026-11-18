@@ -105,7 +105,7 @@ export function unterbloeckeTeil(w: Werk, teil: UnterBloeckeTeil, zeichner: Zeic
       w.zeichne()
       return
     }
-    w.tue({ ...w.block, [teil.feld]: [...liste, neueFrage(typ)] }, 'neu-kapitelfrage', typ === 'fill_blanks' ? `q${liste.length}:lueckentext` : `q${liste.length}:question`)
+    w.tue({ ...w.block, [teil.feld]: [...liste, neueFrage(typ)] }, 'neu-kapitelfrage', typ === 'fill_blanks' ? `q${liste.length}:lt-text` : `q${liste.length}:question`)
   }
 
   const karten = liste.map((f, i) => {
@@ -125,7 +125,11 @@ export function unterbloeckeTeil(w: Werk, teil: UnterBloeckeTeil, zeichner: Zeic
       inhalt = html`<p class="wk-aw-hinweis" role="note">Nicht im Kapiteltest möglich – wird übersprungen. Entferne die Frage.</p>`
     } else {
       // Lückentext: Textfeld wird beim ersten Zeichnen der Karte geschrieben (Wörter markieren statt Sternchen)
-      if (typ === 'fill_blanks' && !w.ziel.querySelector(`[data-aw-karte="${i}"] .wk-aw-lt`)) lueckenNeuerStand(sub)
+      // Karten sind nach Platz geordnet: Gehört das Feld einer anderen Frage (nach Löschen, Verschieben), wird es neu geschrieben
+      if (typ === 'fill_blanks') {
+        const feld = w.ziel.querySelector<HTMLElement>(`[data-aw-karte="${i}"] .wk-aw-lt`)
+        if (!feld || feld.dataset.awText !== s(f.text)) lueckenNeuerStand(sub)
+      }
       const n = teileVon(BAUPLAENE[typ], f).length
       inhalt = Array.from({ length: n }, (_, k) => zeichner.zeichne(sub, k))
     }

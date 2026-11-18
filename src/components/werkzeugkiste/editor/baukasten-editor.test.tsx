@@ -1139,7 +1139,7 @@ describe('Aufgabe an Ort und Stelle bearbeiten (PROJ-114)', () => {
     nachricht({ wkAufgabe: 'k0-e1', eintrag: { art: 'eintrag', nr: 2 }, anzahl: 3 }, rahmen)
     await waitFor(() =>
       expect(senden).toHaveBeenCalledWith(
-        { wkAufgabeStart: { marke: 'k0-e1', block: MC_STRUKTUR.chapters[0].elements[1], typName: expect.any(String), eintrag: { art: 'eintrag', nr: 2 } } },
+        { wkAufgabeStart: { marke: 'k0-e1', block: MC_STRUKTUR.chapters[0].elements[1], typName: expect.any(String), typWechsel: expect.any(Boolean), eintrag: { art: 'eintrag', nr: 2 } } },
         '*',
       ),
       { timeout: 4000 },

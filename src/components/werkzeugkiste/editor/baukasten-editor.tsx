@@ -967,7 +967,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     const nr = ++aufgabeZaehler.current
     sitzungen.current.set(marke, { nr, marke, ort, typ: b.type, bekannt: JSON.stringify(b), rest: restSignatur(z.struktur, ort) })
     aktiveAufgabe.current = marke
-    setAufgabe({ nr, marke, block: b, typName: typName(b.type), eintrag })
+    setAufgabe({ nr, marke, block: b, typName: typName(b.type), typWechsel: wechselZiele(String(b.type ?? '')).length > 0, eintrag })
     return true
   }
 

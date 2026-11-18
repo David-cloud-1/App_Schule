@@ -126,3 +126,19 @@ describe('Kapiteltest-Formular', () => {
     expect(screen.getByRole('button', { name: /Typ von Frage 1 wechseln/ })).toBeInTheDocument()
   })
 })
+
+describe('BUG-12: Rückfrage bleibt stehen, wenn der Aufrufer bei „zu“ die Komponente ausblendet', () => {
+  it('Typ wählen → Rückfrage → Wechseln ändert den Block und schließt', async () => {
+    const { useState } = await import('react')
+    const onWechsel = vi.fn()
+    function Huelle() {
+      const [offen, setOffen] = useState(true)
+      return offen ? <TypWechsel offen onOpenChange={(o) => !o && setOffen(false)} block={eigeneFrage} onWechsel={onWechsel} /> : <p>zu</p>
+    }
+    render(<Huelle />)
+    fireEvent.click(eintrag('true_false'))
+    fireEvent.click(screen.getByRole('button', { name: 'Wechseln' }))
+    expect(onWechsel).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('zu')).toBeInTheDocument()
+  })
+})

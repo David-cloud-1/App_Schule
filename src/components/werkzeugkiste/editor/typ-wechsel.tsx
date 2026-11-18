@@ -48,17 +48,19 @@ export function TypWechsel({
   function gewaehlt(ziel: string) {
     const p = planeWechsel(block, ziel)
     if (!p) return
-    onOpenChange(false)
     if (p.beispiel) {
+      onOpenChange(false)
       fertig(ziel, p)
       return
     }
+    // Der Katalog klappt zu, die Rückfrage kommt; die Komponente selbst bleibt stehen (sonst verschwindet auch die Rückfrage)
     setPlan({ ziel, plan: p })
   }
 
   function fertig(ziel: string, p: WechselPlan) {
     onWechsel(p.block)
     setPlan(null)
+    onOpenChange(false)
     toast.success(`Typ gewechselt zu ${typName(ziel)}`, rueckgaengig ? { action: { label: 'Rückgängig', onClick: rueckgaengig } } : undefined)
   }
 
@@ -67,13 +69,17 @@ export function TypWechsel({
   return (
     <>
       <KatalogDialog
-        offen={offen}
+        offen={offen && plan === null}
         onOpenChange={onOpenChange}
         onWaehle={gewaehlt}
         erlaubt={erlaubt}
         wechsel={{ aktuell: typ, waehlbar }}
       />
-      <AlertDialog open={plan !== null} onOpenChange={(o) => !o && setPlan(null)}>
+      <AlertDialog open={plan !== null} onOpenChange={(o) => {
+          if (o) return
+          setPlan(null)
+          onOpenChange(false)
+        }}>
         <AlertDialogContent className="max-h-[90svh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>

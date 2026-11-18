@@ -573,3 +573,10 @@ Geprüft: Restarbeiten aus 91e702d (Dialoge statt Schublade, Ziehen beim Zuordne
 **2026-11-18 (Production, Commit a0dcd2b, Vercel Ready nach ca. 2,5 Min.; Keine Migration, kein Kern-Deploy):** Korrekturen aus dem Browser-Durchgang live. Live geprüft (Chrome): Fallakte (Ausgangssituation beschriftet, keine `<p>`-Tags), Offene Frage (Musterlösung beschriftet), Block-Leiste nach Esc einzeilig; nichts verändert (Rückgängig blieb aus). Status bleibt **In Progress** (Handy, Bauschritt 6 u. a. offen).
 
 **2026-11-18 (Production, Commit 91e702d, Vercel Ready nach ca. 2 Min.; keine Migration, kein Kern-Deploy; API ohne Login 401):** Typ-wechseln-/Quelltext-Dialoge, Ziehen beim Zuordnen, Kapiteltest-Lückentext ohne Sternchen, BUG-10 teilweise sind live. Nicht im Browser geprüft, keine zweite QA. Status bleibt **In Progress**; als Nächstes Browser-Durchgang (Laptop/Tablet) und Opus-QA.
+
+### Korrekturen nach der zweiten QA (2026-11-18, Sonnet, lokal committet, noch nicht live)
+- **BUG-12 behoben:** `TypWechsel` bleibt jetzt stehen, bis die Rückfrage beantwortet ist (der Katalog klappt über `offen && plan === null` zu, `onOpenChange(false)` kommt erst nach „Wechseln“/„Abbrechen“). Gilt für Leisten-Menü und Block-Menü. Test in `typ-wechsel.test.tsx` mit einem Aufrufer, der die Komponente bei „zu“ ausblendet.
+- **BUG-13 behoben:** Das Textfeld merkt sich per `data-aw-text`, für welchen Text es geschrieben wurde; gehört es nach Löschen/Verschieben zu einer anderen Frage, wird es neu geschrieben (`muster-e.ts`, `muster-g.ts`). Zwei Tests.
+- **BUG-14 behoben:** Fokus-Schlüssel `lt-text`. **BUG-15 behoben:** Die Seite bekommt `typWechsel` (App rechnet `wechselZiele`), ohne Ziel fehlt „Aufgabentyp ändern …“ im Menü.
+- **BUG-16 abgemildert:** Typname in der Block-Leiste höchstens 104 px; die Leiste bricht erst bei schmaleren Seiten um. Im Browser nicht gemessen.
+- Werkzeugkiste-Editor 528/528 grün, `tsc` grün, ESLint ohne Fehler. **Browser-Prüfung nach dem Deploy offen** (Typwechsel mit Rückfrage, Block-Leiste).
