@@ -1,8 +1,8 @@
 # PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-17 (Bauschritt 1–5 live, nur automatisch geprüft)
+**Last Updated:** 2026-11-18 (zweite QA-Runde, Opus: 2 High-Funde)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -527,6 +527,31 @@ Jeder Typ mit Bauplan im Material über die Gliederung bzw. per Klick in die Sei
 
 Tests: `aufgabenwerk-praxis.test.ts` (7 Fälle). Werkzeugkiste 771/771 grün, `tsc` grün, ESLint 0 Fehler.
 **Noch nicht geprüft:** Handy (Tastatur, Leiste unten), Bild-Typen/Tabelle/Diagramm (Bauschritt 6), Safari/Firefox.
+
+### Zweite QA-Runde (2026-11-18, Opus, Production Commit 91e702d)
+Geprüft: Restarbeiten aus 91e702d (Dialoge statt Schublade, Ziehen beim Zuordnen, Kapiteltest-Lückentext, BUG-10). Wege: Code-Durchsicht, Probe-Tests in jsdom (danach gelöscht), Browser-Durchgang in Chrome (Production, „Basics rund um den LKW (Kopie)“, nichts dauerhaft verändert). Nicht geprüft: Tablet, Safari/Firefox, Kapiteltest-Lückentext im Browser (im Testmaterial gibt es keinen).
+
+| Geprüft | Ergebnis |
+|---|---|
+| Zuordnen: Begriff am Griff in einen anderen Kasten ziehen, speichern, Rückgängig | ✅ (Browser) |
+| Ziehen außerhalb der Kästen ändert nichts | ✅ (Test) |
+| Mehr … → „Quelltext bearbeiten“ öffnet Dialog mit YAML; Abbrechen ändert nichts | ✅ (Browser, Laden ca. 4 s mit Platzhalter) |
+| Mehr … → „Aufgabentyp ändern …“ öffnet den Katalog | ✅ (Browser) |
+| Typ wählen → Rückfrage „Wechseln?“ → Wechsel | ❌ BUG-12 |
+| Kapiteltest-Lückentext zeigt Marken statt Sternchen, gespeichert bleibt Sternchen | ✅ (Test) |
+| Kapiteltest: Lückentext-Frage löschen oder umsortieren | ❌ BUG-13 |
+| BUG-10: Text-Zeitpunkt im Video blockiert nicht mehr, bleibt Text; ungültiger Wert weiter abgewiesen | ✅ (Test) |
+
+**Funde**
+- **BUG-12 (High) – „Aufgabentyp ändern“ tut nichts, sobald eine Rückfrage nötig ist.** Schritte: Auswahlfrage öffnen → Mehr … → Aufgabentyp ändern … → „Richtig oder falsch“ → „Zu diesem Typ wechseln“. Erwartet: Rückfrage „Von … zu … wechseln?“. Tatsächlich: Dialog schließt, nichts passiert. Ursache: `TypWechsel` ruft `onOpenChange(false)` vor `setPlan`; der Aufrufer (`baukasten-editor.tsx` `aufgabeDialog`, ebenso `block-menue.tsx` `wechsel`) blendet die ganze Komponente samt Rückfrage dabei aus. Betroffen sind auch das Block-Menü (⋯ → Aufgabentyp ändern, schon vor 91e702d) – nur der Knopf in der Schublade (`TypWechselKnopf`) funktioniert, und die Schublade öffnet für Aufgaben mit Bauplan nicht mehr. Damit ist der Typwechsel für 27 Typen in der Seite nicht erreichbar. Unveränderte Beispielblöcke (ohne Rückfrage) wechseln weiter.
+- **BUG-13 (High) – Kapiteltest: falscher Text nach Löschen/Umsortieren von Lückentext-Fragen.** Schritte (belegt per Probe-Test): Kapiteltest mit zwei Lückentext-Fragen, erste löschen (oder per Alt+↓ tauschen). Karte 1 zeigt danach weiter den Text der gelöschten Frage; tippt man dort, wird ein Mischtext gespeichert (Beispiel: „Erster *Satz* hier.!“ aus „Erster *Text* hier.“ und „Zweiter *Satz* dort.“). Ursache: Karten sind nach Platz (`key=${i}`) verschlüsselt; das Textfeld wird nur neu geschrieben, wenn es in der Karte noch nicht existiert (`muster-g.ts`), und der Zustand des Unter-Werks hängt ebenfalls am Platz. Rückgängig holt den alten Stand zurück; ohne Bemerken bleibt der Fehler aber gespeichert.
+- **BUG-14 (Low) – Neue Lückentext-Frage im Kapiteltest: Fokus landet im Feld „Bestehensgrenze“ statt im Text.** `hinzu('fill_blanks')` setzt den alten Schlüssel `q<n>:lueckentext`, das Feld heißt jetzt `lt-text`.
+- **BUG-15 (Low) – „Aufgabentyp ändern …“ steht auch bei Typen ohne Wechselziel im Menü** (z. B. Zuordnen). Klick schließt die Aufgabe und meldet nur „keinen anderen Typ“. Besser: Eintrag ausblenden oder ausgegraut mit Grund.
+- **BUG-16 (Low) – Block-Leiste bricht wieder um:** Nach dem Schließen einer Auswahlfrage stand „Löschen“ in einer zweiten Zeile (Vorschau ca. 680 px breit). Gehört zu PROJ-118 (Fix afe90d3); nicht weiter eingegrenzt.
+
+**Sicherheit:** Kein Befund. Die neuen Dialoge öffnen nur für die gerade offene Aufgabe (Ort aus der Sitzung, nicht aus der Nachricht); „Quelltext“ geht wie bisher über den Kern; Ziehen setzt nur vorhandene Kategorien, die Übernahme prüft weiter alles; BUG-10 lässt nur Textwerte zu, die schon im gespeicherten Block standen.
+
+**Empfehlung: nicht freigeben.** BUG-12 und BUG-13 zuerst beheben, dann BUG-14/15; BUG-16 bei PROJ-118 prüfen. Status **In Review**.
 
 ## Deployment
 **2026-11-17:** Bauschritt 1–4 (verkürzt, 24 Typen) per Push `proj-114-aufgabenwerk:main` (Commit d5200f6) nach Production, Build Ready, API ohne Login 401. Keine Migration, kein Kern-Deploy. **Nicht im Browser geprüft**, Rest-Typen (Fallakte, Kapiteltest, Video, Bild-Typen, Tabelle, Diagramm) weiter in der Schublade; Status bleibt In Progress.
