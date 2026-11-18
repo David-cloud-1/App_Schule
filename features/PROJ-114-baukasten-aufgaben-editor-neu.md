@@ -504,6 +504,30 @@ Tests: `aufgabenwerk-qa.test.ts` (alle grün, 4 ehemals rote Fälle + 7 neue), 3
 - Erneuter Abgleich der Finder-Zählung (`FINDER`/`sichtbar()`) mit frisch gebauten Kern-Seiten für Randfälle (leere oder ungültige Einträge, Aliasnamen). Er wurde in dieser QA wegen des Zeitlimits **nicht wiederholt**.
 - Cross-Browser (Chrome, Firefox, Safari).
 
+### Browser-Durchgang Laptop (2026-11-18, Chrome, Production, „Basics rund um den LKW (Kopie)“)
+Jeder Typ mit Bauplan im Material über die Gliederung bzw. per Klick in die Seite geöffnet: Begriffe zum Aufklappen, Lückentext, Lückentext mit Hinweis, Wörter markieren, Wörter ziehen (mit Zusatzwörtern), Memory, Zuordnen, Trainer, Offene Frage, Fallakte, Zusammenfassung, Kapiteltest, Selbsteinschätzung, Lernkarten zum Tippen, Video mit Fragen, Auswahlfrage (eine/mehrere richtig), Richtig oder falsch, Reihenfolge, Wörtersuche, Rechenweg, Rechenaufgabe, Schnellfragen. Alle öffnen in der Seite mit der einen Leiste.
+
+| Geprüft | Ergebnis |
+|---|---|
+| Klick auf einen Eintrag (Aufklappen „Stückgut“) öffnet genau dort mit Fokus | ✅ |
+| Tippen → „Wird gespeichert …“, Rückgängig oben stellt den Text her (auch im offenen Werk) | ✅ |
+| Begriff hinzufügen (Fokus im neuen Eintrag), × löscht, Toast „Begriff gelöscht · Rückgängig“ holt ihn zurück | ✅ |
+| Leiste klebt beim Scrollen oben an der Aufgabe | ✅ |
+| Lückentext: Wort markieren → „Als Lücke“, Klick auf die Lücke öffnet das Fenster, „Lücke entfernen“ | ✅ |
+| Alt+↓ sortiert eine Antwort um, Fokus wandert mit; Rückgängig stellt die Reihenfolge her | ✅ |
+| BUG-1 im echten Ablauf: Element über der offenen Aufgabe per „Nach unten“ verschoben → Aufgabe schließt, nichts landet am falschen Block; nach Rückgängig ist die Aufgabe unversehrt | ✅ |
+| „Fertig“ ohne Eingabe: Vorschau baut neu, Gliederung/Vorschläge unverändert | ✅ |
+
+**Funde und Korrektur (gleicher Tag):**
+- **Nebenfelder ohne Beschriftung (Medium):** Musterlösung (Offene Frage), Ergebnis (Rechenaufgabe), Ausgangssituation/Urteil (Fallakte) standen fett und nur mit Platzhalter da – gefüllt war nicht mehr erkennbar, wofür das Feld steht. Jetzt: nur das erste Textfeld (Frage/Aufgabe/Titel) ist fett, jedes weitere hat eine sichtbare Beschriftung darüber, normale Schrift und einen Rahmen (`textTeil`, `design.ts`). Die Arbeitsanweisung bleibt wie bisher.
+- **Fallakte zeigte rohe `<p>`-Tags (Medium):** Besteht ein Text nur aus einfachen `<p>`-Absätzen, steht er im Feld als Absätze mit Leerzeile; Tippen speichert wieder `<p>`-Absätze (Sonderzeichen maskiert), ohne Eingabe bleibt er unverändert. Texte mit weiteren Tags bleiben wie sie sind (`absaetzeAusHtml`/`absaetzeZuHtml`/`textFeldWert` in `teile.ts`; auch in der Ersatz-Ansicht nach „Fertig“).
+- **Rechenweg: Einheit bricht mitten im Wort um (Low):** kurze Felder (≤ 40 Zeichen) haben jetzt eine Mindestbreite von 5,5 em.
+- **Block-Leiste nach „Fertig“ senkrecht gestapelt (Low, Ursache in PROJ-118):** siehe Commit `fix(PROJ-118)` – Leiste wird vor dem Messen an den linken Rand gestellt.
+- Kein Fehler: Ein Toast blieb stehen, weil die Testautomatik die Maus über dem Toast „vergessen“ hatte (Sonner pausiert bei Hover); mit echter Maus verschwindet er.
+
+Tests: `aufgabenwerk-praxis.test.ts` (7 Fälle). Werkzeugkiste 771/771 grün, `tsc` grün, ESLint 0 Fehler.
+**Noch nicht geprüft:** Handy (Tastatur, Leiste unten), Bild-Typen/Tabelle/Diagramm (Bauschritt 6), Safari/Firefox.
+
 ## Deployment
 **2026-11-17:** Bauschritt 1–4 (verkürzt, 24 Typen) per Push `proj-114-aufgabenwerk:main` (Commit d5200f6) nach Production, Build Ready, API ohne Login 401. Keine Migration, kein Kern-Deploy. **Nicht im Browser geprüft**, Rest-Typen (Fallakte, Kapiteltest, Video, Bild-Typen, Tabelle, Diagramm) weiter in der Schublade; Status bleibt In Progress.
 
@@ -512,7 +536,7 @@ Tests: `aufgabenwerk-qa.test.ts` (alle grün, 4 ehemals rote Fälle + 7 neue), 3
 **Zusatzwörter bei „Wörter ziehen“ (2026-11-17, live):** Rückmeldung des Nutzers: Im Editor ließen sich keine zusätzlichen Begriffe und Auswahlmöglichkeiten anlegen. Neues Feld `distractors` (0–10 Zusatzwörter, stehen im Vorrat, passen in keine Lücke). App: Bauplan `drag_words` mit zweitem Teil (Zeilenliste, Überschrift, nach „Fertig“ als Kärtchen), Schublade (`LueckenFormular`) mit Textliste, Feld bei „Typ wechseln“ als bekannt. Kern: `seite.py` (Zusatzwörter nach den Lücken im Vorrat, kein Ablenker kann „richtig“ sein), `h5p_generator.py` (Parameter `distractors`, nur wenn vorhanden; ob H5P.DragText 1.10 ihn auswertet, ist nicht geprüft), Test `kern_zusatzwoerter_test.py`. Commits App f7f4f24, Kern 58311ad (Kern vor der App deployt). Nicht im Browser geprüft. Bekannt: „Typ wechseln“ öffnet weiter die Schublade und setzt dort einen Platzhaltertext. Fremder Fehlschlag `werkzeugkiste-auszug.test.ts` (Urheber-Untertitel) ist nicht von dieser Änderung.
 
 ### Offene Aufgaben
-1. **Praxisdurchgang im Browser** (Laptop + Handy) mit „Basics rund um den LKW": jeden Typ öffnen, ändern, umsortieren, löschen + Rückgängig; besonders Kapiteltest, Lückentexte, Block löschen bei offener Aufgabe.
+1. **Praxisdurchgang im Browser:** Laptop erledigt 2026-11-18 (siehe oben). Offen: Handy (Bildschirmtastatur, Leiste unten, „Als Lücke“ auf Touch).
 2. **Bauschritt 6:** Bildzuordnung, Hotspot, Bilder ordnen, Bild, Galerie (Bild-Werkzeuge in der Seite), Tabelle, Diagramm – vorher kurze Planung (Opus).
 3. „Typ wechseln“ und „Rohfassung" als eigene Dialoge statt Schublade.
 4. Ziehen von Begriffen zwischen Kästen (Zuordnen); Lückentext im Kapiteltest ohne Sternchen.

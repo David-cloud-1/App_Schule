@@ -38,6 +38,10 @@ export const AW_CSS = [
   `.wk-aw-feld:focus{outline:2px solid ${F.blau};outline-offset:1px;background:${F.feldGrund}}`,
   `.wk-aw-feld::placeholder{color:${F.leise};font-weight:400;opacity:1}`,
   'textarea.wk-aw-feld.frage{font-weight:700;margin-bottom:8px}',
+  // Weitere Textfelder (Musterlösung, Ergebnis, Ausgangssituation …): Beschriftung darüber, normale Schrift, sichtbarer Rahmen
+  'textarea.wk-aw-feld.wk-aw-text{font-weight:400;margin-bottom:8px}',
+  '.wk-aw-neben{margin:4px 0 8px}.wk-aw-neben .wk-aw-zwischen{display:block}',
+  '.wk-aw-neben .wk-aw-feld{border:1px solid #c9cfd8;border-radius:4px;padding:6px 8px}',
   // Antwortzeilen (Muster A)
   '.wk-aw-liste{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}',
   '.wk-aw-zeile{display:flex;align-items:center;gap:4px}',

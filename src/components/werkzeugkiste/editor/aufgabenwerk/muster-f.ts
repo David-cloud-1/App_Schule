@@ -177,7 +177,8 @@ export function eintraegeTeil(w: Werk, teil: EintraegeTeil): VNode {
     const nr = i + 1
     const offen = auf.has(i)
     const voll = knopfFelder.some((f) => wert(e, f).trim())
-    const spalten = zeilenFelder.map((f) => `minmax(0,${f.gewicht}fr)`).join(' ')
+    // Kurze Felder (Einheit, Zeitpunkt) brauchen eine Mindestbreite, sonst bricht „Paletten“ mitten im Wort um
+    const spalten = zeilenFelder.map((f) => `minmax(${f.max <= 40 ? '5.5em' : '0'},${f.gewicht}fr)`).join(' ')
     return html`<li class=${`wk-aw-eintrag${z.klasse}`} data-aw-zeile key=${i} style=${z.stil}>
       <div class="wk-aw-zeile">
         <span class="wk-aw-nr" aria-hidden="true">${nr}</span>

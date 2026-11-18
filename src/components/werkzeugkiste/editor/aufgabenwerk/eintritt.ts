@@ -4,7 +4,7 @@ import { ELEMENT_LEISTE, FERTIG } from '@/components/werkzeugkiste/editor/bedien
 import { AW_CSS } from '@/components/werkzeugkiste/editor/aufgabenwerk/design'
 import { BAUPLAENE, hatBauplan, teileVon, type EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
 import { antwortenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-a'
-import { erstesFeldVon, normalisiere, zeichneTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/teile'
+import { erstesFeldVon, normalisiere, textFeldWert, zeichneTeil } from '@/components/werkzeugkiste/editor/aufgabenwerk/teile'
 import { zeilenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-b'
 import { gruppenAnsicht, zuordnenAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-d'
 import { eintraegeAnsicht } from '@/components/werkzeugkiste/editor/aufgabenwerk/muster-f'
@@ -220,7 +220,7 @@ export function starteAufgabe(o: AufgabeOptionen): Aufgabenbearbeiter {
   function ansicht(): VNode {
     return html`<div dangerouslySetInnerHTML=${{ __html: kopf }}></div>
       ${teileVon(plan!, block).map((t) => {
-        if (t.art === 'text') return s(block[t.feld]) ? html`<p class="frage">${s(block[t.feld])}</p>` : null
+        if (t.art === 'text') return s(block[t.feld]) ? html`<p class="frage">${textFeldWert(s(block[t.feld])).anzeige}</p>` : null
         if (t.art === 'antworten' || t.art === 'wahrfalsch') return antwortenAnsicht(w, t)
         if (t.art === 'paare') return paareAnsicht(w, t)
         if (t.art === 'zeilen') return zeilenAnsicht(w, t)
