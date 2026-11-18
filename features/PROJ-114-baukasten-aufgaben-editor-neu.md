@@ -546,3 +546,5 @@ Tests: `aufgabenwerk-praxis.test.ts` (7 Fälle). Werkzeugkiste 771/771 grün, `t
 6. Zweite QA-Runde (Opus) – jetzt dran, dazu Browser-Prüfung der neuen Dialoge, des Ziehens und des Kapiteltest-Lückentexts (Tests `aufgabenwerk-restarbeiten.test.ts` laufen grün, Werkzeugkiste-Editor 522/522); erst danach Status Deployed.
 
 **2026-11-18 (Production, Commit a0dcd2b, Vercel Ready nach ca. 2,5 Min.; Keine Migration, kein Kern-Deploy):** Korrekturen aus dem Browser-Durchgang live. Live geprüft (Chrome): Fallakte (Ausgangssituation beschriftet, keine `<p>`-Tags), Offene Frage (Musterlösung beschriftet), Block-Leiste nach Esc einzeilig; nichts verändert (Rückgängig blieb aus). Status bleibt **In Progress** (Handy, Bauschritt 6 u. a. offen).
+
+**2026-11-18 (Production, Commit 91e702d, Vercel Ready nach ca. 2 Min.; keine Migration, kein Kern-Deploy; API ohne Login 401):** Typ-wechseln-/Quelltext-Dialoge, Ziehen beim Zuordnen, Kapiteltest-Lückentext ohne Sternchen, BUG-10 teilweise sind live. Nicht im Browser geprüft, keine zweite QA. Status bleibt **In Progress**; als Nächstes Browser-Durchgang (Laptop/Tablet) und Opus-QA.
