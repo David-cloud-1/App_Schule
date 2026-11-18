@@ -344,6 +344,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                       <TableCell className="align-top">
                         <div className="flex items-center justify-end gap-2">
                           <Hauptknopf z={z} />
+                          <DownloadSymbol z={z} />
                           <BaukastenKnopf z={z} setAlsSeite={setAlsSeite} />
                           <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                         </div>
@@ -371,6 +372,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                   {z.art === 'material' && <RegalPill regal={z.regal} />}
                   <div className="flex items-center gap-2">
                     <Hauptknopf z={z} voll />
+                    <DownloadSymbol z={z} />
                     <BaukastenKnopf z={z} setAlsSeite={setAlsSeite} />
                     <ZeilenMenue z={z} setVorschau={setVorschau} setUmbenennen={setUmbenennen} setLoeschen={setLoeschen} setTeilen={setTeilen} setLink={setLinkZiel} />
                   </div>
@@ -486,9 +488,19 @@ function TitelZelle({ z }: { z: MaterialZeile }) {
             Öffentlich
           </Badge>
         )}
-        <span className="min-w-0 truncate font-semibold text-ws-text" title={z.titel}>
-          {z.titel}
-        </span>
+        {hatBaukastenAlsHaupt(z) ? (
+          <Link
+            href={bearbeitenHref(z.id)}
+            className="min-w-0 truncate rounded font-semibold text-ws-text hover:underline focus-visible:ring-2 focus-visible:ring-ws-green"
+            title={z.titel}
+          >
+            {z.titel}
+          </Link>
+        ) : (
+          <span className="min-w-0 truncate font-semibold text-ws-text" title={z.titel}>
+            {z.titel}
+          </span>
+        )}
       </div>
       {klein && (
         <p className="truncate text-sm text-ws-muted" title={klein}>
@@ -511,6 +523,18 @@ function Hauptknopf({ z, voll }: { z: MaterialZeile; voll?: boolean }) {
         <Link href={ablaufHref(z.id, z.schritt)}>
           <Play className="mr-2 size-4" aria-hidden />
           Fortsetzen
+          <span className="sr-only">: {z.titel}</span>
+        </Link>
+      </Button>
+    )
+  }
+  if (hatBaukastenAlsHaupt(z)) {
+    // PROJ-119: Der Baukasten ist die Hauptüberarbeitung – sichtbar, mit Wort, in Grün wie „Fortsetzen“
+    return (
+      <Button asChild className={gruen}>
+        <Link href={bearbeitenHref(z.id)}>
+          <Blocks className="mr-2 size-4" aria-hidden />
+          Bearbeiten
           <span className="sr-only">: {z.titel}</span>
         </Link>
       </Button>
@@ -557,12 +581,40 @@ function Hauptknopf({ z, voll }: { z: MaterialZeile; voll?: boolean }) {
   )
 }
 
+/** PROJ-119: Bei Seiten mit Baukasten ist „Bearbeiten“ der Hauptknopf (Eintrag im Baukasten, keine KI-Neuerzeugung) */
+function hatBaukastenAlsHaupt(z: MaterialZeile): boolean {
+  return z.art === 'material' && z.baukasten === 'bearbeiten'
+}
+
+/** PROJ-119: Herunterladen als stilles Symbol neben „Bearbeiten“ – nur wenn es eine Datei gibt */
+function DownloadSymbol({ z }: { z: MaterialZeile }) {
+  if (!hatBaukastenAlsHaupt(z) || !z.hatDatei || z.nochNichtVeroeffentlicht) return null
+  const label = `Herunterladen: ${z.titel}`
+  return (
+    <Button asChild variant="outline" size="icon" className="size-11 shrink-0 rounded-xl border-ws-line text-ws-muted hover:bg-ws-raised hover:text-ws-text">
+      <a
+        href={downloadHref(z.id)}
+        download
+        aria-label={label}
+        title="Herunterladen"
+        onClick={(e) => {
+          e.preventDefault()
+          ladeDatei(z.id).catch((err) => toast.error(meldung(err)))
+        }}
+      >
+        <Download className="size-5" aria-hidden />
+      </a>
+    </Button>
+  )
+}
+
 /**
  * Baukasten (PROJ-89): sichtbares Symbol neben der Hauptaktion. Bei einer
  * Interaktiven Seite öffnet es den Editor, bei H5P fragt es nach einer Kopie als Seite.
  */
 function BaukastenKnopf({ z, setAlsSeite }: { z: MaterialZeile; setAlsSeite: (z: MaterialZeile) => void }) {
   if (z.art !== 'material' || !z.baukasten) return null
+  if (hatBaukastenAlsHaupt(z)) return null // PROJ-119: steht schon als „Bearbeiten“ da
   const knopf = 'size-11 shrink-0 rounded-xl text-ws-muted hover:bg-ws-raised hover:text-ws-text'
   const label = `Im Baukasten bearbeiten: ${z.titel}`
   if (z.baukasten === 'bearbeiten') {
@@ -654,6 +706,7 @@ function ZeilenMenue({
   const [kopiert, setKopiert] = useState(false)
   const entwurf = z.art === 'entwurf'
   const ueberarbeiten = ueberarbeitenErlaubt(z)
+  const mitBaukasten = hatBaukastenAlsHaupt(z)
   const anderes = anderesWerkzeugErlaubt(z)
   // PROJ-94: Eigene Seiten haben weder Skript noch KI-Antwort, und bis zur ersten Veröffentlichung keine Datei
   const eigene = z.werkzeug === EIGENE_SEITE
@@ -697,13 +750,20 @@ function ZeilenMenue({
             {ueberarbeiten.erlaubt ? (
               <Link href={ablaufHref(z.id, 4)}>
                 <PencilLine className="size-4" aria-hidden />
-                Überarbeiten
+                {mitBaukasten ? (
+                  <span className="grid">
+                    Mit KI neu erzeugen …
+                    <span className="text-xs text-ws-faint">Baut die Seite aus dem Skript neu auf</span>
+                  </span>
+                ) : (
+                  'Überarbeiten'
+                )}
               </Link>
             ) : (
               <>
                 <PencilLine className="mt-0.5 size-4" aria-hidden />
                 <span className="grid">
-                  Überarbeiten
+                  {mitBaukasten ? 'Mit KI neu erzeugen …' : 'Überarbeiten'}
                   <span className="text-xs text-ws-faint">{ueberarbeiten.grund}</span>
                 </span>
               </>

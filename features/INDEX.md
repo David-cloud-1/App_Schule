@@ -136,5 +136,6 @@
 | PROJ-116 | Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Planned | [PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md](PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md) | 2026-11-17 |
 | PROJ-117 | Baukasten – Einheitliche Bearbeiten-Optik | Deployed | [PROJ-117-baukasten-einheitliche-bearbeiten-optik.md](PROJ-117-baukasten-einheitliche-bearbeiten-optik.md) | 2026-11-17 |
 | PROJ-118 | Baukasten – Eine Leiste für alles | Deployed | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
+| PROJ-119 | Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed | [PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md](PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md) | 2026-11-18 |
 
-## Next Available ID: PROJ-119
+## Next Available ID: PROJ-120

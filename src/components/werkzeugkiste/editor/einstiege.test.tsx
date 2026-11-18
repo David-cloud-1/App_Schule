@@ -59,10 +59,10 @@ beforeEach(() => {
 })
 
 describe('Meine Materialien', () => {
-  it('Interaktive Seite: Symbol führt in den Baukasten, offene Änderungen sind markiert', async () => {
+  it('Interaktive Seite: „Bearbeiten“ führt in den Baukasten (PROJ-119), offene Änderungen sind markiert', async () => {
     api.ladeMaterialien.mockResolvedValue(liste([zeile({ baukasten: 'bearbeiten', entwurfOffen: true })]))
     render(<MeineMaterialien />)
-    const links = await screen.findAllByRole('link', { name: 'Im Baukasten bearbeiten: Haftung im Frachtrecht' })
+    const links = await screen.findAllByRole('link', { name: /^Bearbeiten: Haftung im Frachtrecht/ })
     expect(links[0]).toHaveAttribute('href', '/admin/werkzeugkiste/bearbeiten/m1')
     expect(screen.getAllByText('Nicht veröffentlicht')[0]).toHaveAttribute('title', 'Es gibt unveröffentlichte Änderungen im Baukasten')
   })

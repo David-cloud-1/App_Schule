@@ -345,4 +345,50 @@ describe('Eigene Seite (PROJ-94)', () => {
     expect(bearbeiten[0]).toHaveAttribute('href', expect.stringContaining('e1'))
     expect(screen.queryByRole('link', { name: /Öffnen/ })).toBeNull()
   })
+
+  describe('Bearbeiten als Hauptknopf (PROJ-119)', () => {
+    const seite = () => zeile({ id: 's1', titel: 'Meine Seite', format: 'seite', baukasten: 'bearbeiten' })
+
+    it('zeigt bei Seiten mit Baukasten „Bearbeiten“ als sichtbaren Hauptknopf und Herunterladen als Symbol', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([seite()]))
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Meine Seite')
+      const bearbeiten = screen.getAllByRole('link', { name: /^Bearbeiten/ })[0]
+      expect(bearbeiten).toHaveAttribute('href', expect.stringContaining('s1'))
+      expect(bearbeiten).toHaveTextContent('Bearbeiten')
+      // Herunterladen nur noch als Symbol (ohne sichtbares Wort)
+      const download = screen.getAllByRole('link', { name: /Herunterladen/ })[0]
+      expect(download).toHaveAttribute('href', '/api/admin/werkzeugkiste/ablaeufe/s1/download')
+      expect(download).not.toHaveTextContent('Herunterladen')
+      // das alte unbeschriftete Baukasten-Symbol gibt es nicht mehr zusätzlich
+      expect(screen.queryByRole('link', { name: /Im Baukasten bearbeiten/ })).toBeNull()
+    })
+
+    it('führt auch ein Klick auf den Titel in den Baukasten', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([seite()]))
+      render(<MeineMaterialien />)
+      const titel = (await screen.findAllByRole('link', { name: 'Meine Seite' }))[0]
+      expect(titel).toHaveAttribute('href', expect.stringContaining('s1'))
+    })
+
+    it('nennt den Generator im Menü „Mit KI neu erzeugen …“', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([seite()]))
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Meine Seite')
+      oeffneMenue('Meine Seite')
+      const punkt = await screen.findByRole('menuitem', { name: /Mit KI neu erzeugen/ })
+      expect(punkt).toHaveTextContent('Baut die Seite aus dem Skript neu auf')
+      expect(screen.queryByRole('menuitem', { name: /^Überarbeiten/ })).toBeNull()
+    })
+
+    it('lässt Materialien ohne Baukasten unverändert: Herunterladen bleibt Hauptknopf, Menü heißt „Überarbeiten“', async () => {
+      api.ladeMaterialien.mockResolvedValue(liste([zeile({ id: 'm1' })]))
+      render(<MeineMaterialien />)
+      await screen.findAllByText('Haftung im Frachtrecht')
+      expect(screen.getAllByRole('link', { name: /Herunterladen/ })[0]).toHaveTextContent('Herunterladen')
+      expect(screen.queryByRole('link', { name: /^Bearbeiten/ })).toBeNull()
+      oeffneMenue('Haftung im Frachtrecht')
+      expect(await screen.findByRole('menuitem', { name: /Überarbeiten/ })).toBeInTheDocument()
+    })
+  })
 })
