@@ -71,7 +71,7 @@
     "htm": "3.1.1",
     "lucide-react": "^0.562.0",
     "mammoth": "^1.12.0",
-    "next": "^16.1.1",
+    "next": "^16.4.6",
     "next-themes": "^0.4.6",
     "papaparse": "^5.5.3",
     "pdf-parse": "^2.4.5",
@@ -85,7 +85,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.2.0",
     "word-extractor": "^1.0.4",
-    "zod": "^4.3.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -104,5 +104,8 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "eslint-plugin-react-hooks": "7.0.1"
   }
 }
