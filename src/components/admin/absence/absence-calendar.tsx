@@ -630,16 +630,17 @@ function ListView({ items, highlighted, onOpen }: { items: Absence[]; highlighte
 }
 
 /** Kompakte Marke für Monats- und Wochenraster: Icon, Name, Vertretungsstatus als Text */
-function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: string; highlighted?: boolean; onOpen: (a: Absence) => void }) {
+function Chip({ absence, day, highlighted, onOpen, showTime }: { absence: Absence; day: string; highlighted?: boolean; onOpen: (a: Absence) => void; showTime?: boolean }) {
   const starts = absence.dateFrom === day
   const ends = absence.dateTo === day
   const cancelled = !!absence.cancelledAt
+  const timeText = !absence.allDay && absence.timeFrom && absence.timeTo ? `${absence.timeFrom}–${absence.timeTo}` : null
   const open = absence.substituteStatus === 'open' && !cancelled
   return (
     <button
       type="button"
       onClick={() => onOpen(absence)}
-      title={`${absence.personName}: ${absence.typeName}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung offen' : ''}`}
+      title={`${absence.personName}: ${absence.typeName}${timeText ? `, ${timeText} Uhr` : ''}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung offen' : ''}`}
       className={cn(
         'flex min-h-11 w-full items-center gap-1 border px-1.5 text-left text-xs font-medium sm:min-h-7',
         cancelled ? 'border-ws-gold/60 bg-ws-gold/15 text-ws-gold' : ABSENCE_TINT[absence.typeColor],
@@ -652,6 +653,7 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
       )}
     >
       <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
+      {showTime && timeText && absence.dateFrom === day && <span className="shrink-0 font-normal">{timeText.slice(0, 5)}</span>}
       <span className="truncate">{absence.personName}</span>
       {cancelled && <span className="ml-auto shrink-0 text-[10px] uppercase">gelöscht</span>}
       {open && <span className="ml-auto shrink-0 text-[10px] uppercase">offen</span>}
@@ -712,7 +714,7 @@ function MonthView({
                 {Number(day.slice(8))}
               </span>
               {list.slice(0, MONTH_CHIPS).map((a) => (
-                <Chip key={a.id} absence={a} day={day} highlighted={highlighted.has(a.id)} onOpen={onOpen} />
+                <Chip key={a.id} absence={a} day={day} highlighted={highlighted.has(a.id)} onOpen={onOpen} showTime />
               ))}
               {list.length > MONTH_CHIPS && (
                 <button
