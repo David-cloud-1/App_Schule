@@ -13,6 +13,8 @@ const OWN_ID = 'admin-1'
 const OVERVIEW = {
   id: USER_ID,
   displayName: 'Anna Azubi',
+  firstName: null,
+  lastName: null,
   pseudonym: null,
   email: 'anna@example.de',
   emailConfirmed: false,
@@ -204,6 +206,37 @@ describe('Nutzer-Detailseite (PROJ-59)', () => {
       expect(call).toBeTruthy()
       expect(JSON.parse(String(call![1]!.body))).toEqual({ name: 'Anna Neu' })
     })
+  })
+
+  it('Name ändern bei Lehrer-Rollen: zwei Felder, sendet Vor- und Nachnamen (PROJ-121)', async () => {
+    const fetchFn = mockFetch(
+      { overview: { body: { ...OVERVIEW, role: 'teacher', displayName: 'erika.muster', firstName: null, lastName: null } } },
+      (url, init) => (url.endsWith('/rename') && init?.method === 'POST' ? { body: { ok: true } } : undefined),
+    )
+    setup()
+    fireEvent.click(await screen.findByRole('button', { name: /Name ändern/ }))
+    expect(screen.queryByLabelText('Anzeigename')).not.toBeInTheDocument()
+    const first = await screen.findByLabelText('Vorname')
+    const last = screen.getByLabelText('Nachname')
+    expect(first).toHaveValue('')
+    fireEvent.change(first, { target: { value: 'Erika' } })
+    fireEvent.change(last, { target: { value: 'Muster' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => {
+      const call = fetchFn.mock.calls.find(([url]) => String(url).endsWith('/rename'))
+      expect(call).toBeTruthy()
+      expect(JSON.parse(String(call![1]!.body))).toEqual({ firstName: 'Erika', lastName: 'Muster' })
+    })
+  })
+
+  it('Name ändern bei Lehrer-Rollen: leerer Nachname zeigt Meldung am Feld und sendet nichts', async () => {
+    const fetchFn = mockFetch({ overview: { body: { ...OVERVIEW, role: 'department_admin', firstName: 'Erika', lastName: 'Muster' } } })
+    setup()
+    fireEvent.click(await screen.findByRole('button', { name: /Name ändern/ }))
+    fireEvent.change(await screen.findByLabelText('Nachname'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(await screen.findByText('Bitte gib deinen Nachnamen ein.')).toBeInTheDocument()
+    expect(fetchFn.mock.calls.some(([url]) => String(url).endsWith('/rename'))).toBe(false)
   })
 
   it('E-Mail ändern: zeigt den Fehler „schon vergeben“ im Dialog', async () => {

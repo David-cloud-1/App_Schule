@@ -27,6 +27,8 @@ import {
 type Target = {
   id: string
   display_name: string | null
+  first_name?: string | null
+  last_name?: string | null
   role: string
   pseudonym: string | null
   department_id: string | null
@@ -71,6 +73,8 @@ export async function loadOverview(service: SupabaseClient, target: Target) {
   return {
     id: target.id,
     displayName: target.display_name,
+    firstName: target.first_name ?? null,
+    lastName: target.last_name ?? null,
     pseudonym: target.pseudonym,
     email: authUser?.email ?? null,
     emailConfirmed: !!authUser?.email_confirmed_at,

@@ -26,6 +26,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { emailChangeSchema } from '@/lib/konto'
 import { displayNameSchema, resetConfirmationMatches } from '@/lib/user-detail'
+import { PersonNameFields, validatePersonName, type NameErrors } from '@/components/admin/person-name-fields'
+import { isTeacherRole } from '@/lib/roles'
 
 const cancelButton = 'min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised'
 const primaryButton = 'min-h-11 bg-ws-green text-ws-on-accent hover:bg-ws-green-hover'
@@ -67,15 +69,113 @@ export function RenameDialog({
   onOpenChange,
   userId,
   currentName,
+  role,
+  currentFirstName,
+  currentLastName,
   onDone,
-}: DialogProps & { currentName: string | null }) {
+}: DialogProps & {
+  currentName: string | null
+  /** PROJ-121: bei Lehrer-Rollen zwei Felder (Vor-/Nachname) statt des Anzeigenamens */
+  role?: string
+  currentFirstName?: string | null
+  currentLastName?: string | null
+}) {
   // Der Inhalt hängt nur im geöffneten Dialog: jedes Öffnen beginnt mit frischem Zustand
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text sm:max-w-md">
-        <RenameForm onOpenChange={onOpenChange} userId={userId} currentName={currentName} onDone={onDone} />
+        {isTeacherRole(role) ? (
+          <TeacherRenameForm
+            onOpenChange={onOpenChange}
+            userId={userId}
+            currentFirstName={currentFirstName ?? ''}
+            currentLastName={currentLastName ?? ''}
+            onDone={onDone}
+          />
+        ) : (
+          <RenameForm onOpenChange={onOpenChange} userId={userId} currentName={currentName} onDone={onDone} />
+        )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Umbenennen einer Lehrer-Rolle (PROJ-121): Vor- und Nachname, der Anzeigename zieht auf dem Server nach */
+function TeacherRenameForm({
+  onOpenChange,
+  userId,
+  currentFirstName,
+  currentLastName,
+  onDone,
+}: Omit<DialogProps, 'open'> & { currentFirstName: string; currentLastName: string }) {
+  const [firstName, setFirstName] = useState(currentFirstName)
+  const [lastName, setLastName] = useState(currentLastName)
+  const [errors, setErrors] = useState<NameErrors>({})
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const check = validatePersonName(firstName, lastName, true)
+  const unchanged = check.ok && check.value.firstName === currentFirstName && check.value.lastName === currentLastName
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!check.ok) {
+      setErrors(check.errors)
+      return
+    }
+    if (unchanged) return
+    setErrors({})
+    setSubmitting(true)
+    setError(null)
+    const result = await post(`/api/admin/users/${userId}/rename`, check.value)
+    setSubmitting(false)
+    if (!result.ok) {
+      setError(result.error ?? null)
+      return
+    }
+    toast.success('Name geändert')
+    onOpenChange(false)
+    onDone()
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4" noValidate>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <Pencil className="size-5 text-ws-muted" aria-hidden />
+          Name ändern
+        </DialogTitle>
+        <DialogDescription className="text-ws-muted">
+          Vor- und Nachname erscheinen im Kollegium. Der Anzeigename wird daraus gebildet. Ein Pseudonym bleibt unverändert.
+        </DialogDescription>
+      </DialogHeader>
+      <PersonNameFields
+        idPrefix="detail-name"
+        firstName={firstName}
+        lastName={lastName}
+        onFirstNameChange={(v) => {
+          setFirstName(v)
+          setErrors((prev) => ({ ...prev, firstName: undefined }))
+        }}
+        onLastNameChange={(v) => {
+          setLastName(v)
+          setErrors((prev) => ({ ...prev, lastName: undefined }))
+        }}
+        errors={errors}
+        disabled={submitting}
+        autoFocus
+      />
+      <ErrorLine message={error} />
+      <DialogFooter className="gap-2">
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting} className={cancelButton}>
+          Abbrechen
+        </Button>
+        <Button type="submit" disabled={submitting || unchanged} className={primaryButton}>
+          {submitting && <Loader2 className="mr-2 size-4 animate-spin" />}
+          Speichern
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
 

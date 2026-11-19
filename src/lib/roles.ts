@@ -227,6 +227,26 @@ export function safeRedirectTarget(value: string | null | undefined): string {
 }
 
 /**
+ * Pflicht-Name (PROJ-121): Lehrer-Rollen ohne Vor- und Nachnamen kommen vor
+ * allem anderen auf NAME_REQUIRED_PATH. Anders als beim Passwort steht kein
+ * Merker im Konto: „leer im Profil“ ist der Merker. So gilt die Pflicht für
+ * bestehende Konten und jede künftige Rollenvergabe ohne Nachpflege.
+ */
+export const NAME_REQUIRED_PATH = '/name-festlegen'
+
+/** Schnittstelle, über die die Person ihren eigenen Namen speichert */
+export const NAME_API_PATH = '/api/profile/name'
+
+export const NAME_REQUIRED_MESSAGE = 'Bitte gib zuerst deinen Vor- und Nachnamen an.'
+
+/** Sind Vor- und Nachname gesetzt? Nur Leerzeichen zählt als leer. */
+export function hasPersonName(
+  profile: { first_name?: string | null; last_name?: string | null } | null | undefined,
+): boolean {
+  return Boolean(profile?.first_name?.trim() && profile?.last_name?.trim())
+}
+
+/**
  * Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-58): Merker in den
  * geschützten Konto-Daten (`app_metadata`), den nur der Server setzen und
  * entfernen kann. Der Proxy schickt markierte Konten auf CHANGE_PASSWORD_PATH.

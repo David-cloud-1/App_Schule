@@ -192,6 +192,9 @@ export function UserDetailView({ userId, ownId }: { userId: string; ownId: strin
             onOpenChange={setRenameOpen}
             userId={userId}
             currentName={person.displayName}
+            role={person.role}
+            currentFirstName={person.firstName}
+            currentLastName={person.lastName}
             onDone={reloadAfterEdit}
           />
           <EmailDialog

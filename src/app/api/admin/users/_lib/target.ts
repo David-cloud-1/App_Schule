@@ -6,11 +6,13 @@ import { createServiceClient } from '@/lib/supabase-server'
 
 /** Spalten des Profils, die die Detailseite und ihre Aktionen brauchen (PROJ-59) */
 export const TARGET_COLUMNS =
-  'id, display_name, role, pseudonym, department_id, created_at, total_xp, current_streak, longest_streak, last_session_date, coin_balance, linked_main_user_id, ist_vertretungsplaner'
+  'id, display_name, first_name, last_name, role, pseudonym, department_id, created_at, total_xp, current_streak, longest_streak, last_session_date, coin_balance, linked_main_user_id, ist_vertretungsplaner'
 
 export type TargetProfile = {
   id: string
   display_name: string | null
+  first_name?: string | null
+  last_name?: string | null
   role: string
   pseudonym: string | null
   department_id: string | null

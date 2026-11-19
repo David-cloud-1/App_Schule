@@ -21,6 +21,9 @@ export interface KontoHead {
   email: string
   /** Konto hat ein eigenes Passwort (E-Mail-Anmeldung); Google/Apple-Konten nicht */
   hasPassword: boolean
+  /** PROJ-121: Vor- und Nachname (Lehrer-Rollen); null = noch nicht angegeben */
+  firstName: string | null
+  lastName: string | null
   kuerzel: string | null
   role: TeacherRole
   departmentName: string | null
@@ -233,7 +236,7 @@ export async function loadVerbrauch(db: Db, userId: string): Promise<VerbrauchLa
 export async function loadKontoData(db: Db, user: User): Promise<KontoData | null> {
   const { data: profile } = await db
     .from('profiles')
-    .select('display_name, kuerzel, role, department_id, pseudonym, leaderboard_opt_out, total_xp, current_streak')
+    .select('display_name, first_name, last_name, kuerzel, role, department_id, pseudonym, leaderboard_opt_out, total_xp, current_streak')
     .eq('id', user.id)
     .single()
   if (!profile) return null
@@ -264,6 +267,8 @@ export async function loadKontoData(db: Db, user: User): Promise<KontoData | nul
       displayName: (profile.display_name as string | null) ?? user.email?.split('@')[0] ?? 'Konto',
       email: user.email ?? '',
       hasPassword: providers.includes('email'),
+      firstName: (profile.first_name as string | null) ?? null,
+      lastName: (profile.last_name as string | null) ?? null,
       kuerzel: (profile.kuerzel as string | null) ?? null,
       role: profile.role as TeacherRole,
       departmentName,

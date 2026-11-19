@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
-const state: { user: { id: string; app_metadata?: Record<string, unknown> } | null; role: string | null } = { user: null, role: null }
+const state: {
+  user: { id: string; app_metadata?: Record<string, unknown> } | null
+  role: string | null
+  /** PROJ-121: Vor-/Nachname im Profil; Standard = vorhanden */
+  names: { first_name: string | null; last_name: string | null }
+} = { user: null, role: null, names: { first_name: 'Erika', last_name: 'Muster' } }
 
 vi.mock('@supabase/ssr', () => ({
   createServerClient: vi.fn(() => ({
@@ -9,7 +14,7 @@ vi.mock('@supabase/ssr', () => ({
     from: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      single: vi.fn(async () => ({ data: state.role ? { role: state.role } : null })),
+      single: vi.fn(async () => ({ data: state.role ? { role: state.role, ...state.names } : null })),
     })),
   })),
 }))
@@ -29,6 +34,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
   beforeEach(() => {
     state.user = { id: 'u1' }
     state.role = null
+    state.names = { first_name: 'Erika', last_name: 'Muster' }
   })
 
   it('schickt nicht eingeloggte Besucher des Lehrkräfte-Bereichs zum Login (Seite) bzw. 401 (API)', async () => {
@@ -228,10 +234,71 @@ describe('Middleware – Spielansicht für Lehrkräfte merken', () => {
   })
 })
 
+describe('Middleware – Pflicht-Name (PROJ-121)', () => {
+  beforeEach(() => {
+    state.user = { id: 'u1' }
+    state.role = 'teacher'
+    state.names = { first_name: null, last_name: null }
+  })
+
+  it.each(['teacher', 'department_admin', 'admin'])('schickt %s ohne Namen von Seiten im Lehrkräfte-Bereich zur Namens-Seite', async (role) => {
+    state.role = role
+    for (const path of ['/admin', '/admin/konto', '/admin/questions', '/admin/kalender']) {
+      expect(locationOf(await call(path)), path).toBe('/name-festlegen')
+    }
+  })
+
+  it.each(['teacher', 'department_admin', 'admin'])('antwortet %s ohne Namen bei Verwaltungs-Schnittstellen mit 403 und klarer Meldung', async (role) => {
+    state.role = role
+    for (const path of ['/api/admin/users', '/api/admin/kalender/eintraege', '/api/admin/assessments']) {
+      const res = await call(path)
+      expect(res.status, path).toBe(403)
+      expect((await res.json()).error).toBe('Bitte gib zuerst deinen Vor- und Nachnamen an.')
+    }
+  })
+
+  it('verlangt beide Teile; nur Leerzeichen zählt als leer', async () => {
+    for (const names of [
+      { first_name: 'Erika', last_name: null },
+      { first_name: null, last_name: 'Muster' },
+      { first_name: '  ', last_name: 'Muster' },
+      { first_name: 'Erika', last_name: '' },
+    ]) {
+      state.names = names
+      expect(locationOf(await call('/admin')), JSON.stringify(names)).toBe('/name-festlegen')
+    }
+  })
+
+  it('lässt Lehrer-Rollen mit Namen durch', async () => {
+    state.names = { first_name: 'Erika', last_name: 'Muster' }
+    const res = await call('/admin')
+    expect(res.status).toBe(200)
+    expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('lässt Azubis nicht in den Bereich und fragt sie nie nach dem Namen', async () => {
+    state.role = 'student'
+    expect(locationOf(await call('/admin'))).toBe('/?kein-zugang=1')
+    // Azubi-Seiten bleiben unberührt (keine zusätzliche Abfrage pro Aufruf)
+    expect(locationOf(await call('/quiz'))).toBeNull()
+  })
+
+  it('der Passwort-Pflichtwechsel (PROJ-58) kommt vor dem Namen', async () => {
+    state.user = { id: 'u1', app_metadata: { must_change_password: true } }
+    expect(locationOf(await call('/admin'))).toBe('/passwort-festlegen')
+  })
+
+  it('Namens-Seite und Speicher-Schnittstelle liegen außerhalb des gesperrten Bereichs (kein Schleifen)', async () => {
+    expect(locationOf(await call('/name-festlegen'))).toBeNull()
+    expect(locationOf(await call('/api/profile/name'))).toBeNull()
+  })
+})
+
 describe('Rate-Limit im Türsteher', () => {
   beforeEach(() => {
     state.user = { id: 'u1' }
     state.role = null
+    state.names = { first_name: 'Erika', last_name: 'Muster' }
   })
 
   it('antwortet auf schreibende API-Aufrufe mit 429 und Retry-After, wenn das Limit erreicht ist', async () => {

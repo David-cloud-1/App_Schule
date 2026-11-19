@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import {
   allowedDuringPasswordChange,
   CHANGE_PASSWORD_PATH,
+  hasPersonName,
+  NAME_REQUIRED_MESSAGE,
+  NAME_REQUIRED_PATH,
   isManagerRole,
   mustChangePassword,
   isTeacherRole,
@@ -136,7 +139,7 @@ export async function proxy(request: NextRequest) {
     }
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, first_name, last_name')
       .eq('id', user.id)
       .single()
     const role = profile?.role
@@ -148,6 +151,17 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       url.search = `?${NO_ACCESS_PARAM}=1`
+      return NextResponse.redirect(url)
+    }
+    // Pflicht-Name (PROJ-121): ohne Vor- und Nachnamen geht im Lehrkräfte-Bereich
+    // nichts. Die Namensfelder kommen mit derselben Abfrage wie die Rolle.
+    if (!hasPersonName(profile)) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ error: NAME_REQUIRED_MESSAGE }, { status: 403 })
+      }
+      const url = request.nextUrl.clone()
+      url.pathname = NAME_REQUIRED_PATH
+      url.search = ''
       return NextResponse.redirect(url)
     }
     if (!isManagerRole(role)) {

@@ -19,6 +19,8 @@ const head: KontoHead = {
   displayName: 'Max Muster',
   email: 'max@schule.de',
   hasPassword: true,
+  firstName: 'Max',
+  lastName: 'Muster',
   kuerzel: null,
   role: 'teacher',
   departmentName: 'Spedition',
@@ -34,7 +36,8 @@ beforeEach(() => {
 describe('Karte „Über mich“ (PROJ-50)', () => {
   it('zeigt Rolle, Fachbereich und „Noch keins gesetzt“ ohne Kürzel', () => {
     render(<KontoUeberMich head={head} />)
-    expect(screen.getByText('Max Muster')).toBeInTheDocument()
+    // Der Name steht nur einmal auf der Karte (Überschrift mit Stift, kein doppelter Name)
+    expect(screen.getAllByText('Max Muster')).toHaveLength(1)
     expect(screen.getByText('Lehrkraft')).toBeInTheDocument()
     expect(screen.getByText('Spedition')).toBeInTheDocument()
     expect(screen.getByText('Noch keins gesetzt')).toBeInTheDocument()
@@ -58,6 +61,60 @@ describe('Karte „Über mich“ (PROJ-50)', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('/api/profile/kuerzel')
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ kuerzel: 'MU' })
     await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+})
+
+describe('Karte „Über mich“ – Name (PROJ-121)', () => {
+  it('weist darauf hin, wenn Vor- oder Nachname fehlt, und bietet „Name ändern“ an', () => {
+    render(<KontoUeberMich head={{ ...head, firstName: null, lastName: null }} />)
+    expect(screen.getByText('Vor- und Nachname noch nicht angegeben.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Name ändern' })).toBeInTheDocument()
+  })
+
+  it('zeigt bei vorhandenem Namen keinen Hinweis auf fehlende Angaben', () => {
+    render(<KontoUeberMich head={head} />)
+    expect(screen.queryByText(/noch nicht angegeben/)).not.toBeInTheDocument()
+  })
+
+  it('füllt die Felder mit dem bisherigen Namen und speichert Änderungen', async () => {
+    render(<KontoUeberMich head={head} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Name ändern' }))
+    expect(screen.getByLabelText('Vorname')).toHaveValue('Max')
+    expect(screen.getByLabelText('Nachname')).toHaveValue('Muster')
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Meier-Schmidt' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/profile/name')
+    expect(fetchMock.mock.calls[0][1].method).toBe('PATCH')
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ firstName: 'Max', lastName: 'Meier-Schmidt' })
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('erlaubt kein Leeren: Meldung am Feld, nichts wird gesendet', () => {
+    render(<KontoUeberMich head={head} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Name ändern' }))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: '   ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(screen.getByText('Bitte gib deinen Vornamen ein.')).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('zeigt die Meldung des Servers und bleibt im Bearbeiten', async () => {
+    fetchMock.mockResolvedValue({ ok: false, json: () => Promise.resolve({ error: 'Der Name konnte nicht gespeichert werden.' }) })
+    render(<KontoUeberMich head={head} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Name ändern' }))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Maxi' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    expect(await screen.findByText('Der Name konnte nicht gespeichert werden.')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('bricht ab ohne zu senden', () => {
+    render(<KontoUeberMich head={head} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Name ändern' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(screen.queryByLabelText('Vorname')).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

@@ -33,6 +33,7 @@ export const USER_ACTION_LABEL: Record<string, string> = {
   'user.move_department': 'Bereich gewechselt',
   'user.password_set': 'Passwort neu vergeben',
   'user.rename': 'Name geändert',
+  'user.name_set': 'Name selbst angegeben',
   'user.email_change': 'E-Mail geändert',
   'user.email_confirm': 'E-Mail als bestätigt markiert',
   'user.progress_reset': 'Fortschritt zurückgesetzt',

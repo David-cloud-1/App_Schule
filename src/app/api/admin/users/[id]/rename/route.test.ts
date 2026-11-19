@@ -38,6 +38,44 @@ function serviceClient(target: unknown = { id: TARGET_ID, display_name: 'Alt Nam
   return mock
 }
 
+describe('POST /api/admin/users/[id]/rename – Lehrer-Rollen (PROJ-121)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it.each(['teacher', 'department_admin', 'admin'])('ändert bei %s Vor- und Nachnamen, der Anzeigename zieht nach', async (role) => {
+    adminClient()
+    const service = serviceClient({ id: TARGET_ID, role, display_name: 'Alt Name', department_id: DEPT })
+    const res = await call({ firstName: ' Erika ', lastName: 'Muster' })
+    expect(res.status).toBe(200)
+    expect(service.writes.find((w) => w.table === 'profiles')?.payload).toEqual({
+      first_name: 'Erika',
+      last_name: 'Muster',
+      display_name: 'Erika Muster',
+    })
+  })
+
+  it('verlangt bei Lehrer-Rollen beide Teile (altes Feld „name“ genügt nicht)', async () => {
+    adminClient()
+    const service = serviceClient({ id: TARGET_ID, role: 'teacher', display_name: 'Alt Name', department_id: DEPT })
+    expect((await call({ name: 'Erika Muster' })).status).toBe(400)
+    expect((await call({ firstName: 'Erika', lastName: '' })).status).toBe(400)
+    expect(service.writes).toEqual([])
+  })
+
+  it('erlaubt das Setzen auch bei gleichem Anzeigenamen, wenn noch keine Namensteile gespeichert sind', async () => {
+    adminClient()
+    serviceClient({ id: TARGET_ID, role: 'teacher', display_name: 'Erika Muster', department_id: DEPT })
+    expect((await call({ firstName: 'Erika', lastName: 'Muster' })).status).toBe(200)
+  })
+
+  it('lässt bei Azubis die alte Form mit einem Feld unverändert und ignoriert Namensteile', async () => {
+    adminClient()
+    const service = serviceClient({ id: TARGET_ID, role: 'student', display_name: 'Alt Name', department_id: DEPT })
+    expect((await call({ firstName: 'Erika', lastName: 'Muster' })).status).toBe(400)
+    expect((await call({ name: 'Neuer Name' })).status).toBe(200)
+    expect(service.writes.find((w) => w.table === 'profiles')?.payload).toEqual({ display_name: 'Neuer Name' })
+  })
+})
+
 describe('POST /api/admin/users/[id]/rename (PROJ-59)', () => {
   beforeEach(() => vi.clearAllMocks())
 

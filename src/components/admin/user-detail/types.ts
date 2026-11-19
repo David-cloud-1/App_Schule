@@ -5,6 +5,9 @@ import type { ActivityDay, SubjectStat } from '@/lib/user-detail'
 export type UserOverview = {
   id: string
   displayName: string | null
+  /** PROJ-121: Vor- und Nachname (Lehrer-Rollen) */
+  firstName: string | null
+  lastName: string | null
   pseudonym: string | null
   email: string | null
   emailConfirmed: boolean

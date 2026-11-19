@@ -138,5 +138,6 @@
 | PROJ-118 | Baukasten – Eine Leiste für alles | Deployed | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
 | PROJ-119 | Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed | [PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md](PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md) | 2026-11-18 |
 | PROJ-120 | Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed | [PROJ-120-abwesenheitskalender.md](PROJ-120-abwesenheitskalender.md) | 2026-11-19 |
+| PROJ-121 | Lehrkräfte geben bei der ersten Anmeldung Vor- und Nachnamen an (Pflicht) | Approved | [PROJ-121-lehrkraft-name-pflichtangabe.md](PROJ-121-lehrkraft-name-pflichtangabe.md) | 2026-11-19 |
 
-## Next Available ID: PROJ-121
+## Next Available ID: PROJ-122
