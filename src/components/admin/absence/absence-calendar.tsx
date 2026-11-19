@@ -294,23 +294,48 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
     setForm({ editing: a, initial: formFromAbsence(a) })
   }
 
-  async function submitForm(values: AbsenceFormValues) {
+  async function submitForm(values: AbsenceFormValues, personIds: string[]) {
     const editing = form?.editing ?? null
-    const input = formToInput(values)
-    try {
-      const res = await fetch(editing ? `${ABSENCE_API}/${editing.id}` : ABSENCE_API, {
+    const send = (input: ReturnType<typeof formToInput>) =>
+      fetch(editing ? `${ABSENCE_API}/${editing.id}` : ABSENCE_API, {
         method: editing ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editing ? { ...input, version: editing.version } : input),
       })
-      if (res.status === 409) {
-        return { ok: false as const, message: 'Dieser Eintrag wurde gerade geändert. Bitte neu laden und noch einmal speichern.' }
+    try {
+      if (editing) {
+        const res = await send(formToInput(values))
+        if (res.status === 409) {
+          return { ok: false as const, message: 'Dieser Eintrag wurde gerade geändert. Bitte neu laden und noch einmal speichern.' }
+        }
+        if (!res.ok) return { ok: false as const, message: await errorMessage(res, 'Das Speichern hat nicht geklappt. Bitte versuche es noch einmal.') }
+        toast.success('Änderung gespeichert')
+        setForm(null)
+        await load(true)
+        return { ok: true as const }
       }
-      if (!res.ok) return { ok: false as const, message: await errorMessage(res, 'Das Speichern hat nicht geklappt. Bitte versuche es noch einmal.') }
-      toast.success(editing ? 'Änderung gespeichert' : 'Abwesenheit eingetragen')
-      setForm(null)
-      await load(true)
-      return { ok: true as const }
+
+      // Neuanlage: je Person ein Eintrag. Klappt einer nicht, bleiben nur die offenen Personen im Formular.
+      const failed: string[] = []
+      let lastMessage = ''
+      for (const id of personIds) {
+        const res = await send(formToInput({ ...values, personId: id }))
+        if (!res.ok) {
+          failed.push(id)
+          lastMessage = await errorMessage(res, 'Das Speichern hat nicht geklappt.')
+        }
+      }
+      const saved = personIds.length - failed.length
+      if (saved > 0) {
+        toast.success(saved === 1 ? 'Abwesenheit eingetragen' : `${saved} Abwesenheiten eingetragen`)
+        await load(true)
+      }
+      if (failed.length === 0) {
+        setForm(null)
+        return { ok: true as const }
+      }
+      const names = failed.map((id) => teachers.find((t) => t.id === id)?.name ?? 'Unbekannt').join(', ')
+      return { ok: false as const, message: `Nicht gespeichert für: ${names}. ${lastMessage}`, remaining: failed }
     } catch {
       return { ok: false as const, message: 'Keine Verbindung. Deine Eingaben bleiben erhalten, bitte versuche es gleich noch einmal.' }
     }
