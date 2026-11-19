@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Search, WifiOff } from 'lucide-react'
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Hourglass, Plus, Search, WifiOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -618,27 +618,36 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
   const starts = absence.dateFrom === day
   const ends = absence.dateTo === day
   const open = absence.substituteStatus === 'open'
+  const entered = absence.substituteStatus === 'entered'
   return (
     <button
       type="button"
       onClick={() => onOpen(absence)}
-      title={`${absence.personName}: ${absence.typeName}${open ? ', Vertretung offen' : ''}`}
+      title={`${absence.personName}: ${absence.typeName}${open ? ', Vertretung offen' : entered ? ', In Untis erfasst' : ''}`}
       className={cn(
         'flex min-h-11 w-full items-center gap-1 border px-1.5 text-left text-xs font-medium sm:min-h-7',
-        ABSENCE_TINT[absence.typeColor],
+        open
+          ? 'border-ws-red/40 bg-ws-red/15 text-ws-red'
+          : entered
+            ? 'border-ws-green/40 bg-ws-green/15 text-ws-green'
+            : ABSENCE_TINT[absence.typeColor],
         starts ? 'rounded-l-lg' : 'rounded-l-none border-l-0',
         ends ? 'rounded-r-lg' : 'rounded-r-none border-r-0',
-        open && 'border-b-2 border-b-ws-red',
-        absence.substituteStatus === 'entered' && 'border-b-2 border-b-ws-green',
         highlighted && 'ring-2 ring-ws-green/70',
         'transition-shadow duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
       )}
     >
-      <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
-      <span className="truncate">{absence.personName}</span>
-      {open && <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase text-ws-red">offen</span>}
-      {absence.substituteStatus === 'entered' && <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase text-ws-green">Untis</span>}
+      {open ? (
+        <Hourglass className="size-3.5 shrink-0" aria-hidden />
+      ) : entered ? (
+        <Check className="size-3.5 shrink-0" aria-hidden />
+      ) : (
+        <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
+      )}
+      <span className="truncate font-semibold">{absence.personName}</span>
+      {open && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">offen</span>}
+      {entered && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">Untis</span>}
     </button>
   )
 }
