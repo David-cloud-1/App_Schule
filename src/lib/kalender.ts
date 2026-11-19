@@ -85,6 +85,9 @@ export interface Abwesenheit {
   created_at: string
   updated_at: string
   darf_bearbeiten: boolean
+  /** Gesetzt, wenn gelöscht wurde, obwohl die Vertretung schon eingetragen war (bleibt sichtbar). */
+  storniert_am: string | null
+  storniert_von_name: string | null
   updated_by_name?: string | null
 }
 

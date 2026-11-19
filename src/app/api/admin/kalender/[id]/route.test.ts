@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { DELETE, GET, PATCH } from './route'
 import { PUT as PUT_VERTRETUNG } from './vertretung/route'
 import { POST as POST_WIEDERHERSTELLEN } from './wiederherstellen/route'
+import { POST as POST_STORNO } from './storno-abschliessen/route'
 
 vi.mock('../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn() }))
 import { requireTeacherOrAdmin } from '../../_lib/auth'
@@ -101,10 +102,17 @@ describe('DELETE /api/admin/kalender/[id]', () => {
   })
 
   it('löscht mit Version', async () => {
-    rpc.mockResolvedValue({ data: null, error: null })
+    rpc.mockResolvedValue({ data: 'geloescht', error: null })
     const res = await DELETE(req('DELETE', undefined, '?version=2'), ctx())
     expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, storniert: false })
     expect(rpc).toHaveBeenCalledWith('abw_loeschen', { p_id: ID, p_version: 2 })
+  })
+
+  it('meldet „storniert“, wenn die Vertretung schon eingetragen war', async () => {
+    rpc.mockResolvedValue({ data: 'storniert', error: null })
+    const res = await DELETE(req('DELETE', undefined, '?version=2'), ctx())
+    expect(await res.json()).toEqual({ ok: true, storniert: true })
   })
 
   it('gibt 401 ohne Anmeldung', async () => {
@@ -147,5 +155,28 @@ describe('POST /api/admin/kalender/[id]/wiederherstellen', () => {
     const res = await POST_WIEDERHERSTELLEN(req('POST'), ctx())
     expect(await res.json()).toEqual({ version: 6 })
     expect(rpc).toHaveBeenCalledWith('abw_wiederherstellen', { p_id: ID })
+  })
+})
+
+describe('POST /api/admin/kalender/[id]/storno-abschliessen', () => {
+  it('verlangt die Version', async () => {
+    expect((await POST_STORNO(req('POST'), ctx())).status).toBe(400)
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('schließt die Stornierung mit Version ab', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    const res = await POST_STORNO(req('POST', undefined, '?version=3'), ctx())
+    expect(res.status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith('abw_storno_abschliessen', { p_id: ID, p_version: 3 })
+  })
+
+  it('lehnt Nicht-Planer mit 403 ab (Datenbank entscheidet)', async () => {
+    rpc.mockResolvedValue({ data: null, error: { code: 'ABW03', message: 'Das bestätigen nur Vertretungsplaner.' } })
+    expect((await POST_STORNO(req('POST', undefined, '?version=3'), ctx())).status).toBe(403)
+  })
+
+  it('lehnt eine ungültige Kennung mit 404 ab', async () => {
+    expect((await POST_STORNO(req('POST', undefined, '?version=3'), ctx('x'))).status).toBe(404)
   })
 })

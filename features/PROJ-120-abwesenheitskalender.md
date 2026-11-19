@@ -62,6 +62,8 @@ Abwesenheiten (Fortbildung, Dienstreise, Krankheit …) stehen heute nirgends ge
 - [ ] Löschen fragt per `AlertDialog` nach. Danach gibt es für 10 Sekunden „Rückgängig“ im Toast.
 - [ ] Ändert jemand Zeitraum, Art oder Abteilungen eines Eintrags, dessen Vertretung schon als eingetragen gilt, fällt der Status automatisch auf **„Offen“** zurück, und der Eintrag zeigt „Geändert nach Vertretung“. So fällt eine veraltete Vertretung auf.
 - [ ] Änderungen und Löschungen werden im Änderungsprotokoll erfasst (wer, was, wann, alt/neu).
+- [ ] **Löschen nach eingetragener Vertretung (Stornierung, Nachtrag 2026-11-19):** Wer einen Eintrag löscht, dessen Vertretung schon „eingetragen“ ist (z. B. im Vertretungsplan/WebUntis), löscht ihn nicht endgültig. Der Eintrag bleibt **gelb** im Kalender sichtbar mit „Gelöscht – Vertretung zurücknehmen“ (Icon plus Text, in Liste, Monat, Woche und Details; Hinweis „von X gelöscht am …“). Er zählt im Filter „Offen“ und im Zähler „Zu erledigen“ der Planer mit.
+- [ ] Ein Vertretungsplaner nimmt die Vertretung zurück und bestätigt mit **„Vertretung zurückgenommen“**; erst dann verschwindet der Eintrag. Normale Lehrkräfte sehen den Hinweis, können aber nur „Löschung zurücknehmen“ (stellt den Eintrag unverändert wieder her). Ein stornierter Eintrag lässt sich nicht bearbeiten oder abhaken. Das Löschen-Fenster nennt vorab, dass der Eintrag gelb sichtbar bleibt.
 
 ### Vertretung
 - [ ] Jeder Eintrag hat einen Vertretungsstatus: **Offen** (Standard) oder **Vertretung eingetragen**. Planer können außerdem **„Keine Vertretung nötig“** setzen (z. B. Dienstreise ohne Unterricht).
@@ -297,6 +299,16 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 ### Noch offen
 - Prüfung im Browser (Handy/Tablet/Rechner, Hell/Dunkel) gegen die Live-Datenbank und Realtime mit zwei Sitzungen.
 - Wochen- und Monatsansicht: Tastatursteuerung des Rasters (Pfeiltasten) ist noch nicht gebaut; Marken und Knöpfe sind per Tab erreichbar.
+
+## Nachtrag: Löschen nach Vertretung (2026-11-19)
+
+**Anlass (Nutzer):** Lehrkräfte wollen einen Termin auch löschen können, wenn er schon in Untis erfasst ist. Er soll dann gelb und deutlich als geändert im Kalender stehen bleiben, damit die Vertretungsplaner die geplante Vertretung herausnehmen.
+
+- **Datenbank:** Migration `supabase/migrations/20261122_proj120_loeschen_nach_vertretung.sql` (Rückweg `…_down.sql`), **noch nicht angewendet**. Neue Spalten `storniert_am`/`storniert_von`; `abw_loeschen` liefert `'geloescht'` oder `'storniert'` (bei Status „eingetragen“); neu `abw_storno_abschliessen` (nur Planer); `abw_wiederherstellen` nimmt auch eine Stornierung zurück; `abw_liste` liefert `storniert_am`/`storniert_von_name` und zählt Stornierte zu „offen“; `abw_aendern` und `abw_vertretung_setzen` lehnen Stornierte ab; `abw_offene_vertretungen` zählt sie mit. Protokoll: `abwesenheit.storno`, `.storno_abgeschlossen`, `.storno_zurueck`.
+- **Schnittstellen:** `DELETE /kalender/[id]` antwortet `{ ok, storniert }`; neu `POST /kalender/[id]/storno-abschliessen?version=`.
+- **Oberfläche:** `CancelledBadge`, gelbe Karte/Marke (`ws-gold`), Hinweisblock und Knöpfe in der Detail-Schublade, angepasster Löschen-Dialog und Toast.
+- **Tests:** neue Fälle in `[id]/route.test.ts`, `absence-calendar.test.tsx`, `absence.test.ts`. Die SQL-Funktionen sind mangels Datenbank hier nicht ausgeführt worden: vor dem Anwenden Probelauf in einer zurückgerollten Transaktion wie beim ersten Mal.
+- **Offen:** Die Anbindung an WebUntis gibt es weiterhin nicht. „In Untis erfasst“ heißt derzeit: Planer haben „Vertretung eingetragen“ gesetzt.
 
 ## QA Test Results
 _To be added by /qa_

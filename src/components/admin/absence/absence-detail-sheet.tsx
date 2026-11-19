@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, CircleSlash, Hourglass, Trash2 } from 'lucide-react'
+import { Check, CircleSlash, Hourglass, Trash2, Undo2 } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { SubstituteBadge, TypeBadge } from '@/components/admin/absence/absence-ui'
+import { CancelledBadge, SubstituteBadge, TypeBadge } from '@/components/admin/absence/absence-ui'
 import { DEPARTMENTS, formatDate, formatRange, type Absence, type SubstituteStatus } from '@/lib/absence'
 import { AdminRowActions } from '@/components/admin/admin-row-actions'
 
@@ -34,6 +34,8 @@ export function AbsenceDetailSheet({
   onEdit,
   onDelete,
   onSetStatus,
+  onUndoCancel,
+  onFinishCancel,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -45,6 +47,8 @@ export function AbsenceDetailSheet({
   onEdit: () => void
   onDelete: () => void
   onSetStatus: (status: SubstituteStatus) => void
+  onUndoCancel: () => void
+  onFinishCancel: () => void
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -62,9 +66,20 @@ export function AbsenceDetailSheet({
                 <SheetDescription className="sr-only">Details zur Abwesenheit</SheetDescription>
                 <div className="flex flex-wrap gap-2">
                   <TypeBadge absence={absence} />
-                  <SubstituteBadge status={absence.substituteStatus} />
+                  {absence.cancelledAt ? <CancelledBadge /> : <SubstituteBadge status={absence.substituteStatus} />}
                 </div>
               </SheetHeader>
+
+              {absence.cancelledAt && (
+                <div role="status" className="mt-4 rounded-xl border border-ws-gold/40 bg-ws-gold/10 p-3 text-sm text-ws-text">
+                  <p className="font-semibold">Dieser Eintrag wurde gelöscht.</p>
+                  <p className="mt-1 text-ws-muted">
+                    {absence.cancelledByName ?? 'Jemand'} hat ihn am {formatDate(absence.cancelledAt.slice(0, 10))} gelöscht,
+                    aber die Vertretung war schon eingetragen. Bitte nimm die Vertretung zurück.
+                    {canSetStatus ? ' Danach bestätigst du hier, und der Eintrag verschwindet.' : ' Die Vertretungsplaner sind informiert.'}
+                  </p>
+                </div>
+              )}
 
               <dl className="mt-5 space-y-3">
                 <Row label="Zeitraum">{formatRange(absence)}</Row>
@@ -96,7 +111,16 @@ export function AbsenceDetailSheet({
                 </Row>
               </dl>
 
-              {canSetStatus && (
+              {canSetStatus && absence.cancelledAt && (
+                <div className="mt-6 border-t border-ws-line pt-4">
+                  <Button disabled={busy} onClick={onFinishCancel} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+                    <Check className="mr-2 size-4" aria-hidden />
+                    Vertretung zurückgenommen
+                  </Button>
+                </div>
+              )}
+
+              {canSetStatus && !absence.cancelledAt && (
                 <div className="mt-6 space-y-2 border-t border-ws-line pt-4">
                   <p className="text-sm font-medium text-ws-text">Vertretung</p>
                   <div className="flex flex-wrap gap-2">
@@ -122,7 +146,16 @@ export function AbsenceDetailSheet({
                 </div>
               )}
 
-              {canEdit && (
+              {canEdit && absence.cancelledAt && (
+                <div className="mt-3">
+                  <Button disabled={busy} variant="outline" onClick={onUndoCancel} className="min-h-11 rounded-xl">
+                    <Undo2 className="mr-2 size-4" aria-hidden />
+                    Löschung zurücknehmen
+                  </Button>
+                </div>
+              )}
+
+              {canEdit && !absence.cancelledAt && (
                 <div className="mt-6 border-t border-ws-line pt-4">
                   <AdminRowActions
                     subject={`Eintrag von ${absence.personName}`}
@@ -157,7 +190,9 @@ export function AbsenceDetailSheet({
             <AlertDialogTitle>Abwesenheit löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
               {absence ? `${absence.personName}, ${formatRange(absence)}. ` : ''}
-              Du kannst das gleich danach noch rückgängig machen.
+              {absence?.substituteStatus === 'entered'
+                ? 'Für diese Abwesenheit ist schon eine Vertretung eingetragen. Der Eintrag bleibt deshalb gelb im Kalender sichtbar, bis die Vertretungsplaner die Vertretung zurückgenommen haben. Du kannst die Löschung zurücknehmen.'
+                : 'Du kannst das gleich danach noch rückgängig machen.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

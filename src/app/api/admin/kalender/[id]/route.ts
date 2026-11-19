@@ -49,7 +49,8 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
     return NextResponse.json({ error: 'Version fehlt.' }, { status: 400 })
   }
 
-  const res = await callKalender(auth.supabase, ROUTE, 'abw_loeschen', { p_id: id, p_version: version })
+  const res = await callKalender<string>(auth.supabase, ROUTE, 'abw_loeschen', { p_id: id, p_version: version })
   if (res.error) return res.error
-  return NextResponse.json({ ok: true })
+  // „storniert“: Die Vertretung war schon eingetragen, der Eintrag bleibt für die Planer sichtbar.
+  return NextResponse.json({ ok: true, storniert: res.data === 'storniert' })
 }

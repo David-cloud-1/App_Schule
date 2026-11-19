@@ -350,9 +350,12 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
         toast.error(await errorMessage(res, 'Der Eintrag konnte nicht gelöscht werden.'))
         return
       }
-      setOpenId(null)
+      const result = (await res.json().catch(() => ({}))) as { storniert?: boolean }
+      const cancelled = !!result.storniert
+      // Bei schon eingetragener Vertretung bleibt der Eintrag gelb sichtbar, die Schublade bleibt offen.
+      if (!cancelled) setOpenId(null)
       await load(true)
-      toast.success('Abwesenheit gelöscht', {
+      toast.success(cancelled ? 'Löschung vermerkt – Vertretungsplaner sehen es' : 'Abwesenheit gelöscht', {
         duration: 10_000,
         action: {
           label: 'Rückgängig',
@@ -369,6 +372,42 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
           },
         },
       })
+    } catch {
+      toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Löschung zurücknehmen (Eintrag war nur vermerkt, nicht entfernt) */
+  async function undoCancel(a: Absence) {
+    setBusy(true)
+    try {
+      const res = await fetch(`${ABSENCE_API}/${a.id}/wiederherstellen`, { method: 'POST' })
+      if (res.ok) toast.success('Löschung zurückgenommen')
+      else toast.error(await errorMessage(res, 'Das hat nicht geklappt.'))
+      await load(true)
+    } catch {
+      toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Planer: Die Vertretung ist zurückgenommen, der gelöschte Eintrag verschwindet. */
+  async function finishCancellation(a: Absence) {
+    setBusy(true)
+    try {
+      const res = await fetch(`${ABSENCE_API}/${a.id}/storno-abschliessen?version=${a.version}`, { method: 'POST' })
+      if (res.status === 409) {
+        toast.error('Der Eintrag wurde gerade geändert. Die Ansicht wird neu geladen.')
+      } else if (!res.ok) {
+        toast.error(await errorMessage(res, 'Das konnte nicht gespeichert werden.'))
+      } else {
+        setOpenId(null)
+        toast.success('Vertretung zurückgenommen – Eintrag ausgeblendet')
+      }
+      await load(true)
     } catch {
       toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
     } finally {
@@ -540,6 +579,8 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
         onEdit={() => opened && openEdit(opened)}
         onDelete={() => opened && void remove(opened)}
         onSetStatus={(s) => opened && void setStatus(opened, s)}
+        onUndoCancel={() => opened && void undoCancel(opened)}
+        onFinishCancel={() => opened && void finishCancellation(opened)}
       />
 
       {form && (
@@ -592,15 +633,16 @@ function ListView({ items, highlighted, onOpen }: { items: Absence[]; highlighte
 function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: string; highlighted?: boolean; onOpen: (a: Absence) => void }) {
   const starts = absence.dateFrom === day
   const ends = absence.dateTo === day
-  const open = absence.substituteStatus === 'open'
+  const cancelled = !!absence.cancelledAt
+  const open = absence.substituteStatus === 'open' && !cancelled
   return (
     <button
       type="button"
       onClick={() => onOpen(absence)}
-      title={`${absence.personName}: ${absence.typeName}${open ? ', Vertretung offen' : ''}`}
+      title={`${absence.personName}: ${absence.typeName}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung offen' : ''}`}
       className={cn(
         'flex min-h-11 w-full items-center gap-1 border px-1.5 text-left text-xs font-medium sm:min-h-7',
-        ABSENCE_TINT[absence.typeColor],
+        cancelled ? 'border-ws-gold/60 bg-ws-gold/15 text-ws-gold' : ABSENCE_TINT[absence.typeColor],
         starts ? 'rounded-l-lg' : 'rounded-l-none border-l-0',
         ends ? 'rounded-r-lg' : 'rounded-r-none border-r-0',
         open && 'border-b-2 border-b-ws-orange',
@@ -611,6 +653,7 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
     >
       <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
       <span className="truncate">{absence.personName}</span>
+      {cancelled && <span className="ml-auto shrink-0 text-[10px] uppercase">gelöscht</span>}
       {open && <span className="ml-auto shrink-0 text-[10px] uppercase">offen</span>}
     </button>
   )
