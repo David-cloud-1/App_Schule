@@ -353,3 +353,7 @@ Keine bekannt. Das ist **keine** Aussage „fehlerfrei“, weil der Browser- und
 - **Rollback der App:** In Vercel das vorherige Production-Deployment wiederherstellen; die Datenbank-Objekte stören die alte Version nicht (rein additiv).
 - **Offen – Rauchtest durch den Nutzer** (als Super-Admin, ca. 5 Minuten): (1) `/admin/kalender` öffnen, Eintrag anlegen, Monat/Woche/Liste wechseln; (2) auf der Nutzer-Detailseite „Vertretungsplaner“ bei sich einschalten, Vertretung abhaken; (3) Kalender in zwei Tabs öffnen und prüfen, ob Änderungen ohne Neuladen erscheinen; (4) Handy-Ansicht ansehen.
 
+### Nachtrag 2026-11-19: Löschen nach Vertretung (live)
+- **Live:** PR #6, `main` auf `4ee00a0`, Vercel-Deployment `dpl_8Rfa2MzdhMXZdE8vrAvr2EcHFB2n` (Production, READY), keine Laufzeitfehler in den ersten 30 Minuten.
+- **Datenbank:** Migration `20261122_proj120_loeschen_nach_vertretung.sql` vorher im SQL Editor angewendet (Rückweg: `…_down.sql`).
+- **Noch offen:** Durchspielen im Browser (Eintrag anlegen → „In Untis erfasst“ → löschen → gelb → als Planer „Vertretung zurückgenommen“).
