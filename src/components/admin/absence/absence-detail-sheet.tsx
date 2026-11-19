@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, CircleSlash, Hourglass, Trash2 } from 'lucide-react'
+import { Check, CircleSlash, Hourglass, Pencil, Trash2 } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -80,7 +80,7 @@ export function AbsenceDetailSheet({
               >
                 <p className="text-sm font-semibold text-ws-text">
                   {absence.substituteStatus === 'open' && `Für ${absence.personName} wird noch eine Vertretung gebraucht.`}
-                  {absence.substituteStatus === 'entered' && `Die Vertretung für ${absence.personName} ist eingetragen.`}
+                  {absence.substituteStatus === 'entered' && `Die Vertretung für ${absence.personName} ist organisiert.`}
                   {absence.substituteStatus === 'not_needed' && `Für ${absence.personName} ist keine Vertretung nötig.`}
                 </p>
                 <dl className="mt-3 space-y-2">
@@ -119,7 +119,7 @@ export function AbsenceDetailSheet({
                     {absence.substituteStatus !== 'entered' && (
                       <Button disabled={busy} onClick={() => onSetStatus('entered')} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
                         <Check className="mr-2 size-4" aria-hidden />
-                        Vertretung eingetragen
+                        Vertretung organisiert
                       </Button>
                     )}
                     {absence.substituteStatus !== 'not_needed' && (
@@ -140,19 +140,24 @@ export function AbsenceDetailSheet({
 
               {canEdit && (
                 <div className="mt-6 border-t border-ws-line pt-4">
-                  <AdminRowActions
-                    subject={`Eintrag von ${absence.personName}`}
-                    onEdit={onEdit}
-                    items={[
-                      {
-                        key: 'delete',
-                        label: 'Löschen',
-                        icon: <Trash2 className="size-4" aria-hidden />,
-                        destructive: true,
-                        onSelect: () => setConfirmDelete(true),
-                      },
-                    ]}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={onEdit} className="min-h-11 rounded-xl">
+                      <Pencil className="mr-2 size-4" aria-hidden />
+                      Bearbeiten
+                    </Button>
+                    <AdminRowActions
+                      subject={`Eintrag von ${absence.personName}`}
+                      items={[
+                        {
+                          key: 'delete',
+                          label: 'Löschen',
+                          icon: <Trash2 className="size-4" aria-hidden />,
+                          destructive: true,
+                          onSelect: () => setConfirmDelete(true),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
               )}
             </>
