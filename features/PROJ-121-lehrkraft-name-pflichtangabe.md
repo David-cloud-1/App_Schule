@@ -1,6 +1,6 @@
 # PROJ-121: Lehrkräfte geben bei der ersten Anmeldung Vor- und Nachnamen an (Pflicht)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
@@ -281,4 +281,17 @@ Entscheidung des Nutzers: Tech Design Variante 1 (Pflicht im Lehrkräfte-Bereich
 **Produktionsreif: JA, unter Bedingungen.** Keine kritischen oder hohen Fehler. Bedingungen: (1) Migration vor dem Push einspielen und mit der Probe prüfen (BUG-1/BUG-2), (2) einmal die vier Browser-Schritte oben durchgehen.
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-19** (Commit 7d757f7, Vercel-Production `spedilern`, Build Ready nach etwa 2 Minuten).
+
+**Ablauf**
+1. Migration `20261123_proj121_lehrkraft_name.sql` vom Nutzer im SQL-Editor eingespielt, danach Probe `proj121_name_probe.sql`: `spalten=2, trigger=1`, alle vier Prüfungen `true`.
+2. Lesend nachgeprüft: Spalten `first_name`/`last_name`, beide Längen-Regeln und der Schutz `profiles_name_schutz` stehen in der Produktion.
+3. Push mit genau einem Commit (nichts Fremdes mitgefahren).
+4. Ohne Login geprüft: `/name-festlegen`, `/admin`, `/start` leiten zum Login (307), `PATCH /api/profile/name` und `POST …/rename` antworten 401.
+
+**Beim Livegang betroffen:** 21 Konten mit Lehrer-Rolle (Lehrkraft, Bereichs-Admin, Super-Admin) hatten noch keinen Namen und werden beim nächsten Login einmalig gefragt.
+
+**Offen**
+- Browser-Prüfung durch den Nutzer (vier Schritte im Abschnitt QA).
+- Datenschutzerklärung der Schule um „Vor- und Nachname der Lehrkräfte“ ergänzen (in der App gibt es keine eigene Seite dafür).
+- Rückrollen nur in dieser Reihenfolge: erst Code, dann `20261123_proj121_lehrkraft_name_down.sql`.
