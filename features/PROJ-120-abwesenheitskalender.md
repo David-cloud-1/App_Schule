@@ -1,6 +1,6 @@
 # PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
@@ -329,8 +329,15 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 Keine bekannt. Das ist **keine** Aussage „fehlerfrei“, weil der Browser- und Datenbanktest fehlt.
 
 ### Entscheidung
-**Technisch freigabefähig, Browser-Abnahme steht aus.** Datenbank, Rechte, Schnittstellen und Build sind geprüft; kein Fund (Critical/High). Offen ist nur der Durchlauf der Oberfläche im Browser. Wegen der geringen Reichweite (nur Lehrer-Rollen sehen den Kalender, Azubis nicht; keine Daten vorhanden; Rückweg-Migration liegt bereit) ist ein Deploy mit anschließendem kurzem Rauchtest durch den Nutzer vertretbar. Status bleibt „In Review“, bis dieser Rauchtest bestanden ist.
+**Technisch freigabefähig, Browser-Abnahme steht aus.** Datenbank, Rechte, Schnittstellen und Build sind geprüft; kein Fund (Critical/High). Offen ist nur der Durchlauf der Oberfläche im Browser. Wegen der geringen Reichweite (nur Lehrer-Rollen sehen den Kalender, Azubis nicht; keine Daten vorhanden; Rückweg-Migration liegt bereit) ist ein Deploy mit anschließendem kurzem Rauchtest durch den Nutzer vertretbar. Der Rauchtest nach dem Deploy steht beim Nutzer aus (siehe Abschnitt Deployment).
 
 
 ## Deployment
-_To be added by /deploy_
+
+**Live seit 2026-11-19** · `main` auf `63312cf` · Vercel-Deployment `dpl_Mb3HUCGssqmNykDQYds6RUNu9A4C` (Production, Status READY), erreichbar unter `spedilern.vercel.app` und `touristiklern.vercel.app`.
+
+- **Datenbank:** Migration `20261121_proj120_abwesenheitskalender.sql` war vorher angewendet (Nutzer, SQL Editor). Rückweg: `20261121_proj120_abwesenheitskalender_down.sql` (löscht alle Abwesenheiten, Hinweise, eigene Arten und das Planer-Recht).
+- **Weg nach `main`:** Fast-Forward vom Branch `claude/gallant-gates-f9y6pe` (Backend, Frontend und QA aus drei Sitzungen zusammengeführt).
+- **Rollback der App:** In Vercel das vorherige Production-Deployment wiederherstellen; die Datenbank-Objekte stören die alte Version nicht (rein additiv).
+- **Offen – Rauchtest durch den Nutzer** (als Super-Admin, ca. 5 Minuten): (1) `/admin/kalender` öffnen, Eintrag anlegen, Monat/Woche/Liste wechseln; (2) auf der Nutzer-Detailseite „Vertretungsplaner“ bei sich einschalten, Vertretung abhaken; (3) Kalender in zwei Tabs öffnen und prüfen, ob Änderungen ohne Neuladen erscheinen; (4) Handy-Ansicht ansehen.
+
