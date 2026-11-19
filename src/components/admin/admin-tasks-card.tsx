@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, FileQuestion, Flag, RefreshCw, type LucideIcon } from 'lucide-react'
+import { CalendarClock, CalendarX, CheckCircle2, ChevronRight, ClipboardCheck, FileQuestion, Flag, RefreshCw, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AdminLoadingState } from '@/components/admin/admin-states'
 import { useTaskCounts } from '@/components/admin/use-task-counts'
 import { buildTaskEntries, type TaskId } from '@/lib/teacher-tasks'
 
 const ICON: Record<TaskId, LucideIcon> = {
+  openSubstitutions: CalendarX,
   upcomingDrafts: CalendarClock,
   openReports: Flag,
   draftQuestions: FileQuestion,

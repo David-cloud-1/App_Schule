@@ -109,5 +109,15 @@ export async function GET() {
     }
   }
 
+  // ── Abwesenheiten ohne Vertretung in 14 Tagen (PROJ-120, nur Planer) ──
+  // Die Datenbank liefert NULL für alle, die keine Vertretungsplaner sind.
+  try {
+    const { data, error } = await supabase.rpc('abw_offene_vertretungen')
+    if (!error) counts.openSubstitutions = typeof data === 'number' ? data : null
+    else console.error(`[${ROUTE}] openSubstitutions`, error)
+  } catch (err) {
+    console.error(`[${ROUTE}] openSubstitutions`, err)
+  }
+
   return NextResponse.json({ counts }, { headers: { 'Cache-Control': 'private, no-store' } })
 }

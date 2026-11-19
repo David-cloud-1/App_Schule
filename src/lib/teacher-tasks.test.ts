@@ -16,6 +16,15 @@ describe('buildTaskEntries', () => {
     expect(ids).toEqual(['upcomingDrafts', 'openReports', 'draftQuestions', 'unreleasedAssessments'])
   })
 
+  it('stellt offene Vertretungen (nur Planer) ganz nach oben (PROJ-120)', () => {
+    const entries = buildTaskEntries(counts({ openReports: 3, openSubstitutions: 2 }))
+    expect(entries.map((e) => e.id)).toEqual(['openSubstitutions', 'openReports'])
+    expect(entries[0].text).toBe('2 Abwesenheiten haben in den nächsten 14 Tagen noch keine Vertretung')
+    expect(entries[0].href).toBe('/admin/kalender?vertretung=offen')
+    const [one] = buildTaskEntries(counts({ openSubstitutions: 1 }))
+    expect(one.text).toBe('1 Abwesenheit hat in den nächsten 14 Tagen noch keine Vertretung')
+  })
+
   it('bildet Einzahl und Mehrzahl und verlinkt auf die passende Seite', () => {
     const [one] = buildTaskEntries(counts({ openReports: 1 }))
     expect(one.text).toBe('1 gemeldete Frage wartet auf dich')
@@ -44,7 +53,17 @@ describe('parseTaskCounts', () => {
   it('übernimmt gültige Zahlen und macht den Rest zu null', () => {
     expect(
       parseTaskCounts({ counts: { openReports: 2, unreleasedAssessments: 'x', upcomingDrafts: null, draftQuestions: -3 } }),
-    ).toEqual({ openReports: 2, unreleasedAssessments: null, upcomingDrafts: null, draftQuestions: null })
+    ).toEqual({
+      openReports: 2,
+      unreleasedAssessments: null,
+      upcomingDrafts: null,
+      draftQuestions: null,
+      openSubstitutions: null,
+    })
+  })
+
+  it('übernimmt den Vertretungs-Zähler (PROJ-120)', () => {
+    expect(parseTaskCounts({ counts: { openSubstitutions: 4 } }).openSubstitutions).toBe(4)
   })
 
   it('übersteht kaputte Antworten', () => {

@@ -1,6 +1,6 @@
 # PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
@@ -228,6 +228,47 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - **Monatsraster am Handy:** sehr eng. Deshalb ist dort die Liste Standard und der Monat zeigt nur farbige Markierungen mit „+N“.
 - **Live-Verbindungen im Free Tier:** Supabase erlaubt gleichzeitig 200 Live-Verbindungen. Bei einem Kollegium von unter 100 Personen ist das ausreichend; der Kalender öffnet pro Browser-Tab nur eine Verbindung und schließt sie beim Verlassen der Seite.
 - **Geschütztes Planer-Merkmal:** muss wie die Rolle vor Selbstzuweisung geschützt werden (bestehender Spaltenschutz auf dem Konto wird erweitert).
+
+## Backend-Umsetzung (2026-11-19)
+
+**Stand:** Datenbank live, Schnittstellen und Tests fertig (Branch `feat/proj-120-abwesenheitskalender`). Oberfläche folgt mit `/frontend`.
+
+### Datenbank
+- Migration `supabase/migrations/20261121_proj120_abwesenheitskalender.sql` (Rückweg: `…_down.sql`). Vom Nutzer im Supabase SQL Editor angewendet, weil die Bestätigungsabfrage des Supabase-Connectors in der App nicht erschien. Danach per Lesezugriff geprüft: 5 Tabellen, 27 Funktionen, Planer-Spalte, Realtime für `abwesenheiten` und `kalender_hinweise`.
+- **Probelauf vorher** (Transaktion, am Ende erzwungen zurückgerollt): 32/32 Prüfungen grün, u. a. Lehrkraft darf Status nicht setzen, direktes UPDATE und Planer-Selbstvergabe verboten (42501), Azubi sieht nichts und darf nichts, Versionskonflikt, „Ändern setzt Vertretung auf offen“, Löschen/Wiederherstellen, Hinweise, Planer-Zähler, Rollenentzug nimmt Planer-Recht, Protokoll.
+- Neu: `kalender_abteilungen` (5 feste), `abwesenheit_arten` (6 Startarten, „Sonstige Abwesenheit“ fest + Freitext), `abwesenheiten` (weiches Löschen, Versionszähler), `abwesenheit_abteilungen`, `kalender_hinweise`, `profiles.ist_vertretungsplaner`.
+- Rechte wie im Lehrerzimmer: authenticated hat nur SELECT (RLS: `has_teacher_role()`, Hinweise nur eigene); alle Änderungen über SECURITY-DEFINER-Funktionen `abw_*` mit eigenen Fehlercodes ABW01 (429), ABW02 (404), ABW03 (403), ABW04 (400), ABW06 (409). Interne Helfer sind nicht aufrufbar. Supabase-Sicherheitsprüfung meldet nur die 17 bewusst freigegebenen Funktionen (gleiche Warnung wie beim Lehrerzimmer).
+- Planer-Recht: nicht in den Spalten-Rechten von authenticated → nur über `abw_planer_setzen` (Super-Admin). Trigger nimmt es beim Zurückstufen zum Azubi weg. Super-Admin gilt immer als Planer.
+- Alle Änderungen landen im Änderungsprotokoll (`abwesenheit.*`, `abwesenheit_art.*`, `user.vertretungsplaner`).
+
+### Schnittstellen (`/api/admin/kalender/**`, alle `requireTeacherOrAdmin`)
+| Methode & Pfad | Zweck |
+|---|---|
+| `GET /kalender?von&bis&abteilung&status&art&q&limit&offset` | Einträge eines Zeitraums (höchstens 62 Tage), `hasMore` für „Mehr laden“ |
+| `POST /kalender` | Anlegen (für sich oder andere) |
+| `GET/PATCH /kalender/[id]` | Eintrag lesen / ändern (mit `version`) |
+| `DELETE /kalender/[id]?version=` | Löschen (weich) |
+| `POST /kalender/[id]/wiederherstellen` | „Rückgängig“ (wer gelöscht hat, 15 Minuten) |
+| `PUT /kalender/[id]/vertretung` | Status setzen (nur Planer/Super-Admin, mit `version`) |
+| `GET /kalender/ueberschneidungen?person&von&bis&ausser` | Hinweis auf Überschneidungen im Formular |
+| `GET /kalender/meta` | ich (Planer? Super-Admin?), Arten, Lehrkräfte (nur Namen), Abteilungen |
+| `GET/POST /kalender/hinweise` | „Neu für dich“ lesen / als gesehen markieren |
+| `POST/PUT /kalender/arten`, `PATCH /kalender/arten/[id]` | Arten anlegen, sortieren, ändern (nur Super-Admin) |
+| `PUT /api/admin/users/[id]/vertretungsplaner` | Planer-Recht setzen (nur Super-Admin) |
+
+- „Zu erledigen“ (PROJ-81): neuer Zähler `openSubstitutions` (nur Planer, sonst `null`), Zeile ganz oben mit Link `/admin/kalender?vertretung=offen`.
+- Nutzer-Detailseite: Übersicht liefert `istVertretungsplaner` (für den Schalter im Frontend).
+- Freigaben für Lehrkräfte: `/admin/kalender` und `/api/admin/kalender` in `roles.ts`.
+- Gemeinsame Regeln, Typen und Datumshilfen (deutsche Ortszeit) in `src/lib/kalender.ts`.
+
+### Tests
+- Neu: `src/lib/kalender.test.ts`, `api/admin/kalender/{route,[id]/route,arten/route,meta/route}.test.ts`, `api/admin/users/[id]/vertretungsplaner/route.test.ts`; erweitert: `roles.test.ts`, `teacher-tasks.test.ts`. Betroffene Dateien: 97/97 grün.
+- Gesamt: 3972 von 3973 grün. Der eine Fehler (`werkzeugkiste-auszug.test.ts`, „Urheberin unter dem Titel“) besteht auch ohne diese Änderungen und gehört nicht zu PROJ-120.
+- `tsc --noEmit` und ESLint ohne Fehler.
+
+### Hinweise für Frontend/Deploy
+- Der Code liest `profiles.ist_vertretungsplaner` (Nutzer-Detailseite) und ruft `abw_*` auf: Er darf erst live gehen, wenn die Migration angewendet ist (ist sie).
+- Realtime: auf `abwesenheiten` (alle Lehrkräfte) und `kalender_hinweise` (nur eigene) hören, bei Ereignis den sichtbaren Zeitraum neu laden (siehe Tech Design).
 
 ## QA Test Results
 _To be added by /qa_

@@ -37,6 +37,7 @@ type Target = {
   last_session_date: string | null
   coin_balance: number
   linked_main_user_id: string | null
+  ist_vertretungsplaner?: boolean | null
 }
 
 const SESSION_LIMIT = 5000
@@ -86,6 +87,8 @@ export async function loadOverview(service: SupabaseClient, target: Target) {
     longestStreak: target.longest_streak,
     coins: target.coin_balance,
     linkedMain,
+    /** PROJ-120: Planer-Recht im Abwesenheitskalender */
+    istVertretungsplaner: !!target.ist_vertretungsplaner,
   }
 }
 

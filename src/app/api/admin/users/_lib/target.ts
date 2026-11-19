@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 
 /** Spalten des Profils, die die Detailseite und ihre Aktionen brauchen (PROJ-59) */
 export const TARGET_COLUMNS =
-  'id, display_name, role, pseudonym, department_id, created_at, total_xp, current_streak, longest_streak, last_session_date, coin_balance, linked_main_user_id'
+  'id, display_name, role, pseudonym, department_id, created_at, total_xp, current_streak, longest_streak, last_session_date, coin_balance, linked_main_user_id, ist_vertretungsplaner'
 
 export type TargetProfile = {
   id: string
@@ -21,6 +21,8 @@ export type TargetProfile = {
   last_session_date: string | null
   coin_balance: number
   linked_main_user_id: string | null
+  /** PROJ-120: Planer-Recht im Abwesenheitskalender */
+  ist_vertretungsplaner?: boolean | null
 }
 
 export type SuperAdminTarget =

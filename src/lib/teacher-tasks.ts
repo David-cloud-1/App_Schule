@@ -14,9 +14,11 @@ export interface TaskCounts {
   upcomingDrafts: number | null
   /** KI-/Import-Entwürfe von Fragen, die noch geprüft werden müssen (nur Admins) */
   draftQuestions: number | null
+  /** Abwesenheiten ohne Vertretung in den nächsten 14 Tagen (PROJ-120, nur Vertretungsplaner) */
+  openSubstitutions: number | null
 }
 
-export type TaskId = 'upcomingDrafts' | 'openReports' | 'draftQuestions' | 'unreleasedAssessments'
+export type TaskId = 'openSubstitutions' | 'upcomingDrafts' | 'openReports' | 'draftQuestions' | 'unreleasedAssessments'
 
 export interface TaskEntry {
   id: TaskId
@@ -30,16 +32,22 @@ export const EMPTY_TASK_COUNTS: TaskCounts = {
   unreleasedAssessments: null,
   upcomingDrafts: null,
   draftQuestions: null,
+  openSubstitutions: null,
 }
 
-/** Reihenfolge nach Dringlichkeit: Termine zuerst, Freigaben zuletzt */
-const ORDER: TaskId[] = ['upcomingDrafts', 'openReports', 'draftQuestions', 'unreleasedAssessments']
+/** Reihenfolge nach Dringlichkeit: Vertretungen und Termine zuerst, Freigaben zuletzt */
+const ORDER: TaskId[] = ['openSubstitutions', 'upcomingDrafts', 'openReports', 'draftQuestions', 'unreleasedAssessments']
 
 function plural(n: number, one: string, many: string): string {
   return n === 1 ? one : many
 }
 
 const SENTENCE: Record<TaskId, { href: string; text: (n: number) => string }> = {
+  openSubstitutions: {
+    href: '/admin/kalender?vertretung=offen',
+    text: (n) =>
+      `${n} ${plural(n, 'Abwesenheit hat', 'Abwesenheiten haben')} in den nächsten 14 Tagen noch keine Vertretung`,
+  },
   upcomingDrafts: {
     href: '/admin/leistungsnachweise',
     text: (n) =>
@@ -85,6 +93,7 @@ export function parseTaskCounts(raw: unknown): TaskCounts {
     unreleasedAssessments: num(counts.unreleasedAssessments),
     upcomingDrafts: num(counts.upcomingDrafts),
     draftQuestions: num(counts.draftQuestions),
+    openSubstitutions: num(counts.openSubstitutions),
   }
 }
 

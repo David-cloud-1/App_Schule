@@ -107,6 +107,20 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(mayOpenAdminPath('student', '/admin/lehrerzimmer')).toBe(false)
   })
 
+  it('lässt jede Lehrkraft in den Kalender samt Schnittstelle, Azubis nicht (PROJ-120)', () => {
+    for (const path of ['/admin/kalender', '/admin/kalender/arten']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+    }
+    for (const path of ['/api/admin/kalender', '/api/admin/kalender/abc/vertretung', '/api/admin/kalender/meta']) {
+      expect(teacherMayCallApiPath(path)).toBe(true)
+    }
+    expect(teacherMayCallApiPath('/api/admin/kalender-fremd')).toBe(false)
+    expect(mayOpenAdminPath('teacher', '/admin/kalender-fremd')).toBe(false)
+    expect(mayOpenAdminPath('student', '/admin/kalender')).toBe(false)
+    // Planer-Recht vergeben bleibt Verwaltung (Super-Admin), nicht im Lehrkraft-Tor
+    expect(teacherMayCallApiPath('/api/admin/users/abc/vertretungsplaner')).toBe(false)
+  })
+
   it('nimmt als Login-Ziel nur Pfade innerhalb der App, sonst die Start-Weiche', () => {
     expect(safeRedirectTarget('/pruefung/ABCD')).toBe('/pruefung/ABCD')
     expect(safeRedirectTarget(null)).toBe(START_PATH)

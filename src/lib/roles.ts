@@ -120,6 +120,8 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/schulrecht',
   // PROJ-63: Lehrerzimmer — jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
   '/admin/lehrerzimmer',
+  // PROJ-120: Abwesenheitskalender — jede Lehrer-Rolle (die Arten-Seite darunter prüft selbst auf Super-Admin)
+  '/admin/kalender',
 ]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
@@ -162,6 +164,8 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/tasks',
   // PROJ-85: Inhalts-Baum (requireContentAdmin)
   '/api/admin/content-tree',
+  // PROJ-120: Abwesenheitskalender (requireTeacherOrAdmin, Rechte in den Datenbank-Funktionen abw_*)
+  '/api/admin/kalender',
 ]
 
 export function teacherMayCallApiPath(pathname: string): boolean {
