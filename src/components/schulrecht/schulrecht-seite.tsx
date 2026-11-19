@@ -138,6 +138,8 @@ export function SchulrechtSeite() {
     <div className="space-y-6">
       <AdminPageHeader title="Schulrecht" description="Frag wie im Lehrerzimmer – du bekommst die passenden Stellen mit Kurzfassung und Wortlaut, ohne KI." />
 
+      {quellen && quellen.length > 0 && <Nachlesen quellen={quellen} />}
+
       <form
         role="search"
         onSubmit={(e) => {
@@ -249,21 +251,64 @@ export function SchulrechtSeite() {
         <p>{NICHT_ENTHALTEN_HINWEIS}</p>
       </div>
 
-      {quellen && quellen.length > 0 && (
-        <Collapsible className="rounded-2xl border border-ws-line bg-ws-surface/50 p-2">
-          <CollapsibleTrigger className={`${LINK_TRIGGER} w-full px-3`}>
-            <BookOpen className="size-4" aria-hidden />
-            Vorschriften durchblättern
-            <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="px-1 pb-1 pt-2">
-            <VorschriftenDurchblaettern quellen={quellen} />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
       <VerweisFenster ziel={verweis} schliessen={() => setVerweis(null)} />
     </div>
+  )
+}
+
+type Bereich = 'recht' | 'hll'
+
+/**
+ * Gut sichtbarer Einstieg zum Nachlesen: zwei große Kacheln mit Anzahl
+ * (Gesetze und Vorschriften / Handlungsleitlinien der Schule). Ein Klick
+ * klappt darunter die jeweilige Liste auf.
+ */
+function Nachlesen({ quellen }: { quellen: Rechtsquelle[] }) {
+  const [offen, setOffen] = useState<Bereich | null>(null)
+  const hll = quellen.filter((q) => q.rang === 'handlungsleitlinie')
+  const recht = quellen.filter((q) => q.rang !== 'handlungsleitlinie')
+  const kacheln: { id: Bereich; titel: string; text: string; anzahl: number; icon: typeof Scale }[] = [
+    { id: 'recht', titel: 'Alle Rechtsgrundlagen', text: 'Gesetze, Verordnungen und Vorschriften im Wortlaut', anzahl: recht.length, icon: Scale },
+    { id: 'hll', titel: 'Handlungsleitlinien (HLL)', text: 'Die Regeln unserer Schule zum Nachlesen', anzahl: hll.length, icon: BookOpen },
+  ]
+  const sichtbar = kacheln.filter((k) => k.anzahl > 0)
+  const liste = offen === 'hll' ? hll : recht
+
+  return (
+    <section aria-label="Nachlesen" className="space-y-3">
+      <h2 className="text-lg font-bold">Direkt nachlesen</h2>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {sichtbar.map((k) => {
+          const aktiv = offen === k.id
+          const Icon = k.icon
+          return (
+            <button
+              key={k.id}
+              type="button"
+              aria-expanded={aktiv}
+              aria-controls="sr-nachlesen-liste"
+              onClick={() => setOffen(aktiv ? null : k.id)}
+              className={`group flex min-h-20 items-center gap-4 rounded-2xl border p-4 text-left transition-colors duration-200 hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green ${
+                aktiv ? 'border-ws-green bg-ws-raised' : 'border-ws-line bg-ws-surface'
+              }`}
+            >
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-ws-green text-ws-on-accent">
+                <Icon className="size-6" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-bold text-ws-text">{k.titel}</span>
+                <span className="block text-sm text-ws-muted">{k.text}</span>
+                <span className="block text-sm font-semibold text-ws-blue">
+                  {k.anzahl} {k.anzahl === 1 ? 'Dokument' : 'Dokumente'}
+                </span>
+              </span>
+              <ChevronDown className="size-5 shrink-0 text-ws-muted transition-transform duration-200 group-aria-expanded:rotate-180" aria-hidden />
+            </button>
+          )
+        })}
+      </div>
+      <div id="sr-nachlesen-liste">{offen && <VorschriftenDurchblaettern key={offen} quellen={liste} />}</div>
+    </section>
   )
 }
 
