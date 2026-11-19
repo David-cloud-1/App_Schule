@@ -1,6 +1,6 @@
 # PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung)
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
@@ -311,7 +311,45 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - **Offen:** Die Anbindung an WebUntis gibt es weiterhin nicht. „In Untis erfasst“ heißt derzeit: Planer haben „Vertretung eingetragen“ gesetzt.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-11-19 · Branch `feat/proj-120-abwesenheitskalender` (5 Commits vor `main`) · Umfang: statische Prüfung und automatisierte Tests. **Keine Prüfung gegen eine laufende Datenbank, kein Browser-Test.**
+
+### Automatisierte Prüfung
+- `tsc --noEmit`: sauber. `npm run lint`: 0 Fehler (63 Warnungen, nicht aus PROJ-120).
+- `npm test`: 3996 von 3997 grün. Der eine Fehler (`werkzeugkiste-auszug.test.ts`, „nennt die Urheberin oder den Urheber“) tritt **genauso auf `main` auf** und gehört nicht zu PROJ-120.
+- Neue Tests von PROJ-120 (Hilfsmodule, Routen, Kalender-Komponente, Navigation, Rollen, Aufgabenliste) laufen alle grün.
+
+### Sicherheitsprüfung der Migration (Code-Review)
+- RLS auf allen 5 neuen Tabellen; `authenticated` hat nur SELECT, geschrieben wird nur über Funktionen.
+- Alle Funktionen `SECURITY DEFINER` mit festem `search_path`; Ausführung zuerst für PUBLIC/anon/authenticated entzogen, dann gezielt gewährt.
+- `profiles.ist_vertretungsplaner` ist durch die bestehenden Spaltenrechte nicht selbst setzbar; vergeben nur über `abw_planer_setzen` (Super-Admin). Rollenentzug setzt das Recht zurück.
+- Vertretungsstatus nur über `abw_vertretung_setzen` mit Planer-Prüfung. Versionszähler vorhanden.
+- Realtime nur für `abwesenheiten` und `kalender_hinweise`, mit SELECT-Regeln.
+- Kein Fund (Critical/High) im Code.
+
+### Nachtrag (2026-11-19, zweite Prüfung)
+- **Korrektur:** Die Migration ist **angewendet** (vom Nutzer im Supabase SQL Editor, weil die Bestätigungsabfrage des Connectors in der App nicht erschien). Live nachgeprüft: 5 Tabellen, 27 Funktionen `abw_*`, Spalte `profiles.ist_vertretungsplaner`, Realtime für `abwesenheiten` und `kalender_hinweise`, 6 Arten, 5 Abteilungen, 0 Einträge, 0 Planer (kein Testrest).
+- **Rechteprüfung gegen die echte Datenbank** (Probelauf in einer Transaktion, am Ende zurückgerollt) mit echten Konten (Lehrkraft, Planer, Super-Admin, Azubi): 32 von 32 grün. Lehrkraft darf den Status nicht setzen, direktes UPDATE und Planer-Selbstvergabe scheitern, Azubi sieht und darf nichts, Versionskonflikt, „Ändern setzt Vertretung auf offen“, Löschen und Rückgängig, Hinweise, Planer-Zähler, Rollenentzug nimmt das Recht, Protokoll.
+- **Supabase-Sicherheitsprüfung:** nur die erwartete Warnung für die 17 bewusst freigegebenen `abw_*`-Funktionen (wie beim Lehrerzimmer).
+- **Gesamtstand sauber nachgemessen** (Backend + Frontend): `tsc` und ESLint ohne Fehler, `npm test` 3996 von 3997 grün (einziger Fehler `werkzeugkiste-auszug.test.ts`, auch auf `main`), `npm run build` erfolgreich mit allen `/admin/kalender`- und `/api/admin/kalender`-Routen.
+
+### Nicht geprüft (offen)
+- Alle Akzeptanzkriterien im Browser (Monat/Woche/Liste, Formular, Live-Aktualisierung, Handy 375 px, Tablet, Desktop, Firefox/Safari), Zeitumstellung, gleichzeitige Klicks, echte Rechteprüfung mit Lehrkraft/Planer/Super-Admin/Azubi.
+- Playwright-E2E `tests/PROJ-120-abwesenheitskalender.spec.ts` ist nicht geschrieben.
+
+### Bugs
+Keine bekannt. Das ist **keine** Aussage „fehlerfrei“, weil der Browser- und Datenbanktest fehlt.
+
+### Entscheidung
+**Technisch freigabefähig, Browser-Abnahme steht aus.** Datenbank, Rechte, Schnittstellen und Build sind geprüft; kein Fund (Critical/High). Offen ist nur der Durchlauf der Oberfläche im Browser. Wegen der geringen Reichweite (nur Lehrer-Rollen sehen den Kalender, Azubis nicht; keine Daten vorhanden; Rückweg-Migration liegt bereit) ist ein Deploy mit anschließendem kurzem Rauchtest durch den Nutzer vertretbar. Der Rauchtest nach dem Deploy steht beim Nutzer aus (siehe Abschnitt Deployment).
+
 
 ## Deployment
-_To be added by /deploy_
+
+**Live seit 2026-11-19** · `main` auf `63312cf` · Vercel-Deployment `dpl_Mb3HUCGssqmNykDQYds6RUNu9A4C` (Production, Status READY), erreichbar unter `spedilern.vercel.app` und `touristiklern.vercel.app`.
+
+- **Datenbank:** Migration `20261121_proj120_abwesenheitskalender.sql` war vorher angewendet (Nutzer, SQL Editor). Rückweg: `20261121_proj120_abwesenheitskalender_down.sql` (löscht alle Abwesenheiten, Hinweise, eigene Arten und das Planer-Recht).
+- **Weg nach `main`:** Fast-Forward vom Branch `claude/gallant-gates-f9y6pe` (Backend, Frontend und QA aus drei Sitzungen zusammengeführt).
+- **Rollback der App:** In Vercel das vorherige Production-Deployment wiederherstellen; die Datenbank-Objekte stören die alte Version nicht (rein additiv).
+- **Offen – Rauchtest durch den Nutzer** (als Super-Admin, ca. 5 Minuten): (1) `/admin/kalender` öffnen, Eintrag anlegen, Monat/Woche/Liste wechseln; (2) auf der Nutzer-Detailseite „Vertretungsplaner“ bei sich einschalten, Vertretung abhaken; (3) Kalender in zwei Tabs öffnen und prüfen, ob Änderungen ohne Neuladen erscheinen; (4) Handy-Ansicht ansehen.
+

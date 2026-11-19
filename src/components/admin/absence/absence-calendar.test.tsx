@@ -108,7 +108,7 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     render(<AbsenceCalendar />)
     fireEvent.click(await screen.findByText('Anna Beispiel'))
     await screen.findByText('Eingetragen von')
-    expect(screen.queryByRole('button', { name: /Vertretung eingetragen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /In Untis erfasst/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Bearbeiten/ })).not.toBeInTheDocument()
   })
 
@@ -116,7 +116,7 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     mockApi([row()], { id: 'p3', ist_planer: true, ist_super_admin: false })
     render(<AbsenceCalendar />)
     fireEvent.click(await screen.findByText('Anna Beispiel'))
-    await waitFor(() => expect(screen.getByRole('button', { name: /Vertretung eingetragen/ })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: /In Untis erfasst/ })).toBeInTheDocument())
   })
 
   it('zeigt Bearbeiten nur, wenn der Server es erlaubt (darf_bearbeiten)', async () => {

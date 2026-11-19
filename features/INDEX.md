@@ -137,6 +137,6 @@
 | PROJ-117 | Baukasten – Einheitliche Bearbeiten-Optik | Deployed | [PROJ-117-baukasten-einheitliche-bearbeiten-optik.md](PROJ-117-baukasten-einheitliche-bearbeiten-optik.md) | 2026-11-17 |
 | PROJ-118 | Baukasten – Eine Leiste für alles | Deployed | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
 | PROJ-119 | Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed | [PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md](PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md) | 2026-11-18 |
-| PROJ-120 | Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | In Progress | [PROJ-120-abwesenheitskalender.md](PROJ-120-abwesenheitskalender.md) | 2026-11-19 |
+| PROJ-120 | Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed | [PROJ-120-abwesenheitskalender.md](PROJ-120-abwesenheitskalender.md) | 2026-11-19 |
 
 ## Next Available ID: PROJ-121

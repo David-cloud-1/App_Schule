@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { AlertTriangle, Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -73,7 +73,7 @@ export function AbsenceFormDialog({
   teachers: TeacherOption[]
   externalChange: string | null
   onReload: () => void
-  onSubmit: (values: AbsenceFormValues) => Promise<{ ok: true } | { ok: false; message: string }>
+  onSubmit: (values: AbsenceFormValues, personIds: string[]) => Promise<{ ok: true } | { ok: false; message: string; remaining?: string[] }>
   onShowExisting: (id: string) => void
 }) {
   const [values, setValues] = useState<AbsenceFormValues>(initial)
@@ -81,6 +81,8 @@ export function AbsenceFormDialog({
   const [saving, setSaving] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [personOpen, setPersonOpen] = useState(false)
+  // Neuanlage: beliebig viele Personen, je Person entsteht ein eigener Eintrag
+  const [personIds, setPersonIds] = useState<string[]>(initial.personId ? [initial.personId] : [])
 
   // Inaktive Arten sind nur wählbar, wenn der bearbeitete Eintrag sie schon hat
   const selectableTypes = useMemo(
@@ -92,7 +94,8 @@ export function AbsenceFormDialog({
   const [overlapping, setOverlapping] = useState<OverlapHit[]>([])
 
   // Überschneidungen derselben Person fragt der Server ab (nicht nur der sichtbare Monat)
-  const { personId, dateFrom, dateTo } = values
+  const personId = !editing && personIds.length !== 1 ? '' : (editing ? values.personId : personIds[0])
+  const { dateFrom, dateTo } = values
   const editingId = editing?.id
   useEffect(() => {
     if (!personId || !isIsoDate(dateFrom) || !isIsoDate(dateTo) || dateTo < dateFrom) {
@@ -129,7 +132,7 @@ export function AbsenceFormDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    const found = validateAbsenceForm(values)
+    const found = validateAbsenceForm({ ...values, personId: editing ? values.personId : (personIds[0] ?? '') })
     setErrors(found)
     if (Object.keys(found).length > 0) return
     setSaving(true)
@@ -137,12 +140,17 @@ export function AbsenceFormDialog({
     try {
       const result = await onSubmit({
         ...values,
+        personId: editing ? values.personId : (personIds[0] ?? ''),
         // „Alle“ ersetzt die Einzelauswahl; Freitext nur bei Arten mit Freitext
         departments: values.allDepartments ? [] : values.departments,
         freeText: selectedType?.hasFreeText ? values.freeText.trim() : '',
         note: values.note.trim(),
-      })
-      if (!result.ok) setServerError(result.message)
+      }, editing ? [values.personId] : personIds)
+      if (!result.ok) {
+        setServerError(result.message)
+        // Schon gespeicherte Personen nicht noch einmal eintragen
+        if (result.remaining) setPersonIds(result.remaining)
+      }
     } finally {
       setSaving(false)
     }
@@ -169,6 +177,7 @@ export function AbsenceFormDialog({
         )}
 
         <form onSubmit={submit} className="space-y-5" noValidate>
+          {editing ? (
           <div>
             <Label htmlFor="abs-person" className="text-ws-text">Person</Label>
             <Popover open={personOpen} onOpenChange={setPersonOpen}>
@@ -186,10 +195,14 @@ export function AbsenceFormDialog({
                   <ChevronsUpDown className="size-4 shrink-0 text-ws-muted" aria-hidden />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0">
+              <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
                 <Command>
                   <CommandInput placeholder="Name suchen …" />
-                  <CommandList>
+                  <CommandList className="max-h-64 touch-pan-y overscroll-contain">
                     <CommandEmpty>Niemand gefunden.</CommandEmpty>
                     {teachers.map((t) => (
                       <CommandItem
@@ -211,6 +224,97 @@ export function AbsenceFormDialog({
             </Popover>
             <FieldError id="abs-person-err" message={errors.personId} />
           </div>
+
+          ) : (
+            <div>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="abs-person" className="text-ws-text">Personen</Label>
+                <div className="flex gap-1 text-sm">
+                  <Button type="button" variant="ghost" size="sm" className="min-h-11 rounded-xl px-2" onClick={() => setPersonIds(teachers.map((t) => t.id))}>
+                    Alle auswählen
+                  </Button>
+                  {personIds.length > 0 && (
+                    <Button type="button" variant="ghost" size="sm" className="min-h-11 rounded-xl px-2" onClick={() => setPersonIds([])}>
+                      Leeren
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <Popover open={personOpen} onOpenChange={setPersonOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="abs-person"
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={personOpen}
+                    aria-invalid={!!errors.personId}
+                    className={cn(fieldClass, 'mt-1.5 w-full justify-between font-normal')}
+                  >
+                    <span className="truncate">
+                      {personIds.length === 0
+                        ? 'Personen wählen …'
+                        : personIds.length === teachers.length && teachers.length > 1
+                          ? `Alle ${teachers.length} Lehrkräfte`
+                          : `${personIds.length} ausgewählt`}
+                    </span>
+                    <ChevronsUpDown className="size-4 shrink-0 text-ws-muted" aria-hidden />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
+                  <Command>
+                    <CommandInput placeholder="Name suchen …" />
+                    <CommandList className="max-h-64 touch-pan-y overscroll-contain">
+                      <CommandEmpty>Niemand gefunden.</CommandEmpty>
+                      {teachers.map((t) => {
+                        const on = personIds.includes(t.id)
+                        return (
+                          <CommandItem
+                            key={t.id}
+                            value={t.name}
+                            onSelect={() => {
+                              setPersonIds((ids) => (on ? ids.filter((i) => i !== t.id) : [...ids, t.id]))
+                              setErrors((e) => ({ ...e, personId: undefined }))
+                            }}
+                            className="min-h-11"
+                          >
+                            <Check className={cn('mr-2 size-4', on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                            {t.name}
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {personIds.length > 0 && (
+                <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Ausgewählte Personen">
+                  {personIds.map((id) => {
+                    const t = teachers.find((x) => x.id === id)
+                    if (!t) return null
+                    return (
+                      <li key={id} className="flex items-center gap-1 rounded-full border border-ws-line bg-ws-raised py-0.5 pl-3 pr-1 text-sm text-ws-text">
+                        <span className="max-w-40 truncate">{t.name}</span>
+                        <button
+                          type="button"
+                          aria-label={`${t.name} entfernen`}
+                          onClick={() => setPersonIds((ids) => ids.filter((i) => i !== id))}
+                          className="flex size-8 items-center justify-center rounded-full text-ws-muted hover:text-ws-text"
+                        >
+                          <X className="size-4" aria-hidden />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <FieldError id="abs-person-err" message={errors.personId} />
+            </div>
+          )}
 
           <div>
             <Label htmlFor="abs-type" className="text-ws-text">Art</Label>
@@ -356,7 +460,7 @@ export function AbsenceFormDialog({
             </Button>
             <Button type="submit" disabled={saving} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
               {saving && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
-              {editing ? 'Speichern' : 'Eintragen'}
+              {editing ? 'Speichern' : personIds.length > 1 ? `Für ${personIds.length} Personen eintragen` : 'Eintragen'}
             </Button>
           </DialogFooter>
         </form>

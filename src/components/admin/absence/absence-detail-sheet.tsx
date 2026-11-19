@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, CircleSlash, Hourglass, Trash2, Undo2 } from 'lucide-react'
+import { Check, CircleSlash, Hourglass, Pencil, Trash2, Undo2 } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -62,7 +62,10 @@ export function AbsenceDetailSheet({
           {absence ? (
             <>
               <SheetHeader className="text-left">
-                <SheetTitle className="break-words pr-8 text-ws-text">{absence.personName}</SheetTitle>
+                <p className="text-xs font-medium uppercase tracking-wide text-ws-faint">
+                  {absence.cancelledAt ? 'Gelöscht' : absence.substituteStatus === 'not_needed' ? 'Fehlt' : 'Muss vertreten werden'}
+                </p>
+                <SheetTitle className="break-words pr-8 text-2xl font-bold text-ws-text">{absence.personName}</SheetTitle>
                 <SheetDescription className="sr-only">Details zur Abwesenheit</SheetDescription>
                 <div className="flex flex-wrap gap-2">
                   <TypeBadge absence={absence} />
@@ -71,40 +74,56 @@ export function AbsenceDetailSheet({
               </SheetHeader>
 
               {absence.cancelledAt && (
-                <div role="status" className="mt-4 rounded-xl border border-ws-gold/40 bg-ws-gold/10 p-3 text-sm text-ws-text">
+                <div role="status" className="mt-5 rounded-xl border border-ws-gold/40 bg-ws-gold/10 p-4 text-sm text-ws-text">
                   <p className="font-semibold">Dieser Eintrag wurde gelöscht.</p>
                   <p className="mt-1 text-ws-muted">
                     {absence.cancelledByName ?? 'Jemand'} hat ihn am {formatDate(absence.cancelledAt.slice(0, 10))} gelöscht,
-                    aber die Vertretung war schon eingetragen. Bitte nimm die Vertretung zurück.
+                    aber die Vertretung war schon in Untis erfasst. Bitte nimm die Vertretung zurück.
                     {canSetStatus ? ' Danach bestätigst du hier, und der Eintrag verschwindet.' : ' Die Vertretungsplaner sind informiert.'}
                   </p>
                 </div>
               )}
 
-              <dl className="mt-5 space-y-3">
-                <Row label="Zeitraum">{formatRange(absence)}</Row>
-                <Row label="Abteilungen">
-                  {absence.allDepartments
-                    ? 'Alle Abteilungen'
-                    : DEPARTMENTS.filter((d) => absence.departments.includes(d.code))
-                        .map((d) => d.name)
-                        .join(', ')}
-                </Row>
+              <div
+                className={
+                  absence.cancelledAt
+                    ? 'mt-4 rounded-xl border border-ws-gold/30 bg-ws-gold/10 p-4'
+                    : absence.substituteStatus === 'open'
+                      ? 'mt-5 rounded-xl border border-ws-red/30 bg-ws-red/15 p-4'
+                      : absence.substituteStatus === 'entered'
+                        ? 'mt-5 rounded-xl border border-ws-green/30 bg-ws-green/15 p-4'
+                        : 'mt-5 rounded-xl border border-ws-line bg-ws-raised p-4'
+                }
+              >
+                <p className="text-sm font-semibold text-ws-text">
+                  {absence.cancelledAt && `Für ${absence.personName} ist noch eine Vertretung in Untis erfasst, die entfallen muss.`}
+                  {!absence.cancelledAt && absence.substituteStatus === 'open' && `Für ${absence.personName} wird noch eine Vertretung gebraucht.`}
+                  {!absence.cancelledAt && absence.substituteStatus === 'entered' && `Die Vertretung für ${absence.personName} ist in Untis erfasst.`}
+                  {!absence.cancelledAt && absence.substituteStatus === 'not_needed' && `Für ${absence.personName} ist keine Vertretung nötig.`}
+                </p>
+                <dl className="mt-3 space-y-2">
+                  <Row label="Wann">{formatRange(absence)}</Row>
+                  <Row label="Wo">
+                    {absence.allDepartments
+                      ? 'Alle Abteilungen'
+                      : DEPARTMENTS.filter((d) => absence.departments.includes(d.code))
+                          .map((d) => d.name)
+                          .join(', ')}
+                  </Row>
+                </dl>
+                {absence.statusSetByName && absence.statusSetAt && (
+                  <p className="mt-3 text-xs text-ws-muted">
+                    Status gesetzt von {absence.statusSetByName} am {formatDate(absence.statusSetAt.slice(0, 10))}
+                  </p>
+                )}
+                {absence.changedAfterSubstitute && (
+                  <p className="mt-2 text-sm font-medium text-ws-orange">Geändert nach Vertretung – bitte prüfen</p>
+                )}
+              </div>
+
+              <dl className="mt-4 space-y-3">
                 {absence.freeText && <Row label="Freitext">{absence.freeText}</Row>}
                 {absence.note && <Row label="Notiz">{absence.note}</Row>}
-                <Row label="Vertretung">
-                  {absence.substituteStatus === 'open' && 'Noch offen.'}
-                  {absence.substituteStatus === 'not_needed' && 'Keine Vertretung nötig.'}
-                  {absence.substituteStatus === 'entered' && 'Vertretung eingetragen.'}
-                  {absence.statusSetByName && absence.statusSetAt && (
-                    <span className="block text-ws-muted">
-                      Von {absence.statusSetByName} am {formatDate(absence.statusSetAt.slice(0, 10))}
-                    </span>
-                  )}
-                  {absence.changedAfterSubstitute && (
-                    <span className="block font-medium text-ws-orange">Geändert nach Vertretung</span>
-                  )}
-                </Row>
                 <Row label="Eingetragen von">
                   {absence.createdByName}
                   <span className="block text-ws-muted">Zuletzt geändert am {formatDate(absence.updatedAt.slice(0, 10))}</span>
@@ -122,12 +141,12 @@ export function AbsenceDetailSheet({
 
               {canSetStatus && !absence.cancelledAt && (
                 <div className="mt-6 space-y-2 border-t border-ws-line pt-4">
-                  <p className="text-sm font-medium text-ws-text">Vertretung</p>
+                  <p className="text-sm font-medium text-ws-text">Status der Vertretung ändern</p>
                   <div className="flex flex-wrap gap-2">
                     {absence.substituteStatus !== 'entered' && (
                       <Button disabled={busy} onClick={() => onSetStatus('entered')} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
                         <Check className="mr-2 size-4" aria-hidden />
-                        Vertretung eingetragen
+                        In Untis erfasst
                       </Button>
                     )}
                     {absence.substituteStatus !== 'not_needed' && (
@@ -157,19 +176,24 @@ export function AbsenceDetailSheet({
 
               {canEdit && !absence.cancelledAt && (
                 <div className="mt-6 border-t border-ws-line pt-4">
-                  <AdminRowActions
-                    subject={`Eintrag von ${absence.personName}`}
-                    onEdit={onEdit}
-                    items={[
-                      {
-                        key: 'delete',
-                        label: 'Löschen',
-                        icon: <Trash2 className="size-4" aria-hidden />,
-                        destructive: true,
-                        onSelect: () => setConfirmDelete(true),
-                      },
-                    ]}
-                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" onClick={onEdit} className="min-h-11 rounded-xl">
+                      <Pencil className="mr-2 size-4" aria-hidden />
+                      Bearbeiten
+                    </Button>
+                    <AdminRowActions
+                      subject={`Eintrag von ${absence.personName}`}
+                      items={[
+                        {
+                          key: 'delete',
+                          label: 'Löschen',
+                          icon: <Trash2 className="size-4" aria-hidden />,
+                          destructive: true,
+                          onSelect: () => setConfirmDelete(true),
+                        },
+                      ]}
+                    />
+                  </div>
                 </div>
               )}
             </>
@@ -191,7 +215,7 @@ export function AbsenceDetailSheet({
             <AlertDialogDescription className="text-ws-muted">
               {absence ? `${absence.personName}, ${formatRange(absence)}. ` : ''}
               {absence?.substituteStatus === 'entered'
-                ? 'Für diese Abwesenheit ist schon eine Vertretung eingetragen. Der Eintrag bleibt deshalb gelb im Kalender sichtbar, bis die Vertretungsplaner die Vertretung zurückgenommen haben. Du kannst die Löschung zurücknehmen.'
+                ? 'Für diese Abwesenheit ist die Vertretung schon in Untis erfasst. Der Eintrag bleibt deshalb gelb im Kalender sichtbar, bis die Vertretungsplaner die Vertretung zurückgenommen haben. Du kannst die Löschung zurücknehmen.'
                 : 'Du kannst das gleich danach noch rückgängig machen.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

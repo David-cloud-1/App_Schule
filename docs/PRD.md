@@ -149,7 +149,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik | Deployed |
 | P1 | PROJ-118: Baukasten – Eine Leiste für alles | Deployed |
 | P1 | PROJ-119: Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed |
-| P1 | PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | In Progress |
+| P1 | PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

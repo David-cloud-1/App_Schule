@@ -68,7 +68,7 @@ export const ABSENCE_TINT: Record<AbsenceColor, string> = {
 }
 
 const STATUS_STYLE: Record<SubstituteStatus, string> = {
-  open: 'border-ws-orange/30 bg-ws-orange/15 text-ws-orange',
+  open: 'border-ws-red/30 bg-ws-red/15 text-ws-red',
   entered: 'border-ws-green/30 bg-ws-green/15 text-ws-green',
   not_needed: 'border-ws-line bg-ws-raised text-ws-muted',
 }
@@ -141,13 +141,15 @@ export function AbsenceCard({
       type="button"
       onClick={() => onOpen(absence)}
       className={cn(
-        'flex min-h-11 w-full flex-col gap-2 rounded-2xl border bg-ws-surface p-4 text-left transition-colors duration-200',
-        'hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
+        'flex min-h-11 w-full flex-col gap-2 rounded-2xl border p-4 text-left transition-colors duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
         absence.cancelledAt
-          ? 'border-ws-gold/60 bg-ws-gold/10'
+          ? 'border-ws-gold/60 bg-ws-gold/10 hover:bg-ws-gold/15'
           : absence.substituteStatus === 'open'
-            ? 'border-ws-orange/50'
-            : 'border-ws-line',
+            ? 'border-ws-red/50 bg-ws-red/10 hover:bg-ws-red/15'
+            : absence.substituteStatus === 'entered'
+              ? 'border-ws-green/40 bg-ws-green/10 hover:bg-ws-green/15'
+              : 'border-ws-line bg-ws-surface hover:bg-ws-raised',
         highlighted && 'ring-2 ring-ws-green/60',
       )}
     >
@@ -155,26 +157,23 @@ export function AbsenceCard({
         <span className="min-w-0 truncate font-semibold text-ws-text" title={absence.personName}>
           {absence.personName}
         </span>
-        <TypeBadge absence={absence} />
+        <SubstituteBadge status={absence.substituteStatus} />
       </div>
-      <p className="text-sm text-ws-muted">
-        {formatRange(absence)} · {departmentLabel(absence)}
-      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <TypeBadge absence={absence} />
+        <span className="text-sm text-ws-muted">
+          {formatRange(absence)} · {departmentLabel(absence)}
+        </span>
+      </div>
       {(absence.freeText || absence.note) && (
         <p className="line-clamp-2 text-sm text-ws-muted" title={[absence.freeText, absence.note].filter(Boolean).join(' – ')}>
           {[absence.freeText, absence.note].filter(Boolean).join(' – ')}
         </p>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        {absence.cancelledAt ? (
-          <CancelledBadge />
-        ) : (
-          <SubstituteBadge status={absence.substituteStatus} />
-        )}
-        {absence.changedAfterSubstitute && (
-          <span className="text-xs font-medium text-ws-orange">Geändert nach Vertretung</span>
-        )}
-      </div>
+      {absence.cancelledAt && <CancelledBadge className="self-start" />}
+      {absence.changedAfterSubstitute && (
+        <span className="text-xs font-medium text-ws-orange">Geändert nach Vertretung</span>
+      )}
     </button>
   )
 }

@@ -13,6 +13,7 @@ export const KALENDER_ABTEILUNGEN = [
   { id: 'verkehrsservice', name: 'Verkehrsservice', kurz: 'VS' },
   { id: 'kep', name: 'KEP', kurz: 'KEP' },
   { id: 'bik-bvj', name: 'BIK/BVJ', kurz: 'BIK/BVJ' },
+  { id: 'schulleitung', name: 'Schulleitung', kurz: 'SL' },
 ] as const
 
 export type AbteilungId = (typeof KALENDER_ABTEILUNGEN)[number]['id']
@@ -23,7 +24,7 @@ export type VertretungStatus = (typeof VERTRETUNG_STATUS)[number]
 
 export const VERTRETUNG_LABEL: Record<VertretungStatus, string> = {
   offen: 'Vertretung offen',
-  eingetragen: 'Vertretung eingetragen',
+  eingetragen: 'In Untis erfasst',
   nicht_noetig: 'Keine Vertretung nötig',
 }
 
