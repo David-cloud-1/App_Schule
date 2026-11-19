@@ -67,7 +67,7 @@ export const ABSENCE_TINT: Record<AbsenceColor, string> = {
 }
 
 const STATUS_STYLE: Record<SubstituteStatus, string> = {
-  open: 'border-ws-orange/30 bg-ws-orange/15 text-ws-orange',
+  open: 'border-ws-red/30 bg-ws-red/15 text-ws-red',
   entered: 'border-ws-green/30 bg-ws-green/15 text-ws-green',
   not_needed: 'border-ws-line bg-ws-raised text-ws-muted',
 }
@@ -127,7 +127,7 @@ export function AbsenceCard({
       className={cn(
         'flex min-h-11 w-full flex-col gap-2 rounded-2xl border bg-ws-surface p-4 text-left transition-colors duration-200',
         'hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
-        absence.substituteStatus === 'open' ? 'border-ws-orange/50' : 'border-ws-line',
+        absence.substituteStatus === 'open' ? 'border-ws-red/50' : absence.substituteStatus === 'entered' ? 'border-ws-green/40' : 'border-ws-line',
         highlighted && 'ring-2 ring-ws-green/60',
       )}
     >

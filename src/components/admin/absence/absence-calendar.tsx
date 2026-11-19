@@ -469,7 +469,7 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
             options={[
               { value: 'alle', label: 'Alle' },
               { value: 'open', label: 'Offen' },
-              { value: 'entered', label: 'Organisiert' },
+              { value: 'entered', label: 'In Untis erfasst' },
             ]}
           />
           <Select value={filters.typeId} onValueChange={(v) => setFilter('typeId', v)}>
@@ -628,7 +628,8 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
         ABSENCE_TINT[absence.typeColor],
         starts ? 'rounded-l-lg' : 'rounded-l-none border-l-0',
         ends ? 'rounded-r-lg' : 'rounded-r-none border-r-0',
-        open && 'border-b-2 border-b-ws-orange',
+        open && 'border-b-2 border-b-ws-red',
+        absence.substituteStatus === 'entered' && 'border-b-2 border-b-ws-green',
         highlighted && 'ring-2 ring-ws-green/70',
         'transition-shadow duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
@@ -636,7 +637,8 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
     >
       <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
       <span className="truncate">{absence.personName}</span>
-      {open && <span className="ml-auto shrink-0 text-[10px] uppercase">offen</span>}
+      {open && <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase text-ws-red">offen</span>}
+      {absence.substituteStatus === 'entered' && <span className="ml-auto shrink-0 text-[10px] font-semibold uppercase text-ws-green">Untis</span>}
     </button>
   )
 }
