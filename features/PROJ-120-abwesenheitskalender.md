@@ -111,7 +111,109 @@ Abwesenheiten (Fortbildung, Dienstreise, Krankheit …) stehen heute nirgends ge
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Umfang:** Backend (neue Tabellen, Rechte, Server-Schnittstellen) **und** Frontend (neue Seite, Formular, Hinweise). Kein neues Paket nötig.
+
+### A) Aufbau der Oberfläche
+```
+/admin/kalender  (neu, alle Lehrer-Rollen)
++-- AdminPageHeader „Kalender“ · Hauptaktion „Abwesenheit eintragen“
++-- Werkzeugleiste
+|   +-- Zeitnavigation: Zurück · Heute · Vor · Zeitraum-Titel („November 2026“)
+|   +-- Ansicht: AdminSegmented Monat | Woche | Liste
+|   +-- Filter Abteilung: Dropdown (6 Werte) · Vertretung: AdminSegmented Alle | Offen | Eingetragen
+|   +-- Weitere Filter (Popover): Art, Name suchen
+|   +-- Für Planer: Schnellknopf „Offene Vertretungen“
++-- Kalenderfläche (je nach Ansicht)
+|   +-- Monatsraster (Mo–So, Balken für mehrtägige Einträge, „+N weitere“)
+|   +-- Wochenraster (Tagesspalten, ganztägig oben, Uhrzeiten darunter)
+|   +-- Liste/Agenda (nach Tagen gruppiert, Standard am Handy, lädt 50 je Seite nach)
+|   +-- Leer-, Lade- und Fehlerzustand aus admin-states
++-- Eintragskarte (überall gleich): Name · Art (Icon+Text) · Zeit · Abteilungs-Kürzel · Vertretungsstatus
++-- Detail-Schublade (Sheet rechts, am Handy von unten)
+|   +-- alle Angaben, „eingetragen von …“, „zuletzt geändert …“
+|   +-- Vertretungsstatus mit Knöpfen (nur Planer): Vertretung eingetragen · Keine Vertretung nötig · Zurück auf offen
+|   +-- AdminRowActions: Bearbeiten · ⋯ (Löschen rot, mit AlertDialog)
++-- Formular-Dialog „Abwesenheit eintragen / bearbeiten“
+    +-- Person (Suche über alle Lehrkräfte, Standard: ich)
+    +-- Art (Dropdown aus den aktiven Arten)
+    +-- Von / Bis · Schalter „Ganztägig“ · bei aus: Uhrzeit von / bis
+    +-- Abteilungen: Kästchen „Alle Abteilungen“ oder Einzelauswahl
+    +-- Freitext (nur bei „Sonstige Abwesenheit“, optional) · Notiz (optional)
+    +-- Hinweis bei Überschneidung mit Link
+
+/admin (Startseite, bestehend)
++-- NEU Karte „Neu für dich“ (nur wenn Hinweise da sind): kurze Zeilen mit Link und „Okay“
++-- „Zu erledigen“ (PROJ-81): neue Zeile für Planer „X Abwesenheiten ohne Vertretung (14 Tage)“
+
+/admin/kalender/arten  (neu, nur Super-Admin)
++-- Tabelle: Name · Farbe · Icon · Reihenfolge (ziehen) · aktiv-Schalter · Anzahl Einträge
++-- Hauptaktion „Art hinzufügen“
+
+/admin/users/[id]  (bestehend, nur Super-Admin)
++-- neuer Schalter „Vertretungsplaner“ mit Bestätigung (Name + E-Mail)
+```
+Seitenleiste: neuer Eintrag „Kalender“ (Icon Kalender) in der Gruppe für den Schulalltag, für alle Lehrer-Rollen; „Abwesenheitsarten“ nur für den Super-Admin bei den Verwaltungsseiten.
+
+### B) Datenmodell (in Worten)
+**Abteilungen** (neue, feste Liste, getrennt von den Azubi-Fachbereichen):
+- Kürzel, Name, Reihenfolge — Spedition, Touristik, Verkehrsservice, KEP, BIK/BVJ. Einmalig angelegt, ohne Verwaltungsseite.
+
+**Abwesenheitsarten:**
+- Name, Farbe (Name eines `ws-*`-Tokens, keine freien Farbwerte), Icon (aus fester Lucide-Auswahl), Reihenfolge, aktiv ja/nein, Kennzeichen „fest“ (nur bei „Sonstige Abwesenheit“: nicht deaktivierbar, nicht umbenennbar), Kennzeichen „mit Freitext“ (zeigt das Freitextfeld).
+- Startbestand: Fortbildung, Unterrichtsgang, Dienstreise, Mitwirkung Abschlussprüfung, Klassenfahrt/Exkursion, Sonstige Abwesenheit.
+
+**Abwesenheit** (ein Eintrag):
+- betroffene Lehrkraft, Ersteller, Art
+- Datum von, Datum bis; ganztägig ja/nein; Uhrzeit von/bis (nur wenn nicht ganztägig)
+- „alle Abteilungen“ ja/nein, sonst eine Liste der gewählten Abteilungen (eigene Zuordnungstabelle, damit der Abteilungsfilter schnell ist)
+- Freitext (bis 300 Zeichen), Notiz (bis 300 Zeichen)
+- Vertretungsstatus: offen · eingetragen · nicht nötig; dazu „gesetzt von“ und „gesetzt am“
+- „geändert nach Vertretung“ ja/nein
+- angelegt am, geändert am, geändert von; Versionszähler (für „wurde gerade geändert“)
+- gelöscht am (weiches Löschen, damit „Rückgängig“ und das Protokoll funktionieren)
+
+**Hinweis** („Neu für dich“):
+- Empfänger, Anlass (für dich eingetragen · geändert · gelöscht · Vertretung eingetragen), Verweis auf den Eintrag, auslösende Person, kurzer Text, erstellt am, gesehen am. Hinweise älter als 14 Tage werden nicht mehr angezeigt.
+
+**Konto (bestehend):** neues Merkmal „ist Vertretungsplaner“. Es ist wie die Rolle geschützt: Nur der Super-Admin kann es über den Server ändern, niemand kann es sich selbst geben.
+
+**Protokoll:** Anlegen, Ändern, Löschen, Statuswechsel und Planer-Recht landen im bestehenden Änderungsprotokoll.
+
+Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im Browser außer den gewählten Filtern und der Ansicht.
+
+### C) Technische Entscheidungen (mit Begründung)
+- **Datum und Uhrzeit getrennt als Ortszeit gespeichert** (Datum von/bis + Uhrzeit von/bis), nicht als Zeitstempel. *Warum:* Eine Abwesenheit „24.11. ganztägig“ ist ein Kalendertag in Deutschland. So gibt es keine verrutschten Tage durch Zeitzonen oder die Zeitumstellung.
+- **Kalenderraster selbst gebaut** aus vorhandenen Bausteinen (Tabelle/Raster, Sheet, Popover, Dropdown), **kein Kalender-Paket**. *Warum:* Wir brauchen nur Monat, Woche und Liste mit Balken. Fertige Kalender-Pakete sind groß, schwer an die `ws-*`-Farben und die 44-px-Regel anzupassen und bringen eigene Optik mit. Datumsrechnung mit den Bordmitteln des Browsers (deutsches Format, Montag als Wochenanfang), gekapselt in einem kleinen, getesteten Hilfsmodul.
+- **Rechte doppelt abgesichert:** in der Datenbank (Zeilenregeln: lesen alle Lehrer-Rollen über die vorhandene Prüfung „hat Lehrer-Rolle“; schreiben nur Betroffene, Ersteller, Planer, Super-Admin) **und** in den Server-Schnittstellen. *Warum:* Selbst ein direkter Datenbankaufruf kann keinen Vertretungsstatus setzen, wenn man kein Planer ist.
+- **Vertretungsstatus nur über eine eigene Server-Aktion** änderbar, nie über das normale Bearbeiten. *Warum:* So kann eine Lehrkraft beim Bearbeiten ihres Eintrags den Status nicht versehentlich oder absichtlich auf „eingetragen“ setzen. Dieselbe Stelle setzt automatisch „zurück auf offen“, wenn sich Zeit, Art oder Abteilungen ändern.
+- **Versionszähler gegen gleichzeitige Klicks:** Jede Änderung schickt die Version mit, die man gesehen hat. Passt sie nicht mehr, kommt „Status wurde gerade geändert“ und die Ansicht lädt neu. *Warum:* Zwei Planer überschreiben sich nie still.
+- **Hinweise als eigene Liste pro Empfänger**, erzeugt vom Server beim Speichern. *Warum:* einfach, schnell zu zählen und ohne E-Mail oder Push (Spec). Der Zähler für Planer kommt in die bestehende „Zu erledigen“-Abfrage (PROJ-81), damit die Startseite nur einen Aufruf mehr macht.
+- **Nur sichtbaren Zeitraum laden:** Die Schnittstelle bekommt „von–bis“ und die Filter. *Warum:* Auch bei vielen Einträgen bleibt jede Ansicht unter 500 ms.
+- **Freigabelisten für Lehrkräfte erweitern:** Die Seite und die Schnittstelle des Kalenders kommen in die vorhandene Liste der Pfade, die eine Lehrkraft (nicht nur Admins) öffnen darf. *Warum:* Sonst würde die bestehende Zugangssperre normale Lehrkräfte aussperren.
+- **Vorbereitet für Schritt 2 (WebUntis/Outlook), ohne es zu bauen:** Jeder Eintrag hat eine dauerhafte Kennung und „geändert am“. Damit lässt sich später ein Kalender-Abo (iCal-Link für Outlook) oder ein Abgleich anschließen, ohne das Datenmodell umzubauen.
+
+### D) Schnittstellen (Überblick, in Worten)
+- Einträge für einen Zeitraum mit Filtern abrufen · Eintrag anlegen · ändern · löschen · Löschen rückgängig machen
+- Vertretungsstatus setzen (nur Planer/Super-Admin)
+- Lehrkräfte für die Personensuche auflisten (nur Name, keine E-Mail)
+- Arten auflisten · Art anlegen/ändern/sortieren/deaktivieren (nur Super-Admin)
+- Eigene Hinweise abrufen · Hinweis als gesehen markieren
+- Planer-Recht setzen (nur Super-Admin, über die Nutzerverwaltung)
+- Bestehende „Zu erledigen“-Abfrage: neue Zahl „offene Vertretungen in 14 Tagen“ (nur für Planer)
+
+### E) Abhängigkeiten (Pakete)
+- **Keine neuen Pakete.** Genutzt werden vorhandene: shadcn/ui (Sheet, Dialog, Popover, Command für die Personensuche, Select, Checkbox, Switch, Table), lucide-react (Icons), react-hook-form + zod (Formular und Prüfung), sonner (Toasts mit „Rückgängig“).
+
+### F) Vorgeschlagene Bau-Reihenfolge
+1. **Backend:** Tabellen, Startbestand (Abteilungen, Arten), Rechte, Planer-Merkmal, Schnittstellen, Protokoll, Hinweise, Zähler in „Zu erledigen“.
+2. **Frontend:** Kalenderseite (Liste zuerst, dann Monat, dann Woche), Formular, Detail-Schublade, Hinweis-Karte, Planer-Schalter, Arten-Seite.
+3. **QA:** Rechte-Tests (Lehrkraft / Planer / Super-Admin / Azubi), Zeitumstellung, gleichzeitige Klicks, Kontrast-Test.
+
+### Risiken
+- **Freigabeliste vergessen:** Ohne Eintrag in die Lehrkraft-Pfade sehen nur Admins den Kalender → Test in `teacher-api-gate.test.ts` ergänzen.
+- **Monatsraster am Handy:** sehr eng. Deshalb ist dort die Liste Standard und der Monat zeigt nur farbige Markierungen mit „+N“.
+- **Geschütztes Planer-Merkmal:** muss wie die Rolle vor Selbstzuweisung geschützt werden (bestehender Spaltenschutz auf dem Konto wird erweitert).
 
 ## QA Test Results
 _To be added by /qa_
