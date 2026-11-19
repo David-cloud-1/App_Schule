@@ -315,8 +315,13 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - Realtime nur für `abwesenheiten` und `kalender_hinweise`, mit SELECT-Regeln.
 - Kein Fund (Critical/High) im Code.
 
+### Nachtrag (2026-11-19, zweite Prüfung)
+- **Korrektur:** Die Migration ist **angewendet** (vom Nutzer im Supabase SQL Editor, weil die Bestätigungsabfrage des Connectors in der App nicht erschien). Live nachgeprüft: 5 Tabellen, 27 Funktionen `abw_*`, Spalte `profiles.ist_vertretungsplaner`, Realtime für `abwesenheiten` und `kalender_hinweise`, 6 Arten, 5 Abteilungen, 0 Einträge, 0 Planer (kein Testrest).
+- **Rechteprüfung gegen die echte Datenbank** (Probelauf in einer Transaktion, am Ende zurückgerollt) mit echten Konten (Lehrkraft, Planer, Super-Admin, Azubi): 32 von 32 grün. Lehrkraft darf den Status nicht setzen, direktes UPDATE und Planer-Selbstvergabe scheitern, Azubi sieht und darf nichts, Versionskonflikt, „Ändern setzt Vertretung auf offen“, Löschen und Rückgängig, Hinweise, Planer-Zähler, Rollenentzug nimmt das Recht, Protokoll.
+- **Supabase-Sicherheitsprüfung:** nur die erwartete Warnung für die 17 bewusst freigegebenen `abw_*`-Funktionen (wie beim Lehrerzimmer).
+- **Gesamtstand sauber nachgemessen** (Backend + Frontend): `tsc` und ESLint ohne Fehler, `npm test` 3996 von 3997 grün (einziger Fehler `werkzeugkiste-auszug.test.ts`, auch auf `main`), `npm run build` erfolgreich mit allen `/admin/kalender`- und `/api/admin/kalender`-Routen.
+
 ### Nicht geprüft (offen)
-- Migration `20261121_proj120_abwesenheitskalender.sql` ist laut Dateikopf **nicht angewendet**. In der Datenbank „Spedilern App“ (`riqafwijurbxvywzlipx`) fehlt sie. Dort listet `list_migrations` zudem nichts nach PROJ-51, wie die späteren Migrationen angewendet wurden, ist unklar.
 - Alle Akzeptanzkriterien im Browser (Monat/Woche/Liste, Formular, Live-Aktualisierung, Handy 375 px, Tablet, Desktop, Firefox/Safari), Zeitumstellung, gleichzeitige Klicks, echte Rechteprüfung mit Lehrkraft/Planer/Super-Admin/Azubi.
 - Playwright-E2E `tests/PROJ-120-abwesenheitskalender.spec.ts` ist nicht geschrieben.
 
@@ -324,7 +329,7 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 Keine bekannt. Das ist **keine** Aussage „fehlerfrei“, weil der Browser- und Datenbanktest fehlt.
 
 ### Entscheidung
-**Noch nicht freigegeben.** Status bleibt „In Review“, bis Migration auf einer Test-Datenbank angewendet und die Kriterien durchgespielt sind.
+**Technisch freigabefähig, Browser-Abnahme steht aus.** Datenbank, Rechte, Schnittstellen und Build sind geprüft; kein Fund (Critical/High). Offen ist nur der Durchlauf der Oberfläche im Browser. Wegen der geringen Reichweite (nur Lehrer-Rollen sehen den Kalender, Azubis nicht; keine Daten vorhanden; Rückweg-Migration liegt bereit) ist ein Deploy mit anschließendem kurzem Rauchtest durch den Nutzer vertretbar. Status bleibt „In Review“, bis dieser Rauchtest bestanden ist.
 
 
 ## Deployment
