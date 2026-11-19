@@ -1,6 +1,6 @@
 # PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
