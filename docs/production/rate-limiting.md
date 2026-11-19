@@ -1,3 +1,26 @@
+# Rate Limiting – Stand dieses Projekts
+
+> Die Anleitung weiter unten (Upstash) ist nur eine Vorlage und **nicht eingebaut**.
+
+## Was gilt
+- **Schreibende API-Aufrufe** (POST, PUT, PATCH, DELETE unter `/api/`): 120 pro Minute und Person. Umgesetzt im Proxy ([src/proxy.ts](../../src/proxy.ts)), Regeln in [src/lib/rate-limit.ts](../../src/lib/rate-limit.ts).
+- **Teure Wege** (KI-Upload, Prüfungs-Extraktion, Werkzeugkiste einlesen/direkt/weiterschreiben/fortsetzen): 20 pro 10 Minuten und Person.
+- Lesezugriffe, `/api/cron/` und `/api/intern/` werden nicht gezählt.
+- Der Zähler liegt in der Datenbank (`rate_limits`, Funktion `rate_limit_hit`), gilt also über alle Server-Instanzen und kostet nichts extra. Migration: `supabase/migrations/20261124_rate_limit.sql`, Rückweg `..._down.sql`.
+- **Fällt der Zähler aus** (Funktion fehlt, Datenbank nicht erreichbar), gilt „erlaubt“. Das Limit legt die App nie lahm.
+- Weitere, ältere Sperren: Prüfungscode-Eingabe (10 Fehlversuche / 10 Min.), öffentliche Links `/s/<Code>`, Passwortprüfung im Profil.
+
+## Was nicht in der App liegt: Login & Registrierung
+Anmelden, Registrieren und „Passwort vergessen“ gehen direkt vom Browser zu Supabase Auth. Die App sieht diese Aufrufe nicht. Die Grenzen stellst du im Supabase-Dashboard ein:
+
+**Authentication → Rate Limits** (je nach Plan sind nicht alle Werte änderbar)
+- Anmeldungen und Registrierungen je IP und 5 Minuten: eher niedrig lassen (Richtwert 30 oder weniger). Hinweis: In einer Schule teilen sich viele Geräte eine IP-Adresse, deshalb nicht zu knapp einstellen.
+- E-Mails (Passwort zurücksetzen, Bestätigung): je Stunde begrenzt lassen; bei der eingebauten E-Mail-Funktion von Supabase ist das Limit sehr klein, für den Schulbetrieb besser einen eigenen SMTP-Zugang eintragen.
+- **Authentication → Attack Protection**: Captcha (Cloudflare Turnstile oder hCaptcha) für Registrierung und „Passwort vergessen“ einschalten. Das ist die wirksamste Maßnahme gegen automatisch angelegte Konten.
+- **Authentication → Sign In / Providers → E-Mail**: Mindestlänge des Passworts (Richtwert 10) und „Leaked Password Protection“ prüfen.
+
+---
+
 # Rate Limiting
 
 Prevent abuse, DDoS attacks, and excessive API usage.

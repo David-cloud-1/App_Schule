@@ -227,3 +227,23 @@ describe('Middleware – Spielansicht für Lehrkräfte merken', () => {
     expect(res.headers.get('set-cookie')).toBeNull()
   })
 })
+
+describe('Rate-Limit im Türsteher', () => {
+  beforeEach(() => {
+    state.user = { id: 'u1' }
+    state.role = null
+  })
+
+  it('antwortet auf schreibende API-Aufrufe mit 429 und Retry-After, wenn das Limit erreicht ist', async () => {
+    const limit = await import('@/lib/rate-limit')
+    const spy = vi.spyOn(limit, 'checkRateLimit').mockResolvedValue({ allowed: false, retryAfter: 17 })
+    const res = await proxy(new NextRequest('http://localhost/api/question-reports', { method: 'POST' }))
+    expect(res.status).toBe(429)
+    expect(res.headers.get('retry-after')).toBe('17')
+    // Lesezugriffe werden nicht gezählt
+    spy.mockClear()
+    expect((await proxy(new NextRequest('http://localhost/api/question-reports'))).status).toBe(200)
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+})

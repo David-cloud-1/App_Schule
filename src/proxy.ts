@@ -18,6 +18,7 @@ import {
   TEACHER_HOME_PATH,
   teacherMayCallApiPath,
 } from '@/lib/roles'
+import { checkRateLimit, rateLimitPolicy } from '@/lib/rate-limit'
 
 export async function proxy(request: NextRequest) {
   // Öffentliche Links (PROJ-67): `/s/<Code>` zeigt eine Seite ohne Konto. Gar
@@ -95,6 +96,21 @@ export async function proxy(request: NextRequest) {
     url.pathname = START_PATH
     url.search = ''
     return NextResponse.redirect(url)
+  }
+
+  // Rate-Limit (Sicherheits-Härtung): schreibende API-Aufrufe je Person zählen.
+  // Gilt für alle Rollen, auch für Admins (ein gekapertes Konto ist so gebremst).
+  if (user) {
+    const policy = rateLimitPolicy(request.method, pathname)
+    if (policy) {
+      const result = await checkRateLimit(user.id, policy)
+      if (!result.allowed) {
+        return NextResponse.json(
+          { error: 'Zu viele Anfragen. Bitte kurz warten und noch einmal versuchen.' },
+          { status: 429, headers: { 'Retry-After': String(result.retryAfter) } }
+        )
+      }
+    }
   }
 
   // Redirect authenticated users away from auth pages — über die Start-Weiche,
