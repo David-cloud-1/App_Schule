@@ -60,6 +60,9 @@ export interface Absence {
   statusSetByName: string | null
   statusSetAt: string | null
   changedAfterSubstitute: boolean
+  /** Gelöscht, obwohl die Vertretung schon eingetragen war: Planer müssen sie zurücknehmen. */
+  cancelledAt: string | null
+  cancelledByName: string | null
   version: number
   updatedAt: string
   updatedByName: string | null
@@ -221,9 +224,14 @@ export function matchesDepartment(a: Pick<Absence, 'allDepartments' | 'departmen
   return a.allDepartments || a.departments.includes(filter)
 }
 
-export function matchesSubstitute(a: Pick<Absence, 'substituteStatus'>, filter: SubstituteFilter): boolean {
+export function matchesSubstitute(
+  a: Pick<Absence, 'substituteStatus'> & { cancelledAt?: string | null },
+  filter: SubstituteFilter,
+): boolean {
   if (filter === 'alle') return true
-  if (filter === 'open') return a.substituteStatus === 'open'
+  // Stornierte Einträge brauchen noch eine Handlung der Planer → zählen als „offen“
+  if (filter === 'open') return a.substituteStatus === 'open' || !!a.cancelledAt
+  if (a.cancelledAt) return false
   return a.substituteStatus === 'entered' || a.substituteStatus === 'not_needed'
 }
 

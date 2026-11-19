@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  matchesSubstitute,
   addDays,
   addMonths,
   applyFilters,
@@ -41,6 +42,8 @@ function absence(over: Partial<Absence> = {}): Absence {
     statusSetByName: null,
     statusSetAt: null,
     changedAfterSubstitute: false,
+    cancelledAt: null,
+    cancelledByName: null,
     version: 1,
     updatedAt: '2026-11-19T08:00:00Z',
     updatedByName: null,
@@ -171,5 +174,14 @@ describe('Überschneidung', () => {
     const hits = findOverlaps(items, { personId: 'p1', dateFrom: '2026-11-25', dateTo: '2026-11-26' })
     expect(hits.map((a) => a.id)).toEqual(['1'])
     expect(findOverlaps(items, { personId: 'p1', dateFrom: '2026-11-25', dateTo: '2026-11-26' }, '1')).toEqual([])
+  })
+})
+
+describe('matchesSubstitute mit Stornierung (gelöscht nach Vertretung)', () => {
+  const cancelled = { substituteStatus: 'entered' as const, cancelledAt: '2026-11-20T09:00:00Z' }
+  it('zählt stornierte Einträge als „offen“, nicht als „eingetragen“', () => {
+    expect(matchesSubstitute(cancelled, 'open')).toBe(true)
+    expect(matchesSubstitute(cancelled, 'entered')).toBe(false)
+    expect(matchesSubstitute(cancelled, 'alle')).toBe(true)
   })
 })

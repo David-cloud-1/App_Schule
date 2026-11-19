@@ -40,6 +40,8 @@ function row(over: Partial<Abwesenheit> = {}): Abwesenheit {
     created_at: '2026-11-19T08:00:00Z',
     updated_at: '2026-11-19T08:00:00Z',
     darf_bearbeiten: false,
+    storniert_am: null,
+    storniert_von_name: null,
     ...over,
   }
 }
@@ -129,5 +131,41 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     render(<AbsenceCalendar initialSubstitute="open" />)
     expect(await screen.findByText('Anna Beispiel')).toBeInTheDocument()
     expect(screen.queryByText('Carla Fertig')).not.toBeInTheDocument()
+  })
+
+  const storniert = {
+    vertretung_status: 'eingetragen' as const,
+    storniert_am: '2026-11-20T09:00:00Z',
+    storniert_von_name: 'Anna Beispiel',
+  }
+
+  it('zeigt gelöschte Einträge mit eingetragener Vertretung gelb als „Gelöscht – Vertretung zurücknehmen“', async () => {
+    mockApi([row(storniert)])
+    render(<AbsenceCalendar />)
+    expect(await screen.findByText('Gelöscht – Vertretung zurücknehmen')).toBeInTheDocument()
+    expect(screen.queryByText('Vertretung eingetragen')).not.toBeInTheDocument()
+  })
+
+  it('zeigt gelöschte Einträge auch im Filter „Offen“ (Planer müssen noch handeln)', async () => {
+    mockApi([row(storniert)])
+    render(<AbsenceCalendar initialSubstitute="open" />)
+    expect(await screen.findByText('Anna Beispiel')).toBeInTheDocument()
+  })
+
+  it('gibt Planern „Vertretung zurückgenommen“ statt der Status-Knöpfe', async () => {
+    mockApi([row(storniert)], { id: 'p3', ist_planer: true, ist_super_admin: false })
+    render(<AbsenceCalendar />)
+    fireEvent.click(await screen.findByText('Anna Beispiel'))
+    await waitFor(() => expect(screen.getByRole('button', { name: /Vertretung zurückgenommen/ })).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /Zurück auf offen/ })).not.toBeInTheDocument()
+  })
+
+  it('zeigt Normal-Lehrkräften nur den Hinweis und „Löschung zurücknehmen“, kein Bearbeiten', async () => {
+    mockApi([row({ ...storniert, darf_bearbeiten: true })])
+    render(<AbsenceCalendar />)
+    fireEvent.click(await screen.findByText('Anna Beispiel'))
+    await waitFor(() => expect(screen.getByRole('button', { name: /Löschung zurücknehmen/ })).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: /Vertretung zurückgenommen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Bearbeiten/ })).not.toBeInTheDocument()
   })
 })

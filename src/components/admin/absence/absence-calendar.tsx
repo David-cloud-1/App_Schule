@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarDays, Check, ChevronLeft, ChevronRight, Hourglass, Plus, Search, WifiOff } from 'lucide-react'
+import { CalendarDays, Check, ChevronLeft, ChevronRight, Hourglass, Plus, Search, TriangleAlert, WifiOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -375,9 +375,12 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
         toast.error(await errorMessage(res, 'Der Eintrag konnte nicht gelöscht werden.'))
         return
       }
-      setOpenId(null)
+      const result = (await res.json().catch(() => ({}))) as { storniert?: boolean }
+      const cancelled = !!result.storniert
+      // Bei schon eingetragener Vertretung bleibt der Eintrag gelb sichtbar, die Schublade bleibt offen.
+      if (!cancelled) setOpenId(null)
       await load(true)
-      toast.success('Abwesenheit gelöscht', {
+      toast.success(cancelled ? 'Löschung vermerkt – Vertretungsplaner sehen es' : 'Abwesenheit gelöscht', {
         duration: 10_000,
         action: {
           label: 'Rückgängig',
@@ -394,6 +397,42 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
           },
         },
       })
+    } catch {
+      toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Löschung zurücknehmen (Eintrag war nur vermerkt, nicht entfernt) */
+  async function undoCancel(a: Absence) {
+    setBusy(true)
+    try {
+      const res = await fetch(`${ABSENCE_API}/${a.id}/wiederherstellen`, { method: 'POST' })
+      if (res.ok) toast.success('Löschung zurückgenommen')
+      else toast.error(await errorMessage(res, 'Das hat nicht geklappt.'))
+      await load(true)
+    } catch {
+      toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Planer: Die Vertretung ist zurückgenommen, der gelöschte Eintrag verschwindet. */
+  async function finishCancellation(a: Absence) {
+    setBusy(true)
+    try {
+      const res = await fetch(`${ABSENCE_API}/${a.id}/storno-abschliessen?version=${a.version}`, { method: 'POST' })
+      if (res.status === 409) {
+        toast.error('Der Eintrag wurde gerade geändert. Die Ansicht wird neu geladen.')
+      } else if (!res.ok) {
+        toast.error(await errorMessage(res, 'Das konnte nicht gespeichert werden.'))
+      } else {
+        setOpenId(null)
+        toast.success('Vertretung zurückgenommen – Eintrag ausgeblendet')
+      }
+      await load(true)
     } catch {
       toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
     } finally {
@@ -565,6 +604,8 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
         onEdit={() => opened && openEdit(opened)}
         onDelete={() => opened && void remove(opened)}
         onSetStatus={(s) => opened && void setStatus(opened, s)}
+        onUndoCancel={() => opened && void undoCancel(opened)}
+        onFinishCancel={() => opened && void finishCancellation(opened)}
       />
 
       {form && (
@@ -614,23 +655,27 @@ function ListView({ items, highlighted, onOpen }: { items: Absence[]; highlighte
 }
 
 /** Kompakte Marke für Monats- und Wochenraster: Icon, Name, Vertretungsstatus als Text */
-function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: string; highlighted?: boolean; onOpen: (a: Absence) => void }) {
+function Chip({ absence, day, highlighted, onOpen, showTime }: { absence: Absence; day: string; highlighted?: boolean; onOpen: (a: Absence) => void; showTime?: boolean }) {
   const starts = absence.dateFrom === day
   const ends = absence.dateTo === day
-  const open = absence.substituteStatus === 'open'
-  const entered = absence.substituteStatus === 'entered'
+  const cancelled = !!absence.cancelledAt
+  const timeText = !absence.allDay && absence.timeFrom && absence.timeTo ? `${absence.timeFrom}–${absence.timeTo}` : null
+  const open = absence.substituteStatus === 'open' && !cancelled
+  const entered = absence.substituteStatus === 'entered' && !cancelled
   return (
     <button
       type="button"
       onClick={() => onOpen(absence)}
-      title={`${absence.personName}: ${absence.typeName}${open ? ', Vertretung offen' : entered ? ', In Untis erfasst' : ''}`}
+      title={`${absence.personName}: ${absence.typeName}${timeText ? `, ${timeText} Uhr` : ''}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung offen' : entered ? ', In Untis erfasst' : ''}`}
       className={cn(
         'flex min-h-11 w-full items-center gap-1 border px-1.5 text-left text-xs font-medium sm:min-h-7',
-        open
-          ? 'border-ws-red/40 bg-ws-red/15 text-ws-red'
-          : entered
-            ? 'border-ws-green/40 bg-ws-green/15 text-ws-green'
-            : ABSENCE_TINT[absence.typeColor],
+        cancelled
+          ? 'border-ws-gold/60 bg-ws-gold/15 text-ws-gold'
+          : open
+            ? 'border-ws-red/40 bg-ws-red/15 text-ws-red'
+            : entered
+              ? 'border-ws-green/40 bg-ws-green/15 text-ws-green'
+              : ABSENCE_TINT[absence.typeColor],
         starts ? 'rounded-l-lg' : 'rounded-l-none border-l-0',
         ends ? 'rounded-r-lg' : 'rounded-r-none border-r-0',
         highlighted && 'ring-2 ring-ws-green/70',
@@ -638,14 +683,18 @@ function Chip({ absence, day, highlighted, onOpen }: { absence: Absence; day: st
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
       )}
     >
-      {open ? (
+      {cancelled ? (
+        <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+      ) : open ? (
         <Hourglass className="size-3.5 shrink-0" aria-hidden />
       ) : entered ? (
         <Check className="size-3.5 shrink-0" aria-hidden />
       ) : (
         <AbsenceIcon name={absence.typeIcon} className="size-3.5 shrink-0" />
       )}
+      {showTime && timeText && absence.dateFrom === day && <span className="shrink-0 font-normal">{timeText.slice(0, 5)}</span>}
       <span className="truncate font-semibold">{absence.personName}</span>
+      {cancelled && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">gelöscht</span>}
       {open && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">offen</span>}
       {entered && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">Untis</span>}
     </button>
@@ -705,7 +754,7 @@ function MonthView({
                 {Number(day.slice(8))}
               </span>
               {list.slice(0, MONTH_CHIPS).map((a) => (
-                <Chip key={a.id} absence={a} day={day} highlighted={highlighted.has(a.id)} onOpen={onOpen} />
+                <Chip key={a.id} absence={a} day={day} highlighted={highlighted.has(a.id)} onOpen={onOpen} showTime />
               ))}
               {list.length > MONTH_CHIPS && (
                 <button

@@ -51,6 +51,8 @@ export function absenceFromApi(a: Abwesenheit): Absence {
     statusSetByName: a.vertretung_von_name,
     statusSetAt: a.vertretung_am,
     changedAfterSubstitute: a.geaendert_nach_vertretung,
+    cancelledAt: a.storniert_am ?? null,
+    cancelledByName: a.storniert_von_name ?? null,
     version: a.version,
     updatedAt: a.updated_at,
     updatedByName: a.updated_by_name ?? null,

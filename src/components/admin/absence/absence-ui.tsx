@@ -15,6 +15,7 @@ import {
   Plane,
   Presentation,
   School,
+  TriangleAlert,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -95,6 +96,21 @@ export function SubstituteBadge({ status, className }: { status: SubstituteStatu
   )
 }
 
+/** Gelöscht, obwohl die Vertretung schon eingetragen war: gelb, Icon plus Text */
+export function CancelledBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border border-ws-gold/30 bg-ws-gold/15 px-2.5 py-0.5 text-xs font-medium text-ws-gold',
+        className,
+      )}
+    >
+      <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+      Gelöscht – Vertretung zurücknehmen
+    </span>
+  )
+}
+
 export function TypeBadge({ absence, className }: { absence: Pick<Absence, 'typeName' | 'typeColor' | 'typeIcon'>; className?: string }) {
   return (
     <span
@@ -127,11 +143,13 @@ export function AbsenceCard({
       className={cn(
         'flex min-h-11 w-full flex-col gap-2 rounded-2xl border p-4 text-left transition-colors duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green',
-        absence.substituteStatus === 'open'
-          ? 'border-ws-red/50 bg-ws-red/10 hover:bg-ws-red/15'
-          : absence.substituteStatus === 'entered'
-            ? 'border-ws-green/40 bg-ws-green/10 hover:bg-ws-green/15'
-            : 'border-ws-line bg-ws-surface hover:bg-ws-raised',
+        absence.cancelledAt
+          ? 'border-ws-gold/60 bg-ws-gold/10 hover:bg-ws-gold/15'
+          : absence.substituteStatus === 'open'
+            ? 'border-ws-red/50 bg-ws-red/10 hover:bg-ws-red/15'
+            : absence.substituteStatus === 'entered'
+              ? 'border-ws-green/40 bg-ws-green/10 hover:bg-ws-green/15'
+              : 'border-ws-line bg-ws-surface hover:bg-ws-raised',
         highlighted && 'ring-2 ring-ws-green/60',
       )}
     >
@@ -152,6 +170,7 @@ export function AbsenceCard({
           {[absence.freeText, absence.note].filter(Boolean).join(' – ')}
         </p>
       )}
+      {absence.cancelledAt && <CancelledBadge className="self-start" />}
       {absence.changedAfterSubstitute && (
         <span className="text-xs font-medium text-ws-orange">Geändert nach Vertretung</span>
       )}
