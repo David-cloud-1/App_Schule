@@ -1,6 +1,8 @@
 import {
   BarChart3,
   Bot,
+  CalendarCog,
+  CalendarDays,
   Building2,
   ClipboardList,
   FileText,
@@ -26,6 +28,8 @@ import { contentScopeShort, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 // PROJ-55: Schulrecht nachschlagen — eigener Eintrag, kein Werkzeug
 import { SCHULRECHT_HREF } from '@/lib/schulrecht'
+// PROJ-120: Abwesenheitskalender für alle Lehrer-Rollen
+import { ABSENCE_HREF } from '@/lib/absence'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -78,6 +82,7 @@ export const ADMIN_MAIN_NAV_HREFS = [
   '/admin/questions',
   WERKZEUGKISTE_HREF,
   SCHULRECHT_HREF,
+  ABSENCE_HREF,
   '/admin/lehrerzimmer',
 ]
 
@@ -117,6 +122,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Paragraphen zu Fragen aus dem Schulalltag – im Wortlaut, ohne KI',
         icon: Scale,
         // PROJ-55: jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
+        teacherVisible: true,
+      },
+      {
+        href: ABSENCE_HREF,
+        label: 'Kalender',
+        description: 'Wer fehlt wann? Abwesenheiten eintragen und Vertretungen im Blick behalten',
+        icon: CalendarDays,
+        // PROJ-120: jede Lehrer-Rolle, schulweit und unabhängig vom Bereichs-Umschalter
         teacherVisible: true,
       },
       {
@@ -245,6 +258,13 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Zuständigkeiten',
         description: 'Wer unterrichtet welches Fach',
         icon: UserCog,
+        superAdminOnly: true,
+      },
+      {
+        href: '/admin/kalender/arten',
+        label: 'Abwesenheitsarten',
+        description: 'Arten von Abwesenheit im Kalender anlegen, ordnen und ausblenden',
+        icon: CalendarCog,
         superAdminOnly: true,
       },
       {

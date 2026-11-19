@@ -21,6 +21,8 @@ export type UserOverview = {
   longestStreak: number
   coins: number
   linkedMain: { id: string; name: string | null } | null
+  /** PROJ-120: Planer-Recht im Abwesenheitskalender */
+  istVertretungsplaner: boolean
 }
 
 export type LearningData = { subjects: SubjectStat[]; activity: ActivityDay[] }

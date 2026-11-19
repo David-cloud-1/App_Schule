@@ -54,6 +54,7 @@ describe('AdminNav (PROJ-40)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Kalender',
       'Lehrerzimmer',
     ])
     expect(screen.getByTestId('nav-fold-weitere')).toHaveAttribute('aria-expanded', 'false')
@@ -184,6 +185,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Kalender',
       'Lehrerzimmer',
       'Meine Fächer',
       'Gemeldete Fragen',
@@ -209,6 +211,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Kalender',
       'Lehrerzimmer',
       'Meine Fächer',
       'Gemeldete Fragen',

@@ -25,6 +25,7 @@ import {
   SpielstandCard,
   SteckbriefCard,
 } from './user-detail-sections'
+import { PlannerCard } from './planner-card'
 import { EmailDialog, postJson, RenameDialog, ResetProgressDialog } from './user-detail-dialogs'
 
 const backLink =
@@ -159,6 +160,7 @@ export function UserDetailView({ userId, ownId }: { userId: string; ownId: strin
             confirming={confirming}
           />
           <SpielstandCard overview={person} />
+          <PlannerCard overview={person} onDone={reloadAfterEdit} />
         </div>
       )}
 

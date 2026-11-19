@@ -41,9 +41,11 @@ describe('Admin-Navigation (PROJ-40)', () => {
       adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
     expect(labels('admin')).toContain('Fachbereiche')
     expect(labels('admin')).toContain('Zuständigkeiten')
+    expect(labels('admin')).toContain('Abwesenheitsarten')
     expect(labels('department_admin')).not.toContain('Fachbereiche')
     expect(labels('department_admin')).not.toContain('Zuständigkeiten')
-    expect(labels('department_admin')).toHaveLength(labels('admin').length - 2)
+    expect(labels('department_admin')).not.toContain('Abwesenheitsarten')
+    expect(labels('department_admin')).toHaveLength(labels('admin').length - 3)
   })
 
   it('zeigt weder Super-Admin noch Bereichs-Admin „Meine Fächer“ (PROJ-48 — die sind bereits bereichsweit zuständig)', () => {
@@ -57,7 +59,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
     const groups = adminNavGroupsFor('teacher')
     expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte'])
     expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
-      ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Meine Fächer', 'Lehrerzimmer'],
+      ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Kalender', 'Meine Fächer', 'Lehrerzimmer'],
       ['Inhalte', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
     ])
   })

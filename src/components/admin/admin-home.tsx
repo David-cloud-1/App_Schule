@@ -11,6 +11,7 @@ import { TeacherWelcomeDialog } from '@/components/admin/teacher-welcome-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminLoadingState } from '@/components/admin/admin-states'
 import { AdminTasksCard } from '@/components/admin/admin-tasks-card'
+import { CalendarNoticesCard } from '@/components/admin/absence/calendar-notices-card'
 
 type MySubjectTile = {
   id: string
@@ -157,6 +158,9 @@ export function AdminHome({
         </p>
       )}
 
+
+      {/* PROJ-120: Hinweise zu deinen Abwesenheiten */}
+      <CalendarNoticesCard />
 
       {/* PROJ-81: was gerade auf dich wartet */}
       <AdminTasksCard />

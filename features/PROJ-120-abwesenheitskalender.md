@@ -270,6 +270,34 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - Der Code liest `profiles.ist_vertretungsplaner` (Nutzer-Detailseite) und ruft `abw_*` auf: Er darf erst live gehen, wenn die Migration angewendet ist (ist sie).
 - Realtime: auf `abwesenheiten` (alle Lehrkräfte) und `kalender_hinweise` (nur eigene) hören, bei Ereignis den sichtbaren Zeitraum neu laden (siehe Tech Design).
 
+## Frontend-Umsetzung (2026-11-19)
+
+**Stand:** Oberfläche gebaut und gegen die vorhandenen Schnittstellen verdrahtet (Branch `feat/proj-120-abwesenheitskalender`). Noch nicht im Browser gegen die Live-Datenbank geprüft.
+
+### Gebaut
+- `/admin/kalender` (`absence-calendar.tsx`): Ansichten **Monat · Woche · Liste** (Liste am Handy Standard), Zeitnavigation mit „Heute“, Filter Abteilung · Vertretung (Alle/Offen/Eingetragen) · Art · Name. Ansicht und Filter werden im Browser gemerkt (`localStorage`, mit Rückfall). `?vertretung=offen` aus „Zu erledigen“ öffnet mit Filter „Offen“.
+- Eintragskarte überall mit Icon + Text für Art und Vertretungsstatus (nie nur Farbe), offene Einträge mit orangem Rand und Text „offen“.
+- Detail-Schublade (rechts am Rechner, von unten am Handy): alle Angaben, „eingetragen von“, Status-Knöpfe nur für Planer/Super-Admin, Bearbeiten/Löschen nur bei `darf_bearbeiten` (Server entscheidet). Löschen mit `AlertDialog` und 10 s „Rückgängig“ (`/wiederherstellen`).
+- Formular (`absence-form-dialog.tsx`): Person mit Suche, Art, Von/Bis, Ganztägig, Uhrzeiten, Abteilungen/„Alle“, Freitext nur bei Arten mit Freitext (mit Sichtbarkeits-Hinweis), Notiz; Fehler am Feld; Überschneidungs-Warnung vom Server (`/ueberschneidungen`), Speichern bleibt möglich.
+- Gleichzeitiges Arbeiten: Versionsnummer wird bei Ändern, Löschen und Status mitgeschickt (409 → verständliche Meldung und Neuladen). Wird der Eintrag im offenen Formular von jemand anderem geändert/gelöscht, erscheint oben der Hinweis mit „Neu laden“; Eingaben bleiben erhalten.
+- Aktualisierung: Supabase Realtime auf `abwesenheiten`, gesammelt höchstens ca. 1× pro Sekunde, Daten immer über die Schnittstelle. Rückfall ohne Live-Verbindung: Neuladen beim Tab-Wechsel, bei „online“ und im Minutentakt; „Offline – Stand von …“ bei Fehlern. Geänderte/neue Einträge werden kurz hervorgehoben (Ring, ohne Bewegung). „Heute“ springt nach Mitternacht weiter.
+- Startseite: Karte **„Neu für dich“** (`calendar-notices-card.tsx`, live über `kalender_hinweise`, „Okay“ je Hinweis oder alle).
+- Nutzer-Detailseite: Karte **Abwesenheitskalender** mit Schalter „Vertretungsplaner“ und Bestätigung (Name + E-Mail).
+- `/admin/kalender/arten` (nur Super-Admin, Seite prüft die Rolle selbst): Arten hinzufügen, umbenennen, Farbe/Symbol, aktiv/inaktiv, Reihenfolge; „Sonstige Abwesenheit“ fest.
+- Seitenleiste: „Kalender“ (alle Lehrer-Rollen, bei den Hauptseiten), „Abwesenheitsarten“ (Verwaltung, nur Super-Admin).
+- Hilfen: `src/lib/absence.ts` (Datum, Raster, Filter, Formularprüfung) und `src/lib/absence-api.ts` (Brücke zu den Feldern aus `kalender.ts`), beide mit Tests.
+
+### Abweichungen von der Spec
+- **Mehrtägige Einträge** laufen im Monat als verbundene Marken pro Tag (abgerundet an Anfang/Ende), nicht als ein durchgehender Balken über die Wochenzeile.
+- **Wochenansicht:** sieben Tagesspalten (am Handy untereinander) mit Uhrzeit unter dem Eintrag, noch ohne Stundenraster.
+- **Arten-Reihenfolge** per Pfeil-Knöpfen statt Ziehen (Tastatur und Touch gleichermaßen bedienbar).
+- **Formular** prüft mit eigener Funktion (`validateAbsenceForm`) statt react-hook-form + zod; die Regeln entsprechen `abwesenheitInputSchema`, der Server prüft zusätzlich.
+- „Offene Vertretungen“ als Schnellknopf für Planer ist der Filter „Offen“ im Kopf (ein Klick).
+
+### Noch offen
+- Prüfung im Browser (Handy/Tablet/Rechner, Hell/Dunkel) gegen die Live-Datenbank und Realtime mit zwei Sitzungen.
+- Wochen- und Monatsansicht: Tastatursteuerung des Rasters (Pfeiltasten) ist noch nicht gebaut; Marken und Knöpfe sind per Tab erreichbar.
+
 ## QA Test Results
 _To be added by /qa_
 
