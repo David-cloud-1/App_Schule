@@ -1,6 +1,6 @@
 # PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-19
 **Last Updated:** 2026-11-19
 
@@ -299,7 +299,33 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - Wochen- und Monatsansicht: Tastatursteuerung des Rasters (Pfeiltasten) ist noch nicht gebaut; Marken und Knöpfe sind per Tab erreichbar.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Getestet:** 2026-11-19 · Branch `feat/proj-120-abwesenheitskalender` (5 Commits vor `main`) · Umfang: statische Prüfung und automatisierte Tests. **Keine Prüfung gegen eine laufende Datenbank, kein Browser-Test.**
+
+### Automatisierte Prüfung
+- `tsc --noEmit`: sauber. `npm run lint`: 0 Fehler (63 Warnungen, nicht aus PROJ-120).
+- `npm test`: 3996 von 3997 grün. Der eine Fehler (`werkzeugkiste-auszug.test.ts`, „nennt die Urheberin oder den Urheber“) tritt **genauso auf `main` auf** und gehört nicht zu PROJ-120.
+- Neue Tests von PROJ-120 (Hilfsmodule, Routen, Kalender-Komponente, Navigation, Rollen, Aufgabenliste) laufen alle grün.
+
+### Sicherheitsprüfung der Migration (Code-Review)
+- RLS auf allen 5 neuen Tabellen; `authenticated` hat nur SELECT, geschrieben wird nur über Funktionen.
+- Alle Funktionen `SECURITY DEFINER` mit festem `search_path`; Ausführung zuerst für PUBLIC/anon/authenticated entzogen, dann gezielt gewährt.
+- `profiles.ist_vertretungsplaner` ist durch die bestehenden Spaltenrechte nicht selbst setzbar; vergeben nur über `abw_planer_setzen` (Super-Admin). Rollenentzug setzt das Recht zurück.
+- Vertretungsstatus nur über `abw_vertretung_setzen` mit Planer-Prüfung. Versionszähler vorhanden.
+- Realtime nur für `abwesenheiten` und `kalender_hinweise`, mit SELECT-Regeln.
+- Kein Fund (Critical/High) im Code.
+
+### Nicht geprüft (offen)
+- Migration `20261121_proj120_abwesenheitskalender.sql` ist laut Dateikopf **nicht angewendet**. In der Datenbank „Spedilern App“ (`riqafwijurbxvywzlipx`) fehlt sie. Dort listet `list_migrations` zudem nichts nach PROJ-51, wie die späteren Migrationen angewendet wurden, ist unklar.
+- Alle Akzeptanzkriterien im Browser (Monat/Woche/Liste, Formular, Live-Aktualisierung, Handy 375 px, Tablet, Desktop, Firefox/Safari), Zeitumstellung, gleichzeitige Klicks, echte Rechteprüfung mit Lehrkraft/Planer/Super-Admin/Azubi.
+- Playwright-E2E `tests/PROJ-120-abwesenheitskalender.spec.ts` ist nicht geschrieben.
+
+### Bugs
+Keine bekannt. Das ist **keine** Aussage „fehlerfrei“, weil der Browser- und Datenbanktest fehlt.
+
+### Entscheidung
+**Noch nicht freigegeben.** Status bleibt „In Review“, bis Migration auf einer Test-Datenbank angewendet und die Kriterien durchgespielt sind.
+
 
 ## Deployment
 _To be added by /deploy_
