@@ -125,10 +125,26 @@ function NormZeile({
   return (
     <Collapsible open={offen} onOpenChange={setOffen}>
       <CollapsibleTrigger className={`${TRIGGER} hover:bg-ws-raised`}>
-        <span className="w-20 shrink-0 text-sm font-semibold text-ws-text">{nr}</span>
-        <span className="min-w-0 flex-1 truncate text-sm text-ws-muted" title={titel}>
-          {titel}
-        </span>
+        {nr.length > 10 ? (
+          // Lange Bezeichnung (z. B. HLL): Name oben, Kategorie darunter
+          <span className="min-w-0 flex-1 py-1">
+            <span className="block text-sm font-semibold text-ws-text" title={nr}>
+              {nr}
+            </span>
+            {titel ? (
+              <span className="block text-xs text-ws-muted" title={titel}>
+                {titel}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          <>
+            <span className="w-20 shrink-0 text-sm font-semibold text-ws-text">{nr}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-ws-muted" title={titel}>
+              {titel}
+            </span>
+          </>
+        )}
         <ChevronDown className="size-4 shrink-0 text-ws-muted transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
       </CollapsibleTrigger>
       <CollapsibleContent className="pb-2 pl-3 pr-1 pt-1">
