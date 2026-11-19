@@ -79,6 +79,16 @@ Abwesenheiten (Fortbildung, Dienstreise, Krankheit …) stehen heute nirgends ge
 - [ ] Hinweise verschwinden nach „Okay“ oder spätestens nach 14 Tagen. Es gibt **keine** E-Mails oder Pushes.
 - [ ] Wer sich selbst einträgt, bekommt keinen Hinweis. Ebenso nicht, wer für sich selbst ändert.
 
+### Automatische Aktualisierung
+- [ ] Legt jemand einen Eintrag an, ändert oder löscht ihn oder setzt einen Vertretungsstatus, sehen alle, die den Kalender gerade offen haben, die Änderung **innerhalb weniger Sekunden**, ohne neu zu laden.
+- [ ] Das gilt für alle Ansichten (Monat, Woche, Liste), für die Filter-Ergebnisse, für die offene Detail-Schublade, für die Karte „Neu für dich“ und für den Zähler „ohne Vertretung“ in „Zu erledigen“.
+- [ ] Die Aktualisierung stört nicht: Scrollposition, gewählter Zeitraum, Filter und ein offenes Formular bleiben erhalten. Bereits Getipptes geht nie verloren.
+- [ ] Ändert jemand anderes den Eintrag, den man gerade in der Detail-Schublade ansieht, aktualisieren sich die Angaben dort sofort. Hat man ihn gerade **im Formular offen**, erscheint oben der Hinweis „Dieser Eintrag wurde gerade von X geändert“ mit „Neu laden“. Beim Speichern ohne Neuladen greift die Versionsprüfung („wurde gerade geändert“).
+- [ ] Wird der offene Eintrag von jemand anderem gelöscht, zeigt die Schublade „Eintrag wurde gelöscht“.
+- [ ] Neu hinzugekommene oder geänderte Einträge werden kurz (höchstens 200 ms Animation, bei „Bewegung reduzieren“ ohne) hervorgehoben.
+- [ ] Ist die Live-Verbindung unterbrochen (z. B. WLAN weg, Laptop im Ruhezustand), lädt der Kalender beim Zurückkehren in den Tab bzw. bei wiederhergestellter Verbindung automatisch neu und prüft danach zusätzlich jede Minute, bis die Live-Verbindung wieder steht. Ein dezenter Hinweis „Offline – Stand von 10:42“ ist sichtbar, solange keine Verbindung besteht.
+- [ ] Live-Aktualisierungen zeigen nur, was die Person ohnehin sehen darf. Azubis erhalten keine Daten.
+
 ### Verwaltung (Super-Admin)
 - [ ] In der Nutzerverwaltung bzw. Nutzer-Detailseite (PROJ-59) gibt es für jede Lehrer-Rolle einen Schalter **„Vertretungsplaner“**. Nur der Super-Admin sieht und ändert ihn. Jede Änderung wird protokolliert, es gibt einen Bestätigungsdialog mit Name und E-Mail.
 - [ ] Neue Seite „Abwesenheitsarten“ (nur Super-Admin): Liste mit Name, Farbe (aus den `ws-*`-Tokens), Icon, Reihenfolge, aktiv/inaktiv. Man kann **Arten hinzufügen, umbenennen, umsortieren und deaktivieren**. Eine Art mit Einträgen kann nicht gelöscht, nur deaktiviert werden. Die Art „Sonstige Abwesenheit“ ist fest und nicht deaktivierbar.
@@ -97,6 +107,8 @@ Abwesenheiten (Fortbildung, Dienstreise, Krankheit …) stehen heute nirgends ge
 - **Ladefehler:** `AdminErrorState` mit „Erneut versuchen“.
 - **Eintrag in der Vergangenheit:** erlaubt (z. B. nachträglich eintragen), ohne Hinweise an die Planer.
 - **Inaktive Art:** Bestehende Einträge zeigen sie weiter. Im Formular ist sie nicht mehr wählbar.
+- **Viele Änderungen kurz hintereinander** (z. B. ein Planer hakt 20 Einträge ab): Die Ansicht sammelt sie und lädt höchstens etwa einmal pro Sekunde neu, statt zu flackern.
+- **Kalender läuft stundenlang offen (z. B. im Lehrerzimmer am Bildschirm):** Nach Mitternacht springt die Markierung „Heute“ auf den neuen Tag. Die Live-Verbindung erneuert sich selbst, auch nach Ablauf der Anmeldung im Hintergrund.
 - **Sehr langer Freitext/Notiz:** Auf 300 Zeichen begrenzt, im Kalender gekürzt mit „…“, vollständig in den Details und im `title`.
 
 ## Technical Requirements
@@ -189,6 +201,7 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 - **Vertretungsstatus nur über eine eigene Server-Aktion** änderbar, nie über das normale Bearbeiten. *Warum:* So kann eine Lehrkraft beim Bearbeiten ihres Eintrags den Status nicht versehentlich oder absichtlich auf „eingetragen“ setzen. Dieselbe Stelle setzt automatisch „zurück auf offen“, wenn sich Zeit, Art oder Abteilungen ändern.
 - **Versionszähler gegen gleichzeitige Klicks:** Jede Änderung schickt die Version mit, die man gesehen hat. Passt sie nicht mehr, kommt „Status wurde gerade geändert“ und die Ansicht lädt neu. *Warum:* Zwei Planer überschreiben sich nie still.
 - **Hinweise als eigene Liste pro Empfänger**, erzeugt vom Server beim Speichern. *Warum:* einfach, schnell zu zählen und ohne E-Mail oder Push (Spec). Der Zähler für Planer kommt in die bestehende „Zu erledigen“-Abfrage (PROJ-81), damit die Startseite nur einen Aufruf mehr macht.
+- **Automatische Aktualisierung über Supabase Realtime** (im Projekt schon beim KI-Generator im Einsatz, im Free Tier enthalten). Der Kalender hört auf Änderungen an den Abwesenheiten und an den eigenen Hinweisen. Bei einer Änderung übernimmt er **nicht** den mitgeschickten Inhalt, sondern lädt den sichtbaren Zeitraum kurz neu (gesammelt, höchstens ca. einmal pro Sekunde). *Warum:* So gelten immer dieselben Rechte- und Filterregeln wie beim normalen Laden, und es kann nichts angezeigt werden, was man nicht sehen darf. Die Zeilenregeln der Datenbank gelten auch für die Live-Benachrichtigungen. *Rückfallebene:* Neu laden beim Zurückkehren in den Tab und, solange die Live-Verbindung fehlt, einmal pro Minute. *Warum:* Schul-WLAN und Laptops im Ruhezustand unterbrechen Verbindungen oft.
 - **Nur sichtbaren Zeitraum laden:** Die Schnittstelle bekommt „von–bis“ und die Filter. *Warum:* Auch bei vielen Einträgen bleibt jede Ansicht unter 500 ms.
 - **Freigabelisten für Lehrkräfte erweitern:** Die Seite und die Schnittstelle des Kalenders kommen in die vorhandene Liste der Pfade, die eine Lehrkraft (nicht nur Admins) öffnen darf. *Warum:* Sonst würde die bestehende Zugangssperre normale Lehrkräfte aussperren.
 - **Vorbereitet für Schritt 2 (WebUntis/Outlook), ohne es zu bauen:** Jeder Eintrag hat eine dauerhafte Kennung und „geändert am“. Damit lässt sich später ein Kalender-Abo (iCal-Link für Outlook) oder ein Abgleich anschließen, ohne das Datenmodell umzubauen.
@@ -213,6 +226,7 @@ Speicherort: bestehende Supabase-Datenbank (EU). Alles serverseitig, nichts im B
 ### Risiken
 - **Freigabeliste vergessen:** Ohne Eintrag in die Lehrkraft-Pfade sehen nur Admins den Kalender → Test in `teacher-api-gate.test.ts` ergänzen.
 - **Monatsraster am Handy:** sehr eng. Deshalb ist dort die Liste Standard und der Monat zeigt nur farbige Markierungen mit „+N“.
+- **Live-Verbindungen im Free Tier:** Supabase erlaubt gleichzeitig 200 Live-Verbindungen. Bei einem Kollegium von unter 100 Personen ist das ausreichend; der Kalender öffnet pro Browser-Tab nur eine Verbindung und schließt sie beim Verlassen der Seite.
 - **Geschütztes Planer-Merkmal:** muss wie die Rolle vor Selbstzuweisung geschützt werden (bestehender Spaltenschutz auf dem Konto wird erweitert).
 
 ## QA Test Results
