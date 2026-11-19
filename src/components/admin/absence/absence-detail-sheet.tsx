@@ -72,7 +72,7 @@ export function AbsenceDetailSheet({
               <div
                 className={
                   absence.substituteStatus === 'open'
-                    ? 'mt-5 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-4'
+                    ? 'mt-5 rounded-xl border border-ws-red/30 bg-ws-red/15 p-4'
                     : absence.substituteStatus === 'entered'
                       ? 'mt-5 rounded-xl border border-ws-green/30 bg-ws-green/15 p-4'
                       : 'mt-5 rounded-xl border border-ws-line bg-ws-raised p-4'
@@ -80,7 +80,7 @@ export function AbsenceDetailSheet({
               >
                 <p className="text-sm font-semibold text-ws-text">
                   {absence.substituteStatus === 'open' && `Für ${absence.personName} wird noch eine Vertretung gebraucht.`}
-                  {absence.substituteStatus === 'entered' && `Die Vertretung für ${absence.personName} ist organisiert.`}
+                  {absence.substituteStatus === 'entered' && `Die Vertretung für ${absence.personName} ist in Untis erfasst.`}
                   {absence.substituteStatus === 'not_needed' && `Für ${absence.personName} ist keine Vertretung nötig.`}
                 </p>
                 <dl className="mt-3 space-y-2">
@@ -119,7 +119,7 @@ export function AbsenceDetailSheet({
                     {absence.substituteStatus !== 'entered' && (
                       <Button disabled={busy} onClick={() => onSetStatus('entered')} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
                         <Check className="mr-2 size-4" aria-hidden />
-                        Vertretung organisiert
+                        In Untis erfasst
                       </Button>
                     )}
                     {absence.substituteStatus !== 'not_needed' && (

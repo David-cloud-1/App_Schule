@@ -24,7 +24,7 @@ export type VertretungStatus = (typeof VERTRETUNG_STATUS)[number]
 
 export const VERTRETUNG_LABEL: Record<VertretungStatus, string> = {
   offen: 'Vertretung offen',
-  eingetragen: 'Vertretung organisiert',
+  eingetragen: 'In Untis erfasst',
   nicht_noetig: 'Keine Vertretung nötig',
 }
 
