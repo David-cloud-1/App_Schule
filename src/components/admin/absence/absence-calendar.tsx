@@ -444,7 +444,7 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
             options={[
               { value: 'alle', label: 'Alle' },
               { value: 'open', label: 'Offen' },
-              { value: 'entered', label: 'Eingetragen' },
+              { value: 'entered', label: 'Organisiert' },
             ]}
           />
           <Select value={filters.typeId} onValueChange={(v) => setFilter('typeId', v)}>
