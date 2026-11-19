@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { getCurrentDepartment } from '@/lib/departments-server'
@@ -7,7 +8,16 @@ import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { PlayerMenu } from '@/components/player-menu'
-import { isTeacherRole, NO_ACCESS_MESSAGE, NO_ACCESS_PARAM } from '@/lib/roles'
+import {
+  isTeacherRole,
+  NO_ACCESS_MESSAGE,
+  NO_ACCESS_PARAM,
+  PLAYER_VIEW_COOKIE,
+  PLAYER_VIEW_PARAM,
+  PLAYER_VIEW_VALUE,
+  shouldRedirectTeacherHome,
+  TEACHER_HOME_PATH,
+} from '@/lib/roles'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { OnboardingCard } from '@/components/onboarding-card'
 import { CoinBalance } from '@/components/coin-balance'
@@ -33,7 +43,8 @@ export default async function HomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const noAccess = (await searchParams)[NO_ACCESS_PARAM] !== undefined
+  const params = await searchParams
+  const noAccess = params[NO_ACCESS_PARAM] !== undefined
   const supabase = await createClient()
   const {
     data: { user },
@@ -90,6 +101,14 @@ export default async function HomePage({
 
   // ── Profile ───────────────────────────────────────────────────────────────
   const profile = profileResult.data
+
+  // Lehrkräfte starten im Lehrkräfte-Bereich — die Spielansicht nur auf eigenen Wunsch
+  const playerViewOpened =
+    params[PLAYER_VIEW_PARAM] === PLAYER_VIEW_VALUE ||
+    (await cookies()).get(PLAYER_VIEW_COOKIE)?.value === '1'
+  if (shouldRedirectTeacherHome(profile?.role, playerViewOpened ? '1' : undefined)) {
+    redirect(TEACHER_HOME_PATH)
+  }
   const totalXp = (profile?.total_xp as number) ?? 0
   const currentStreak = (profile?.current_streak as number) ?? 0
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'

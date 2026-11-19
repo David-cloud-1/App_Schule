@@ -89,6 +89,25 @@ export function startPathFor(role: unknown): string {
 }
 
 /**
+ * Spielansicht für Lehrkräfte: `/` ist die Schüler-Startseite. Eine Lehrkraft,
+ * die dort ankommt (Lesezeichen, Handy-Symbol), wird in den Lehrkräfte-Bereich
+ * geleitet — außer sie hat die Spielansicht selbst geöffnet („Zur Lern-App“
+ * hängt `?ansicht=spiel` an). Die Proxy-Schicht merkt sich das in einem
+ * Sitzungs-Cookie, damit auch die Navigation in der Spielansicht (Heute,
+ * Lernen …) nicht zurückspringt. Der Lehrkräfte-Bereich löscht den Merker
+ * wieder (auch nach einer neuen Anmeldung, denn `/start` führt dorthin).
+ */
+export const PLAYER_VIEW_PARAM = 'ansicht'
+export const PLAYER_VIEW_VALUE = 'spiel'
+export const PLAYER_VIEW_COOKIE = 'ws_spielansicht'
+export const PLAYER_VIEW_HREF = `${PLAYER_HOME_PATH}?${PLAYER_VIEW_PARAM}=${PLAYER_VIEW_VALUE}`
+
+/** Soll `/` die Lehrkraft in den Lehrkräfte-Bereich schicken? */
+export function shouldRedirectTeacherHome(role: unknown, playerViewCookie: string | undefined): boolean {
+  return isTeacherRole(role) && playerViewCookie !== '1'
+}
+
+/**
  * Seiten unter /admin, die eine reine Lehrkraft (ohne Verwaltungsrechte)
  * öffnen darf. Exakte Pfade bzw. Pfad-Präfixe; alles andere leitet zur
  * Übersicht um. Leistungsnachweise (PROJ-46): eigene Nachweise anlegen,

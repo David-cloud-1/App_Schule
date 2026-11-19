@@ -23,7 +23,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { contentScopeShort, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
+import { contentScopeShort, PLAYER_VIEW_HREF, ROLE_LABEL, type TeacherRole } from '@/lib/roles'
 // PROJ-51: Die Werkzeugkiste ist eine Seite im Lehrkräfte-Bereich (vorher Hugging Face)
 import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 // PROJ-55: Schulrecht nachschlagen — eigener Eintrag, kein Werkzeug
@@ -390,7 +390,7 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     kind: 'link',
     href: ADMIN_ACCOUNT_HREF,
   },
-  { id: 'lern-app', label: 'Zur Lern-App', keywords: ['schüler', 'quiz', 'spielen'], kind: 'link', href: '/' },
+  { id: 'lern-app', label: 'Zur Lern-App', keywords: ['schüler', 'quiz', 'spielen'], kind: 'link', href: PLAYER_VIEW_HREF },
   { id: 'darstellung', label: 'Darstellung wechseln', keywords: ['hell', 'dunkel', 'beamer', 'farbe', 'theme'], kind: 'theme' },
 ]
 

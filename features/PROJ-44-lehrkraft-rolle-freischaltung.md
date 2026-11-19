@@ -362,3 +362,14 @@ Alle bestehenden Tests grün (1.173), darunter Admin-Routen, Leistungsnachweise,
 - **Nicht geprüft (braucht ein Konto bzw. einen Browser):** Weiche nach dem Login, Willkommens-Hinweis, Rangliste mit Lehrkraft-Konto, Hinweis „kein Zugang“, Aussehen und Handy-Ansicht.
 - **Jetzt zu tun (Nutzer):** Ein Testkonto in der Nutzerverwaltung zur Lehrkraft machen und die Punkte oben einmal im Browser durchgehen. Danach die Kolleginnen und Kollegen freischalten.
 - **Tag:** `v1.44.0-PROJ-44`
+
+## Nachbesserung 2026-11-19: Lehrkräfte landen auch über `/` im Lehrkräfte-Bereich
+
+**Lücke:** Die Start-Weiche (`/start`) schickte Lehrkräfte nach dem Login in den Lehrkräfte-Bereich. Wer aber schon angemeldet war und die Adresse direkt öffnete (Lesezeichen, Handy-Symbol), kam auf `/`, die Schüler-Startseite.
+
+**Umsetzung:**
+- `/` ([src/app/page.tsx](../src/app/page.tsx)) leitet alle Lehrer-Rollen nach `/admin`, außer die Spielansicht wurde bewusst geöffnet (`shouldRedirectTeacherHome()` in [src/lib/roles.ts](../src/lib/roles.ts)).
+- „Zur Lern-App“ (Kopfzeile, Konto-Menü, Schnellsuche) zeigt auf `/?ansicht=spiel` (`PLAYER_VIEW_HREF`).
+- Die Proxy-Schicht ([src/proxy.ts](../src/proxy.ts)) merkt sich das in einem Sitzungs-Cookie `ws_spielansicht`, damit die Navigation in der Spielansicht (Heute, Lernen …) nicht zurückspringt. Jeder Aufruf unter `/admin` löscht das Cookie wieder; da `/start` dorthin führt, gilt das auch nach einer neuen Anmeldung.
+- Azubis sind nicht betroffen.
+- Tests: `roles.test.ts`, `proxy.test.ts` (Cookie setzen/behalten/löschen), `admin-shell.test.tsx` (Link).

@@ -4,6 +4,7 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, PanelLeft, Search } from 'lucide-react'
+import { PLAYER_VIEW_HREF } from '@/lib/roles'
 import { useWorkspace } from '@/components/admin/workspace-provider'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
 import { useDepartment } from '@/components/department-provider'
@@ -116,7 +117,7 @@ export function AdminTopbar() {
       </button>
 
       <Link
-        href="/"
+        href={PLAYER_VIEW_HREF}
         title="Zur Lern-App"
         className="hidden h-11 shrink-0 items-center rounded-xl px-3 text-sm sm:flex font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
       >

@@ -194,3 +194,36 @@ describe('Middleware – Pflichtwechsel nach „Passwort neu vergeben“ (PROJ-5
     expect((await call('/')).status).toBe(200)
   })
 })
+
+describe('Middleware – Spielansicht für Lehrkräfte merken', () => {
+  beforeEach(() => {
+    state.user = { id: 'u1' }
+    state.role = 'teacher'
+  })
+
+  function callWithCookie(path: string, cookie?: string) {
+    return proxy(new NextRequest(`http://localhost${path}`, cookie ? { headers: { cookie } } : undefined))
+  }
+
+  it('merkt sich „Zur Lern-App“ in einem Cookie', async () => {
+    const res = await call('/?ansicht=spiel')
+    expect(res.headers.get('set-cookie')).toContain('ws_spielansicht=1')
+  })
+
+  it('setzt ohne den Zusatz kein Cookie', async () => {
+    expect(await call('/')).toBeDefined()
+    expect((await call('/')).headers.get('set-cookie')).toBeNull()
+  })
+
+  it('vergisst den Merker im Lehrkräfte-Bereich', async () => {
+    for (const path of ['/admin', '/admin/questions']) {
+      const res = await callWithCookie(path, 'ws_spielansicht=1')
+      expect(res.headers.get('set-cookie') ?? '').toMatch(/ws_spielansicht=;/)
+    }
+  })
+
+  it('lässt das Cookie in der Spielansicht stehen', async () => {
+    const res = await callWithCookie('/profile', 'ws_spielansicht=1')
+    expect(res.headers.get('set-cookie')).toBeNull()
+  })
+})

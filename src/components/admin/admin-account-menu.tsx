@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ADMIN_ACCOUNT_HREF, teacherRoleLabel } from '@/lib/admin-nav'
-import { ROLE_DESCRIPTION } from '@/lib/roles'
+import { PLAYER_VIEW_HREF, ROLE_DESCRIPTION } from '@/lib/roles'
 import { parseWorkspaceTheme, WORKSPACE_THEME_LABEL, WORKSPACE_THEMES } from '@/lib/workspace-theme'
 
 const THEME_ICON = { dark: Moon, light: Sun, system: Monitor } as const
@@ -128,7 +128,7 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
-          <Link href="/">
+          <Link href={PLAYER_VIEW_HREF}>
             <Gamepad2 className="text-ws-green" />
             Zur Lern-App
           </Link>

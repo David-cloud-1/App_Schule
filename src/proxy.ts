@@ -11,6 +11,9 @@ import {
   NO_ACCESS_MESSAGE,
   NO_ACCESS_PARAM,
   NO_RIGHTS_MESSAGE,
+  PLAYER_VIEW_COOKIE,
+  PLAYER_VIEW_PARAM,
+  PLAYER_VIEW_VALUE,
   START_PATH,
   TEACHER_HOME_PATH,
   teacherMayCallApiPath,
@@ -145,6 +148,18 @@ export async function proxy(request: NextRequest) {
         url.search = `?${BLOCKED_PARAM}=1`
         return NextResponse.redirect(url)
       }
+    }
+  }
+
+  // Spielansicht für Lehrkräfte merken bzw. vergessen (siehe roles.ts)
+  if (user) {
+    if (pathname === '/' && request.nextUrl.searchParams.get(PLAYER_VIEW_PARAM) === PLAYER_VIEW_VALUE) {
+      supabaseResponse.cookies.set(PLAYER_VIEW_COOKIE, '1', { path: '/', sameSite: 'lax' })
+    } else if (
+      request.cookies.has(PLAYER_VIEW_COOKIE) &&
+      (pathname === '/admin' || pathname.startsWith('/admin/'))
+    ) {
+      supabaseResponse.cookies.delete(PLAYER_VIEW_COOKIE)
     }
   }
 

@@ -9,7 +9,9 @@ import {
   mayOpenAdminPath,
   ROLE_DESCRIPTION,
   ROLE_LABEL,
+  PLAYER_VIEW_HREF,
   safeRedirectTarget,
+  shouldRedirectTeacherHome,
   START_PATH,
   startPathFor,
   teacherMayCallApiPath,
@@ -50,6 +52,16 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(startPathFor('admin')).toBe('/admin')
     expect(startPathFor('student')).toBe('/')
     expect(startPathFor(null)).toBe('/')
+  })
+
+  it('schickt Lehrkräfte von `/` in den Lehrkräfte-Bereich, außer sie haben die Spielansicht geöffnet', () => {
+    for (const role of ['teacher', 'department_admin', 'admin']) {
+      expect(shouldRedirectTeacherHome(role, undefined)).toBe(true)
+      expect(shouldRedirectTeacherHome(role, '1')).toBe(false)
+    }
+    expect(shouldRedirectTeacherHome('student', undefined)).toBe(false)
+    expect(shouldRedirectTeacherHome(null, undefined)).toBe(false)
+    expect(PLAYER_VIEW_HREF).toBe('/?ansicht=spiel')
   })
 
   it('lässt eine Lehrkraft auf Übersicht, Leistungsnachweise und Inhalts-Seiten (PROJ-48), aber nicht auf Nutzer-/Bereichsverwaltung', () => {
