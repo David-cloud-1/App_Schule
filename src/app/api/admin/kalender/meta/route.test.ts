@@ -35,7 +35,7 @@ describe('GET /api/admin/kalender/meta', () => {
     expect(json.ich.ist_planer).toBe(true)
     expect(json.arten[0].anzahl).toBe(3)
     expect(json.lehrkraefte).toEqual([{ id: P, name: 'Frau Meier' }])
-    expect(json.abteilungen.map((a: { id: string }) => a.id)).toEqual(['spedition', 'touristik', 'verkehrsservice', 'kep', 'bik-bvj'])
+    expect(json.abteilungen.map((a: { id: string }) => a.id)).toEqual(['spedition', 'touristik', 'verkehrsservice', 'kep', 'bik-bvj', 'schulleitung'])
   })
 
   it('gibt 403 für Azubis', async () => {

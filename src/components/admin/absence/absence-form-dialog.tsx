@@ -195,10 +195,14 @@ export function AbsenceFormDialog({
                   <ChevronsUpDown className="size-4 shrink-0 text-ws-muted" aria-hidden />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0">
+              <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
                 <Command>
                   <CommandInput placeholder="Name suchen …" />
-                  <CommandList>
+                  <CommandList className="max-h-64 touch-pan-y overscroll-contain">
                     <CommandEmpty>Niemand gefunden.</CommandEmpty>
                     {teachers.map((t) => (
                       <CommandItem
@@ -257,10 +261,14 @@ export function AbsenceFormDialog({
                     <ChevronsUpDown className="size-4 shrink-0 text-ws-muted" aria-hidden />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0">
+                <PopoverContent
+                  className="w-[var(--radix-popover-trigger-width)] border-ws-line bg-ws-surface p-0"
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
                   <Command>
                     <CommandInput placeholder="Name suchen …" />
-                    <CommandList>
+                    <CommandList className="max-h-64 touch-pan-y overscroll-contain">
                       <CommandEmpty>Niemand gefunden.</CommandEmpty>
                       {teachers.map((t) => {
                         const on = personIds.includes(t.id)
