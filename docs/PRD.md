@@ -47,7 +47,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-10: AI Question Generation | Deployed |
 | P2 | PROJ-11: Exam Simulation Mode | Deployed |
 | P1 | PROJ-14: Lücken schließen | Deployed |
-| P0 | PROJ-18: Rückkehr-Erinnerung per Web-Push | In Progress |
+| P0 | PROJ-18: Rückkehr-Erinnerung per Web-Push | Deployed |
 | P0 | PROJ-19: Blitzrunde & Frachtmünzen | Deployed |
 | P0 | PROJ-20: Speditionshof & Shop | Deployed |
 | P1 | PROJ-21: Benotete Leistungsnachweise | Deployed |

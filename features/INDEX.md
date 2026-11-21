@@ -31,7 +31,7 @@
 | PROJ-15 | Mehrere aktive Prüfungssets pro Teil | Deployed | [PROJ-15-multiple-active-exam-sets.md](PROJ-15-multiple-active-exam-sets.md) | 2026-07-17 |
 | PROJ-16 | Fragen-Qualitätssicherung (Torwächter + Agenten) | Deployed | [PROJ-16-question-quality-guard.md](PROJ-16-question-quality-guard.md) | 2026-09-04 |
 | PROJ-17 | Spielspaß-Audit (Fun Auditor) | Deployed | [PROJ-17-spielspass-audit.md](PROJ-17-spielspass-audit.md) | 2026-09-04 |
-| PROJ-18 | Rückkehr-Erinnerung per Web-Push | In Progress | [PROJ-18-rueckkehr-erinnerung-push.md](PROJ-18-rueckkehr-erinnerung-push.md) | 2026-09-05 |
+| PROJ-18 | Rückkehr-Erinnerung per Web-Push | Deployed | [PROJ-18-rueckkehr-erinnerung-push.md](PROJ-18-rueckkehr-erinnerung-push.md) | 2026-09-05 |
 | PROJ-19 | Blitzrunde & Frachtmünzen | Deployed | [PROJ-19-blitzrunde-frachtmuenzen.md](PROJ-19-blitzrunde-frachtmuenzen.md) | 2026-09-05 |
 | PROJ-20 | Speditionshof & Shop | Deployed | [PROJ-20-speditionshof-shop.md](PROJ-20-speditionshof-shop.md) | 2026-09-13 |
 | PROJ-21 | Benotete Leistungsnachweise | Deployed | [PROJ-21-benotete-leistungsnachweise.md](PROJ-21-benotete-leistungsnachweise.md) | 2026-09-14 |

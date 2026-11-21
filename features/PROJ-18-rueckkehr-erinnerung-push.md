@@ -1,8 +1,8 @@
 # PROJ-18: Rückkehr-Erinnerung per Web-Push
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-09-05
-**Last Updated:** 2026-11-21 (wieder aufgenommen; Nachträge 5–10: 19 Uhr, Opt-in auf „Heute“, abwechselnde Texte, zwei Adressen, nur Di/Do statt täglich)
+**Last Updated:** 2026-11-21 (live gegangen ohne QA; wieder aufgenommen; Nachträge 5–10: 19 Uhr, Opt-in auf „Heute“, abwechselnde Texte, zwei Adressen, nur Di/Do statt täglich)
 
 ## Problem
 
@@ -373,4 +373,22 @@ im Browser-Code.
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+
+**Live seit 2026-11-21** (Commit `ea1a1a5`, Vercel-Deployment `spedilern-5fm05t4t8`, Production, Ready). **Ohne `/qa` ausgeliefert** (Entscheidung des Nutzers, damit der Termin am Donnerstag erreicht wird).
+
+**Reihenfolge, wie sie lief:** Migration `20261125_proj18_push_erinnerung` im SQL-Editor → Probe bestanden (alle 9 Werte wie erwartet) → `NEXT_PUBLIC_VAPID_PUBLIC_KEY` und `VAPID_PRIVATE_KEY` (Sensitive) bei Vercel für Production gesetzt → Prüfung des committeten Stands in getrenntem Worktree (`tsc` sauber, 4216/4217 Tests, Build ok) → Push auf `main`.
+
+**Kontrollen nach dem Deploy (ohne Login, auf der echten Adresse):**
+- `/manifest.webmanifest` 200; auf spedilern.vercel.app Name „SpediLern“ mit `sped-*`-Symbolen, auf touristiklern.vercel.app „TouristikLern“ mit `tour-*`-Symbolen.
+- `/sw.js` 200 ohne Login (beide Adressen), `/icons/sped-192.png` 200.
+- `GET /api/push/status` sowie `POST subscribe`, `unsubscribe`, `decline` ohne Anmeldung: je 401.
+- `GET /api/cron/push-erinnerung` ohne und mit falschem Geheimnis: 401.
+- `vercel crons ls`: drei Einträge angenommen (`…?fenster=sommer` 30 17 * * 2,4, `…?fenster=winter` 30 18 * * 2,4 und der alte Aufräum-Job). Damit sind zwei Einträge auf denselben Pfad im Hobby-Tarif zulässig.
+
+**Nicht geprüft / offen:**
+- **Öffentlicher Schlüssel im Live-Code:** ohne Login nicht prüfbar (Karte lädt erst nach der Anmeldung). Beweis ist, dass die Karte auf „Heute“ erscheint. Erscheint sie nicht, fehlt der Schlüssel im Build; dann bei Vercel prüfen und neu deployen.
+- **Echte Meldung auf einem Handy:** nicht getestet. Nächster Termin **Donnerstag, 26.11.2026, 19 Uhr Berlin**.
+- **Trockenlauf gegen echte Daten:** erst sinnvoll, wenn Geräte angemeldet sind (`GET /api/cron/push-erinnerung?dry=1` mit `CRON_SECRET`).
+- **`/qa` steht aus.** Besonders prüfen: iPhone-Weg (Home-Bildschirm, Anleitung), Zeitumstellung, Verhalten nach „Nein danke“ und nach blockierter Erlaubnis.
+- Bekannt und nicht von PROJ-18: ein alter roter Test in `werkzeugkiste-auszug.test.ts`.
+
