@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Figtree, Inter } from "next/font/google";
 import "./globals.css";
 import { DepartmentProvider, type DepartmentContextValue } from "@/components/department-provider";
@@ -7,6 +7,7 @@ import { NEUTRAL_BRANDING } from "@/lib/departments";
 import { WrongAddressBanner } from "@/components/wrong-address-banner";
 import { BottomNav } from "@/components/bottom-nav";
 import { betriebSpriteSchluessel } from "@/lib/betrieb-sprites";
+import { appIconPrefix } from "@/lib/push-client";
 
 const inter = Inter({ subsets: ["latin"] });
 // Schrift des Lehrkräfte-Bereichs; die Schülerseite bleibt bei Inter (siehe globals.css)
@@ -16,11 +17,19 @@ const figtree = Figtree({ subsets: ["latin"], variable: "--font-figtree", preloa
 // aufgerufenen Adresse, danach aus dem Profil (PROJ-22).
 export async function generateMetadata(): Promise<Metadata> {
   const department = await getCurrentDepartment();
+  const appName = department?.appName ?? NEUTRAL_BRANDING.appName;
   return {
     title: department?.metaTitle ?? NEUTRAL_BRANDING.appName,
     description: department?.metaDescription ?? "",
+    // Installierbar als Home-Bildschirm-App (PROJ-18); das Manifest kommt aus app/manifest.ts
+    appleWebApp: { capable: true, title: appName, statusBarStyle: "black" },
+    icons: { apple: `/icons/${appIconPrefix(department?.code)}-apple-180.png` },
   };
 }
+
+export const viewport: Viewport = {
+  themeColor: "#111827",
+};
 
 export default async function RootLayout({
   children,

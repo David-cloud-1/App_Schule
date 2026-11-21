@@ -1,8 +1,8 @@
 # PROJ-18: Rückkehr-Erinnerung per Web-Push
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-09-05
-**Last Updated:** 2026-09-13 (Cron-Zustellzeit auf Stundengenauigkeit präzisiert, Kostenfreiheit verifiziert)
+**Last Updated:** 2026-11-21 (wieder aufgenommen; Nachträge 5–10: 19 Uhr, Opt-in auf „Heute“, abwechselnde Texte, zwei Adressen, nur Di/Do statt täglich)
 
 ## Problem
 
@@ -42,6 +42,38 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
 4. **Abklingen:** nach 5 aufeinanderfolgenden Erinnerungen ohne Reaktion pausieren,
    danach höchstens noch eine pro Woche.
 
+### Nachträge vor dem Bau (mit dem Nutzer abgestimmt, 21.11.2026)
+
+Die Spec stammt vom September. Seitdem gibt es zwei Adressen (SpediLern,
+TouristikLern), die Blitzrunde und den „Heute“-Screen. Neue Messung (175
+Schülerkonten): 42 % haben nie gespielt, 33 % nur am Anmeldetag, und dieser Tag
+liegt meist im Unterricht.
+
+5. **Uhrzeit 19 Uhr statt 17 Uhr** (Europe/Berlin, stundengenau). Ersetzt Punkt 1.
+6. **Opt-in auch auf „Heute“:** Zusätzlich zur Karte nach der ersten Runde steht
+   auf dem „Heute“-Screen eine Karte „Erinnerungen einrichten“, bis der Schüler
+   entschieden hat. Damit kann die Lehrkraft die Einrichtung (Home-Bildschirm +
+   Erlaubnis) am Anmeldetag gemeinsam im Unterricht machen. Ergänzt Punkt 3, „nie
+   ungefragt beim Seitenaufruf“ gilt weiter: Der Browser-Dialog kommt nur nach Tippen.
+7. **Abwechselnde Texte:** 6–8 kurze Texte je Fachbereich, die sich abwechseln.
+   Ein Streak-Text kommt nur, wenn der Streak heute noch zu retten ist. Ersetzt die
+   zwei festen Texte.
+8. **„Heute gelernt“** umfasst Quiz-Session, Blitzrunde und Prüfungssimulation.
+9. **Je Adresse eigenes Manifest** (Name und Symbol von SpediLern bzw.
+   TouristikLern). Push-Anmeldungen gelten je Adresse.
+10. **Höchstens zweimal pro Woche statt täglich** (Nutzerentscheidung 21.11.2026,
+    „täglich nervt“): feste Tage **Dienstag und Donnerstag, 19 Uhr** (Europe/Berlin).
+    Der Cron läuft weiter einmal täglich (Vercel Hobby), der Versand-Job sendet
+    aber nur an diesen zwei Wochentagen. Wer an dem Tag schon gelernt hat
+    (Session, Blitzrunde oder Prüfungssimulation), bekommt nichts. Ersetzt Punkt 1
+    und die Regel „eine pro Tag“ durch „höchstens eine pro Termin, zwei pro Woche“.
+    Abklingen: nach **4** Erinnerungen in Folge ohne Reaktion (≈ 2 Wochen) nur noch
+    **eine alle 14 Tage** (Dienstag). Ersetzt Punkt 4 (vorher 5 / wöchentlich).
+    Die Streak-Erinnerung entfällt als eigener Fall: Bei zwei Terminen pro Woche
+    wäre „dein Streak ist in Gefahr“ meist falsch. Der Streak-Text kommt nur, wenn
+    der Streak heute tatsächlich noch zu retten ist (letzte Session gestern).
+    Texte und Oberfläche sprechen daher von „Erinnerung“, nicht von „täglich“.
+
 ## User Stories
 
 - Als Azubi möchte ich nach meiner ersten Runde gefragt werden, ob ich täglich
@@ -70,8 +102,8 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
 
 ### Opt-in
 - [ ] Nach der ersten abgeschlossenen Quiz-Runde erscheint auf dem
-      Ergebnis-Bildschirm eine Karte „Täglich erinnert werden?" mit den Optionen
-      „Ja, um 17 Uhr" und „Nein danke".
+      Ergebnis-Bildschirm eine Karte „Erinnert werden?" mit den Optionen
+      „Ja, bitte" und „Nein danke" (Zeiten siehe Nachtrag 10).
 - [ ] Die Karte erscheint genau einmal; bei „Nein danke" wird sie frühestens nach
       14 Tagen und höchstens einmal erneut gezeigt.
 - [ ] Erst nach Tippen auf „Ja" fragt der Browser um die Benachrichtigungs-Erlaubnis
@@ -84,11 +116,12 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
       Klick umschaltbar.
 
 ### Versand
-- [ ] Ein täglicher Cron-Lauf verschickt die Erinnerungen zwischen 17:00 und
-      17:59 Uhr Europe/Berlin (Sommer-/Winterzeit korrekt, d. h. Cron in UTC
+- [ ] Ein täglicher Cron-Lauf verschickt die Erinnerungen, aber nur dienstags und
+      donnerstags zwischen 19:00 und 19:59 Uhr Europe/Berlin (Nachtrag 10) (Sommer-/Winterzeit korrekt, d. h. Cron in UTC
       entsprechend). Vercel garantiert im Hobby-Tarif nur Stundengenauigkeit,
       keine exakte Minute — das ist für dieses Feature ausreichend und kein Bug.
-- [ ] Es geht **höchstens eine** Benachrichtigung pro Nutzer und Tag raus.
+- [ ] Es geht **höchstens eine** Benachrichtigung pro Nutzer und Tag raus, und
+      höchstens zwei pro Woche (Dienstag, Donnerstag).
 - [ ] Nutzer, die am selben Tag bereits eine Quiz-Session abgeschlossen haben,
       erhalten keine Erinnerung.
 - [ ] Nutzer mit `current_streak >= 1` erhalten den Streak-Text
@@ -102,8 +135,8 @@ Dieses Feature ist Idee 1 aus `docs/engagement-ideas.md`.
       eigenen VAPID-Schlüsseln).
 
 ### Abklingen und Abmelden
-- [ ] Reagiert ein Nutzer 5 Erinnerungen in Folge nicht (kein Öffnen der App am
-      selben oder Folgetag), pausiert der Versand auf höchstens eine pro Woche.
+- [ ] Reagiert ein Nutzer 4 Erinnerungen in Folge nicht (kein Öffnen der App am
+      selben oder Folgetag), sinkt der Versand auf höchstens eine alle 14 Tage.
 - [ ] Nach einer beliebigen Reaktion (Session am Erinnerungstag) beginnt die
       Zählung von vorn und der tägliche Rhythmus kehrt zurück.
 - [ ] Eine abgelaufene oder vom Browser zurückgewiesene Subscription (HTTP 404/410)
@@ -277,6 +310,64 @@ im Browser-Code.
 - **Offline-Caching später:** bewusst nicht in v1, keine Vorbereitung dafür
   nötig — ein Service Worker kann später erweitert werden, ohne die Push-
   Funktion neu zu bauen.
+
+## Implementation Notes – Frontend (21.11.2026)
+
+**Gebaut (Oberfläche und Browser-Seite, ohne Server):**
+- `public/sw.js`: Service Worker nur für `push` und `notificationclick`, kein `fetch`-Handler, kein Caching. Meldung trägt ein festes `tag`, eine noch sichtbare ältere Meldung wird ersetzt. Klick fokussiert ein offenes Fenster und navigiert, sonst öffnet er `/quiz`.
+- `src/app/manifest.ts`: Manifest je Adresse (Name, Symbole, `standalone`, Themefarbe `#111827`). Dazu `appleWebApp` und Apple-Touch-Icon in `layout.tsx`.
+- `public/icons/*` (je `sped`, `tour`, `neutral`: 192, 512, maskable 512, Apple 180) aus `scripts/app-icons-erzeugen.mjs`. Randlos grün, weil iOS/Android die Ecken selbst runden.
+- `src/proxy.ts`: `/manifest.webmanifest` und `/sw.js` ohne Anmeldung erreichbar (sonst leitet der Proxy zum Login um und die Installation scheitert stumm).
+- `src/lib/push-client.ts` (+ Test): reine Regeln: Geräteprüfung (iOS-Safari → Anleitung), Opt-in-Wiedervorlage (14 Tage, höchstens einmal erneut), Symbol-Zuordnung, VAPID-Umwandlung.
+- `src/hooks/use-push-reminder.ts`: Zustand und Aktionen. Browser-Erlaubnis nur im Klick-Handler (`Notification.requestPermission` vor jedem anderen `await`, wegen Safari).
+- `src/components/reminder-opt-in-card.tsx` (+ Test): Karte in zwei Varianten, `result` (Ergebnis-Bildschirm, `quiz-client.tsx`) und `home` („Heute“, `page.tsx`, nicht für Lehrkräfte). Fälle: normal, iPhone-Anleitung, schon aktiv, abgelehnt, blockiert.
+- `src/components/reminder-toggle.tsx`: Schalter „Tägliche Erinnerung“ in einer eigenen „Erinnerung“-Karte im Profil (gilt je Gerät).
+
+**Abweichungen von der Spec:**
+- Texte der Oberfläche auf „Erinnerung“ statt „täglich“ umgestellt (Nachtrag 10); Knopf „Ja, bitte"; `REMINDER_DAYS_LABEL` in `push-client.ts`.
+- Die Karte auf dem Ergebnis-Bildschirm erscheint nicht nur nach der *ersten* Runde, sondern bei jeder Runde, bis entschieden ist (Nachtrag 6). Danach sorgen Wiedervorlage-Regel und Server-Stand für Ruhe.
+- Die Erinnerungskarte auf „Heute“ steht unter der Hauptaktion, nicht darüber.
+
+**Erwartete Schnittstellen für `/backend`** (vom Frontend schon aufgerufen, noch nicht vorhanden):
+- `GET /api/push/status` → `{ enabled, declined_at, decline_count }`
+- `POST /api/push/subscribe` Body `{ subscription }` (PushSubscriptionJSON)
+- `POST /api/push/unsubscribe` Body `{ endpoint }` → `{ enabled }` (ob noch ein anderes Gerät aktiv ist)
+- `POST /api/push/decline` (zählt `decline_count` hoch, setzt `declined_at`)
+- Umgebungsvariable `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (ohne sie bleibt die Karte unsichtbar)
+
+**Geprüft:** `tsc` und ESLint sauber, 31 neue Tests grün. Gesamtsuite 4114 von 4115: ein roter Test in `werkzeugkiste-auszug.test.ts` (Untertitel „aus dem Regal von …“), schon vorher vorhanden und unabhängig von PROJ-18. **Nicht im Browser geprüft** (kein Dev-Server, siehe Memory).
+
+## Implementation Notes – Backend (21.11.2026)
+
+**Datenbank** (`supabase/migrations/20261125_proj18_push_erinnerung.sql`, Rückweg `…_down.sql`, Probe `supabase/tests/proj18_push_probe.sql`):
+- `push_subscriptions`: ein Gerät je Zeile (Endpunkt eindeutig, Schlüssel, `https`-Prüfung, Längenprüfung).
+- `push_reminder_state`: je Konto Ablehnung der Karte (`declined_at`, `decline_count`) und Versandstand (`last_sent_date`, `last_sent_at`, `sent_count`, `ignored_in_a_row`).
+- RLS an, **bewusst ohne Policy**, Rechte für `anon`/`authenticated` entzogen: Zugriff nur über die Service-Rolle (wie `rate_limits`). Kaskade auf `auth.users`, die Kontolöschung (PROJ-60) räumt mit auf.
+- **Abweichung von der Tech-Design-Skizze:** Statt neuer Felder in `profiles` eine eigene Tabelle. Grund: `profiles` hat Spaltenrechte (siehe PROJ-121), und Endpunkte/Schlüssel dürfen nie über das Nutzerprofil lesbar sein. Der Zähler „ohne Reaktion“ liegt je Konto, nicht je Gerät (Spec: Tagesgrenze gilt je Nutzer).
+- **Noch nicht auf Produktion angewendet.** Reihenfolge: Migration → Probe → Schlüssel bei Vercel → Deploy.
+
+**Schnittstellen** (`src/app/api/push/*`, alle mit Anmeldeprüfung und Zod, Fehlertexte ohne Technik): `GET status`, `POST subscribe`, `POST unsubscribe`, `POST decline`.
+- **SSRF-Schutz:** `subscribe` nimmt nur Adressen der Push-Dienste von Chrome/Edge (FCM), Firefox, Apple und Windows an (`isAllowedPushEndpoint`, getestet gegen Vorsilben-/Pfad-/Port-/Zugangsdaten-Tricks). Sonst könnte jemand den Versand-Job auf interne Adressen lenken.
+- Derselbe Endpunkt gehört genau einem Konto (geteiltes Gerät: wer sich neu anmeldet, übernimmt). Höchstens 5 Geräte je Konto, das älteste fliegt raus. Wiedereinschalten setzt das Abklingen zurück.
+
+**Versand** (`src/lib/push-reminder.ts` Regeln, `push-reminder-job.ts` Ablauf, `push-send.ts` web-push, Route `api/cron/push-erinnerung`):
+- `vercel.json`: zwei Einträge (`30 17` und `30 18` UTC, nur Di/Do). Der Lauf prüft selbst „Di/Do, 19 Uhr Berlin“; der Eintrag zur falschen Stunde tut nichts. So stimmt es in Sommer- und Winterzeit.
+- Entscheidung je Konto (`decideReminder`): nie gespielt → nichts; heute gelernt (Runde/Blitzrunde/Prüfung) → nichts; heute schon gesendet → nichts; abgeklungen (4 ignoriert) → nur alle 14 Tage; Streak-Text nur, wenn die letzte Runde gestern war.
+- **Doppelversand-Schutz:** Der Tag wird vor dem Senden bedingt in `push_reminder_state` eingetragen (ein zweiter, auch gleichzeitiger Lauf findet ihn belegt). Kommt bei allen Geräten nur ein vorübergehender Fehler zurück, wird der alte Stand zurückgeschrieben, damit der nächste Termin es erneut versucht. 404/410 löscht das Gerät.
+- Texte: 7 abwechselnde (reihum nach `sent_count`), Münz-/Hofname und App-Name aus dem Fachbereich, keine Namen oder Lerninhalte. Meldung verfällt nach 4 Stunden (TTL).
+- `?dry=1` (mit gültigem `CRON_SECRET`): rechnet nur, zählt, sendet und speichert nichts, läuft zu jeder Zeit. Antwort enthält nur Zahlen.
+- Ohne gültiges `CRON_SECRET`: 401. Ohne VAPID-Schlüssel: 500, kein Versand.
+
+**Schlüssel:** Paar lokal in `.env.local` erzeugt (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), in `.env.local.example` dokumentiert, optional `VAPID_SUBJECT`. **Bei Vercel noch nicht eingetragen.** Der öffentliche Schlüssel wird beim Bauen eingebettet, also vor dem Deploy setzen.
+
+**Neue Pakete:** `web-push` (+ `@types/web-push`).
+
+**Geprüft:** `tsc` sauber, ESLint ohne Fehler (keine Warnung aus neuen Dateien). Backend 102 neue Tests (Regeln 54, Schnittstellen 22, Versand-Job 15, Cron-Route 11), dazu 31 aus dem Frontend-Schritt. Produktions-Build läuft durch, Manifest und alle fünf neuen Routen sind enthalten. Gegenproben: SSRF-Schutz und Doppelversand-Schutz einzeln ausgeschaltet, die jeweiligen Tests schlagen an. Verschlüsselung und VAPID-Signatur offline mit einem Schein-Gerät geprüft (Inhalt nicht im Klartext, Signatur für den Push-Dienst). Gesamtsuite 4216 von 4217, der eine rote Test (`werkzeugkiste-auszug`) ist älter und unabhängig.
+
+**Offen / nicht geprüft:**
+- Tabellen existieren noch nicht auf Produktion; deshalb noch kein Trockenlauf gegen echte Daten und keine echte Meldung an ein Gerät.
+- Vercel-Hobby: Dass zwei Cron-Einträge auf denselben Pfad (je 2×/Woche) erlaubt sind, ist laut Doku für mehrere Einträge belegt, die genauen Hobby-Grenzen habe ich nicht bestätigt. Beim Deploy mit `vercel crons ls` prüfen.
+- Ob wirklich eine Meldung auf einem iPhone/Android-Handy ankommt, lässt sich nur mit einem echten Gerät nach dem Deploy prüfen.
 
 ## QA Test Results
 _To be added by /qa_

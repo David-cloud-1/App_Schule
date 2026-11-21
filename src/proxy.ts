@@ -28,6 +28,13 @@ export async function proxy(request: NextRequest) {
   // keine Anmeldung, keine Cookies, keine Umleitung — auch nicht für Angemeldete.
   if (request.nextUrl.pathname.startsWith('/s/')) return NextResponse.next()
 
+  // App-Manifest und Service Worker (PROJ-18): Browser holen beide ohne
+  // Anmeldung ab (das Manifest sogar ohne Cookies). Eine Umleitung zum Login
+  // würde die Installation und die Erinnerungen stumm verhindern.
+  if (request.nextUrl.pathname === '/manifest.webmanifest' || request.nextUrl.pathname === '/sw.js') {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

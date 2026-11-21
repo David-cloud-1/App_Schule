@@ -10,6 +10,7 @@ import { fetchBadgeDefinitions, toBadgeDisplay, type BadgeDisplay } from '@/lib/
 import { BetriebVorschau } from '@/components/betrieb-vorschau'
 import { LeaderboardOptOutToggle } from '@/components/leaderboard-opt-out-toggle'
 import { PseudonymSettings } from '@/components/pseudonym-settings'
+import { ReminderToggle } from '@/components/reminder-toggle'
 import { isTeacherRole } from '@/lib/roles'
 import { AreaSwitcher } from '@/components/area-switcher'
 import { getLinkContext, LINKED_DEPARTMENT_CODE } from '@/lib/linked-account'
@@ -186,6 +187,14 @@ export default async function ProfilePage() {
 
         {/* Gemeldete Fragen und ihr Stand (PROJ-72) */}
         <MyQuestionReportsList />
+
+        {/* Erinnerung (PROJ-18) */}
+        {!isTeacher && (
+          <div className="bg-[#1F2937] border border-[#4B5563] rounded-2xl p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-[#F9FAFB]">Erinnerung</h2>
+            <ReminderToggle />
+          </div>
+        )}
 
         {/* Privacy settings — bei Lehrer-Rollen unter „Mein Konto“ */}
         {!isTeacher && (

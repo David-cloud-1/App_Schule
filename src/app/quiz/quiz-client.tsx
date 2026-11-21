@@ -9,6 +9,7 @@ import { LevelUpDialog } from '@/components/level-up-dialog'
 import { BadgeUnlockModal } from '@/components/badge-unlock-modal'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { ReportQuestionButton } from '@/components/report-question-button'
+import { ReminderOptInCard } from '@/components/reminder-opt-in-card'
 import { getLevelFromXp } from '@/lib/xp-utils'
 import type { BadgeDisplay } from '@/lib/badges'
 import { cn } from '@/lib/utils'
@@ -375,6 +376,9 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
               </div>
               <Flame size={28} className={newStreak > 0 ? 'text-[#FF9600]' : 'text-[#4B5563]'} />
             </div>
+
+            {/* Erinnerung (PROJ-18) — erscheint, bis der Azubi entschieden hat */}
+            <ReminderOptInCard variant="result" className="mb-6" />
 
             {/* Question review */}
             <QuestionReview questions={questions} sessionAnswers={sessionAnswers} />

@@ -36,6 +36,7 @@ import {
 } from '@/lib/home-today'
 import { cn } from '@/lib/utils'
 import { ReportFeedbackCard } from '@/components/my-question-reports'
+import { ReminderOptInCard } from '@/components/reminder-opt-in-card'
 import { Zap, Flame, Target, ShieldAlert } from 'lucide-react'
 
 export default async function HomePage({
@@ -254,6 +255,9 @@ export default async function HomePage({
           isMaxLevel={level >= MAX_LEVEL}
           continueTarget={continueTarget}
         />
+
+        {/* Erinnerung einrichten (PROJ-18) — bis der Azubi entschieden hat; im Unterricht gemeinsam am Anmeldetag */}
+        {!showTeacherArea && <ReminderOptInCard variant="home" />}
 
         {/* Nebenaktionen */}
         <div className="grid grid-cols-2 gap-3">
