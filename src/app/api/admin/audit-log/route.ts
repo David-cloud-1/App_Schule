@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../_lib/auth'
+import { requireManager } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 
 const QuerySchema = z.object({
@@ -8,6 +8,8 @@ const QuerySchema = z.object({
   action_type: z.string().optional(),
   /** Nur Einträge zu dieser Person (Nutzer-Detailseite, PROJ-59) */
   object_id: z.string().uuid().optional(),
+  /** Nur Einträge dieser handelnden Person (PROJ-127) */
+  admin_id: z.string().uuid().optional(),
   /** Bereichsleiste (PROJ-70): nur für den Super-Admin, der sonst alle Bereiche sieht */
   department_id: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -25,9 +27,9 @@ function nameFromEmail(email: string | undefined): string | null {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { isSuperAdmin, departmentId } = auth
+  const { isSuperAdmin, departmentId, scopeIsAll } = auth
 
   const parsed = QuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const { period, action_type, object_id, department_id, page } = parsed.data
+  const { period, action_type, object_id, admin_id, department_id, page } = parsed.data
   const from = (page - 1) * PAGE_SIZE
   const to = from + PAGE_SIZE - 1
 
@@ -50,16 +52,17 @@ export async function GET(request: NextRequest) {
       .from('admin_audit_log')
       .select(
         `
-          id, created_at, admin_id, action_type, object_type, object_id, object_label, details
+          id, created_at, admin_id, admin_name, action_type, object_type, object_id, object_label, details, department_id
         `,
         { count: 'exact' }
       )
       .order('created_at', { ascending: false })
 
-    // Service-Role-Route (umgeht RLS) — Bereichs-Admin sieht nur den eigenen
-    // Bereich, Super-Admin bereichsübergreifend (PROJ-24).
+    // Service-Role-Route (umgeht RLS) — Lehrkraft sieht den Bereich der
+    // Bereichsleiste (bei „Alle Bereiche“ alle Einträge mit Bereich), Einträge
+    // ohne Bereich (z. B. Rollenvergabe ohne Bereich) nur der Super-Admin.
     if (!isSuperAdmin) {
-      query = query.eq('department_id', departmentId)
+      query = scopeIsAll ? query.not('department_id', 'is', null) : query.eq('department_id', departmentId)
     } else if (department_id) {
       query = query.eq('department_id', department_id)
     }
@@ -72,6 +75,9 @@ export async function GET(request: NextRequest) {
     if (action_type) {
       query = query.eq('action_type', action_type)
     }
+    if (admin_id) {
+      query = query.eq('admin_id', admin_id)
+    }
     if (object_id) {
       query = query.eq('object_type', 'user').eq('object_id', object_id)
     }
@@ -83,18 +89,24 @@ export async function GET(request: NextRequest) {
     }
 
     const entries = data ?? []
+    // Gespeicherter Name (PROJ-127) zuerst; nur ältere Einträge ohne Namen nachschlagen
     const adminIds = Array.from(
-      new Set(entries.map((e) => e.admin_id as string).filter(Boolean))
+      new Set(entries.filter((e) => !e.admin_name).map((e) => e.admin_id as string).filter(Boolean))
     )
 
     let adminMap = new Map<string, string | null>()
     if (adminIds.length > 0) {
       const { data: admins } = await service
         .from('profiles')
-        .select('id, display_name')
+        .select('id, first_name, last_name, display_name')
         .in('id', adminIds)
       adminMap = new Map(
-        (admins ?? []).map((a) => [a.id as string, (a.display_name as string) || null])
+        (admins ?? []).map((a) => [
+          a.id as string,
+          [String(a.first_name ?? '').trim(), String(a.last_name ?? '').trim()].filter(Boolean).join(' ') ||
+            (a.display_name as string) ||
+            null,
+        ])
       )
 
       // Die meisten Admin-Profile haben keinen Anzeigenamen — dann aus der E-Mail ableiten
@@ -114,7 +126,7 @@ export async function GET(request: NextRequest) {
 
     const enriched = entries.map((e) => ({
       ...e,
-      admin_name: adminMap.get(e.admin_id as string) ?? null,
+      admin_name: (e.admin_name as string | null) || adminMap.get(e.admin_id as string) || null,
     }))
 
     const total = count ?? enriched.length

@@ -4,7 +4,7 @@ import { chainMock, eqValue, type ChainCall } from '@/test/supabase-chain-mock'
 
 const ki = vi.hoisted(() => ({ stream: vi.fn() }))
 
-vi.mock('@/app/api/admin/_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), requireAdmin: vi.fn() }))
+vi.mock('@/app/api/admin/_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), requireSuperAdmin: vi.fn() }))
 vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn() }))
 vi.mock('next/server', async (orig) => ({ ...(await orig<typeof import('next/server')>()), after: vi.fn() }))
 vi.mock('@anthropic-ai/sdk', () => {
@@ -18,7 +18,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 
 import Anthropic from '@anthropic-ai/sdk'
 import { after } from 'next/server'
-import { requireAdmin, requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
+import { requireSuperAdmin, requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { DELETE as abbrechen, GET as status, POST as starten } from './ablaeufe/[id]/direkt/route'
 import { POST as teilArbeiter } from '../../intern/werkzeugkiste/teil/route'
@@ -417,12 +417,12 @@ describe('Interne Arbeiter (PROJ-64)', () => {
 
 describe('KI-Selbsttest (PROJ-64)', () => {
   const adminAuth = (isSuperAdmin: boolean) =>
-    vi.mocked(requireAdmin).mockResolvedValue({ error: null, user: { id: 'a1' }, supabase: db.client, isSuperAdmin } as never)
+    vi.mocked(requireSuperAdmin).mockResolvedValue({ error: null, user: { id: 'a1' }, supabase: db.client, isSuperAdmin } as never)
 
   it('ist nur für den Super-Admin', async () => {
     adminAuth(false)
     expect((await kiTest()).status).toBe(403)
-    vi.mocked(requireAdmin).mockResolvedValue({ error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }), user: null } as never)
+    vi.mocked(requireSuperAdmin).mockResolvedValue({ error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }), user: null } as never)
     expect((await kiTest()).status).toBe(403)
   })
 

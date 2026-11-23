@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireSuperAdmin } from '../../../_lib/auth'
 import { planerSchema } from '@/lib/kalender'
 import { NOT_FOUND, callKalender, isUuid, parseBody } from '../../../kalender/_lib/kalender-api'
 
@@ -7,7 +7,7 @@ const ROUTE = 'api/admin/users/[id]/vertretungsplaner'
 
 /** Planer-Recht für den Abwesenheitskalender setzen (PROJ-120, nur Super-Admin). */
 export async function PUT(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   if (!auth.isSuperAdmin) {
     return NextResponse.json({ error: 'Das Planer-Recht vergibt der Super-Admin.' }, { status: 403 })

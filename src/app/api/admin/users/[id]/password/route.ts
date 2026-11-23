@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireManager, writeAuditLog, writeAuditLogStrict, auditFailedResponse } from '../../../_lib/auth'
+import { mayManageUserTarget } from '../../_lib/manage-target'
 import { createServiceClient } from '@/lib/supabase-server'
 import { PASSWORD_MIN_LENGTH } from '@/lib/password-suggestion'
 import { MUST_CHANGE_PASSWORD_FLAG } from '@/lib/roles'
@@ -22,9 +23,9 @@ const BodySchema = z.object({
  * Protokoll, in Logs oder in der Antwort.
  */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { user, supabase, isSuperAdmin, departmentId } = auth
+  const { user, supabase } = auth
 
   const { id } = await ctx.params
   if (!z.string().uuid().safeParse(id).success) {
@@ -50,18 +51,28 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   const service = createServiceClient()
   const { data: target } = await service
     .from('profiles')
-    .select('department_id, role, linked_main_user_id')
+    .select('department_id, role, linked_main_user_id, display_name, first_name, last_name')
     .eq('id', id)
     .maybeSingle()
-  const row = target as { department_id: string | null; role: string; linked_main_user_id: string | null } | null
+  const row = target as {
+    department_id: string | null
+    role: string
+    linked_main_user_id: string | null
+    display_name: string | null
+    first_name: string | null
+    last_name: string | null
+  } | null
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!isSuperAdmin && (row.department_id !== departmentId || row.role !== 'student')) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  // Lehrkraft (PROJ-127): nur Azubis im gewählten Bereich; andere Lehrkräfte
+  // und der Super-Admin sind tabu (403, nicht nur ausgeblendet).
+  if (!mayManageUserTarget(auth, row)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   // Verknüpfter Zweitaccount des Super-Admins (PROJ-29) ist kein echtes Konto zum Verwalten
   if (row.linked_main_user_id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  const label = [row.first_name?.trim(), row.last_name?.trim()].filter(Boolean).join(' ') || row.display_name?.trim() || null
 
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
   const { count } = await service
@@ -77,11 +88,33 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
     )
   }
 
+  // Ein neues Passwort lässt sich nicht zurücknehmen: deshalb zuerst der
+  // Protokolleintrag (PROJ-127). Ohne Eintrag wird nichts geändert.
+  const logged = await writeAuditLogStrict(supabase, {
+    admin_id: user.id,
+    action_type: 'user.password_set',
+    object_type: 'user',
+    object_id: id,
+    object_label: label,
+    details: { pflichtwechsel: true },
+    department_id: row.department_id,
+  })
+  if (!logged) return auditFailedResponse()
+
   const { error: updateError } = await service.auth.admin.updateUserById(id, {
     password: parsed.data.password,
     app_metadata: { [MUST_CHANGE_PASSWORD_FLAG]: true },
   })
   if (updateError) {
+    // Der Eintrag steht schon; der Nachtrag hält fest, dass es nicht geklappt hat
+    await writeAuditLog(supabase, {
+      admin_id: user.id,
+      action_type: 'user.password_set_failed',
+      object_type: 'user',
+      object_id: id,
+      object_label: label,
+      department_id: row.department_id,
+    })
     const code = (updateError as { code?: string }).code
     if (code === 'weak_password') {
       return NextResponse.json({ error: 'Dieses Passwort ist zu schwach. Bitte ein anderes wählen.' }, { status: 400 })
@@ -94,14 +127,6 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ id: st
   // jede alte Sitzung landet sofort auf „Neues Passwort festlegen“.
   const { error: revokeError } = await service.rpc('admin_revoke_user_sessions', { target_user_id: id })
   if (revokeError) console.error('[POST /api/admin/users/:id/password] revoke sessions', revokeError.message)
-
-  await writeAuditLog(supabase, {
-    admin_id: user.id,
-    action_type: 'user.password_set',
-    object_type: 'user',
-    object_id: id,
-    department_id: row.department_id,
-  })
 
   return NextResponse.json({ ok: true })
 }

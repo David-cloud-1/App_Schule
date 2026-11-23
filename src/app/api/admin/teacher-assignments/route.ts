@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '../_lib/auth'
+import { requireSuperAdmin } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 
 /**
@@ -9,7 +9,7 @@ import { createServiceClient } from '@/lib/supabase-server'
  * übernimmt die Oberfläche.
  */
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, isSuperAdmin } = auth
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../../_lib/auth'
 import { resolveDraftSubject } from '../../_lib/draft-subject'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
 import { groupIntoBatch } from '@/lib/content-history'
@@ -13,7 +13,7 @@ const BulkAcceptSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user, departmentId } = auth
 

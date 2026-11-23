@@ -64,8 +64,8 @@ describe('POST /api/admin/users/[id]/password (PROJ-58)', () => {
     expect((await call({ password: PASSWORD })).status).toBe(401)
   })
 
-  it('403 für eine Lehrkraft ohne Admin-Rolle', async () => {
-    adminClient('teacher')
+  it('403 für einen Azubi', async () => {
+    adminClient('student' as never)
     expect((await call({ password: PASSWORD })).status).toBe(403)
   })
 
@@ -86,8 +86,8 @@ describe('POST /api/admin/users/[id]/password (PROJ-58)', () => {
     expect(JSON.stringify(log?.payload)).not.toContain(PASSWORD)
   })
 
-  it('Bereichs-Admin: eigener Azubi ok', async () => {
-    adminClient('department_admin', DEPT_SPED)
+  it('Lehrkraft (PROJ-127): Azubi im gewählten Bereich ok', async () => {
+    adminClient('teacher', DEPT_SPED)
     serviceClient()
     expect((await call({ password: PASSWORD })).status).toBe(200)
   })
@@ -95,11 +95,13 @@ describe('POST /api/admin/users/[id]/password (PROJ-58)', () => {
   it.each([
     ['Lehrkraft im eigenen Bereich', { role: 'teacher', department_id: DEPT_SPED, linked_main_user_id: null }],
     ['Bereichs-Admin im eigenen Bereich', { role: 'department_admin', department_id: DEPT_SPED, linked_main_user_id: null }],
+    ['Super-Admin', { role: 'admin', department_id: DEPT_SPED, linked_main_user_id: null }],
     ['Azubi in fremdem Bereich', { role: 'student', department_id: DEPT_TOUR, linked_main_user_id: null }],
-  ])('Bereichs-Admin: 404 bei %s', async (_label, target) => {
-    adminClient('department_admin', DEPT_SPED)
+    ['verknüpftes Zweitkonto', { role: 'student', department_id: DEPT_SPED, linked_main_user_id: ADMIN_ID }],
+  ])('Lehrkraft (PROJ-127): 403 bei %s', async (_label, target) => {
+    adminClient('teacher', DEPT_SPED)
     const service = serviceClient({ target })
-    expect((await call({ password: PASSWORD })).status).toBe(404)
+    expect((await call({ password: PASSWORD })).status).toBe(403)
     expect(service.updateUserById).not.toHaveBeenCalled()
   })
 
@@ -133,11 +135,28 @@ describe('POST /api/admin/users/[id]/password (PROJ-58)', () => {
     expect(service.updateUserById).not.toHaveBeenCalled()
   })
 
-  it('500 ohne Protokoll, wenn Supabase das Passwort nicht setzt', async () => {
+  it('500, wenn Supabase das Passwort nicht setzt: der Versuch steht mit Nachtrag im Protokoll (PROJ-127)', async () => {
     const admin = adminClient('admin')
     serviceClient({ updateError: { code: 'unexpected_failure', message: 'x' } })
     expect((await call({ password: PASSWORD })).status).toBe(500)
-    expect(admin.writes.find((w) => w.table === 'admin_audit_log')).toBeUndefined()
+    const actions = admin.writes.filter((w) => w.table === 'admin_audit_log').map((w) => (w.payload as { action_type: string }).action_type)
+    expect(actions).toEqual(['user.password_set', 'user.password_set_failed'])
+  })
+
+  it('503 und kein neues Passwort, wenn das Protokoll nicht geschrieben werden kann (PROJ-127)', async () => {
+    const admin = chainMock(
+      (table) =>
+        table === 'profiles'
+          ? { data: { role: 'teacher', department_id: DEPT_SPED } }
+          : table === 'admin_audit_log'
+            ? { error: { code: '42501', message: 'denied' } }
+            : {},
+      { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: ADMIN_ID, email: 'a@a.com' } } }) } },
+    )
+    vi.mocked(createClient).mockResolvedValue(admin.client as never)
+    const service = serviceClient()
+    expect((await call({ password: PASSWORD })).status).toBe(503)
+    expect(service.updateUserById).not.toHaveBeenCalled()
   })
 
   it('bleibt erfolgreich, wenn nur das Abmelden anderer Geräte scheitert (Proxy schützt)', async () => {

@@ -113,11 +113,13 @@ describe('AdminNav (PROJ-40)', () => {
 })
 
 describe('AdminNav je Rolle (PROJ-49)', () => {
-  it('zeigt einer Lehrkraft keine Gruppe „Verwaltung“ und nennt „alle Bereiche“ hinter „Inhalte“', () => {
+  it('zeigt einer Lehrkraft die Gruppe „Verwaltung“ (PROJ-127) und nennt „alle Bereiche“ hinter „Inhalte“', () => {
     wrap(<AdminNav />, false, { role: 'teacher' })
     openFolds()
-    expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
-    expect(screen.queryByTestId('nav-fold-verwaltung')).not.toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Verwaltung' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fachbereiche' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Zuständigkeiten' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Fragen aus Material' })).not.toBeInTheDocument()
     expect(screen.getByText('· alle Bereiche')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Meine Fächer' })).toBeInTheDocument()
   })
@@ -141,7 +143,6 @@ describe('AdminHome (PROJ-40)', () => {
     expect(hrefs).toEqual([
       '/admin/leistungsnachweise?neu=1',
       '/admin/questions',
-      '/admin/ai-generator',
       '/admin/users',
       '/admin/werkzeugkiste',
     ])
@@ -194,10 +195,15 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Themen',
       'Prüfungssimulation',
       'Papierkorb',
+      'Nutzer',
+      'Fachbereich',
+      'Hof-Items',
+      'Änderungsprotokoll',
     ])
     expect(screen.getByRole('list', { name: 'Inhalte' })).toBeInTheDocument()
-    expect(screen.queryByRole('list', { name: 'Verwaltung' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Nutzer' })).not.toBeInTheDocument()
+    // PROJ-127: Verwaltung für alle Lehrkräfte
+    expect(screen.getByRole('list', { name: 'Verwaltung' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Nutzer' })).toBeInTheDocument()
   })
 
   it('zeigt Lehrkräften alle Inhalts-Seiten ohne Fach-Eintragung (PROJ-70: Inhalte stehen allen offen)', async () => {
@@ -220,6 +226,10 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Themen',
       'Prüfungssimulation',
       'Papierkorb',
+      'Nutzer',
+      'Fachbereich',
+      'Hof-Items',
+      'Änderungsprotokoll',
     ])
     unmount()
     wrap(<AdminHome />, false, { role: 'teacher' })
@@ -235,6 +245,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
       '/admin/leistungsnachweise?neu=1',
       '/admin/questions',
+      '/admin/users',
       '/admin/werkzeugkiste',
     ])
     expect(screen.queryByText(/Trag deine Fächer ein/)).not.toBeInTheDocument()

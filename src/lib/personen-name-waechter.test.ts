@@ -16,6 +16,12 @@ const NAME_FIELD = /first_name|last_name|firstName|lastName/
 /** Dateien, die die Namensfelder bewusst benutzen (Lehrer-Seite, Pflicht-Seite, Türsteher) */
 const ALLOWED = new Set(
   [
+    // PROJ-127: Name der handelnden Person im Änderungsprotokoll, Name des betroffenen Kontos
+    'app/api/admin/_lib/auth.ts',
+    'app/api/admin/_lib/last-change.ts',
+    'app/api/admin/audit-log/route.ts',
+    'app/api/admin/users/[id]/password/route.ts',
+    'app/api/admin/users/[id]/route.ts',
     'app/api/admin/users/[id]/rename/route.ts',
     'app/api/admin/users/_lib/target.ts',
     'app/api/profile/name/route.ts',

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GET, PATCH } from './route'
 import { NextRequest } from 'next/server'
-import { chainMock } from '@/test/supabase-chain-mock'
+import { chainMock, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
@@ -40,10 +40,11 @@ const departmentRow = {
   pseudonym_nouns: [],
 }
 
-function makeSupabase(role: 'admin' | 'department_admin' = 'department_admin') {
+function makeSupabase(role: 'admin' | 'department_admin' | 'teacher' = 'teacher', auditError: unknown = null) {
   const { client } = chainMock((table) => {
     if (table === 'profiles') return { data: { role, department_id: 'dept-sped' } }
     if (table === 'departments') return { data: departmentRow }
+    if (table === 'admin_audit_log') return { error: auditError }
     return {}
   }, {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1', email: 'u1@example.com' } } }) },
@@ -52,13 +53,16 @@ function makeSupabase(role: 'admin' | 'department_admin' = 'department_admin') {
 }
 
 function makeServiceClient(updateError: unknown = null) {
-  const { client } = chainMock((table) => {
-    if (table === 'departments') return { error: updateError }
+  const mock = chainMock((table, calls) => {
+    if (table === 'departments') {
+      if (hasCall(calls, 'update')) return { error: updateError }
+      return { data: { name: 'Speditionskaufleute', currency_name: 'Frachtmünzen', hof_name: 'Speditionshof', hof_short_name: 'Hof', prompt_notes: null } }
+    }
     if (table === 'admin_audit_log') return {}
     if (table === 'profiles') return { data: { department_id: 'dept-sped' } }
     return {}
   })
-  return client
+  return mock
 }
 
 describe('GET /api/admin/department-settings', () => {
@@ -79,21 +83,34 @@ describe('PATCH /api/admin/department-settings', () => {
 
   it('returns 400 when no fields are provided', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
-    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient() as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient().client as never)
     const res = await PATCH(makeRequest({}))
     expect(res.status).toBe(400)
   })
 
-  it('department_admin can update the allowed branding fields', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeSupabase('department_admin') as never)
-    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient() as never)
-    const res = await PATCH(makeRequest({ currency_name: 'Reisetaler', hof_name: 'Reisebüro' }))
+  it('a teacher can update the allowed branding fields; the log has old and new value (PROJ-127)', async () => {
+    const session = makeSupabase('teacher')
+    vi.mocked(createClient).mockResolvedValue(session as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient().client as never)
+    const insert = vi.spyOn(session, 'from')
+    const res = await PATCH(makeRequest({ currency_name: 'Reisetaler', hof_name: 'Speditionshof' }))
     expect(res.status).toBe(200)
+    expect(insert).toHaveBeenCalledWith('admin_audit_log')
+  })
+
+  it('takes the change back and answers 503 when the audit log fails (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('teacher', { code: '42501', message: 'denied' }) as never)
+    const service = makeServiceClient()
+    vi.mocked(createServiceClient).mockReturnValue(service.client as never)
+    const res = await PATCH(makeRequest({ currency_name: 'Reisetaler' }))
+    expect(res.status).toBe(503)
+    const updates = service.writes.filter((w) => w.table === 'departments' && w.method === 'update').map((w) => w.payload)
+    expect(updates).toEqual([{ currency_name: 'Reisetaler' }, { currency_name: 'Frachtmünzen' }])
   })
 
   it('returns 500 when the update fails', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
-    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient({ message: 'DB error' }) as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient({ message: 'DB error' }).client as never)
     const res = await PATCH(makeRequest({ currency_name: 'Reisetaler' }))
     expect(res.status).toBe(500)
   })

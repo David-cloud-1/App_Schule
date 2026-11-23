@@ -7,7 +7,7 @@ import { fehler } from '@/lib/werkzeugkiste-server'
 /**
  * GET /api/admin/werkzeugkiste/regal/optionen (PROJ-53) — Auswahllisten für den
  * Teilen-Dialog: die Fachbereiche, in denen die Lehrkraft steht (Eintrag unter
- * „Meine Fächer“ oder Bereichs-Admin), und die Fächer, eigene zuerst. Namen von
+ * „Meine Fächer“ oder Bereich im eigenen Profil, PROJ-127), und die Fächer, eigene zuerst. Namen von
  * Bereichen und Fächern sind nicht vertraulich.
  */
 export async function GET() {
@@ -23,7 +23,8 @@ export async function GET() {
   const eintraege = (zustaendig.data ?? []) as { department_id: string; subject_id: string | null }[]
   const bereichIds = new Set(eintraege.map((e) => e.department_id))
   const p = profil.data as { role?: string; department_id?: string | null } | null
-  if (p?.role === 'department_admin' && p.department_id) bereichIds.add(p.department_id)
+  // PROJ-127: der Profil-Bereich zählt für jede Lehrer-Rolle (wie regal_in_bereich)
+  if (p?.role && p.role !== 'student' && p.department_id) bereichIds.add(p.department_id)
   const eigeneFaecher = new Set(eintraege.map((e) => e.subject_id).filter((s): s is string => !!s))
 
   const service = createServiceClient()

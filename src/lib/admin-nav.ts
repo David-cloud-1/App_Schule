@@ -193,6 +193,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Fragen aus Material',
         description: 'Aus Lernmaterial neue Fragen erstellen lassen',
         icon: Bot,
+        // PROJ-127: bezahlte KI bleibt beim Super-Admin
+        superAdminOnly: true,
       },
       {
         href: '/admin/subjects',
@@ -231,20 +233,26 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       {
         href: '/admin/users',
         label: 'Nutzer',
-        description: 'Azubis und Rollen verwalten',
+        description: 'Azubis sperren, verschieben und Passwörter neu vergeben',
         icon: Users,
+        // PROJ-127: Verwaltung für alle Lehrkräfte
+        teacherVisible: true,
       },
       {
         href: '/admin/department-settings',
         label: 'Fachbereich',
         description: 'Einstellungen des Fachbereichs',
         icon: Settings,
+        // PROJ-127: Verwaltung für alle Lehrkräfte
+        teacherVisible: true,
       },
       {
         href: '/admin/shop-items',
         label: 'Items',
         description: 'Shop-Items des Hofs pflegen',
         icon: Store,
+        // PROJ-127: Verwaltung für alle Lehrkräfte
+        teacherVisible: true,
         usesHofName: true,
       },
       {
@@ -252,6 +260,8 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         label: 'Änderungsprotokoll',
         description: 'Wer hat wann was geändert',
         icon: ScrollText,
+        // PROJ-127: Verwaltung für alle Lehrkräfte
+        teacherVisible: true,
       },
       {
         href: '/admin/teacher-assignments',

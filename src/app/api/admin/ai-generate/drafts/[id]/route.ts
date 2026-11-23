@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../../_lib/auth'
 import { resolveDraftSubject } from '../../_lib/draft-subject'
 
 const UpdateDraftSchema = z.object({
@@ -14,7 +14,7 @@ const UpdateDraftSchema = z.object({
 })
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user, departmentId } = auth
 

@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Check, Copy, Loader2 } from 'lucide-react'
+import { Check, Copy, Loader2, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { LastChangedLine } from '@/components/admin/content-meta'
 
 type DepartmentSettings = {
   id: string
@@ -20,6 +21,8 @@ type DepartmentSettings = {
   currencyName: string
   hofName: string
   hofShortName: string
+  lastChange?: { by: string | null; at: string; action: string } | null
+  needsDepartment?: boolean
 }
 
 export default function DepartmentSettingsPage() {
@@ -104,9 +107,23 @@ export default function DepartmentSettingsPage() {
     return <AdminLoadingState variant="form" rows={4} />
   }
 
+  if (settings.needsDepartment) {
+    return (
+      <div className="space-y-6">
+        <AdminPageHeader title="Fachbereich-Einstellungen" description="Bitte wähle zuerst einen Bereich." />
+        <AdminEmptyState
+          icon={Settings}
+          title="Bitte wähle einen Bereich"
+          description="Einstellungen gehören zu einem Bereich. Wähle oben in der Bereichsleiste Spedition oder Tourismus."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-xl">
       <AdminPageHeader title="Fachbereich-Einstellungen" description={`${settings.name} (${settings.appName})`} />
+      <LastChangedLine by={settings.lastChange?.by} at={settings.lastChange?.at} />
 
       {settings.domain && (
         <div className="space-y-2">

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../../_lib/auth'
 
 const BulkRejectSchema = z.object({
   draft_ids: z.array(z.string().uuid()).min(1).max(200),
 })
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

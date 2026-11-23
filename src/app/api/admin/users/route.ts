@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../_lib/auth'
+import { requireManager } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 
 type ProfileRow = {
@@ -14,13 +14,13 @@ type ProfileRow = {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { departmentId, isSuperAdmin } = auth
+  const { departmentId, isSuperAdmin, scopeIsAll } = auth
 
   // Bereichsübergreifende Suche (PROJ-44): nur der Super-Admin darf alle Konten
   // sehen, z. B. um eine Lehrkraft freizuschalten, die sich über die Adresse
-  // eines anderen Bereichs registriert hat. Bereichs-Admins bleiben im eigenen Bereich.
+  // eines anderen Bereichs registriert hat. Lehrkräfte folgen der Bereichsleiste.
   const allDepartments = request.nextUrl.searchParams.get('scope') === 'all'
   if (allDepartments && !isSuperAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -34,11 +34,21 @@ export async function GET(request: NextRequest) {
   let profilesQuery = service
     .from('profiles')
     .select('id, display_name, role, total_xp, current_streak, last_session_date, department_id, created_at')
-  if (!allDepartments) profilesQuery = profilesQuery.eq('department_id', departmentId)
+  if (!isSuperAdmin) {
+    // Lehrkraft (PROJ-127): nur Azubis, keine Lehrkräfte und kein Super-Admin.
+    // Bei „Alle Bereiche“ in der Bereichsleiste alle Azubis mit Bereich.
+    profilesQuery = profilesQuery.eq('role', 'student')
+    profilesQuery = scopeIsAll
+      ? profilesQuery.not('department_id', 'is', null)
+      : profilesQuery.eq('department_id', departmentId)
+  } else if (!allDepartments) {
+    profilesQuery = profilesQuery.eq('department_id', departmentId)
+  }
   const { data: profiles, error: pErr } = await profilesQuery
     // Verknüpftes Zweitkonto des Super-Admins (PROJ-29) ist kein echter Azubi
     .is('linked_main_user_id', null)
     .order('total_xp', { ascending: false })
+    .limit(5000)
 
   if (pErr) {
     console.error('[GET /api/admin/users] profiles', pErr)
@@ -103,5 +113,5 @@ export async function GET(request: NextRequest) {
     }
   })
 
-  return NextResponse.json({ users })
+  return NextResponse.json({ users, scopeIsAll: !isSuperAdmin && scopeIsAll })
 }

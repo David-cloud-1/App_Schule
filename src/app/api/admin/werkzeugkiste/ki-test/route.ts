@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/app/api/admin/_lib/auth'
+import { requireSuperAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { kostenUsd } from '@/lib/werkzeugkiste-kosten'
 import { frageKi, ladeKiEinstellungen } from '@/lib/werkzeugkiste-direkt'
@@ -14,7 +14,7 @@ export const maxDuration = 60
  * nicht als Lauf erfasst.
  */
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   if (!auth.isSuperAdmin) return NextResponse.json({ error: 'Das kann nur der Super-Admin.' }, { status: 403 })
   if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ ok: false, problem: 'ANTHROPIC_API_KEY fehlt in dieser Umgebung.' }, { status: 503 })

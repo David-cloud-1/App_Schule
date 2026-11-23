@@ -39,7 +39,7 @@ const mockAuthUsers = {
   ],
 }
 
-function makeAdminClient(role: 'admin' | 'department_admin' = 'admin') {
+function makeAdminClient(role: 'admin' | 'department_admin' | 'teacher' = 'admin') {
   const profileBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -56,7 +56,9 @@ function makeServiceClient(profilesData = mockProfiles, profilesError: unknown =
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
-    order: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
+    not: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
   }
   return {
     from: vi.fn().mockReturnValue(profilesBuilder),
@@ -163,8 +165,8 @@ describe('GET /api/admin/users', () => {
       expect(profilesBuilder.eq).not.toHaveBeenCalledWith('department_id', expect.anything())
     })
 
-    it('lehnt einen Bereichs-Admin mit 403 ab', async () => {
-      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin') as never)
+    it('lehnt scope=all für eine Lehrkraft mit 403 ab', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher') as never)
       const service = makeServiceClient()
       vi.mocked(createServiceClient).mockReturnValue(service as never)
 
@@ -173,14 +175,16 @@ describe('GET /api/admin/users', () => {
       expect(service.from).not.toHaveBeenCalled()
     })
 
-    it('hält den Bereichs-Admin ohne scope im eigenen Bereich', async () => {
-      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin') as never)
+    it('zeigt einer Lehrkraft nur Azubis des gewählten Bereichs (PROJ-127)', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher') as never)
       const service = makeServiceClient()
       vi.mocked(createServiceClient).mockReturnValue(service as never)
 
       const res = await GET(makeRequest())
       expect(res.status).toBe(200)
-      expect(service.from.mock.results[0].value.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
+      const builder = service.from.mock.results[0].value
+      expect(builder.eq).toHaveBeenCalledWith('department_id', 'dept-sped')
+      expect(builder.eq).toHaveBeenCalledWith('role', 'student')
     })
   })
 })

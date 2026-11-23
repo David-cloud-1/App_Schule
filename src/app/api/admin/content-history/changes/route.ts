@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../_lib/auth'
+import { requireManager } from '../../_lib/auth'
 import { CONTENT_TYPES } from '@/lib/content-history'
 
 const CHANGE_TYPES = ['created', 'updated', 'deactivated', 'activated', 'deleted', 'restored'] as const
@@ -21,15 +21,13 @@ const PAGE_SIZE = 50
 
 /**
  * Änderungsprotokoll der Inhalte (PROJ-70) mit Filtern nach Person, Zeitraum,
- * Bereich, Fach, Inhaltstyp und Art der Änderung. Nur Super-Admin; die Filter
+ * Bereich, Fach, Inhaltstyp und Art der Änderung. Jede Lehrer-Rolle (PROJ-127), die Datenbank-Regel
+ * begrenzt die sichtbaren Versionen; die Filter
  * laufen in der Datenbank, die Liste lädt seitenweise.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  if (!auth.isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin sieht das Änderungsprotokoll der Inhalte.' }, { status: 403 })
-  }
 
   const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))
   if (!parsed.success) {

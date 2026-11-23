@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { BULK_ACTIONS, BULK_MAX_IDS, bulkSkipReason, summarize, type BulkResultItem, type BulkTarget } from '@/lib/user-bulk'
 
@@ -25,7 +25,7 @@ const BodySchema = z
  * Protokoll-Eintrag (wie bei der Einzelaktion).
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { user, supabase, isSuperAdmin } = auth
   if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

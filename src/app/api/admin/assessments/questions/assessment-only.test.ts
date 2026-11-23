@@ -25,8 +25,8 @@ import { extractText } from '../../ai-generate/_lib/process-job'
 
 const DEPT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const unauth = { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }), user: null, supabase: null }
-// Bereichs-Admin im EIGENEN Bereich — verhält sich wie vor PROJ-46 (pool, nicht privat)
-const admin = { error: null, user: { id: 'u' }, supabase: {}, role: 'department_admin', isSuperAdmin: false, isDepartmentAdmin: true, suggestedDepartmentId: DEPT }
+// Lehrkraft im Bereich ihres Profils (PROJ-127, vorher Bereichs-Admin) — Pool, nicht privat
+const admin = { error: null, user: { id: 'u' }, supabase: {}, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null, ownDepartmentId: DEPT }
 const department = { id: DEPT, promptRole: 'Lehrer', targetGroup: 'Azubis', promptNotes: null, classLevels: [10, 11] }
 const subjects = [{ id: 's1', code: 'STG', name: 'STG' }]
 

@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, ADMIN_DEPARTMENT_COOKIE } from '../../_lib/auth'
+import { requireSuperAdmin, ADMIN_DEPARTMENT_COOKIE } from '../../_lib/auth'
 
 const Schema = z.object({ department_id: z.string().uuid() })
 
 /**
  * Bereichs-Umschalter im Admin-Panel (PROJ-24) — nur der Super-Admin hat
- * mehrere Bereiche zur Auswahl. Setzt ein Cookie, das requireAdmin() bei
+ * mehrere Bereiche zur Auswahl. Setzt ein Cookie, das requireSuperAdmin() bei
  * jeder folgenden Admin-Anfrage liest.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   if (!auth.isSuperAdmin) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })

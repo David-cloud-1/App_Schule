@@ -57,10 +57,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
   }
 
-  // Eigener Bereich: Super-Admin überall, Bereichs-Admin nur im eigenen.
-  // Sonst (Lehrkraft, oder Bereichs-Admin für einen fremden Bereich) immer
-  // privat und immer „nur für Nachweise" — unabhängig vom gesendeten Wert.
-  const isOwnDepartment = auth.isSuperAdmin || (auth.isDepartmentAdmin && departmentId === auth.suggestedDepartmentId)
+  // Eigener Bereich (PROJ-127): Super-Admin überall, jede Lehrer-Rolle im Bereich
+  // ihres Profils (vorher nur der Bereichs-Admin). Sonst immer privat und immer
+  // „nur für Nachweise" — unabhängig vom gesendeten Wert.
+  const isOwnDepartment = auth.isSuperAdmin || (!!auth.ownDepartmentId && departmentId === auth.ownDepartmentId)
   const isPrivate = !isOwnDepartment
   const assessmentOnly = isOwnDepartment ? parsed.data.assessmentOnly : true
   let questions = parsed.data.questions

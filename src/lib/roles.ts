@@ -18,6 +18,13 @@ export type ManagerRole = 'department_admin' | 'admin'
 
 export const USER_ROLES: readonly UserRole[] = ['student', 'teacher', 'department_admin', 'admin']
 
+/**
+ * Rollen, die der Super-Admin noch vergeben darf (PROJ-127): „Bereichs-Admin“
+ * ist in der Lehrkraft aufgegangen und wird nicht mehr neu vergeben. Die
+ * Rolle bleibt in USER_ROLES, damit Bestand und Rückweg lesbar bleiben.
+ */
+export const ASSIGNABLE_ROLES: readonly UserRole[] = ['student', 'teacher', 'admin']
+
 export const ROLE_LABEL: Record<UserRole, string> = {
   student: 'Azubi',
   teacher: 'Lehrkraft',
@@ -27,7 +34,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 
 /** Ein Satz, was die Rolle darf (Konto-Menü, PROJ-49) */
 export const ROLE_DESCRIPTION: Record<TeacherRole, string> = {
-  teacher: 'Du pflegst Inhalte aller Bereiche und führst Leistungsnachweise durch.',
+  teacher: 'Du verwaltest Inhalte, Nutzer und Einstellungen aller Bereiche und führst Leistungsnachweise durch.',
   department_admin: 'Du verwaltest Inhalte, Nutzer und Einstellungen deines Fachbereichs.',
   admin: 'Du verwaltest alle Fachbereiche, Nutzer und Rollen.',
 }
@@ -70,7 +77,7 @@ export const NO_ACCESS_MESSAGE = 'Du hast keinen Zugang zum Lehrkräfte-Bereich.
 /** Hinweis-Parameter: Eine Lehrkraft wurde von einer Verwaltungsseite zur Übersicht umgeleitet (PROJ-49) */
 export const BLOCKED_PARAM = 'gesperrt'
 
-export const BLOCKED_PAGE_MESSAGE = 'Das verwaltet dein Bereichs-Admin.'
+export const BLOCKED_PAGE_MESSAGE = 'Das verwaltet der Super-Admin.'
 
 /** Wert des Hinweis-Parameters, wenn ein Bereichs-Admin eine Seite nur für den Super-Admin öffnen wollte (PROJ-59) */
 export const SUPER_ADMIN_ONLY_VALUE = 'super'
@@ -141,6 +148,11 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/lehrerzimmer',
   // PROJ-120: Abwesenheitskalender — jede Lehrer-Rolle (die Arten-Seite darunter prüft selbst auf Super-Admin)
   '/admin/kalender',
+  // PROJ-127: Verwaltung für alle Lehrkräfte (die Nutzer-Detailseite darunter prüft selbst auf Super-Admin)
+  '/admin/users',
+  '/admin/department-settings',
+  '/admin/shop-items',
+  '/admin/audit-log',
 ]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
@@ -185,6 +197,13 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/content-tree',
   // PROJ-120: Abwesenheitskalender (requireTeacherOrAdmin, Rechte in den Datenbank-Funktionen abw_*)
   '/api/admin/kalender',
+  // PROJ-127: Verwaltung (requireManager; Super-Admin-Aktionen darunter prüfen requireSuperAdmin)
+  '/api/admin/users',
+  '/api/admin/department-settings',
+  '/api/admin/shop-items',
+  '/api/admin/audit-log',
+  // PROJ-127: Bereichsliste fürs Verschieben (GET gekürzt; Anlegen/Ändern prüft requireSuperAdmin)
+  '/api/admin/departments',
 ]
 
 export function teacherMayCallApiPath(pathname: string): boolean {

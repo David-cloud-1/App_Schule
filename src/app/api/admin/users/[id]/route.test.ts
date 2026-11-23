@@ -31,7 +31,7 @@ function makeRequest(body: unknown) {
   })
 }
 
-function makeAdminClient(role: 'admin' | 'department_admin' = 'admin', departmentId = DEPT_SPED) {
+function makeAdminClient(role: 'admin' | 'department_admin' | 'teacher' = 'admin', departmentId = DEPT_SPED) {
   const { client } = chainMock(
     (table) => {
       if (table === 'profiles') return { data: { role, department_id: departmentId } }
@@ -63,6 +63,7 @@ function makeServiceClient(opts: {
     if (table === 'profiles') {
       return { data: opts.target === undefined ? { role: 'student', department_id: DEPT_SPED } : opts.target, error: opts.updateProfileError ?? null }
     }
+    if (table === 'departments') return { data: { id: DEPT_TOUR } }
     return {}
   })
   ;(client as unknown as { auth: unknown }).auth = {
@@ -138,15 +139,16 @@ describe('PATCH /api/admin/users/[id]', () => {
   it('super-admin can change a role', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
     vi.mocked(createServiceClient).mockReturnValue(makeServiceClient() as never)
-    const res = await PATCH(makeRequest({ role: 'department_admin', department_id: DEPT_SPED }), makeCtx())
+    const res = await PATCH(makeRequest({ role: 'teacher', department_id: DEPT_SPED }), makeCtx())
     expect(res.status).toBe(200)
   })
 
-  it('rejects department_admin role without a department_id', async () => {
+  it('vergibt „Bereichs-Admin“ nicht mehr neu (PROJ-127)', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminClient() as never)
     vi.mocked(createServiceClient).mockReturnValue(makeServiceClient() as never)
-    const res = await PATCH(makeRequest({ role: 'department_admin' }), makeCtx())
+    const res = await PATCH(makeRequest({ role: 'department_admin', department_id: DEPT_SPED }), makeCtx())
     expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/nicht mehr vergeben/)
   })
 
   it('super-admin can move a user to another department', async () => {
@@ -156,8 +158,8 @@ describe('PATCH /api/admin/users/[id]', () => {
     expect(res.status).toBe(200)
   })
 
-  it('department_admin gets 403 when trying to assign a role', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+  it('a teacher gets 403 when trying to assign a role (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
     vi.mocked(createServiceClient).mockReturnValue(
       makeServiceClient({ target: { role: 'student', department_id: DEPT_SPED } }) as never
     )
@@ -165,8 +167,8 @@ describe('PATCH /api/admin/users/[id]', () => {
     expect(res.status).toBe(403)
   })
 
-  it('department_admin can move their own student to another department', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+  it('a teacher can move a student of the chosen department (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
     vi.mocked(createServiceClient).mockReturnValue(
       makeServiceClient({ target: { role: 'student', department_id: DEPT_SPED } }) as never
     )
@@ -174,27 +176,77 @@ describe('PATCH /api/admin/users/[id]', () => {
     expect(res.status).toBe(200)
   })
 
-  it('department_admin gets 404 for a student in a foreign department', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+  it('a teacher gets 403 for a student outside the chosen department (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
     vi.mocked(createServiceClient).mockReturnValue(
       makeServiceClient({ target: { role: 'student', department_id: DEPT_TOUR } }) as never
     )
     const res = await PATCH(makeRequest({ banned: true }), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(403)
   })
 
-  it('department_admin gets 404 when targeting another admin, even in their own department', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+  it.each(['teacher', 'department_admin', 'admin'])(
+    'a teacher gets 403 when targeting a %s account, even in the same department (PROJ-127)',
+    async (role) => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
+      vi.mocked(createServiceClient).mockReturnValue(
+        makeServiceClient({ target: { role, department_id: DEPT_SPED } }) as never
+      )
+      const res = await PATCH(makeRequest({ banned: true }), makeCtx())
+      expect(res.status).toBe(403)
+    }
+  )
+
+  it('a teacher gets 403 for the linked second account of the super-admin (PROJ-29)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
     vi.mocked(createServiceClient).mockReturnValue(
-      makeServiceClient({ target: { role: 'department_admin', department_id: DEPT_SPED } }) as never
+      makeServiceClient({ target: { role: 'student', department_id: DEPT_SPED, linked_main_user_id: 'x' } }) as never
     )
     const res = await PATCH(makeRequest({ banned: true }), makeCtx())
-    expect(res.status).toBe(404)
+    expect(res.status).toBe(403)
+  })
+
+  it('a teacher may ban a student of the chosen department; the log names old and new value', async () => {
+    const admin = chainMock(
+      (table) =>
+        table === 'profiles'
+          ? { data: { role: 'teacher', department_id: DEPT_SPED, first_name: 'Erika', last_name: 'Lehr' } }
+          : {},
+      { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: ADMIN_ID, email: 'a@a.com' } } }) } },
+    )
+    vi.mocked(createClient).mockResolvedValue(admin.client as never)
+    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient() as never)
+    const res = await PATCH(makeRequest({ banned: true }), makeCtx())
+    expect(res.status).toBe(200)
+    const log = admin.writes.find((w) => w.table === 'admin_audit_log')!.payload as Record<string, unknown>
+    expect(log).toMatchObject({ action_type: 'user.ban', admin_name: 'Erika Lehr', details: { gesperrt: { alt: false, neu: true } } })
+  })
+
+  it('takes the ban back and answers 503 when the audit log cannot be written (PROJ-127)', async () => {
+    const admin = chainMock(
+      (table) =>
+        table === 'profiles'
+          ? { data: { role: 'teacher', department_id: DEPT_SPED } }
+          : table === 'admin_audit_log'
+            ? { error: { code: '42501', message: 'denied' } }
+            : {},
+      { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: ADMIN_ID, email: 'a@a.com' } } }) } },
+    )
+    vi.mocked(createClient).mockResolvedValue(admin.client as never)
+    const service = makeServiceClient()
+    vi.mocked(createServiceClient).mockReturnValue(service as never)
+    const res = await PATCH(makeRequest({ banned: true }), makeCtx())
+    expect(res.status).toBe(503)
+    const update = (service as unknown as { auth: { admin: { updateUserById: ReturnType<typeof vi.fn> } } }).auth.admin.updateUserById
+    expect(update).toHaveBeenNthCalledWith(1, TARGET_USER_ID, { ban_duration: '876000h' })
+    expect(update).toHaveBeenNthCalledWith(2, TARGET_USER_ID, { ban_duration: 'none' })
   })
 
   describe('Rolle „Lehrkraft“ (PROJ-44)', () => {
     function serviceWithWrites(target: unknown) {
-      const mock = chainMock((table) => (table === 'profiles' ? { data: target } : {}))
+      const mock = chainMock((table) =>
+        table === 'profiles' ? { data: target } : table === 'departments' ? { data: { id: DEPT_TOUR } } : {}
+      )
       ;(mock.client as unknown as { auth: unknown }).auth = { admin: { updateUserById: vi.fn() } }
       return mock
     }
@@ -225,8 +277,8 @@ describe('PATCH /api/admin/users/[id]', () => {
       expect(log.details).toEqual({ from: 'student', to: 'teacher' })
     })
 
-    it('verweigert einem Bereichs-Admin die Vergabe mit 403', async () => {
-      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+    it('verweigert einer Lehrkraft die Vergabe mit 403', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
       const service = serviceWithWrites({ role: 'student', department_id: DEPT_SPED })
       vi.mocked(createServiceClient).mockReturnValue(service.client as never)
 
@@ -244,13 +296,13 @@ describe('PATCH /api/admin/users/[id]', () => {
       expect(ensurePseudonym).not.toHaveBeenCalled()
     })
 
-    it('nennt den Grund verständlich, wenn ein Bereichs-Admin keinen Fachbereich bekommt (BUG-5b)', async () => {
+    it('nennt den Grund verständlich, wenn jemand noch „Bereichs-Admin“ vergeben will (PROJ-127)', async () => {
       vi.mocked(createClient).mockResolvedValue(makeAdminClient('admin') as never)
       vi.mocked(createServiceClient).mockReturnValue(serviceWithWrites({ role: 'teacher', department_id: null }).client as never)
 
       const res = await PATCH(makeRequest({ role: 'department_admin' }), makeCtx())
       expect(res.status).toBe(400)
-      expect((await res.json()).error).toBe('Bereichs-Admin braucht einen Fachbereich.')
+      expect((await res.json()).error).toBe('Die Rolle Bereichs-Admin wird nicht mehr vergeben. Bitte wähle „Lehrkraft“.')
     })
 
     it('lässt den Super-Admin eine Lehrkraft in einen anderen Fachbereich verschieben (BUG-3)', async () => {
@@ -263,13 +315,13 @@ describe('PATCH /api/admin/users/[id]', () => {
       expect(service.writes).toContainEqual({ table: 'profiles', method: 'update', payload: { department_id: DEPT_TOUR } })
     })
 
-    it('verweigert dem Bereichs-Admin das Verschieben einer Lehrkraft (404)', async () => {
-      vi.mocked(createClient).mockResolvedValue(makeAdminClient('department_admin', DEPT_SPED) as never)
+    it('verweigert einer Lehrkraft das Verschieben einer anderen Lehrkraft (403)', async () => {
+      vi.mocked(createClient).mockResolvedValue(makeAdminClient('teacher', DEPT_SPED) as never)
       const service = serviceWithWrites({ role: 'teacher', department_id: DEPT_SPED })
       vi.mocked(createServiceClient).mockReturnValue(service.client as never)
 
       const res = await PATCH(makeRequest({ department_id: DEPT_TOUR }), makeCtx())
-      expect(res.status).toBe(404)
+      expect(res.status).toBe(403)
       expect(service.writes).toEqual([])
     })
 

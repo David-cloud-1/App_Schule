@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../_lib/auth'
 import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 import { groupIntoBatch } from '@/lib/content-history'
@@ -22,7 +22,7 @@ const ImportSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user, departmentId } = auth
 

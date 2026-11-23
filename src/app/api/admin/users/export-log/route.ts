@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../_lib/auth'
+import { requireSuperAdmin, writeAuditLogStrict } from '../../_lib/auth'
 import { USER_ROLES } from '@/lib/roles'
 import { ACTIVITY_FILTERS, SORT_KEYS } from '@/lib/user-list'
 
@@ -23,7 +23,7 @@ const BodySchema = z.object({
  * Protokoll, ohne Personendaten. Schlägt das fehl, lädt der Browser nichts herunter.
  */
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { user, supabase, isSuperAdmin, departmentId } = auth
   if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
   const { count, ...filter } = parsed.data
 
-  const { error } = await supabase.from('admin_audit_log').insert({
+  const logged = await writeAuditLogStrict(supabase, {
     admin_id: user.id,
     action_type: 'user.export',
     object_type: 'user',
@@ -49,8 +49,7 @@ export async function POST(request: NextRequest) {
     details: { count, filter },
     department_id: departmentId,
   })
-  if (error) {
-    console.error('[POST /api/admin/users/export-log]', error.message)
+  if (!logged) {
     return NextResponse.json({ error: 'Der Export konnte nicht protokolliert werden.' }, { status: 500 })
   }
 

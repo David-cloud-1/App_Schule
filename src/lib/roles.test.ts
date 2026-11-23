@@ -64,7 +64,7 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(PLAYER_VIEW_HREF).toBe('/?ansicht=spiel')
   })
 
-  it('lässt eine Lehrkraft auf Übersicht, Leistungsnachweise und Inhalts-Seiten (PROJ-48), aber nicht auf Nutzer-/Bereichsverwaltung', () => {
+  it('lässt eine Lehrkraft auf Übersicht, Inhalte und Verwaltung (PROJ-48/127), aber nicht auf Super-Admin-Seiten', () => {
     expect(mayOpenAdminPath('teacher', '/admin')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/')).toBe(true)
     expect(mayOpenAdminPath('teacher', '/admin/leistungsnachweise')).toBe(true)
@@ -75,7 +75,11 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     for (const path of ['/admin/inhalte', '/admin/questions', '/admin/subjects', '/admin/topics', '/admin/exam-sets', '/admin/papierkorb', '/admin/my-subjects', '/admin/konto']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(true)
     }
-    for (const path of ['/admin/users', '/admin/departments', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
+    // PROJ-127: Verwaltung offen für alle Lehrkräfte
+    for (const path of ['/admin/users', '/admin/department-settings', '/admin/shop-items', '/admin/audit-log']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+    }
+    for (const path of ['/admin/departments', '/admin/teacher-assignments', '/admin/ai-generator', '/administrator', '/admin/leistungsnachweise-andere-seite']) {
       expect(mayOpenAdminPath('teacher', path)).toBe(false)
     }
     expect(mayOpenAdminPath('department_admin', '/admin/questions')).toBe(true)
@@ -129,8 +133,8 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     expect(teacherMayCallApiPath('/api/admin/kalender-fremd')).toBe(false)
     expect(mayOpenAdminPath('teacher', '/admin/kalender-fremd')).toBe(false)
     expect(mayOpenAdminPath('student', '/admin/kalender')).toBe(false)
-    // Planer-Recht vergeben bleibt Verwaltung (Super-Admin), nicht im Lehrkraft-Tor
-    expect(teacherMayCallApiPath('/api/admin/users/abc/vertretungsplaner')).toBe(false)
+    // Planer-Recht vergeben bleibt beim Super-Admin: das Tor lässt /api/admin/users
+    // seit PROJ-127 durch, die Route selbst prüft requireSuperAdmin (403).
   })
 
   it('nimmt als Login-Ziel nur Pfade innerhalb der App, sonst die Start-Weiche', () => {

@@ -18,9 +18,9 @@ describe('Bestätigungstext beim Rollenwechsel (PROJ-44)', () => {
     expect(text).toContain('Erstellte Inhalte bleiben erhalten und sind danach nur noch für dich sichtbar.')
   })
 
-  it('erklärt beim Herabstufen eines Bereichs-Admins, was wegfällt', () => {
+  it('erklärt beim Herabstufen, was wegfällt', () => {
     const text = roleChangeDescription({ ...lehrkraft, role: 'department_admin' }, 'teacher')
-    expect(text).toContain('Verwaltungsrechte für einen Fachbereich entfallen')
+    expect(text).toContain('Super-Admin-Rechte entfallen')
   })
 
   it('kommt ohne Namen oder ohne E-Mail aus', () => {

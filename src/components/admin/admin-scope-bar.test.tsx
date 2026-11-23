@@ -96,11 +96,11 @@ describe('Bereichsleiste im Seitenkopf (PROJ-70)', () => {
 describe('Hinweis nach gesperrter Seite (PROJ-49)', () => {
   it('erklärt der Lehrkraft, wer die Seite verwaltet', () => {
     renderInWorkspace(<AdminHome blocked />, { role: 'teacher' })
-    expect(screen.getByText('Das verwaltet dein Bereichs-Admin.', { exact: false })).toBeInTheDocument()
+    expect(screen.getByText('Das verwaltet der Super-Admin.', { exact: false })).toBeInTheDocument()
   })
 
   it('zeigt ohne Umleitung keinen Hinweis', () => {
     renderInWorkspace(<AdminHome />, { role: 'teacher' })
-    expect(screen.queryByText('Das verwaltet dein Bereichs-Admin.', { exact: false })).not.toBeInTheDocument()
+    expect(screen.queryByText('Das verwaltet der Super-Admin.', { exact: false })).not.toBeInTheDocument()
   })
 })

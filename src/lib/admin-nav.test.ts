@@ -45,7 +45,9 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(labels('department_admin')).not.toContain('Fachbereiche')
     expect(labels('department_admin')).not.toContain('Zuständigkeiten')
     expect(labels('department_admin')).not.toContain('Abwesenheitsarten')
-    expect(labels('department_admin')).toHaveLength(labels('admin').length - 3)
+    // PROJ-127: dazu „Fragen aus Material“ (bezahlte KI)
+    expect(labels('department_admin')).not.toContain('Fragen aus Material')
+    expect(labels('department_admin')).toHaveLength(labels('admin').length - 4)
   })
 
   it('zeigt weder Super-Admin noch Bereichs-Admin „Meine Fächer“ (PROJ-48 — die sind bereits bereichsweit zuständig)', () => {
@@ -55,12 +57,13 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(labels('department_admin')).not.toContain('Meine Fächer')
   })
 
-  it('zeigt einer Lehrkraft nur „Mein Unterricht“ und „Inhalte“, keine Verwaltung (PROJ-44/46/48/49)', () => {
+  it('zeigt einer Lehrkraft die Verwaltung ohne Super-Admin-Punkte (PROJ-127)', () => {
     const groups = adminNavGroupsFor('teacher')
-    expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte'])
+    expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte', 'Verwaltung'])
     expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
       ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Kalender', 'Meine Fächer', 'Lehrerzimmer'],
       ['Inhalte', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
+      ['Nutzer', 'Fachbereich', 'Items', 'Änderungsprotokoll'],
     ])
   })
 
@@ -87,8 +90,9 @@ describe('Admin-Navigation (PROJ-40)', () => {
   it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {
     const ids = (role: 'teacher' | 'department_admin') =>
       adminHomeActionsFor(role).map((a) => a.id)
-    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'fragen', 'material', 'nutzer', 'werkzeugkiste'])
-    expect(ids('teacher')).toEqual(['neuer-nachweis', 'fragen', 'werkzeugkiste'])
+    // PROJ-127: „Fragen aus Material“ nur noch für den Super-Admin, „Nutzer“ für alle Lehrkräfte
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'fragen', 'nutzer', 'werkzeugkiste'])
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'fragen', 'nutzer', 'werkzeugkiste'])
   })
 
   it('verwendet die neuen, verständlichen Namen', () => {

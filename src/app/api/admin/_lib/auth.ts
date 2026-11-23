@@ -7,7 +7,7 @@ import { getFallbackDepartment } from '@/lib/departments'
 /** Cookie, in dem der Super-Admin seine aktuell gewählte Arbeits-Fachbereich ablegt (PROJ-24). */
 export const ADMIN_DEPARTMENT_COOKIE = 'admin_department_id'
 
-export type AdminRole = 'admin' | 'department_admin'
+export type AdminRole = 'admin' | 'department_admin' | 'teacher'
 
 export type AdminAuthResult =
   | {
@@ -23,19 +23,26 @@ export type AdminAuthResult =
       /** true nur für den Super-Admin (role = 'admin'). */
       isSuperAdmin: boolean
       /**
-       * Fachbereich, in dem der Admin gerade arbeitet (PROJ-22/24).
-       * Bereichs-Admin: immer der eigene Bereich aus dem Profil.
+       * Fachbereich, in dem gerade verwaltet wird (PROJ-22/24/127).
        * Super-Admin: der im Bereichs-Umschalter gewählte Bereich
        * (ADMIN_DEPARTMENT_COOKIE), sonst der Rückfall-Bereich.
+       * Lehrkraft (PROJ-127): der Bereich der Bereichsleiste; bei „Alle
+       * Bereiche“ oder ohne Wahl der Profil-Bereich, sonst der Standardbereich.
        */
       departmentId: string
+      /**
+       * PROJ-127: Die Bereichsleiste steht auf „Alle Bereiche“ (nur für
+       * Lehrkräfte relevant). Schreibzugriffe auf Items und Einstellungen
+       * verlangen dann zuerst die Wahl eines Bereichs (`assertSingleDepartment`).
+       */
+      scopeIsAll: boolean
     }
 
 /**
  * Fachbereich, in dem der Super-Admin laut Bereichs-Umschalter (PROJ-24)
  * gerade arbeitet: ungültige/gelöschte Bereiche und „noch nie gewählt"
  * fallen auf den Rückfall-Bereich zurück, statt die Anfrage scheitern zu
- * lassen. Geteilt von requireAdmin und requireTeacherOrAdmin.
+ * lassen. Geteilt von requireManager und requireTeacherOrAdmin.
  */
 async function resolveSuperAdminDepartment(
   supabase: SupabaseClient,
@@ -60,11 +67,29 @@ async function resolveSuperAdminDepartment(
 }
 
 /**
- * Require an authenticated admin (Super-Admin oder Bereichs-Admin, PROJ-24).
- * Returns either a short-circuit `NextResponse` (401/403) or the supabase
- * client + user + effektiver Arbeits-Fachbereich.
+ * Bereich einer Lehrkraft in der Verwaltung (PROJ-127): die Bereichsleiste
+ * (ADMIN_SCOPE_COOKIE) wie bei den Inhalten. „Alle“ oder ungültig → Profil-
+ * Bereich, sonst der Standardbereich. Kein „fail closed“ mehr: jede Lehrkraft
+ * darf jeden Bereich verwalten.
  */
-export async function requireAdmin(): Promise<AdminAuthResult> {
+async function resolveManagerDepartment(
+  supabase: SupabaseClient,
+  ownDepartmentId: string | null
+): Promise<{ departmentId: string | null; scopeIsAll: boolean }> {
+  const cookieStore = await cookies()
+  const chosen = cookieStore.get(ADMIN_SCOPE_COOKIE)?.value ?? null
+  const scopeIsAll = chosen === SCOPE_ALL
+  if (chosen && !scopeIsAll) {
+    const { data: dept } = await supabase.from('departments').select('id').eq('id', chosen).maybeSingle()
+    const chosenId = (dept as { id: string } | null)?.id ?? null
+    if (chosenId) return { departmentId: chosenId, scopeIsAll: false }
+  }
+  const fallback =
+    ownDepartmentId ?? (await getFallbackDepartment(supabase as unknown as SupabaseClient))?.id ?? null
+  return { departmentId: fallback, scopeIsAll }
+}
+
+async function loadAdminAuth(mode: 'manager' | 'super'): Promise<AdminAuthResult> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -85,7 +110,9 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
     .single()
 
   const role = (profile as { role?: string } | null)?.role
-  if (!profile || (role !== 'admin' && role !== 'department_admin')) {
+  const allowed =
+    mode === 'super' ? role === 'admin' : role === 'admin' || role === 'department_admin' || role === 'teacher'
+  if (!profile || !allowed) {
     return {
       error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
       user: null,
@@ -96,22 +123,16 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
   const isSuperAdmin = role === 'admin'
   const ownDepartmentId = (profile as { department_id?: string | null }).department_id ?? null
 
-  let departmentId: string | null = null
-
+  let departmentId: string | null
+  let scopeIsAll = false
   if (isSuperAdmin) {
-    // Bereichs-Umschalter: der Super-Admin arbeitet im zuletzt gewählten
-    // Bereich. Ungültige/gelöschte Bereiche und "noch nie gewählt" fallen
-    // auf den Standardbereich zurück, statt die Anfrage scheitern zu lassen.
     departmentId = await resolveSuperAdminDepartment(supabase, ownDepartmentId)
   } else {
-    // Bereichs-Admin: fest der eigene Bereich, kein Umschalter, KEIN
-    // Rückfall auf den Standardbereich — ein department_admin ohne eigenen
-    // Bereich darf nirgends etwas sehen/ändern (fail closed, Edge Case Spec).
-    departmentId = ownDepartmentId
+    ;({ departmentId, scopeIsAll } = await resolveManagerDepartment(supabase, ownDepartmentId))
   }
 
   if (!departmentId) {
-    console.error('[requireAdmin] no department found', { userId: user.id, role })
+    console.error('[requireManager] no department found', { userId: user.id, role })
     return {
       error: NextResponse.json({ error: 'Kein Fachbereich zugeordnet' }, { status: 403 }),
       user: null,
@@ -123,23 +144,57 @@ export async function requireAdmin(): Promise<AdminAuthResult> {
     error: null,
     user: { id: user.id, email: user.email },
     supabase: supabase as unknown as SupabaseClient,
-    role,
+    role: role as AdminRole,
     isSuperAdmin,
     departmentId,
+    scopeIsAll,
   }
 }
 
 /**
+ * Türsteher „Verwaltung“ (PROJ-127): jede Lehrer-Rolle (Lehrkraft, bisheriger
+ * Bereichs-Admin, Super-Admin). Der Bereich kommt aus der Bereichsleiste.
+ * Was nur der Super-Admin darf, prüft `requireSuperAdmin`.
+ */
+export function requireManager(): Promise<AdminAuthResult> {
+  return loadAdminAuth('manager')
+}
+
+/**
+ * Türsteher „nur Super-Admin“ (PROJ-127): Rollen und Status vergeben, Konten
+ * löschen, Fortschritt, Export, Zuständigkeiten, Fachbereiche, bezahlte KI,
+ * Bereichs-Umschalter. Alle anderen Rollen bekommen 403.
+ */
+export function requireSuperAdmin(): Promise<AdminAuthResult> {
+  return loadAdminAuth('super')
+}
+
+/**
+ * Schreibzugriffe auf Items und Fachbereich-Einstellungen brauchen einen
+ * einzelnen Bereich (PROJ-127). Steht die Bereichsleiste einer Lehrkraft auf
+ * „Alle Bereiche“, antwortet die Route mit 400 und dieser Bitte.
+ */
+export function assertSingleDepartment(auth: Extract<AdminAuthResult, { error: null }>): NextResponse | null {
+  if (auth.isSuperAdmin || !auth.scopeIsAll) return null
+  return NextResponse.json(
+    { error: 'Bitte wähle oben in der Bereichsleiste einen Bereich aus.', field: 'department_id' },
+    { status: 400 }
+  )
+}
+
+/**
  * Darf `auth` ein Objekt verwalten, das zu `objectDepartmentId` gehört?
- * Super-Admin: immer. Bereichs-Admin: nur der eigene (gewählte) Bereich.
- * `objectDepartmentId` null/undefined (z. B. verwaistes Objekt) → nur Super-Admin.
+ * Super-Admin: immer. Lehrkraft (PROJ-127): Objekte im gerade gewählten
+ * Bereich; bei „Alle Bereiche“ jedes Objekt mit Bereich.
+ * `objectDepartmentId` null/undefined (verwaistes Objekt) → nur Super-Admin.
  */
 export function canAdminDepartment(
   auth: Extract<AdminAuthResult, { error: null }>,
   objectDepartmentId: string | null | undefined
 ): boolean {
   if (auth.isSuperAdmin) return true
-  return !!objectDepartmentId && objectDepartmentId === auth.departmentId
+  if (!objectDepartmentId) return false
+  return auth.scopeIsAll || objectDepartmentId === auth.departmentId
 }
 
 /**
@@ -404,6 +459,11 @@ export type TeacherAuthResult =
        * nur als Default für die Oberfläche.
        */
       suggestedDepartmentId: string | null
+      /**
+       * Bereich aus dem eigenen Profil (PROJ-127): Mit diesem Bereich geteilte
+       * Nachweise sieht jede Lehrer-Rolle, deren Profil dazu gehört.
+       */
+      ownDepartmentId?: string | null
     }
 
 export async function requireTeacherOrAdmin(): Promise<TeacherAuthResult> {
@@ -454,6 +514,7 @@ export async function requireTeacherOrAdmin(): Promise<TeacherAuthResult> {
     isSuperAdmin,
     isDepartmentAdmin,
     suggestedDepartmentId,
+    ownDepartmentId,
   }
 }
 
@@ -468,7 +529,8 @@ type ViewableAssessment = {
  * Darf `auth` diesen Nachweis sehen? Spiegelt exakt die Datenbank-Funktion
  * `can_view_assessment` (PROJ-46 Tech Design E — eine Prüfung, zwei Stellen):
  * Super-Admin immer; die erstellende Person, solange sie eine Lehrer-Rolle
- * hat; ein Bereichs-Admin nur für geteilte Nachweise seines eigenen Bereichs.
+ * hat; jede Lehrer-Rolle für geteilte Nachweise des Bereichs aus ihrem
+ * Profil (PROJ-127, vorher nur der Bereichs-Admin).
  */
 export function canViewAssessment(
   auth: Extract<TeacherAuthResult, { error: null }>,
@@ -477,10 +539,9 @@ export function canViewAssessment(
   if (auth.isSuperAdmin) return true
   if (assessment.created_by && assessment.created_by === auth.user.id) return true
   return (
-    auth.isDepartmentAdmin &&
     assessment.shared_with_department &&
     !!assessment.department_id &&
-    assessment.department_id === auth.suggestedDepartmentId
+    assessment.department_id === (auth.ownDepartmentId ?? null)
   )
 }
 
@@ -496,43 +557,125 @@ export function assertCanViewAssessment(
   return NextResponse.json({ error: 'Not found' }, { status: 404 })
 }
 
+export type AuditEntry = {
+  admin_id: string
+  action_type: string
+  object_type: string
+  object_id?: string | null
+  object_label?: string | null
+  details?: Record<string, unknown> | null
+  /** Bereich des betroffenen Objekts; ohne Angabe der Bereich des Admins */
+  department_id?: string | null
+}
+
+/** Lesbarer Name der handelnden Person: Vor- und Nachname, sonst Anzeigename */
+export function actorNameOf(
+  profile: { first_name?: string | null; last_name?: string | null; display_name?: string | null } | null
+): string | null {
+  const full = [profile?.first_name?.trim(), profile?.last_name?.trim()].filter(Boolean).join(' ')
+  return full || profile?.display_name?.trim() || null
+}
+
 /**
- * Best-effort audit log insert. Never throws — safe to call even if the
- * `admin_audit_log` table is not yet present.
+ * Baut die Zeile fürs Änderungsprotokoll. Der Name der handelnden Person
+ * steht als Text darin (PROJ-127), damit er auch nach dem Löschen des
+ * Kontos lesbar bleibt.
  */
-export async function writeAuditLog(
-  supabase: SupabaseClient,
-  entry: {
-    admin_id: string
-    action_type: string
-    object_type: string
-    object_id?: string | null
-    object_label?: string | null
-    details?: Record<string, unknown> | null
-    /** Bereich des betroffenen Objekts; ohne Angabe der Bereich des Admins */
+async function buildAuditRow(supabase: SupabaseClient, entry: AuditEntry) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('department_id, first_name, last_name, display_name')
+    .eq('id', entry.admin_id)
+    .maybeSingle()
+  const profile = data as {
     department_id?: string | null
+    first_name?: string | null
+    last_name?: string | null
+    display_name?: string | null
+  } | null
+  return {
+    admin_id: entry.admin_id,
+    admin_name: actorNameOf(profile),
+    action_type: entry.action_type,
+    object_type: entry.object_type,
+    object_id: entry.object_id ?? null,
+    object_label: entry.object_label ?? null,
+    details: entry.details ?? null,
+    department_id: entry.department_id === undefined ? (profile?.department_id ?? null) : entry.department_id,
   }
-) {
+}
+
+/** Spalte admin_name fehlt (Migration PROJ-127 noch nicht eingespielt) */
+function isMissingNameColumn(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  return (error.code === 'PGRST204' || error.code === '42703') && /admin_name/.test(error.message ?? '')
+}
+
+async function insertAuditRow(
+  supabase: SupabaseClient,
+  row: Awaited<ReturnType<typeof buildAuditRow>>
+): Promise<{ code?: string; message?: string } | null> {
+  const { error } = await supabase.from('admin_audit_log').insert(row)
+  if (!error) return null
+  if (isMissingNameColumn(error)) {
+    const { admin_name: _ignored, ...withoutName } = row
+    const retry = await supabase.from('admin_audit_log').insert(withoutName)
+    return retry.error ?? null
+  }
+  return error
+}
+
+/**
+ * Best-effort audit log insert. Never throws. Nur für Aktionen des
+ * Super-Admins und für Inhalte; Verwaltungsaktionen von Lehrkräften nutzen
+ * `writeAuditLogStrict` (PROJ-127).
+ */
+export async function writeAuditLog(supabase: SupabaseClient, entry: AuditEntry) {
   try {
-    let departmentId = entry.department_id
-    if (departmentId === undefined) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('department_id')
-        .eq('id', entry.admin_id)
-        .maybeSingle()
-      departmentId = (data as { department_id?: string | null } | null)?.department_id ?? null
-    }
-    await supabase.from('admin_audit_log').insert({
-      admin_id: entry.admin_id,
-      action_type: entry.action_type,
-      object_type: entry.object_type,
-      object_id: entry.object_id ?? null,
-      object_label: entry.object_label ?? null,
-      details: entry.details ?? null,
-      department_id: departmentId,
-    })
+    const error = await insertAuditRow(supabase, await buildAuditRow(supabase, entry))
+    if (error) console.error('[writeAuditLog]', entry.action_type, error.message)
   } catch {
-    // Swallow — table may not exist yet.
+    // Swallow — Protokoll darf hier die Aktion nicht verhindern.
   }
+}
+
+/** Antwort, wenn das Änderungsprotokoll nicht geschrieben werden konnte (PROJ-127) */
+export const AUDIT_FAILED_MESSAGE =
+  'Die Änderung konnte nicht protokolliert werden und wurde deshalb nicht gespeichert. Bitte versuche es erneut.'
+
+export function auditFailedResponse(): NextResponse {
+  return NextResponse.json({ error: AUDIT_FAILED_MESSAGE }, { status: 503 })
+}
+
+/**
+ * Strenge Protokoll-Hilfe (PROJ-127): liefert `true`, wenn der Eintrag
+ * geschrieben ist, sonst `false`. Die Route darf dann nicht stillschweigend
+ * weitermachen: Sie nimmt ihre Änderung zurück (oder hat sie noch nicht
+ * ausgeführt) und antwortet mit `auditFailedResponse()`.
+ */
+export async function writeAuditLogStrict(supabase: SupabaseClient, entry: AuditEntry): Promise<boolean> {
+  try {
+    const error = await insertAuditRow(supabase, await buildAuditRow(supabase, entry))
+    if (error) {
+      console.error('[writeAuditLogStrict]', entry.action_type, error.code, error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('[writeAuditLogStrict] threw', entry.action_type, err instanceof Error ? err.message : err)
+    return false
+  }
+}
+
+/** Nur die Felder, die sich wirklich ändern: { feld: { alt, neu } } für `details` */
+export function changedFields(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>
+): Record<string, { alt: unknown; neu: unknown }> {
+  const out: Record<string, { alt: unknown; neu: unknown }> = {}
+  for (const [key, neu] of Object.entries(after)) {
+    const alt = before[key] ?? null
+    if (JSON.stringify(alt) !== JSON.stringify(neu ?? null)) out[key] = { alt, neu: neu ?? null }
+  }
+  return out
 }

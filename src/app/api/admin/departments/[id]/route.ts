@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../_lib/auth'
 import { DEPARTMENTS_CACHE_TAG } from '@/lib/departments-server'
 
 const UpdateSchema = z
@@ -31,7 +31,7 @@ export async function PATCH(
   request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   if (!auth.isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { supabase, user } = auth

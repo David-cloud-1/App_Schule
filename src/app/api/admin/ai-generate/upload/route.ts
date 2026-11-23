@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../_lib/auth'
+import { requireSuperAdmin } from '../../_lib/auth'
 import { processJob, MAX_FILE_BYTES } from '../_lib/process-job'
 import { createClient } from '@/lib/supabase-server'
 import { resolveSubjectCode } from '@/lib/subjects'
@@ -12,7 +12,7 @@ const ALLOWED_TYPES = [
 ]
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { user } = auth
 

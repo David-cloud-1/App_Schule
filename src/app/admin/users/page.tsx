@@ -42,7 +42,7 @@ import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { MoveDepartmentDialog } from '@/components/admin/move-department-dialog'
 import { roleChangeDescription } from '@/components/admin/role-change-text'
-import { ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
+import { ASSIGNABLE_ROLES, ROLE_LABEL, USER_ROLES, type UserRole } from '@/lib/roles'
 import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
@@ -372,19 +372,9 @@ export default function AdminUsersPage() {
 
   async function handleRoleConfirm() {
     if (!roleChange) return
-    if (roleChange.newRole === 'department_admin' && !roleChange.user.department_id) {
-      toast.error('Bereichs-Admin braucht einen Fachbereich. Verschiebe das Konto zuerst in einen Fachbereich.')
-      setRoleChange(null)
-      return
-    }
     setSubmitting(true)
     try {
-      const payload: { role: Role; department_id?: string } = { role: roleChange.newRole }
-      // Bereichs-Admin braucht zwingend einen Bereich — der eigene (bestehende)
-      // Bereich der Person ist der sinnvolle Standard.
-      if (roleChange.newRole === 'department_admin' && roleChange.user.department_id) {
-        payload.department_id = roleChange.user.department_id
-      }
+      const payload: { role: Role } = { role: roleChange.newRole }
       const res = await fetch(`/api/admin/users/${roleChange.user.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -724,7 +714,7 @@ export default function AdminUsersPage() {
                           items={[
                             // Rollen vergeben — nur Super-Admin (AC-7)
                             ...(isSuperAdmin && !isSelf
-                              ? USER_ROLES.filter((r) => r !== u.role).map((r) => ({
+                              ? ASSIGNABLE_ROLES.filter((r) => r !== u.role).map((r) => ({
                                   key: `role-${r}`,
                                   label: `Rolle ändern: ${ROLE_LABEL[r]}`,
                                   icon: <ShieldCheck className="size-4" />,

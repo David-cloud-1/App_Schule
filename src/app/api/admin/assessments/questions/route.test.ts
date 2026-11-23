@@ -44,7 +44,7 @@ describe('GET /api/admin/assessments/questions', () => {
     expect(body.canEditPool).toBe(true)
   })
 
-  it('canEditPool is false for a teacher without department-admin rights (PROJ-49)', async () => {
+  it('canEditPool is false for a teacher without a profile department', async () => {
     const teacher = { error: null, user: { id: 'u' }, supabase: {}, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null }
     vi.mocked(requireTeacherOrAdmin).mockResolvedValue(teacher as never)
     vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
@@ -52,8 +52,16 @@ describe('GET /api/admin/assessments/questions', () => {
     expect((await res.json()).canEditPool).toBe(false)
   })
 
-  it('canEditPool is false for a department admin of a foreign target department', async () => {
-    const other = { error: null, user: { id: 'u' }, supabase: {}, role: 'department_admin', isSuperAdmin: false, isDepartmentAdmin: true, suggestedDepartmentId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }
+  it('canEditPool is true for any teacher in the department of their profile (PROJ-127)', async () => {
+    const own = { error: null, user: { id: 'u' }, supabase: {}, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null, ownDepartmentId: DEPT }
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue(own as never)
+    vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
+    const res = await GET(get())
+    expect((await res.json()).canEditPool).toBe(true)
+  })
+
+  it('canEditPool is false for a teacher whose profile belongs to another department', async () => {
+    const other = { error: null, user: { id: 'u' }, supabase: {}, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: null, ownDepartmentId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }
     vi.mocked(requireTeacherOrAdmin).mockResolvedValue(other as never)
     vi.mocked(fetchSelectableQuestions).mockResolvedValue([])
     const res = await GET(get())

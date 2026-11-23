@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, writeAuditLog } from '../../../_lib/auth'
+import { requireManager, writeAuditLog } from '../../../_lib/auth'
 
 type BatchVersionRow = {
   content_type: string
@@ -15,12 +15,9 @@ type BatchVersionRow = {
  * nicht überschrieben).
  */
 export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { supabase, isSuperAdmin } = auth
-  if (!isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin kann Vorgänge zurücknehmen.' }, { status: 403 })
-  }
+  const { supabase } = auth
 
   const { id } = await ctx.params
 
@@ -74,12 +71,9 @@ export async function GET(_request: NextRequest, ctx: { params: Promise<{ id: st
  * übersprungen, es sei denn `force` ist gesetzt.
  */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { supabase, user, isSuperAdmin } = auth
-  if (!isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin kann Vorgänge zurücknehmen.' }, { status: 403 })
-  }
+  const { supabase, user } = auth
 
   const { id } = await ctx.params
   let force = false

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../../../../_lib/auth'
+import { requireManager, writeAuditLog } from '../../../../_lib/auth'
 import { periodSchema } from '@/lib/content-history'
 
 const BodySchema = periodSchema.extend({
@@ -17,14 +17,11 @@ type PlanRow = { content_type: string; content_id: string; action: 'restore' | '
  * Nimmt alle Änderungen einer Person im Zeitraum gesammelt zurück (PROJ-70),
  * als EIN Vorgang. Inhalte mit Konflikt bleiben standardmäßig unberührt. Die
  * Rücknahme ist selbst ein Vorgang und lässt sich über die bestehende
- * Vorgangs-Rücknahme wieder umkehren. Nur Super-Admin.
+ * Vorgangs-Rücknahme wieder umkehren. Jede Lehrer-Rolle (PROJ-127).
  */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  if (!auth.isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin kann Änderungen einer Person zurücknehmen.' }, { status: 403 })
-  }
   const { supabase, user } = auth
 
   const { id } = await ctx.params

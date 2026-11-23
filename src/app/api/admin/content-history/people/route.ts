@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../_lib/auth'
+import { requireManager } from '../../_lib/auth'
 import { periodSchema } from '@/lib/content-history'
 
 const QuerySchema = periodSchema.extend({
@@ -9,15 +9,12 @@ const QuerySchema = periodSchema.extend({
 
 /**
  * Änderungen je Person im Zeitraum (PROJ-70): angelegt / geändert / gelöscht /
- * wiederhergestellt. Nur Super-Admin; die Zählung läuft in der Datenbank
+ * wiederhergestellt. Jede Lehrer-Rolle (PROJ-127); die Zählung läuft in der Datenbank
  * (eine Abfrage), nicht über tausende Versionen in der App.
  */
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  if (!auth.isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin sieht die Auswertung je Person.' }, { status: 403 })
-  }
 
   const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))
   if (!parsed.success) {

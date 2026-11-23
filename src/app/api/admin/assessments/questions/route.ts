@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
 
   // Deckt sich mit der isOwnDepartment-Regel beim Datei-Import (PROJ-46):
   // nur in diesem Fall landen neue/geänderte Fragen im Bereichs-Pool statt privat.
-  const canEditPool = auth.isSuperAdmin || (auth.isDepartmentAdmin && parsed.data.departmentId === auth.suggestedDepartmentId)
+  // PROJ-127: jede Lehrer-Rolle im Bereich ihres Profils (vorher nur der Bereichs-Admin)
+  const canEditPool = auth.isSuperAdmin || (!!auth.ownDepartmentId && parsed.data.departmentId === auth.ownDepartmentId)
 
   try {
     const questions = await fetchSelectableQuestions(supabase, parsed.data.departmentId, user.id)

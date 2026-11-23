@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../../../_lib/auth'
+import { requireManager } from '../../../../_lib/auth'
 import { periodSchema } from '@/lib/content-history'
 
 type PlanRow = {
@@ -13,15 +13,12 @@ type PlanRow = {
 
 /**
  * Vorschau der Sammel-Rücknahme (PROJ-70): wie viele Inhalte betroffen sind
- * und wo jemand anderes seitdem weiter bearbeitet hat. Ändert nichts. Nur
- * Super-Admin (zusätzlich in der Datenbank-Funktion geprüft).
+ * und wo jemand anderes seitdem weiter bearbeitet hat. Ändert nichts. Jede
+ * Lehrer-Rolle (PROJ-127, zusätzlich in der Datenbank-Funktion geprüft).
  */
 export async function GET(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  if (!auth.isSuperAdmin) {
-    return NextResponse.json({ error: 'Nur der Super-Admin kann Änderungen einer Person zurücknehmen.' }, { status: 403 })
-  }
 
   const { id } = await ctx.params
   if (!z.string().uuid().safeParse(id).success) {

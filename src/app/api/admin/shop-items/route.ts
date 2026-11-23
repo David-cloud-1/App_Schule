@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireManager, writeAuditLogStrict, auditFailedResponse, assertSingleDepartment } from '../_lib/auth'
+import { lastChangesFor } from '../_lib/last-change'
+import { createServiceClient } from '@/lib/supabase-server'
 import { getDepartmentById } from '@/lib/departments'
 import { HOF_CATEGORIES, iconKeyBelongsToCategory, type HofCategory } from '@/lib/hof-icons'
 import { HOF_RARITIES, getEffectiveRarity, type HofRarity } from '@/lib/hof-rarity'
@@ -20,9 +22,9 @@ const CreateSchema = z.object({
 })
 
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
-  const { supabase, departmentId } = auth
+  const { supabase, departmentId, scopeIsAll, isSuperAdmin } = auth
 
   // shop_items hat zusätzlich eine öffentliche "is_active"-Lese-Policy für
   // Azubis (ohne Bereichsfilter) — ohne diesen Code-Filter sähe ein
@@ -47,19 +49,28 @@ export async function GET() {
     purchaseCounts.set(id, (purchaseCounts.get(id) ?? 0) + 1)
   }
 
+  const lastChanges = await lastChangesFor(
+    'shop_item',
+    (itemsResult.data ?? []).map((item) => item.id as string)
+  )
+
   const items = (itemsResult.data ?? []).map((item) => ({
     ...item,
     rarity: getEffectiveRarity(item.price as number, item.rarity_override as string | null),
     purchase_count: purchaseCounts.get(item.id) ?? 0,
+    last_change: lastChanges.get(item.id as string) ?? null,
   }))
 
-  return NextResponse.json({ items })
+  // PROJ-127: Bei „Alle Bereiche“ zeigt die Seite den Hinweis, zuerst einen Bereich zu wählen
+  return NextResponse.json({ items, departmentId, needsDepartment: !isSuperAdmin && scopeIsAll })
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
   const { supabase, user, departmentId } = auth
+  const needsDepartment = assertSingleDepartment(auth)
+  if (needsDepartment) return needsDepartment
 
   let body: unknown
   try {
@@ -87,7 +98,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { data, error } = await supabase
+  // Schreiben nur über diese Route mit Dienstschlüssel (PROJ-127, QA M1): Lehrkräfte
+  // haben in der Datenbank kein Schreibrecht auf Items, so geht nichts ohne Protokoll.
+  const service = createServiceClient()
+  const { data, error } = await service
     .from('shop_items')
     .insert({ ...parsed.data, department_id: departmentId })
     .select('id')
@@ -98,13 +112,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create item' }, { status: 500 })
   }
 
-  await writeAuditLog(supabase, {
+  const logged = await writeAuditLogStrict(supabase, {
     admin_id: user.id,
     action_type: 'shop_item.create',
     object_type: 'shop_item',
     object_id: data.id,
     object_label: parsed.data.name,
+    details: { neu: { ...parsed.data } },
+    department_id: departmentId,
   })
+  if (!logged) {
+    // Ohne Eintrag kein neues Item
+    await service.from('shop_items').delete().eq('id', data.id)
+    return auditFailedResponse()
+  }
 
   return NextResponse.json({ id: data.id }, { status: 201 })
 }

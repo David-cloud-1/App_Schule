@@ -43,11 +43,13 @@ beforeEach(() => {
 })
 
 describe('GET /api/admin/content-history/changes (PROJ-70)', () => {
-  it('ist nur für den Super-Admin', async () => {
+  it('steht jeder Lehrer-Rolle offen, Azubis nicht (PROJ-127; die Datenbank-Regel begrenzt die Versionen)', async () => {
     for (const role of ['teacher', 'department_admin']) {
       vi.mocked(createClient).mockResolvedValue(makeSupabase(role).client as never)
-      expect((await GET(req())).status).toBe(403)
+      expect((await GET(req())).status).toBe(200)
     }
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('student').client as never)
+    expect((await GET(req())).status).toBe(403)
   })
 
   it('liefert Einträge mit Person, Bereich und Seitenzahl', async () => {

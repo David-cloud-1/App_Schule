@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import {
+  requireManager,
+  writeAuditLogStrict,
+  auditFailedResponse,
+  assertSingleDepartment,
+  changedFields,
+} from '../_lib/auth'
+import { lastChangesFor } from '../_lib/last-change'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getDepartmentById } from '@/lib/departments'
 import { DEPARTMENTS_CACHE_TAG } from '@/lib/departments-server'
@@ -16,13 +23,13 @@ const UpdateSchema = z
   .refine((v) => Object.keys(v).length > 0, { message: 'No fields provided' })
 
 /**
- * Fachbereich-Einstellungen (PROJ-24) — die Felder, die eine Lehrkraft für
- * den eigenen Bereich pflegen darf: Zusatzhinweise für den Prompt, Münz- und
+ * Fachbereich-Einstellungen (PROJ-24, PROJ-127) — die Felder, die jede
+ * Lehrkraft für den in der Bereichsleiste gewählten Bereich pflegen darf: Zusatzhinweise für den Prompt, Münz- und
  * Hof-Name. Alles andere (Adresse, Branding, Klassenstufen, …) ist Super-
  * Admin-only und läuft über /api/admin/departments.
  */
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
 
   const department = await getDepartmentById(auth.supabase, auth.departmentId)
@@ -30,7 +37,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
   }
 
+  const lastChange = (await lastChangesFor('department', [department.id])).get(department.id) ?? null
+
   return NextResponse.json({
+    lastChange,
+    needsDepartment: !auth.isSuperAdmin && auth.scopeIsAll,
     id: department.id,
     name: department.name,
     appName: department.appName,
@@ -43,9 +54,11 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
   const { user, departmentId } = auth
+  const needsDepartment = assertSingleDepartment(auth)
+  if (needsDepartment) return needsDepartment
 
   let body: unknown
   try {
@@ -68,26 +81,46 @@ export async function PATCH(request: NextRequest) {
   if (parsed.data.hof_name !== undefined) update.hof_name = parsed.data.hof_name
   if (parsed.data.hof_short_name !== undefined) update.hof_short_name = parsed.data.hof_short_name
 
-  // departments erlaubt per RLS nur dem Super-Admin direktes Schreiben — ein
-  // department_admin pflegt hier ausschließlich die eigenen, unkritischen
-  // Branding-Felder. Die Bereichsgrenze (nur der eigene departmentId) wird
-  // deshalb im Code erzwungen (Service-Role-Route, wie admin/users).
+  // departments erlaubt per RLS nur dem Super-Admin direktes Schreiben — eine
+  // Lehrkraft pflegt hier ausschließlich die unkritischen Branding-Felder.
+  // Die Bereichsgrenze (nur der gewählte departmentId) wird deshalb im Code
+  // erzwungen (Service-Role-Route, wie admin/users).
   const service = createServiceClient()
+  const { data: beforeRow, error: readError } = await service
+    .from('departments')
+    .select('name, prompt_notes, currency_name, hof_name, hof_short_name')
+    .eq('id', departmentId)
+    .maybeSingle()
+  if (readError || !beforeRow) {
+    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+  }
+  const before = beforeRow as Record<string, unknown>
+
   const { error } = await service.from('departments').update(update).eq('id', departmentId)
   if (error) {
     console.error('[PATCH /api/admin/department-settings]', error)
     return NextResponse.json({ error: 'Speichern fehlgeschlagen' }, { status: 500 })
   }
 
-  revalidateTag(DEPARTMENTS_CACHE_TAG, { expire: 0 })
-
-  await writeAuditLog(auth.supabase, {
+  const logged = await writeAuditLogStrict(auth.supabase, {
     admin_id: user.id,
     action_type: 'department.settings_update',
     object_type: 'department',
     object_id: departmentId,
+    object_label: (before.name as string) ?? null,
+    details: { changes: changedFields(before, update) },
     department_id: departmentId,
   })
+  if (!logged) {
+    // Ohne Eintrag keine Änderung: alten Stand zurückschreiben
+    const restore: Record<string, unknown> = {}
+    for (const key of Object.keys(update)) restore[key] = before[key] ?? null
+    await service.from('departments').update(restore).eq('id', departmentId)
+    revalidateTag(DEPARTMENTS_CACHE_TAG, { expire: 0 })
+    return auditFailedResponse()
+  }
+
+  revalidateTag(DEPARTMENTS_CACHE_TAG, { expire: 0 })
 
   return NextResponse.json({ ok: true })
 }

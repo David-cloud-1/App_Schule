@@ -21,8 +21,8 @@ export function roleChangeDescription(
       return `${head} für den eigenen Fachbereich und kann dessen Inhalte verwalten.`
     case 'teacher':
       return isTeacherRole(user.role)
-        ? `${head}: Zugang zum Lehrkräfte-Bereich bleibt, die Verwaltungsrechte für einen Fachbereich entfallen.`
-        : `${head} und bekommt Zugang zum Lehrkräfte-Bereich – ohne Verwaltungsrechte für einen Fachbereich.`
+        ? `${head}: Der Zugang zum Lehrkräfte-Bereich bleibt, nur die Super-Admin-Rechte entfallen.`
+        : `${head} und bekommt Zugang zum Lehrkräfte-Bereich: Inhalte, Nutzer und Einstellungen aller Bereiche. Löschen und Rollen vergeben bleiben beim Super-Admin.`
     case 'student':
       return `${head} und verliert sofort den Zugang zum Lehrkräfte-Bereich. Erstellte Inhalte bleiben erhalten und sind danach nur noch für dich sichtbar.`
   }

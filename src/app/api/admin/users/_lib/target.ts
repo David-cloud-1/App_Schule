@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { requireAdmin, type AdminAuthResult } from '../../_lib/auth'
+import { requireSuperAdmin, type AdminAuthResult } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 
 /** Spalten des Profils, die die Detailseite und ihre Aktionen brauchen (PROJ-59) */
@@ -48,7 +48,7 @@ export async function requireSuperAdminTarget(
   id: string,
   options: { blockSelf?: boolean } = {},
 ): Promise<SuperAdminTarget> {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return { error: auth.error }
   if (!auth.isSuperAdmin) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }

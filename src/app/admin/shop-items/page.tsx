@@ -31,6 +31,7 @@ import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
 import type { HofRarity } from '@/lib/hof-rarity'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
+import { LastChangedLine } from '@/components/admin/content-meta'
 
 type ShopItemListItem = {
   id: string
@@ -44,6 +45,7 @@ type ShopItemListItem = {
   rarity_override?: HofRarity | null
   is_active: boolean
   purchase_count: number
+  last_change?: { by: string | null; at: string; action: string } | null
 }
 
 export default function AdminShopItemsPage() {
@@ -51,6 +53,7 @@ export default function AdminShopItemsPage() {
   const [items, setItems] = useState<ShopItemListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
+  const [needsDepartment, setNeedsDepartment] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AdminShopItemRow | null>(null)
 
@@ -65,6 +68,7 @@ export default function AdminShopItemsPage() {
       }
       const json = await res.json()
       setItems(json.items ?? [])
+      setNeedsDepartment(Boolean(json.needsDepartment))
     } catch (err) {
       console.error(err)
       setLoadFailed(true)
@@ -98,7 +102,7 @@ export default function AdminShopItemsPage() {
   }
 
   // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
-  const showEmpty = !loadFailed && !loading && items.length === 0
+  const showEmpty = !loadFailed && !loading && !needsDepartment && items.length === 0
 
   return (
     <div className="space-y-6">
@@ -108,7 +112,7 @@ export default function AdminShopItemsPage() {
           loading && items.length === 0 ? 'Wird geladen …' : <>{items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog</>
         }
         actions={
-          showEmpty ? undefined : (
+          showEmpty || needsDepartment ? undefined : (
             <Button
               onClick={() => {
                 setEditing(null)
@@ -125,6 +129,12 @@ export default function AdminShopItemsPage() {
 
       {loadFailed ? (
         <AdminErrorState message="Die Items konnten gerade nicht geladen werden." onRetry={load} />
+      ) : needsDepartment ? (
+        <AdminEmptyState
+          icon={Store}
+          title="Bitte wähle einen Bereich"
+          description="Items gehören zu einem Bereich. Wähle oben in der Bereichsleiste Spedition oder Tourismus."
+        />
       ) : showEmpty ? (
         <AdminEmptyState
           icon={Store}
@@ -208,6 +218,7 @@ export default function AdminShopItemsPage() {
                           <div>
                             <p>{item.name}</p>
                             <p className="text-xs text-ws-muted font-normal">{item.description}</p>
+                            <LastChangedLine by={item.last_change?.by} at={item.last_change?.at} />
                           </div>
                         </div>
                       </TableCell>

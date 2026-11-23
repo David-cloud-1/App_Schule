@@ -82,7 +82,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     expect((await api.json()).error).toBe('Du hast keinen Zugang zum Lehrkräfte-Bereich.')
     expect(locationOf(await call('/admin/questions'))).toBe('/?kein-zugang=1')
     state.role = 'teacher'
-    const teacherApi = await call('/api/admin/users')
+    const teacherApi = await call('/api/admin/teacher-assignments')
     expect((await teacherApi.json()).error).toBe('Dafür fehlen dir die Rechte. Das kann nur ein Administrator.')
   })
 
@@ -93,9 +93,9 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     expect(res.headers.get('location')).toBeNull()
   })
 
-  it('leitet eine Lehrkraft von reiner Verwaltungsseiten (Nutzer/Bereiche) zur Übersicht um', async () => {
+  it('leitet eine Lehrkraft von Super-Admin-Seiten (Fachbereiche, Zuständigkeiten, Fragen aus Material) zur Übersicht um (PROJ-127)', async () => {
     state.role = 'teacher'
-    for (const path of ['/admin/users', '/admin/departments']) {
+    for (const path of ['/admin/departments', '/admin/teacher-assignments', '/admin/ai-generator']) {
       expect(locationOf(await call(path))).toBe('/admin?gesperrt=1')
     }
   })
@@ -119,10 +119,17 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
     }
   })
 
-  it('sperrt die Nutzer-/Bereichsverwaltung für eine Lehrkraft mit 403, lässt Inhalts-Schnittstellen durch (PROJ-48)', async () => {
+  it('lässt eine Lehrkraft in die Verwaltung (PROJ-127), sperrt Zuständigkeiten und bezahlte KI mit 403', async () => {
     state.role = 'teacher'
-    expect((await call('/api/admin/users')).status).toBe(403)
-    for (const path of ['/api/admin/questions', '/api/admin/subjects', '/api/admin/my-subjects']) {
+    for (const path of ['/admin/users', '/admin/department-settings', '/admin/shop-items', '/admin/audit-log']) {
+      const res = await call(path)
+      expect(res.status, path).toBe(200)
+      expect(res.headers.get('location')).toBeNull()
+    }
+    for (const path of ['/api/admin/teacher-assignments', '/api/admin/ai-generate/jobs', '/api/admin/context/department']) {
+      expect((await call(path)).status, path).toBe(403)
+    }
+    for (const path of ['/api/admin/users', '/api/admin/shop-items', '/api/admin/department-settings', '/api/admin/audit-log', '/api/admin/questions', '/api/admin/subjects', '/api/admin/my-subjects']) {
       expect((await call(path)).status).toBe(200)
     }
   })

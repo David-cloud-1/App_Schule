@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, writeAuditLog } from '../../../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../../../_lib/auth'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user } = auth
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { resolveSubjectCode } from '@/lib/subjects'
-import { requireAdmin } from '../../_lib/auth'
+import { requireManager } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 
 const ExportQuerySchema = z.object({
@@ -24,7 +24,7 @@ function escapeCsv(value: string | null | undefined): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
   const { supabase, departmentId, isSuperAdmin } = auth
 

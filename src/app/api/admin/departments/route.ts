@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { revalidateTag } from 'next/cache'
-import { requireAdmin, writeAuditLog } from '../_lib/auth'
+import { requireManager, requireSuperAdmin, writeAuditLog } from '../_lib/auth'
 import { DEPARTMENT_COLUMNS, mapDepartment, type Department } from '@/lib/departments'
 import { DEPARTMENTS_CACHE_TAG } from '@/lib/departments-server'
 
@@ -27,7 +27,7 @@ const CreateSchema = z.object({
 })
 
 /**
- * Liste aller Fachbereiche. department_admin braucht sie nur, um eigene
+ * Liste aller Fachbereiche. Lehrkräfte (PROJ-127) brauchen sie nur, um
  * Azubis gezielt in einen anderen Bereich abzugeben — bekommt deshalb
  * ausschließlich die dafür nötigen, unkritischen Felder (id/name/code/
  * domain), keine internen Konfigurationsfelder fremder Bereiche wie
@@ -35,7 +35,7 @@ const CreateSchema = z.object({
  * Anlegen/Bearbeiten bleiben Super-Admin-only (PROJ-24, E9).
  */
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
 
   if (!auth.isSuperAdmin) {
@@ -70,7 +70,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   if (!auth.isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { supabase, user } = auth

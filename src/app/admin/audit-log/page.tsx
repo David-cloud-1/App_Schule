@@ -43,6 +43,7 @@ import {
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { ContentChangesPanel } from '@/components/admin/content-changes-panel'
+import { auditChangeLines } from '@/components/admin/audit-details'
 import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 
 type AuditEntry = {
@@ -88,6 +89,12 @@ const ACTION_TYPES = [
   { value: 'user.email_change', label: 'E-Mail geändert' },
   { value: 'user.email_confirm', label: 'E-Mail als bestätigt markiert' },
   { value: 'user.progress_reset', label: 'Fortschritt zurückgesetzt' },
+  { value: 'user.password_set_failed', label: 'Passwort setzen fehlgeschlagen' },
+  { value: 'shop_item.create', label: 'Item angelegt' },
+  { value: 'shop_item.update', label: 'Item geändert' },
+  { value: 'shop_item.activate', label: 'Item aktiviert' },
+  { value: 'shop_item.deactivate', label: 'Item deaktiviert' },
+  { value: 'department.settings_update', label: 'Fachbereich-Einstellungen geändert' },
   { value: 'forum.hide', label: 'Lehrerzimmer: ausgeblendet' },
   { value: 'forum.unhide', label: 'Lehrerzimmer: eingeblendet' },
 ]
@@ -106,6 +113,8 @@ export default function AdminAuditLogPage() {
   const [page, setPage] = useState(1)
   // Nur Einträge zu einer Person (Link von der Nutzer-Detailseite, PROJ-59); undefined = Adresse noch nicht gelesen
   const [personId, setPersonId] = useState<string | null | undefined>(undefined)
+  // Nur Einträge einer handelnden Person (Klick auf den Namen)
+  const [actor, setActor] = useState<{ id: string; name: string } | null>(null)
   const [data, setData] = useState<AuditResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
@@ -115,7 +124,7 @@ export default function AdminAuditLogPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [period, actionType])
+  }, [period, actionType, actor])
 
   useEffect(() => {
     const person = new URLSearchParams(window.location.search).get('person')
@@ -139,6 +148,7 @@ export default function AdminAuditLogPage() {
       params.set('period', period)
       if (actionType !== 'all') params.set('action_type', actionType)
       if (personId) params.set('object_id', personId)
+      if (actor) params.set('admin_id', actor.id)
       if (isSuperAdmin && scopeDepartment) params.set('department_id', scopeDepartment)
       params.set('page', String(page))
 
@@ -155,7 +165,7 @@ export default function AdminAuditLogPage() {
     } finally {
       setLoading(false)
     }
-  }, [period, actionType, page, personId, isSuperAdmin, scopeDepartment])
+  }, [period, actionType, page, personId, actor, isSuperAdmin, scopeDepartment])
 
   useEffect(() => {
     load()
@@ -223,6 +233,17 @@ export default function AdminAuditLogPage() {
             <span className="sr-only">Filter auf eine Person aufheben</span>
           </Button>
         )}
+        {actor && (
+          <Button
+            variant="outline"
+            onClick={() => setActor(null)}
+            className="min-h-11 gap-2 rounded-xl border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+          >
+            Nur {actor.name}
+            <X className="size-4" aria-hidden />
+            <span className="sr-only">Filter auf diese Person aufheben</span>
+          </Button>
+        )}
         <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
           <SelectTrigger className="w-[180px] bg-ws-surface border-ws-line text-ws-text">
             <SelectValue />
@@ -259,6 +280,7 @@ export default function AdminAuditLogPage() {
                 <TableHead className="text-ws-muted">Aktion</TableHead>
                 <TableHead className="text-ws-muted">Objekt-Typ</TableHead>
                 <TableHead className="text-ws-muted">Objekt</TableHead>
+                <TableHead className="text-ws-muted">Änderung (alt → neu)</TableHead>
                 {isSuperAdmin && <TableHead className="text-ws-muted">Vorgang</TableHead>}
               </TableRow>
             </TableHeader>
@@ -266,7 +288,7 @@ export default function AdminAuditLogPage() {
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <TableRow key={`sk-${i}`} className="border-ws-line">
-                    {Array.from({ length: isSuperAdmin ? 6 : 5 }).map((__, j) => (
+                    {Array.from({ length: isSuperAdmin ? 7 : 6 }).map((__, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-24" />
                       </TableCell>
@@ -275,7 +297,7 @@ export default function AdminAuditLogPage() {
                 ))
               ) : entries.length === 0 ? (
                 <TableRow className="border-ws-line">
-                  <TableCell colSpan={isSuperAdmin ? 6 : 5} className="py-10">
+                  <TableCell colSpan={isSuperAdmin ? 7 : 6} className="py-10">
                     <div className="flex flex-col items-center gap-2 text-ws-muted text-sm">
                       <Info className="w-5 h-5" />
                       Das Änderungsprotokoll füllt sich nach der ersten Admin-Aktion.
@@ -289,7 +311,18 @@ export default function AdminAuditLogPage() {
                       {formatDateTime(e.created_at)}
                     </TableCell>
                     <TableCell className="text-ws-text text-sm">
-                      {e.admin_name ?? (e.admin_id ? e.admin_id.slice(0, 8) : 'Gelöschtes Konto')}
+                      {e.admin_id ? (
+                        <button
+                          type="button"
+                          className="min-h-11 text-left underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ws-green rounded"
+                          title="Nur Einträge dieser Person zeigen"
+                          onClick={() => setActor({ id: e.admin_id as string, name: e.admin_name ?? e.admin_id!.slice(0, 8) })}
+                        >
+                          {e.admin_name ?? e.admin_id.slice(0, 8)}
+                        </button>
+                      ) : (
+                        'Gelöschtes Konto'
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -303,6 +336,9 @@ export default function AdminAuditLogPage() {
                     <TableCell className="text-ws-muted text-sm">{e.object_type}</TableCell>
                     <TableCell className="text-ws-text text-sm max-w-[280px] truncate">
                       {e.object_label ?? e.object_id ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-sm min-w-[220px]">
+                      <AuditChangeCell details={e.details} />
                     </TableCell>
                     {isSuperAdmin && (
                       <TableCell>
@@ -426,6 +462,27 @@ export default function AdminAuditLogPage() {
       )}
 
     </div>
+  )
+}
+
+function AuditChangeCell({ details }: { details: Record<string, unknown> | null }) {
+  const lines = auditChangeLines(details)
+  if (lines.length === 0) return <span className="text-ws-faint">—</span>
+  return (
+    <ul className="space-y-1">
+      {lines.map((l, i) => (
+        <li key={`${l.label}-${i}`} className="text-ws-text">
+          <span className="text-ws-muted">{l.label}: </span>
+          {l.alt !== null && (
+            <>
+              <span className="text-ws-red line-through decoration-ws-red/60">{l.alt}</span>
+              <span className="text-ws-muted"> → </span>
+            </>
+          )}
+          <span className="text-ws-green">{l.neu}</span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin, writeAuditLog } from '../../_lib/auth'
+import { requireSuperAdmin, writeAuditLog } from '../../_lib/auth'
 
 /** Eine Zuständigkeit entfernen — nur der Super-Admin (PROJ-48 AC). */
 export async function DELETE(
   _request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, user, isSuperAdmin } = auth
 

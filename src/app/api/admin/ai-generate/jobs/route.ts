@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '../../_lib/auth'
+import { requireSuperAdmin } from '../../_lib/auth'
 
 export async function GET() {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, departmentId } = auth
 

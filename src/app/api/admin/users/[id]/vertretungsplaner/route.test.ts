@@ -2,20 +2,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest, NextResponse } from 'next/server'
 import { PUT } from './route'
 
-vi.mock('../../../_lib/auth', () => ({ requireAdmin: vi.fn() }))
-import { requireAdmin } from '../../../_lib/auth'
+vi.mock('../../../_lib/auth', () => ({ requireSuperAdmin: vi.fn() }))
+import { requireSuperAdmin } from '../../../_lib/auth'
 
 const ID = '55555555-5555-4555-8555-555555555555'
 const rpc = vi.fn()
 
 function as(isSuperAdmin: boolean) {
-  vi.mocked(requireAdmin).mockResolvedValue({
+  vi.mocked(requireSuperAdmin).mockResolvedValue({
     error: null,
     user: { id: 'u1', email: undefined },
     supabase: { rpc } as never,
     role: isSuperAdmin ? 'admin' : 'department_admin',
     isSuperAdmin,
-    departmentId: 'd1',
+    departmentId: "d1",
+    scopeIsAll: false,
   })
 }
 
@@ -26,8 +27,8 @@ const ctx = (id = ID) => ({ params: Promise.resolve({ id }) })
 beforeEach(() => vi.clearAllMocks())
 
 describe('PUT /api/admin/users/[id]/vertretungsplaner', () => {
-  it('gibt 401/403 ohne Anmeldung bzw. für Lehrkräfte (requireAdmin)', async () => {
-    vi.mocked(requireAdmin).mockResolvedValue({
+  it('gibt 401/403 ohne Anmeldung bzw. für Lehrkräfte (requireSuperAdmin)', async () => {
+    vi.mocked(requireSuperAdmin).mockResolvedValue({
       error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),
       user: null,
       supabase: null,

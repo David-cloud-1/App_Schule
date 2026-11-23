@@ -151,6 +151,12 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-119: Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed |
 | P1 | PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed |
 | P1 | PROJ-121: Lehrkräfte geben bei der ersten Anmeldung Vor- und Nachnamen an (Pflicht) | Deployed |
+| P1 | PROJ-122: Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“ | Architected |
+| P1 | PROJ-123: Checklisten – die übrigen Leitlinien (14 Listen) | Planned |
+| P2 | PROJ-124: Leitlinien nachschlagen – Info-Seiten, Entscheidungshilfe und Notfall-Ansicht | Planned |
+| P2 | PROJ-125: Onboarding neuer Lehrkräfte – Mentor/in hakt ab | Planned |
+| P2 | PROJ-126: Checklisten – Fristen aus einem Termin berechnen | Planned |
+| P1 | PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Approved |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

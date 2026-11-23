@@ -5,9 +5,16 @@ import { chainMock, hasCall } from '@/test/supabase-chain-mock'
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
+  createServiceClient: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
+
+// Schreiben läuft über den Dienstschlüssel (QA M1): derselbe Mock für beide Clients
+function useClient(c: unknown) {
+  vi.mocked(createClient).mockResolvedValue(c as never)
+  vi.mocked(createServiceClient).mockReturnValue(c as never)
+}
 
 function makeRequest(method: string, body?: unknown) {
   const url = new URL('http://localhost/api/admin/shop-items')
@@ -85,19 +92,19 @@ describe('GET /api/admin/shop-items', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
+    useClient(makeUnauthSupabase() as never)
     const res = await GET()
     expect(res.status).toBe(401)
   })
 
   it('returns 403 when not admin', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ role: 'student' }) as never)
+    useClient(makeAdminSupabase({ role: 'student' }) as never)
     const res = await GET()
     expect(res.status).toBe(403)
   })
 
   it('returns items with purchase counts', async () => {
-    vi.mocked(createClient).mockResolvedValue(
+    useClient(
       makeAdminSupabase({ ownedRows: [{ item_id: 'item-1' }, { item_id: 'item-1' }] }) as never,
     )
     const res = await GET()
@@ -109,7 +116,7 @@ describe('GET /api/admin/shop-items', () => {
   })
 
   it('returns 500 on DB error', async () => {
-    vi.mocked(createClient).mockResolvedValue(
+    useClient(
       makeAdminSupabase({ itemsError: { message: 'DB error' } }) as never,
     )
     const res = await GET()
@@ -117,7 +124,7 @@ describe('GET /api/admin/shop-items', () => {
   })
 
   it('lists only shop items of the admin\'s department (PROJ-24)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     await GET()
     const list = lastMock.queries.find((q) => q.table === 'shop_items')!
     expect(list.calls.some((c) => c.method === 'eq' && c.args[0] === 'department_id' && c.args[1] === 'dept-sped')).toBe(true)
@@ -128,44 +135,44 @@ describe('POST /api/admin/shop-items', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 401 when not authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
+    useClient(makeUnauthSupabase() as never)
     const res = await POST(makeRequest('POST', VALID_BODY))
     expect(res.status).toBe(401)
   })
 
   it('returns 403 when not admin', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ role: 'student' }) as never)
+    useClient(makeAdminSupabase({ role: 'student' }) as never)
     const res = await POST(makeRequest('POST', VALID_BODY))
     expect(res.status).toBe(403)
   })
 
   it('returns 400 when a required field is missing', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { name: 'Test' }))
     expect(res.status).toBe(400)
   })
 
   it('returns 400 for a non-positive price', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, price: 0 }))
     expect(res.status).toBe(400)
   })
 
   it('returns 400 for an invalid category', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'nicht-existent' }))
     expect(res.status).toBe(400)
   })
 
   it('returns 400 when the icon_key does not belong to the chosen category (PROJ-26)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     // 'hoftor' gehört zu 'gebaeude_deko', nicht zu 'fahrzeuge'.
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'hoftor' }))
     expect(res.status).toBe(400)
   })
 
   it('creates the item on valid input, tagged with the admin\'s department (PROJ-24)', async () => {
-    vi.mocked(createClient).mockResolvedValue(
+    useClient(
       makeAdminSupabase({ insertData: { id: 'new-item-uuid' } }) as never,
     )
     const res = await POST(makeRequest('POST', VALID_BODY))
@@ -176,32 +183,32 @@ describe('POST /api/admin/shop-items', () => {
   })
 
   it('accepts a Tourismus icon for a Tourismus admin (PROJ-31)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
+    useClient(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'flugzeug' }))
     expect(res.status).toBe(201)
   })
 
   it('rejects a Spedition icon for a Tourismus admin (PROJ-31)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
+    useClient(makeAdminSupabase({ departmentCode: 'TOUR' }) as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'sattelschlepper-rot' }))
     expect(res.status).toBe(400)
   })
 
   it('rejects a Tourismus icon for a Spedition admin (PROJ-31)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, category: 'fahrzeuge', icon_key: 'flugzeug' }))
     expect(res.status).toBe(400)
   })
 
   it('accepts a valid manual rarity and null for automatic (PROJ-32)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     expect((await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: 'episch' }))).status).toBe(201)
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     expect((await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: null }))).status).toBe(201)
   })
 
   it('rejects an unknown rarity value (PROJ-32)', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
+    useClient(makeAdminSupabase() as never)
     const res = await POST(makeRequest('POST', { ...VALID_BODY, rarity_override: 'legendaer' }))
     expect(res.status).toBe(400)
   })

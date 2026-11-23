@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { requireAdmin } from '../../_lib/auth'
+import { requireSuperAdmin } from '../../_lib/auth'
 import { extractText, MAX_FILE_BYTES } from '../../ai-generate/_lib/process-job'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
@@ -71,7 +71,7 @@ function parseClaudeJson(text: string): ClaudeExtractionResponse | null {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
 
   let formData: FormData

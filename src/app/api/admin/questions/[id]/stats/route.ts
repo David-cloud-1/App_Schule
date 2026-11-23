@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '../../../_lib/auth'
+import { requireManager } from '../../../_lib/auth'
 
 export async function GET(
   _request: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireAdmin()
+  const auth = await requireManager()
   if (auth.error) return auth.error
   const { supabase } = auth
 

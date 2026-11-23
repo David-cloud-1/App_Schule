@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireAdmin } from '../../_lib/auth'
+import { requireSuperAdmin } from '../../_lib/auth'
 
 const ListQuerySchema = z.object({
   job_id: z.string().uuid().optional(),
@@ -11,7 +11,7 @@ const ListQuerySchema = z.object({
 const PAGE_SIZE = 50
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAdmin()
+  const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
   const { supabase, departmentId } = auth
 

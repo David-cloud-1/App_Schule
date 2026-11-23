@@ -49,11 +49,13 @@ beforeEach(() => {
 })
 
 describe('Auswertung je Person (PROJ-70)', () => {
-  it('ist nur für den Super-Admin', async () => {
+  it('steht jeder Lehrer-Rolle offen, Azubis nicht (PROJ-127)', async () => {
     for (const role of ['teacher', 'department_admin']) {
       vi.mocked(createClient).mockResolvedValue(makeSupabase(role).client as never)
-      expect((await listPeople(new NextRequest(url(`from=${FROM}&to=${TO}`)))).status).toBe(403)
+      expect((await listPeople(new NextRequest(url(`from=${FROM}&to=${TO}`)))).status).not.toBe(403)
     }
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('student').client as never)
+    expect((await listPeople(new NextRequest(url(`from=${FROM}&to=${TO}`)))).status).toBe(403)
   })
 
   it('prüft den Zeitraum', async () => {
@@ -77,9 +79,11 @@ describe('Auswertung je Person (PROJ-70)', () => {
 })
 
 describe('Vorschau der Sammel-Rücknahme (PROJ-70)', () => {
-  it('ist nur für den Super-Admin', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeSupabase('teacher').client as never)
+  it('lässt Azubis nicht hinein; Lehrkräfte dürfen die Vorschau sehen (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('student').client as never)
     expect((await preview(new NextRequest(url(`from=${FROM}&to=${TO}`)), ctx)).status).toBe(403)
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('teacher').client as never)
+    expect((await preview(new NextRequest(url(`from=${FROM}&to=${TO}`)), ctx)).status).not.toBe(403)
   })
 
   it('zählt Betroffene und nennt Konflikte einzeln', async () => {
@@ -104,8 +108,8 @@ describe('Sammel-Rücknahme ausführen (PROJ-70)', () => {
     { content_type: 'topic', content_id: 't1', action: 'skip', conflict: false },
   ]
 
-  it('ist nur für den Super-Admin', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeSupabase('department_admin').client as never)
+  it('lässt Azubis nicht zurücknehmen; Lehrkräfte schon (PROJ-127)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase('student').client as never)
     expect((await revert(post({ from: FROM, to: TO }), ctx)).status).toBe(403)
   })
 

@@ -104,7 +104,10 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   // Prüfungsaufbau (PROJ-22): Teile, zugehörige Fächer, Beschriftung. Er folgt dem
   // Bereich des Sets bzw. dem Zielbereich (PROJ-70), nicht dem eigenen Bereich.
   const ownExamParts = useExamParts()
-  const scopeCurrent = useOptionalAdminRole()?.scope?.current ?? ''
+  const adminRole = useOptionalAdminRole()
+  const scopeCurrent = adminRole?.scope?.current ?? ''
+  // PROJ-127: „Aus Datei importieren“ ruft die bezahlte KI auf → nur Super-Admin
+  const canImportFromFile = adminRole?.isSuperAdmin ?? false
   const partsFor = (departmentId?: string | null): ExamPart[] =>
     (departmentId && examPartsByDepartment?.[departmentId]) || ownExamParts
   const classLevelOptions = useClassLevelOptions()
@@ -475,14 +478,16 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
           }
           actions={
             <>
-              <Button
-                onClick={() => { resetImportDialog(); setShowImportDialog(true) }}
-                variant="outline"
-                className="rounded-xl border-ws-blue/50 text-ws-blue hover:bg-ws-blue/10 font-semibold"
-              >
-                <FileUp size={16} className="mr-2" />
-                Aus Datei importieren
-              </Button>
+              {canImportFromFile && (
+                <Button
+                  onClick={() => { resetImportDialog(); setShowImportDialog(true) }}
+                  variant="outline"
+                  className="rounded-xl border-ws-blue/50 text-ws-blue hover:bg-ws-blue/10 font-semibold"
+                >
+                  <FileUp size={16} className="mr-2" />
+                  Aus Datei importieren
+                </Button>
+              )}
               {sets.length > 0 && (
                 <Button
                   onClick={openCreate}
