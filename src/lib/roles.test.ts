@@ -137,6 +137,18 @@ describe('Rollen-Übersicht (PROJ-44)', () => {
     // seit PROJ-127 durch, die Route selbst prüft requireSuperAdmin (403).
   })
 
+  it('lässt jede Lehrkraft zu den Checklisten samt Schnittstelle, Azubis nicht (PROJ-122)', () => {
+    for (const path of ['/admin/checklisten', '/admin/checklisten/dienstreise-beantragen']) {
+      expect(mayOpenAdminPath('teacher', path)).toBe(true)
+    }
+    for (const path of ['/api/admin/checklisten', '/api/admin/checklisten/dienstreise-beantragen/haken']) {
+      expect(teacherMayCallApiPath(path)).toBe(true)
+    }
+    expect(teacherMayCallApiPath('/api/admin/checklisten-fremd')).toBe(false)
+    expect(mayOpenAdminPath('teacher', '/admin/checklisten-fremd')).toBe(false)
+    expect(mayOpenAdminPath('student', '/admin/checklisten')).toBe(false)
+  })
+
   it('nimmt als Login-Ziel nur Pfade innerhalb der App, sonst die Start-Weiche', () => {
     expect(safeRedirectTarget('/pruefung/ABCD')).toBe('/pruefung/ABCD')
     expect(safeRedirectTarget(null)).toBe(START_PATH)
