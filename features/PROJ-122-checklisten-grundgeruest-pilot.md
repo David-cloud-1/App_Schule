@@ -335,7 +335,194 @@ Unbekannte Listen und Varianten werden vor der Datenbank mit 404 bzw. 400 abgele
 3. Sechs-Monats-Frist bei der Schulleitung bestätigen lassen.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-11-23
+**App URL:** https://spedilern.vercel.app (nur ohne Anmeldung per `curl`), sonst Code-Review, Vitest, tsc, ESLint, Build
+**Tester:** QA Engineer (AI, Opus)
+**Einschränkung:** Kein Dev-Server, kein Playwright (MacBook-Absturz). Alles, was nur im Browser sichtbar ist, steht unten als **„Browser-Prüfung offen“** und gilt **nicht** als bestanden. Keine schreibenden Zugriffe auf die Produktionsdatenbank; die Zeilenregeln stützen sich auf Code-Review plus die Probe des Nutzers (14/14).
+
+### Akzeptanzkriterien
+
+Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ nicht bestanden · 🌐 Browser-Prüfung offen (Code passt, Sichtprüfung fehlt)
+
+| # | Kriterium | Ergebnis | Beleg / Bemerkung |
+|---|---|---|---|
+| 1 | Eintrag „Checklisten“ für alle Lehrer-Rollen; Azubi umgeleitet, API 403 | ✅ 🌐 | `admin-nav.ts:131` (`teacherVisible`), Navigationstests; `proxy.ts:151-160` (keine Lehrer-Rolle → Umleitung bzw. 403); `requireTeacherOrAdmin` in allen 5 Routen; Sichtbarkeit in der Seitenleiste nur im Browser prüfbar |
+| 2 | Beide Proxy-Freigabelisten + Wächtertests | ✅ | `roles.ts:157` und `roles.ts:210`; `roles.test.ts:141-149` (inkl. `checklisten-fremd` und Azubi) |
+| 3 | Übersicht: Titel, Satz, „Für wen“, Stand, Fortschritt „3 von 8“ | ✅ 🌐 | `checklisten-uebersicht.tsx`, Test „3 von 6“ |
+| 4 | Pilot: beide Listen in der Übersicht | ✅ | `listen/index.ts` |
+| 5 | Liste: Titel, Für wen, Stand („gültig seit 2018“), Schritte, Hinweise | ⚠️ | „gültig seit“ fehlt (Abweichung 3: nicht im Schulrecht-Text) |
+| 6 | Schritt = kurzer Satz, Verb am Anfang, Reihenfolge der Leitlinie | ⚠️ | Infinitiv-Stil mit Verb am Ende (Abweichung 10) – **Nutzer-Bestätigung offen**, vom Bau selbst so entschieden |
+| 7 | Abhaken per Klick auf den Rahmen, ≥44 px, Leertaste, durchgestrichen **und** Symbol | ✅ 🌐 | `<button role="checkbox" aria-checked>` (`checkliste-seite.tsx:318-351`), `min-h-11`, `line-through` + `Check`-Symbol; Leertaste löst nativ Klick aus. 44 px nur im Browser messbar |
+| 8 | Fortschritt („3 von 8 erledigt“, Balken) aktualisiert sofort | ✅ | optimistisch, Test vorhanden |
+| 9 | Frist als Text | ✅ | `Frist: …` |
+| 10 | Abschluss mit „Neu starten“ und Folge-Liste | ✅ | `weiter` → „Reisekosten abrechnen“ |
+| 11 | Variantenwahl beim Start (Segment ≤4, sonst Dropdown), erst danach Schritte | ✅ 🌐 | 7 Werte → Select, 3 Werte → `AdminSegmented` |
+| 12 | Variante wechseln, Haken bleiben gespeichert | ✅ | `liste.test.ts` „behält Haken beim Wechsel“; DB löscht keine Haken beim Wechsel |
+| 13 | Pilot-Varianten inkl. Dienstgang ohne Antrag | ✅ | `keinAntrag`-Text, keine Schritte |
+| 14 | Anlagen je Variante | ⚠️ | Klassenfahrt-Formular als bedingter Schritt in den Dienstreise-Varianten (Abweichung 4, Opus-geprüft) |
+| 15 | Ab 1024 px nebeneinander, darunter Tabs | 🌐 | `lg:grid-cols-2`, Tabs `lg:hidden` – Code passt |
+| 16 | Original: Titel, Absätze, Überschriften, Listen, Warnungen, Stand, Zuständigkeit, „Gültig ab“ | ⚠️ 🌐 | „Gültig ab“ fehlt (Abweichung 3); als „Zuständigkeit“ erscheint die Bereichszeile („4.2.1 Interne Kommunikation“) |
+| 17 | „Im Original ansehen“ springt zur Stelle, Absatz kurz hervorgehoben | ✅ 🌐 | Test „springt … zum Original“; Scrollen nur im Browser prüfbar |
+| 18 | Hinweis „Verbindlich ist das PDF der Schulleitung“ | ✅ | in Übersicht und Original-Ansicht (fehlt im Druck, siehe BUG-11) |
+| 19 | Text unverändert, keine Personennamen | ✅ | Setzer-Test Wort für Wort über alle 25 Leitlinien; Unterschrift wird im Skript entfernt, Test prüft es |
+| 20 | „Neu starten“ mit AlertDialog, archiviert, löscht nichts | ✅ | Test + neuer QA-Test (alte Haken verschwinden, Archiv +1); DB: kein DELETE-Recht auf Durchläufe |
+| 21 | Höchstens ein offener Durchlauf je Liste und Person | ✅ | Teil-Unique-Index + Advisory-Lock (Migration Z. 43-45, 113) |
+| 22 | Sofort speichern; bei Fehler springt der Haken zurück + Toast | ✅ | Test „setzt den Haken zurück …“ (Einschränkung BUG-1) |
+| 23 | Daten gehören dem Konto (Handy/Laptop gleicher Stand) | ⚠️ 🌐 | Abgleich bei `visibilitychange` funktioniert (QA-Test), aber Race BUG-1 |
+| 24 | Reisekosten: Original-Antrag, Originalbelege, Programm, Sekretariat, private Ausgaben | ⚠️ | „Private Ausgaben“ nur bei Klassenfahrt (Opus-Entscheidung, Abweichung 9) |
+| 25 | Klassenfahrt-Angaben (3 Übernachtungen, 30 €) nur in Variante Klassenfahrt | ✅ | `liste.test.ts` |
+| 26 | Sechs-Monats-Frist in allen Varianten, mit Annahme-Hinweis | ✅ | Test „kennzeichnet … als Annahme“ |
+| 27 | Quellen mit Stand | ✅ | Kopfzeile „Leitlinie: … (Stand …)“ und `bemerkung` |
+| 28 | Liste hält Stand/Prüfsumme der Leitlinie fest | ✅ | `quellen[].pruefsumme`, `stand` |
+| 29 | Gelber Hinweis, wenn die Leitlinie in Schulrecht vom Stand der Liste abweicht | ❌ | BUG-4: Die Betriebs-Abfrage beim Kern fehlt; der Hinweis kann nur bei Abweichung zwischen Momentaufnahme und Liste erscheinen, und genau das verhindert der Test → im Betrieb erscheint er praktisch nie |
+| 30 | Automatischer Test bei Auseinanderlaufen | ✅ | `quellen.test.ts` (Prüfsumme, Stand, Textanker, Überschriften, Katalog-Abgleich) |
+| 31 | Laufender Durchlauf bleibt; neue Schritte ungehakt; entfallene im Archiv sichtbar | ❌ (teilweise) | Die ersten beiden ✅ (Berechnung aus Haken); Archivansicht zeigt nur die Zahl, keine Schritte (BUG-5, Abweichung 8) |
+| 32 | Skeleton beim Laden, Fehler mit „Erneut versuchen“ | ✅ | `AdminLoadingState`, `AdminErrorState`, Tests |
+| 33 | 44 px, sichtbarer Fokus, Tastatur, Labels „Schritt 3: …, erledigt“ | ✅ 🌐 | `focus-visible:ring-ws-green`, Label-Test; Einschränkung BUG-6 |
+| 34 | Nur `ws-*`-Tokens, Kontrast, Animationen ≤200 ms, „Bewegung reduzieren“ | ✅ | grep ohne `text-white`/`bg-white`/Hex/Tailwind-Farben in `src/components/checklisten`; Tönungen /15 bzw. Gold /20; `duration-200`, `motion-reduce`, globale Regel in `globals.css:271`; Scrollen respektiert `prefers-reduced-motion` |
+| 35 | Druck sauber, hell auf weiß, ohne Navigation, Haken sichtbar | ❌ 🌐 | BUG-2 (leeres Blatt nach „Im Original ansehen“, per Test belegt), BUG-3 (Haken-Symbol vermutlich unsichtbar) |
+
+**Zählung (35 Kriterien):** 25 bestanden (bei 6 davon – Nr. 1, 3, 7, 11, 17, 33 – ist die Sichtprüfung im Browser noch offen), 6 bestanden mit dokumentierter Abweichung (Nr. 5, 6, 14, 16, 23, 24), 3 nicht bestanden (Nr. 29, 31, 35), 1 nur im Browser prüfbar (Nr. 15).
+
+### Edge Cases
+
+| Edge Case | Ergebnis | Bemerkung |
+|---|---|---|
+| Zwei Geräte gleichzeitig | ⚠️ | Gewünschter Zustand + Idempotenz + Lock: keine doppelten Durchläufe ✅. Anzeige kann durch BUG-1 kurz falsch sein |
+| Offline / schlechte Verbindung | ✅ | Haken springt zurück, Toast „Keine Verbindung. Das wurde nicht gespeichert.“ |
+| Leitlinie ändert sich mitten im Durchlauf | ⚠️ | Nichts wird zurückgesetzt ✅; Warnung nur über Momentaufnahme (BUG-4) |
+| Variante nachträglich ändern | ✅ | Haken bleiben (Test); Race bei schnellem Doppelwechsel BUG-7 |
+| Alles erledigt, nicht „abgeschlossen“ | ✅ | berechnet, nichts erzwungen |
+| Zurückhaken | ✅ | `erledigt:false` löscht die Zeile; Abschluss verschwindet |
+| Personenbezogene Angaben | ⚠️ | Pilot-Texte sauber. Momentaufnahme enthält in **anderen** Leitlinien E-Mail-Adresse einer Person und eine Handynummer (BUG-13) – relevant für PROJ-123 |
+| Konto gelöscht | ✅ | `ON DELETE CASCADE` von `auth.users` über Durchläufe auf Haken (Code-Review) |
+| Azubi ruft Adresse direkt auf | ✅ | Proxy: Seite → Umleitung, API → 403; zusätzlich `requireTeacherOrAdmin` und Zeilenregel `has_teacher_role()` |
+| Sehr lange Schritte / Titel mit „…“ und `title` | ❌ (Low) | Umbruch ✅, aber keine Kürzung mit `title` in der Übersicht (BUG-12; im Pilot nicht sichtbar, Titel kurz) |
+| Doppelklick | ✅ | Sperre je Schritt (Test), zusätzlich idempotent |
+| Super-Admin sieht keine fremden Haken | ✅ | Zeilenregeln ohne Admin-Ausnahme (Probe 14/14) |
+| Unbekannte Liste `/admin/checklisten/gibts-nicht` | ✅ | `notFound()` in `[id]/page.tsx:15`; API 404 vor der Datenbank |
+
+### Sicherheitsprüfung (Red Team)
+
+- ✅ **Anmeldung:** Produktion ohne Sitzung: `/admin/checklisten` und `/admin/checklisten/dienstreise-beantragen` → 307 zum Login; `GET /api/admin/checklisten`, `GET …/dienstreise-beantragen`, `GET …/gibts-nicht`, `PUT …/haken`, `PUT …/variante`, `POST …/neu`, `POST …/gibts-nicht/neu` → alle 401, nie 500. Sicherheits-Header gesetzt (HSTS, `nosniff`, `X-Frame-Options: DENY`).
+- ✅ **Rollen:** Alle 5 Routen rufen zuerst `requireTeacherOrAdmin()` (401/403); Proxy sperrt Azubis davor; Tests „Anmeldung und Rolle (alle Routen)“ in `checklisten.test.ts`.
+- ✅ **Zeilenregeln:** RLS auf beiden Tabellen, nur `owner_id = auth.uid()` **und** `has_teacher_role()`, keine Admin-Ausnahme; `anon` ohne Rechte; kein UPDATE auf Haken, kein DELETE auf Durchläufe; Haken nur in offenen Durchläufen änderbar.
+- ✅ **Fremde `durchlauf_id`:** Die Funktionen nehmen gar keine `durchlauf_id` entgegen (sie ermitteln den Durchlauf über `auth.uid()`); ein direktes INSERT in `checklisten_haken` mit fremder ID scheitert an der EXISTS-Prüfung mit Eigentümer-Bindung.
+- ✅ **Funktionen:** SECURITY INVOKER (Zeilenregeln greifen), `SET search_path = public`, `REVOKE ALL … FROM PUBLIC, anon`, `GRANT EXECUTE … TO authenticated`; Kennungsmuster in Funktionen und CHECK-Constraints; Advisory-Lock gegen doppelte offene Durchläufe; `has_teacher_role()` ist SECURITY DEFINER mit festem `search_path`.
+- ✅ **Eingaben:** Zod `.strict()` für alle drei Schreib-Rümpfe, Kennungsmuster, Liste gegen Katalog (Schutz gegen `__proto__`/`constructor` getestet), Variante gegen Katalog.
+- ✅ **Fehlertexte:** nur deutsche Sätze; 400/409 geben ausschließlich die eigenen `CHK0x`-Meldungen weiter, alles andere → 500 mit allgemeinem Satz, Technik nur in `console.error`.
+- ✅ **Cache:** GET-Antworten `private, no-store` (die PUT/POST-Antworten haben den Header nicht – unkritisch, nicht cachebar).
+- ✅ **Leitlinien-Sammlung nicht im Browser-Paket:** `leitlinien.ts` wird nur von der Server-Seite `[id]/page.tsx` importiert; Client-Komponenten importieren nur Typen (`leitlinien-typen.ts`). Build geprüft: Texte anderer Leitlinien (z. B. „Meldung Mängel THV“, die dortige E-Mail-Adresse) stehen in keinem `.next/static`-Chunk, nur im Server-Code. Im Browser landen die Listen-Dateien (mit wörtlichen Ankern) und das gesetzte Original der jeweiligen Liste – gewollt.
+- ✅ **XSS:** alle Texte als React-Text (`{b.text}`), kein `dangerouslySetInnerHTML`.
+- ✅ **Personendaten:** Unterschrift der Schulleitung aus der Pilot-Leitlinie entfernt (Test). Gespeichert werden nur Schritt-Kennungen, Zeitpunkte und Variante.
+- ⚠️ **Mengenlimit umgehbar (Low, BUG-8):** Das Limit von 200 Haken und die Katalogprüfung gelten nur in der Funktion bzw. der App. Mit dem öffentlichen Anon-Schlüssel und einer Lehrer-Sitzung kann man direkt per PostgREST beliebig viele Haken (eigene Durchläufe, beliebige Schritt-Kennungen) und beliebig viele Durchläufe (beliebige `checkliste`-Kennungen, oder `…/neu` in Schleife) anlegen. Nur eigene Daten, nur Speicherverbrauch; kein Rate-Limit.
+- ⚠️ **UPDATE-Recht zu breit (Low, BUG-9):** Die UPDATE-Regel auf `checklisten_durchlaeufe` erlaubt der Eigentümerin, im offenen Durchlauf auch `checkliste`, `gestartet_am` und `archiviert_am` (beliebiges Datum) zu ändern. Nur eigene Daten; Vorschlag: Spaltenrechte nur auf `variante`, `archiviert_am`.
+
+### Bugs
+
+#### BUG-1: Neuladen beim Zurückkehren in den Tab überschreibt einen gerade gesetzten Haken
+- **Severity:** Medium
+- **Datei:** `src/components/checklisten/checkliste-seite.tsx:74-98` (`lade()` setzt `haken`/`variante` ungeprüft; Sperre nur beim Start des Neuladens)
+- **Schritte:** 1. Liste offen, App/Tab kurz verlassen. 2. Zurückkehren → GET startet. 3. Sofort einen Haken setzen (PUT ist schneller oder gleich schnell). 4. Erwartet: Haken bleibt. 5. Tatsächlich: Die GET-Antwort (Stand von vor dem Klick) überschreibt die Anzeige, der Haken ist weg, obwohl er gespeichert ist (umgekehrt beim Entfernen: Anzeige „erledigt“, Server „offen“). Erst nächstes Laden zeigt den echten Stand.
+- **Beleg:** `checkliste-seite.qa.test.tsx` „behält einen Haken, der gesetzt wurde, während ein Neuladen unterwegs war“ (`it.fails`, BUG-1).
+- **Vorschlag:** Lade-Generation/Zeitstempel: Antworten verwerfen, die vor der letzten lokalen Änderung angefordert wurden, oder nach Ende jedes Speicherns neu laden.
+- **Priority:** Fix in next sprint
+
+#### BUG-2: Druck ist leer, nachdem „Im Original ansehen“ benutzt wurde
+- **Severity:** Medium
+- **Datei:** `src/components/checklisten/checkliste-seite.tsx:163` (`setAnsicht('original')`) mit `:223` (`hidden lg:block`) und `:434` (`print:hidden`)
+- **Schritte:** 1. Am Laptop Liste öffnen. 2. „Im Original ansehen“ klicken. 3. „Drucken“. 4. Erwartet: Checkliste auf dem Blatt. 5. Tatsächlich: Im Druck gilt die Seitenbreite (< 1024 px), die Checkliste ist `hidden`, das Original `print:hidden` → nur der Seitenkopf. Am Laptop gibt es keinen Tab, um zurückzuschalten (Tabs sind `lg:hidden`), nur Neuladen hilft. Am Handy genauso, wenn der Tab „Original“ aktiv ist.
+- **Beleg:** `checkliste-seite.qa.test.tsx` „lässt die Checkliste auch nach … im Druck sichtbar“ (`it.fails`, BUG-2).
+- **Vorschlag:** `print:block` an der Checklisten-Sektion.
+- **Priority:** Fix in next sprint
+
+#### BUG-3: Haken-Symbol im Druck vermutlich unsichtbar
+- **Severity:** Medium (Browser-Bestätigung nötig)
+- **Datei:** `src/components/checklisten/checkliste-seite.tsx:328-333`; `globals.css` hat kein `print-color-adjust: exact`
+- **Schritte:** Haken setzen, drucken (Standard: „Hintergrundgrafiken“ aus). Erwartet: Haken sichtbar. Vermutlich: grüner Hintergrund entfällt, das Häkchen ist weiß (`ws-on-accent` im Druck = #FFFFFF) auf weiß → leeres Kästchen mit grünem Rand; nur die Durchstreichung bleibt.
+- **Vorschlag:** `print:text-ws-green` am Symbol oder `print-color-adjust: exact` am Kästchen.
+- **Priority:** Fix in next sprint
+
+#### BUG-4: Betriebs-Warnung „Leitlinie geändert“ fehlt (AC 29)
+- **Severity:** Medium (bekannte Abweichung 1, nicht als erledigt zu werten)
+- **Datei:** `src/lib/checklisten/leitlinien.ts:42` (vergleicht nur Momentaufnahme ↔ Liste)
+- **Schritte:** Leitlinie in Schulrecht ändern, App nicht neu bauen. Erwartet: gelber Hinweis. Tatsächlich: kein Hinweis, die Liste zeigt den alten Stand. Zusätzlich: Warnung ist orange (`ws-orange`) statt gelb und nennt den Stand statt „wurde am TT.MM.JJJJ geändert“.
+- **Vorschlag:** Kern-Abfrage der Prüfsumme (Tech Design D) nachziehen oder AC per Nutzer-Entscheidung auf „Test beim Entwickeln genügt“ ändern.
+- **Priority:** Fix in next sprint / Nutzer entscheidet
+
+#### BUG-5: Archivansicht zeigt keine Schritte (entfallene Schritte nicht sichtbar, AC 31)
+- **Severity:** Low · **Datei:** `src/app/api/admin/checklisten/[id]/route.ts:50` (nur `count`), `checkliste-seite.tsx:413-423`
+- Zusätzlich zählt `anzahl_haken` auch Haken aus anderen Varianten („7 Schritte abgehakt“ bei 6 sichtbaren möglich). **Priority:** Nice to have
+
+#### BUG-6: `aria-label` verschluckt Zusatz, Frist und „Annahme“
+- **Severity:** Low · **Datei:** `checkliste-seite.tsx:322`
+- Das `aria-label` ersetzt den Inhalt des Knopfs: Screenreader lesen weder „Frist: mindestens 14 Tage …“ noch den Annahme-Hinweis. **Vorschlag:** Zusatz/Frist per `aria-describedby`. **Priority:** Fix in next sprint
+
+#### BUG-7: Variantenwechsel ohne Sperre / Reihenfolge
+- **Severity:** Low · **Datei:** `checkliste-seite.tsx:134-143`
+- Schnelles Wechseln A → B: Antworten können in anderer Reihenfolge ankommen (Server A, Anzeige B); scheitert A nach erfolgreichem B, springt die Anzeige auf den Wert vor A. Ähnlich: Ein Haken-PUT, der während „Neu starten“ noch unterwegs ist, landet im neuen Durchlauf. Nach Variantenwahl ohne offenen Durchlauf bleibt `offen` lokal `null` (der „Neu starten“-Knopf fehlt, bis ein Haken gesetzt wird). **Priority:** Nice to have
+
+#### BUG-8: Mengenlimit und Katalogprüfung per direktem Tabellenzugriff umgehbar
+- **Severity:** Low (Sicherheit, nur eigene Daten) · **Datei:** `supabase/migrations/20261125_proj122_checklisten.sql:63-93`
+- **Vorschlag:** INSERT-Rechte auf beide Tabellen für `authenticated` entziehen und nur über SECURITY-DEFINER-Funktionen schreiben, oder Trigger mit Zähllimit; Obergrenze für Durchläufe je Person. **Priority:** Nice to have
+
+#### BUG-9: UPDATE-Regel erlaubt Ändern von `checkliste`, `gestartet_am`, `archiviert_am`
+- **Severity:** Low · **Datei:** Migration Z. 68-70, 92 · **Vorschlag:** `GRANT UPDATE (variante, archiviert_am)` statt Tabellenrecht. **Priority:** Nice to have
+
+#### BUG-10: Datum der früheren Durchläufe in UTC
+- **Severity:** Low · **Datei:** `src/lib/checklisten/liste.ts:133-136` – `datumDeutsch` schneidet das ISO-Datum ab; ein Durchlauf, der um 00:30 Uhr (MEZ) archiviert wird, zeigt den Vortag. **Priority:** Nice to have
+
+#### BUG-11: Druck ohne Hinweis „Verbindlich ist das PDF der Schulleitung“
+- **Severity:** Low · **Datei:** `original-ansicht.tsx:22` (Hinweis nur in der Original-Spalte, die `print:hidden` ist). **Priority:** Nice to have
+
+#### BUG-12: Lange Titel in der Übersicht ohne „…“ und `title`
+- **Severity:** Low · **Datei:** `checklisten-uebersicht.tsx:56` (Edge Case der Spec; im Pilot unkritisch). **Priority:** Nice to have
+
+#### BUG-13: Personendaten in der Momentaufnahme anderer Leitlinien
+- **Severity:** Low · **Datei:** `src/lib/checklisten/daten/leitlinien.json` – „Meldung Mängel THV“ enthält eine persönliche E-Mail-Adresse, „Erste Hilfe im Unterricht“ eine Handynummer. Nur Server-seitig, im Pilot nicht angezeigt; **vor PROJ-123** (Unterschriften-Regel im Skript reicht nicht) ersetzen durch Funktion. Außerdem steht der Nachname der Schulleitung im Test `quellen.test.ts:73`. **Priority:** vor PROJ-123
+
+#### BUG-14: Testname verspricht mehr, als er prüft
+- **Severity:** Low · **Datei:** `src/lib/checklisten/quellen.test.ts:62-64` – „Verb am Anfang … ohne Punkt-Ketten“ prüft nur Länge < 160. **Priority:** Nice to have
+
+### Beurteilung der Pflege-Tests (`quellen.test.ts`, `setzer.test.ts`)
+- **Sichern gut ab:** Prüfsumme und Stand jeder Quelle gegen die Momentaufnahme, jeder Textanker wörtlich (über Leerraum hinweg) im gesetzten Original, jede angegebene Überschrift wird gesetzt, Varianten-Kennungen in Liste = Katalog, eindeutige Kennungen, `weiter` existiert, Setzer verliert/ändert kein Wort in **allen 25** Leitlinien.
+- **Lücken:** Wird die Momentaufnahme nicht neu erzeugt, merkt kein Test eine Änderung in Schulrecht (deshalb BUG-4). Kein Test, dass Schritt-Kennungen nie verschwinden (nur „entfallen“ erlaubt) – eine gelöschte Kennung macht alte Haken still unsichtbar. Personendaten-Test prüft nur einen Namen.
+
+### Regression
+- `npx vitest run` (komplett): **4498 bestanden, 1 fehlgeschlagen** (bekannt, nicht PROJ-122: `werkzeugkiste-auszug.test.ts` „nennt die Urheberin oder den Urheber“). Keine neue Regression.
+- PROJ-122-Tests inkl. neuer QA-Datei: 11 Dateien, 163 bestanden + 2 erwartete Fehlschläge (BUG-1, BUG-2 als `it.fails`).
+- `npx tsc --noEmit`: ohne Befund. `npx eslint` auf alle neuen Pfade: 0 Fehler, 2 Warnungen (`react-hooks/set-state-in-effect` in `checklisten-uebersicht.tsx:27`).
+- `npm run build`: erfolgreich, alle 7 Checklisten-Routen gebaut; kein Syntaxfehler aus `scripts/scratch`.
+- Navigation: Eintrag in „Mein Unterricht“ und Hauptnavigation nach „Schulrecht“ (`admin-nav.ts:131-138`), Navigationstests grün; Schnellsuche liest dieselbe Quelle – im Browser nicht gesehen.
+- Nicht geprüft: Cross-Browser (Chrome, Firefox, Safari iOS, Edge), Responsiv 375/768/1440 px, Performance (< 1 s Öffnen, < 300 ms Haken), Kontrast im echten Rendering (nur der Token-Test).
+
+### Neue Tests
+`src/components/checklisten/checkliste-seite.qa.test.tsx`: Abgleich beim Zurückkehren in den Tab, kein Neuladen während des Speicherns, „Neu starten“ leert die Haken, Haken ist ein `<button type="button">`, sowie zwei `it.fails` für BUG-1 und BUG-2 (werden rot, sobald der Bug behoben ist – dann `.fails` entfernen).
+
+### Browser-Prüfung offen (für dich)
+**Laptop (≥ 1024 px, Chrome und Safari):**
+1. Seitenleiste → „Checklisten“ (auch in ⌘K-Suche „Checklisten“ tippen). Zwei Karten mit „Für: Lehrkraft“ und „Leitlinie: Stand 07.05.2025“.
+2. „Dienstreise beantragen“ öffnen: Liste links, Original rechts nebeneinander. Dropdown „Um welche Art …“ → „Dienstgang“: grüner Hinweis, keine Schritte. → „Dienstreise Ausland“: Schritte inkl. A1, Warnung „Keine Fortbildung …“.
+3. Tab-Taste bis zum ersten Haken, Leertaste: Haken + Durchstreichung, „1 von N erledigt“. Fokusring sichtbar?
+4. „Im Original ansehen“ bei „Antrag … Sekretariat“: rechts scrollt zur Stelle, Absatz 3 s gold umrandet.
+5. Alle Schritte abhaken: „Alles erledigt“, „Weiter mit Reisekosten abrechnen“ führt zur zweiten Liste. Zurück, „Neu starten“ → Dialog → bestätigen: leere Liste, Auswahl wieder offen, „Frühere Durchläufe (1)“ mit heutigem Datum.
+6. Hell/Dunkel im Konto-Menü umschalten: Kontraste der Hinweise lesbar.
+**Handy (iPhone Safari, 375 px):**
+7. Gleiche Liste: Tabs „Checkliste“/„Original“ statt Spalten; „Im Original ansehen“ schaltet auf Tab „Original“ und springt zur Stelle. Haken-Flächen groß genug (≥ 44 px)?
+8. Zwei Geräte: am Handy abhaken, am Laptop zurück in den Tab wechseln → Haken erscheint ohne Neuladen. Danach sofort nach dem Zurückwechseln einen Haken setzen (BUG-1 beobachten).
+9. Flugmodus an, Haken setzen → Haken springt zurück, Meldung „Keine Verbindung …“.
+**Druck (Laptop, Strg/⌘+P):**
+10. Ohne vorher „Im Original ansehen“: hell auf weiß, ohne Seitenleiste/Kopfzeile, Haken erkennbar? (BUG-3)
+11. Nach „Im Original ansehen“ drucken → leeres Blatt? (BUG-2)
+**Azubi-Konto:** 12. `/admin/checklisten` aufrufen → Umleitung mit Hinweis, kein Inhalt.
+
+### Summary
+- **Akzeptanzkriterien:** 35 – 25 bestanden (6 davon mit offener Sichtprüfung), 6 mit dokumentierter Abweichung, 3 nicht bestanden (29, 31, 35), 1 nur im Browser prüfbar (15)
+- **Bugs:** 14 (0 Critical, 0 High, 4 Medium, 10 Low)
+- **Sicherheit:** bestanden – keine Lücke mit Zugriff auf fremde Daten; zwei Low-Härtungen (BUG-8, BUG-9)
+- **Production Ready:** JA (keine Critical/High; das Feature ist bereits live)
+- **Empfehlung:** Live lassen; BUG-1 bis BUG-3 (kleine Frontend-Korrekturen) und BUG-6 im nächsten Schritt beheben, BUG-4 per Nutzer-Entscheidung klären, BUG-13 vor PROJ-123. Danach die Browser-Prüfung oben.
 
 ## Deployment
 **Live seit 2026-11-23** (Produktion `spedilern`, ohne `/qa`; Status bleibt „In Progress“ bis zur QA). Migration vorher im SQL-Editor eingespielt, Probe 14 von 14 wie erwartet. Gepusht wurden nur die drei PROJ-122-Commits (per Worktree auf `origin/main`); die PROJ-129-Commits blieben lokal, weil ihre Migration noch fehlt. Prüfung nach „Ready“: `/admin/checklisten` leitet ohne Anmeldung zum Login, die Schnittstellen antworten 401.
