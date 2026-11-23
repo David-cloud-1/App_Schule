@@ -1,6 +1,6 @@
 # PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette
 
-## Status: In Progress
+## Status: Deployed
 **Created:** 2026-11-23
 **Last Updated:** 2026-11-23
 **Priorität:** P1
@@ -498,4 +498,20 @@ Die drei Fragekarten werden als eigene, kleine Bausteine neben dem heutigen Quiz
 **Altlasten** (siehe oben) bleiben bewusst unverändert.
 
 ## Deployment
-_To be added by /deploy_
+
+**Stand 2026-11-23 – Bauschritt 1 live, Varianten noch aus.**
+
+- **Produktion:** https://spedilern.vercel.app (Projekt `spedilern`), Commit `e72801e` auf `main`, Tag `v1.129.0-PROJ-129`.
+- **Was live ist:** Rundenzettel für `/quiz` (Normalmodus) und `/blitzrunde`; Lösung nie mehr vor der Antwort im Browser; jede Antwort einzeln am Server geprüft; Abrechnung nur aus dem Zettel; `presentation`/`mistakes` je Antwort; Fun-Audit-Abschnitt. Alle Fragen laufen weiter als klassisches MC, Blitzrunde klassisch mit den alten Münzregeln.
+- **Was bewusst noch aus ist:** Richtig/Falsch, Rauswerfen, Joker, Wette. Env-Variable `QUIZ_VARIANTEN` ist auf Vercel **nicht gesetzt** (= aus). Einschalten: `QUIZ_VARIANTEN=an` setzen + Neu-Deploy (ca. 2 Min.).
+- **Datenbank:** Migration `20261128_proj129_rundenzettel.sql` war vor dem Push eingespielt. Per Lese-Abfrage gegen Produktion bestätigt: RLS an, 0 Richtlinien, keine Rechte für anon/authenticated auf `quiz_rounds`, 2 neue Spalten in `quiz_answers`, 4 in `quiz_sessions`, `question_difficulty_stats` neu, alle Bestandsantworten `classic`.
+- **Verifiziert nach dem Deploy:** Build Ready; `POST /api/quiz/rounds`, `…/answer`, `…/joker`, `…/wager`, `…/finish` ohne Login → 401; `/quiz` und `/blitzrunde` → Weiterleitung zum Login.
+- **Vor dem Push geprüft** (committeter Stand im Worktree): `tsc` sauber, 4498/4499 Tests grün – der eine rote Test (`werkzeugkiste-auszug`, Urheber-Anzeige im Regal) liegt außerhalb von PROJ-129 und war schon vorher rot; `npm run build` ok.
+- **Verlauf:** Lokal und `origin/main` hatten getrennte SHAs für PROJ-122 (Cherry-Picks). Deshalb wurden nur die drei PROJ-129-Commits auf `origin/main` aufgebaut (Konflikt nur in `INDEX.md`, gelöst). Lokaler `main` bleibt unverändert.
+
+### Noch offen (nicht blockierend)
+- **Browser-Test am Handy** (Safari iOS, Chrome Android): normales Quiz, Blitzrunde; nach dem Einschalten zusätzlich Wischfrage, Rauswerfen, Joker, Wette. Kein Dev-Server erlaubt, daher bisher nur Code-Review und Vitest.
+- **Einschalten von `QUIZ_VARIANTEN=an`:** erst nach ein paar Tagen Beobachtung (`npm run fun:audit` → Abschnitt „Quiz-Varianten“; `quiz_rounds` füllt sich, Runden werden abgerechnet) und nach dem Handy-Test.
+- Kann-Kriterium „nur klassisch“ für Lehrkräfte (Spalte + Schalter) – nicht gebaut.
+- Alte Wege `/api/quiz/blitz/start|finish` und `blitz-client.tsx` nach dem Einschalten entfernen.
+- Altlasten aus der QA (Blitz-Neustart, Münzstand nicht atomar, `/api/quiz/sessions`, kein Rate-Limit).
