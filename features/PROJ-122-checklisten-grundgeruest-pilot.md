@@ -338,4 +338,6 @@ Unbekannte Listen und Varianten werden vor der Datenbank mit 404 bzw. 400 abgele
 _To be added by /qa_
 
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-23** (Produktion `spedilern`, ohne `/qa`; Status bleibt „In Progress“ bis zur QA). Migration vorher im SQL-Editor eingespielt, Probe 14 von 14 wie erwartet. Gepusht wurden nur die drei PROJ-122-Commits (per Worktree auf `origin/main`); die PROJ-129-Commits blieben lokal, weil ihre Migration noch fehlt. Prüfung nach „Ready“: `/admin/checklisten` leitet ohne Anmeldung zum Login, die Schnittstellen antworten 401.
+
+**Offen:** Sichtprüfung beider Seiten im Browser (Laptop, Handy, Druck), `/qa` mit Opus, Bestätigung der Sechs-Monats-Frist durch die Schulleitung, Kern-Abfrage für die Betriebs-Warnung „Leitlinie geändert“.
