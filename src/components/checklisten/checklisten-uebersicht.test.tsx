@@ -19,7 +19,7 @@ describe('Übersicht der Checklisten (PROJ-122)', () => {
     expect(await screen.findByRole('link', { name: /Dienstreise beantragen/ })).toHaveAttribute('href', '/admin/checklisten/dienstreise-beantragen')
     expect(screen.getByRole('link', { name: /Reisekosten abrechnen/ })).toBeInTheDocument()
     expect(screen.getAllByText('Lehrkraft').length).toBe(2)
-    expect(screen.getByText(/Stand 07\.05\.2025/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Stand 07\.05\.2025/).length).toBe(2)
     expect(screen.getByText(/Verbindlich ist das PDF der Schulleitung/)).toBeInTheDocument()
   })
 
