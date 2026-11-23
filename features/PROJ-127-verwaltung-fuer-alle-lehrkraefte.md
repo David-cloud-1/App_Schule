@@ -1,6 +1,6 @@
 # PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-22
 **Last Updated:** 2026-11-22
 
@@ -317,4 +317,9 @@ Menü „Verwaltung“ sichtbar · Nutzer sperren/verschieben/Passwort · Lehrkr
 
 
 ## Deployment
-_To be added by /deploy_
+**Deployed:** 2026-11-23 · https://spedilern.vercel.app · Commit 59c56c4 · Tag v1.127.0-PROJ-127
+
+- Migration 1 (Regeln, inkl. M1-Fix `shop_items_teacher_select`) in Produktion eingespielt, Regeln-Probe: alle 11 Werte wie erwartet.
+- Code per Push auf `main`, Vercel „Ready“, Admin-Routen ohne Login liefern 401.
+- Rollen-Umstellung eingespielt: 17 Bereichs-Admins → Lehrkraft, 17 Protokolleinträge (`details.quelle = 'PROJ-127'`) dienen als Liste für den Rückweg.
+- **Offen:** Browser-Test mit einem umgestellten Konto (Checkliste in den QA-Ergebnissen), L1 bewusst offen.
