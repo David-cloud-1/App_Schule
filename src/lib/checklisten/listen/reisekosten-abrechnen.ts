@@ -53,12 +53,13 @@ export const reisekostenAbrechnen: Checkliste = {
       id: 'privat',
       art: 'info',
       text: 'Private Ausgaben werden nicht erstattet.',
+      varianten: ['klassenfahrt'],
       anker: { quelle: KF, text: 'Private Ausgaben der Lehrkraft werden nicht erstattet' },
     },
     {
       id: 'frist-annahme',
       art: 'info',
-      text: 'Annahme: Die Frist von sechs Monaten gilt laut Schulleitung auch für Dienst- und Fortbildungsreisen. Das ist noch bestätigen zu lassen. In der Leitlinie „Dienst- und Fortbildungsreise“ steht keine Frist.',
+      text: 'Annahme: Die Frist von sechs Monaten gilt vermutlich auch für Dienst- und Fortbildungsreisen, ebenso der Weg über das Sekretariat. In der Leitlinie „Dienst- und Fortbildungsreise“ steht dazu nichts, beides nennt nur die Leitlinie zur Klassenfahrt. Im Sekretariat nachfragen.',
       varianten: OHNE_KF,
     },
   ],
@@ -66,16 +67,17 @@ export const reisekostenAbrechnen: Checkliste = {
     {
       id: 'antrag-original-beilegen',
       text: 'Das genehmigte Original des Dienstreiseantrags beilegen',
-      anker: { quelle: DR, text: 'Original Dienstreiseantrag, OriginalBelege und Programm sind zwingend beizulegen' },
+      anker: { quelle: DR, text: 'Das Original ist zwingend dem ggf. folgenden Reisekostenabrechnungsantrag beizulegen' },
     },
     {
       id: 'originalbelege-beilegen',
       text: 'Die Originalbelege beilegen',
-      anker: { quelle: KF, text: 'Für eine Erstattung müssen grundsätzlich die Originalbelege vorgelegt werden' },
+      anker: { quelle: DR, text: 'OriginalBelege und Programm sind zwingend beizulegen' },
     },
     {
       id: 'programm-beilegen',
       text: 'Das Programm beilegen',
+      zusatz: 'Bei einer Fortbildungsreise gehört die persönliche Einladung zum Antrag; das Programm legst du bei, wenn es eines gibt.',
       anker: { quelle: DR, text: 'OriginalBelege und Programm sind zwingend beizulegen' },
     },
     {

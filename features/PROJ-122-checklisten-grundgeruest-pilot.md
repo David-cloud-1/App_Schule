@@ -325,7 +325,9 @@ Unbekannte Listen und Varianten werden vor der Datenbank mit 404 bzw. 400 abgele
 6. **Variantenwahl:** „Dienstreise beantragen“ hat 7 Werte und nutzt das Dropdown, „Reisekosten abrechnen“ 3 Werte und das Segment (PROJ-83). „Neu starten“ beginnt ohne Variante, die Person wählt neu.
 7. **Fortschrittsbalken** ist ein eigenes Element aus `ws-*`-Farben, weil `ui/progress` feste Farben nutzt.
 8. **Frühere Durchläufe** zeigen Zeitraum, Variante und Zahl der Haken (die Schnittstelle liefert nur die Zahl); entfallene Schritte der Archivansicht werden daher nicht einzeln aufgelistet.
-9. Beim Zurückkehren in den Tab holt die Seite den Stand frisch (Zwei-Geräte-Fall), solange kein Haken gespeichert wird.
+9. **Opus-Gegenprüfung (2026-11-23)** gegen die PDFs: nichts Erfundenes, alle 20 Textanker wörtlich im Original. Eingearbeitet: Annahme-Hinweis ohne „laut Schulleitung“ (Beleg fehlte); Schritte zu PKW/Flug, A1 und Klassenfahrt-Formular bedingt formuliert („sonst einfach abhaken“); Bezirksreise bekommt die Einladung (Achatswies = Fortbildungsreise Inland); „Private Ausgaben“ nur bei Klassenfahrt; Anker von „Original/Originalbelege beilegen“ auf die Dienstreise-Leitlinie; Zusatz „EU-Dienstreise/Fortbildung“ am Ankreuz-Schritt; Hinweis auf die Klassenfahrt-Voraussetzungen (Teilnehmerlisten, Zeitraum, 80 %) – die ausführliche Liste folgt in PROJ-123. **Nicht übernommen:** Feld „Stand“ der Klassenfahrt-Leitlinie bleibt leer (das PDF nennt „Gültig ab SJ25/26“, das Feld erwartet ein Datum); Hinweis zur Stundenabrechnung (gering).
+10. **Satzbau:** Die Schritte stehen im Infinitiv mit dem Verb am Ende („Den Antrag … ausfüllen“), nicht mit dem Verb am Anfang wie in den Akzeptanzkriterien. Bewusst so gelassen (üblich und einheitlich für Checklisten); die Vorgabe „Verb am Anfang“ gilt damit als Infinitiv-Stil.
+11. Beim Zurückkehren in den Tab holt die Seite den Stand frisch (Zwei-Geräte-Fall), solange kein Haken gespeichert wird.
 
 **Einspielen / nächste Schritte**
 1. Migration + Probe aus dem Backend-Schritt einspielen (vor dem App-Deploy).

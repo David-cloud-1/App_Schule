@@ -28,6 +28,7 @@ describe('Varianten (Dienstreise beantragen)', () => {
     expect(ids(dr, 'fortbildungsreise-ausland')).toEqual(expect.arrayContaining(['anlage-einladung', 'anlage-a1']))
     expect(ids(dr, 'fortbildungsreise-ausland')).not.toContain('anlage-programm-einladung')
     expect(ids(dr, 'bezirksreise')).not.toContain('anlage-a1')
+    expect(ids(dr, 'bezirksreise')).toContain('anlage-einladung') // Achatswies = Fortbildungsreise Inland
   })
 
   it('lässt beim Dienstgang keine Schritte und keine Warnung „ohne Antrag“ zu', () => {
@@ -71,6 +72,11 @@ describe('Reisekosten abrechnen', () => {
       const schritt = sichtbareSchritte(rk, v).find((s) => s.id === 'antrag-stellen')
       expect(schritt?.frist).toBe('innerhalb von sechs Monaten nach der Reise')
     }
+  })
+
+  it('zeigt „Private Ausgaben“ nur bei der Klassenfahrt', () => {
+    expect(sichtbareHinweise(rk, 'klassenfahrt').map((h) => h.id)).toContain('privat')
+    expect(sichtbareHinweise(rk, 'dienstreise').map((h) => h.id)).not.toContain('privat')
   })
 
   it('kennzeichnet die Frist nur bei Dienst- und Fortbildungsreisen als Annahme', () => {
