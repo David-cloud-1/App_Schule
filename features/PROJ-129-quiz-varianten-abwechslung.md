@@ -382,6 +382,40 @@ Die drei Fragekarten werden als eigene, kleine Bausteine neben dem heutigen Quiz
 - „Frage melden“ steht wie bisher im Feedback-Bereich nach der Antwort; bei Varianten wird keine gewählte Option mitgeschickt (Meldung gilt der Frage).
 - Kein Browser-Test (Dev-Server nicht erlaubt), nur Vitest.
 
+## Backend-Umsetzung (2026-11-23)
+
+> Umfang: Bauschritte 1–4 und der Hauptschalter aus Schritt 5 in einem Zug. Varianten, Joker und Wette sind **standardmäßig aus** (`QUIZ_VARIANTEN` fehlt) – live geht damit zuerst nur der Rundenzettel (Schritt 1, wie im Design vorgesehen). Einschalten: `QUIZ_VARIANTEN=an` auf Vercel + Neu-Deploy.
+
+### Datenbank – `supabase/migrations/20261128_proj129_rundenzettel.sql` (Rückweg `…_down.sql`, Probe `supabase/tests/proj129_rundenzettel_probe.sql`)
+- **Neu `quiz_rounds`** (Rundenzettel): `kind` quiz/blitz, `blitz_form`, Pool (Fach/Stufe/Thema), `slip` (jsonb: Fragen, Optionen in Anzeige-Reihenfolge, Lösung + Erklärung als Schnappschuss, Vorschlag, Spielstand, Joker, Wette), `version` (Versionsprüfung), `finished_at`, `result` (für wiederholtes „fertig“). **RLS an, keine Richtlinie, `REVOKE ALL` für anon/authenticated** – nur der Service-Schlüssel greift zu. Zettel älter als 1 Tag werden beim Start einer neuen Runde des Spielers gelöscht.
+- `quiz_answers`: `presentation` (classic | true_false | eliminate | joker, Standard classic, CHECK), `mistakes` (0–2); Teilindex für „gekannte“ Fragen.
+- `quiz_sessions`: `coins_earned`, `joker_cost`, `wager_stake`, `wager_won`.
+- `question_difficulty_stats` (PROJ-74): Richtig/Falsch zählt halb (Versuche und Treffer, gerundet), richtige Joker-Antworten zählen nicht, „häufigste falsche Antwort“ nur aus classic/joker.
+
+### Server-Logik
+- `src/lib/quiz-round-rules.ts` (rein, getestet): Eignung (Verneinung, Verweis-Optionen, ≥ 4 Optionen, ≤ 280 Zeichen), Variantenplanung (Platz 1 und letzter klassisch, max. 3, nie nebeneinander, Zielzahl 0–3 Ø ≈ 1,9), Vorschlag 50/50, `applyAnswer` / `applyJoker` / `applyWager` (alle wiederholbar), Abrechnung Quiz und Blitz, Hauptschalter `variantsEnabled()`.
+- `src/lib/quiz-round-server.ts`: Zettel laden (404 fremd/unbekannt, 410 älter als 3 h oder abgerechnet), `mutateRound` mit Versionsprüfung (bis 4× neu lesen), Lösungen per `fetchAnswerKey`, Abrechnung beanspruchen/zurückgeben.
+- **Wege:** `POST /api/quiz/rounds` (Blitz-Start), `/[id]/answer`, `/[id]/joker`, `/[id]/wager`, `/[id]/finish` – alle mit Anmeldung und Zod. Keine Proxy-Freigabe nötig (kein `/api/admin`).
+- **Seiten umgeschaltet:** `/quiz` (Normalmodus) legt den Zettel an und rendert `QuizRoundClient`; scheitert das Anlegen (z. B. Migration fehlt), läuft der alte `QuizClient` weiter. `mode=weak` bleibt beim alten Client. `/blitzrunde` rendert `BlitzRoundClient`.
+- **Lücken & „gekannt“:** `isNeutralAnswer` (richtig per Richtig/Falsch oder Joker) wird in `computeWeakQuestionIds` übersprungen (schließt nicht, unterbricht nicht) und zählt auf Start-, Lern- und Fachseite nicht als „gekannt“. Falsch zählt in jeder Form.
+
+### Entscheidungen beim Bau
+- **Joker-Kosten können die Runde ins Minus drücken** (z. B. 2 Joker = 10 Münzen bei schwacher Runde). `coins_earned` ist dann negativ, der Münzstand wird nie negativ (`max(0, …)`). Der Ergebnis-Bildschirm zeigt „−N“ statt „+−N“ (kleine Anpassung im Client). Die Wette allein drückt nie unter den Stand vor der Runde: Einsatz = Rundenmünzen bis zur vorletzten Frage + Rundenbonus − Joker-Kosten, höchstens 10.
+- **Wette nicht entschieden, letzte Frage beantwortet** → gilt als „nicht eingesetzt“. Spätere Wett-Anfrage ändert nichts.
+- **Rauswerfen:** Ein wiederholter Tipp auf eine schon geprüfte Option kostet kein zweites Herz (Doppelklick/Netz-Wiederholung). Da die Oberfläche die angetippte richtige Option sperrt, ist „Scheitern mit 0 Herzen“ praktisch nicht erreichbar – effektiv gibt es 0 oder 1 Fehlgriff. **Für `/qa`:** prüfen, ob das so gewollt ist.
+- **Gekannte Fragen im Quiz** werden nur unter den 10 gezogenen Fragen gesucht (wie im Design). Spieler mit wenig Vorwissen sehen deshalb selten Varianten.
+- **Blitzrunde:** Richtig/Falsch nur bei ≥ 40 gekannten, geeigneten Fragen (geprüft unter bis zu 180 zufälligen gekannten), dann 60 Karten; sonst 40 klassische Karten mit den alten Münzregeln, ebenfalls ohne Lösung im Browser. Antworten später als 70 s nach Start → 410. Abrechnung über die Tagessperre `blitz_rounds`.
+- Antworten, Runde und Profil schreibt beim Abrechnen der Service-Client.
+
+### Offen / nicht gebaut
+- Kann-Kriterium „nur klassisch“ für Lehrkräfte (Spalte + Schalter) – `questionEligibility` kennt `classic_only` schon, die Spalte fehlt.
+- Fun-Audit-Abschnitt „Varianten“ (`npm run fun:audit`).
+- Alte Wege `/api/quiz/blitz/start|finish` und `blitz-client.tsx` bleiben vorerst als Rückweg; nach dem Livegang entfernen. `/api/quiz/sessions` bleibt für „Lücken schließen“.
+- Bekannte Altlast: Spieler dürfen per RLS eigene `quiz_sessions`/`quiz_answers` direkt schreiben, und `/api/quiz/sessions` nimmt beliebige Antworten an (Wertung serverseitig geprüft). Unverändert, für `/qa` vermerkt.
+
+### Tests
+`quiz-round-rules.test.ts` (46), `quiz-round-server.test.ts` (7), `api/quiz/rounds/rounds.test.ts` (14), `weak-questions.test.ts` (+4). Gesamtlauf: 4488 grün, 2 rot in fremden Bereichen (`werkzeugkiste-auszug.test.ts`, `checklisten-uebersicht.test.tsx`). `npm run build` und Lint sauber.
+
 ## QA Test Results
 _To be added by /qa_
 

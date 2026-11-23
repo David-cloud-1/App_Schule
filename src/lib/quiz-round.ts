@@ -154,7 +154,8 @@ export interface QuizRoundResult {
   new_level: number
   new_badges: string[]
   new_badge_details?: BadgeDisplay[]
-  /** Netto-Münzen dieser Runde (nach Joker und Wette, nie unter 0) */
+  /** Netto-Münzen dieser Runde nach Joker und Wette. Durch Joker kann der Wert
+   *  negativ sein; die Wette allein drückt nie unter den Stand vor der Runde. */
   coins_earned: number
   coins: {
     answers: number

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
+import { isNeutralAnswer } from '@/lib/weak-questions'
 import { fetchLearnQuestions } from '@/lib/subject-questions'
 import { getCurrentDepartment } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
@@ -43,7 +44,8 @@ export default async function SubjectsPage() {
     supabase,
     subjectRows.map((s) => s.id),
   )
-  const correctIds = new Set(answers.filter((a) => a.is_correct).map((a) => a.question_id))
+  // PROJ-129: Richtig/Falsch und Joker zählen nicht als „gekannt“
+  const correctIds = new Set(answers.filter((a) => a.is_correct && !isNeutralAnswer(a)).map((a) => a.question_id))
 
   const subjects = subjectRows.map((s) => ({
     ...s,

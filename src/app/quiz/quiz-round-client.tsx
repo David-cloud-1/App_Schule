@@ -391,7 +391,9 @@ export function QuizRoundClient({ start, subject, totalAvailable }: QuizRoundCli
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[#9CA3AF] text-sm">Verdiente Münzen</p>
-                  <p className="text-xl font-bold text-[#FFD700]">+{result.coins_earned}</p>
+                  <p className="text-xl font-bold text-[#FFD700]">
+                    {result.coins_earned >= 0 ? `+${result.coins_earned}` : `−${Math.abs(result.coins_earned)}`}
+                  </p>
                 </div>
                 <Coins size={28} className="text-[#FFD700]" />
               </div>

@@ -6,7 +6,7 @@ import { getCurrentDepartment } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchActiveQuestionSubjects, groupQuestionIdsBySubject } from '@/lib/subject-questions'
-import { computeWeakQuestionIds } from '@/lib/weak-questions'
+import { computeWeakQuestionIds, isNeutralAnswer } from '@/lib/weak-questions'
 import { PlayerMenu } from '@/components/player-menu'
 import {
   isTeacherRole,
@@ -135,7 +135,8 @@ export default async function HomePage({
   // ── Fächer ────────────────────────────────────────────────────────────────
   const subjectRows = subjectsResult.data ?? []
   const activeIdsBySubject = groupQuestionIdsBySubject(questionSubjects)
-  const correctIds = new Set(answers.filter((a) => a.is_correct).map((a) => a.question_id))
+  // PROJ-129: Richtig/Falsch und Joker zählen nicht als „gekannt“
+  const correctIds = new Set(answers.filter((a) => a.is_correct && !isNeutralAnswer(a)).map((a) => a.question_id))
 
   const rings: SubjectRing[] = subjectRows.map((s) => {
     const activeIds = activeIdsBySubject.get(s.id) ?? []

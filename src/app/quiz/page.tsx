@@ -2,13 +2,25 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, Target } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { computeWeakQuestionIds } from '@/lib/weak-questions'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
 import { attachAnswerKey, getLockedQuestionIds } from '@/lib/answer-key'
 import type { PostgrestError } from '@supabase/supabase-js'
 import { QuizClient, type QuizQuestion } from './quiz-client'
+import { QuizRoundClient } from './quiz-round-client'
+import type { QuizRoundStart } from '@/lib/quiz-round'
+import { JOKER_MAX_PER_ROUND, JOKER_PRICE } from '@/lib/quiz-round'
+import { planVariants, toClientQuestion, variantsEnabled } from '@/lib/quiz-round-rules'
+import {
+  buildSlip,
+  cleanupOldRounds,
+  eligibilityOf,
+  fetchKnownQuestionIds,
+  insertRound,
+  toSlipSources,
+} from '@/lib/quiz-round-server'
 import { BrandIcon, BrandName } from '@/components/app-brand'
 import { getCurrentDepartment, getDepartmentSubjectIds } from '@/lib/departments-server'
 import { NO_DEPARTMENT_ID } from '@/lib/departments'
@@ -245,7 +257,28 @@ export default async function QuizPage({
 
   const totalAvailable = rawQuestions.length
 
-  // ── Shuffle + limit ───────────────────────────────────────────────────────
+  // ── Normales Quiz: Rundenzettel auf dem Server (PROJ-129) ────────────────
+  // Der Browser bekommt keine Lösung; jede Antwort prüft der Server einzeln.
+  if (!isWeakMode) {
+    const roundStart = await createQuizRound(user.id, shuffle(rawQuestions).slice(0, QUIZ_SIZE), {
+      subjectId: subject?.id ?? null,
+      classLevel,
+      topicId,
+    })
+    if (roundStart) {
+      return (
+        <QuizRoundClient
+          start={roundStart}
+          subject={subject ?? { id: 'mixed', code: 'Gemischt', name: 'Gemischtes Lernen', color: '#58CC02' }}
+          totalAvailable={totalAvailable}
+        />
+      )
+    }
+    // Zettel ließ sich nicht anlegen → wie bisher weiterspielen lassen
+    console.error('[QuizPage] Rundenzettel fehlgeschlagen, alter Ablauf')
+  }
+
+  // ── Shuffle + limit (Lücken schließen, Rückfall) ──────────────────────────
   // The answer key is merged in server-side for just the picked questions —
   // students can't SELECT answer_options.is_correct directly any more.
   const picked = await attachAnswerKey(shuffle(rawQuestions).slice(0, QUIZ_SIZE))
@@ -280,4 +313,51 @@ export default async function QuizPage({
       totalAvailable={totalAvailable}
     />
   )
+}
+
+/**
+ * PROJ-129: Rundenzettel für eine normale Quiz-Runde anlegen. Varianten nur
+ * bei eingeschaltetem Hauptschalter und bei Fragen, die der Spieler schon
+ * klassisch richtig beantwortet hat. Gibt null zurück, wenn etwas schiefgeht.
+ */
+async function createQuizRound(
+  userId: string,
+  picked: RawQuestion[],
+  pool: { subjectId: string | null; classLevel: number | null; topicId: string | null },
+): Promise<QuizRoundStart | null> {
+  try {
+    const service = createServiceClient()
+    const variants = variantsEnabled()
+    const [sources, known, profileRes] = await Promise.all([
+      toSlipSources(picked),
+      variants ? fetchKnownQuestionIds(service, userId, picked.map((q) => q.id)) : Promise.resolve(new Set<string>()),
+      service.from('profiles').select('coin_balance').eq('id', userId).single(),
+      cleanupOldRounds(service, userId),
+    ])
+    if (sources.length === 0) return null
+
+    const forms = variants
+      ? planVariants(sources.map((s) => ({ known: known.has(s.id), eligibility: eligibilityOf(s) })))
+      : sources.map(() => 'classic' as const)
+    const slip = buildSlip(sources, forms, variants)
+    const roundId = await insertRound(service, {
+      user_id: userId,
+      kind: 'quiz',
+      subject_id: pool.subjectId,
+      class_level: pool.classLevel,
+      topic_id: pool.topicId,
+      slip,
+    })
+    if (!roundId) return null
+
+    return {
+      round_id: roundId,
+      questions: slip.questions.map(toClientQuestion),
+      coin_balance: (profileRes.data?.coin_balance as number | null) ?? 0,
+      joker: { enabled: variants, price: JOKER_PRICE, max_per_round: JOKER_MAX_PER_ROUND },
+    }
+  } catch (err) {
+    console.error('[QuizPage] createQuizRound:', err)
+    return null
+  }
 }

@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase-server'
 import { fetchAllUserAnswers } from '@/lib/quiz-answers'
 import { fetchLearnQuestions } from '@/lib/subject-questions'
-import { computeWeakQuestionIds } from '@/lib/weak-questions'
+import { computeWeakQuestionIds, isNeutralAnswer } from '@/lib/weak-questions'
 import { getCurrentDepartment } from '@/lib/departments-server'
 import { normalizeSubjectCode } from '@/lib/subjects'
 import { buildTopicPath, decodeSubjectCode, matchesClassLevel, quizHref, subjectProgress } from '@/lib/learn-library'
@@ -55,7 +55,8 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
   ])
 
   const answeredIds = new Set(answers.map((a) => a.question_id))
-  const correctIds = new Set(answers.filter((a) => a.is_correct).map((a) => a.question_id))
+  // PROJ-129: Richtig/Falsch und Joker zählen nicht als „gekannt“
+  const correctIds = new Set(answers.filter((a) => a.is_correct && !isNeutralAnswer(a)).map((a) => a.question_id))
 
   // Thema der letzten Runde: nur, wenn alle ihre Fragen aus demselben Thema stammten
   let lastTopicId: string | null = null
