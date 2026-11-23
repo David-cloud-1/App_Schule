@@ -153,6 +153,8 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/department-settings',
   '/admin/shop-items',
   '/admin/audit-log',
+  // PROJ-122: Checklisten zu den Handlungsleitlinien — jede Lehrer-Rolle (Haken sind privat im eigenen Konto)
+  '/admin/checklisten',
 ]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {
@@ -204,6 +206,8 @@ export const TEACHER_API_PATH_PREFIXES: readonly string[] = [
   '/api/admin/audit-log',
   // PROJ-127: Bereichsliste fürs Verschieben (GET gekürzt; Anlegen/Ändern prüft requireSuperAdmin)
   '/api/admin/departments',
+  // PROJ-122: Checklisten (requireTeacherOrAdmin; Durchläufe und Haken per Zeilenregel nur im eigenen Konto)
+  '/api/admin/checklisten',
 ]
 
 export function teacherMayCallApiPath(pathname: string): boolean {
