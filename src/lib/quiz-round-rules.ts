@@ -436,8 +436,9 @@ export function applyJoker(
   if (!slip.variants) return { error: 'conflict', message: 'Joker ist ausgeschaltet' }
   if (q.form !== 'classic') return { error: 'conflict', message: 'Joker nur bei klassischen Fragen' }
   if (q.answered) return { error: 'conflict', message: 'Frage ist schon beantwortet' }
-  const isLast = index === slip.questions.length - 1
-  if (isLast && slip.wager) return { error: 'conflict', message: 'Kein Joker auf der Wettfrage' }
+  // QA BUG-3: die letzte Frage ist immer die mögliche Wettfrage – auch bevor die
+  // Wette angeboten wurde (sonst Joker vorab holen und danach wetten)
+  if (index === slip.questions.length - 1) return { error: 'conflict', message: 'Kein Joker auf der letzten Frage' }
   if (slip.jokers_used >= JOKER_MAX_PER_ROUND) return { error: 'conflict', message: 'Höchstens zwei Joker pro Runde' }
   if (coinBalance < JOKER_PRICE * (slip.jokers_used + 1)) return { error: 'too_poor', message: 'Zu wenig Münzen' }
 
@@ -501,9 +502,15 @@ export function settleQuiz(slip: RoundSlip, streakBonus: boolean): QuizSettlemen
 
   const last = slip.questions[slip.questions.length - 1]
   let wager: WagerOutcome | null = null
-  if (slip.wager?.accepted && last?.answered) {
-    const won = last.correct === true
-    wager = { stake: slip.wager.stake, won, delta: won ? slip.wager.stake : -slip.wager.stake }
+  // QA BUG-2: angenommene Wette + letzte Frage nicht beantwortet = verloren
+  // (sonst: bei Unsicherheit einfach abrechnen und nie verlieren)
+  if (slip.wager?.accepted && last) {
+    const won = last.answered && last.correct === true
+    // QA BUG-4: Ein Verlust nimmt nie mehr, als die Runde ohne Wette eingebracht
+    // hätte – der Münzstand vor der Runde sinkt durch die Wette nie
+    const beforeWager = answerCoins + roundBonus - jokerCost
+    const loss = Math.min(slip.wager.stake, Math.max(0, beforeWager))
+    wager = { stake: slip.wager.stake, won, delta: won ? slip.wager.stake : -loss }
   }
   const net = answerCoins + roundBonus - jokerCost + (wager?.delta ?? 0)
   return {

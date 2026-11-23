@@ -19,7 +19,6 @@ const base = {
   jokersUsed: 0,
   usedOnThisQuestion: false,
   isLastQuestion: false,
-  wagerOffered: false,
   answered: false,
 }
 
@@ -32,9 +31,8 @@ describe('jokerState', () => {
     expect(jokerState({ ...base, form: 'eliminate' })).toBe('hidden')
     expect(jokerState({ ...base, joker: { ...joker, enabled: false } })).toBe('hidden')
   })
-  it('fehlt auf der Wettfrage, ist auf der letzten Frage ohne Wette aber da', () => {
-    expect(jokerState({ ...base, isLastQuestion: true, wagerOffered: true })).toBe('hidden')
-    expect(jokerState({ ...base, isLastQuestion: true, wagerOffered: false })).toBe('available')
+  it('fehlt immer auf der letzten Frage (mögliche Wettfrage, QA BUG-3)', () => {
+    expect(jokerState({ ...base, isLastQuestion: true })).toBe('hidden')
   })
   it('ist gesperrt, wenn der Münzstand nicht alle Joker der Runde deckt', () => {
     expect(jokerState({ ...base, coinBalance: 4 })).toBe('too_poor')

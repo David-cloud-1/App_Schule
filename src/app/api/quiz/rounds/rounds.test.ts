@@ -11,11 +11,19 @@ vi.mock('@/lib/quiz-round-server', async (orig) => {
     claimRoundForFinish: vi.fn(),
     releaseRound: vi.fn(),
     storeRoundResult: vi.fn(),
+    reservedJokerCoins: vi.fn(async () => 0),
   }
 })
 
 import { createClient, createServiceClient } from '@/lib/supabase-server'
-import { claimRoundForFinish, mutateRound, releaseRound, storeRoundResult, type RoundRow } from '@/lib/quiz-round-server'
+import {
+  claimRoundForFinish,
+  mutateRound,
+  releaseRound,
+  reservedJokerCoins,
+  storeRoundResult,
+  type RoundRow,
+} from '@/lib/quiz-round-server'
 import { applyAnswer, applyJoker, buildSlipQuestion, type RoundSlip } from '@/lib/quiz-round-rules'
 import { POST as answerPOST } from './[id]/answer/route'
 import { POST as jokerPOST } from './[id]/joker/route'
@@ -161,6 +169,26 @@ describe('POST /api/quiz/rounds/[id]/joker', () => {
     const body = await res.json()
     expect(body.removed_option_ids).toHaveLength(2)
     expect(body.removed_option_ids).not.toContain(O(0, 0))
+  })
+
+  it('402, wenn Joker anderer offener Runden (zweiter Tab) den Stand schon belegen (QA BUG-5)', async () => {
+    signedIn()
+    service({ coin_balance: 12 })
+    vi.mocked(reservedJokerCoins).mockResolvedValueOnce(10)
+    vi.mocked(mutateRound).mockImplementation(async (_id, _u, fn) => {
+      const out = fn(slip(3), { kind: 'quiz' } as RoundRow)
+      return 'error' in out ? out : { response: out.response }
+    })
+    expect((await jokerPOST(req({ question_index: 0 }), params())).status).toBe(402)
+    expect(reservedJokerCoins).toHaveBeenCalledWith(expect.anything(), USER.id, ROUND)
+  })
+
+  it('500 (kein Joker), wenn die Vormerkungen nicht lesbar sind', async () => {
+    signedIn()
+    service({ coin_balance: 50 })
+    vi.mocked(reservedJokerCoins).mockResolvedValueOnce(null)
+    expect((await jokerPOST(req({ question_index: 0 }), params())).status).toBe(500)
+    expect(mutateRound).not.toHaveBeenCalled()
   })
 
   it('409 in der Blitzrunde', async () => {

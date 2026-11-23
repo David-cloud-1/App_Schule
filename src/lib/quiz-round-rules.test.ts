@@ -8,6 +8,7 @@ import {
   planVariants,
   pickProposal,
   questionEligibility,
+  rewardTier,
   settleBlitz,
   settleQuiz,
   toClientQuestion,
@@ -197,34 +198,33 @@ describe('Antworten', () => {
     let slip = slipOf(['classic', 'eliminate', 'classic'])
     for (const o of [1, 2, 3]) {
       const r = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, o) }))
-      expect(r.response).toMatchObject({ status: 'eliminated', hearts_left: 2 })
+      expect(r.response).toMatchObject({ status: 'eliminated', hearts_left: 1 })
       slip = r.slip
     }
     const last = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 4) }))
     expect(last.response).toMatchObject({
       status: 'resolved',
       correct: true,
-      eliminate: { option_id: opt(1, 4), step: 'eliminated', hearts_left: 2, mistakes: 0 },
+      eliminate: { option_id: opt(1, 4), step: 'eliminated', hearts_left: 1, mistakes: 0 },
     })
     expect(last.slip.questions[1].selected_option_id).toBe(opt(1, 0))
   })
 
-  it('Rauswerfen: richtige Option angetippt → Herz weg; doppelter Tipp kostet kein zweites Herz', () => {
-    const slip = slipOf(['classic', 'eliminate', 'classic'])
-    const r = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 0) }))
-    expect(r.response).toMatchObject({ status: 'heart_lost', hearts_left: 1 })
-    const again = ok(applyAnswer(r.slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 0) }))
-    expect(again.changed).toBe(false)
-    expect(again.response).toMatchObject({ status: 'heart_lost', hearts_left: 1 })
-    const repeatEliminated = ok(applyAnswer(r.slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 0) }))
-    expect(repeatEliminated.slip.questions[1].mistakes).toBe(1)
-  })
-
-  it('Rauswerfen mit 1 Fehlgriff bestanden → halbe Wertung', () => {
+  it('Rauswerfen: richtige Option angetippt → sofort verloren (1 Herz, QA BUG-1); Wiederholung ändert nichts', () => {
     let slip = slipOf(['classic', 'eliminate', 'classic'])
-    for (const o of [0, 1, 2, 3, 4]) slip = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, o) })).slip
-    const q = slip.questions[1]
-    expect(q).toMatchObject({ answered: true, correct: true, mistakes: 1 })
+    slip = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 1) })).slip
+    const r = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 0) }))
+    expect(r.response).toMatchObject({
+      status: 'resolved',
+      correct: false,
+      correct_option_id: opt(1, 0),
+      eliminate: { option_id: opt(1, 0), step: 'heart_lost', hearts_left: 0, mistakes: 1 },
+    })
+    expect(r.slip.questions[1]).toMatchObject({ answered: true, correct: false, mistakes: 1 })
+    expect(rewardTier(r.slip.questions[1])).toBe('none')
+    const again = ok(applyAnswer(r.slip, { kind: 'eliminate', question_index: 1, option_id: opt(1, 2) }))
+    expect(again.changed).toBe(false)
+    expect(again.response).toMatchObject({ status: 'resolved', correct: false })
   })
 })
 
@@ -258,9 +258,10 @@ describe('Joker', () => {
     expect(applyJoker(slipOf(['classic', 'classic'], false), 0, 100)).toMatchObject({ error: 'conflict' })
   })
 
-  it('nicht auf der Wettfrage', () => {
-    const slip = { ...slipOf(['classic', 'classic', 'classic', 'classic', 'classic']), wager: { stake: 5, accepted: null } }
+  it('nie auf der letzten Frage – auch bevor die Wette angeboten ist (QA BUG-3)', () => {
+    const slip = slipOf(['classic', 'classic', 'classic', 'classic', 'classic'])
     expect(applyJoker(slip, 4, 100)).toMatchObject({ error: 'conflict' })
+    expect(applyJoker({ ...slip, wager: { stake: 5, accepted: null } }, 4, 100)).toMatchObject({ error: 'conflict' })
   })
 })
 
@@ -323,6 +324,27 @@ describe('Wette', () => {
     expect(ok(applyWager(s2, true)).response.accepted).toBe(false)
   })
 
+  it('angenommen, letzte Frage nicht beantwortet → verloren (QA BUG-2)', () => {
+    let { slip } = playToPenultimate(true)
+    slip = ok(applyWager(slip, true)).slip
+    const s = settleQuiz(slip, false)
+    expect(s.wager).toEqual({ stake: 10, won: false, delta: -10 })
+    expect(s.net_coins).toBe(9 + 3 - 10)
+  })
+
+  it('Verlust nie größer als der Rundengewinn ohne Wette (QA BUG-4)', () => {
+    // Nur Frage 9 von 10 beantwortet (per API übersprungen): Einsatz 1 + 3 = 4,
+    // am Ende aber unter 5 Fragen → kein Rundenbonus
+    let slip = slipOf(Array.from({ length: 10 }, () => 'classic' as const))
+    slip = ok(applyAnswer(slip, { kind: 'choice', question_index: 8, option_id: opt(8, 0) })).slip
+    expect(slip.wager?.stake).toBe(4)
+    slip = ok(applyWager(slip, true)).slip
+    slip = ok(applyAnswer(slip, { kind: 'choice', question_index: 9, option_id: opt(9, 1) })).slip
+    const s = settleQuiz(slip, false)
+    expect(s.wager).toEqual({ stake: 4, won: false, delta: -1 })
+    expect(s.net_coins).toBe(0)
+  })
+
   it('ohne Angebot → conflict', () => {
     expect(applyWager(slipOf(['classic', 'classic']), true)).toMatchObject({ error: 'conflict' })
   })
@@ -330,20 +352,20 @@ describe('Wette', () => {
 
 describe('Abrechnung', () => {
   it('Wertung je Darstellungsform; halbe Münzen werden für die Runde zusammengezählt', () => {
-    // Plätze: 0 klassisch mit Joker richtig, 1 R/F richtig, 2 klassisch falsch, 3 Rauswerfen 1 Fehlgriff, 4 klassisch richtig
+    // Plätze: 0 klassisch mit Joker richtig, 1 R/F richtig, 2 klassisch falsch, 3 Rauswerfen sauber, 4 klassisch richtig
     let slip = slipOf(['classic', 'true_false', 'classic', 'eliminate', 'classic'], true, seq(0.1))
     slip = ok(applyJoker(slip, 0, 100)).slip
     slip = ok(applyAnswer(slip, { kind: 'choice', question_index: 0, option_id: opt(0, 0) })).slip
     slip = ok(applyAnswer(slip, { kind: 'true_false', question_index: 1, says_true: true })).slip
     slip = ok(applyAnswer(slip, { kind: 'choice', question_index: 2, option_id: opt(2, 1) })).slip
-    for (const o of [0, 1, 2, 3, 4]) slip = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 3, option_id: opt(3, o) })).slip
+    for (const o of [1, 2, 3, 4]) slip = ok(applyAnswer(slip, { kind: 'eliminate', question_index: 3, option_id: opt(3, o) })).slip
     slip = ok(applyAnswer(slip, { kind: 'choice', question_index: 4, option_id: opt(4, 0) })).slip
 
     const s = settleQuiz(slip, false)
     expect(s.score).toBe(4)
     expect(s.total).toBe(5)
-    expect(s.xp).toBe(10 + 5 + 0 + 5 + 10)
-    // halbe Münzen: 2 + 1 + 0 + 1 + 2 = 6 → 3 Münzen
+    expect(s.xp).toBe(10 + 5 + 0 + 10 + 10)
+    // halbe Münzen: 2 + 1 + 0 + 2 + 2 = 7 → 3 Münzen
     expect(s.answer_coins).toBe(3)
     expect(s.round_bonus).toBe(3)
     expect(s.joker_cost).toBe(5)

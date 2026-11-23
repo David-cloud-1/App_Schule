@@ -5,7 +5,7 @@ vi.mock('@/lib/answer-key', () => ({ fetchAnswerKey: vi.fn() }))
 
 import { createServiceClient } from '@/lib/supabase-server'
 import { fetchAnswerKey } from '@/lib/answer-key'
-import { claimRoundForFinish, mutateRound, toSlipSources, type RoundRow } from './quiz-round-server'
+import { claimRoundForFinish, mutateRound, reservedJokerCoins, toSlipSources, type RoundRow } from './quiz-round-server'
 import { applyAnswer, buildSlipQuestion } from './quiz-round-rules'
 
 const USER = '11111111-1111-4111-8111-111111111111'
@@ -161,5 +161,38 @@ describe('toSlipSources', () => {
     ])
     expect(out).toHaveLength(1)
     expect(out[0]).toMatchObject({ id: 'a', correct_option_id: O(0), explanation: 'E' })
+  })
+})
+
+describe('reservedJokerCoins (QA BUG-5)', () => {
+  function chainResult(result: { data: unknown; error: unknown }) {
+    const calls: [string, unknown[]][] = []
+    const chain: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'is', 'gte', 'neq']) {
+      chain[m] = vi.fn((...args: unknown[]) => {
+        calls.push([m, args])
+        return chain
+      })
+    }
+    chain.limit = vi.fn(async () => result)
+    return { client: { from: vi.fn(() => chain) } as never, calls }
+  }
+
+  it('summiert die Joker anderer offener Quiz-Runden × Preis', async () => {
+    const { client, calls } = chainResult({ data: [{ jokers_used: 2 }, { jokers_used: 1 }, { jokers_used: null }], error: null })
+    expect(await reservedJokerCoins(client, USER, ROUND)).toBe(15)
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        ['eq', ['user_id', USER]],
+        ['eq', ['kind', 'quiz']],
+        ['is', ['finished_at', null]],
+        ['neq', ['id', ROUND]],
+      ]),
+    )
+  })
+
+  it('null bei Datenbankfehler (dann kein Joker)', async () => {
+    const { client } = chainResult({ data: null, error: { message: 'kaputt' } })
+    expect(await reservedJokerCoins(client, USER, ROUND)).toBeNull()
   })
 })
