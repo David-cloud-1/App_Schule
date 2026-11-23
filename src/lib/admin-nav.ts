@@ -10,6 +10,7 @@ import {
   FolderKanban,
   FolderTree,
   GraduationCap,
+  ListChecks,
   MessagesSquare,
   Plus,
   Scale,
@@ -30,6 +31,8 @@ import { WERKZEUGKISTE_HREF } from '@/lib/werkzeugkiste'
 import { SCHULRECHT_HREF } from '@/lib/schulrecht'
 // PROJ-120: Abwesenheitskalender für alle Lehrer-Rollen
 import { ABSENCE_HREF } from '@/lib/absence'
+// PROJ-122: Checklisten zu den Handlungsleitlinien
+import { CHECKLISTEN_HREF } from '@/lib/checklisten/liste'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40) — einzige Quelle für Seitenleiste,
@@ -82,6 +85,7 @@ export const ADMIN_MAIN_NAV_HREFS = [
   '/admin/questions',
   WERKZEUGKISTE_HREF,
   SCHULRECHT_HREF,
+  CHECKLISTEN_HREF,
   ABSENCE_HREF,
   '/admin/lehrerzimmer',
 ]
@@ -122,6 +126,14 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         description: 'Paragraphen zu Fragen aus dem Schulalltag – im Wortlaut, ohne KI',
         icon: Scale,
         // PROJ-55: jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
+        teacherVisible: true,
+      },
+      {
+        href: CHECKLISTEN_HREF,
+        label: 'Checklisten',
+        description: 'Schritt für Schritt durch Vorgänge der Schule: Dienstreise, Reisekosten … mit dem Original daneben',
+        icon: ListChecks,
+        // PROJ-122: jede Lehrer-Rolle; die Haken sind privat im eigenen Konto
         teacherVisible: true,
       },
       {

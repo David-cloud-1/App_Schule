@@ -61,7 +61,7 @@ describe('Admin-Navigation (PROJ-40)', () => {
     const groups = adminNavGroupsFor('teacher')
     expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte', 'Verwaltung'])
     expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
-      ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Kalender', 'Meine Fächer', 'Lehrerzimmer'],
+      ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Checklisten', 'Kalender', 'Meine Fächer', 'Lehrerzimmer'],
       ['Inhalte', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
       ['Nutzer', 'Fachbereich', 'Items', 'Änderungsprotokoll'],
     ])

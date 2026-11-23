@@ -2,7 +2,7 @@
 
 ## Status: In Progress
 **Created:** 2026-11-20
-**Last Updated:** 2026-11-20
+**Last Updated:** 2026-11-23
 
 ## Kontext
 Die Handlungsleitlinien (HLL) der Schule liegen als PDFs vor (`docs/HLL/`, 28 Dateien, 24 Leitlinien) und stehen für die Suche in „Schulrecht“ (PROJ-55/88). Wer einen Vorgang erledigen muss (Dienstreise beantragen, Zeugnisse abgeben, Klassentagebuch abgeben), muss die Leitlinie suchen, lesen und selbst im Kopf abhaken, was schon erledigt ist.
@@ -303,6 +303,34 @@ Unbekannte Listen und Varianten werden vor der Datenbank mit 404 bzw. 400 abgele
 - Ein Test (`werkzeugkiste-auszug.test.ts`, „nennt die Urheberin oder den Urheber“) schlägt im Gesamtlauf fehl; er berührt diese Arbeit nicht (Datei nicht geändert) und ist nicht von mir verursacht.
 
 **Einspielen:** Migration im SQL-Editor ausführen, danach die Probe. Erwartet: `rls_*=true`, `anon_darf_ausfuehren=false`, alle übrigen `true` (Felder mit `NULL`, wenn keine zweite Lehrkraft oder kein Azubi im System ist). Erst danach App deployen.
+
+## Implementation Notes (Frontend, 2026-11-23)
+
+**Stand:** Seiten, Setzer, Original-Ansicht und beide Pilot-Listen sind gebaut. `tsc` und Build sauber, 100+ neue Tests grün (Listen-Logik, Setzer Wort für Wort für alle 25 Leitlinien, Textanker, Prüfsummen, Seite und Übersicht). **Noch nicht eingespielt:** die Datenbank-Migration (ohne sie meldet die Seite „Das hat nicht geklappt“). Offen: Kern-Änderung für die Betriebs-Warnung, Opus-Gegenprüfung der Listen, `/qa`, Sichtprüfung im Browser (kein Dev-Server auf dem MacBook).
+
+**Bausteine**
+- Seiten: `/admin/checklisten` (Übersicht, [checklisten-uebersicht.tsx](../src/components/checklisten/checklisten-uebersicht.tsx)) und `/admin/checklisten/[id]` ([checkliste-seite.tsx](../src/components/checklisten/checkliste-seite.tsx)). Die Seite setzt das Original **auf dem Server** und gibt nur die gesetzten Blöcke der betreffenden Liste weiter; die Sammlung steht nicht im Browser-Paket (geprüft im Build).
+- Navigation: Eintrag „Checklisten“ (Symbol `ListChecks`) in „Mein Unterricht“ und in der festen Hauptnavigation nach „Schulrecht“; Navigationstests angepasst.
+- Listen fest im Code: [listen/dienstreise-beantragen.ts](../src/lib/checklisten/listen/dienstreise-beantragen.ts), [listen/reisekosten-abrechnen.ts](../src/lib/checklisten/listen/reisekosten-abrechnen.ts); Typen und Logik in [liste.ts](../src/lib/checklisten/liste.ts) (Fortschritt und „fertig“ werden berechnet, nie gespeichert).
+- Setzer [setzer.ts](../src/lib/checklisten/setzer.ts): Titel, Überschriften (bekannte je Quelle, wörtlich, nur an Satzanfängen sowie kurze Zeilen), Absätze, Listen (`•` und `- `), Warnung („Achtung“). Alles Unsichere bleibt Absatz; kein Wort wird verändert (Test über alle 25 Leitlinien).
+- Momentaufnahme: [scripts/leitlinien-momentaufnahme.py](../scripts/leitlinien-momentaufnahme.py) liest `Werkzeugkiste/schulrecht.py` und schreibt `src/lib/checklisten/daten/leitlinien.json` (Titel, Bereich, Stand, Text, Prüfsumme). Nach jeder HLL-Änderung in Schulrecht neu ausführen.
+- Tests: `quellen.test.ts` schlägt fehl, wenn Prüfsumme/Stand einer Quelle von der Momentaufnahme abweicht oder ein Textanker nicht mehr wörtlich im Original steht.
+
+**Abweichungen von der Spec / dem Tech Design**
+1. **Momentaufnahme ohne Kern-Änderung.** Statt eines neuen Kern-Befehls liest ein Skript im App-Projekt die Schulrecht-Datei direkt. Folge: kein Kern-Deploy nötig. Die **Betriebs-Warnung** („Leitlinie geändert“ durch Abfrage beim Kern, Tech Design D) fehlt noch; die Seite zeigt den gelben Hinweis, sobald Momentaufnahme und Liste auseinanderlaufen (im Normalfall verhindert das der Test). Die Kern-Abfrage der Prüfsumme bleibt ein eigener Schritt.
+2. **Unterschrift entfernt.** Die Schlusszeile „Name + Schulleiterin“ der Leitlinie „Dienst- und Fortbildungsreise“ wird in der Momentaufnahme gestrichen (Spec: keine Personennamen fest einbauen). Die Prüfsumme gilt für den Text ohne diese Zeile.
+3. **„Gültig seit 2018“** fehlt: Der Schulrecht-Text enthält nur „Stand“ und Bereich, kein „gültig ab“. Angezeigt werden Stand (bzw. „Ohne Stand-Angabe“ bei der Klassenfahrt-Leitlinie) und Bereichszeile.
+4. **Klassenfahrt-Formular** steht bei „Dienstreise beantragen“ als Schritt in beiden Dienstreise-Varianten (Klassenfahrten sind laut Leitlinie Dienstreisen); eine eigene Variante „Klassenfahrt“ wurde dort nicht eingeführt (Katalog unverändert). Fortbildungsgang und Bezirksreise haben keine eigene Anlage-Zeile, weil die Leitlinie dafür nichts nennt.
+5. **Sechs-Monats-Frist:** In allen Varianten als Frist am Schritt „Antrag stellen“; als **Annahme** gekennzeichnet nur bei Dienstreise und Fortbildungsreise (bei Klassenfahrt steht sie in der Leitlinie). Dazu ein Hinweis in diesen Varianten. Nach Bestätigung durch die Schulleitung: `fristAnnahme` und Hinweis `frist-annahme` entfernen.
+6. **Variantenwahl:** „Dienstreise beantragen“ hat 7 Werte und nutzt das Dropdown, „Reisekosten abrechnen“ 3 Werte und das Segment (PROJ-83). „Neu starten“ beginnt ohne Variante, die Person wählt neu.
+7. **Fortschrittsbalken** ist ein eigenes Element aus `ws-*`-Farben, weil `ui/progress` feste Farben nutzt.
+8. **Frühere Durchläufe** zeigen Zeitraum, Variante und Zahl der Haken (die Schnittstelle liefert nur die Zahl); entfallene Schritte der Archivansicht werden daher nicht einzeln aufgelistet.
+9. Beim Zurückkehren in den Tab holt die Seite den Stand frisch (Zwei-Geräte-Fall), solange kein Haken gespeichert wird.
+
+**Einspielen / nächste Schritte**
+1. Migration + Probe aus dem Backend-Schritt einspielen (vor dem App-Deploy).
+2. Opus-Gegenprüfung der beiden Listen gegen die Original-PDFs (Tech Design L4), besonders: Anlagen je Variante, Fortbildungsgang/Bezirksreise, Frist-Annahme.
+3. Sechs-Monats-Frist bei der Schulleitung bestätigen lassen.
 
 ## QA Test Results
 _To be added by /qa_
