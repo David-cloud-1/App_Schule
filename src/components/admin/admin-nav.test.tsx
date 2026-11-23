@@ -54,6 +54,7 @@ describe('AdminNav (PROJ-40)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Checklisten',
       'Kalender',
       'Lehrerzimmer',
     ])
@@ -186,6 +187,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Checklisten',
       'Kalender',
       'Lehrerzimmer',
       'Meine Fächer',
@@ -217,6 +219,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
       'Fragen',
       'Werkzeugkiste',
       'Schulrecht',
+      'Checklisten',
       'Kalender',
       'Lehrerzimmer',
       'Meine Fächer',
