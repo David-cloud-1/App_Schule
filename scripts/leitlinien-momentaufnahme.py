@@ -8,8 +8,11 @@ sich die Prüfsumme der Leitlinie, zu der sie geschrieben wurden; der Test
 Aufruf (nach jeder Änderung an den HLL in Schulrecht):
     python3 scripts/leitlinien-momentaufnahme.py
 
-Personenbezug: Die Schlusszeile „<Name> Schulleiterin/Schulleiter“ wird
-entfernt (Spezifikation: Namen nicht fest einbauen).
+Personenbezug (Spezifikation: Namen und persönliche Kontaktdaten nicht fest
+einbauen): Die Schlusszeile „<Name> Schulleiterin/Schulleiter“ wird entfernt,
+persönliche E-Mail-Adressen („vorname.nachname@…“, samt davorstehendem Namen)
+und Handynummern werden durch einen Verweis auf das Original ersetzt.
+Funktionspostfächer und Festnetznummern der Dienststelle bleiben stehen.
 """
 import hashlib
 import json
@@ -24,6 +27,15 @@ ZIEL = HIER / 'src' / 'lib' / 'checklisten' / 'daten' / 'leitlinien.json'
 UNTERSCHRIFT = re.compile(r'\n[^\n]{3,60}\s(Schulleiterin|Schulleiter|stellv\. Schulleiterin|stellv\. Schulleiter)\s*$')
 
 
+PERSON_MAIL = re.compile(r'(?:[A-ZÄÖÜ][a-zäöüß]+ [A-ZÄÖÜ][a-zäöüß]+ )?[a-zäöüß]+\.[a-zäöüß]+@[\w.-]+')
+HANDY = re.compile(r'\b01[5-7]\d[\s\d]{6,}\d')
+
+
+def entpersonalisiere(text: str) -> str:
+    text = PERSON_MAIL.sub('[Kontakt der zuständigen Person: siehe Original-PDF]', text)
+    return HANDY.sub('[Handynummer: siehe Original-PDF]', text)
+
+
 def pruefsumme(text: str) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()[:12]
 
@@ -35,7 +47,7 @@ def main() -> None:
     hll = SCHULRECHT['HLL']
     normen = []
     for n in hll['normen']:
-        text = UNTERSCHRIFT.sub('', n['text'].rstrip())
+        text = entpersonalisiere(UNTERSCHRIFT.sub('', n['text'].rstrip()))
         normen.append({
             'kennung': n['nr'],
             'bereich': n.get('titel', ''),

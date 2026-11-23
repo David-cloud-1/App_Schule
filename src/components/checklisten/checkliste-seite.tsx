@@ -3,7 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowRight, Check, ChevronDown, FileText, History, Info, Printer, RotateCcw, TriangleAlert } from 'lucide-react'
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  FileText,
+  History,
+  Info,
+  Printer,
+  RotateCcw,
+  TriangleAlert,
+} from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { AdminSegmented, SEGMENTED_MAX_OPTIONS } from '@/components/admin/admin-segmented'
@@ -70,11 +80,18 @@ export function CheckListeSeite({
   const [neuDialog, setNeuDialog] = useState(false)
   const [neuLaeuft, setNeuLaeuft] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Zählt lokale Änderungen: Eine Antwort, die vor der letzten Änderung angefordert wurde, ist veraltet und wird verworfen
+  const aenderungen = useRef(0)
 
   const lade = useCallback(() => {
     setStatus((s) => (s === 'fertig' ? s : 'laedt'))
+    const angefordertBei = aenderungen.current
     ladeListe(listeId)
       .then((r) => {
+        if (aenderungen.current !== angefordertBei) {
+          setStatus('fertig')
+          return
+        }
         setOffen(r.offen)
         setFruehere(r.fruehere)
         setVarianteLokal(r.offen?.variante ?? null)
@@ -111,6 +128,7 @@ export function CheckListeSeite({
   async function hakenAendern(schrittId: string, erledigt: boolean) {
     if (beschaeftigt.has(schrittId)) return // Doppelklick: kurze Sperre während des Speicherns
     const vorher = haken
+    aenderungen.current += 1
     setBeschaeftigt((b) => new Set(b).add(schrittId))
     setHaken((h) => (erledigt ? (h.includes(schrittId) ? h : [...h, schrittId]) : h.filter((x) => x !== schrittId)))
     try {
@@ -133,6 +151,7 @@ export function CheckListeSeite({
 
   async function varianteWaehlen(neu: string) {
     const vorher = variante
+    aenderungen.current += 1
     setVarianteLokal(neu)
     try {
       await setzeVariante(listeId, neu)
@@ -166,7 +185,10 @@ export function CheckListeSeite({
     setTimeout(() => {
       document
         .getElementById(`original-${ziel.quelle}-${ziel.block}`)
-        ?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+        ?.scrollIntoView({
+          behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+          block: 'center',
+        })
     }, 60)
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => setMarkiert(null), 3000)
@@ -190,7 +212,8 @@ export function CheckListeSeite({
         }
       >
         <p className="text-xs text-ws-faint">
-          Für: {liste.fuerWen.join(', ')} · Leitlinie: {liste.quellen.map((q) => `${q.leitlinie} (${standText(q.stand)})`).join('; ')}
+          Für: {liste.fuerWen.join(', ')} · Leitlinie:{' '}
+          {liste.quellen.map((q) => `${q.leitlinie} (${standText(q.stand)})`).join('; ')}
         </p>
       </AdminPageHeader>
 
@@ -202,13 +225,16 @@ export function CheckListeSeite({
         >
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
-            Die Leitlinie „{o.titel}“ wurde geändert{datumDeutsch(o.stand) ? ` (Stand ${datumDeutsch(o.stand)})` : ''}, seit diese Checkliste geprüft wurde. Bitte im Original prüfen.
+            Die Leitlinie „{o.titel}“ wurde geändert{datumDeutsch(o.stand) ? ` (Stand ${datumDeutsch(o.stand)})` : ''},
+            seit diese Checkliste geprüft wurde. Bitte im Original prüfen.
           </span>
         </div>
       ))}
 
       {status === 'laedt' && <AdminLoadingState variant="list" rows={4} />}
-      {status === 'fehler' && <AdminErrorState message="Die Checkliste konnte gerade nicht geladen werden." onRetry={lade} />}
+      {status === 'fehler' && (
+        <AdminErrorState message="Die Checkliste konnte gerade nicht geladen werden." onRetry={lade} />
+      )}
 
       {status === 'fertig' && (
         <>
@@ -220,7 +246,13 @@ export function CheckListeSeite({
           </AdminTabs>
 
           <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-            <section aria-label="Checkliste" className={cn('min-w-0 space-y-5', ansicht !== 'checkliste' && 'hidden lg:block lg:space-y-5')}>
+            <section
+              aria-label="Checkliste"
+              className={cn(
+                'min-w-0 space-y-5',
+                ansicht !== 'checkliste' && 'hidden lg:block lg:space-y-5 print:block',
+              )}
+            >
               {liste.varianten && liste.varianten.length > 0 && (
                 <div className="space-y-2">
                   <p id="varianten-frage" className="text-sm font-medium text-ws-text">
@@ -260,7 +292,10 @@ export function CheckListeSeite({
               )}
 
               {gewaehlt?.keinAntrag && (
-                <p role="note" className="rounded-xl border border-ws-green/30 bg-ws-green/15 p-4 text-sm font-medium text-ws-green">
+                <p
+                  role="note"
+                  className="rounded-xl border border-ws-green/30 bg-ws-green/15 p-4 text-sm font-medium text-ws-green"
+                >
                   {gewaehlt.keinAntrag}
                 </p>
               )}
@@ -320,6 +355,7 @@ export function CheckListeSeite({
                             role="checkbox"
                             aria-checked={erledigt}
                             aria-label={`Schritt ${index + 1}: ${s.text}, ${erledigt ? 'erledigt' : 'nicht erledigt'}`}
+                            aria-describedby={s.zusatz || s.frist ? `schritt-info-${s.id}` : undefined}
                             onClick={() => hakenAendern(s.id, !erledigt)}
                             className="flex min-h-11 w-full items-start gap-3 rounded-xl p-3 text-left transition-colors duration-200 hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
                           >
@@ -327,26 +363,32 @@ export function CheckListeSeite({
                               aria-hidden
                               className={cn(
                                 'mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200',
-                                erledigt ? 'border-ws-green bg-ws-green text-ws-on-accent' : 'border-ws-line bg-transparent',
+                                erledigt
+                                  ? 'border-ws-green bg-ws-green text-ws-on-accent print:bg-transparent print:text-ws-green'
+                                  : 'border-ws-line bg-transparent',
                               )}
                             >
                               {erledigt && <Check className="size-4" strokeWidth={3} />}
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className={cn('block text-base text-ws-text', erledigt && 'text-ws-muted line-through')}>
+                              <span
+                                className={cn('block text-base text-ws-text', erledigt && 'text-ws-muted line-through')}
+                              >
                                 {s.text}
                               </span>
-                              {s.zusatz && <span className="mt-0.5 block text-sm text-ws-muted">{s.zusatz}</span>}
-                              {s.frist && (
-                                <span className="mt-1 block text-sm font-medium text-ws-text">
-                                  Frist: {s.frist}
-                                  {istFristAnnahme(s, variante) && (
-                                    <span className="ml-1 font-normal text-ws-orange">
-                                      (Annahme, von der Schulleitung noch zu bestätigen)
-                                    </span>
-                                  )}
-                                </span>
-                              )}
+                              <span id={`schritt-info-${s.id}`}>
+                                {s.zusatz && <span className="mt-0.5 block text-sm text-ws-muted">{s.zusatz}</span>}
+                                {s.frist && (
+                                  <span className="mt-1 block text-sm font-medium text-ws-text">
+                                    Frist: {s.frist}
+                                    {istFristAnnahme(s, variante) && (
+                                      <span className="ml-1 font-normal text-ws-orange">
+                                        (Annahme, von der Schulleitung noch zu bestätigen)
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </span>
                             </span>
                           </button>
                           {anker[s.id] && (
@@ -367,7 +409,10 @@ export function CheckListeSeite({
                       </p>
                       <div className="flex flex-wrap gap-2 print:hidden">
                         {liste.weiter && (
-                          <Button asChild className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+                          <Button
+                            asChild
+                            className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+                          >
                             <Link href={checklisteHref(liste.weiter.id)}>
                               {liste.weiter.label}
                               <ArrowRight className="ml-2 size-4" aria-hidden />
@@ -406,12 +451,18 @@ export function CheckListeSeite({
                   <CollapsibleTrigger className="group flex min-h-11 items-center gap-2 rounded-xl text-sm font-medium text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
                     <History className="size-4" aria-hidden />
                     Frühere Durchläufe ({fruehere.length})
-                    <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
+                    <ChevronDown
+                      className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                      aria-hidden
+                    />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <ul className="mt-2 space-y-2">
                       {fruehere.map((d) => (
-                        <li key={d.id} className="rounded-xl border border-ws-line bg-ws-surface px-3 py-2 text-sm text-ws-muted">
+                        <li
+                          key={d.id}
+                          className="rounded-xl border border-ws-line bg-ws-surface px-3 py-2 text-sm text-ws-muted"
+                        >
                           <span className="font-medium text-ws-text">
                             {datumDeutsch(d.gestartet_am)} bis {datumDeutsch(d.archiviert_am)}
                           </span>
@@ -427,11 +478,17 @@ export function CheckListeSeite({
               )}
 
               {liste.bemerkung && <p className="text-xs text-ws-faint">{liste.bemerkung}</p>}
+              <p className="hidden text-xs text-ws-faint print:block">
+                Die Checkliste ersetzt die Leitlinie nicht. Verbindlich ist das PDF der Schulleitung.
+              </p>
             </section>
 
             <section
               aria-label="Original der Leitlinie"
-              className={cn('min-w-0 print:hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2', ansicht !== 'original' && 'hidden lg:block')}
+              className={cn(
+                'min-w-0 print:hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-2',
+                ansicht !== 'original' && 'hidden lg:block',
+              )}
             >
               <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-ws-faint max-lg:hidden">
                 <FileText className="size-4" aria-hidden />
@@ -448,7 +505,8 @@ export function CheckListeSeite({
           <AlertDialogHeader>
             <AlertDialogTitle>Neuen Durchlauf beginnen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Alle Haken werden zurückgesetzt. Der bisherige Durchlauf bleibt mit Datum unter „Frühere Durchläufe“ gespeichert.
+              Alle Haken werden zurückgesetzt. Der bisherige Durchlauf bleibt mit Datum unter „Frühere Durchläufe“
+              gespeichert.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

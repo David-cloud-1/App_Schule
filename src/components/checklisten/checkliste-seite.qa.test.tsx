@@ -7,9 +7,8 @@ import type { Durchlauf } from '@/lib/checklisten/katalog'
 
 /**
  * QA PROJ-122 (2026-11-23): Zwei-Geräte-Abgleich, „Neu starten“ und Druck.
- * Tests mit `it.fails` beschreiben das RICHTIGE Verhalten eines bekannten Bugs
- * (siehe Spec, QA Test Results). Sobald der Bug behoben ist, meldet Vitest
- * „expected to fail“ – dann `.fails` entfernen. Bekannte Bugs hier: BUG-1, BUG-2.
+ * BUG-1 (Neuladen überschreibt Haken) und BUG-2 (Druck nach „Im Original ansehen“)
+ * sind behoben; die Tests halten das fest.
  */
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
@@ -80,7 +79,7 @@ describe('QA PROJ-122 – Zwei Geräte (visibilitychange)', () => {
   })
 
   // BUG-1: Ein Neuladen, das VOR dem Klick losging, überschreibt danach den gerade gesetzten Haken.
-  it.fails('behält einen Haken, der gesetzt wurde, während ein Neuladen unterwegs war', async () => {
+  it('behält einen Haken, der gesetzt wurde, während ein Neuladen unterwegs war', async () => {
     let getNr = 0
     let spaetesGet: (r: Response) => void = () => {}
     fetchMock.mockImplementation((_u: string, init?: RequestInit) => {
@@ -135,7 +134,7 @@ describe('QA PROJ-122 – Tastatur', () => {
 describe('QA PROJ-122 – Druck', () => {
   // BUG-2: Nach „Im Original ansehen“ ist die Checkliste unterhalb von 1024 px (auch im Druck) versteckt,
   // das Original ist im Druck ausgeblendet – das Blatt bleibt leer.
-  it.fails('lässt die Checkliste auch nach „Im Original ansehen“ im Druck sichtbar', async () => {
+  it('lässt die Checkliste auch nach „Im Original ansehen“ im Druck sichtbar', async () => {
     fetchMock.mockImplementation(async () => json({ offen: durchlauf(), fruehere: [] }))
     zeige()
     fireEvent.click((await screen.findAllByRole('button', { name: /Im Original ansehen/ }))[0])
