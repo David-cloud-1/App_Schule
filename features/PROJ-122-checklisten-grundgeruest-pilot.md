@@ -1,6 +1,6 @@
 # PROJ-122: Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-20
 **Last Updated:** 2026-11-23
 
@@ -421,7 +421,7 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 
 ### Bugs
 
-#### BUG-1: Neuladen beim Zurückkehren in den Tab überschreibt einen gerade gesetzten Haken
+#### BUG-1: Neuladen beim Zurückkehren in den Tab überschreibt einen gerade gesetzten Haken – **behoben (Änderungszähler, veraltete Antworten werden verworfen)**
 - **Severity:** Medium
 - **Datei:** `src/components/checklisten/checkliste-seite.tsx:74-98` (`lade()` setzt `haken`/`variante` ungeprüft; Sperre nur beim Start des Neuladens)
 - **Schritte:** 1. Liste offen, App/Tab kurz verlassen. 2. Zurückkehren → GET startet. 3. Sofort einen Haken setzen (PUT ist schneller oder gleich schnell). 4. Erwartet: Haken bleibt. 5. Tatsächlich: Die GET-Antwort (Stand von vor dem Klick) überschreibt die Anzeige, der Haken ist weg, obwohl er gespeichert ist (umgekehrt beim Entfernen: Anzeige „erledigt“, Server „offen“). Erst nächstes Laden zeigt den echten Stand.
@@ -429,7 +429,7 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 - **Vorschlag:** Lade-Generation/Zeitstempel: Antworten verwerfen, die vor der letzten lokalen Änderung angefordert wurden, oder nach Ende jedes Speicherns neu laden.
 - **Priority:** Fix in next sprint
 
-#### BUG-2: Druck ist leer, nachdem „Im Original ansehen“ benutzt wurde
+#### BUG-2: Druck ist leer, nachdem „Im Original ansehen“ benutzt wurde – **behoben (`print:block` an der Checkliste)**
 - **Severity:** Medium
 - **Datei:** `src/components/checklisten/checkliste-seite.tsx:163` (`setAnsicht('original')`) mit `:223` (`hidden lg:block`) und `:434` (`print:hidden`)
 - **Schritte:** 1. Am Laptop Liste öffnen. 2. „Im Original ansehen“ klicken. 3. „Drucken“. 4. Erwartet: Checkliste auf dem Blatt. 5. Tatsächlich: Im Druck gilt die Seitenbreite (< 1024 px), die Checkliste ist `hidden`, das Original `print:hidden` → nur der Seitenkopf. Am Laptop gibt es keinen Tab, um zurückzuschalten (Tabs sind `lg:hidden`), nur Neuladen hilft. Am Handy genauso, wenn der Tab „Original“ aktiv ist.
@@ -437,7 +437,7 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 - **Vorschlag:** `print:block` an der Checklisten-Sektion.
 - **Priority:** Fix in next sprint
 
-#### BUG-3: Haken-Symbol im Druck vermutlich unsichtbar
+#### BUG-3: Haken-Symbol im Druck vermutlich unsichtbar – **behoben (`print:text-ws-green`, Browser-Sicht offen)**
 - **Severity:** Medium (Browser-Bestätigung nötig)
 - **Datei:** `src/components/checklisten/checkliste-seite.tsx:328-333`; `globals.css` hat kein `print-color-adjust: exact`
 - **Schritte:** Haken setzen, drucken (Standard: „Hintergrundgrafiken“ aus). Erwartet: Haken sichtbar. Vermutlich: grüner Hintergrund entfällt, das Häkchen ist weiß (`ws-on-accent` im Druck = #FFFFFF) auf weiß → leeres Kästchen mit grünem Rand; nur die Durchstreichung bleibt.
@@ -455,7 +455,7 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 - **Severity:** Low · **Datei:** `src/app/api/admin/checklisten/[id]/route.ts:50` (nur `count`), `checkliste-seite.tsx:413-423`
 - Zusätzlich zählt `anzahl_haken` auch Haken aus anderen Varianten („7 Schritte abgehakt“ bei 6 sichtbaren möglich). **Priority:** Nice to have
 
-#### BUG-6: `aria-label` verschluckt Zusatz, Frist und „Annahme“
+#### BUG-6: `aria-label` verschluckt Zusatz, Frist und „Annahme“ – **behoben (`aria-describedby`)**
 - **Severity:** Low · **Datei:** `checkliste-seite.tsx:322`
 - Das `aria-label` ersetzt den Inhalt des Knopfs: Screenreader lesen weder „Frist: mindestens 14 Tage …“ noch den Annahme-Hinweis. **Vorschlag:** Zusatz/Frist per `aria-describedby`. **Priority:** Fix in next sprint
 
@@ -473,13 +473,13 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 #### BUG-10: Datum der früheren Durchläufe in UTC
 - **Severity:** Low · **Datei:** `src/lib/checklisten/liste.ts:133-136` – `datumDeutsch` schneidet das ISO-Datum ab; ein Durchlauf, der um 00:30 Uhr (MEZ) archiviert wird, zeigt den Vortag. **Priority:** Nice to have
 
-#### BUG-11: Druck ohne Hinweis „Verbindlich ist das PDF der Schulleitung“
+#### BUG-11: Druck ohne Hinweis „Verbindlich ist das PDF der Schulleitung“ – **behoben (Hinweis nur im Druck)**
 - **Severity:** Low · **Datei:** `original-ansicht.tsx:22` (Hinweis nur in der Original-Spalte, die `print:hidden` ist). **Priority:** Nice to have
 
 #### BUG-12: Lange Titel in der Übersicht ohne „…“ und `title`
 - **Severity:** Low · **Datei:** `checklisten-uebersicht.tsx:56` (Edge Case der Spec; im Pilot unkritisch). **Priority:** Nice to have
 
-#### BUG-13: Personendaten in der Momentaufnahme anderer Leitlinien
+#### BUG-13: Personendaten in der Momentaufnahme anderer Leitlinien – **behoben (Skript ersetzt persönliche E-Mail-Adressen und Handynummern durch einen Verweis; Test über alle Leitlinien)**
 - **Severity:** Low · **Datei:** `src/lib/checklisten/daten/leitlinien.json` – „Meldung Mängel THV“ enthält eine persönliche E-Mail-Adresse, „Erste Hilfe im Unterricht“ eine Handynummer. Nur Server-seitig, im Pilot nicht angezeigt; **vor PROJ-123** (Unterschriften-Regel im Skript reicht nicht) ersetzen durch Funktion. Außerdem steht der Nachname der Schulleitung im Test `quellen.test.ts:73`. **Priority:** vor PROJ-123
 
 #### BUG-14: Testname verspricht mehr, als er prüft
@@ -523,6 +523,9 @@ Legende: ✅ bestanden · ⚠️ bestanden mit dokumentierter Abweichung · ❌ 
 - **Sicherheit:** bestanden – keine Lücke mit Zugriff auf fremde Daten; zwei Low-Härtungen (BUG-8, BUG-9)
 - **Production Ready:** JA (keine Critical/High; das Feature ist bereits live)
 - **Empfehlung:** Live lassen; BUG-1 bis BUG-3 (kleine Frontend-Korrekturen) und BUG-6 im nächsten Schritt beheben, BUG-4 per Nutzer-Entscheidung klären, BUG-13 vor PROJ-123. Danach die Browser-Prüfung oben.
+
+## Nachbesserung nach QA (2026-11-23)
+BUG-1, -2, -3, -6, -11 und -13 behoben (siehe Überschriften oben); die zwei `it.fails`-Tests sind jetzt normale Tests. **Offen:** BUG-4 (Betriebs-Warnung, Entscheidung: vorerst nur der Entwicklungs-Test), BUG-5, -7 bis -10, -12, -14 (alle Low) sowie die Browser-Prüfung.
 
 ## Deployment
 **Live seit 2026-11-23** (Produktion `spedilern`, ohne `/qa`; Status bleibt „In Progress“ bis zur QA). Migration vorher im SQL-Editor eingespielt, Probe 14 von 14 wie erwartet. Gepusht wurden nur die drei PROJ-122-Commits (per Worktree auf `origin/main`); die PROJ-129-Commits blieben lokal, weil ihre Migration noch fehlt. Prüfung nach „Ready“: `/admin/checklisten` leitet ohne Anmeldung zum Login, die Schnittstellen antworten 401.

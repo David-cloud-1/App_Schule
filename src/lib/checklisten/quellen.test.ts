@@ -69,7 +69,14 @@ describe('Checklisten stimmen mit den Leitlinien überein (PROJ-122, E4)', () =>
     for (const l of CHECKLISTEN_LISTEN) if (l.weiter) expect(findeCheckliste(l.weiter.id)).toBeTruthy()
   })
 
-  it('enthält keine Namen von Personen in der Momentaufnahme der Pilot-Leitlinien', () => {
-    expect(norm('Dienst- und Fortbildungsreise')!.text).not.toMatch(/Riedesser/)
+  it('enthält keine Unterschrift in der Momentaufnahme der Pilot-Leitlinien', () => {
+    expect(norm('Dienst- und Fortbildungsreise')!.text).not.toMatch(/Schulleiterin?\s*$/)
+  })
+
+  it('enthält in keiner Leitlinie eine persönliche E-Mail-Adresse oder Handynummer', () => {
+    for (const n of NORMEN) {
+      expect(n.text, n.kennung).not.toMatch(/\b[a-zäöüß]+\.[a-zäöüß]+@/)
+      expect(n.text, n.kennung).not.toMatch(/\b01[5-7]\d[\s\d]{6,}\d/)
+    }
   })
 })
