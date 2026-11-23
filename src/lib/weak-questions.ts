@@ -10,6 +10,15 @@ export const CORRECT_STREAK_TO_CLOSE = 2
  */
 export const GAP_RULE_SINCE = '2026-09-27T22:00:00Z'
 
+/**
+ * PROJ-129: Richtige Antworten, die nichts über das Können sagen
+ * (Richtig/Falsch, mit Joker), schließen keine Lücke und unterbrechen keine
+ * Serie. Falsche Antworten zählen in jeder Form.
+ */
+export function isNeutralAnswer(a: Pick<UserAnswer, 'is_correct' | 'presentation'>): boolean {
+  return a.is_correct && (a.presentation === 'true_false' || a.presentation === 'joker')
+}
+
 /** Old rule, applied to answers before GAP_RULE_SINCE: more wrong than right. */
 const LEGACY_ERROR_THRESHOLD = 0.5
 
@@ -30,7 +39,9 @@ export function computeWeakQuestionIds(answers: UserAnswer[]): string[] {
     { total: number; wrong: number; correctStreak: number; open: boolean; legacyDone: boolean }
   >()
 
-  for (const { question_id, is_correct, answered_at } of answers) {
+  for (const answer of answers) {
+    if (isNeutralAnswer(answer)) continue
+    const { question_id, is_correct, answered_at } = answer
     const s = stats.get(question_id) ?? {
       total: 0,
       wrong: 0,

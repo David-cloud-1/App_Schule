@@ -1,7 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows, type FetchAllResult } from '@/lib/fetch-all-rows'
 
-export type UserAnswer = { question_id: string; is_correct: boolean; answered_at: string }
+export type UserAnswer = {
+  question_id: string
+  is_correct: boolean
+  answered_at: string
+  /** PROJ-129: classic | true_false | eliminate | joker (fehlt = classic) */
+  presentation?: string | null
+}
 
 /**
  * All quiz answers of a user, paginated past the 1000-row cap. Users past that
@@ -17,7 +23,7 @@ export async function fetchAllUserAnswers(
   return fetchAllRows<UserAnswer>('quiz_answers', (from, to) =>
     supabase
       .from('quiz_answers')
-      .select('question_id, is_correct, answered_at')
+      .select('question_id, is_correct, answered_at, presentation')
       .eq('user_id', userId)
       .order('answered_at')
       .order('id')

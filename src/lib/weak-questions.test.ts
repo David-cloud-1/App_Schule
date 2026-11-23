@@ -76,4 +76,28 @@ describe('computeWeakQuestionIds', () => {
       expect(computeWeakQuestionIds(answers)).toEqual([])
     })
   })
+
+  describe('Darstellungsformen (PROJ-129)', () => {
+    const v = (id: string, ok: boolean, presentation: string) => ({ ...a(id, ok), presentation })
+
+    it('Richtig/Falsch und Joker schließen keine Lücke', () => {
+      const answers = [a('q1', false), v('q1', true, 'true_false'), v('q1', true, 'joker'), v('q1', true, 'true_false')]
+      expect(computeWeakQuestionIds(answers)).toEqual(['q1'])
+    })
+
+    it('unterbrechen aber auch keine Serie', () => {
+      const answers = [a('q1', false), a('q1', true), v('q1', true, 'true_false'), a('q1', true)]
+      expect(computeWeakQuestionIds(answers)).toEqual([])
+    })
+
+    it('Fehler in jeder Form öffnen eine Lücke', () => {
+      expect(computeWeakQuestionIds([v('q1', false, 'true_false')])).toEqual(['q1'])
+      expect(computeWeakQuestionIds([v('q2', false, 'eliminate')])).toEqual(['q2'])
+    })
+
+    it('bestandenes Rauswerfen zählt wie klassisch richtig', () => {
+      const answers = [a('q1', false), v('q1', true, 'eliminate'), v('q1', true, 'eliminate')]
+      expect(computeWeakQuestionIds(answers)).toEqual([])
+    })
+  })
 })
