@@ -451,3 +451,40 @@
     animation: none;
   }
 }
+
+/* PROJ-129: Quiz-Varianten. Schütteln bei Fehler, Aufploppen bei Treffer (je 200 ms),
+   Bildschirm-Flash 500 ms. Bei „Bewegung reduzieren“ entfallen die Bewegungen. */
+@keyframes quiz-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+.quiz-shake {
+  animation: quiz-shake 0.2s ease-in-out 1;
+}
+@keyframes quiz-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+.quiz-pop {
+  animation: quiz-pop 0.2s ease-out 1;
+}
+@keyframes quiz-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+.quiz-flash {
+  animation: quiz-flash 0.5s ease-out 1 both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quiz-shake,
+  .quiz-pop {
+    animation: none;
+  }
+  .quiz-flash {
+    animation-duration: 0.5s;
+    animation-timing-function: steps(1, end);
+  }
+}
