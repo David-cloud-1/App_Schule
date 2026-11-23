@@ -469,7 +469,6 @@ export function QuizRoundClient({ start, subject, totalAvailable }: QuizRoundCli
     jokersUsed,
     usedOnThisQuestion: (jokerRemoved[index] ?? []).length > 0,
     isLastQuestion: isLast,
-    wagerOffered: wagerOffer !== null,
     answered: !!outcome || cur.pending,
   })
   const availableCoins = Math.max(0, start.coin_balance - coinsReserved)
@@ -668,7 +667,7 @@ export function QuizRoundClient({ start, subject, totalAvailable }: QuizRoundCli
 function feedbackTitle(o: QuestionOutcome): string {
   if (o.form === 'true_false') return o.correct ? 'Richtig eingeschätzt!' : 'Leider daneben!'
   if (o.form === 'eliminate') {
-    if (!o.correct) return 'Keine Herzen mehr!'
+    if (!o.correct) return 'Die richtige rausgeworfen!'
     return (o.mistakes ?? 0) === 0 ? 'Sauber rausgeworfen!' : 'Geschafft – mit einem Fehlgriff'
   }
   return o.correct ? 'Richtig!' : 'Leider falsch!'

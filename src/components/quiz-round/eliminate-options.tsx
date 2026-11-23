@@ -22,7 +22,7 @@ interface EliminateOptionsProps {
 
 export function Hearts({ left, total = ELIMINATE_HEARTS }: { left: number; total?: number }) {
   return (
-    <div className="flex items-center gap-1" role="img" aria-label={`${left} von ${total} Herzen übrig`}>
+    <div className="flex items-center gap-1" role="img" aria-label={`${left} von ${total} ${total === 1 ? 'Herz' : 'Herzen'} übrig`}>
       {Array.from({ length: total }, (_, i) => (
         <Heart
           key={i}
@@ -73,7 +73,7 @@ export function EliminateOptions({
 
           let label = `${option.option_text} – rauswerfen`
           if (eliminated) label = `${option.option_text} – rausgeworfen`
-          else if (kept) label = `${option.option_text} – die ist richtig, bleibt drin`
+          else if (kept) label = `${option.option_text} – die war richtig`
 
           return (
             <li key={option.id}>

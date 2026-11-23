@@ -67,25 +67,26 @@ describe('EliminateOptions', () => {
   it('zeigt Herzen und meldet das Antippen', () => {
     const onTap = vi.fn()
     render(
-      <EliminateOptions options={options} eliminatedIds={[]} keptIds={[]} heartsLeft={2} pendingId={null} correctOptionId={null} onTap={onTap} />,
+      <EliminateOptions options={options} eliminatedIds={[]} keptIds={[]} heartsLeft={1} pendingId={null} correctOptionId={null} onTap={onTap} />,
     )
-    expect(screen.getByRole('img', { name: '2 von 2 Herzen übrig' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '1 von 1 Herz übrig' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Beta – rauswerfen' }))
     expect(onTap).toHaveBeenCalledWith('b')
   })
 
-  it('sperrt Weggestrichenes und die behaltene richtige Option', () => {
+  it('richtige rausgeworfen → Frage vorbei, alles gesperrt (1 Herz, QA BUG-1)', () => {
     render(
-      <EliminateOptions options={options} eliminatedIds={['b']} keptIds={['a']} heartsLeft={1} pendingId={null} correctOptionId={null} onTap={vi.fn()} />,
+      <EliminateOptions options={options} eliminatedIds={['b']} keptIds={['a']} heartsLeft={0} pendingId={null} correctOptionId="a" onTap={vi.fn()} />,
     )
     expect(screen.getByRole('button', { name: 'Beta – rausgeworfen' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Alpha – die ist richtig, bleibt drin' })).toBeDisabled()
-    expect(screen.getByRole('img', { name: '1 von 2 Herzen übrig' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Alpha – die war richtig' })).toBeDisabled()
+    for (const b of screen.getAllByRole('button')) expect(b).toBeDisabled()
+    expect(screen.getByRole('img', { name: '0 von 1 Herz übrig' })).toBeInTheDocument()
   })
 
   it('nimmt während einer Prüfung keine weiteren Tipps an', () => {
     render(
-      <EliminateOptions options={options} eliminatedIds={[]} keptIds={[]} heartsLeft={2} pendingId="c" correctOptionId={null} onTap={vi.fn()} />,
+      <EliminateOptions options={options} eliminatedIds={[]} keptIds={[]} heartsLeft={1} pendingId="c" correctOptionId={null} onTap={vi.fn()} />,
     )
     for (const b of screen.getAllByRole('button')) expect(b).toBeDisabled()
   })

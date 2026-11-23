@@ -10,7 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase-server'
 import { fetchAnswerKey } from '@/lib/answer-key'
 import { fetchAllRows } from '@/lib/fetch-all-rows'
-import type { QuizRoundForm } from '@/lib/quiz-round'
+import { JOKER_PRICE, type QuizRoundForm } from '@/lib/quiz-round'
 import {
   ROUND_MAX_AGE_MS,
   buildSlipQuestion,
@@ -103,6 +103,40 @@ export async function mutateRound<R>(
     // Jemand anderes war schneller → neu lesen
   }
   return { status: 500, message: 'Runde ist gerade beschäftigt, bitte noch einmal versuchen' }
+}
+
+// ── Joker-Reservierungen ────────────────────────────────────────────────────
+/**
+ * QA BUG-5: Münzen, die in ANDEREN noch offenen Quiz-Runden des Spielers schon
+ * für Joker vorgemerkt sind (z. B. zweiter Tab). Der Joker wird nur frei-
+ * gegeben, wenn der Stand auch diese deckt. `null` = Abfrage gescheitert
+ * (dann lieber keinen Joker geben).
+ */
+export async function reservedJokerCoins(
+  service: SupabaseClient,
+  userId: string,
+  excludeRoundId: string,
+): Promise<number | null> {
+  const since = new Date(Date.now() - ROUND_MAX_AGE_MS).toISOString()
+  const { data, error } = await service
+    .from('quiz_rounds')
+    .select('id, jokers_used:slip->jokers_used')
+    .eq('user_id', userId)
+    .eq('kind', 'quiz')
+    .is('finished_at', null)
+    .gte('created_at', since)
+    .neq('id', excludeRoundId)
+    .limit(100)
+  if (error) {
+    console.error('[quiz-rounds] reserved jokers:', error)
+    return null
+  }
+  let used = 0
+  for (const r of (data ?? []) as { jokers_used: unknown }[]) {
+    const n = Number(r.jokers_used)
+    if (Number.isFinite(n) && n > 0) used += n
+  }
+  return used * JOKER_PRICE
 }
 
 // ── Gekannte Fragen ─────────────────────────────────────────────────────────

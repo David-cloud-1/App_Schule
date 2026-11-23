@@ -64,7 +64,7 @@ Befund aus dem Bestand (Stichprobe 1000 Fragen): fast alle Fragen haben genau 5 
 ### Variante „Rauswerfen“
 - [ ] Alle Optionen der Frage sind sichtbar. Der Spieler tippt die Optionen an, die er für **falsch** hält, und sie werden weggestrichen.
 - [ ] Die Frage ist bestanden, sobald alle falschen Optionen weggestrichen sind. Die richtige Option bleibt übrig.
-- [ ] Der Spieler hat **2 Herzen**. Streicht er die richtige Option weg, verliert er ein Herz, und die Option bleibt sichtbar. Bei 0 Herzen gilt die Frage als falsch, und die Lösung wird gezeigt.
+- [ ] Der Spieler hat **1 Herz** *(geändert 2026-11-23 nach QA BUG-1, vorher 2)*. Streicht er die richtige Option weg, ist das Herz weg: Die Frage gilt als falsch, und die Lösung wird gezeigt.
 - [ ] Die Prüfung, ob eine angetippte Option falsch ist, läuft über den Server. Die Lösung ist vor dem Antippen im Browser nicht auslesbar.
 - [ ] Rauswerfen gibt es nur bei Fragen mit mindestens 4 Optionen.
 - [ ] Nach der Frage kommt die Erklärung wie beim klassischen MC.
@@ -92,7 +92,7 @@ Befund aus dem Bestand (Stichprobe 1000 Fragen): fast alle Fragen haben genau 5 
 
 ### Wertung und Lernstand
 - [ ] **Klassisches MC:** XP und Münzen wie heute (10 XP, 1 Münze je richtiger Antwort, Rundenbonus wie heute).
-- [ ] **Rauswerfen:** XP und Münzen wie klassisches MC bei 0 Fehlgriffen, reduziert bei 1 Fehlgriff, nichts bei Scheitern. Eine bestandene Rauswerfen-Frage zählt wie eine klassisch richtige Antwort für den Lernstand.
+- [ ] **Rauswerfen:** XP und Münzen wie klassisches MC, wenn bestanden; nichts bei Scheitern (richtige Option rausgeworfen). Eine bestandene Rauswerfen-Frage zählt wie eine klassisch richtige Antwort für den Lernstand.
 - [ ] **Richtig/Falsch:** reduzierte XP und Münzen (Faktor legt `/architecture` fest, Richtwert die Hälfte). Eine richtige Antwort **schließt keine Lücke** und zählt nicht als Nachweis für „gekannt“.
 - [ ] **Falsche Antwort in jeder Variante** zählt wie ein Fehler und kann eine Lücke öffnen.
 - [ ] **Richtig mit Joker** gibt volle XP, schließt aber keine Lücke.
@@ -268,8 +268,8 @@ Die drei Fragekarten werden als eigene, kleine Bausteine neben dem heutigen Quiz
 | Klassisch richtig | 10 (+5 ab Streak 7, wie heute) | 1 | ja | ja |
 | Richtig/Falsch richtig | 5 (+2 ab Streak 7) | ½ | **nein** (neutral) | ja |
 | Rauswerfen, 0 Fehlgriffe | 10 (+5) | 1 | ja | – |
-| Rauswerfen, 1 Fehlgriff | 5 (+2) | ½ | ja (Spec: bestanden = richtig) | – |
-| Rauswerfen, 2 Fehlgriffe (gescheitert) | 0 | 0 | – | ja |
+| ~~Rauswerfen, 1 Fehlgriff~~ | – | – | entfällt seit QA BUG-1 (1 Herz) | – |
+| Rauswerfen gescheitert (richtige rausgeworfen) | 0 | 0 | – | ja |
 | Klassisch mit Joker richtig | 10 (+5) | 1 | **nein** (neutral) | ja |
 
 - Halbe Münzen werden für die ganze Runde zusammengezählt und am Ende abgerundet (z. B. 7 ganze + 3 halbe = 8 Münzen).
@@ -278,7 +278,7 @@ Die drei Fragekarten werden als eigene, kleine Bausteine neben dem heutigen Quiz
 
 **Joker „Zwei weg“**
 - Preis **5 Münzen** (eine halbe normale Runde: lohnt sich bei echter Unsicherheit, wird aber nicht reflexhaft genutzt).
-- Höchstens **2 Joker pro Runde**, nicht auf der Wettfrage (sonst wäre die Wette zu billig zu gewinnen).
+- Höchstens **2 Joker pro Runde**, nie auf der letzten Frage (= mögliche Wettfrage; sonst wäre die Wette zu billig zu gewinnen).
 - Der Server gibt den Joker nur frei, wenn der aktuelle Münzstand mindestens alle Joker dieser Runde deckt. Abgebucht wird beim Abrechnen zusammen mit dem Gewinn. Falls der Stand in der Zwischenzeit im Shop ausgegeben wurde, wird nie unter 0 gebucht.
 - **Bewusster Kompromiss:** Wer einen Joker nutzt und die Runde dann abbricht, zahlt nichts (Spec: keine Abbuchung ohne gespeicherte Runde). Er bekommt dafür aber auch keine XP und Münzen. Der „Gewinn“ ist nur, die Lösung einer Frage gesehen zu haben – das ist beim Üben ohnehin erwünscht.
 
@@ -417,7 +417,85 @@ Die drei Fragekarten werden als eigene, kleine Bausteine neben dem heutigen Quiz
 `quiz-round-rules.test.ts` (46), `quiz-round-server.test.ts` (7), `api/quiz/rounds/rounds.test.ts` (14), `weak-questions.test.ts` (+4). Gesamtlauf: 4488 grün, 2 rot in fremden Bereichen (`werkzeugkiste-auszug.test.ts`, `checklisten-uebersicht.test.tsx`). `npm run build` und Lint sauber.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft:** 2026-11-23 · **Stand:** Commit `3e40b47` · **Methode:** Code-Review aller neuen Wege, Regeln, Clients und der Migration; Vitest. **Kein** Browser-Test (Dev-Server/Playwright auf diesem Rechner nicht erlaubt) → Cross-Browser, Responsive und Wischen sind **nicht** im Browser geprüft.
+
+### Automatische Tests
+- PROJ-129-Tests: 14 Dateien, **166/166 grün**.
+- Gesamtlauf: 4488 grün, 2 rot – beide in fremden Bereichen (`checklisten-uebersicht.test.tsx`, `werkzeugkiste-auszug.test.ts`), unabhängig von PROJ-129.
+- Lint: 0 Fehler; 1 Warnung im **alten** `blitz-client.tsx` (Altlast).
+- E2E: nicht geschrieben (kein Dev-Server erlaubt).
+
+### Acceptance Criteria (✅ erfüllt · ⚠️ mit Befund · ⏸ offen/Kann · 👁 nur Code, Browser-Test fehlt)
+
+**Verteilung:** ✅ max. 3 Varianten · ✅ nie nebeneinander · ✅ erste und letzte Frage MC · ✅ nur gekannte Fragen (klassisch oder bestandenes Rauswerfen) · ✅ zu wenig gekannte → alles MC · ✅ Server legt fest · ✅ `mode=weak`, Prüfung, Nachweise ohne Varianten (alter Client bzw. eigene Wege).
+
+**Richtig/Falsch:** ✅ ein Vorschlag 50/50 · 👁 Knöpfe ≥ 44 px + Wischen + ←/→ · ✅ Erklärung + „Richtig wäre“ · ✅ Lösung erst nach der Antwort · ✅ Eignung (Verneinung, Verweis-Optionen, ≤ 280 Zeichen).
+
+**Rauswerfen:** ✅ Antippen streicht weg, Prüfung am Server · ✅ bestanden, wenn alle falschen weg · ⚠️ **2 Herzen / Scheitern bei 0 Herzen nie erreichbar** (BUG-1) · ✅ nur ab 4 Optionen · ✅ Erklärung danach.
+
+**Joker:** ✅ entfernt zwei falsche · ✅ 5 Münzen, einmal je Frage, max. 2 je Runde · ✅ gesperrt mit Preis bei zu wenig Münzen, Stand nie negativ · ⚠️ Deckungsprüfung über zwei Tabs umgehbar (BUG-5) · ⚠️ auf der letzten Frage per API möglich (BUG-3) · ✅ nicht bei Varianten, Prüfung, Nachweisen, Lücken.
+
+**Wette:** ✅ Angebot vor der letzten Frage ab 5 Fragen · ✅ ablehnen möglich · ✅ verdoppeln/verlieren · ⚠️ Einsatz kann den Stand vor der Runde unterschreiten, wenn per API nicht alle Fragen beantwortet werden (BUG-4) · ⚠️ **Wette per API risikolos** (BUG-2) · ✅ unter 5 Fragen keine Wette · ✅ Ausgang auf dem Ergebnisbildschirm.
+
+**Blitzrunde:** ✅ komplett Richtig/Falsch ab 40 gekannten geeigneten Fragen · ✅ sonst klassisch ohne Fehlermeldung (und ohne Lösung im Browser) · ✅ Anti-Raten: Rater ≈ 10 Münzen (nur Tagesbonus), 80 %-Spieler ≈ 46 → erfüllt „höchstens die Hälfte“.
+
+**Wertung & Lernstand:** ✅ MC wie bisher · ✅ Rauswerfen voll/halb/0 · ✅ Richtig/Falsch halb, schließt keine Lücke · ✅ falsch öffnet Lücke (außer Rauswerfen, siehe BUG-1) · ✅ Joker volle XP, schließt keine Lücke · ✅ `presentation` + `mistakes` je Antwort · ✅ PROJ-74 gewichtet (Diff gegen letzte Fassung `20261118_qa_proj72_78_fixes.sql` geprüft: nur die drei gewollten Änderungen) · ✅ Streak/Badges/Level unverändert.
+
+**Darstellung:** 👁 Design-System, Etiketten, Erst-Hinweis, Tastatur/Screenreader-Beschriftungen im Code vorhanden · ✅ „Frage melden“ bleibt erreichbar · ✅ Ergebnis-Übersicht mit Lösung und Erklärung.
+
+**Steuerung:** ✅ Hauptschalter `QUIZ_VARIANTEN` (Standard aus) schaltet Varianten, Joker und Wette ab · ⏸ „nur klassisch“ (Kann-Kriterium) nicht gebaut.
+
+**Technical Requirements:** ✅ Sicherheit/Zod/Anmeldung auf allen Wegen · ✅ RLS `quiz_rounds` ohne Richtlinie + `REVOKE ALL` · ⏸ **Fun-Audit-Abschnitt „Varianten“ fehlt** (BUG-6) · 👁 Performance: eine Zusatzabfrage für „gekannt“ über max. 10 IDs, Teilindex vorhanden.
+
+### Edge Cases
+✅ zu wenig gekannte Fragen · ✅ Verneinung / Verweis-Optionen / < 4 Optionen / zu lang · ✅ Joker ohne Münzen · ✅ Joker doppelt (zweiter Klick kostenlos, gleiche Optionen; Versionsprüfung bei parallelen Klicks) · ✅ Wette unter 5 Fragen · ⚠️ Wette manipuliert (BUG-2) · ✅ Abbruch: nichts gebucht, auch kein Joker · ✅ Neu laden: neue Runde, keine Doppelgutschrift (Abrechnung beansprucht `finished_at` atomar, zweites „fertig“ liefert gespeichertes Ergebnis) · ✅ Frage während der Runde geändert (Schnappschuss) · ✅ gesperrte Nachweis-Fragen ausgeschlossen · ✅ Tourismus/Spedition über Fachbereich · ✅ Meldung gilt der Frage.
+
+### Bugs
+
+| ID | Schwere | Befund | Nachstellen | Vorschlag |
+|---|---|---|---|---|
+| BUG-1 | **Medium** | Rauswerfen kann nie scheitern. Es gibt nur eine richtige Option; nach dem ersten Fehlgriff zeigt die Oberfläche sie als „die ist richtig, bleibt drin“ und sperrt sie, und der Server wertet einen zweiten Tipp darauf als Wiederholung (kein zweites Herz). Ergebnis: höchstens 1 Fehlgriff → immer mindestens halbe Belohnung; AC „bei 0 Herzen falsch“ und „falsch öffnet Lücke“ gelten für Rauswerfen nie. | Rauswerfen-Frage → richtige Option antippen → sie ist gesperrt und markiert; Rest wegtippen → „bestanden“ mit halber Belohnung. | Entscheidung nötig: **(a) 1 Herz** – richtige Option antippen = gescheitert (0 Belohnung, öffnet Lücke), Herz-Anzeige entfällt; oder (b) so lassen und Spec anpassen („1 Fehlgriff = halb, kein Scheitern“). Empfehlung: (a). |
+| BUG-2 | **Medium** | Wette per API risikolos: Wette annehmen, bei Unsicherheit die letzte Frage **nicht** beantworten und direkt `/finish` aufrufen. `settleQuiz` wertet die Wette nur, wenn die letzte Frage beantwortet ist → kein Verlust; Rundenbonus bleibt. | `POST …/wager {accept:true}` → `POST …/finish` ohne Antwort auf Frage 10. | Angenommene Wette + unbeantwortete letzte Frage beim Abrechnen als **verloren** werten. |
+| BUG-3 | Low | Joker auf der letzten Frage per API, bevor die Wette angeboten wird (Sperre greift nur, wenn `slip.wager` schon existiert). Danach Wette mit 3 statt 5 Optionen. | `POST …/joker {question_index: 9}` vor der Antwort auf Frage 9 → danach Wette annehmen. | Joker auf dem letzten Platz immer sperren, sobald Varianten an sind (der letzte Platz ist immer die mögliche Wettfrage). |
+| BUG-4 | Low | Der Einsatz enthält den Rundenbonus (3), auch wenn am Ende < 5 Fragen beantwortet sind (dann entfällt der Bonus). Nur per API erreichbar (Fragen überspringen); Netto kann dann unter den Stand vor der Runde fallen – reiner Selbstschaden, verletzt aber den Grundsatz. | Nur Frage 9 richtig beantworten → Einsatz 4 → Wette an, Frage 10 falsch → Netto −3. | Rundenbonus im Einsatz nur, wenn bis zur vorletzten Frage schon ≥ 4 beantwortet sind (bzw. Einsatz beim Abrechnen auf tatsächlich Verdientes kappen). |
+| BUG-5 | Low | Joker-Deckung je Runde: in zwei Tabs (zwei Runden) können mit 10 Münzen je 2 Joker genommen werden; beim Abrechnen wird bei 0 gekappt → Joker teilweise gratis. | Zwei Tabs `/quiz`, in beiden 2 Joker, beide schwach abschließen. | Offene Joker-Reservierungen über alle nicht abgerechneten Runden des Spielers summieren. |
+| BUG-6 | Low | Fun-Audit-Abschnitt „Varianten“ fehlt (Technical Requirement „Messbarkeit“). Daten (`presentation`, `mistakes`, Wett-/Joker-Spalten) werden aber schon gespeichert. | `npm run fun:audit` → kein Abschnitt. | Vor dem Einschalten von `QUIZ_VARIANTEN` nachziehen, damit die Wirkung messbar ist. |
+
+### Altlasten (nicht durch PROJ-129 entstanden, nur vermerkt)
+- Blitzrunde: Runde starten, nicht abrechnen, neu starten → beliebig oft, bis das Ergebnis passt; eine Runde ohne Antwort gibt Tagesbonus + Streak. War mit dem alten Start-Token genauso.
+- Münzstand wird beim Abrechnen gelesen und absolut zurückgeschrieben (kein atomares `+=`); gleichzeitiger Shop-Kauf oder zweite Abrechnung kann sich überschreiben. Gleiches Muster wie bisher.
+- `/api/quiz/sessions` (Lücken schließen) nimmt beliebige Antworten an; Spieler dürfen per RLS eigene `quiz_sessions`/`quiz_answers` schreiben.
+- Keine Rate-Limits auf den neuen Wegen (nur angemeldete Spieler, je Anfrage 1 Lesen + 1 Schreiben).
+
+### Sicherheits-Audit (Red Team)
+- ✅ Lösung nicht im Browser vor der Antwort (Start liefert nur Fragen/Optionen bzw. den Vorschlag; Zettel nur per Service-Schlüssel).
+- ✅ Fremde Runden: Laden immer mit `user_id` → 404; abgelaufen/abgerechnet → 410; Runden-ID als UUID geprüft.
+- ✅ Doppelte/parallele Anfragen: Versionsprüfung, Abrechnung atomar beansprucht, Rückgabe bei Fehler.
+- ✅ Blitz-Antworten nach 70 s → 410; Tagessperre über `UNIQUE(user_id, calendar_day)`.
+- ✅ XP/Münzen nur aus dem Zettel; Browser schickt beim Abrechnen nichts.
+- ⚠️ BUG-2, BUG-3, BUG-5 (siehe oben).
+
+### Deploy-Hinweis
+`fetchAllUserAnswers` liest jetzt die Spalte `presentation`. **Ohne Migration** brechen Startseite, Fächerseiten und „Lücken schließen“. Die Migration `20261128_proj129_rundenzettel.sql` + Probe also **vor** dem Push einspielen (wie im Deploy-Ablauf üblich).
+
+### Empfehlung
+- **Bauschritt 1 (Rundenzettel, `QUIZ_VARIANTEN` aus): produktionsreif.** BUG-1 bis BUG-5 sind bei ausgeschaltetem Schalter nicht erreichbar (keine Varianten, kein Joker, keine Wette).
+- **Vor `QUIZ_VARIANTEN=an`:** BUG-1 (Entscheidung) und BUG-2 beheben, BUG-3/4 gleich mit (klein), BUG-6 nachziehen, dann kurzer Re-Test. Danach Handy-Test im Browser (Wischen, Safari iOS).
+
+### Bug-Fixes (/backend, 2026-11-23)
+
+| ID | Behoben | Wie |
+|---|---|---|
+| BUG-1 | ✅ | Variante (a): `ELIMINATE_HEARTS = 1`. Richtige Option rauswerfen = sofort verloren (0 XP/Münzen, `is_correct = false` → öffnet Lücke). Hinweistext, Feedback-Titel („Die richtige rausgeworfen!“) und Screenreader-Text angepasst; Herz-Anzeige zeigt 1 Herz. Die Stufe „1 Fehlgriff = halb“ entfällt (Code bleibt harmlos, Wert ist nicht mehr erreichbar). |
+| BUG-2 | ✅ | `settleQuiz`: angenommene Wette + letzte Frage unbeantwortet = **verloren**. |
+| BUG-3 | ✅ | Joker auf der letzten Frage immer gesperrt – am Server (`applyJoker`) und in der Oberfläche (`jokerState`, Parameter `wagerOffered` entfällt). |
+| BUG-4 | ✅ | Wett-Verlust gedeckelt auf den Rundengewinn ohne Wette (`max(0, Münzen + Bonus − Joker)`). Der Münzstand vor der Runde sinkt durch die Wette nie. `wager.delta` zeigt den tatsächlichen Verlust. |
+| BUG-5 | ✅ | Neu `reservedJokerCoins`: zählt Joker aller **anderen** offenen Quiz-Runden des Spielers (nicht abgerechnet, < 3 h) und zieht sie vom Münzstand ab, bevor der Joker geprüft wird. Ist das nicht lesbar → 500, kein Joker. |
+| BUG-6 | ✅ | `src/lib/variant-metrics.ts` (rein, getestet) + Abschnitt „Quiz-Varianten (PROJ-129)“ in `npm run fun:audit` (auch in `--json` unter `variants`): Anteil/Treffer je Form, Rauswerfen bestanden/verloren, Joker-Runden und -Münzen, Wett-Quote/-Gewinnrate/-Saldo (≈, Einsatz als Obergrenze), Münzen je Runde gegen die alte Regel. Lädt getrennt, damit der Report ohne Migration nicht bricht. Probelauf gegen Produktion erfolgreich (noch 0 Varianten). |
+
+**Tests:** +11 Fälle (Regeln, Joker-Weg, `reservedJokerCoins`, Varianten-Auswertung). PROJ-129-Bereich 174/174 grün, `tsc` und Lint sauber. Kein Browser-Test.
+**Altlasten** (siehe oben) bleiben bewusst unverändert.
 
 ## Deployment
 _To be added by /deploy_

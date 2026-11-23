@@ -25,6 +25,13 @@ import {
   type SubjectRow,
   type Metric,
 } from '../../src/lib/engagement-metrics.ts'
+import {
+  analyzeVariants,
+  FORM_NAME,
+  type VariantAnswerRow,
+  type VariantSessionRow,
+  type VariantReport,
+} from '../../src/lib/variant-metrics.ts'
 
 const HISTORY = path.resolve(import.meta.dirname, 'history')
 
@@ -61,6 +68,59 @@ async function load() {
     loadAll<SubjectRow>(supabase, 'subjects', 'id, name'),
   ])
   return { profiles, sessions, answers, badges, userBadges, examSessions, subjects }
+}
+
+/**
+ * PROJ-129: Varianten-Daten getrennt laden – fehlt die Migration noch, läuft
+ * der übrige Report trotzdem.
+ */
+async function loadVariants(): Promise<{ answers: VariantAnswerRow[]; sessions: VariantSessionRow[] } | null> {
+  const supabase = db()
+  try {
+    const [answers, sessions] = await Promise.all([
+      loadAll<VariantAnswerRow>(supabase, 'quiz_answers', 'user_id, is_correct, presentation, mistakes'),
+      loadAll<VariantSessionRow>(
+        supabase,
+        'quiz_sessions',
+        'user_id, score, total, coins_earned, joker_cost, wager_stake, wager_won'
+      ),
+    ])
+    return { answers, sessions }
+  } catch (err) {
+    console.error(`  Varianten: nicht auswertbar (${(err as Error).message})`)
+    return null
+  }
+}
+
+function pct(x: number): string {
+  return `${(x * 100).toFixed(1).padStart(5)} %`
+}
+
+function printVariants(v: VariantReport) {
+  console.log('  Quiz-Varianten (PROJ-129)')
+  console.log('  ' + '─'.repeat(88))
+  console.log(`   ${'Form'.padEnd(20)}${'Antworten'.padStart(10)}${'Anteil'.padStart(10)}${'Treffer'.padStart(10)}`)
+  for (const f of v.forms) {
+    console.log(
+      `   ${FORM_NAME[f.form].padEnd(20)}${String(f.answers).padStart(10)}${pct(f.share).padStart(10)}${(f.answers ? pct(f.hitRate) : '      –').padStart(10)}`
+    )
+  }
+  console.log(`   Rauswerfen bestanden / verloren: ${v.eliminate.passed} / ${v.eliminate.failed}`)
+  if (v.roundSessions === 0) {
+    console.log('   Noch keine Runde über den Rundenzettel abgerechnet.\n')
+    return
+  }
+  console.log(`   Runden über den Rundenzettel: ${v.roundSessions}`)
+  console.log(`   Joker: in ${v.joker.rounds} Runden (${pct(v.joker.share).trim()}), ${v.joker.coinsSpent} Münzen ausgegeben`)
+  console.log(
+    `   Wette: ${v.wager.taken}× eingesetzt (${pct(v.wager.share).trim()}), ${v.wager.won} gewonnen (${pct(v.wager.winRate).trim()}), ` +
+      `Saldo ≈ ${v.wager.netCoins >= 0 ? '+' : ''}${v.wager.netCoins} Münzen`
+  )
+  const diff = Math.round((v.coins.perRound - v.coins.perRoundClassicRule) * 10) / 10
+  console.log(
+    `   Münzen je Runde: ${v.coins.perRound} (alte Regel: ${v.coins.perRoundClassicRule}, ` +
+      `${diff >= 0 ? '+' : ''}${diff})  ← Inflation im Blick behalten\n`
+  )
 }
 
 function printReport(report: ReturnType<typeof analyzeEngagement>, excluded: number) {
@@ -193,10 +253,16 @@ if (single) {
   const report = analyzeEngagement({ ...data, profiles, now: new Date() })
   report.users.excludedAdmins = all - profiles.length
 
+  const variantData = await loadVariants()
+  const variants = variantData
+    ? analyzeVariants(variantData.answers, variantData.sessions, new Set(profiles.map((p) => p.id)))
+    : null
+
   if (has('json')) {
-    console.log(JSON.stringify(report, null, 2))
+    console.log(JSON.stringify({ ...report, variants }, null, 2))
   } else {
     printReport(report, report.users.excludedAdmins)
+    if (variants) printVariants(variants)
     if (has('save')) saveSnapshot(report)
   }
 }

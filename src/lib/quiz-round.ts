@@ -23,7 +23,8 @@ import type { BadgeDisplay } from '@/lib/badges'
 export const JOKER_PRICE = 5
 export const JOKER_MAX_PER_ROUND = 2
 export const WAGER_MAX_STAKE = 10
-export const ELIMINATE_HEARTS = 2
+/** QA BUG-1: ein Herz – wer die richtige Option rauswirft, hat die Frage verloren */
+export const ELIMINATE_HEARTS = 1
 export const BLITZ_SECONDS = 60
 /** Ab dieser Wischweite (px) zählt ein Wischen als Antwort. */
 export const SWIPE_THRESHOLD_PX = 80
@@ -41,7 +42,7 @@ export const FORM_LABEL: Record<QuizRoundForm, string> = {
 /** Erst-Hinweis: ein Satz, einmal je Variante und Gerät. */
 export const FORM_HINT: Record<Exclude<QuizRoundForm, 'classic'>, string> = {
   true_false: 'Stimmt die Antwort zur Frage? Tippe „Stimmt“ oder „Stimmt nicht“ – oder wische nach rechts bzw. links.',
-  eliminate: 'Tippe alle falschen Antworten weg, bis nur die richtige übrig bleibt. Du hast zwei Herzen.',
+  eliminate: 'Tippe alle falschen Antworten weg, bis nur die richtige übrig bleibt. Wirfst du die richtige raus, ist die Frage verloren.',
 }
 
 // ── Daten, die der Browser bekommt (ohne Lösung) ────────────────────────────
@@ -193,12 +194,12 @@ export function jokerState(input: {
   jokersUsed: number
   usedOnThisQuestion: boolean
   isLastQuestion: boolean
-  wagerOffered: boolean
   answered: boolean
 }): JokerState {
-  const { joker, form, coinBalance, jokersUsed, usedOnThisQuestion, isLastQuestion, wagerOffered, answered } = input
+  const { joker, form, coinBalance, jokersUsed, usedOnThisQuestion, isLastQuestion, answered } = input
   if (!joker.enabled || form !== 'classic') return 'hidden'
-  if (isLastQuestion && wagerOffered) return 'hidden'
+  // QA BUG-3: die letzte Frage ist immer die mögliche Wettfrage → nie Joker
+  if (isLastQuestion) return 'hidden'
   if (usedOnThisQuestion) return 'used'
   if (answered) return 'hidden'
   if (jokersUsed >= joker.max_per_round) return 'limit'
