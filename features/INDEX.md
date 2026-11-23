@@ -139,7 +139,7 @@
 | PROJ-119 | Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed | [PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md](PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md) | 2026-11-18 |
 | PROJ-120 | Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed | [PROJ-120-abwesenheitskalender.md](PROJ-120-abwesenheitskalender.md) | 2026-11-19 |
 | PROJ-121 | Lehrkräfte geben bei der ersten Anmeldung Vor- und Nachnamen an (Pflicht) | Deployed | [PROJ-121-lehrkraft-name-pflichtangabe.md](PROJ-121-lehrkraft-name-pflichtangabe.md) | 2026-11-19 |
-| PROJ-122 | Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“ | In Progress | [PROJ-122-checklisten-grundgeruest-pilot.md](PROJ-122-checklisten-grundgeruest-pilot.md) | 2026-11-20 |
+| PROJ-122 | Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“ | Approved | [PROJ-122-checklisten-grundgeruest-pilot.md](PROJ-122-checklisten-grundgeruest-pilot.md) | 2026-11-20 |
 | PROJ-123 | Checklisten – die übrigen Leitlinien (14 Listen) | Planned | [PROJ-123-checklisten-uebrige-leitlinien.md](PROJ-123-checklisten-uebrige-leitlinien.md) | 2026-11-20 |
 | PROJ-124 | Leitlinien nachschlagen – Info-Seiten, Entscheidungshilfe „Darf ich weitergeben?“ und Notfall-Ansicht | Planned | [PROJ-124-leitlinien-nachschlagen-entscheidungshilfe-notfall.md](PROJ-124-leitlinien-nachschlagen-entscheidungshilfe-notfall.md) | 2026-11-20 |
 | PROJ-125 | Onboarding neuer Lehrkräfte – Mentor/in hakt ab | Planned | [PROJ-125-onboarding-mit-mentor.md](PROJ-125-onboarding-mit-mentor.md) | 2026-11-20 |
