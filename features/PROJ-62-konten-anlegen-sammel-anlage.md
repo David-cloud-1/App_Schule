@@ -1,6 +1,6 @@
 # PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-24 (Frontend und Backend gebaut, QA steht aus)
 
@@ -372,4 +372,16 @@ Zusätzlich: Der alte Test `werkzeugkiste-auszug.test.ts` („nennt die Urheberi
 **Stand danach:** 346 Testdateien, 4656 Tests grün. Typprüfung, ESLint (PROJ-62-Dateien) und `npm run build` sauber. Weiterhin **nicht im Browser geprüft** (Projektregel): Druckbild, Chrome/Firefox/Safari, Responsive.
 
 ## Deployment
-_To be added by /deploy_
+
+**2026-11-24:** Live auf https://spedilern.vercel.app (Production, Vercel „Ready“ nach ca. 2 Min.).
+- **Commits auf `main`:** 7742236 (Funktion), df52652 (QA), 132bffc (alle 11 Fehler behoben). Sie liegen als eigene Commits auf `origin/main` (7c48008..132bffc); lokal tragen dieselben Änderungen andere IDs (0e478ac, 7dcdcdc, cebfdf9), weil der lokale `main` schon vorher vom Remote abwich (gleicher Code, andere Historie von PROJ-122/129).
+- **Keine Migration, keine neuen Umgebungsvariablen, keine neuen Pakete.**
+- **Geprüft nach dem Livegang (ohne Login):** `POST /api/admin/users/create`, `…/create/preview`, `…/create/bulk` antworten 401; `/admin/users/aus-liste` leitet zur Anmeldung um; die bestehende Route `/api/admin/users` antwortet unverändert 401.
+- **Vor dem Livegang:** 346 Testdateien / 4656 Tests grün, Typprüfung, ESLint (PROJ-62-Dateien) und `npm run build` sauber.
+- **Noch offen (Browser-Test durch dich, Projektregel „kein Dev-Server“):**
+  1. Als Super-Admin: Nutzerliste → „Konto anlegen“ → „Einzeln“ → Konto anlegen, mit dem Zettel-Passwort einloggen, Pflichtwechsel prüfen.
+  2. „Aus CSV-Liste“ mit 3 Zeilen (eine davon mit Umlaut, eine mit vorhandener E-Mail): Vorschau, Anlegen, Ergebnisseite.
+  3. „Zugangszettel drucken“ in Chrome und Safari: 8 Zettel pro A4-Seite, nichts abgeschnitten, kein weißer Rest der App.
+  4. Eine CSV aus Excel für Mac ohne „CSV UTF-8“ (BUG-1: Mac-Roman-Erkennung ist nur mit Test-Bytes geprüft).
+  5. Klick auf die Seitenleiste auf der Ergebnisseite: Rückfrage erscheint.
+  6. Testkonten danach über „Konto löschen“ entfernen.
