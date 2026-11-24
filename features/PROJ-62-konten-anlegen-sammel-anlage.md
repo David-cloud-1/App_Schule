@@ -1,6 +1,6 @@
 # PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-10-27
 **Last Updated:** 2026-11-24 (Frontend und Backend gebaut, QA steht aus)
 
@@ -221,7 +221,135 @@ Hinweise für den Server: `department` aus der Datei ist Kürzel oder Name (leer
 - Typprüfung, ESLint und `npm run build` sauber.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-11-24 · **Stand:** Commit 0e478ac · **Tester:** QA Engineer (AI, Opus)
+**Methode:** Code-Prüfung aller Kriterien, Red-Team-Analyse, lesende Abfragen an der Produktions-Datenbank (Trigger, Rollen-Regel, Bereiche), automatische Tests. **Kein Browser-Test und kein Playwright:** Dev-Server und Playwright bringen den Rechner zum Absturz (Projektregel). Cross-Browser, Responsive und Druckbild sind deshalb **nicht geprüft**.
+
+### Datenbank-Befunde (lesend, Produktion)
+- `on_auth_user_created` legt das Profil mit Rolle Azubi an; `trg_assign_pseudonym` vergibt beim Anlegen jedes Profils ein Pseudonym (alle 175 Azubis haben eines). Neue Konten erscheinen in der Rangliste also nie mit Klarnamen.
+- `profiles_name_schutz` (PROJ-121) greift nur für `authenticated`, nicht für den Service-Zugang: Das Setzen des Anzeigenamens beim Anlegen funktioniert.
+- Rollen-Regel erlaubt `student`, `teacher`, `admin`, `department_admin`. `prevent_last_admin_change` stört die Rücknahme eines frisch angelegten Super-Admins nicht.
+- Bereiche: SPED → `spedilern.vercel.app`, TOUR → `touristiklern.vercel.app`; die Zettel-Adresse je Bereich stimmt.
+
+### Acceptance Criteria Status
+
+#### AC-1: Einzeln anlegen
+- [x] „Konto anlegen“ (grün, nur Super-Admin) mit „Einzeln“ und „Aus CSV-Liste“ (Test: Lehrkraft und Bereichs-Admin sehen es nicht)
+- [x] Formular mit Pflichtfeldern, E-Mail-Prüfung, Rolle Standard Azubi, Start-Passwort mit Vorschlag (≥ 8 Zeichen)
+- [x] Bereich: wird ausdrücklich gewählt (bestätigte Abweichung statt E-Mail-Domain)
+- [x] Konto bestätigt, ohne Mail, mit Pflichtwechsel-Merker (gleicher Weg wie PROJ-58)
+- [x] Zugangsdaten mit „Kopieren“, „Zettel drucken“ und Hinweis „später nicht mehr abrufbar“
+- [x] Lehrkraft/Super-Admin: Pseudonym (Trigger + `ensurePseudonym`)
+
+#### AC-2: Sammel-Anlage per CSV
+- [x] Komma/Semikolon, UTF-8/Windows-1252, Vorlage zum Herunterladen
+- [x] Ohne Bereich-Spalte ein Bereich für alle, ohne Rolle-Spalte Azubi
+- [x] Vorschau mit OK/Warnung/Fehler und Begründung (alle fünf Fehlerarten, „existiert schon“ als Warnung)
+- [x] „{n} Konten anlegen“ legt nur OK-Zeilen an; Server prüft erneut
+- [x] Höchstens 300 Zeilen (Browser und Server)
+- [x] Eigenes Passwort je Konto, nicht änderbar
+- [x] Ergebnis: Zugangszettel (8 je Seite, Schnittlinien, weiß), Liste als CSV, Hinweis „einzige Gelegenheit“
+- [ ] **BUG-2:** Rückfrage beim Verlassen nur über „Fertig“, „Zur Nutzerliste“ und Neuladen, nicht über die Seitenleiste
+- [x] Protokoll `user.create` je Konto ohne Passwort, `user.bulk_create` mit Zahlen
+
+#### AC-3: Rechte
+- [x] Nur Super-Admin; 401 ohne Login, 403 für Lehrkraft, Bereichs-Admin, Azubi (alle drei Routen getestet)
+- [x] Sammel-Anlage nur Azubi und Lehrkraft; Admin-Rollen nur einzeln mit Bestätigungs-Häkchen
+
+### Edge Cases Status
+- [x] E-Mail existiert schon (auch gesperrt): nicht angelegt, Meldung mit Verweis auf „Passwort neu vergeben“
+- [x] Kein Bereich zuordenbar und keiner gewählt: Zeilenfehler
+- [x] Abbruch mittendrin: Angelegtes bleibt sichtbar, fehlende Zeilen als CSV, zweiter Versuch überspringt Vorhandene
+- [x] Andere Reihenfolge/Schreibweise der Kopfzeile wird erkannt
+- [ ] **BUG-3:** Unklare Kopfzeile – Bereich und Rolle lassen sich nicht mehr zuordnen, sobald Name und E-Mail gewählt sind
+- [x] Leere Zeilen und Leerzeichen ignoriert, E-Mails klein
+- [ ] **BUG-6:** Leere Zeilen verschieben die angezeigte Zeilennummer
+- [x] Selbst-Registrierung mit vergebener E-Mail scheitert (bestehender Weg)
+- [x] Höchstens 8 Zettel je A4 mit Seitenumbruch (Code; Druckbild nicht geprüft, siehe BUG-7)
+
+### Security Audit Results
+- [x] Authentifizierung: alle Routen 401 ohne Login
+- [x] Autorisierung: `requireSuperAdmin` in jeder Route, obwohl die Lehrkraft-Freigabeliste `/api/admin/users/**` durchlässt; Seite `/admin/users/aus-liste` leitet Nicht-Super-Admins um
+- [x] Passwörter: nur in der Antwort; nicht in Protokoll, Logs (nur Fehlercodes) oder Datenbank-Klartext; Tests prüfen das
+- [x] Eingaben: Zod auf allen Routen, unbekannte Felder werden verworfen; Namen werden in React und auf den Zetteln als Text ausgegeben (kein XSS); CSV-Formeln in Namen entschärft
+- [x] Keine halben Konten: Rücknahme, wenn Profil oder Protokoll scheitern
+- [x] Limits: 3 Sammel-Anlagen/Stunde, 300 Konten je Anlage, 25 je Aufruf, dazu 120 schreibende Aufrufe/Minute im Proxy
+- [x] CSRF: JSON-POST mit SameSite-Lax-Cookies wie alle Verwaltungs-Routen
+- [ ] **BUG-9 (Low):** Limit lässt sich als Super-Admin umgehen (zwei gleichzeitige Starts oder eine wiederverwendete `batchId`) – nur der Super-Admin selbst kann das
+- [ ] **BUG-10 (Low):** Antworten mit Passwörtern ohne `Cache-Control: no-store`
+
+### Bugs Found
+
+#### BUG-1: Mac-Excel-CSV (ohne UTF-8) zeigt Umlaute falsch *(nicht verifiziert)*
+- **Severity:** Medium
+- **Steps:** In Excel für Mac „Kommagetrennte Werte (.csv)“ statt „CSV UTF-8“ speichern, Datei mit „Jürgen“ hochladen.
+- **Expected:** „Jürgen“. **Actual (erwartet):** Excel für Mac schreibt dabei Mac-Roman; die App liest Windows-1252 und zeigt z. B. „JŠrgen“. Sichtbar in der Vorschau, aber leicht zu übersehen; falsch angelegte Namen müssen umbenannt werden.
+- **Priority:** Fix before deployment empfohlen (Hinweis „Als CSV UTF-8 speichern“ an der Datei-Auswahl und/oder Warnung bei auffälligen Zeichen)
+
+#### BUG-2: Verlassen über die Seitenleiste verwirft Passwörter ohne Rückfrage
+- **Severity:** Medium
+- **Steps:** Sammel-Anlage abschließen, auf der Ergebnisseite in der Seitenleiste „Startseite“ klicken.
+- **Expected:** Rückfrage „Zugangsdaten wirklich verwerfen?“ (Spec). **Actual:** Seite wechselt sofort, Passwörter sind weg (nur „Passwort neu vergeben“ hilft). Bekannte Grenze des App Routers, im Frontend dokumentiert.
+- **Priority:** Fix before deployment empfohlen (z. B. Klicks auf Links im Rahmen abfangen, solange Zugangsdaten offen sind)
+
+#### BUG-3: Bereich- und Rollen-Spalte nicht zuordenbar, sobald Name und E-Mail stehen
+- **Severity:** Medium
+- **Steps:** Datei mit Kopfzeile „Wer;Adresse;Abteilung;Art“ hochladen → Zuordnung erscheint. Name und E-Mail wählen.
+- **Expected:** Bereich und Rolle lassen sich noch zuordnen. **Actual:** Das Zuordnungs-Feld verschwindet sofort (Bedingung `!columnsComplete`). Alle Zeilen bekommen den Bereich für alle und Rolle Azubi. Gleiches gilt, wenn Name/E-Mail erkannt werden, die Bereich-Spalte aber anders heißt („Abteilung“): Sie wird stillschweigend ignoriert. In der Vorschau sichtbar, Lehrkräfte würden aber als Azubi angelegt, wenn man es übersieht.
+- **Priority:** Fix before deployment empfohlen (Zuordnung offen lassen bzw. „Spalten anpassen“ immer anbieten)
+
+#### BUG-4: Pseudonym neuer Konten passt nicht zum Bereich
+- **Severity:** Low
+- **Steps:** Tourismus-Azubi per Liste anlegen.
+- **Actual:** Der Trigger vergibt das Pseudonym beim Anlegen, noch ohne Bereich (allgemeine Wörter). Bei der Selbst-Registrierung erzeugt `assignDepartmentIfMissing` es danach passend zum Bereich neu; bei PROJ-62 entfällt dieser Schritt, weil der Bereich schon gesetzt ist.
+- **Priority:** Nice to have (nach dem Setzen des Bereichs neu erzeugen, wie bei der Registrierung)
+
+#### BUG-5: Inaktive Bereiche stehen in der Auswahl
+- **Severity:** Low
+- **Actual:** Die Auswahl zeigt alle Bereiche aus dem Layout, auch inaktive; der Server lehnt sie mit „Bereich unbekannt.“ ab. Heute sind beide Bereiche aktiv.
+- **Priority:** Nice to have
+
+#### BUG-6: Zeilennummern verschieben sich bei leeren Zeilen
+- **Severity:** Low
+- **Steps:** Datei mit einer Leerzeile zwischen zwei Personen.
+- **Actual:** Die Vorschau nennt für die Person nach der Leerzeile eine Zeile zu wenig (leere Zeilen werden vor dem Zählen entfernt).
+- **Priority:** Nice to have
+
+#### BUG-7: Druckbild nicht geprüft (Seitenhöhe fest 270 mm)
+- **Severity:** Low (Risiko)
+- **Actual:** Die Zettel-Seite ist fest 270 mm hoch. Bei großen Druckrändern (z. B. Safari) kann eine Seite überlaufen und leere Seiten erzeugen. `window.print()` startet verzögert, nicht direkt aus dem Klick; Safari kann nachfragen.
+- **Priority:** Beim ersten Browser-Test prüfen
+
+#### BUG-8: Datei ohne Kopfzeile, bei der in Zeile 1 die E-Mail fehlt
+- **Severity:** Low
+- **Actual:** Zeile 1 gilt dann als Kopfzeile und fehlt in der Vorschau; ohne Kopfzeile wird außerdem eine dritte Spalte (Bereich) ignoriert. Die Zuordnung erscheint, die verlorene Zeile wird aber nicht gemeldet.
+- **Priority:** Nice to have
+
+#### BUG-9: Limit „3 pro Stunde“ als Super-Admin umgehbar
+- **Severity:** Low · nur der Super-Admin selbst kann das, kein Angriff von außen
+- **Priority:** Nice to have
+
+#### BUG-10: Kein `Cache-Control: no-store` bei Antworten mit Passwörtern
+- **Severity:** Low · POST-Antworten werden praktisch nie zwischengespeichert; reine Vorsicht
+- **Priority:** Nice to have
+
+#### BUG-11: Einzel-Dialog setzt sich zurück, wenn sich die Bereichsleiste ändert
+- **Severity:** Low
+- **Actual:** Der Dialog füllt sich neu, sobald sich `scope` ändert (z. B. Bereichswechsel in einem anderen Tab mit `router.refresh`); dabei verschwinden auch angezeigte Zugangsdaten.
+- **Priority:** Nice to have
+
+### Automatische Tests
+- `npm test`: 4632/4633 grün. Der eine Fehler (`werkzeugkiste-auszug.test.ts`) ist alt und hat mit PROJ-62 nichts zu tun (Datei und Test seit 2026-11-13 unverändert) – trotzdem als Regression zu klären.
+- PROJ-62 eigene Tests: 126 (Bibliotheken 44, Oberfläche 29, Routen 39, Seiten-Wächter 5, Nutzerliste 4, Wächter PROJ-127 grün).
+- `npm run test:e2e` **nicht ausgeführt** (Playwright, Projektregel). Kein neuer E2E-Test.
+- Typprüfung, ESLint, `npm run build` sauber.
+
+### Summary
+- **Acceptance Criteria:** 3 Gruppen, 18 von 19 Punkten erfüllt (offen: Rückfrage beim Verlassen über die Seitenleiste)
+- **Edge Cases:** 7 von 9 erfüllt
+- **Bugs Found:** 11 (0 Critical, 0 High, 3 Medium, 8 Low)
+- **Security:** bestanden; zwei Low-Befunde
+- **Production Ready:** JA nach Regel (kein Critical/High). **Empfehlung:** BUG-1 bis BUG-3 vor dem Livegang beheben, danach ein kurzer Browser-Test durch dich (Anlegen einzeln, Liste mit 3 Zeilen, Zettel drucken in Chrome und Safari).
 
 ## Deployment
 _To be added by /deploy_
