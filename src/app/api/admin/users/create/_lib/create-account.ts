@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { z } from 'zod'
 import { AUDIT_FAILED_MESSAGE, type AuditEntry } from '../../../_lib/auth'
-import { ensurePseudonym } from '@/lib/pseudonym-server'
 import { MUST_CHANGE_PASSWORD_FLAG } from '@/lib/roles'
 import { BULK_CHUNK_SIZE, BULK_MAX_ROWS, type CreatedAccount, type SingleRole } from '@/lib/account-create'
 import { EMAIL_MAX_LENGTH, NAME_MAX_LENGTH, REASONS, appUrlFor, type DepartmentOption } from '@/lib/account-create-rules'
@@ -92,6 +91,24 @@ export async function loadExistingEmails(service: SupabaseClient): Promise<Set<s
   return emails
 }
 
+/** Antworten mit Passwörtern dürfen nirgends zwischengespeichert werden */
+export const NO_STORE_HEADERS = { 'Cache-Control': 'no-store' } as const
+
+/**
+ * Der Datenbank-Trigger vergibt das Pseudonym beim Anlegen, noch ohne Bereich.
+ * Wie bei der Registrierung (`assignDepartmentIfMissing`) wird es danach passend
+ * zum Bereich neu erzeugt. Scheitert das, bleibt das erste Pseudonym stehen.
+ */
+async function assignDepartmentPseudonym(service: SupabaseClient, userId: string, departmentId: string) {
+  const { data, error } = await service.rpc('generate_unique_pseudonym', { p_department_id: departmentId })
+  if (error || typeof data !== 'string') {
+    console.error('[createAccount] pseudonym', error?.message)
+    return
+  }
+  const { error: updateError } = await service.from('profiles').update({ pseudonym: data }).eq('id', userId)
+  if (updateError) console.error('[createAccount] pseudonym update', updateError.message)
+}
+
 export type CreateAccountResult =
   | { ok: true; userId: string; account: CreatedAccount }
   | { ok: false; status: number; reason: string }
@@ -106,7 +123,7 @@ function isEmailTaken(error: { code?: string; message?: string; status?: number 
 
 /**
  * Ein Konto anlegen: bestätigte E-Mail, Pflichtwechsel-Merker, Rolle, Bereich,
- * Name; bei Lehrkraft und Super-Admin ein Pseudonym (PROJ-44). Danach der
+ * Name und ein zum Bereich passendes Pseudonym (PROJ-44). Danach der
  * Protokolleintrag `user.create` (ohne Passwort). Scheitert ein Schritt nach
  * dem Anlegen, wird das Konto wieder gelöscht: Es bleibt kein halbes Konto
  * und keines ohne Protokoll.
@@ -179,7 +196,7 @@ export async function createAccount(params: {
     return { ok: false, status: 503, reason: AUDIT_FAILED_MESSAGE }
   }
 
-  if (role !== 'student') await ensurePseudonym(service, userId)
+  await assignDepartmentPseudonym(service, userId, department.id)
 
   return {
     ok: true,

@@ -167,8 +167,8 @@ describe('Kopie aus dem Regal – Ablauf und Anzeige', () => {
     expect(anderesWerkzeugErlaubt({ skriptEntfernt: true, werkzeug: 'skript' }).grund).toBe(HINWEIS_SKRIPT_ENTFERNT)
   })
 
-  it('nennt die Urheberin oder den Urheber unter dem Titel', () => {
-    expect(untertitel({ art: 'material', format: 'h5p', skriptName: null, ausRegal: 'Frau Meier' })).toBe('H5P für Moodle · aus dem Regal von Frau Meier')
+  it('nennt unter dem Titel nur „aus dem Regal“; die Urheberin steht seit PROJ-100 in der Spalte „Von“', () => {
+    expect(untertitel({ art: 'material', format: 'h5p', skriptName: null, ausRegal: 'Frau Meier' })).toBe('H5P für Moodle · aus dem Regal')
     expect(untertitel({ art: 'material', format: 'h5p', skriptName: 'Heft.pdf' })).toBe('H5P für Moodle · aus Heft.pdf')
   })
 })

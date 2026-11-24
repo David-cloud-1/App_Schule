@@ -140,15 +140,37 @@ export function chunkRows<T>(rows: readonly T[], size = BULK_CHUNK_SIZE): T[][] 
 // CSV einlesen (im Browser, die Datei verlässt den Rechner nicht)
 // ---------------------------------------------------------------------------
 
-/** UTF-8, sonst Windows-1252 (so speichert Excel eine „CSV“ ohne UTF-8-Wahl) */
+const UMLAUTS = /[äöüßÄÖÜ]/g
+
+function umlautCount(text: string): number {
+  return (text.match(UMLAUTS) ?? []).length
+}
+
+/**
+ * UTF-8, sonst Windows-1252 (so speichert Excel für Windows eine „CSV“ ohne
+ * UTF-8-Wahl). Excel für Mac schreibt dagegen Mac-Roman: dort wäre „ü“ in
+ * Windows-1252 ein „Ÿ“. Zählt die Mac-Lesart mehr Umlaute, gilt sie.
+ */
 export function decodeCsvBuffer(buffer: ArrayBuffer): string {
   let text: string
   try {
     text = new TextDecoder('utf-8', { fatal: true }).decode(buffer)
   } catch {
     text = new TextDecoder('windows-1252').decode(buffer)
+    try {
+      const mac = new TextDecoder('macintosh').decode(buffer)
+      if (umlautCount(mac) > umlautCount(text)) text = mac
+    } catch {
+      // Kodierung dieser Umgebung unbekannt: es bleibt bei Windows-1252
+    }
   }
-  return text.replace(/^﻿/, '')
+  return text.replace(/^\uFEFF/, '')
+}
+
+/** Alle nicht leeren Zeilen der Datei mit ihrer Zeilennummer (1 = erste Zeile der Datei) */
+export interface CsvSource {
+  rows: string[][]
+  lines: number[]
 }
 
 export interface CsvTable {
@@ -156,6 +178,8 @@ export interface CsvTable {
   headers: string[]
   records: string[][]
   hasHeader: boolean
+  /** Zeilennummer jedes Datensatzes in der Datei */
+  lines: number[]
 }
 
 /** Spaltenzuordnung: Nummer der Spalte oder `null`, wenn nicht eindeutig erkannt */
@@ -181,21 +205,51 @@ function collapse(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
 
-/** Datei lesen: Trennzeichen (Komma oder Semikolon) wird erkannt, leere Zeilen entfallen */
-export function parseCsvText(text: string): CsvTable | { error: string } {
-  const parsed = Papa.parse<string[]>(text, { skipEmptyLines: 'greedy' })
-  const rows = parsed.data.map((row) => row.map((cell) => collapse(String(cell ?? ''))))
+/** Datei lesen: Trennzeichen (Komma oder Semikolon) wird erkannt, leere Zeilen entfallen, die Zeilennummern bleiben */
+export function parseCsvSource(text: string): CsvSource | { error: string } {
+  // Das Trennzeichen erkennt Papa nur zuverlässig ohne Leerzeilen; danach wird ohne Überspringen
+  // gelesen, damit die Zeilennummern der Datei stimmen
+  const delimiter = Papa.parse<string[]>(text, { skipEmptyLines: 'greedy', preview: 20 }).meta.delimiter
+  const parsed = Papa.parse<string[]>(text, { delimiter, skipEmptyLines: false })
+  const rows: string[][] = []
+  const lines: number[] = []
+  parsed.data.forEach((raw, index) => {
+    const row = raw.map((cell) => collapse(String(cell ?? '')))
+    if (row.every((cell) => cell === '')) return
+    rows.push(row)
+    lines.push(index + 1)
+  })
   if (rows.length === 0) return { error: 'Die Datei enthält keine Zeilen.' }
+  return { rows, lines }
+}
 
-  // Eine Kopfzeile erkennt man daran, dass keine Zelle wie eine E-Mail aussieht
-  const hasHeader = !rows[0].some((cell) => cell.includes('@'))
-  const width = Math.max(...rows.map((row) => row.length))
+/** Eine Kopfzeile erkennt man daran, dass keine Zelle der ersten Zeile wie eine E-Mail aussieht */
+export function guessHasHeader(rows: readonly string[][]): boolean {
+  return !rows[0].some((cell) => cell.includes('@'))
+}
+
+/** Tabelle aus der Datei bauen; `hasHeader` darf der Super-Admin umschalten, wenn die Schätzung falsch liegt */
+export function buildTable(source: CsvSource, hasHeader: boolean): CsvTable | { error: string } {
+  const width = Math.max(...source.rows.map((row) => row.length))
   const headers = hasHeader
-    ? Array.from({ length: width }, (_, i) => rows[0][i] ?? '')
+    ? Array.from({ length: width }, (_, i) => source.rows[0][i] ?? '')
     : Array.from({ length: width }, (_, i) => `Spalte ${i + 1}`)
-  const records = hasHeader ? rows.slice(1) : rows
+  const records = hasHeader ? source.rows.slice(1) : source.rows
+  const lines = hasHeader ? source.lines.slice(1) : source.lines
   if (records.length === 0) return { error: 'Die Datei enthält nur eine Kopfzeile, aber keine Personen.' }
-  return { headers, records, hasHeader }
+  if (records.length > BULK_MAX_ROWS) {
+    return {
+      error: `Die Datei hat ${records.length} Zeilen. Bitte in mehrere Dateien mit höchstens ${BULK_MAX_ROWS} Zeilen teilen.`,
+    }
+  }
+  return { headers, records, hasHeader, lines }
+}
+
+/** Alles in einem Schritt mit der geschätzten Kopfzeile */
+export function parseCsvText(text: string): CsvTable | { error: string } {
+  const source = parseCsvSource(text)
+  if ('error' in source) return source
+  return buildTable(source, guessHasHeader(source.rows))
 }
 
 /** Spalten anhand der Kopfzeile erkennen; ohne Kopfzeile zählt, wo E-Mail-Adressen stehen */
@@ -228,12 +282,17 @@ export function columnsComplete(map: ColumnMap): boolean {
   return map.name !== null && map.email !== null
 }
 
+/** Spalten, die keinem Feld zugeordnet sind (damit nichts stillschweigend wegfällt) */
+export function unusedHeaders(table: CsvTable, map: ColumnMap): string[] {
+  const used = new Set(Object.values(map).filter((v): v is number => v !== null))
+  return table.headers.flatMap((header, i) => (used.has(i) || header === '' ? [] : [header]))
+}
+
 /** Zeilen der Datei in das Format für den Server bringen (E-Mail klein, Leerzeichen am Rand weg) */
 export function mapRecords(table: CsvTable, map: ColumnMap): RawAccountRow[] {
-  const firstLine = table.hasHeader ? 2 : 1
   const pick = (row: string[], column: number | null) => (column === null ? '' : (row[column] ?? ''))
   return table.records.map((row, index) => ({
-    line: firstLine + index,
+    line: table.lines[index],
     name: collapse(pick(row, map.name)),
     email: pick(row, map.email).trim().toLowerCase(),
     department: collapse(pick(row, map.department)),
@@ -241,18 +300,15 @@ export function mapRecords(table: CsvTable, map: ColumnMap): RawAccountRow[] {
   }))
 }
 
-export type ReadCsvResult = { table: CsvTable; map: ColumnMap } | { error: string }
+export type ReadCsvResult = { source: CsvSource; table: CsvTable; map: ColumnMap } | { error: string }
 
-/** Alles in einem Schritt: Datei lesen, Spalten erkennen, Zeilenzahl prüfen */
+/** Alles in einem Schritt: Datei lesen, Kopfzeile schätzen, Spalten erkennen, Zeilenzahl prüfen */
 export function readAccountCsv(buffer: ArrayBuffer): ReadCsvResult {
-  const table = parseCsvText(decodeCsvBuffer(buffer))
+  const source = parseCsvSource(decodeCsvBuffer(buffer))
+  if ('error' in source) return source
+  const table = buildTable(source, guessHasHeader(source.rows))
   if ('error' in table) return table
-  if (table.records.length > BULK_MAX_ROWS) {
-    return {
-      error: `Die Datei hat ${table.records.length} Zeilen. Bitte in mehrere Dateien mit höchstens ${BULK_MAX_ROWS} Zeilen teilen.`,
-    }
-  }
-  return { table, map: detectColumns(table) }
+  return { source, table, map: detectColumns(table) }
 }
 
 // ---------------------------------------------------------------------------

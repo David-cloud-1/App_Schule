@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin, writeAuditLogStrict } from '../../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
-import { SingleBodySchema, createAccount, loadDepartments } from './_lib/create-account'
+import { NO_STORE_HEADERS, SingleBodySchema, createAccount, loadDepartments } from './_lib/create-account'
 
 /**
  * POST /api/admin/users/create — ein Konto anlegen (PROJ-62, nur Super-Admin).
@@ -50,5 +50,5 @@ export async function POST(request: NextRequest) {
   })
   if (!result.ok) return NextResponse.json({ error: result.reason }, { status: result.status })
 
-  return NextResponse.json({ account: result.account })
+  return NextResponse.json({ account: result.account }, { headers: NO_STORE_HEADERS })
 }
