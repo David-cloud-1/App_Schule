@@ -110,14 +110,31 @@ describe('POST /api/admin/users/create (PROJ-62)', () => {
     expect(json.account.departmentName).toBe('Tourismus')
   })
 
-  it('Lehrkraft bekommt ein Pseudonym, Azubi nicht über diesen Weg', async () => {
-    const teacher = setup(adminClientMock(), serviceClientMock({ pseudonym: null }))
+  it('Pseudonym wird passend zum Bereich neu erzeugt, für Azubi wie für Lehrkraft (BUG-4)', async () => {
+    const teacher = setup()
     await call({ ...BODY, role: 'teacher' })
     expect(teacher.service.rpc).toHaveBeenCalledWith('generate_unique_pseudonym', { p_department_id: DEPT_SPED })
 
-    const student = setup(adminClientMock(), serviceClientMock({ pseudonym: null }))
-    await call(BODY)
-    expect(student.service.rpc).not.toHaveBeenCalled()
+    const student = setup()
+    await call({ ...BODY, departmentId: DEPT_TOUR })
+    expect(student.service.rpc).toHaveBeenCalledWith('generate_unique_pseudonym', { p_department_id: DEPT_TOUR })
+    const pseudonymWrite = student.service.writes.find(
+      (w) => w.table === 'profiles' && (w.payload as { pseudonym?: string }).pseudonym,
+    )
+    expect(pseudonymWrite?.payload).toEqual({ pseudonym: 'Neues-Pseudonym' })
+  })
+
+  it('scheitert die Pseudonym-Vergabe, ist das Konto trotzdem angelegt', async () => {
+    const service = serviceClientMock()
+    service.rpc.mockResolvedValueOnce({ data: null, error: { message: 'down' } } as never)
+    setup(adminClientMock(), service)
+    expect((await call(BODY)).status).toBe(200)
+    expect(service.deleteUser).not.toHaveBeenCalled()
+  })
+
+  it('Antwort mit Passwort ist nicht zwischenspeicherbar (BUG-10)', async () => {
+    setup()
+    expect((await call(BODY)).headers.get('cache-control')).toBe('no-store')
   })
 
   it('Super-Admin als Rolle ist einzeln erlaubt', async () => {

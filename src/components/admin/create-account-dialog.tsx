@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Copy, Loader2, Printer, RefreshCw, UserPlus } from 'lucide-react'
 import {
@@ -38,7 +38,13 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  */
 export function CreateAccountDialog({ open, onOpenChange, onCreated }: CreateAccountDialogProps) {
   const { scope } = useAdminRole()
-  const departments = useMemo(() => scope?.departments ?? [], [scope])
+  const departments = useMemo(() => (scope?.departments ?? []).filter((d) => d.isActive !== false), [scope])
+  // Der Dialog füllt sich nur beim Öffnen neu: ein Wechsel der Bereichsleiste im Hintergrund darf
+  // weder Eingaben noch angezeigte Zugangsdaten löschen
+  const initial = useRef({ current: scope?.current ?? null, departments })
+  useEffect(() => {
+    initial.current = { current: scope?.current ?? null, departments }
+  }, [scope, departments])
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -57,15 +63,18 @@ export function CreateAccountDialog({ open, onOpenChange, onCreated }: CreateAcc
     setName('')
     setEmail('')
     setRole('student')
-    // Voreingestellt ist der Bereich, in dem der Super-Admin gerade arbeitet (PROJ-29)
-    setDepartmentId(scope?.current ?? (departments.length === 1 ? departments[0].id : ''))
+    // Voreingestellt ist der Bereich, in dem der Super-Admin gerade arbeitet (PROJ-29), sofern er aktiv ist
+    const { current, departments: available } = initial.current
+    setDepartmentId(
+      current && available.some((d) => d.id === current) ? current : available.length === 1 ? available[0].id : '',
+    )
     setPassword(suggestPassword())
     setAdminConfirmed(false)
     setError(null)
     setCreated(null)
     setCopied(false)
     setPrinting(false)
-  }, [open, scope, departments])
+  }, [open])
 
   const appUrl = typeof window === 'undefined' ? '' : window.location.origin
   const trimmedName = name.trim()

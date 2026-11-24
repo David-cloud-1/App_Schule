@@ -4,16 +4,20 @@ import {
   BULK_MAX_ROWS,
   buildAccessCsv,
   buildRetryCsv,
+  buildTable,
   buildTemplateCsv,
   chunkRows,
   columnsComplete,
   decodeCsvBuffer,
   detectColumns,
   mapRecords,
+  guessHasHeader,
   parseBulkRole,
+  parseCsvSource,
   parseCsvText,
   readAccountCsv,
   summarizePreview,
+  unusedHeaders,
   type CsvTable,
   type PreviewRow,
 } from './account-create'
@@ -24,10 +28,13 @@ function table(text: string): CsvTable {
   return result
 }
 
-function bytes(text: string, encoding: 'utf-8' | 'windows-1252'): ArrayBuffer {
+function bytes(text: string, encoding: 'utf-8' | 'windows-1252' | 'mac-roman'): ArrayBuffer {
   if (encoding === 'utf-8') return new TextEncoder().encode(text).buffer as ArrayBuffer
   // Windows-1252: ä = 0xE4, ö = 0xF6, ü = 0xFC, ß = 0xDF
-  const map: Record<string, number> = { ä: 0xe4, ö: 0xf6, ü: 0xfc, ß: 0xdf, Ä: 0xc4, Ö: 0xd6, Ü: 0xdc }
+  const windows: Record<string, number> = { ä: 0xe4, ö: 0xf6, ü: 0xfc, ß: 0xdf, Ä: 0xc4, Ö: 0xd6, Ü: 0xdc }
+  // Mac-Roman: ä = 0x8A, ö = 0x9A, ü = 0x9F, ß = 0xA7, Ä = 0x80, Ö = 0x85, Ü = 0x86
+  const mac: Record<string, number> = { ä: 0x8a, ö: 0x9a, ü: 0x9f, ß: 0xa7, Ä: 0x80, Ö: 0x85, Ü: 0x86 }
+  const map = encoding === 'mac-roman' ? mac : windows
   const out = new Uint8Array([...text].map((c) => map[c] ?? c.charCodeAt(0)))
   return out.buffer as ArrayBuffer
 }
@@ -113,6 +120,14 @@ describe('mapRecords', () => {
     expect(rows.map((r) => r.line)).toEqual([2, 3])
   })
 
+  it('zählt Leerzeilen mit: die Nummer ist die Zeile in der Datei (BUG-6)', () => {
+    const t = table('Name;E-Mail\nAnna;a@example.de\n\n\nBen;b@example.de\n')
+    expect(mapRecords(t, detectColumns(t)).map((r) => [r.name, r.line])).toEqual([
+      ['Anna', 2],
+      ['Ben', 5],
+    ])
+  })
+
   it('zählt ohne Kopfzeile ab 1', () => {
     const t = table('Anna;a@example.de')
     expect(mapRecords(t, detectColumns(t))[0].line).toBe(1)
@@ -142,6 +157,20 @@ describe('readAccountCsv', () => {
     const withBom = decodeCsvBuffer(bytes('﻿Name;E-Mail\nÄnne;a@example.de', 'utf-8'))
     expect(plain).toBe(withBom)
     expect(withBom.startsWith('Name')).toBe(true)
+  })
+
+  it('liest Mac-Roman (Excel für Mac ohne UTF-8) mit Umlauten (BUG-1)', () => {
+    const result = readAccountCsv(bytes('Name;E-Mail\nJürgen Müller;j@example.de\nÖzgür Groß;o@example.de', 'mac-roman'))
+    if ('error' in result) throw new Error(result.error)
+    expect(result.table.records.map((r) => r[0])).toEqual(['Jürgen Müller', 'Özgür Groß'])
+  })
+
+  it('bleibt bei Windows-1252, wenn die Mac-Lesart keine Umlaute ergibt', () => {
+    expect(decodeCsvBuffer(bytes('Jürgen Müller', 'windows-1252'))).toBe('Jürgen Müller')
+  })
+
+  it('ohne Umlaute ist die Kodierung egal', () => {
+    expect(decodeCsvBuffer(bytes('Anna Azubi', 'windows-1252'))).toBe('Anna Azubi')
   })
 
   it(`lehnt mehr als ${BULK_MAX_ROWS} Zeilen ab`, () => {
@@ -209,3 +238,45 @@ describe('CSV schreiben', () => {
     expect(lines[2]).toBe("'+evil;b@example.de;;Lehrkraft")
   })
 })
+
+describe('Kopfzeile umschalten (BUG-8) und ungenutzte Spalten (BUG-3)', () => {
+  const text = 'Anna Azubi;;Spedition\nBen Berger;ben@example.de;Spedition'
+
+  function source(csv: string) {
+    const result = parseCsvSource(csv)
+    if ('error' in result) throw new Error(result.error)
+    return result
+  }
+
+  it('schätzt „Kopfzeile“, wenn Zeile 1 keine E-Mail enthält – und lässt das Umschalten zu', () => {
+    const src = source(text)
+    expect(guessHasHeader(src.rows)).toBe(true)
+    const asHeader = buildTable(src, true)
+    const asData = buildTable(src, false)
+    if ('error' in asHeader || 'error' in asData) throw new Error('unerwartet')
+    // Mit Kopfzeile fehlte „Anna Azubi“ stillschweigend, ohne Kopfzeile ist sie dabei
+    expect(asHeader.records).toHaveLength(1)
+    expect(asData.records).toHaveLength(2)
+    expect(asData.lines).toEqual([1, 2])
+    expect(asData.headers).toEqual(['Spalte 1', 'Spalte 2', 'Spalte 3'])
+  })
+
+  it('Umschalten auf „ohne Kopfzeile“ prüft die 300-Zeilen-Grenze erneut', () => {
+    const lines = Array.from({ length: BULK_MAX_ROWS + 1 }, (_, i) => `Person ${i};p${i}@example.de`)
+    const src = source(['Name;E-Mail', ...lines].join('\n'))
+    expect('error' in buildTable(src, true)).toBe(true) // 301 Datensätze
+    const exact = source(['Name;E-Mail', ...lines.slice(0, BULK_MAX_ROWS - 1)].join('\n'))
+    expect('error' in buildTable(exact, true)).toBe(false) // 299
+    expect('error' in buildTable(exact, false)).toBe(false) // 300 mit Kopfzeile als Datensatz
+    const over = source(['Name;E-Mail', ...lines.slice(0, BULK_MAX_ROWS)].join('\n'))
+    expect('error' in buildTable(over, false)).toBe(true) // 301 mit Kopfzeile als Datensatz
+  })
+
+  it('meldet Spalten, die keinem Feld zugeordnet sind', () => {
+    const t = table('Name;E-Mail;Abteilung;Art\nAnna;a@example.de;Spedition;Lehrkraft')
+    const map = detectColumns(t)
+    expect(unusedHeaders(t, map)).toEqual(['Abteilung', 'Art'])
+    expect(unusedHeaders(t, { ...map, department: 2, role: 3 })).toEqual([])
+  })
+})
+

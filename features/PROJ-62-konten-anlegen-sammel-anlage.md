@@ -351,5 +351,25 @@ Hinweise für den Server: `department` aus der Datei ist Kürzel oder Name (leer
 - **Security:** bestanden; zwei Low-Befunde
 - **Production Ready:** JA nach Regel (kein Critical/High). **Empfehlung:** BUG-1 bis BUG-3 vor dem Livegang beheben, danach ein kurzer Browser-Test durch dich (Anlegen einzeln, Liste mit 3 Zeilen, Zettel drucken in Chrome und Safari).
 
+### Nachtrag 2026-11-24: alle 11 Fehler behoben
+
+| Nr. | Fehler | Behebung |
+|---|---|---|
+| BUG-1 | Mac-Excel-CSV (Mac-Roman) mit falschen Umlauten | Lesart: UTF-8, sonst Windows-1252; zählt die Mac-Roman-Lesart mehr Umlaute, gilt sie. Dazu der Hinweis „am besten als CSV UTF-8 speichern“ an der Datei-Auswahl. **Mit echter Mac-Datei noch nicht ausprobiert** (Tests mit den Mac-Roman-Bytes laufen). |
+| BUG-2 | Passwörter beim Klick in die Seitenleiste ohne Rückfrage verloren | Solange Zugangsdaten offen sind, fängt die Seite Klicks auf Links innerhalb der App ab und fragt nach; „Verwerfen und schließen“ führt zum angeklickten Ziel. **Grenze:** Der Zurück-Knopf des Browsers lässt sich nicht abfangen; Neuladen und Tab schließen warnen weiter. |
+| BUG-3 | Bereich/Rolle nach der Zuordnung nicht mehr zuordenbar | Die Seite zeigt, was erkannt wurde („Name = …, Bereich = –“) und welche Spalten nicht verwendet werden; „Spalten anpassen“ öffnet die Zuordnung jederzeit. |
+| BUG-4 | Pseudonym passte nicht zum Bereich | Nach dem Setzen des Bereichs wird das Pseudonym wie bei der Registrierung bereichsgerecht neu erzeugt (Azubi und Lehrkraft). Scheitert das, ist das Konto trotzdem angelegt. |
+| BUG-5 | Inaktive Bereiche in der Auswahl | Das Layout liefert `isActive`; Einzel-Dialog und Liste bieten nur aktive Bereiche an. Ein inaktiver „aktueller Bereich“ wird nicht vorausgewählt. |
+| BUG-6 | Zeilennummern verschoben bei Leerzeilen | Leerzeilen zählen mit; die Nummer ist die Zeile in der Datei. |
+| BUG-7 | Druckbild nicht abgesichert | `@page { size: A4; margin: 10mm }` beim Drucken der Zettel (wie bei den Nachweis-Bögen), damit 8 Zettel in jedem Browser auf eine Seite passen. **Druckbild bleibt ungeprüft bis zum ersten Browser-Test.** |
+| BUG-8 | Person in Zeile 1 ohne E-Mail ging als „Kopfzeile“ verloren | Schalter „Erste Zeile ist die Kopfzeile“; Umschalten prüft die 300-Zeilen-Grenze erneut. |
+| BUG-9 | Stunden-Limit mit wiederverwendeter Kennung umgehbar | Päckchen 0 zu einer Kennung, die schon Konten angelegt hat, wird abgewiesen (400). **Rest:** Zwei genau gleichzeitig gestartete Sammel-Anlagen können das Limit noch kurz überschreiten; nur der Super-Admin selbst kann das auslösen. |
+| BUG-10 | Antworten mit Passwörtern ohne `no-store` | `Cache-Control: no-store` bei Einzel- und Sammel-Anlage. |
+| BUG-11 | Einzel-Dialog setzte sich bei Bereichswechsel zurück | Der Dialog füllt sich nur noch beim Öffnen. |
+
+Zusätzlich: Der alte Test `werkzeugkiste-auszug.test.ts` („nennt die Urheberin …“) war veraltet, weil PROJ-100 die Urheberin bewusst in die Spalte „Von“ verlegt hat; der Test wurde an den Code angepasst, nicht umgekehrt.
+
+**Stand danach:** 346 Testdateien, 4656 Tests grün. Typprüfung, ESLint (PROJ-62-Dateien) und `npm run build` sauber. Weiterhin **nicht im Browser geprüft** (Projektregel): Druckbild, Chrome/Firefox/Safari, Responsive.
+
 ## Deployment
 _To be added by /deploy_

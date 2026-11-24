@@ -55,6 +55,26 @@ describe('AccessSlipsPrint (PROJ-62)', () => {
     expect(onDone).toHaveBeenCalledTimes(1)
   })
 
+  it('legt A4 mit festem Rand fest, damit 8 Zettel pro Seite passen (BUG-7)', () => {
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    render(<AccessSlipsPrint accounts={[account(1)]} appUrl="x" onDone={() => {}} />)
+    expect(document.querySelector('[data-zettel-druck] style')?.textContent).toContain('@page { size: A4; margin: 10mm; }')
+  })
+
+  it('nutzt die Adresse des Bereichs, wenn das Konto eine hat', () => {
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    render(
+      <AccessSlipsPrint
+        accounts={[{ ...account(1), appUrl: 'https://touristiklern.vercel.app' }, account(2)]}
+        appUrl="https://spedilern.vercel.app"
+        onDone={() => {}}
+      />,
+    )
+    const [a, b] = Array.from(document.querySelectorAll('[data-zettel-druck] article'))
+    expect(a).toHaveTextContent('https://touristiklern.vercel.app')
+    expect(b).toHaveTextContent('https://spedilern.vercel.app')
+  })
+
   it('bleibt auf dem Bildschirm unsichtbar (nur für den Druck)', () => {
     vi.spyOn(window, 'print').mockImplementation(() => {})
     render(<AccessSlipsPrint accounts={[account(1)]} appUrl="x" onDone={() => {}} />)

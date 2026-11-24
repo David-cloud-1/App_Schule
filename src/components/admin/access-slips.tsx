@@ -54,6 +54,8 @@ export function AccessSlipsPrint({ accounts, appUrl, onDone }: AccessSlipsPrintP
 
   return createPortal(
     <div data-zettel-druck="" className="hidden bg-white text-black print:block">
+      {/* Fester Rand, damit die 8 Zettel in jedem Browser auf eine Seite passen (wie die Nachweis-Bögen) */}
+      <style>{'@page { size: A4; margin: 10mm; }'}</style>
       {pages.map((page, pageIndex) => (
         <section
           key={pageIndex}

@@ -115,6 +115,22 @@ describe('POST /api/admin/users/create/bulk (PROJ-62)', () => {
     expect(json.created).toHaveLength(1)
   })
 
+  it('Antwort mit Passwörtern ist nicht zwischenspeicherbar (BUG-10)', async () => {
+    setup()
+    expect((await call(body([row(2)]))).headers.get('cache-control')).toBe('no-store')
+  })
+
+  it('Päckchen 0 einer schon benutzten Kennung wird abgewiesen: kein Umgehen des Limits (BUG-9)', async () => {
+    const { service } = setup(
+      adminClientMock(),
+      serviceClientMock({ usageRows: [otherBatch(1), otherBatch(2), otherBatch(3), { details: { batch_id: BATCH_ID } }] }),
+    )
+    const res = await call(body([row(2)], { batchIndex: 0, batchCount: 1 }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('schon gestartet')
+    expect(service.createUser).not.toHaveBeenCalled()
+  })
+
   it('429 ab der vierten Sammel-Anlage in einer Stunde', async () => {
     const { service } = setup(adminClientMock(), serviceClientMock({ usageRows: [otherBatch(1), otherBatch(2), otherBatch(3), otherBatch(3)] }))
     const res = await call(body([row(2)]))

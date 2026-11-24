@@ -162,4 +162,61 @@ describe('Konto einzeln anlegen (PROJ-62)', () => {
     expect(screen.getByRole('checkbox', { name: /alle Rechte des Super-Admins/ })).not.toBeChecked()
     expect(submit()).toBeDisabled()
   })
+
+  it('ändert sich die Bereichsleiste im Hintergrund, bleiben Eingaben und Zugangsdaten stehen (BUG-11)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ account: { name: 'Anna Azubi', email: 'anna@example.de', password: 'Hafen-Kran-Birke-47', role: 'student', departmentName: 'Spedition' } }),
+      })),
+    )
+    const ui = (current: string | null) => (
+      <AdminRoleProvider value={{ role: 'admin', isSuperAdmin: true, scope: { current, departments: DEPARTMENTS } }}>
+        <CreateAccountDialog open onOpenChange={() => {}} onCreated={() => {}} />
+      </AdminRoleProvider>
+    )
+    const { rerender } = render(ui('d1'))
+    fill('Anna Azubi', 'anna@example.de')
+    rerender(ui('d2'))
+    expect((screen.getByLabelText('Anzeigename') as HTMLInputElement).value).toBe('Anna Azubi')
+
+    fireEvent.click(submit())
+    await screen.findByText('Konto angelegt')
+    rerender(ui('d1'))
+    expect(screen.getByLabelText('Start-Passwort', { selector: 'output' })).toHaveTextContent('Hafen-Kran-Birke-47')
+  })
+
+  it('nimmt keinen inaktiven Bereich als Voreinstellung und zeigt die Adresse des Bereichs (BUG-5)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ account: { name: 'Anna Azubi', email: 'anna@example.de', password: 'Hafen-Kran-Birke-47', role: 'student', departmentName: 'Tourismus', appUrl: 'https://touristiklern.vercel.app' } }),
+      })),
+    )
+    render(
+      <AdminRoleProvider
+        value={{
+          role: 'admin',
+          isSuperAdmin: true,
+          scope: {
+            current: 'd1',
+            departments: [
+              { id: 'd1', name: 'Alt', code: 'ALT', isActive: false },
+              { id: 'd2', name: 'Tourismus', code: 'TOUR', isActive: true },
+            ],
+          },
+        }}
+      >
+        <CreateAccountDialog open onOpenChange={() => {}} onCreated={() => {}} />
+      </AdminRoleProvider>,
+    )
+    fill('Anna Azubi', 'anna@example.de')
+    // Nur ein aktiver Bereich: er ist vorausgewählt, der inaktive nicht
+    fireEvent.click(submit())
+    await screen.findByText('Konto angelegt')
+    expect(screen.getByText('https://touristiklern.vercel.app')).toBeInTheDocument()
+  })
 })
+

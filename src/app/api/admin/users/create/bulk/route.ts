@@ -13,6 +13,7 @@ import {
   loadDepartments,
   loadExistingEmails,
   mapWithConcurrency,
+  NO_STORE_HEADERS,
 } from '../_lib/create-account'
 
 /**
@@ -58,6 +59,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Das Anlegen konnte nicht starten. Bitte erneut versuchen.' }, { status: 503 })
   }
 
+  // Jede Sammel-Anlage beginnt mit Päckchen 0. Kommt Päckchen 0 zu einer Kennung, die schon Konten
+  // angelegt hat, wäre das ein Umgehen des Stunden-Limits mit einer wiederverwendeten Kennung.
+  if (batchIndex === 0 && usage.createdInBatch > 0) {
+    return NextResponse.json({ error: 'Diese Sammel-Anlage wurde schon gestartet.' }, { status: 400 })
+  }
   // Eine laufende Sammel-Anlage darf zu Ende laufen; eine neue zählt zum Limit
   if (usage.createdInBatch === 0 && usage.otherBatches >= BULK_LIMIT_PER_HOUR) {
     return NextResponse.json(
@@ -124,5 +130,5 @@ export async function POST(request: NextRequest) {
     })
   }
 
-  return NextResponse.json(response)
+  return NextResponse.json(response, { headers: NO_STORE_HEADERS })
 }

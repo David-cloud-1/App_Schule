@@ -57,8 +57,10 @@ export default async function AdminLayout({
   const sidebarOpen = parseSidebarOpen(cookieStore.get(SIDEBAR_STATE_COOKIE)?.value)
 
   // Bereichsleiste (PROJ-70): dieselbe Auflösung wie in den Inhalts-Routen
-  const { data: departmentRows } = await supabase.from('departments').select('id, name, code').order('name')
-  const departments = (departmentRows ?? []) as { id: string; name: string; code: string }[]
+  const { data: departmentRows } = await supabase.from('departments').select('id, name, code, is_active').order('name')
+  const departments = ((departmentRows ?? []) as { id: string; name: string; code: string; is_active?: boolean | null }[]).map(
+    ({ is_active, ...d }) => ({ ...d, isActive: is_active !== false }),
+  )
   const current = await resolveContentScope(
     supabase as unknown as SupabaseClient,
     isSuperAdmin,

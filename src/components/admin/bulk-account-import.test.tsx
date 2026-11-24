@@ -305,4 +305,148 @@ describe('Konten aus Liste anlegen (PROJ-62)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Zur Nutzerliste/ }))
     expect(push).toHaveBeenCalledWith('/admin/users')
   })
+
+  it('zeigt, was erkannt wurde, und meldet nicht verwendete Spalten (BUG-3)', async () => {
+    renderPage()
+    await upload('Name;E-Mail;Abteilung;Art\nAnna;a@example.de;Spedition;Lehrkraft')
+    expect(screen.getByText(/Erkannt: Name = Name · E-Mail = E-Mail · Bereich = – · Rolle = –/)).toBeInTheDocument()
+    expect(screen.getByText(/Nicht verwendet: Abteilung, Art/)).toBeInTheDocument()
+  })
+
+  it('„Spalten anpassen“ öffnet die Zuordnung auch bei erkannten Spalten (BUG-3)', async () => {
+    renderPage()
+    await upload('Name;E-Mail;Abteilung;Art\nAnna;a@example.de;Spedition;Lehrkraft')
+    expect(screen.queryByLabelText(/Spalte für den Bereich/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Spalten anpassen' }))
+    expect(screen.getByLabelText(/Spalte für den Bereich/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Spalte für die Rolle/)).toBeInTheDocument()
+    expect(screen.queryByText(/nicht eindeutig erkannt/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Zuordnung übernehmen' }))
+    expect(screen.queryByLabelText(/Spalte für den Bereich/)).not.toBeInTheDocument()
+  })
+
+  it('Kopfzeile umschalten: die Person in Zeile 1 geht nicht stillschweigend verloren (BUG-8)', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ rows: [previewRow(1), previewRow(2)] }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    await upload('Anna Azubi;;Spedition\nBen Berger;ben@example.de;Spedition')
+    expect(screen.getByText(/1 Zeilen gelesen/)).toBeInTheDocument()
+    const toggle = screen.getByRole('switch', { name: /Erste Zeile ist die Kopfzeile/ })
+    expect(toggle).toBeChecked()
+    fireEvent.click(toggle)
+    expect(await screen.findByText(/2 Zeilen gelesen/)).toBeInTheDocument()
+    // Ohne Kopfzeile sind die Spalten „Spalte 1…“: die E-Mail-Spalte wird erkannt, die Person in Zeile 1 steht dabei
+    expect(screen.getByText(/E-Mail = Spalte 2/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter zur Vorschau' }))
+    await screen.findByText('Person 1')
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.rows.map((r: { line: number }) => r.line)).toEqual([1, 2])
+  })
+
+  it('Umschalten, das die Grenze von 300 Zeilen überschreitet, meldet es und lässt alles beim Alten (BUG-8)', async () => {
+    renderPage()
+    await upload(bulkCsv(300)) // 300 Datensätze + Kopfzeile
+    fireEvent.click(screen.getByRole('switch', { name: /Erste Zeile ist die Kopfzeile/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('in mehrere Dateien')
+    expect(screen.getByRole('switch', { name: /Erste Zeile ist die Kopfzeile/ })).toBeChecked()
+  })
+
+  it('Zeilennummern in der Vorschau sind die Zeilen der Datei, auch nach Leerzeilen (BUG-6)', async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ rows: [previewRow(2), previewRow(5)] }))
+    vi.stubGlobal('fetch', fetchMock)
+    renderPage()
+    await upload('Name;E-Mail\nAnna;a@example.de\n\n\nBen;b@example.de')
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter zur Vorschau' }))
+    await screen.findByText('Person 5')
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.rows.map((r: { line: number }) => r.line)).toEqual([2, 5])
+  })
+
+  it('Klick auf einen Link im Rahmen fragt nach, solange Zugangsdaten offen sind (BUG-2)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        url.endsWith('/preview')
+          ? jsonResponse({ rows: [previewRow(2)] })
+          : jsonResponse({
+              created: [{ line: 2, name: 'Person 2', email: 'p2@example.de', password: 'Hafen-Kran-Birke-2', role: 'student', departmentName: 'Spedition' }],
+              failed: [],
+            }),
+      ),
+    )
+    // Ein Link „in der Seitenleiste“, außerhalb der Komponente
+    const sidebarLink = document.createElement('a')
+    sidebarLink.href = '/admin/leistungsnachweise'
+    sidebarLink.textContent = 'Nachweise'
+    document.body.appendChild(sidebarLink)
+    try {
+      renderPage()
+      await upload(bulkCsv(1))
+      fireEvent.click(screen.getByRole('button', { name: 'Weiter zur Vorschau' }))
+      fireEvent.click(await screen.findByRole('button', { name: '1 Konto anlegen' }))
+      await screen.findByText('Hafen-Kran-Birke-2')
+
+      const clicked = fireEvent.click(sidebarLink)
+      expect(clicked).toBe(false) // preventDefault: der Browser (und Next) wechselt die Seite nicht
+      const dialog = await screen.findByRole('alertdialog')
+      expect(within(dialog).getByText('Zugangsdaten wirklich verwerfen?')).toBeInTheDocument()
+      expect(push).not.toHaveBeenCalled()
+
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Verwerfen und schließen' }))
+      expect(push).toHaveBeenCalledWith('/admin/leistungsnachweise')
+    } finally {
+      sidebarLink.remove()
+    }
+  })
+
+  it('Links werden vorher nicht abgefangen, Neuladen-Links und neue Tabs nie (BUG-2)', async () => {
+    const link = document.createElement('a')
+    link.href = '/admin/leistungsnachweise'
+    document.body.appendChild(link)
+    try {
+      renderPage()
+      // Noch keine Zugangsdaten: nichts wird abgefangen
+      expect(fireEvent.click(link)).toBe(true)
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    } finally {
+      link.remove()
+    }
+  })
+
+  it('bietet nur aktive Bereiche an (BUG-5)', async () => {
+    render(
+      <AdminRoleProvider
+        value={{
+          role: 'admin',
+          isSuperAdmin: true,
+          scope: {
+            current: 'd2',
+            departments: [
+              { id: 'd1', name: 'Spedition', code: 'SPED', isActive: true },
+              { id: 'd2', name: 'Alt-Bereich', code: 'ALT', isActive: false },
+              { id: 'd3', name: 'Tourismus', code: 'TOUR', isActive: true },
+            ],
+          },
+        }}
+      >
+        <BulkAccountImport />
+      </AdminRoleProvider>,
+    )
+    await upload(bulkCsv(1))
+    // Der gerade gewählte Bereich ist inaktiv: nicht vorausgewählt, die Vorschau bleibt gesperrt
+    expect(screen.getByRole('button', { name: 'Weiter zur Vorschau' })).toBeDisabled()
+    // Radix Select braucht in jsdom diese Browser-Funktionen
+    window.HTMLElement.prototype.scrollIntoView = vi.fn()
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn()
+    fireEvent.pointerDown(screen.getByRole('combobox', { name: /Bereich für alle Zeilen/ }), {
+      button: 0,
+      ctrlKey: false,
+      pointerType: 'mouse',
+    })
+    expect(await screen.findByRole('option', { name: 'Spedition' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Tourismus' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Alt-Bereich' })).not.toBeInTheDocument()
+  })
 })
+

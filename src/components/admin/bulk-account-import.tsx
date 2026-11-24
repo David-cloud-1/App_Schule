@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
+import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
@@ -41,16 +42,20 @@ import {
   accessCsvFilename,
   buildAccessCsv,
   buildRetryCsv,
+  buildTable,
   buildTemplateCsv,
   chunkRows,
   columnsComplete,
+  detectColumns,
   mapRecords,
   readAccountCsv,
   roleLabelOf,
   summarizePreview,
+  unusedHeaders,
   type BulkCreateResponse,
   type ColumnMap,
   type CreatedAccount,
+  type CsvSource,
   type CsvTable,
   type FailedRow,
   type PreviewResponse,
@@ -109,11 +114,13 @@ function downloadCsv(content: string, filename: string) {
 export function BulkAccountImport() {
   const router = useRouter()
   const { scope } = useAdminRole()
-  const departments = useMemo(() => scope?.departments ?? [], [scope])
+  const departments = useMemo(() => (scope?.departments ?? []).filter((d) => d.isActive !== false), [scope])
 
   const [step, setStep] = useState<Step>('datei')
   const [fileName, setFileName] = useState<string | null>(null)
+  const [source, setSource] = useState<CsvSource | null>(null)
   const [table, setTable] = useState<CsvTable | null>(null)
+  const [showMapping, setShowMapping] = useState(false)
   const [map, setMap] = useState<ColumnMap>({ name: null, email: null, department: null, role: null })
   const [fileError, setFileError] = useState<string | null>(null)
   const [defaultDepartmentId, setDefaultDepartmentId] = useState('')
@@ -132,6 +139,8 @@ export function BulkAccountImport() {
 
   const [printing, setPrinting] = useState(false)
   const [leaveOpen, setLeaveOpen] = useState(false)
+  // Ziel, das ein Klick auf einen Link während der offenen Zugangsdaten ansteuern wollte (BUG-2)
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
   const appUrl = typeof window === 'undefined' ? '' : window.location.origin
   const departmentInitialized = useRef(false)
 
@@ -139,7 +148,10 @@ export function BulkAccountImport() {
   useEffect(() => {
     if (departmentInitialized.current) return
     departmentInitialized.current = true
-    setDefaultDepartmentId(scope?.current ?? (departments.length === 1 ? departments[0].id : ''))
+    const current = scope?.current ?? null
+    setDefaultDepartmentId(
+      current && departments.some((d) => d.id === current) ? current : departments.length === 1 ? departments[0].id : '',
+    )
   }, [scope, departments])
 
   // Reload oder Tab schließen, solange Passwörter nur hier stehen
@@ -154,14 +166,39 @@ export function BulkAccountImport() {
     return () => window.removeEventListener('beforeunload', warn)
   }, [hasSecrets])
 
+  // Klicks auf Links im Rahmen (Seitenleiste, Kopfzeile) wechseln die Seite ohne Neuladen: abfangen und nachfragen
+  useEffect(() => {
+    if (!hasSecrets) return
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      const anchor = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      const url = new URL(anchor.href, window.location.href)
+      // Fremde Adressen lädt der Browser neu: dafür warnt `beforeunload`
+      if (url.origin !== window.location.origin) return
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return
+      e.preventDefault()
+      e.stopPropagation()
+      setPendingHref(`${url.pathname}${url.search}${url.hash}`)
+      setLeaveOpen(true)
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [hasSecrets])
+
   const hasDepartmentColumn = map.department !== null
+  const needsMapping = !columnsComplete(map)
+  const mappingVisible = needsMapping || showMapping
+  const unused = table ? unusedHeaders(table, map) : []
   const canPreview = table !== null && columnsComplete(map) && (hasDepartmentColumn || defaultDepartmentId !== '')
   const summary = useMemo(() => summarizePreview(preview), [preview])
 
   async function handleFile(file: File | null) {
     setFileError(null)
     setPreviewError(null)
+    setSource(null)
     setTable(null)
+    setShowMapping(false)
     setFileName(null)
     if (!file) return
     setFileName(file.name)
@@ -170,8 +207,23 @@ export function BulkAccountImport() {
       setFileError(result.error)
       return
     }
+    setSource(result.source)
     setTable(result.table)
     setMap(result.map)
+  }
+
+  /** Die Schätzung „Zeile 1 ist die Kopfzeile“ kann falsch liegen: dann läge eine Person unbemerkt in der Kopfzeile */
+  function applyHeader(hasHeader: boolean) {
+    if (!source) return
+    const next = buildTable(source, hasHeader)
+    if ('error' in next) {
+      setFileError(next.error)
+      return
+    }
+    setFileError(null)
+    setTable(next)
+    setMap(detectColumns(next))
+    setShowMapping(false)
   }
 
   function setColumn(field: keyof ColumnMap, value: string) {
@@ -264,8 +316,10 @@ export function BulkAccountImport() {
   }, [preview, rows, defaultDepartmentId, summary])
 
   function handleLeave() {
-    if (created.length > 0) setLeaveOpen(true)
-    else router.push('/admin/users')
+    if (created.length > 0) {
+      setPendingHref('/admin/users')
+      setLeaveOpen(true)
+    } else router.push('/admin/users')
   }
 
   const okCount = summary.ok
@@ -319,7 +373,8 @@ export function BulkAccountImport() {
             <p className="max-w-prose text-sm text-ws-muted">
               Spalten <strong className="text-ws-text">Name</strong> und <strong className="text-ws-text">E-Mail</strong>,
               optional <strong className="text-ws-text">Bereich</strong> und <strong className="text-ws-text">Rolle</strong>{' '}
-              (Azubi oder Lehrkraft). Höchstens {BULK_MAX_ROWS} Zeilen. Die Datei wird nicht gespeichert.
+              (Azubi oder Lehrkraft). Höchstens {BULK_MAX_ROWS} Zeilen. Die Datei wird nicht gespeichert. Speichere sie in
+              Excel am besten als „CSV UTF-8“, dann stimmen die Umlaute.
             </p>
             <Button
               type="button"
@@ -348,11 +403,45 @@ export function BulkAccountImport() {
                 <span className="text-ws-muted">· {table.records.length} Zeilen gelesen</span>
               </p>
 
-              {!columnsComplete(map) && (
-                <div className="space-y-3 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3">
-                  <p className="flex items-start gap-2 text-sm text-ws-orange">
-                    <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    Die Spalten konnten nicht eindeutig erkannt werden. Bitte ordne sie zu.
+              <div className="flex items-center gap-3">
+                <Switch id="konten-kopfzeile" checked={table.hasHeader} onCheckedChange={applyHeader} />
+                <Label htmlFor="konten-kopfzeile" className="min-h-11 cursor-pointer items-center text-sm font-normal text-ws-text">
+                  Erste Zeile ist die Kopfzeile (Überschriften)
+                </Label>
+              </div>
+
+              {!mappingVisible && (
+                <div className="space-y-2 rounded-xl border border-ws-line bg-ws-bg p-3 text-sm">
+                  <p className="text-ws-text">Erkannt: {describeMap(table, map)}</p>
+                  {unused.length > 0 && (
+                    <p className="rounded-lg border border-ws-orange/30 bg-ws-orange/15 p-2 text-ws-orange">
+                      Nicht verwendet: {unused.join(', ')}. Enthält eine davon Bereich oder Rolle, ordne sie zu.
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowMapping(true)}
+                    className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                  >
+                    Spalten anpassen
+                  </Button>
+                </div>
+              )}
+
+              {mappingVisible && (
+                <div
+                  className={
+                    needsMapping
+                      ? 'space-y-3 rounded-xl border border-ws-orange/30 bg-ws-orange/15 p-3'
+                      : 'space-y-3 rounded-xl border border-ws-line bg-ws-bg p-3'
+                  }
+                >
+                  <p className={needsMapping ? 'flex items-start gap-2 text-sm text-ws-orange' : 'text-sm text-ws-text'}>
+                    {needsMapping && <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />}
+                    {needsMapping
+                      ? 'Die Spalten konnten nicht eindeutig erkannt werden. Bitte ordne sie zu.'
+                      : 'Spalten zuordnen'}
                   </p>
                   <ColumnSelect
                     label="Spalte für den Namen"
@@ -380,6 +469,16 @@ export function BulkAccountImport() {
                     headers={table.headers}
                     onChange={(v) => setColumn('role', v)}
                   />
+                  {!needsMapping && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowMapping(false)}
+                      className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                    >
+                      Zuordnung übernehmen
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -616,7 +715,7 @@ export function BulkAccountImport() {
 
           <p className="text-sm text-ws-muted">
             Weiter zur{' '}
-            <Link href="/admin/users" onClick={(e) => { e.preventDefault(); handleLeave() }} className="underline">
+            <Link href="/admin/users" className="underline">
               Nutzerliste
             </Link>
             .
@@ -626,7 +725,13 @@ export function BulkAccountImport() {
 
       {printing && <AccessSlipsPrint accounts={created} appUrl={appUrl} onDone={() => setPrinting(false)} />}
 
-      <AlertDialog open={leaveOpen} onOpenChange={setLeaveOpen}>
+      <AlertDialog
+        open={leaveOpen}
+        onOpenChange={(open) => {
+          setLeaveOpen(open)
+          if (!open) setPendingHref(null)
+        }}
+      >
         <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Zugangsdaten wirklich verwerfen?</AlertDialogTitle>
@@ -640,7 +745,7 @@ export function BulkAccountImport() {
               Zurück zu den Zugangsdaten
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => router.push('/admin/users')}
+              onClick={() => router.push(pendingHref ?? '/admin/users')}
               className="min-h-11 bg-ws-red text-ws-on-accent hover:bg-ws-red-hover"
             >
               Verwerfen und schließen
@@ -687,4 +792,15 @@ function ColumnSelect({
       </Select>
     </div>
   )
+}
+
+/** „Name = Wer · E-Mail = Adresse · Bereich = – · Rolle = –“: zeigt, was erkannt wurde und was nicht */
+function describeMap(table: CsvTable, map: ColumnMap): string {
+  const label = (column: number | null) => (column === null ? '–' : table.headers[column] || `Spalte ${column + 1}`)
+  return [
+    `Name = ${label(map.name)}`,
+    `E-Mail = ${label(map.email)}`,
+    `Bereich = ${label(map.department)}`,
+    `Rolle = ${label(map.role)}`,
+  ].join(' · ')
 }
