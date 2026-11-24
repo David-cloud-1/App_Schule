@@ -1,8 +1,8 @@
 # PROJ-62: Konten anlegen & Sammel-Anlage per CSV (Super-Admin)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-10-27
-**Last Updated:** 2026-11-05
+**Last Updated:** 2026-11-24 (Frontend und Backend gebaut, QA steht aus)
 
 ## Kontext
 Konten entstehen heute nur durch Selbst-Registrierung. Zu Schuljahresbeginn kostet das eine Unterrichtsstunde: Mails kommen nicht an, Adressen sind falsch geschrieben, Azubis landen im falschen Bereich. Der Super-Admin soll Konten vorab anlegen und den Azubis Zugangsdaten auf Papier geben können.
@@ -151,6 +151,74 @@ Keine neuen Pakete. Die vorhandenen CSV-Hilfen aus PROJ-61 werden erweitert, und
 - **Zeitgrenze:** 300 Konten in einem Aufruf könnten zu lang dauern. Darum die kleinen Päckchen. Das wird mit einer echten 300er-Datei geprüft.
 - **Mehrere Bereiche in einer Datei:** Eine Bereichs-Spalte (Kürzel oder Name) ist erlaubt. Unbekannte Werte sind Zeilenfehler.
 
+
+## Implementation Notes – Frontend (2026-11-24)
+
+**Stand:** Oberfläche, Einlese-Logik und Druckansicht sind gebaut und getestet. Die Schnittstellen sind mit dem Backend dazugekommen (siehe unten). Nicht im Browser geprüft, nichts deployt.
+
+### Was gebaut wurde
+- **`src/lib/account-create.ts`** (reine Logik, Tests: 26): Typen der Schnittstellen, CSV einlesen (Komma/Semikolon, UTF-8 oder Windows-1252, BOM), Spalten an der Kopfzeile erkennen (Name, E-Mail, Bereich, Rolle; „e-mail“, „Mail“ u. ä.), Zeilen für den Server aufbereiten (E-Mail klein, Leerzeichen weg, Dateizeile mitgeführt), 300-Zeilen-Grenze, Päckchen à 25, Zugangsliste als CSV (Name entschärft gegen Excel-Formeln, Passwort unverändert), Vorlage, Wiederholungsliste.
+- **`create-account-menu.tsx`**: „Konto anlegen“ (grüne Hauptaktion, nur Super-Admin) im Kopf der Nutzerliste mit „Einzeln“ und „Aus CSV-Liste“; der Export bleibt als ruhiger Button daneben.
+- **`create-account-dialog.tsx`**: Formular (Name, E-Mail, Rolle als Segment Azubi/Lehrkraft/Super-Admin, Bereich, Start-Passwort mit Vorschlag), Bestätigungs-Häkchen bei Super-Admin (wird beim Rollenwechsel zurückgenommen), danach Zugangsdaten mit „Kopieren“ und „Zettel drucken“.
+- **`bulk-account-import.tsx`** + Seite **`/admin/users/aus-liste`** (nur Super-Admin, sonst Umleitung wie bei der Nutzer-Detailseite): drei Schritte – Datei wählen (Vorlage, Bereich für alle bzw. für Zeilen ohne eigene Angabe, Spalten-Zuordnung nur bei unklarer Kopfzeile) → Vorschau (Zähler, Tabelle mit Status OK/Warnung/Fehler mit Symbol und Begründung) → Ergebnis (Passwörter, „Zugangszettel drucken“, „Liste als CSV“, „Nicht angelegte Zeilen als CSV“, Fehlerliste).
+- **`access-slips.tsx`**: Zugangszettel, 8 je A4-Seite (2 × 4), gestrichelte Schnittlinien, weiß auf Papier. Sie entstehen nur im Browser aus den Daten im Arbeitsspeicher (keine Druckadresse, keine URL mit Passwort). `globals.css` blendet beim Drucken alles außer den Zetteln aus.
+- Tests: Bibliothek 26, Dialog 8, Zettel 5, Sammel-Seite 12, Zugangs-Wächter der Seite 5, Nutzerliste +4. Typprüfung, ESLint und `npm run build` sind sauber.
+
+### Entscheidungen und Abweichungen (bitte prüfen)
+1. **Bereich immer ausdrücklich gewählt** (Abweichung aus dem Tech Design, vom Nutzer bestätigt am 2026-11-24): Voreinstellung ist der aktuelle Bereich der Bereichsleiste; es gibt keine Zuordnung nach E-Mail-Domain.
+2. **Rollen:** einzeln Azubi, Lehrkraft, Super-Admin (mit Bestätigung); „Bereichs-Admin“ wird nicht mehr angeboten, weil PROJ-127 die Rolle überflüssig gemacht hat. In der Sammel-Anlage nur Azubi und Lehrkraft; ein Rollenwort „Super-Admin“ in der Datei ist ein Zeilenfehler.
+3. **Päckchen:** Der Browser sendet die OK-Zeilen in Päckchen zu je 25 mit gemeinsamer `batchId`, `batchIndex` und `batchCount`. Bei einem Fehler oder Verbindungsabbruch stoppt er; bisher Angelegtes bleibt, die übrigen Zeilen gibt es als „Nicht angelegte Zeilen als CSV“.
+4. **Verlassen-Schutz:** Beim Ergebnis fragt „Fertig“ bzw. „Zur Nutzerliste“ nach („Zugangsdaten wirklich verwerfen?“), und `beforeunload` warnt beim Neuladen oder Tab-Schließen. **Grenze:** Ein Klick in die Seitenleiste (App-interne Navigation) lässt sich im App Router nicht abfangen; dort gehen die Passwörter ohne Rückfrage verloren.
+5. **Passwörter in der CSV** werden bewusst nicht gegen Formeln entschärft (sonst stimmt das Passwort nicht); erzeugte Passwörter beginnen immer mit einem Buchstaben.
+6. Die Vorlage wird mit Semikolon und BOM erzeugt (deutsches Excel).
+
+### Vertrag für `/backend` (Schnittstellen, noch zu bauen)
+Alle drei prüfen **selbst** mit `requireSuperAdmin` (das Tor der Lehrkraft-Freigabeliste lässt `/api/admin/users/**` für Lehrkräfte durch). Fehler als `{ error: "…" }` mit passendem Status; die Meldung steht dem Super-Admin 1:1 im Dialog.
+
+| Aufruf | Anfrage | Antwort |
+|---|---|---|
+| `POST /api/admin/users/create` | `{ name, email, role: student\|teacher\|admin, departmentId, password }` | `{ account: { name, email, password, role, departmentName } }`; 409 „Konto existiert schon – Passwort ggf. über ‚Passwort neu vergeben‘ setzen.“ |
+| `POST /api/admin/users/create/preview` | `{ rows: [{ line, name, email, department, role }], defaultDepartmentId \| null }` | `{ rows: [{ line, name, email, departmentId, departmentName, role: student\|teacher\|null, status: ok\|warning\|error, reason }] }`, legt nichts an |
+| `POST /api/admin/users/create/bulk` | wie Vorschau, dazu `batchId`, `batchIndex`, `batchCount` | `{ created: [{ line, name, email, password, role, departmentName }], failed: [{ line, name, email, reason }] }`; jedes Konto neu prüfen, Passwörter serverseitig mit demselben Generator wie PROJ-58 |
+
+Hinweise für den Server: `department` aus der Datei ist Kürzel oder Name (leer → `defaultDepartmentId`); Rollenwörter über `parseBulkRole` aus der Bibliothek (leer = Azubi, sonst Zeilenfehler); höchstens 25 Zeilen je Päckchen und 300 je `batchId`; das Limit „3 Sammel-Anlagen pro Stunde“ zählt **verschiedene `batchId`**, nicht Aufrufe; Protokoll `user.create` je Konto (ohne Passwort) und `user.bulk_create` je Sammel-Anlage; Konto als bestätigt anlegen, Pflichtwechsel-Merker setzen, Pseudonym bei Lehrkraft/Admin; die hochgeladene Datei kommt nie an (nur Zeilen).
+
+## Implementation Notes – Backend (2026-11-24)
+
+**Stand:** Drei Schnittstellen gebaut und getestet. **Keine Migration nötig**, keine neue Tabelle, keine neue Rechte-Regel. Nicht deployt.
+
+### Schnittstellen
+| Route | Was sie tut |
+|---|---|
+| `POST /api/admin/users/create` | Ein Konto: prüft Eingaben (Zod), Bereich aktiv, legt an, gibt `{ account }` mit Start-Passwort und Bereichs-Adresse zurück. 409 bei vorhandener E-Mail. |
+| `POST /api/admin/users/create/preview` | Prüft bis 300 Zeilen gegen Bereiche und vorhandene Konten, legt nichts an. Schreibt einen Protokolleintrag „Konten-Liste geprüft“ nur mit Zahlen. |
+| `POST /api/admin/users/create/bulk` | Ein Päckchen (≤ 25 Zeilen): prüft jede Zeile erneut, legt die OK-Zeilen mit je eigenem Server-Passwort an (5 gleichzeitig), meldet `created` und `failed`. Das letzte Päckchen schreibt „Konten aus Liste angelegt“. |
+
+### Wie ein Konto entsteht (`create/_lib/create-account.ts`)
+1. `auth.admin.createUser` mit `email_confirm: true` (keine Mail), Name in `user_metadata.full_name`, Pflichtwechsel-Merker in `app_metadata` (wie PROJ-58).
+2. Den Profil-Datensatz legt der bestehende Datenbank-Trigger `on_auth_user_created` an (Rolle Azubi). Danach werden Rolle, Bereich und Anzeigename gesetzt. Weil der Bereich jetzt feststeht, ändert die Zuordnung nach Adresse beim ersten Login (`assignDepartmentIfMissing`) nichts mehr.
+3. Protokoll `user.create` (Rolle, Bereichskürzel, bei Sammel-Anlage `batch_id`; **kein Passwort, keine E-Mail**) über `writeAuditLogStrict`.
+4. Lehrkraft und Super-Admin bekommen ein Pseudonym (`ensurePseudonym`, PROJ-44).
+5. **Rücknahme:** Scheitert Schritt 2 oder 3, wird das Konto sofort wieder gelöscht. Es bleibt kein halbes Konto und keines ohne Protokoll.
+
+### Sicherheit und Grenzen
+- Alle drei Routen prüfen selbst `requireSuperAdmin` (die Lehrkraft-Freigabeliste lässt `/api/admin/users/**` durch; Lehrkräfte bekommen hier 403, getestet).
+- Passwörter erscheinen nur in der Antwort. Fehler-Logs enthalten nur Fehlercodes. Tests prüfen, dass weder Protokoll noch Antwort im Fehlerfall das Passwort enthalten.
+- **Limit „3 Sammel-Anlagen pro Stunde“:** gezählt werden verschiedene `batch_id` in den `user.create`-Einträgen der letzten Stunde. Eine schon laufende Anlage darf fertig werden. Höchstens 300 Konten je `batch_id`, 25 je Aufruf, 12 Päckchen. Dazu gilt das allgemeine Limit im Proxy (120 schreibende Aufrufe pro Minute).
+- Sammel-Anlage nur Azubi und Lehrkraft; „Admin“, „Super-Admin“, „Bereichs-Admin“ in der Rollen-Spalte sind Zeilenfehler („Admin-Rollen nur einzeln anlegen.“).
+- Vorhandene E-Mails (auch gesperrte Konten) kommen aus `auth.admin.listUsers` (seitenweise, wie die Nutzerliste). Bei vielen tausend Konten wäre das der erste Ort zum Beschleunigen.
+
+### Abweichungen und Ergänzungen
+- **Adresse auf dem Zettel je Bereich:** Hat ein Bereich eine eigene Domain, steht diese auf dem Zettel (`appUrl`), sonst die aktuelle Adresse. So landen Tourismus-Azubis gleich auf ihrer Seite, falls Tourismus eine eigene Adresse hat.
+- **Protokoll der Vorschau** (`user.bulk_preview`): nicht in der Spec. Der Wächtertest aus PROJ-127 verlangt für jede schreibende Verwaltungs-Route einen Eintrag, und die Vorschau verrät, welche E-Mails ein Konto haben. Nur Zahlen, keine Adressen.
+- **Zahlen in „Konten aus Liste angelegt“:** „angelegt“ zählt der Server. „Übersprungen“ und „fehlerhaft“ stammen aus der Vorschau im Browser, weil diese Zeilen den Server beim Anlegen nie erreichen. Bricht eine Sammel-Anlage vor dem letzten Päckchen ab, fehlt dieser Sammel-Eintrag; die `user.create`-Einträge stehen trotzdem.
+- **Lehrkräfte** werden mit dem Anzeigenamen angelegt; Vor- und Nachname fragt PROJ-121 beim ersten Login ab.
+- Neue Protokoll-Bezeichnungen: „Konto angelegt“, „Konten aus Liste angelegt“, „Konten-Liste geprüft“ (Änderungsprotokoll), „Konto angelegt“ (Nutzer-Detailseite).
+
+### Tests
+- Prüfregeln 18, Einzel-Anlage 18, Vorschau 7, Sammel-Anlage 14 (Rechte 401/403, Eingaben 400, Erfolgsfall, Rücknahme, Limits, erneute Prüfung, Protokoll ohne Passwort).
+- Gesamte Suite: 4632 von 4633 grün. Der eine Fehler (`werkzeugkiste-auszug.test.ts`, „nennt die Urheberin …“) hat mit PROJ-62 nichts zu tun; Datei und Test sind seit 2026-11-13 unverändert.
+- Typprüfung, ESLint und `npm run build` sauber.
 
 ## QA Test Results
 _To be added by /qa_

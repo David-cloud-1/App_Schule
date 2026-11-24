@@ -319,6 +319,14 @@
   }
 }
 
+/* PROJ-62: Beim Drucken der Zugangszettel zeigt die Seite nur die Zettel (data-zettel-druck),
+   der Rest (Seitenleiste, Dialoge, Tabelle) bleibt ausgeblendet. */
+@media print {
+  body:has([data-zettel-druck]) > *:not([data-zettel-druck]) {
+    display: none !important;
+  }
+}
+
 /* PROJ-45: Auf Touch-Geräten sind Buttons im Lehrkräfte-Bereich mindestens 44 × 44 px.
    Checkboxen, Schalter und Radios bekommen ihre Fläche über das Label. */
 @media (pointer: coarse) {
