@@ -446,3 +446,33 @@ describe('Nutzerliste – Mehrfachauswahl & Export (PROJ-61)', () => {
     expect(screen.getByRole('menuitem', { name: 'Alle sichtbaren (4)' })).toBeInTheDocument()
   })
 })
+
+describe('Nutzerliste – Konto anlegen (PROJ-62)', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  async function openMenu(role: TeacherRole) {
+    await setup(role)
+    const trigger = screen.queryByRole('button', { name: /Konto anlegen/ })
+    if (trigger) fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: 'mouse' })
+    return trigger
+  }
+
+  it('Super-Admin: grüne Hauptaktion mit „Einzeln“ und „Aus CSV-Liste“', async () => {
+    const trigger = await openMenu('admin')
+    expect(trigger).toBeInTheDocument()
+    expect(trigger?.className).toContain('bg-ws-green')
+    expect(await screen.findByRole('menuitem', { name: 'Einzeln' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Aus CSV-Liste' })).toHaveAttribute('href', '/admin/users/aus-liste')
+  })
+
+  it('„Einzeln“ öffnet den Dialog zum Anlegen', async () => {
+    await openMenu('admin')
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Einzeln' }))
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Konto anlegen')
+    expect(screen.getByLabelText('Anzeigename')).toBeInTheDocument()
+  })
+
+  it.each(['department_admin', 'teacher'] as const)('%s sieht keine Konto-anlegen-Aktion', async (role) => {
+    expect(await openMenu(role)).not.toBeInTheDocument()
+  })
+})

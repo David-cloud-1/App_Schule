@@ -48,6 +48,7 @@ import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminErrorState } from '@/components/admin/admin-states'
 import { SortableTableHead } from '@/components/admin/sortable-table-head'
 import { SetPasswordDialog } from '@/components/admin/set-password-dialog'
+import { CreateAccountMenu } from '@/components/admin/create-account-menu'
 import { DeleteAccountDialog } from '@/components/admin/delete-account-dialog'
 import { SELECT_CHECKBOX_CLASS, UserBulkBar } from '@/components/admin/user-bulk-bar'
 import { UserBulkDetailsDialog, UserBulkDialog, type BulkRequest } from '@/components/admin/user-bulk-dialog'
@@ -406,39 +407,42 @@ export default function AdminUsersPage() {
         description={loading && users.length === 0 ? 'Wird geladen …' : `${filtered.length} von ${users.length}`}
         actions={
           isSuperAdmin ? (
-            selectedVisible.length > 0 ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={exporting}
-                    className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
-                  >
-                    <Download className="size-5" />
-                    Exportieren
-                    <ChevronDown className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-ws-surface border-ws-line text-ws-text">
-                  <DropdownMenuItem onClick={() => handleExport(true)} className="focus:bg-ws-bg focus:text-ws-text">
-                    Nur Auswahl ({selectedVisible.length})
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport(false)} className="focus:bg-ws-bg focus:text-ws-text">
-                    Alle sichtbaren ({filtered.length})
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button
-                variant="outline"
-                disabled={exporting || loading || filtered.length === 0}
-                onClick={() => handleExport(false)}
-                className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
-              >
-                {exporting ? <Loader2 className="size-5 animate-spin" /> : <Download className="size-5" />}
-                Exportieren
-              </Button>
-            )
+            <>
+              <CreateAccountMenu onCreated={load} />
+              {selectedVisible.length > 0 ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={exporting}
+                      className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                    >
+                      <Download className="size-5" />
+                      Exportieren
+                      <ChevronDown className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-ws-surface border-ws-line text-ws-text">
+                    <DropdownMenuItem onClick={() => handleExport(true)} className="focus:bg-ws-bg focus:text-ws-text">
+                      Nur Auswahl ({selectedVisible.length})
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => handleExport(false)} className="focus:bg-ws-bg focus:text-ws-text">
+                      Alle sichtbaren ({filtered.length})
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled={exporting || loading || filtered.length === 0}
+                  onClick={() => handleExport(false)}
+                  className="min-h-11 border-ws-line bg-ws-surface text-ws-text hover:bg-ws-raised"
+                >
+                  {exporting ? <Loader2 className="size-5 animate-spin" /> : <Download className="size-5" />}
+                  Exportieren
+                </Button>
+              )}
+            </>
           ) : undefined
         }
       />
