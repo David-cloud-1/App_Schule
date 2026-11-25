@@ -13,6 +13,7 @@ import { Feld, Liste, TextListe, liste, s, texte, type Eintrag, type FormProps }
 import { BildAuswahl } from '@/components/werkzeugkiste/editor/bild-dialog'
 import { bildName, useGrossesBild } from '@/components/werkzeugkiste/editor/material-bilder'
 import { DiagrammFormular, TabelleFormular } from '@/components/werkzeugkiste/editor/editor-formulare-tabelle'
+import { EinbettenFormular } from '@/components/werkzeugkiste/editor/editor-formulare-einbetten'
 import { cn } from '@/lib/utils'
 import { BildBeschriften } from '@/components/werkzeugkiste/editor/bild-beschriften'
 import {
@@ -1324,6 +1325,7 @@ export function SelbsteinschaetzungFormular({ block, onChange }: FormProps) {
 export const KATALOG_FORMULARE: Record<string, (p: FormProps) => React.ReactNode> = {
   tabelle: TabelleFormular,
   diagramm: DiagrammFormular,
+  einbetten: EinbettenFormular,
   image: BildFormular,
   gallery: GalerieFormular,
   drag_drop: ZuordnenFormular,

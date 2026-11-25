@@ -35,13 +35,13 @@ const zeilen = () => [...document.querySelectorAll<HTMLElement>('[data-katalog-z
 const zeilenIds = () => zeilen().map((z) => z.getAttribute('data-katalog-zeile'))
 
 describe('Katalog-Fenster (PROJ-90, Liste mit Vorschau aus PROJ-114 Schritt 5)', () => {
-  it('zeigt sieben Gruppen und alle 35 Typen in 29 Zeilen (verwandte Typen als Familie)', () => {
+  it('zeigt sieben Gruppen und alle 36 Typen in 30 Zeilen (verwandte Typen als Familie)', () => {
     katalog()
     expect(screen.getByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
     for (const g of ['Lesen & Nachschlagen', 'Abfragen', 'Lücken & Wörter', 'Zuordnen & Ordnen', 'Rechnen', 'Spiele & Rätsel', 'Selbstcheck & Wiederholen']) {
       expect(screen.getByRole('heading', { name: g })).toBeInTheDocument()
     }
-    expect(zeilen()).toHaveLength(29)
+    expect(zeilen()).toHaveLength(30)
     const typen = zeilen().flatMap((z) => (z.getAttribute('data-katalog-typen') ?? '').split(' '))
     expect(typen.sort()).toEqual(KATALOG.map((e) => e.typ).sort())
     // „Gut für“ steht einmal: in der Vorschau des gewählten Typs
@@ -70,7 +70,7 @@ describe('Katalog-Fenster (PROJ-90, Liste mit Vorschau aus PROJ-114 Schritt 5)',
     fireEvent.change(screen.getByLabelText('Aufgabentyp suchen'), { target: { value: 'zzzz' } })
     expect(screen.getByText('Kein Aufgabentyp passt zu „zzzz“.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Suche löschen/ }))
-    expect(zeilen()).toHaveLength(29)
+    expect(zeilen()).toHaveLength(30)
   })
 
   it('Klick zeigt die Erklärung, erst „Einfügen“ fügt ein', () => {

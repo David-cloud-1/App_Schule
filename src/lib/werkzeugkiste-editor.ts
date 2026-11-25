@@ -144,6 +144,7 @@ export const TYP_NAMEN: Record<string, string> = {
   selbsteinschaetzung: 'Selbsteinschätzung',
   tabelle: 'Tabelle',
   diagramm: 'Diagramm',
+  einbetten: 'Einbetten',
 }
 
 export function typName(typ: string): string {

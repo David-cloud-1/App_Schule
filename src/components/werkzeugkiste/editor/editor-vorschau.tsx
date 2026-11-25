@@ -53,7 +53,7 @@ export interface DateiZielMarke {
 /**
  * Vorschau des Entwurfs (PROJ-89): die echte Seite mit funktionierenden
  * Aufgaben, abgeschottet in einem Rahmen ohne eigene Herkunft
- * (`sandbox="allow-scripts"` ohne `allow-same-origin`). Die Seite kann ihre
+ * (`sandbox` mit Skripten und neuen Tabs, aber ohne `allow-same-origin`; PROJ-109). Die Seite kann ihre
  * Skripte ausführen, aber weder Anmeldedaten noch Inhalte der App lesen.
  *
  * Nur Text-Nachrichten gehen hin und her (PROJ-96, PROJ-101):
@@ -428,7 +428,7 @@ export function EditorVorschau({
             ref={rahmen}
             title="Vorschau der Seite"
             srcDoc={html}
-            sandbox="allow-scripts"
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             referrerPolicy="no-referrer"
             className="w-full flex-1 bg-white"
           />

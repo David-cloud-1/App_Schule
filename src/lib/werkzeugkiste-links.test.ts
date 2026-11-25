@@ -68,10 +68,10 @@ describe('Öffentlicher Link: Zeilen aus der Datenbank', () => {
 
 describe('Öffentliche Auslieferung: Kopfzeilen (PROJ-67)', () => {
   it('sperrt die Seite in eine Sandbox ohne eigene Herkunft', () => {
-    expect(OEFFENTLICH_CSP).toContain('sandbox allow-scripts allow-modals')
+    expect(OEFFENTLICH_CSP).toContain('sandbox allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox')
     // allow-same-origin würde der Seite Cookies und Schnittstellen der App öffnen
     expect(OEFFENTLICH_CSP).not.toContain('allow-same-origin')
-    expect(OEFFENTLICH_CSP).not.toContain('allow-popups')
+    // Nur neue Tabs, nie die App-Seite selbst umlenken oder Formulare abschicken
     expect(OEFFENTLICH_CSP).not.toContain('allow-top-navigation')
     expect(OEFFENTLICH_CSP).not.toContain('allow-forms')
   })

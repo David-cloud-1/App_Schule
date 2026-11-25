@@ -90,6 +90,14 @@ const ROH: Roh[] = [
     ohneAuswertung: true,
   },
   {
+    typ: 'einbetten',
+    gruppe: 'lesen',
+    beschreibung: 'Ein Link zu YouTube, LearningApps, Kahoot und ähnlichen Angeboten als Karte mit QR-Code. Der Inhalt lädt erst nach einem Klick.',
+    gutFuer: 'ein Video oder eine Online-Übung an der passenden Stelle zeigen, ohne dass die Schüler suchen müssen.',
+    suchbegriffe: ['Einbetten', 'Video', 'YouTube', 'Kahoot', 'LearningApps', 'Link', 'QR-Code', 'Padlet', 'Mentimeter', 'Internet'],
+    ohneAuswertung: true,
+  },
+  {
     typ: 'calculation_example',
     gruppe: 'lesen',
     beschreibung: 'Eine vorgerechnete Aufgabe mit Formel, Rechenschritten und Ergebnis.',

@@ -140,7 +140,7 @@ describe('Baukasten-Editor', () => {
   it('zeigt die echte Seite abgeschottet in der Vorschau', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = await screen.findByTitle('Vorschau der Seite')
-    expect(rahmen).toHaveAttribute('sandbox', 'allow-scripts')
+    expect(rahmen).toHaveAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox')
     expect(rahmen.getAttribute('srcdoc')).toContain('<p>Seite</p>')
     expect(rahmen.getAttribute('srcdoc')).toContain('addEventListener("message"')
   })

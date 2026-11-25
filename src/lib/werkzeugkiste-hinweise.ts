@@ -31,6 +31,7 @@ const TITEL: Record<string, string> = {
   'Memory ohne genug Paare': 'Das Memory hat zu wenige Paare.',
   'Zu wenige Paare': 'Zu wenige Paare. Ergänze weitere.',
   'Zu wenige Antwortoptionen': 'Zu wenige Antworten zur Auswahl. Ergänze weitere.',
+  'Einbettung ohne Titel': 'Die Einbettung hat keinen Titel. Gib der Karte eine Überschrift.',
   'Zu wenige Optionen': 'Zu wenige Antworten zur Auswahl. Ergänze weitere.',
 }
 

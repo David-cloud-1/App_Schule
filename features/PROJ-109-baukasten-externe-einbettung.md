@@ -1,6 +1,6 @@
 # PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-25
 
@@ -175,6 +175,26 @@ Deploy wie immer: **Kern zuerst**, dann die App (aus der Kopie, keine fremden Da
 ### Offene Punkte vor dem Bau
 - Adresse des Schul-Moodle für die Anbieterliste.
 - Datenschutz-Text mit der Schule abstimmen (kann parallel zum Bau laufen, muss vor dem Livegang fertig sein).
+
+## Implementation Notes (Frontend, 2026-11-25)
+
+**Gebaut (App-Seite):**
+- `src/lib/werkzeugkiste-einbettung.ts` (+ Test): Anbieterliste, Linkprüfung (nur https, keine IP/lokalen Namen/Zugangsdaten), Anbieter- und Kahoot-PIN-Erkennung, Zeitangaben, Titelvorschlag.
+- `editor-formulare-einbetten.tsx` (+ Test): Formular mit Link, Titel, Darstellung, Start-/Endzeit, Arbeitsauftrag, Hinweisen.
+- Katalog-Eintrag `einbetten` (36 Einträge), Beispiel-JSON, Symbol, Skizze, Prüfstellen-Übersetzung „Einbettung ohne Titel“.
+- Sandbox-Rechte (E3): öffentlicher Link und Editor-Vorschau erlauben neue Tabs (`allow-popups`, `allow-popups-to-escape-sandbox`), weiter ohne `allow-same-origin`.
+
+**Feldnamen des Blocks (der Kern muss dieselben lesen):** `type: einbetten`, `url`, `titel`, `darstellung` (`einbetten` | `link`), `start`, `ende` (Text, z. B. „1:30“), `description` (Arbeitsauftrag).
+
+**Abweichungen:**
+- Anbieterliste ohne Moodle (zurückgestellt, Nutzer 2026-11-25).
+- Kahoot und Google/Microsoft Forms starten mit „Nur Link und QR-Code“, alle anderen mit „Einbetten“. `forms.gle` (Kurzlink) ist nur Link/QR.
+- Arbeitsauftrag ist ein Formularfeld, noch kein direktes Tippen in der Seite (PROJ-103).
+
+**Offen:**
+- Kern: Baustein `einbetten` in `seite.py` samt QR-Code (segno), Anbieterliste, Sandbox-Erkennung, Druck. Der Test „stimmt mit den Bausteinen des Kerns überein“ (`werkzeugkiste-katalog.test.ts`) ist bis dahin rot.
+- App: Schnittstelle „Link erreichbar?“ (beide Freigabelisten in `roles.ts`), Livegang erst nach Datenschutz-Text.
+- Im Test `baukasten-editor.test.tsx` schlug „ohne Zugriff …“ (403, 5,6-s-Wartezeit) in meinem Lauf fehl. Er berührt den neuen Block nicht, ob er schon vorher unter Last wackelte, ist nicht geprüft.
 
 ## QA Test Results
 _To be added by /qa_

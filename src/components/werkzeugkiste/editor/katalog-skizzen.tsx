@@ -469,6 +469,16 @@ const SKIZZEN: Record<string, () => ReactNode> = {
       ))}
     </Kette>
   ),
+  einbetten: () => (
+    <Kette>
+      <rect x={14} y={8} width={92} height={32} rx={3} className="fill-none stroke-ws-line" strokeWidth={1.2} />
+      <path d="M54 16 L68 24 L54 32 Z" className="fill-ws-blue" />
+      <rect x={14} y={46} width={20} height={20} rx={2} className="fill-none stroke-ws-text" strokeWidth={1.2} />
+      <path d="M18 50h5v5h-5zM25 50h5v5h-5zM18 57h5v5h-5zM26 58h4v4h-4z" className="fill-ws-text" />
+      <Z x={42} y={52} w={50} t="muted" />
+      <Z x={42} y={60} w={34} t="muted" />
+    </Kette>
+  ),
   selbsteinschaetzung: () => (
     <Kette>
       {[8, 30, 52].map((y, i) => (

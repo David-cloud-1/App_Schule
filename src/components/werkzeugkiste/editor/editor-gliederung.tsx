@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
+  ExternalLink,
   FileText,
   BarChart3,
   GraduationCap,
@@ -136,6 +137,7 @@ function TypIcon({ typ }: { typ: string }) {
   if (typ === 'image' || typ === 'bildzuordnung' || typ === 'image_sequencing') return <BildIcon className={k} aria-hidden />
   if (typ === 'tabelle') return <Table2 className={k} aria-hidden />
   if (typ === 'diagramm') return <BarChart3 className={k} aria-hidden />
+  if (typ === 'einbetten') return <ExternalLink className={k} aria-hidden />
   if (typ === 'interactive_video') return <Video className={k} aria-hidden />
   if (typ.includes('calculation') || typ === 'arithmetic_quiz' || typ === 'rechenweg' || typ === 'schaetzrunde')
     return <Calculator className={k} aria-hidden />

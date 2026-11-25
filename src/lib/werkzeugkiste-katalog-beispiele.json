@@ -574,5 +574,12 @@
         ]
       }
     ]
+  },
+  "einbetten": {
+    "type": "einbetten",
+    "url": "https://learningapps.org/",
+    "titel": "LearningApp ausprobieren",
+    "darstellung": "link",
+    "description": "Öffne die Übung und löse sie in Ruhe."
   }
 }

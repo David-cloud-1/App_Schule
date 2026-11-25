@@ -52,11 +52,14 @@ export function linkAdminZeile(z: LinkAdminRoh): LinkAdminZeile {
  * Die Seite enthält Text aus einer KI-Antwort und braucht Skripte. Deshalb:
  * Sandbox OHNE `allow-same-origin` — die Seite bekommt eine fremde Herkunft und
  * erreicht weder Cookies noch Speicher noch Schnittstellen der App. Erlaubt
- * sind nur Skripte (Aufgaben) und Dialoge (Drucken, „Eingaben löschen?“).
+ * sind nur Skripte (Aufgaben), Dialoge (Drucken, „Eingaben löschen?“) und
+ * neue Tabs (Links zu Video, Kahoot usw.).
  * Keine Verbindung ins Netz, keine Formulare, nur eingebettete Bilder.
  */
 export const OEFFENTLICH_CSP = [
-  'sandbox allow-scripts allow-modals',
+  // Neue Tabs (PROJ-109): Links der Seite öffnen sich in einem normalen Tab ohne Sperre.
+  // Die Seite selbst bleibt abgeschottet; allow-same-origin gibt es weiter nie.
+  'sandbox allow-scripts allow-modals allow-popups allow-popups-to-escape-sandbox',
   "default-src 'none'",
   "script-src 'unsafe-inline'",
   "style-src 'unsafe-inline'",

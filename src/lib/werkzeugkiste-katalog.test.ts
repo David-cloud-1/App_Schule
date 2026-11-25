@@ -20,10 +20,10 @@ import {
 } from './werkzeugkiste-katalog'
 
 describe('Katalog (PROJ-90)', () => {
-  it('zeigt 35 Einträge: alle Typen außer single_choice (E8), jeder genau einmal', () => {
-    expect(KATALOG).toHaveLength(35)
+  it('zeigt 36 Einträge: alle Typen außer single_choice (E8), jeder genau einmal', () => {
+    expect(KATALOG).toHaveLength(36)
     const typen = KATALOG.map((e) => e.typ)
-    expect(new Set(typen).size).toBe(35)
+    expect(new Set(typen).size).toBe(36)
     expect(typen.sort()).toEqual(Object.keys(TYP_NAMEN).filter((t) => t !== 'single_choice').sort())
   })
 
@@ -50,9 +50,9 @@ describe('Katalog (PROJ-90)', () => {
     }
   })
 
-  it('markiert nur Lehrtext, Bild, Galerie, Tabelle, Diagramm, Aufklappen, Rechenbeispiel und Umdreh-Karten als nicht ausgewertet', () => {
+  it('markiert nur Lehrtext, Bild, Galerie, Tabelle, Diagramm, Einbetten, Aufklappen, Rechenbeispiel und Umdreh-Karten als nicht ausgewertet', () => {
     expect(KATALOG.filter((e) => !e.wirdAusgewertet).map((e) => e.typ).sort()).toEqual(
-      ['accordion', 'calculation_example', 'dialog_cards', 'diagramm', 'gallery', 'image', 'tabelle', 'text'].sort(),
+      ['accordion', 'calculation_example', 'dialog_cards', 'diagramm', 'einbetten', 'gallery', 'image', 'tabelle', 'text'].sort(),
     )
   })
 
@@ -87,7 +87,7 @@ describe('Suche', () => {
 
   it('liefert ohne Treffer eine leere Liste und mit leerer Suche alles', () => {
     expect(sucheKatalog('xyzabc')).toEqual([])
-    expect(sucheKatalog('  ')).toHaveLength(35)
+    expect(sucheKatalog('  ')).toHaveLength(36)
   })
 
   it('filtert im Kapiteltest auf die drei erlaubten Typen', () => {
