@@ -1,6 +1,6 @@
 # PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-25
 
@@ -215,8 +215,79 @@ Deploy wie immer: **Kern zuerst**, dann die App (aus der Kopie, keine fremden Da
 
 **Vor dem Livegang:** Kern zuerst deployen (`vercel deploy --prod`, aus der Kopie ohne fremde Dateien), dann die App. Datenschutz-Text mit der Schule abstimmen. Browser-Test durch den Nutzer: heruntergeladene Datei, öffentlicher Link (Sandbox), Handy-Scan des QR-Codes vom Ausdruck.
 
-## QA Test Results
-_To be added by /qa_
+## QA Test Results (2026-11-25)
+
+**Tester:** QA Engineer (AI), Code-Prüfung ohne Dev-Server und ohne Playwright (der MacBook stürzt sonst ab). Browser, Handy-Scan und Moodle prüft der Nutzer.
+
+**Automatisch:** `npm test` 349 Dateien, 4712 Tests grün (auch „stimmt mit den Bausteinen des Kerns überein“). Kern: `kern_einbettung_test` 24, `prompt_seite_test` 10, `kern_vorschau_marken_test` 9 grün. `tsc` und ESLint ohne Fehler. Zusätzlich Stichproben direkt gegen `einbett_block.py` (Adressbau je Anbieter, Escaping, Täuschungs-Hosts wie `youtube.com.evil.com`).
+
+### Acceptance Criteria
+
+| Kriterium | Ergebnis |
+|---|---|
+| Katalog-Eintrag, Feld „Link einfügen“ | ✅ per Test |
+| Anbieter erkannt, Name + Symbol, Titelvorschlag änderbar | ⚠️ Name und Titel ja; ein eigenes Symbol je Anbieter gibt es nicht, nur ein allgemeines (BUG-6) |
+| Wahl „Einbetten (nach Klick)“ / „Nur Link und QR-Code“, sonst nur Link mit Hinweis | ✅ |
+| Arbeitsauftrag, Start-/Endzeit bei Video | ✅ (Arbeitsauftrag als Formularfeld, Abweichung dokumentiert) |
+| Ungültige Links abgelehnt (kein https, `javascript:`, IP, lokal) | ✅ App und Kern; Kern prüft zusätzlich per `ipaddress` |
+| YouTube auf `youtube-nocookie.com` | ✅ Kern baut `/embed/<ID>` neu, Playlist-Teile fallen weg |
+| Karte: Titel, Anbieter, Datenschutz-Hinweis, „Inhalt laden“, Link, QR | ✅ (Hinweis-Text bei YouTube ungenau, BUG-2) |
+| Fenster erst nach Klick, wenig Rechte, Seitenverhältnis | ✅ vor dem Klick kein `<iframe>`, nur Datenattribut; keine Kamera/Mikrofon/Autoplay |
+| Offline-Hinweis, Link + QR bleiben | ✅ im Code (`navigator.onLine` + 10 s); Browser-Test offen |
+| QR in der Datei, ≥ 3 cm im Druck | ✅ segno-SVG, 3,8 cm |
+| Druck: Titel, Link als Text, QR, kein Fenster | ✅ Druckregeln |
+| Zählt nicht zum Fortschritt | ✅ keine Lösung, im Kern passiv |
+| Editor-Vorschau lädt nichts von außen | ✅ Sandbox ohne Speicher → nur „In neuem Tab öffnen“ |
+| Prüfstelle: ohne Titel / Link nicht erreichbar (sperrt nicht) | ✅ Titel im Kern; Erreichbarkeit beim Veröffentlichen |
+
+**Edge Cases:** Kahoot-PIN ✅ · Anbieter verbietet Einbettung → Zeile „Wird hier nicht angezeigt?“ ✅ · lange Links (Fehlerkorrektur L, Hinweis ab 300 Zeichen) ✅ · öffentlicher Link (`allow-popups-to-escape-sandbox`, Links mit `noopener`) ✅ im Code, Browser-Test offen · gelöschter Inhalt: nur 404/410/5xx erkannt, YouTube nicht (dokumentiert).
+
+### Security Audit
+- ✅ Schnittstelle `einbettung/pruefen` nur für Lehrkräfte/Admins, Eingabe per Zod begrenzt (10 Links, 2000 Zeichen), Rate-Limit „teuer“.
+- ✅ Kein SSRF: Abruf nur bei Hosts der Liste, keine Weiterleitungen, 4 s, Inhalt wird nicht gelesen.
+- ✅ XSS: Titel, Link, Arbeitsauftrag werden im Kern maskiert (Probe mit `"><script>` und `<b>`).
+- ✅ Einbett-Adresse aus geprüften Teilen neu gebaut, nie der Link direkt; `allow-same-origin` nur im Anbieter-Fenster, nie in den Sandboxen der App.
+- ℹ️ Die Sandbox des öffentlichen Links darf jetzt Tabs ohne Sperre öffnen (E3, so entschieden). Eine Seite kann damit beliebige Adressen in einem neuen Tab öffnen, was sie über Links ohnehin schon konnte. Kein Befund.
+
+### Bugs Found
+
+#### BUG-1: „Immer laden“ gilt für alle Seiten, nicht nur für diese (Medium)
+- Schlüssel ist `einb-immer-<anbieter>` ohne Seitenbezug. Der Fortschritt dagegen nutzt `seite-<titel>`.
+- Schritte: Seite A (Moodle oder lokale Datei) → Haken „Inhalte von youtube-nocookie.com auf dieser Seite immer laden“ → Seite B auf derselben Adresse öffnen.
+- Erwartet: Seite B fragt erneut. Tatsächlich: Seite B lädt YouTube sofort, ohne Klick. Der Text auf dem Kästchen verspricht etwas anderes (Datenschutz, Minderjährige).
+- Dazu: „Eingaben löschen“ setzt den Haken nicht zurück.
+- **Priorität:** vor dem Livegang beheben (Schlüssel an `SPEICHER` hängen, beim Zurücksetzen mitlöschen).
+
+#### BUG-2: Datenschutz-Hinweis bei YouTube nennt den falschen Empfänger (Medium)
+- Anzeige-Host ist `youtube-nocookie.com`. „In neuem Tab öffnen“ und der QR-Code führen aber auf `youtube.com`/`youtu.be`. In der Sandbox und bei „Nur Link“ steht dann „Beim Öffnen werden Daten an youtube-nocookie.com übertragen.“, der Tab geht aber zu youtube.com.
+- **Priorität:** vor dem Livegang, zusammen mit dem Datenschutz-Text der Schule.
+
+#### BUG-3: Padlet, Mentimeter, Google Forms bekommen keine echte Einbett-Adresse (Medium, Browser-Test entscheidet)
+- Für diese Anbieter setzt der Kern den Link der Lehrkraft (bereinigt) ins Fenster, z. B. `padlet.com/lehrer/abc123` statt `padlet.com/embed/…`, Google Forms ohne `?embedded=true`. Viele Anbieter verbieten das Einbetten normaler Seiten, dann bleibt das Fenster leer (die Zeile „In neuem Tab öffnen“ fängt das auf).
+- **Priorität:** beim Browser-Test je Anbieter prüfen; was leer bleibt, Adress-Neubau ergänzen oder auf „nur Link“ setzen.
+
+#### BUG-4: App und Kern prüfen Links unterschiedlich streng (Low)
+- Umlaut-Domain (`https://bücher.de/x`) oder Leerzeichen im Link: Der Editor nimmt den Link an („nicht auf der Liste, Link und QR-Code“). Der Kern lehnt ihn ab, und der Block fehlt in der Schülerseite ganz (nur eine Warnung im Bau).
+- Ähnlich: `https://www.youtube.com/` ohne Video zeigt im Editor „Erkannt: YouTube … Einbetten“, der Kern fällt still auf „nur Link“ zurück.
+- **Priorität:** nächster Durchgang.
+
+#### BUG-5: Erreichbarkeitsprüfung verlängert das Veröffentlichen, Schnittstelle unbenutzt (Low)
+- Die Prüfung läuft nach der Kern-Prüfung statt parallel dazu (bis zu 4 s mehr).
+- `POST /api/admin/werkzeugkiste/einbettung/pruefen` wird von keiner Stelle der App aufgerufen. Sie ist abgesichert, aber im Moment toter Code.
+- **Priorität:** nice to have.
+
+#### BUG-6: Kein Symbol je Anbieter im Formular (Low)
+- Das Kriterium nennt „Name und Symbol“. Das Formular zeigt immer dasselbe `ExternalLink`-Symbol.
+- **Priorität:** nice to have.
+
+### Nicht geprüft (Browser-Test durch den Nutzer)
+Chrome/Firefox/Safari, 375/768/1440 px, heruntergeladene Datei (`file://`, YouTube-Fehler 153?), Moodle, öffentlicher Link, Handy-Scan vom Ausdruck, Offline-Hinweis.
+
+### Summary
+- **Acceptance Criteria:** 13/14 erfüllt, 1 teilweise (Symbol)
+- **Bugs:** 6 (0 Critical, 0 High, 3 Medium, 3 Low)
+- **Security:** bestanden
+- **Production Ready:** JA im Sinne der Regel (keine Critical/High). **Empfehlung:** BUG-1 und BUG-2 vor dem Livegang beheben (beide betreffen den Datenschutz-Text, der ohnehin noch abgestimmt wird), BUG-3 im Browser-Test klären. Kern zuerst deployen.
 
 ## Deployment
 _To be added by /deploy_

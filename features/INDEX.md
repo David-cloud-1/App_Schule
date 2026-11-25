@@ -126,7 +126,7 @@
 | PROJ-106 | Baukasten – Bild beschriften & markieren | Deployed | [PROJ-106-baukasten-bild-beschriften-markieren.md](PROJ-106-baukasten-bild-beschriften-markieren.md) | 2026-11-16 |
 | PROJ-107 | Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen) | Deployed | [PROJ-107-baukasten-bild-als-aufgabe.md](PROJ-107-baukasten-bild-als-aufgabe.md) | 2026-11-16 |
 | PROJ-108 | Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Deployed | [PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md](PROJ-108-baukasten-aus-materialien-regal-uebernehmen.md) | 2026-11-16 |
-| PROJ-109 | Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung | In Progress | [PROJ-109-baukasten-externe-einbettung.md](PROJ-109-baukasten-externe-einbettung.md) | 2026-11-16 |
+| PROJ-109 | Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung | Approved | [PROJ-109-baukasten-externe-einbettung.md](PROJ-109-baukasten-externe-einbettung.md) | 2026-11-16 |
 | PROJ-110 | Baukasten – Quiz-Show-Block im Kahoot-Stil (spielbar, offline) | Planned | [PROJ-110-baukasten-quiz-show-block.md](PROJ-110-baukasten-quiz-show-block.md) | 2026-11-16 |
 | PROJ-111 | Baukasten – Eine Bedienstelle statt drei | Deployed | [PROJ-111-baukasten-eine-bedienstelle.md](PROJ-111-baukasten-eine-bedienstelle.md) | 2026-11-16 |
 | PROJ-112 | Baukasten – Vorschau schneller | Deployed | [PROJ-112-baukasten-vorschau-schneller.md](PROJ-112-baukasten-vorschau-schneller.md) | 2026-11-16 |
