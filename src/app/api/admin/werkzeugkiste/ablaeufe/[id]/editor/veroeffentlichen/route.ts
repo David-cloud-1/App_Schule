@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireTeacherOrAdmin } from '@/app/api/admin/_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
+import { erreichbarkeitsBefunde } from '@/lib/werkzeugkiste-einbettung-server'
 import { aktualisiereSpeicher } from '@/lib/werkzeugkiste-materialien-server'
 import { eigeneFuerBau, loescheUnbenutzteEigene } from '@/lib/werkzeugkiste-bilder-server'
 import {
@@ -106,6 +107,8 @@ export async function POST(request: Request, { params }: Kontext) {
     ])
     yaml = y
     befunde = befundeAusKern(pruefRoh)
+    // PROJ-109: Links der Einbett-Blöcke prüfen (nur Hinweise, sperrt nie, höchstens ~4 s)
+    befunde = [...befunde, ...(await erreichbarkeitsBefunde(zeile.entwurf).catch(() => []))]
     // 2. In Zwischendateien bauen: Ist die Seite zu groß oder der Kern nicht erreichbar, ändert sich nichts
     bau = await kern<BauErgebnis>('/api/editor/bauen', {
       ...gemeinsam,

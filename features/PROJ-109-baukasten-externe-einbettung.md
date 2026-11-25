@@ -196,6 +196,25 @@ Deploy wie immer: **Kern zuerst**, dann die App (aus der Kopie, keine fremden Da
 - App: Schnittstelle „Link erreichbar?“ (beide Freigabelisten in `roles.ts`), Livegang erst nach Datenschutz-Text.
 - Im Test `baukasten-editor.test.tsx` schlug „ohne Zugriff …“ (403, 5,6-s-Wartezeit) in meinem Lauf fehl. Er berührt den neuen Block nicht, ob er schon vorher unter Last wackelte, ist nicht geprüft.
 
+## Implementation Notes (Backend, 2026-11-25)
+
+**Kern** (Repo Werkzeugkiste, Zweig `vercel-kern`, noch nicht deployt):
+- Neues Modul `einbett_block.py` (Name bewusst nicht `einbettung.py`: Das gehört der Schulrecht-Suche). Linkprüfung, Anbieterliste (Kopie der App-Liste, Vergleichstest), Neuaufbau der Einbett-Adresse (YouTube immer `youtube-nocookie.com`), QR-Code per `segno==1.6.6` als SVG in der Datei, Datenschutz-Texte an einer Stelle (Konstanten oben im Modul).
+- `seite.py`: Baustein `einbetten` (nicht prüfbar), CSS, Druckregeln (QR 3,8 cm, kein Fenster), Laufzeit. Vor dem Klick gibt es kein `<iframe>`, kein Bild und keinen Abruf; die Einbett-Adresse steht nur als Datenattribut. Abgeschottet läuft die Seite, wenn `localStorage` nicht zugänglich ist; dann ist „In neuem Tab öffnen“ der Hauptknopf (E2). „Immer laden“ je Anbieter im Browser (V2, nur außerhalb der Sandbox). Fenster mit minimalen Rechten, `allow-forms` nur bei Google/Microsoft Forms. Nach dem Laden bleibt die Zeile „Wird hier nicht angezeigt? In neuem Tab öffnen“. Internet-Hinweis bei fehlender Verbindung oder nach 10 s ohne Laden.
+- `qualitaet.py`: Befund „Einbettung ohne Titel“ (Tipp), Typ als nur-Seite und passiv.
+- Tests: `kern_einbettung_test.py` (24). Angepasst: `prompt_seite_test.py` (KI schreibt keine `einbetten`-Blöcke, sie darf keine Links erfinden), `kern_vorschau_marken_test.py` (Prüfsumme der veröffentlichten Seite neu gesetzt, nur Ergänzungen).
+
+**App:**
+- `POST /api/admin/werkzeugkiste/einbettung/pruefen` (Lehrkraft/Admin, Präfix steht schon in `roles.ts`, deshalb kein Eintrag nötig): prüft nur Anbieter der Liste, folgt keinen Weiterleitungen, 4-s-Grenze, höchstens 10 Links, eigene Rate-Limit-Klasse „teuer“.
+- Beim Veröffentlichen hängt der Editor Hinweise „Link nicht erreichbar“ an die Prüfstelle an (sperrt nie; Fehler der Prüfung werden verschluckt).
+- Tests: `werkzeugkiste-einbettung-server.test.ts` (Status-Einordnung, kein Abruf bei Fremden, Befunde mit Stelle).
+
+**Abweichungen / Hinweise:**
+- „Link nicht erreichbar“ erkennt nur eindeutig Totes (404, 410, 5xx, Namen nicht auflösbar). 401/403/429 und Zeitüberschreitung zählen als „nicht geprüft“. YouTube liefert auch für gelöschte Videos 200, das wird nicht erkannt.
+- Das Fenster lädt nach Klick mit `referrerpolicy=strict-origin-when-cross-origin`. Ob YouTube aus einer lokal geöffneten Datei (`file://`) ohne Fehler spielt, ist im Browser zu prüfen (Design Nr. 10).
+
+**Vor dem Livegang:** Kern zuerst deployen (`vercel deploy --prod`, aus der Kopie ohne fremde Dateien), dann die App. Datenschutz-Text mit der Schule abstimmen. Browser-Test durch den Nutzer: heruntergeladene Datei, öffentlicher Link (Sandbox), Handy-Scan des QR-Codes vom Ausdruck.
+
 ## QA Test Results
 _To be added by /qa_
 
