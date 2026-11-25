@@ -1,8 +1,8 @@
 # PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-16
-**Last Updated:** 2026-11-16
+**Last Updated:** 2026-11-25
 
 ## Idee in einem Satz
 Ein Block „Einbetten“ nimmt einen Link zu Kahoot, LearningApps, YouTube, Padlet und ähnlichen Angeboten auf. In der Seite zeigt er zuerst eine Karte mit Datenschutz-Hinweis, Link und QR-Code, und erst nach einem Klick lädt das eingebettete Fenster.
@@ -76,7 +76,105 @@ Teil der Reihe „Baukasten direkt“, Übersicht und Leitbild in PROJ-101.
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-25, Entscheidungen E2–E4 vom Nutzer am selben Tag.
+
+### Weitere Entscheidungen (Nutzer, 2026-11-25)
+- **E2 – Sandbox:** Läuft die Seite abgeschottet (öffentlicher Link, Editor-Vorschau), erkennt sie das selbst und zeigt **„In neuem Tab öffnen“ als Hauptknopf**. Eingebettet wird nur dort, wo die Seite normal läuft (heruntergeladene Datei, Moodle, Regal-Ansicht außerhalb der Sandbox).
+- **E3 – Neue Tabs im öffentlichen Link:** Die Sandbox bekommt zusätzlich das Recht, neue Tabs zu öffnen, und diese Tabs laufen ohne Sperre. Das behebt nebenbei einen **bestehenden Fehler**: Der Link im Block „Interaktives Video“ ließ sich im öffentlichen Link bisher gar nicht öffnen. Die Seite selbst kommt weiterhin nicht an Cookies, Speicher oder Schnittstellen der App.
+- **E4 – V1 und V2 übernommen:** Anbieterliste wie vorgeschlagen. „Inhalte von <anbieter> auf dieser Seite immer laden“ merkt sich der Browser des Schülers je Anbieter. In der Sandbox geht das nicht (kein Speicher), dort fragt die Seite jedes Mal.
+
+### Warum die Sandbox den Ablauf bestimmt
+Die Seite läuft an drei Orten mit unterschiedlichen Rechten:
+
+| Ort | Einbetten möglich? | Hauptknopf |
+|---|---|---|
+| Heruntergeladene Datei, Moodle, LMS | ja | „Inhalt laden“ (Zwei-Klick) |
+| Öffentlicher Link `/s/…` (PROJ-67) | eher nicht (Fenster erbt die Sperre) | „In neuem Tab öffnen“ |
+| Editor-Vorschau (Baukasten) | eher nicht (gleiche Sperre) | „In neuem Tab öffnen“ |
+
+Ein eingebettetes Fenster erbt die Sperre der Seite um es herum. YouTube, LearningApps usw. funktionieren ohne eigene Herkunft und Speicher meist nicht. Bestätigen kann das nur ein Browser-Test. Die Sperre zu lockern ist keine Option (Nutzer-Entscheidung PROJ-67). Deshalb erkennt die Seite die Sandbox selbst, wie sie es beim Lernfortschritt schon tut.
+
+### A) Bausteine
+
+```
+Baukasten (App)
++-- Katalog: neuer Eintrag „Einbetten (Video, Kahoot, LearningApps …)“  (Nr. 34)
++-- Formular „Einbetten“ (Schublade, gleiche Leiste wie alle Blöcke, PROJ-118)
+|   +-- Feld „Link einfügen“
+|   |   +-- erkennt den Anbieter -> Name + Symbol (Lucide, keine Logos)
+|   |   +-- erkennt eine Kahoot-PIN (6–7 Ziffern) -> „Kahoot-PIN anzeigen“
+|   |   +-- lehnt ungültige Links ab: „Dieser Link kann nicht eingebettet werden.“
+|   +-- Titel (vorgeschlagen, änderbar)
+|   +-- Darstellung (Segment): „Einbetten (nach Klick)“ | „Nur Link und QR-Code“
+|   |   (nur bei Anbietern der Liste; sonst fester Hinweis „nur Link und QR-Code“)
+|   +-- bei YouTube/Vimeo: Startzeit, Endzeit
+|   +-- Arbeitsauftrag (optional, direkt getippt wie Lehrtext, PROJ-103)
+|   +-- Hinweis bei sehr langem Link: „Nimm einen kürzeren Link, sonst wird der QR-Code schwer lesbar.“
++-- Prüfstelle (Hinweise, sperren nicht)
+    +-- „Einbettung ohne Titel“
+    +-- „Link nicht erreichbar“ (nur bei Anbietern der Liste geprüft)
+
+Seite (Kern, fertige HTML-Datei)
++-- Einbett-Karte
+    +-- Titel, Anbieter, Arbeitsauftrag
+    +-- Hinweis „Beim Laden werden Daten an <anbieter> übertragen.“
+    +-- Hauptknopf: „Inhalt laden“ ODER (Sandbox / nur Link) „In neuem Tab öffnen“
+    +-- Kästchen „Inhalte von <anbieter> auf dieser Seite immer laden“ (nicht in der Sandbox)
+    +-- Link „In neuem Tab öffnen“ + QR-Code (in der Datei enthalten)
+    +-- nach dem Laden: Fenster im passenden Seitenverhältnis
+    |   + Zeile „Wird hier nicht angezeigt? In neuem Tab öffnen“ (bleibt dauerhaft)
+    +-- ohne Internet: „Für diesen Inhalt brauchst du Internet.“ (Link + QR bleiben)
+    +-- Kahoot-PIN-Variante: große PIN, Link zu kahoot.it, Hinweis „gilt nur für das laufende Spiel“
+    +-- Druck: Titel, Link als Text, QR-Code (≥ 3,5 cm), kein Fenster
+```
+
+Die Karte zählt nicht zum Fortschritt (keine prüfbare Aufgabe).
+
+### B) Daten
+
+Keine neue Tabelle und keine Migration. Der Block liegt wie alle Blöcke im Seiteninhalt des Materials und hat diese Angaben:
+- Link, so wie die Lehrkraft ihn eingefügt hat
+- Art: Link oder Kahoot-PIN
+- Titel
+- Darstellung: einbetten oder nur Link/QR
+- Startzeit/Endzeit (nur Video)
+- Arbeitsauftrag (Text wie im Lehrtext)
+
+**Anbieterliste, eine Quelle:** Eine kleine Liste (Anbieter, Name, erlaubte Adressen, Seitenverhältnis, nötige Fenster-Rechte, Symbol) liegt als Datei in der App, und eine Kopie davon liegt im Kern. Ein Test im Kern vergleicht beide, so wie bei den Katalog-Beispielen (PROJ-90). Die Adresse des Schul-Moodle wird als fester Eintrag nachgetragen, sobald der Nutzer sie nennt.
+
+Im Browser des Schülers wird nur „Anbieter X immer laden“ gemerkt (je Seite, wie der Lernfortschritt).
+
+### C) Technische Entscheidungen
+
+1. **Das Fenster lädt nie den Link der Lehrkraft direkt.** Der Kern liest aus dem Link nur das Nötige (z. B. die Video-Kennung) und baut daraus die Einbett-Adresse des Anbieters neu, bei YouTube immer über `youtube-nocookie.com`. Was sich nicht eindeutig zuordnen lässt, wird nie eingebettet, sondern nur als Link/QR angezeigt. *Warum:* So landet keine fremde oder manipulierte Adresse im Fenster.
+2. **Doppelte Prüfung:** Der Editor prüft beim Tippen (schnelle Rückmeldung). Der Kern prüft beim Bauen der Seite noch einmal, und nur seine Prüfung zählt. Abgelehnt werden: kein `https`, `javascript:`/`data:`, IP-Adressen, `localhost` und lokale Namen. *Warum:* Seiteninhalte können auch aus der Rohfassung oder aus der KI kommen.
+3. **Fenster mit wenig Rechten:** Jeder Anbieter bekommt nur die Rechte aus seinem Listeneintrag (Skripte; Formulare nur bei Google/Microsoft Forms; Vollbild nur bei Video), keine Kamera, kein Mikrofon, kein Autoplay, keine Weitergabe der Seitenadresse über den Ursprung hinaus. Vor dem Klick steht nichts im Fenster, und es werden keine Vorschaubilder geladen.
+4. **QR-Code im Kern beim Bauen der Seite:** Der Kern erzeugt den QR-Code als SVG mit der kleinen Python-Bibliothek **segno** (reines Python, ohne weitere Abhängigkeiten, feste Version wie alle Kern-Bibliotheken) und legt ihn direkt in die HTML-Datei. Die Seite braucht dafür zur Laufzeit nichts, und der Code funktioniert offline und im Druck. Die Fehlerkorrektur ist bei kurzen Links hoch und wird bei langen Links abgesenkt. Ab etwa 300 Zeichen erscheint der Hinweis an die Lehrkraft. *Warum segno statt selbst geschrieben:* QR-Codes sind fehleranfällig, segno ist erprobt und winzig.
+5. **Sandbox-Erkennung in der Seite:** Das Seitenskript erkennt, dass es abgeschottet läuft (keine eigene Herkunft, kein Speicher), und schaltet die Karte auf „In neuem Tab öffnen“ um (E2). Die Editor-Vorschau ist damit automatisch sicher: Vor einem Klick lädt nichts von außen.
+6. **Rechte der Sandboxen (E3):**
+   - Öffentlicher Link: Die Sandbox darf neue Tabs öffnen, die ohne Sperre laufen. Fenster bleiben verboten. Nichts lädt in der Seite selbst nach, also gilt die bisherige Regel weiter.
+   - Editor-Vorschau: dieselben zwei Rechte, damit „In neuem Tab öffnen“ beim Ausprobieren geht.
+7. **Offline-Erkennung:** Die Seite prüft beim Klick, ob der Browser online ist. Zusätzlich gilt eine Zeitgrenze: Lädt das Fenster nicht, erscheint der Internet-Hinweis. Link und QR-Code bleiben immer sichtbar.
+8. **„Link nicht erreichbar“ nur bei bekannten Anbietern:** Die Prüfstelle fragt nur bei Adressen der Anbieterliste nach, ob der Inhalt existiert. Andere Links werden nicht abgerufen. *Warum:* Wenn der Server beliebige Adressen aufruft, kann man ihn missbrauchen, um interne Adressen auszuspähen. Die Prüfung läuft über eine kleine App-Schnittstelle nur für Lehrkräfte. Sie muss in **beide Freigabelisten** in `roles.ts` (Wächter-Tests vorhanden).
+9. **Text des Datenschutz-Hinweises an einer Stelle:** Die Formulierung steht als ein Text im Kern und lässt sich nach Abstimmung mit der Schule ohne Umbau ändern. **Vor dem Livegang abstimmen** (Technical Requirements).
+10. **Bekannte Stolperstelle:** YouTube zeigt seit 2025 bei Aufrufen ohne Herkunftsangabe einen Fehler, z. B. aus einer lokal geöffneten Datei (`file://`). Abhilfe ist die dauerhafte Zeile „Wird hier nicht angezeigt? In neuem Tab öffnen“. Im Browser-Test eigens prüfen.
+
+### D) Bauabschnitte
+
+1. **Kern:** Baustein „Einbetten“ in `seite.py` (Karte, Fenster nach Klick, Sandbox-/Offline-Erkennung, Druck, Kahoot-PIN), Anbieterliste + Adress-Neubau, QR-Code mit segno, Tests (gefährliche Links, Neubau je Anbieter, QR im Druck, kein Fenster vor dem Klick, Listenvergleich).
+2. **App:** Katalog-Eintrag, Formular mit Anbieter-Erkennung, Prüfstellen-Hinweise + Erreichbarkeits-Schnittstelle, Sandbox-Rechte für öffentlichen Link und Editor-Vorschau (Tests in `werkzeugkiste-links.test.ts` anpassen).
+3. **Browser-Test durch den Nutzer** (kein Dev-Server): heruntergeladene Datei, Moodle, öffentlicher Link, Handy-QR vom Ausdruck.
+
+Deploy wie immer: **Kern zuerst**, dann die App (aus der Kopie, keine fremden Dateien mitnehmen).
+
+### E) Abhängigkeiten
+- **Kern:** `segno` (QR-Codes als SVG, feste Version in `requirements.txt`)
+- **App:** keine neuen Pakete
+
+### Offene Punkte vor dem Bau
+- Adresse des Schul-Moodle für die Anbieterliste.
+- Datenschutz-Text mit der Schule abstimmen (kann parallel zum Bau laufen, muss vor dem Livegang fertig sein).
 
 ## QA Test Results
 _To be added by /qa_

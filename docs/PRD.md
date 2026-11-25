@@ -138,7 +138,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-106: Baukasten – Bild beschriften & markieren | Deployed |
 | P2 | PROJ-107: Baukasten – Bild als Aufgabe (Hotspots & Beschriftungen zuordnen) | Deployed |
 | P2 | PROJ-108: Baukasten – Blöcke & Themen aus eigenen Materialien und Regal übernehmen | Deployed |
-| P2 | PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) | Planned |
+| P2 | PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) | Architected |
 | P2 | PROJ-110: Baukasten – Quiz-Show-Block im Kahoot-Stil | Planned |
 | P1 | PROJ-111: Baukasten – Eine Bedienstelle statt drei | Deployed |
 | P1 | PROJ-112: Baukasten – Vorschau schneller | Deployed |
