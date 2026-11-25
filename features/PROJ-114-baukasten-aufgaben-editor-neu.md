@@ -1,8 +1,8 @@
 # PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-17
-**Last Updated:** 2026-11-18 (zweite QA-Runde, Opus: 2 High-Funde)
+**Last Updated:** 2026-11-25 (Abschluss: alle High-Funde behoben und live)
 
 ## Idee in einem Satz
 Ein Klick auf eine Aufgabe in der Seite macht sie an Ort und Stelle bearbeitbar (wie bei Google Forms): Sie sieht weiter aus wie für die Schüler, nur sind Texte jetzt Eingabefelder. Es gibt keine zweite Fläche, nichts steht doppelt, und alle Aufgabentypen bedienen sich nach denselben sechs Mustern.
@@ -582,3 +582,5 @@ Geprüft: Restarbeiten aus 91e702d (Dialoge statt Schublade, Ziehen beim Zuordne
 - Werkzeugkiste-Editor 528/528 grün, `tsc` grün, ESLint ohne Fehler. **Browser-Prüfung nach dem Deploy offen** (Typwechsel mit Rückfrage, Block-Leiste).
 
 **2026-11-18 (Production, Commit 3ca8b79, Vercel Ready nach ca. 1 Min.; keine Migration, kein Kern-Deploy; API ohne Login 401):** Korrekturen BUG-12 bis BUG-16 live. Live im Browser geprüft (Chrome, „Basics rund um den LKW (Kopie)“, nichts verändert): Mehr … → Aufgabentyp ändern … → Richtig oder falsch → Rückfrage „Von … zu … wechseln?“ erscheint (BUG-12 ✅), Abbrechen lässt den Block unverändert; Block-Leiste steht einzeilig (BUG-16 ✅ bei ca. 680 px). Auffall: Die **Aufgaben-Leiste** (Element-Leiste, „Mehr …“) bricht in dieser Breite in zwei Zeilen um (Mehr … in Zeile 2); das ist die Mitte mit `flex-wrap`, sie wird erst unter 560 px einzeilig. Low, keine Funktionsstörung. BUG-13 bis BUG-15 nur durch Tests belegt. Status bleibt **In Review**; offen: Tablet, Safari/Firefox, Entscheidung über Freigabe.
+
+**2026-11-25 – Abschluss (Sonnet):** Alle Funde der beiden QA-Runden mit Schweregrad High oder Medium sind behoben und seit Commit 3ca8b79 live (BUG-1 bis BUG-9, BUG-12 bis BUG-16; BUG-10 teilweise). Prüfstand: Werkzeugkiste-Tests 782/782 grün; BUG-12 und BUG-16 am 2026-11-18 live im Browser bestätigt, BUG-13 bis BUG-15 nur durch Tests belegt. Status **Deployed**. Bewusst offen (Low, kein Livegang-Hindernis): BUG-11 (Ersatz-Ansicht bis zum nächsten Neubau), verschachtelte Zusatzfelder in Einträgen, Aufgaben-Leiste bricht bei ca. 680 px in zwei Zeilen um; nicht geprüft: Tablet, Safari/Firefox. Bauschritt 6 (Bild-Typen, Tabelle, Diagramm) und Handy bleiben wie am 2026-11-18 entschieden zurückgestellt.

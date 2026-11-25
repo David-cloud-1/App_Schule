@@ -143,7 +143,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-111: Baukasten – Eine Bedienstelle statt drei | Deployed |
 | P1 | PROJ-112: Baukasten – Vorschau schneller | Deployed |
 | P1 | PROJ-113: Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed |
-| P1 | PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | In Review |
+| P1 | PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | Deployed |
 | P1 | PROJ-115: Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned |
 | P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Planned |
 | P1 | PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik | Deployed |
@@ -151,13 +151,13 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-119: Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed |
 | P1 | PROJ-120: Abwesenheitskalender für Lehrkräfte (mit Vertretungsplanung) | Deployed |
 | P1 | PROJ-121: Lehrkräfte geben bei der ersten Anmeldung Vor- und Nachnamen an (Pflicht) | Deployed |
-| P1 | PROJ-122: Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“ | Architected |
+| P1 | PROJ-122: Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“ | Deployed |
 | P1 | PROJ-123: Checklisten – die übrigen Leitlinien (14 Listen) | Planned |
 | P2 | PROJ-124: Leitlinien nachschlagen – Info-Seiten, Entscheidungshilfe und Notfall-Ansicht | Planned |
 | P2 | PROJ-125: Onboarding neuer Lehrkräfte – Mentor/in hakt ab | Planned |
 | P2 | PROJ-126: Checklisten – Fristen aus einem Termin berechnen | Planned |
 | P1 | PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Deployed |
-| P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Planned |
+| P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

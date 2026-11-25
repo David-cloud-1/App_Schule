@@ -1,8 +1,8 @@
 # PROJ-122: Checklisten zu den Handlungsleitlinien – Grundgerüst & Pilot „Dienstreise und Reisekosten“
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-20
-**Last Updated:** 2026-11-23
+**Last Updated:** 2026-11-25
 
 ## Kontext
 Die Handlungsleitlinien (HLL) der Schule liegen als PDFs vor (`docs/HLL/`, 28 Dateien, 24 Leitlinien) und stehen für die Suche in „Schulrecht“ (PROJ-55/88). Wer einen Vorgang erledigen muss (Dienstreise beantragen, Zeugnisse abgeben, Klassentagebuch abgeben), muss die Leitlinie suchen, lesen und selbst im Kopf abhaken, was schon erledigt ist.
@@ -531,3 +531,5 @@ BUG-1, -2, -3, -6, -11 und -13 behoben (siehe Überschriften oben); die zwei `it
 **Live seit 2026-11-23** (Produktion `spedilern`, ohne `/qa`; Status bleibt „In Progress“ bis zur QA). Migration vorher im SQL-Editor eingespielt, Probe 14 von 14 wie erwartet. Gepusht wurden nur die drei PROJ-122-Commits (per Worktree auf `origin/main`); die PROJ-129-Commits blieben lokal, weil ihre Migration noch fehlt. Prüfung nach „Ready“: `/admin/checklisten` leitet ohne Anmeldung zum Login, die Schnittstellen antworten 401.
 
 **Offen:** Sichtprüfung beider Seiten im Browser (Laptop, Handy, Druck), `/qa` mit Opus, Bestätigung der Sechs-Monats-Frist durch die Schulleitung, Kern-Abfrage für die Betriebs-Warnung „Leitlinie geändert“.
+
+**2026-11-25 – Abschluss (Sonnet):** Die QA-Korrekturen (BUG-1/2/3/6/11/13, Commit 7c48008 auf `origin/main`) sind live; ein weiterer Push war nicht nötig. Die 83 Checklisten-Tests sind grün. Status **Deployed**. Offen: Sichtprüfung im Browser (Laptop, Handy, Druck) durch den Nutzer, Bestätigung der Sechs-Monats-Frist durch die Schulleitung, BUG-4 (Betriebs-Warnung, Kern-Abfrage), Low-Funde BUG-5, -7 bis -10, -12, -14. BUG-13 (Personendaten in der Momentaufnahme) ist behoben und damit vor PROJ-123 erledigt.
