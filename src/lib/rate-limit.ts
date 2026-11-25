@@ -22,7 +22,6 @@ const TEUER = [
   /^\/api\/admin\/ai-generate\/upload(\/|$)/,
   /^\/api\/admin\/exam-sets\/extract(\/|$)/,
   /^\/api\/admin\/werkzeugkiste\/ablaeufe\/[^/]+\/(einlesen|direkt|weiterschreiben|fortsetzung)(\/|$)/,
-  /^\/api\/admin\/werkzeugkiste\/einbettung\/pruefen(\/|$)/,
 ]
 
 /**

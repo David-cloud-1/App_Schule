@@ -66,6 +66,8 @@ const LOKAL_ENDUNGEN = ['.local', '.localhost', '.internal', '.lan', '.home', '.
 export function pruefeLink(roh: string): LinkPruefung {
   const text = roh.trim()
   if (!text) return { ok: false, grund: 'leer' }
+  // Leerzeichen und Steuerzeichen lehnt der Kern ab, also hier auch (sonst fehlte der Block in der Seite)
+  if (text.length > 2000 || /[\s\x00-\x1f]/.test(text)) return { ok: false, grund: LINK_ABGELEHNT }
   let u: URL
   try {
     u = new URL(text)
@@ -100,6 +102,91 @@ export function erkenneAnbieter(u: URL): Anbieter | null {
   }
   return null
 }
+
+const ID11 = /^[A-Za-z0-9_-]{11}$/
+const ZIFFERN = /^\d{1,12}$/
+const ALNUM = /^[A-Za-z0-9_-]{1,40}$/
+
+function youtubeId(u: URL): string | null {
+  const host = u.hostname.toLowerCase()
+  const teile = u.pathname.split('/').filter(Boolean)
+  let kandidat = ''
+  if (host === 'youtu.be' || host.endsWith('.youtu.be')) kandidat = teile[0] ?? ''
+  else if (teile[0] && ['embed', 'shorts', 'live', 'v'].includes(teile[0])) kandidat = teile[1] ?? ''
+  else kandidat = u.searchParams.get('v') ?? ''
+  return ID11.test(kandidat) ? kandidat : null
+}
+
+/**
+ * Einbett-Adresse wie im Kern (`einbett_block.einbett_adresse`), ohne Zeiten.
+ * Nur zur Rückmeldung im Editor: null = aus diesem Link lässt sich kein Fenster bauen,
+ * die Schüler bekommen dann Link und QR-Code. Maßgeblich bleibt der Kern.
+ */
+export function einbettAdresse(anbieter: Anbieter | null | undefined, u: URL): string | null {
+  if (!anbieter || !anbieter.einbettbar) return null
+  const pfad = u.pathname.split('/').filter(Boolean)
+  const host = u.hostname.toLowerCase().replace(/\.$/, '')
+  switch (anbieter.id) {
+    case 'youtube': {
+      const id = youtubeId(u)
+      return id ? `https://www.youtube-nocookie.com/embed/${id}?rel=0` : null
+    }
+    case 'vimeo': {
+      const id = [...pfad].reverse().find((p) => ZIFFERN.test(p))
+      return id ? `https://player.vimeo.com/video/${id}?dnt=1` : null
+    }
+    case 'learningapps': {
+      if (pfad.length === 1 && ZIFFERN.test(pfad[0])) return `https://learningapps.org/watch?app=${pfad[0]}`
+      if (pfad.length === 1 && pfad[0] === 'watch') {
+        const art = u.searchParams.has('v') ? 'v' : 'app'
+        const kennung = u.searchParams.get('v') ?? u.searchParams.get('app') ?? ''
+        return ALNUM.test(kennung) ? `https://learningapps.org/watch?${art}=${kennung}` : null
+      }
+      return null
+    }
+    case 'padlet': {
+      if (pfad.length !== 2) return null
+      const kennung = pfad[0] === 'embed' ? pfad[1] : (pfad[1].split('-').pop() ?? '')
+      return /^[a-z0-9]{8,40}$/.test(kennung) ? `https://padlet.com/embed/${kennung}` : null
+    }
+    case 'mentimeter':
+      return pfad.length >= 3 && pfad[0] === 'app' && pfad[1] === 'presentation' && ALNUM.test(pfad[2])
+        ? `https://www.mentimeter.com/app/presentation/${pfad[2]}/embed`
+        : null
+    case 'geogebra':
+      return pfad.length === 2 && pfad[0] === 'm' && ALNUM.test(pfad[1])
+        ? `https://www.geogebra.org/material/iframe/id/${pfad[1]}`
+        : null
+    case 'h5p':
+      if (!host.endsWith('h5p.com')) return u.toString()
+      return pfad.length >= 2 && pfad[0] === 'content' && ZIFFERN.test(pfad[1])
+        ? `https://${host}/content/${pfad[1]}/embed`
+        : null
+    case 'google-forms': {
+      const m = /^\/forms\/d\/(e\/)?([A-Za-z0-9_-]{10,120})\/(viewform|formResponse)$/.exec(u.pathname)
+      return m ? `https://docs.google.com/forms/d/${m[1] ?? ''}${m[2]}/viewform?embedded=true` : null
+    }
+    case 'microsoft-forms': {
+      if (pfad.length === 2 && pfad[0] === 'r' && ALNUM.test(pfad[1])) return `https://${host}/r/${pfad[1]}?embed=true`
+      const kennung = u.searchParams.get('id') ?? ''
+      return u.pathname.toLowerCase() === '/pages/responsepage.aspx' && /^[A-Za-z0-9_-]{10,200}$/.test(kennung)
+        ? `https://${host}/Pages/ResponsePage.aspx?id=${kennung}&embed=true`
+        : null
+    }
+    default:
+      // Kahoot, H5P.org, Lumi: dieselbe Adresse ohne Fragment
+      return `https://${host}${u.pathname}${u.search}`
+  }
+}
+
+/** Beim Öffnen im Tab: der Host des Links ohne „www.“ (z. B. youtube.com, nicht youtube-nocookie.com) */
+export function linkHost(u: URL): string {
+  const h = u.hostname.toLowerCase()
+  return h.startsWith('www.') ? h.slice(4) : h
+}
+
+export const KEIN_FENSTER =
+  'Aus diesem Link kann ich kein Fenster bauen. Die Schüler bekommen Link und QR-Code. Nimm den Teilen- oder Einbetten-Link des Anbieters, wenn es in der Seite erscheinen soll.'
 
 /** Zeitangabe „90“, „1:30“, „1:02:03“ in Sekunden; leer = null; Unsinn = NaN */
 export function zeitInSekunden(roh: string): number | null {
@@ -156,7 +243,12 @@ export function pruefeEinbettung(block: Record<string, unknown>): EinbettungSich
       hinweise.push('Die Endzeit muss nach der Startzeit liegen.')
     }
   }
-  return { art: 'link', url: p.url, anbieter, hinweise, wirdEingebettet: !!anbieter?.einbettbar && darstellung === 'einbetten' }
+  let wirdEingebettet = !!anbieter?.einbettbar && darstellung === 'einbetten'
+  if (wirdEingebettet && !einbettAdresse(anbieter, p.url)) {
+    hinweise.push(KEIN_FENSTER)
+    wirdEingebettet = false
+  }
+  return { art: 'link', url: p.url, anbieter, hinweise, wirdEingebettet }
 }
 
 /** Titelvorschlag aus dem Link, damit das Feld nie leer starten muss */

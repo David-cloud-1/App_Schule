@@ -1,9 +1,28 @@
 'use client'
 
-import { AlertTriangle, ExternalLink, Hash } from 'lucide-react'
+import type { ReactNode } from 'react'
+import {
+  AlertTriangle,
+  Blocks,
+  ChartBar,
+  ClipboardList,
+  ExternalLink,
+  Gamepad2,
+  Hash,
+  Puzzle,
+  Shapes,
+  StickyNote,
+  Video,
+} from 'lucide-react'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { Feld, s, type FormProps } from '@/components/werkzeugkiste/editor/formular-bausteine'
-import { leseDarstellung, pruefeEinbettung, titelVorschlag, type Darstellung } from '@/lib/werkzeugkiste-einbettung'
+import {
+  leseDarstellung,
+  linkHost,
+  pruefeEinbettung,
+  titelVorschlag,
+  type Darstellung,
+} from '@/lib/werkzeugkiste-einbettung'
 import type { Block } from '@/lib/werkzeugkiste-editor'
 
 /**
@@ -15,6 +34,22 @@ const DARSTELLUNGEN = [
   { value: 'einbetten', label: 'Einbetten (nach Klick)' },
   { value: 'link', label: 'Nur Link und QR-Code' },
 ] as const
+
+/** Eigene Symbole je Anbieter (keine Logos, nichts wird vom Anbieter geladen) */
+const SYMBOL_KLASSE = 'mt-0.5 size-4 shrink-0'
+const SYMBOLE: Record<string, ReactNode> = {
+  youtube: <Video className={SYMBOL_KLASSE} aria-hidden />,
+  vimeo: <Video className={SYMBOL_KLASSE} aria-hidden />,
+  learningapps: <Puzzle className={SYMBOL_KLASSE} aria-hidden />,
+  kahoot: <Gamepad2 className={SYMBOL_KLASSE} aria-hidden />,
+  padlet: <StickyNote className={SYMBOL_KLASSE} aria-hidden />,
+  mentimeter: <ChartBar className={SYMBOL_KLASSE} aria-hidden />,
+  h5p: <Blocks className={SYMBOL_KLASSE} aria-hidden />,
+  geogebra: <Shapes className={SYMBOL_KLASSE} aria-hidden />,
+  'google-forms': <ClipboardList className={SYMBOL_KLASSE} aria-hidden />,
+  'google-forms-kurz': <ClipboardList className={SYMBOL_KLASSE} aria-hidden />,
+  'microsoft-forms': <ClipboardList className={SYMBOL_KLASSE} aria-hidden />,
+}
 
 /** Leeres optionales Feld entfernen statt "" zu speichern */
 function optional(b: Block, feld: string, wert: string): Block {
@@ -65,8 +100,11 @@ export function EinbettenFormular({ block, onChange }: FormProps) {
         </p>
       )}
       {sicht.art === 'link' && (
-        <p className="flex items-start gap-2 rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm text-ws-muted">
-          <ExternalLink className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <p
+          className="flex items-start gap-2 rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm text-ws-muted"
+          data-anbieter={anbieter?.id ?? 'fremd'}
+        >
+          {(anbieter && SYMBOLE[anbieter.id]) ?? <ExternalLink className={SYMBOL_KLASSE} aria-hidden />}
           <span>
             {anbieter
               ? `Erkannt: ${anbieter.name}. Der Anbieter wird erst geladen, wenn ein Schüler „Inhalt laden“ klickt.`
@@ -85,8 +123,8 @@ export function EinbettenFormular({ block, onChange }: FormProps) {
           </div>
           <p className="text-xs text-ws-muted">
             {darstellung === 'einbetten'
-              ? 'Die Schüler klicken „Inhalt laden“, dann erscheint der Inhalt in der Seite. Im öffentlichen Link und in der Vorschau öffnet er sich stattdessen in einem neuen Tab.'
-              : 'Die Schüler bekommen den Link und einen QR-Code, zum Beispiel für den Ausdruck.'}
+              ? `Die Schüler klicken „Inhalt laden“, dann erscheint der Inhalt in der Seite (Daten gehen an ${anbieter.anzeigeHost}). Im öffentlichen Link und in der Vorschau öffnet er sich stattdessen in einem neuen Tab.`
+              : `Die Schüler bekommen den Link und einen QR-Code, zum Beispiel für den Ausdruck. Beim Öffnen gehen Daten an ${sicht.url ? linkHost(sicht.url) : anbieter.anzeigeHost}.`}
           </p>
         </div>
       )}

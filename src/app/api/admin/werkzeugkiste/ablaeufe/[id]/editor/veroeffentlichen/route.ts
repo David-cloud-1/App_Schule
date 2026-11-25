@@ -100,15 +100,15 @@ export async function POST(request: Request, { params }: Kontext) {
       einstellungen: zeile.einstellungen ?? {},
       ...(quelle ? { einlesung: { url: quelle.url } } : {}),
     }
-    // 1. Ohne Nebenwirkung
-    const [y, pruefRoh] = await Promise.all([
+    // 1. Ohne Nebenwirkung. PROJ-109: Links der Einbett-Blöcke parallel dazu prüfen
+    //    (nur Hinweise, sperrt nie, höchstens ~4 s, Fehler der Prüfung zählen nicht)
+    const [y, pruefRoh, erreichbar] = await Promise.all([
       kern<{ antwort: string }>('/api/editor/yaml', { struktur: zeile.entwurf }),
       kern<unknown>('/api/editor/pruefen', { ...gemeinsam, auswahl: zeile.auswahl ?? {} }),
+      erreichbarkeitsBefunde(zeile.entwurf).catch(() => []),
     ])
     yaml = y
-    befunde = befundeAusKern(pruefRoh)
-    // PROJ-109: Links der Einbett-Blöcke prüfen (nur Hinweise, sperrt nie, höchstens ~4 s)
-    befunde = [...befunde, ...(await erreichbarkeitsBefunde(zeile.entwurf).catch(() => []))]
+    befunde = [...befundeAusKern(pruefRoh), ...erreichbar]
     // 2. In Zwischendateien bauen: Ist die Seite zu groß oder der Kern nicht erreichbar, ändert sich nichts
     bau = await kern<BauErgebnis>('/api/editor/bauen', {
       ...gemeinsam,

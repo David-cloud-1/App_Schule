@@ -45,4 +45,15 @@ describe('EinbettenFormular (PROJ-109)', () => {
     const letzter = onChange.mock.calls.at(-1)![0]
     expect(letzter.titel).toBe('Mein Titel')
   })
+
+  it('zeigt ein eigenes Symbol je Anbieter (BUG-6)', () => {
+    const { container } = render(<EinbettenFormular block={{ type: 'einbetten', url: 'https://youtu.be/abc' }} onChange={vi.fn()} />)
+    const zeile = container.querySelector('[data-anbieter="youtube"]')!
+    expect(zeile.querySelector('svg.lucide-video')).not.toBeNull()
+  })
+
+  it('nennt bei „Nur Link“ den Host, an den der Tab geht (BUG-2)', () => {
+    zeige({ type: 'einbetten', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', darstellung: 'link' })
+    expect(screen.getByText(/Beim Öffnen gehen Daten an youtube\.com\./)).toBeInTheDocument()
+  })
 })

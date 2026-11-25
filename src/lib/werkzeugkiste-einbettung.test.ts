@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   ANBIETER,
+  KEIN_FENSTER,
   LINK_LANG,
+  einbettAdresse,
   erkenneAnbieter,
   erkenneKahootPin,
   leseDarstellung,
+  linkHost,
   pruefeEinbettung,
   pruefeLink,
   titelVorschlag,
@@ -140,7 +143,7 @@ describe('pruefeEinbettung', () => {
   })
 
   it('Zeiten gibt es nur bei Video', () => {
-    const p = pruefeEinbettung({ url: 'https://padlet.com/a', start: 'bald' })
+    const p = pruefeEinbettung({ url: 'https://padlet.com/lehrer/board-abc123xyz9', start: 'bald' })
     expect(p.hinweise).toEqual([])
   })
 })
@@ -155,5 +158,66 @@ describe('leseDarstellung und Titel', () => {
     expect(titelVorschlag('https://padlet.com/a')).toBe('Padlet öffnen')
     expect(titelVorschlag('https://example.com')).toBe('')
     expect(titelVorschlag('quatsch')).toBe('')
+  })
+})
+
+// QA-Bugs PROJ-109 (2026-11-25): Editor und Kern sollen gleich entscheiden
+function adresse(roh: string): string | null {
+  const p = pruefeLink(roh)
+  if (!p.ok) throw new Error('Link ungültig: ' + roh)
+  return einbettAdresse(erkenneAnbieter(p.url), p.url)
+}
+
+describe('einbettAdresse wie im Kern (BUG-3/BUG-4)', () => {
+  it('baut dieselben Einbett-Adressen wie kern_einbettung_test', () => {
+    const faelle: Record<string, string> = {
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=x': 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0',
+      'https://youtu.be/dQw4w9WgXcQ': 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0',
+      'https://vimeo.com/12345': 'https://player.vimeo.com/video/12345?dnt=1',
+      'https://learningapps.org/1234': 'https://learningapps.org/watch?app=1234',
+      'https://learningapps.org/watch?v=pab12': 'https://learningapps.org/watch?v=pab12',
+      'https://Kahoot.it/challenge/123?x=1#frag': 'https://kahoot.it/challenge/123?x=1',
+      'https://padlet.com/lehrer/mein-board-abc123xyz9?x=1#f': 'https://padlet.com/embed/abc123xyz9',
+      'https://padlet.com/embed/abc123xyz9': 'https://padlet.com/embed/abc123xyz9',
+      'https://www.mentimeter.com/app/presentation/al1b2c3d4/edit': 'https://www.mentimeter.com/app/presentation/al1b2c3d4/embed',
+      'https://www.geogebra.org/m/abcd1234': 'https://www.geogebra.org/material/iframe/id/abcd1234',
+      'https://schule.h5p.com/content/1291234567': 'https://schule.h5p.com/content/1291234567/embed',
+      'https://docs.google.com/forms/d/e/1FAIpQLSdAbCdEf123/viewform?usp=sf_link':
+        'https://docs.google.com/forms/d/e/1FAIpQLSdAbCdEf123/viewform?embedded=true',
+      'https://forms.office.com/r/AbC123xyz': 'https://forms.office.com/r/AbC123xyz?embed=true',
+      'https://forms.office.com/Pages/ResponsePage.aspx?id=AbCdEf12345':
+        'https://forms.office.com/Pages/ResponsePage.aspx?id=AbCdEf12345&embed=true',
+    }
+    for (const [u, soll] of Object.entries(faelle)) expect(adresse(u), u).toBe(soll)
+    for (const u of [
+      'https://www.youtube.com/',
+      'https://www.menti.com/al1b2c3',
+      'https://padlet.com/lehrer',
+      'https://padlet.com/a/b',
+      'https://www.geogebra.org/classic',
+      'https://docs.google.com/forms/u/0/',
+      'https://schule.h5p.com/content/x',
+      'https://forms.gle/abc',
+    ])
+      expect(adresse(u), u).toBeNull()
+  })
+
+  it('meldet im Editor, wenn kein Fenster entstehen kann', () => {
+    const s = pruefeEinbettung({ url: 'https://www.menti.com/al1b2c3', darstellung: 'einbetten' })
+    expect(s.wirdEingebettet).toBe(false)
+    expect(s.hinweise).toContain(KEIN_FENSTER)
+    expect(pruefeEinbettung({ url: 'https://www.menti.com/al1b2c3', darstellung: 'link' }).hinweise).not.toContain(KEIN_FENSTER)
+  })
+
+  it('lehnt Leerzeichen im Link ab wie der Kern, nimmt Umlaut-Domains an', () => {
+    expect(pruefeLink('https://a.de/x y').ok).toBe(false)
+    expect(pruefeLink('https://a.de/\tx').ok).toBe(false)
+    const p = pruefeLink('https://bücher.de/x')
+    expect(p.ok && p.url.hostname).toBe('xn--bcher-kva.de')
+  })
+
+  it('nennt beim Öffnen den Host des Links (BUG-2)', () => {
+    expect(linkHost(new URL('https://www.youtube.com/watch?v=x'))).toBe('youtube.com')
+    expect(linkHost(new URL('https://youtu.be/x'))).toBe('youtu.be')
   })
 })
