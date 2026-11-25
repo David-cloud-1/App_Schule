@@ -1,6 +1,6 @@
 # PROJ-109: Baukasten – Externe Einbettung (Kahoot, LearningApps, YouTube …) mit Zwei-Klick-Lösung
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-16
 **Last Updated:** 2026-11-25
 
@@ -289,5 +289,18 @@ Chrome/Firefox/Safari, 375/768/1440 px, heruntergeladene Datei (`file://`, YouTu
 - **Security:** bestanden
 - **Production Ready:** JA im Sinne der Regel (keine Critical/High). **Empfehlung:** BUG-1 und BUG-2 vor dem Livegang beheben (beide betreffen den Datenschutz-Text, der ohnehin noch abgestimmt wird), BUG-3 im Browser-Test klären. Kern zuerst deployen.
 
+### Behoben (2026-11-25, nach der QA)
+- **BUG-1:** Schlüssel jetzt `SPEICHER + "-einb-immer-<anbieter>"`, gilt also nur für diese Seite. „Eingaben löschen“ nimmt ihn mit zurück (Kern-Test).
+- **BUG-2:** Bei „Inhalt laden“ nennt der Hinweis den Einbett-Host (youtube-nocookie.com), beim Öffnen im Tab den Host des Links ohne „www.“ (youtube.com, youtu.be). Das Formular sagt dasselbe.
+- **BUG-3:** Eigene Einbett-Adressen im Kern: Padlet `/embed/<kennung>`, Mentimeter-Präsentation `/embed`, GeoGebra `/material/iframe/id/…`, H5P.com `/content/<id>/embed`, Google Forms `?embedded=true`, Microsoft Forms `embed=true`. Abstimmungs-Codes (menti.com/…) und unklare Links werden nur Link und QR-Code. Ob jeder Anbieter wirklich im Fenster erscheint, zeigt erst der Browser-Test.
+- **BUG-4:** Der Kern wandelt Umlaut-Domains in `xn--…` um, die App lehnt Leerzeichen und Steuerzeichen ab wie der Kern. Der Editor baut die Einbett-Adresse wie der Kern nach (`einbettAdresse`, gleiche Testfälle in beiden Repos) und meldet „Aus diesem Link kann ich kein Fenster bauen …“.
+- **BUG-5:** Die Linkprüfung läuft parallel zur Kern-Prüfung. Die unbenutzte Schnittstelle `einbettung/pruefen` ist samt Rate-Limit-Eintrag entfernt.
+- **BUG-6:** Eigenes Lucide-Symbol je Anbieter im Formular (Video, Puzzle, Gamepad, Notizzettel, Diagramm, Bausteine, Formen, Klemmbrett).
+
+Tests: App `npm test` 4718 grün, `tsc`, ESLint und `npm run build` grün. Kern: alle Testdateien grün (`kern_einbettung_test` 27, Prüfsumme in `kern_vorschau_marken_test` neu gesetzt, nur das Skript geändert).
+
 ## Deployment
-_To be added by /deploy_
+**Live seit 2026-11-25.**
+- Kern: Commit `9bf59cd` (Zweig `vercel-kern`), deployt aus einer sauberen Kopie. `/api/gesund` → ok, ohne Kennwort 401.
+- App: Push auf `main`, keine Migration.
+- **Noch offen:** Datenschutz-Text mit der Schule abstimmen (Konstanten oben in `einbett_block.py`, Änderung ohne Umbau). Browser-Test durch den Nutzer: heruntergeladene Datei (`file://`, YouTube), Moodle, öffentlicher Link, Handy-Scan vom Ausdruck, ob jeder Anbieter im Fenster erscheint.
