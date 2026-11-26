@@ -739,11 +739,13 @@ function startAufgabe(s){
   if(aufgabeOffen())aufgabe.beende();
   var el=modus==="bearbeiten"&&!lesen&&typeof s.marke==="string"?finde(s.marke):null;
   if(!el||el.tagName!=="SECTION"||!window.__wkAufgabenwerk||!s.block||typeof s.block!=="object"){p({wkAufgabeAbbruch:String(s.marke||"")});return}
+  // PROJ-116: Das Aufgabenwerk merkt sich den Inhalt als Abschrift und setzt ihn beim Abbrechen zurück – darum ohne Kennzeichen starten
+  lkWeg(el);
   document.body.classList.add("wk-aufgabe");
   try{
     aufgabe=window.__wkAufgabenwerk.starte({ziel:el,block:s.block,marke:s.marke,typName:String(s.typName||""),eintrag:s.eintrag||null,mobil:mobil,typWechsel:s.typWechsel!==false,
       // Die Leiste war während der Bearbeitung ausgeblendet (Breite 0): nach dem Einblenden neu messen und platzieren
-      melde:function(n){if(n.wkAufgabeEnde){document.body.classList.remove("wk-aufgabe");leisteAktualisieren();plaziere();requestAnimationFrame(function(){plaziere()})}p(n)}});
+      melde:function(n){if(n.wkAufgabeEnde){document.body.classList.remove("wk-aufgabe");leisteAktualisieren();plaziere();lkZeichne();requestAnimationFrame(function(){plaziere()})}p(n)}});
   }catch(x){document.body.classList.remove("wk-aufgabe");aufgabe=null;p({wkAufgabeAbbruch:s.marke});return}
   leisteAktualisieren();
 }

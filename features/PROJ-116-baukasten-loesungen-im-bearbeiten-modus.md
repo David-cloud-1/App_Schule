@@ -148,9 +148,14 @@ Keine neuen Pakete.
 - **Tests:** Vertragstest [loesungen-kennzeichnen.test.ts](../src/components/werkzeugkiste/editor/loesungen-kennzeichnen.test.ts) lässt eine **echte Kern-Seite** (`__fixtures__/kern-loesungsseite.html`, gebaut mit Kern 9bf59cd, `marken=True`) samt ihrem Skript in jsdom laufen und prüft je Typ die gekennzeichneten Elemente, die vollständige Rücknahme in „Ausprobieren“ (HTML vor und nach dem Hin- und Herwechseln identisch), unveränderte Aufgabentexte und den Fall ohne Lösungsblock. Dazu `editor-vorschau-loesungen.test.tsx` (Hinweis). `src/types/jsdom.d.ts` nur für die Typen im Test.
 - **Bei Kern-Änderungen:** Fixture neu erzeugen (`scripts/werkzeugkiste/kern-loesungsseite-bauen.py`); schlägt der Test fehl, hat der Kern die Form seiner Lösungsdaten geändert.
 
+**Nach der QA behoben (2026-11-26):**
+- **BUG-1 (High):** Die Spur eines Kennzeichens (Klasse und ursprüngliche Werte) steht jetzt am Element selbst (`data-wk-lk`) statt in einer Liste im Skript. `lkWeg` räumt dadurch auch Kopien auf, die das Aufgabenwerk beim Abbrechen aus einer Abschrift zurückschreibt. Zusätzlich startet eine Aufgabe in der Seite erst nach `lkWeg` an ihrem Block, und nach „Fertig“ wird neu gezeichnet. Nur bekannte Attribute (Titel, Platzhalter, drei Datenattribute) und Klassen `wk-lk-…` werden zurückgesetzt, eine gefälschte Spur im Seiteninhalt kann nichts Fremdes setzen.
+- **BUG-2 (Low):** Im Druck ist der Platzhalter im Lückenfeld transparent.
+- **BUG-3 (Low):** Der Hinweis in der Kopfzeile wird aus dem ganzen Material berechnet (`hatKennzeichenFaehige`: Themen inkl. Typen ohne Bauplan, dazu Kapitelquiz und Zusammenfassung der Lernzielkontrolle), nicht mehr aus den Blöcken mit Bauplan.
+- Regressionstests für alle drei in `loesungen-kennzeichnen.test.ts` und `editor-vorschau-loesungen.test.tsx`; `npm test`: 4746 grün.
+
 **Bekannte Grenzen (bewusst):**
 - Ein Lückenfeld, in das beim „Ausprobieren“ schon etwas getippt wurde, zeigt sein Lösungswort nur noch im Tooltip (der Platzhalter verschwindet unter dem Text); der Rand bleibt grün.
-- Der Hinweis in der Kopfzeile zählt nur Blöcke in Themen; ein Kapitelquiz allein in der Lernzielkontrolle löst ihn nicht aus (die Kennzeichen erscheinen trotzdem).
 - Bei Auswahlfragen mit mehreren als richtig eingetragenen Antworten ist nur die erste gekennzeichnet (so prüft es der Kern).
 
 **Nicht im Browser geprüft** (kein Dev-Server): Optik, Zeilenumbrüche, Handy. Das gehört in die QA.
@@ -185,7 +190,7 @@ Keine neuen Pakete.
 | Frageserie mit doppeltem Antworttext | ✅ keine Kennzeichnung statt einer falschen |
 | Aufgabe an Ort und Stelle geöffnet, dann **abgebrochen** oder **ohne Änderung fertig** | ❌ BUG-1 |
 
-### Bugs
+### Bugs (alle behoben, 2026-11-26)
 
 **BUG-1 (High): Nach Abbrechen einer Aufgabe bleiben Lösungen in „Ausprobieren“ sichtbar**
 - *Schritte:* Bearbeiten → Lückentext (oder Auswahlfrage) in der Seite öffnen → abbrechen (Esc ohne Änderung bzw. „Fertig“ ohne Änderung) → auf „Ausprobieren“ wechseln.
@@ -213,6 +218,8 @@ Keine neuen Pakete.
 - Akzeptanzkriterien: **4 von 5 bestanden**, 1 nicht bestanden (Nr. 2, durch BUG-1)
 - Bugs: 0 Critical, **1 High**, 0 Medium, 2 Low
 - **Produktionsreif: NEIN.** Erst BUG-1 beheben (klein, Sonnet). BUG-2 kann gleich mit. Danach Browser-Blick auf Optik und Handy.
+
+**Nachtrag:** BUG-1 bis BUG-3 sind behoben (siehe Implementation Notes), erneute QA steht aus.
 
 ## Deployment
 _To be added by /deploy_

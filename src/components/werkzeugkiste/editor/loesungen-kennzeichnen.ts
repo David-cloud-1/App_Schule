@@ -48,7 +48,9 @@ export const LOESUNG_CSS =
   `.wk-lk-wort{background:${F.loesungGrund}!important;color:${F.loesung}!important;text-decoration:underline 3px ${F.loesung};text-underline-offset:3px}` +
   `.wk-lk-pos::after{content:attr(data-wk-pos);display:inline-block;margin-left:6px;min-width:1.4em;padding:0 5px;border-radius:999px;background:${F.loesung};color:#fff;font-weight:800;font-size:.85em;text-align:center}` +
   `.wk-lk-kat::after{content:"\\00a0\\2192\\00a0" attr(data-wk-kat);margin-left:6px;padding:0 6px;border-radius:6px;background:${F.loesungGrund};color:${F.loesung};font-weight:700;font-size:.85em}` +
-  '}'
+  '}' +
+  // Im Druck bleibt von den Kennzeichen nichts: auch der Platzhalter im Lückenfeld nicht (er wäre sonst mitgedruckt)
+  '@media print{input.wk-lk-feld::placeholder{color:transparent!important;text-decoration:none}}'
 
 /**
  * Das Stück Skript, das in das Hilfsskript der Vorschau gehört (liest `modus` von dort).
@@ -56,21 +58,32 @@ export const LOESUNG_CSS =
  */
 export const LOESUNG_JS = String.raw`
 // ── Lösungen in „Bearbeiten“ kennzeichnen (PROJ-116) ───────────────────
-var lkListe=[];
 function lkKurz(t,n){return String(t==null?"":t).replace(/\s+/g," ").slice(0,n||60)}
 function lkNr(el){var n=Number(el.getAttribute("data-i"));return n%1===0&&n>=0?n:-1}
+// Die Spur steht am Element selbst (Attribut data-wk-lk: Klasse und ursprüngliche Werte). Setzt eine Aufgabe ihren Inhalt aus einer
+// Abschrift zurück, trägt die Kopie die Spur mit – so räumt lkWeg auch sie vollständig weg (QA PROJ-116, BUG-1).
+var LK_ATTR={title:1,placeholder:1,"data-wk-pos":1,"data-wk-kat":1,"data-wk-loes":1};
 function lkSetze(el,klasse,attrs){
-  var r={el:el,klasse:klasse,attrs:[]};
+  if(el.hasAttribute("data-wk-lk"))return;
+  var orig={};
   el.classList.add("wk-lk",klasse);
-  for(var n in attrs){if(Object.prototype.hasOwnProperty.call(attrs,n)){r.attrs.push([n,el.getAttribute(n)]);el.setAttribute(n,attrs[n])}}
-  lkListe.push(r);
+  for(var n in attrs){if(Object.prototype.hasOwnProperty.call(attrs,n)&&LK_ATTR[n]){orig[n]=el.getAttribute(n);el.setAttribute(n,attrs[n])}}
+  el.setAttribute("data-wk-lk",JSON.stringify({k:klasse,o:orig}));
 }
-function lkWeg(){
-  while(lkListe.length){
-    var r=lkListe.pop();
-    r.el.classList.remove("wk-lk",r.klasse);
-    r.attrs.forEach(function(a){if(a[1]===null)r.el.removeAttribute(a[0]);else r.el.setAttribute(a[0],a[1])});
-  }
+function lkWeg(wurzel){
+  [].slice.call((wurzel||document).querySelectorAll("[data-wk-lk]")).forEach(function(el){
+    var r=null;
+    try{r=JSON.parse(el.getAttribute("data-wk-lk"))}catch(e){r=null}
+    el.removeAttribute("data-wk-lk");
+    el.classList.remove("wk-lk");
+    if(!r||typeof r!=="object")return;
+    if(typeof r.k==="string"&&/^wk-lk-[a-z]+$/.test(r.k))el.classList.remove(r.k);
+    var o=r.o&&typeof r.o==="object"?r.o:{};
+    for(var n in o){
+      if(!Object.prototype.hasOwnProperty.call(o,n)||!LK_ATTR[n])continue;
+      if(o[n]===null)el.removeAttribute(n);else if(typeof o[n]==="string")el.setAttribute(n,o[n]);
+    }
+  });
 }
 function lkAuswahl(wurzel,richtig){
   // Der Kern prüft genau eine Antwort: gekennzeichnet wird, was die Seite wirklich als richtig prüft
@@ -132,3 +145,14 @@ function lkZeichne(){
   });
 }
 `
+
+/**
+ * Hat das Material mindestens eine Aufgabe, die die Vorschau kennzeichnen kann? (Themen und Lernzielkontrolle;
+ * auch Typen ohne Bauplan wie die Bilder-Reihenfolge zählen.) Danach richtet sich der Hinweis in der Kopfzeile.
+ */
+export function hatKennzeichenFaehige(struktur: { chapters?: Array<{ elements?: Array<{ type?: unknown }> }>; final_chapter?: Record<string, unknown> }): boolean {
+  const imThema = (struktur.chapters ?? []).some((k) => (k.elements ?? []).some((b) => typeof b?.type === 'string' && LOESUNG_TYPEN.includes(b.type)))
+  if (imThema) return true
+  const a = struktur.final_chapter
+  return !!a && ['question_set', 'summary'].some((t) => !!a[t] && typeof a[t] === 'object')
+}

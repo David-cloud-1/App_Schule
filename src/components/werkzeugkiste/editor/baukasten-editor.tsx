@@ -76,6 +76,7 @@ import {
   type DateiZiel,
 } from '@/components/werkzeugkiste/editor/bild-werkzeuge'
 import { auswahlAusMarke } from '@/components/werkzeugkiste/editor/vorschau-skript'
+import { hatKennzeichenFaehige } from '@/components/werkzeugkiste/editor/loesungen-kennzeichnen'
 import type { Taste, VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import { BlockMenue, type MenueAnker } from '@/components/werkzeugkiste/editor/block-menue'
 import { nachbarAuswahl } from '@/components/werkzeugkiste/editor/auswahl-navigation'
@@ -404,6 +405,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     )
     return out
   }, [z.struktur])
+
+  // PROJ-116: Hinweis „Lösungen sichtbar“ nur, wenn es etwas zu kennzeichnen gibt (auch Typen ohne Bauplan, auch die Lernzielkontrolle)
+  const hatLoesungen = useMemo(() => hatKennzeichenFaehige(z.struktur), [z.struktur])
 
   // Themen ohne Blöcke: Die Seite zeigt dort Vorschläge statt einer Lücke
   const leereThemen = useMemo(
@@ -1627,6 +1631,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             aufgabe={aufgabe}
             aufgabeBefehl={aufgabeBefehl}
             aufgaben={aufgabenMarken}
+            loesungenSichtbar={hatLoesungen}
             bereitetVor={!!vormerkung}
             html={v.html}
             laedt={v.laedt}

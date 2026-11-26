@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { JSDOM } from 'jsdom'
 import { mitSprungSkript } from './vorschau-skript'
-import { LOESUNG_TYPEN } from './loesungen-kennzeichnen'
+import { LOESUNG_CSS, LOESUNG_TYPEN, hatKennzeichenFaehige } from './loesungen-kennzeichnen'
 
 /**
  * PROJ-116: Vertrag mit dem Kern.
@@ -147,6 +147,83 @@ describe('Lösungen in „Bearbeiten“ (Vertrag mit dem Kern)', () => {
     w.eval(HILFSSKRIPT)
     w.dispatchEvent(new w.MessageEvent('message', { data: { wkZustand: { modus: 'bearbeiten' } }, source: w as unknown as MessageEventSource }))
     expect(w.document.querySelectorAll('.wk-lk').length).toBe(0)
+  })
+})
+
+describe('QA-Fehler PROJ-116', () => {
+  const ausprobieren = { wkZustand: { modus: 'ausprobieren', lesen: false, mobil: false, schublade: false, leer: [], aufgaben: {} } }
+  const bearbeiten = { wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, schublade: false, leer: [], aufgaben: {} } }
+
+  it('BUG-1: setzt eine Aufgabe ihren Inhalt aus einer Abschrift zurück, bleibt nach „Ausprobieren“ keine Spur', () => {
+    const { d, sende } = lade()
+    const s = sec(d, 5)
+    // So macht es das Aufgabenwerk beim Abbrechen: Inhalt als Text merken, später zurückschreiben (neue Elemente mit den alten Kennzeichen)
+    const abschrift = s.innerHTML
+    s.innerHTML = ''
+    s.innerHTML = abschrift
+    sende({ wkAufgabeVorbei: true })
+    sende(ausprobieren)
+    const felder = [...s.querySelectorAll<HTMLInputElement>('input.luecke')]
+    expect(felder.map((f) => f.placeholder)).toEqual(['', ''])
+    expect(felder.map((f) => f.title)).toEqual(['', ''])
+    expect(d.querySelectorAll('.wk-lk,[data-wk-lk]').length).toBe(0)
+  })
+
+  it('BUG-1: auch ohne „Vorbei“ räumt der Wechsel zu „Ausprobieren“ Kopien mit alter Spur weg', () => {
+    const { d, sende } = lade()
+    const s = sec(d, 1)
+    s.innerHTML = s.innerHTML // neue Elemente, Spur kommt aus dem Text mit
+    sende(ausprobieren)
+    expect(d.querySelectorAll('.wk-lk,[data-wk-lk],[title="Lösung"]').length).toBe(0)
+  })
+
+  it('BUG-1: danach zeichnet „Bearbeiten“ wieder genau einmal, ohne die Lösung als „ursprünglichen“ Wert zu merken', () => {
+    const { d, sende } = lade()
+    const s = sec(d, 5)
+    s.innerHTML = s.innerHTML
+    sende(bearbeiten)
+    sende(ausprobieren)
+    expect([...s.querySelectorAll<HTMLInputElement>('input.luecke')].map((f) => f.placeholder)).toEqual(['', ''])
+    sende(bearbeiten)
+    expect([...s.querySelectorAll<HTMLInputElement>('input.luecke')].map((f) => f.placeholder)).toEqual(['Frachtführer …', 'Schäden'])
+  })
+
+  it('BUG-1: vorhandene eigene Werte (Titel, Platzhalter) kommen unverändert zurück', () => {
+    const { d, sende } = lade()
+    const f = sec(d, 5).querySelector<HTMLInputElement>('input.luecke')!
+    sende(ausprobieren)
+    f.setAttribute('placeholder', 'eigener Platzhalter')
+    f.setAttribute('title', 'eigener Titel')
+    sende(bearbeiten)
+    expect(f.placeholder).toBe('Frachtführer …')
+    sende(ausprobieren)
+    expect(f.placeholder).toBe('eigener Platzhalter')
+    expect(f.title).toBe('eigener Titel')
+  })
+
+  it('BUG-1: gefälschte Spur im Seiteninhalt kann keine fremden Attribute setzen', () => {
+    const { d, sende } = lade()
+    const a = sec(d, 1).querySelector('.antwort')!
+    a.setAttribute('data-wk-lk', JSON.stringify({ k: 'x" onclick="boese', o: { onclick: 'alert(1)', title: 'ok' } }))
+    sende(ausprobieren)
+    expect(a.hasAttribute('onclick')).toBe(false)
+    expect(a.getAttribute('title')).toBe('ok')
+    expect(a.hasAttribute('data-wk-lk')).toBe(false)
+  })
+
+  it('BUG-2: im Druck verschwindet auch der Platzhalter mit dem Lösungswort', () => {
+    expect(LOESUNG_CSS).toMatch(/@media print\{input\.wk-lk-feld::placeholder\{color:transparent/)
+    // Alles andere gilt nur am Bildschirm
+    expect(LOESUNG_CSS.startsWith('@media screen{')).toBe(true)
+  })
+
+  it('BUG-3: der Hinweis zählt das ganze Material, auch Typen ohne Bauplan und die Lernzielkontrolle', () => {
+    expect(hatKennzeichenFaehige({ chapters: [{ elements: [{ type: 'image_sequencing' }] }] })).toBe(true)
+    expect(hatKennzeichenFaehige({ chapters: [{ elements: [{ type: 'text' }, { type: 'memory_game' }] }] })).toBe(false)
+    expect(hatKennzeichenFaehige({ chapters: [{ elements: [] }], final_chapter: { question_set: { questions: [] } } })).toBe(true)
+    expect(hatKennzeichenFaehige({ chapters: [], final_chapter: { summary: { statements: [] } } })).toBe(true)
+    expect(hatKennzeichenFaehige({ chapters: [], final_chapter: {} })).toBe(false)
+    expect(hatKennzeichenFaehige({})).toBe(false)
   })
 })
 

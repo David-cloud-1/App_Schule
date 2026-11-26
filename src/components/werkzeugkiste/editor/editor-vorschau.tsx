@@ -92,6 +92,7 @@ export function EditorVorschau({
   aufgabeBefehl = null,
   aufgaben = {},
   bereitetVor = false,
+  loesungenSichtbar,
 }: {
   html: string | null
   laedt: boolean
@@ -137,6 +138,8 @@ export function EditorVorschau({
   aufgaben?: Record<string, string>
   /** Eine neu eingefügte Aufgabe wartet darauf, in der Seite aufzugehen (vorgemerkte Öffnung) */
   bereitetVor?: boolean
+  /** PROJ-116: Hat das Material Aufgaben mit Lösungs-Kennzeichen? (fehlt: aus `aufgaben` abgeleitet) */
+  loesungenSichtbar?: boolean
 }) {
   const rahmen = useRef<HTMLIFrameElement>(null)
   const scrollY = useRef(0)
@@ -166,7 +169,8 @@ export function EditorVorschau({
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
   // PROJ-116: Hinweis nur, wenn die Seite überhaupt Aufgaben mit sichtbaren Lösungen hat
-  const zeigtLoesungen = modus === 'bearbeiten' && Object.values(aufgaben).some((t) => LOESUNG_TYPEN.includes(t))
+  const hatLoesungen = loesungenSichtbar ?? Object.values(aufgaben).some((t) => LOESUNG_TYPEN.includes(t))
+  const zeigtLoesungen = modus === 'bearbeiten' && hatLoesungen
   const [dateiZieht, setDateiZieht] = useState(false)
   const dropZiel = useRef<DateiZielMarke | null>(null)
   const dateienRef = useRef(onDateien)

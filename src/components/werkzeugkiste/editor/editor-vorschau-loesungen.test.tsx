@@ -23,6 +23,13 @@ describe('Vorschau-Kopfzeile: Hinweis auf sichtbare Lösungen', () => {
     expect(screen.queryByTestId('loesungen-hinweis')).toBeNull()
   })
 
+  it('BUG-3: der übergebene Wert hat Vorrang (z. B. Bilder-Reihenfolge ohne Bauplan, Lernzielkontrolle)', () => {
+    const { rerender } = render(<EditorVorschau {...basis} modus="bearbeiten" aufgaben={{}} loesungenSichtbar />)
+    expect(screen.getByTestId('loesungen-hinweis')).toBeInTheDocument()
+    rerender(<EditorVorschau {...basis} modus="bearbeiten" aufgaben={{ 'k0-e0': 'fill_blanks' }} loesungenSichtbar={false} />)
+    expect(screen.queryByTestId('loesungen-hinweis')).toBeNull()
+  })
+
   it('zeigt ihn nicht, solange die Vorschau lädt oder nicht aktuell ist', () => {
     const { rerender } = render(<EditorVorschau {...basis} laedt modus="bearbeiten" aufgaben={{ 'k0-e0': 'mark_words' }} />)
     expect(screen.queryByTestId('loesungen-hinweis')).toBeNull()
