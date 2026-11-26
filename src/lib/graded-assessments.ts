@@ -84,6 +84,34 @@ export function effectiveAssessmentStatus(
   return 'open'
 }
 
+/**
+ * Beitritt vorbei: von Hand geschlossen oder „Beitritt bis“ abgelaufen.
+ * Eine gemeinsame Regel für Aufgabenkarte, Filter, Status-Anzeige (Befund F2).
+ */
+export function isJoinEnded(
+  status: 'draft' | 'open' | 'closed',
+  closesAt: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (status === 'closed') return true
+  return status === 'open' && !!closesAt && now.getTime() > new Date(closesAt).getTime()
+}
+
+/**
+ * „Läuft gerade“: geöffnet, und es kann noch jemand schreiben. Wer kurz vor
+ * Ende beitritt, hat danach noch die volle Bearbeitungszeit.
+ */
+export function isAssessmentRunning(
+  status: 'draft' | 'open' | 'closed',
+  closesAt: string | null | undefined,
+  durationMinutes: number | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (status !== 'open') return false
+  if (!closesAt) return true
+  return now.getTime() <= new Date(closesAt).getTime() + (durationMinutes ?? 0) * 60_000
+}
+
 export function gradeForPercent(percent: number, scale: GradeBoundary[]): number {
   const sorted = [...scale].sort((a, b) => a.grade - b.grade)
   for (const b of sorted) {

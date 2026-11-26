@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { LeaveRoundLink } from '@/components/quiz-round/leave-round-link'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle2, XCircle, Zap, Coins, Trophy, RotateCcw, Flame, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -413,12 +414,7 @@ export function QuizClient({ questions, subject, subjectId, totalAvailable }: Qu
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <Link
-              href="/subjects"
-              className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </Link>
+            <LeaveRoundLink started={currentIndex > 0 || hasAnswered} />
             <div className="flex items-center gap-2">
               <div
                 className="w-2.5 h-2.5 rounded-full flex-shrink-0"

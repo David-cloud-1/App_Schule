@@ -25,3 +25,8 @@ Die Übersicht meldet „N Nachweise sind beendet, die Ergebnisse sind noch nich
 - `assessment-filter.ts` (`FILTER_UNRELEASED`), `assessment-filter-bar.tsx`, `leistungsnachweise/page.tsx`, `api/admin/assessments/route.ts`, `teacher-tasks.ts`.
 - Tests: `assessment-filter.test.ts`, `assessment-filter-bar.test.tsx`.
 - Deployed 2026-11-11 (https://spedilern.vercel.app), Commit d57dbe9. Noch nicht im Browser geprüft.
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F2: Eine gemeinsame Regel `isJoinEnded` (geschlossen oder „Beitritt bis“ vorbei) gilt für Aufgabenkarte, Filter und Status-Anzeige. Abgelaufene offene Nachweise zeigen „Beitritt beendet“, der Knopf heißt dann „Nachweis abschließen“. „Läuft gerade“ blendet sie aus, sobald niemand mehr schreiben kann. „Nicht freigegeben“ verlangt wie die Aufgabenkarte mindestens eine Abgabe.

@@ -73,7 +73,11 @@ export function ChecklistenUebersicht() {
                           : 'inline-flex w-fit rounded-full border border-ws-orange/30 bg-ws-orange/15 px-3 py-1 text-xs font-semibold text-ws-orange'
                       }
                     >
-                      {f.fertig ? 'Alles erledigt' : `Angefangen: ${fortschrittText(f)}`}
+                      {f.fertig
+                        ? 'Alles erledigt'
+                        : f.erledigt === 0
+                          ? 'Gestartet, noch nichts abgehakt'
+                          : `Angefangen: ${fortschrittText(f)}`}
                     </span>
                   )}
                 </Link>

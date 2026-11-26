@@ -377,3 +377,8 @@ Keine neuen Pakete.
 - **Zwischenfall:** Beim Push ging zusätzlich `c80d49f` (PROJ-51 Werkzeugkiste, nur Frontend, ohne Backend) mit live, weil die andere Sitzung zwischen Prüfung und Push committet hatte. Auf Wunsch des Nutzers sofort per Revert zurückgenommen (`revert(PROJ-51)`), damit der Link zur alten Werkzeugkiste wieder funktioniert.
 - **Fehler nach dem Deploy (behoben, `b2ea430`):** `/admin/konto` brach live mit einem Serverfehler ab. Server-Komponenten (Aufgaben, Beitrag) gaben ein Icon als Funktion an Client-Komponenten (`KontoCard`, `AdminEmptyState`) weiter. Weder Vitest (jsdom, ohne Server-Komponenten) noch der Build erkennen das. Behoben durch Entfernen von `'use client'` in `konto-card.tsx`/`admin-states.tsx`, `KontoSectionError` steht in eigener Datei.
 - **Offen:** Sichtprüfung im Browser (Handy/Laptop, hell/dunkel) und ein echter E-Mail-Wechsel an einem Testkonto durch den Nutzer.
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F4: Karte heißt „Meine Leistungsnachweise“ und sagt nur etwas über eigene Nachweise aus, mit Link zu allen Aufgaben auf der Startseite.

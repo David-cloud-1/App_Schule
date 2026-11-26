@@ -1,4 +1,5 @@
 // PROJ-39: Filterlogik der Leistungsnachweis-Liste (rein, ohne React/Netz)
+import { isJoinEnded } from '@/lib/graded-assessments'
 
 export const FILTER_ALL = 'alle'
 export const FILTER_NONE = 'none'
@@ -22,6 +23,10 @@ export type CategorizedAssessment = {
   title: string
   accessCode: string
   status: 'draft' | 'open' | 'closed'
+  /** „Beitritt bis“; ist er vorbei, gilt der Nachweis als beendet (F2) */
+  closesAt?: string | null
+  /** Anzahl Abgaben, falls bekannt */
+  submittedCount?: number
   /** PROJ-86: Zeitpunkt der Freigabe der Ergebnisse, null = noch nicht freigegeben */
   resultsReleasedAt?: string | null
   schoolYear: string
@@ -45,7 +50,7 @@ export type AssessmentFilters = {
   className: string
   /** Fach-ID, FILTER_ALL für alle, FILTER_NONE für „Ohne Zuordnung“ */
   subjectId: string
-  /** Status, FILTER_ALL für alle; 'unreleased' = geschlossen, Ergebnisse noch nicht freigegeben (PROJ-86) */
+  /** Status, FILTER_ALL für alle; 'unreleased' = Beitritt beendet, mit Abgaben, noch nicht freigegeben (PROJ-86) */
   status: string
   /** Zielbereich-ID, FILTER_ALL für alle (PROJ-46) */
   departmentId: string
@@ -110,8 +115,12 @@ export function filterAssessments<T extends CategorizedAssessment>(items: T[], f
       if (filters.className === FILTER_NONE ? a.className !== null : filters.className !== FILTER_ALL && a.className !== classFromFilter(filters.className)) return false
       if (filters.subjectId === FILTER_NONE ? a.subjectId !== null : filters.subjectId !== FILTER_ALL && a.subjectId !== filters.subjectId) return false
       if (filters.status === FILTER_UNRELEASED) {
-        if (a.status !== 'closed' || a.resultsReleasedAt) return false
-      } else if (filters.status !== FILTER_ALL && a.status !== filters.status) return false
+        // Gleiche Regel wie die Aufgabenkarte: beendet, mindestens eine Abgabe, nicht freigegeben
+        if (!isJoinEnded(a.status, a.closesAt) || a.resultsReleasedAt || a.submittedCount === 0) return false
+      } else if (filters.status !== FILTER_ALL) {
+        const status = isJoinEnded(a.status, a.closesAt) ? 'closed' : a.status
+        if (status !== filters.status) return false
+      }
       if (filters.departmentId !== FILTER_ALL && a.departmentId !== filters.departmentId) return false
       if (filters.createdBy !== FILTER_ALL) {
         const wantDeleted = filters.createdBy === 'deleted'

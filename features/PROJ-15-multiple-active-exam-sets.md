@@ -57,3 +57,8 @@ Bestehende Sets lassen sich jetzt nachträglich ändern, statt sie löschen und 
 - **Keine Auswirkung auf laufende oder abgeschlossene Prüfungen:** Prüfungssitzungen kopieren ihre Fragen beim Start, und Leistungsnachweise frieren die Fragen beim Öffnen ein (PROJ-21/27). Eine Änderung wirkt nur auf neue Durchläufe.
 - **Tests:** 9 neue Fälle für die Route (Login, Rolle, unbekanntes Set, fremder Bereich ohne Schreibzugriff, Austausch der Fragen, Statuswechsel allein, ungültige Eingaben, Löschen).
 - **Nicht getestet:** Der Dialog im Browser (Bearbeiten, Fach-Auswahl, Themenfilter) — hier ohne Browser nicht möglich.
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F5: Hinweis auf der Verwaltungsseite, wenn kein Übungsset aktiv ist; Schülerseite sagt „Deine Lehrkraft hat noch keine freigegeben“.

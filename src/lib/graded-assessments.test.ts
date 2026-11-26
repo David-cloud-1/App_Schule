@@ -15,7 +15,7 @@ import {
   snapshotQuestionIds,
   csvEscape,
   buildStudentReports,
-  type SessionRow,
+  type SessionRow, isAssessmentRunning,
 } from './graded-assessments'
 
 describe('validateGradingScale', () => {
@@ -349,5 +349,19 @@ describe('PROJ-75: aus der Wertung genommene Fragen', () => {
     expect(part.questions.find((q) => q.id === 'b')?.excluded).toBe(true)
     expect(part.questions.find((q) => q.id === 'a')?.excluded).toBeUndefined()
     expect(scored).toMatchObject({ points: 1, totalPoints: 1, percent: 100, grade: 1 })
+  })
+})
+
+describe('isAssessmentRunning (F2)', () => {
+  const now = new Date('2026-11-26T12:00:00Z')
+  it('läuft noch, solange jemand die volle Zeit haben kann', () => {
+    expect(isAssessmentRunning('open', '2026-11-26T11:00:00Z', 90, now)).toBe(true)
+  })
+  it('läuft nicht mehr nach Beitrittsende plus Bearbeitungszeit', () => {
+    expect(isAssessmentRunning('open', '2026-10-25T21:00:00Z', 90, now)).toBe(false)
+  })
+  it('Entwurf und geschlossen laufen nie', () => {
+    expect(isAssessmentRunning('draft', null, 90, now)).toBe(false)
+    expect(isAssessmentRunning('closed', '2999-01-01T00:00:00Z', 90, now)).toBe(false)
   })
 })

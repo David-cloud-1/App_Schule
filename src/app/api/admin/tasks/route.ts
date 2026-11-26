@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireContentAdmin } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
 import { EMPTY_TASK_COUNTS, type TaskCounts } from '@/lib/teacher-tasks'
+import { isJoinEnded } from '@/lib/graded-assessments'
 
 const ROUTE = 'api/admin/tasks'
 const DAY_MS = 86_400_000
@@ -69,8 +70,8 @@ export async function GET() {
       return opens >= now.getTime() && opens <= inSevenDays
     }).length
 
-    const ended = own.filter(
-      (a) => a.status === 'closed' || (a.status === 'open' && new Date(a.closes_at as string).getTime() < now.getTime()),
+    const ended = own.filter((a) =>
+      isJoinEnded(a.status as 'draft' | 'open' | 'closed', a.closes_at as string, now),
     )
     if (ended.length === 0) {
       counts.unreleasedAssessments = 0

@@ -73,7 +73,8 @@ describe('GET /api/admin/users/[id]/detail/[section] (PROJ-59)', () => {
 
   it('Übersicht: Steckbrief und Spielstand ohne sensible Felder', async () => {
     adminClient()
-    serviceClient()
+    // heute gelernt, sonst gilt die Serie als gerissen (F3)
+    serviceClient({}, { ...PROFILE, last_session_date: new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Berlin' }).format(new Date()) })
     const json = await (await call('overview')).json()
     expect(json).toMatchObject({
       displayName: 'Anna', email: 'anna@x.de', emailConfirmed: true, role: 'student',

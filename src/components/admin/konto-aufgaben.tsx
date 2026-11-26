@@ -11,7 +11,7 @@ const GROUPS: {
   href: string
 }[] = [
   { key: 'drafts', title: 'Entwürfe', hint: 'Noch nicht geöffnet', href: '/admin/leistungsnachweise?status=draft' },
-  { key: 'running', title: 'Laufen gerade', hint: 'Die Klasse kann beitreten oder schreibt', href: '/admin/leistungsnachweise?status=open' },
+  { key: 'running', title: 'Geöffnet', hint: 'Noch nicht abgeschlossen', href: '/admin/leistungsnachweise?status=open' },
   {
     key: 'unseen',
     title: 'Auswertung noch nicht angesehen',
@@ -61,10 +61,10 @@ function Group({ title, hint, href, group, showSubmissions }: { title: string; h
   )
 }
 
-/** Karte „Offene Aufgaben“: eigene Nachweise nach Zustand, je höchstens 5 */
+/** Karte „Meine Leistungsnachweise“: nur eigene Nachweise nach Zustand, je höchstens 5 (F4) */
 export function KontoAufgabenKarte({ section }: { section: Section<KontoAufgaben> }) {
   return (
-    <KontoCard id="aufgaben" icon={ListChecks} title="Offene Aufgaben" description="Deine Leistungsnachweise, die auf dich warten.">
+    <KontoCard id="aufgaben" icon={ListChecks} title="Meine Leistungsnachweise" description="Nur Nachweise, die du selbst angelegt hast.">
       {!section.ok ? (
         <KontoSectionError />
       ) : (
@@ -74,7 +74,13 @@ export function KontoAufgabenKarte({ section }: { section: Section<KontoAufgaben
             return (
               <p className="flex items-center gap-2 rounded-xl bg-ws-green/15 px-4 py-3 text-sm font-medium text-ws-green">
                 <CheckCircle2 aria-hidden className="size-5 shrink-0" />
-                Alles erledigt. Es wartet nichts auf dich.
+                <span>
+                  Von deinen eigenen Nachweisen ist keiner offen.{' '}
+                  <Link href="/admin" className="underline">
+                    Alle Aufgaben stehen auf der Startseite
+                  </Link>
+                  .
+                </span>
               </p>
             )
           }

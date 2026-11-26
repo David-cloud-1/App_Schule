@@ -62,6 +62,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { groupDistribution } from '@/lib/assessment-groups'
 import { FocusCell, FocusDetailPanel, FocusDraftSettings } from '@/components/admin/focus-detail'
 import type { ParticipantFocus } from '@/lib/focus-tracking'
+import { isJoinEnded } from '@/lib/graded-assessments'
 import { cn } from '@/lib/utils'
 import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
@@ -355,7 +356,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                 >
                   <Lock size={14} className="mr-1.5" />
-                  Beitritt schließen
+                  {isJoinEnded(detail.status, detail.closesAt) ? 'Nachweis abschließen' : 'Beitritt schließen'}
                 </Button>
               )}
               {detail.status === 'closed' && !detail.resultsReleasedAt && (
@@ -459,10 +460,12 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             <Badge className={cn(
               'text-xs border-0',
               detail.status === 'draft' && 'bg-ws-line/40 text-ws-muted',
-              detail.status === 'open' && 'bg-ws-green/20 text-ws-green',
-              detail.status === 'closed' && 'bg-ws-orange/20 text-ws-orange',
+              detail.status === 'open' && !isJoinEnded(detail.status, detail.closesAt) && 'bg-ws-green/20 text-ws-green',
+              isJoinEnded(detail.status, detail.closesAt) && 'bg-ws-orange/20 text-ws-orange',
             )}>
-              {STATUS_LABELS[detail.status]}
+              {detail.status === 'open' && isJoinEnded(detail.status, detail.closesAt)
+                ? 'Beitritt beendet'
+                : STATUS_LABELS[detail.status]}
             </Badge>
             {detail.departmentName && (
               <Badge className="text-xs border-0 bg-ws-blue/15 text-ws-blue">
@@ -711,7 +714,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               <>
                 <div className="flex items-center justify-around text-center pb-2 border-b border-ws-line">
                   <div>
-                    <p className="text-2xl font-bold text-ws-text">{results.gradeDistribution.average?.toFixed(1) ?? '—'}</p>
+                    <p className="text-2xl font-bold text-ws-text">{results.gradeDistribution.average?.toFixed(1).replace('.', ',') ?? '—'}</p>
                     <p className="text-xs text-ws-muted">Ø-Note</p>
                   </div>
                   <div>

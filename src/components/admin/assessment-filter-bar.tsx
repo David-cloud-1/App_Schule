@@ -56,7 +56,7 @@ export function AssessmentFilterBar({
             type="search"
             value={filters.query}
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
-            placeholder="Titel oder Code suchen"
+            placeholder="Titel oder Code"
             aria-label="Nachweise nach Titel oder Code suchen"
             className="h-11 pl-9 bg-ws-surface border-ws-line text-ws-text"
           />

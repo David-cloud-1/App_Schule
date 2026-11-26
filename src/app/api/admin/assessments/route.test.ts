@@ -3,10 +3,18 @@ import { GET, POST } from './route'
 import { NextRequest } from 'next/server'
 import { IHK_DEFAULT_SCALE } from '@/lib/graded-assessments'
 
+// Sitzungen liest die Liste mit dem Dienst-Client (F1); Tests setzen sie hier.
+const serviceSessions: { data: unknown[] } = { data: [] }
+
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
   createServiceClient: vi.fn(() => ({
     auth: { admin: { getUserById: vi.fn().mockResolvedValue({ data: { user: null } }) } },
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      in: vi.fn().mockReturnThis(),
+      limit: vi.fn(() => Promise.resolve(serviceSessions)),
+    })),
   })),
 }))
 
@@ -176,6 +184,19 @@ describe('GET /api/admin/assessments', () => {
     }) as never)
     const body = await (await GET(makeGetRequest())).json()
     expect(body.assessments[0]).toMatchObject({ createdBy: 'teacher-uuid', createdByName: 'Frau Muster', createdByFormer: false })
+  })
+
+  it('zählt Teilnehmer und Abgaben auch bei Nachweisen anderer Lehrkräfte (F1, Dienst-Client)', async () => {
+    const row = { id: 'a1', title: 'Ex Heft 2', part: 1, status: 'open', access_code: 'K4EVTG00', created_at: '2026-10-25T00:00:00Z', exam_question_sets: null, created_by: 'other-teacher', department_id: 'dept-sped' }
+    serviceSessions.data = [
+      { assessment_id: 'a1', status: 'submitted' },
+      { assessment_id: 'a1', status: 'in_progress' },
+    ]
+    // Der Nutzer-Client sähe wegen des Zeilenschutzes keine Sitzungen
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'department_admin', listData: [row], sessionsData: [] }) as never)
+    const body = await (await GET(makeGetRequest())).json()
+    serviceSessions.data = []
+    expect(body.assessments[0]).toMatchObject({ participantCount: 2, submittedCount: 1 })
   })
 
   it('shows "Gelöschtes Konto" when the creator account is gone', async () => {

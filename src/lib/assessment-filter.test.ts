@@ -165,3 +165,25 @@ describe('Filter „Nicht freigegeben“ (PROJ-86)', () => {
     expect(f.schoolYear).toBe(FILTER_ALL)
   })
 })
+
+describe('Abgelaufener Beitritt zählt als beendet (F2)', () => {
+  const past = '2020-01-01T10:00:00Z'
+  const future = '2999-01-01T10:00:00Z'
+  const list = [
+    make({ title: 'abgelaufen', status: 'open', closesAt: past, submittedCount: 1 }),
+    make({ title: 'laeuft', status: 'open', closesAt: future, submittedCount: 1, createdAt: '2026-09-01T00:00:00Z' }),
+    make({ title: 'leer', status: 'closed', submittedCount: 0, createdAt: '2026-08-01T00:00:00Z' }),
+  ]
+  const titles = (status: string) =>
+    filterAssessments(list, { ...defaultFilters('2026/27'), status }).map((a) => a.title)
+
+  it('„Nicht freigegeben“ findet den abgelaufenen Nachweis, nicht den ohne Abgaben', () => {
+    expect(titles(FILTER_UNRELEASED)).toEqual(['abgelaufen'])
+  })
+  it('„Offen“ enthält nur den laufenden', () => {
+    expect(titles('open')).toEqual(['laeuft'])
+  })
+  it('„Geschlossen“ enthält auch den abgelaufenen', () => {
+    expect(titles('closed')).toEqual(['abgelaufen', 'leer'])
+  })
+})

@@ -182,3 +182,8 @@ Current state is safe to deploy as a feature flag or behind PROJ-5 dependency. N
 - Ersetzt die frühere Kurzform („Deine Antwort: … / Richtig: …"), die nur bei falsch beantworteten Fragen erschien
 - Datei: `src/app/quiz/quiz-client.tsx` (neue Komponente `QuestionReviewItem`)
 - Commit `0535205`, deployed nach https://spedilern.vercel.app
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F6: Wer eine begonnene Quizrunde verlässt, wird gefragt („Runde abbrechen?“) – `LeaveRoundLink`.

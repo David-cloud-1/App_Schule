@@ -1,3 +1,4 @@
+import { activeStreak } from '@/lib/streak'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireManager } from '../_lib/auth'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       department_name: p.department_id ? (departmentNames.get(p.department_id) ?? null) : null,
       created_at: p.created_at,
       total_xp: p.total_xp,
-      current_streak: p.current_streak,
+      current_streak: activeStreak(p.current_streak, p.last_session_date),
       last_session_date: p.last_session_date,
       last_sign_in_at: au?.last_sign_in_at ?? null,
       banned,

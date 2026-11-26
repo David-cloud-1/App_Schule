@@ -34,7 +34,7 @@ const CATEGORY_HINT: Record<ForumCategory, string> = {
   idee: 'Ein Vorschlag für den Unterricht',
 }
 const chipClass =
-  'min-h-11 flex-1 flex-col items-start gap-0 rounded-xl border border-ws-line px-4 py-2 text-left text-ws-muted hover:bg-ws-raised hover:text-ws-text data-[state=on]:border-ws-green/30 data-[state=on]:bg-ws-green/15 data-[state=on]:text-ws-green'
+  'h-auto min-h-11 flex-1 flex-col items-start justify-start gap-0 whitespace-normal rounded-xl border border-ws-line px-4 py-2 text-left text-ws-muted hover:bg-ws-raised hover:text-ws-text data-[state=on]:border-ws-green/30 data-[state=on]:bg-ws-green/15 data-[state=on]:text-ws-green'
 
 type FieldErrors = Partial<Record<'category' | 'title' | 'body' | 'form', string>>
 

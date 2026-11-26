@@ -125,3 +125,8 @@ The acceptance criterion says "Streak wird auf **0** zurückgesetzt" but the tec
 - `POST /api/quiz/sessions` — Streak logic runs server-side (Europe/Berlin timezone), returns `new_streak`
 - Header `StreakBadge` — Flame icon + count visible after login
 - Quiz summary — Streak banner shown after completing session
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F3: Angezeigter Streak ist 0, wenn weder heute noch gestern gelernt wurde (`src/lib/streak.ts`, rein lesend). Gilt für Startseite, Profil, Profil-API, Nutzerliste, Nutzer-Detail.

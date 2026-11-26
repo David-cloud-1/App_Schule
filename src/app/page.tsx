@@ -1,3 +1,4 @@
+import { activeStreak } from '@/lib/streak'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import Link from 'next/link'
@@ -65,7 +66,7 @@ export default async function HomePage({
     await Promise.all([
       supabase
         .from('profiles')
-        .select('display_name, role, total_xp, current_streak')
+        .select('display_name, role, total_xp, current_streak, last_session_date')
         .eq('id', user.id)
         .single(),
 
@@ -111,7 +112,7 @@ export default async function HomePage({
     redirect(TEACHER_HOME_PATH)
   }
   const totalXp = (profile?.total_xp as number) ?? 0
-  const currentStreak = (profile?.current_streak as number) ?? 0
+  const currentStreak = activeStreak(profile?.current_streak as number, profile?.last_session_date as string | null, now)
   const displayName = profile?.display_name ?? user.email?.split('@')[0] ?? 'Lernender'
   const showTeacherArea = isTeacherRole(profile?.role)
   const hasSessions = answers.length > 0

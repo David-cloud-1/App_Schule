@@ -40,6 +40,7 @@ import {
   subjectOptions,
   type AssessmentFilters,
 } from '@/lib/assessment-filter'
+import { isJoinEnded } from '@/lib/graded-assessments'
 import { cn } from '@/lib/utils'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState, AdminErrorState } from '@/components/admin/admin-states'
@@ -55,6 +56,7 @@ type AssessmentListItem = {
   participantCount: number
   submittedCount: number
   createdAt: string
+  closesAt?: string | null
   /** PROJ-79: Titel des Originals, wenn der Nachweis eine Kopie ist */
   copiedFromTitle?: string | null
   /** PROJ-39: Ablage */
@@ -340,10 +342,10 @@ function AssessmentsPageContent() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn('text-xs border-0', STATUS_STYLES[a.status])}>
-                        {STATUS_LABELS[a.status]}
+                      <Badge className={cn('text-xs border-0', STATUS_STYLES[isJoinEnded(a.status, a.closesAt) ? 'closed' : a.status])}>
+                        {a.status === 'open' && isJoinEnded(a.status, a.closesAt) ? 'Beitritt beendet' : STATUS_LABELS[a.status]}
                       </Badge>
-                      {a.status === 'closed' && (
+                      {isJoinEnded(a.status, a.closesAt) && (
                         <div className="mt-1">
                           <Badge
                             className={cn(

@@ -21,6 +21,7 @@ import { BadgeUnlockModal } from '@/components/badge-unlock-modal'
 import { XpLevelBadge } from '@/components/xp-level-badge'
 import { ReportQuestionButton } from '@/components/report-question-button'
 import { ReminderOptInCard } from '@/components/reminder-opt-in-card'
+import { LeaveRoundLink } from '@/components/quiz-round/leave-round-link'
 import { ChoiceOptions } from '@/components/quiz-round/choice-options'
 import { TrueFalseCard } from '@/components/quiz-round/true-false-card'
 import { EliminateOptions } from '@/components/quiz-round/eliminate-options'
@@ -487,9 +488,7 @@ export function QuizRoundClient({ start, subject, totalAvailable }: QuizRoundCli
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <Link href="/subjects" aria-label="Runde verlassen" className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors">
-              <ArrowLeft size={20} />
-            </Link>
+            <LeaveRoundLink started={index > 0 || !!outcome} />
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: subject.color }} aria-hidden="true" />
               <span className="text-sm font-medium text-[#9CA3AF]">{subject.code}</span>

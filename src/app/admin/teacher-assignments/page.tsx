@@ -125,7 +125,7 @@ export default function TeacherAssignmentsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Zuständigkeiten"
-        description="Wer hat sich für welches Fach eingetragen (PROJ-48)."
+        description="Wer hat sich für welches Fach eingetragen."
       />
 
       {loading && <AdminLoadingState variant="list" />}

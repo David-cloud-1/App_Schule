@@ -33,6 +33,8 @@ describe('GET /api/profile/stats', () => {
       makeSupabaseMock({ id: 'user-1' }, {
         total_xp: 250,
         current_streak: 5,
+        // heute gelernt, sonst gilt die Serie als gerissen (F3)
+        last_session_date: new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Berlin' }).format(new Date()),
         longest_streak: 12,
       }) as never,
     )

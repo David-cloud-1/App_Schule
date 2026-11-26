@@ -500,6 +500,13 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
             </>
           }
         />
+        {/* F5: ohne aktives Set sehen Azubis unter „Prüfung üben“ nichts */}
+        {sets.length > 0 && !sets.some((s) => s.is_active) && (
+          <p role="status" className="mt-4 rounded-xl border border-ws-orange/30 bg-ws-orange/15 px-4 py-3 text-sm text-ws-orange">
+            Im Moment ist keine Übungsprüfung aktiv. Azubis sehen deshalb unter „Prüfung üben“ nichts. Wähle bei einem Set
+            „Aktivieren“, damit sie es spielen können.
+          </p>
+        )}
       </div>
 
       {sets.length === 0 ? (

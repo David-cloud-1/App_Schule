@@ -118,16 +118,17 @@ describe('Karte „Über mich“ – Name (PROJ-121)', () => {
   })
 })
 
-describe('Karte „Offene Aufgaben“', () => {
+describe('Karte „Meine Leistungsnachweise“', () => {
   const group = (titles: string[], total = titles.length) => ({ items: titles.map((t, i) => ({ id: `${t}-${i}`, title: t, submissions: 2 })), total })
   const section = (over: Partial<KontoAufgaben>) => ({
     ok: true as const,
     data: { drafts: group([]), running: group([]), unseen: group([]), ...over },
   })
 
-  it('sagt „Alles erledigt“, wenn nichts offen ist, und zeigt keine leeren Gruppen', () => {
+  it('sagt nur etwas über eigene Nachweise, wenn keiner offen ist, und zeigt keine leeren Gruppen', () => {
     render(<KontoAufgabenKarte section={section({})} />)
-    expect(screen.getByText(/Alles erledigt/)).toBeInTheDocument()
+    expect(screen.getByText(/Von deinen eigenen Nachweisen ist keiner offen/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Startseite/ })).toHaveAttribute('href', '/admin')
     expect(screen.queryByText('Entwürfe')).not.toBeInTheDocument()
   })
 

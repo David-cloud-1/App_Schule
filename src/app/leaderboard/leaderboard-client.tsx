@@ -113,10 +113,11 @@ export function LeaderboardClient({ userId }: LeaderboardClientProps) {
           )}
 
           <p className="text-center text-[#6B7280] text-xs pt-2">
-            Opt-out-Einstellungen in{' '}
+            Nicht in der Rangliste erscheinen? Das stellst du in{' '}
             <Link href="/profile" className="text-[#9CA3AF] underline underline-offset-2">
               deinem Profil
-            </Link>
+            </Link>{' '}
+            ein.
           </p>
         </>
       )}

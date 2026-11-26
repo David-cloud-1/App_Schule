@@ -1,3 +1,4 @@
+import { activeStreak } from '@/lib/streak'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getLevelFromXp } from '@/lib/xp-utils'
 import { DELETED_ACCOUNT_LABEL } from '@/lib/konto-loeschen'
@@ -87,7 +88,7 @@ export async function loadOverview(service: SupabaseClient, target: Target) {
     lastSessionDate: target.last_session_date,
     totalXp: target.total_xp,
     level: getLevelFromXp(target.total_xp),
-    currentStreak: target.current_streak,
+    currentStreak: activeStreak(target.current_streak, target.last_session_date),
     longestStreak: target.longest_streak,
     coins: target.coin_balance,
     linkedMain,

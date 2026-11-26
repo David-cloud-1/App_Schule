@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('graded_assessments')
     .select(
-      'id, title, part, status, access_code, created_at, exam_set_id, school_year, class_name, subject_id, department_id, created_by, copied_from_title, results_released_at, exam_question_sets(name), subjects(name, code), departments(name, code)'
+      'id, title, part, status, access_code, created_at, closes_at, duration_minutes, exam_set_id, school_year, class_name, subject_id, department_id, created_by, copied_from_title, results_released_at, exam_question_sets(name), subjects(name, code), departments(name, code)'
     )
     .order('created_at', { ascending: false })
   if (departmentId) query = query.eq('department_id', departmentId)
@@ -77,10 +77,16 @@ export async function GET(request: NextRequest) {
   const ids = (data ?? []).map((a) => a.id)
   const counts: Record<string, { participantCount: number; submittedCount: number }> = {}
   if (ids.length > 0) {
-    const { data: sessions } = await supabase
+    // Abgaben zählen mit dem Dienst-Client – wie die Detailseite. Mit dem
+    // Nutzer-Client blendet der Zeilenschutz die Sitzungen bei Nachweisen
+    // anderer Lehrkräfte aus, Übersicht und Liste zeigten dann 0/0 (Befund F1).
+    // Die IDs stammen aus der Abfrage oben, die der Zeilenschutz schon gefiltert hat.
+    const service = createServiceClient()
+    const { data: sessions } = await service
       .from('exam_sessions')
       .select('assessment_id, status')
       .in('assessment_id', ids)
+      .limit(20000)
     for (const s of sessions ?? []) {
       const key = s.assessment_id as string
       if (!counts[key]) counts[key] = { participantCount: 0, submittedCount: 0 }
@@ -139,6 +145,8 @@ export async function GET(request: NextRequest) {
       participantCount: counts[a.id]?.participantCount ?? 0,
       submittedCount: counts[a.id]?.submittedCount ?? 0,
       createdAt: a.created_at,
+      closesAt: (a.closes_at as string | null) ?? null,
+      durationMinutes: (a.duration_minutes as number | null) ?? null,
       copiedFromTitle: (a.copied_from_title as string | null) ?? null,
       schoolYear: a.school_year as string,
       className: (a.class_name as string | null) ?? null,

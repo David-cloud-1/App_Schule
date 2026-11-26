@@ -110,7 +110,7 @@ export function ExamLandingClient({ setsByPart }: Props) {
             </div>
 
             {!isAvailable ? (
-              <p className="text-xs text-[#9CA3AF]">Noch keine Prüfung freigegeben</p>
+              <p className="text-xs text-[#9CA3AF]">Deine Lehrkraft hat noch keine freigegeben</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {sets.length > 1 && (

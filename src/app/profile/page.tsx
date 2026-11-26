@@ -1,3 +1,4 @@
+import { activeStreak } from '@/lib/streak'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, IdCard, User } from 'lucide-react'
@@ -31,7 +32,7 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, leaderboard_opt_out, department_id, role')
+    .select('display_name, pseudonym, show_real_name, total_xp, current_streak, last_session_date, leaderboard_opt_out, department_id, role')
     .eq('id', user.id)
     .single()
 
@@ -39,7 +40,7 @@ export default async function ProfilePage() {
   const pseudonym = (profile?.pseudonym as string | null) ?? 'Unbekannt'
   const showRealName = (profile?.show_real_name as boolean | null) ?? false
   const totalXp = (profile?.total_xp as number | null) ?? 0
-  const currentStreak = (profile?.current_streak as number | null) ?? 0
+  const currentStreak = activeStreak(profile?.current_streak as number | null, profile?.last_session_date as string | null)
   const leaderboardOptOut = (profile?.leaderboard_opt_out as boolean | null) ?? false
 
   // Lehrer-Rollen sehen hier nur eine kurze Spielkarte (PROJ-50); ihr Profil liegt unter „Mein Konto“

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ChevronRight, ExternalLink, Info, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { isAssessmentRunning } from '@/lib/graded-assessments'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { adminHomeActionsFor } from '@/lib/admin-nav'
 import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM, SUPER_ADMIN_ONLY_MESSAGE } from '@/lib/roles'
@@ -27,6 +28,8 @@ type RunningAssessment = {
   status: 'draft' | 'open' | 'closed'
   accessCode: string
   className: string | null
+  closesAt?: string | null
+  durationMinutes?: number | null
   participantCount: number
   submittedCount: number
 }
@@ -71,7 +74,8 @@ function useRunningAssessments(): { data: RunningAssessment[] | null | 'error'; 
     fetch('/api/admin/assessments?scope=workspace')
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((json: { assessments?: RunningAssessment[] }) => {
-        if (!cancelled) setData((json.assessments ?? []).filter((a) => a.status === 'open'))
+        if (!cancelled)
+          setData((json.assessments ?? []).filter((a) => isAssessmentRunning(a.status, a.closesAt, a.durationMinutes)))
       })
       .catch(() => {
         if (!cancelled) setData('error')
@@ -202,7 +206,7 @@ export function AdminHome({
                     </span>
                     <span className="shrink-0 text-right text-sm leading-snug text-ws-muted">
                       <span className="block">
-                        <span className="font-semibold text-ws-text">{writing}</span> schreiben
+                        <span className="font-semibold text-ws-text">{writing}</span> schreiben gerade
                       </span>
                       <span className="block">
                         <span className="font-semibold text-ws-text">{a.submittedCount}</span> abgegeben

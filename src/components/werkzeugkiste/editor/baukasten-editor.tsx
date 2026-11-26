@@ -258,9 +258,18 @@ function Huelle({ titel, kopf, children }: { titel: string; kopf?: React.ReactNo
   )
 }
 
-function Speicheranzeige({ stand, text }: { stand: ReturnType<typeof useEditorZustand>['speicherstand']; text: string | null }) {
+function Speicheranzeige({
+  stand,
+  text,
+  hatEntwurf,
+}: {
+  stand: ReturnType<typeof useEditorZustand>['speicherstand']
+  text: string | null
+  /** false = noch nichts geändert; dann nicht „gespeichert“ behaupten (B62) */
+  hatEntwurf: boolean
+}) {
   const inhalt = {
-    gespeichert: { icon: <Check className="size-4 text-ws-green" aria-hidden />, satz: 'Entwurf gespeichert' },
+    gespeichert: { icon: <Check className="size-4 text-ws-green" aria-hidden />, satz: hatEntwurf ? 'Entwurf gespeichert' : 'Noch nichts geändert' },
     ungespeichert: { icon: <Loader2 className="size-4 animate-spin" aria-hidden />, satz: 'Wird gespeichert …' },
     speichert: { icon: <Loader2 className="size-4 animate-spin" aria-hidden />, satz: 'Wird gespeichert …' },
     fehler: { icon: <CloudOff className="size-4 text-ws-red" aria-hidden />, satz: 'Nicht gespeichert – wird erneut versucht' },
@@ -1448,7 +1457,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         <h1 className="truncate text-sm font-bold sm:text-base" title={daten.titel}>
           {daten.titel}
         </h1>
-        <Speicheranzeige stand={z.speicherstand} text={z.fehlertext} />
+        <Speicheranzeige stand={z.speicherstand} text={z.fehlertext} hatEntwurf={z.hatEntwurf()} />
       </div>
       <Button
         variant="ghost"

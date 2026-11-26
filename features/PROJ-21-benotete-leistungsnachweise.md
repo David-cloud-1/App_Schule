@@ -620,3 +620,8 @@ Gemeinsam deployt: PROJ-19, PROJ-20, PROJ-21.
 
 ## Änderung 2026-10-22: Ergebnis erscheint ohne Neuladen
 Die Warteansicht „Abgegeben – Ergebnis wird freigegeben" lädt die Serverdaten alle 12 s neu (`useAutoRefresh`, `src/hooks/use-auto-refresh.ts`), solange der Tab sichtbar ist und das Ergebnis nicht freigegeben ist. Beim Zurückkehren in den Tab wird sofort geprüft. Keine DB-Änderung; die Sperre der Ergebnisse bleibt serverseitig.
+
+
+## Nachträgliche Fehlerbehebung (2026-11-26, Anfänger-Durchlauf)
+
+F1: Teilnehmer-/Abgabezahlen in Übersicht und Liste kommen jetzt über den Dienst-Client (wie die Detailseite); vorher 0/0 bei Nachweisen anderer Lehrkräfte.

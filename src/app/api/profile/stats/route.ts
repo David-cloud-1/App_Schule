@@ -1,3 +1,4 @@
+import { activeStreak } from '@/lib/streak'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { getLevelFromXp } from '@/lib/xp-utils'
@@ -12,7 +13,7 @@ export async function GET() {
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('total_xp, current_streak, longest_streak, coin_balance, starter_coins, starter_coins_seen')
+    .select('total_xp, current_streak, last_session_date, longest_streak, coin_balance, starter_coins, starter_coins_seen')
     .eq('id', user.id)
     .single()
 
@@ -22,7 +23,7 @@ export async function GET() {
   }
 
   const totalXp       = (profile.total_xp       as number) ?? 0
-  const currentStreak = (profile.current_streak  as number) ?? 0
+  const currentStreak = activeStreak(profile.current_streak as number, profile.last_session_date as string | null)
   const longestStreak = (profile.longest_streak  as number) ?? 0
   const coinBalance   = (profile.coin_balance    as number) ?? 0
   const starterCoins  = profile.starter_coins as number | null
