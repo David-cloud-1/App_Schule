@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { JSDOM } from 'jsdom'
 import { mitSprungSkript } from './vorschau-skript'
 import { LOESUNG_CSS, LOESUNG_TYPEN, hatKennzeichenFaehige } from './loesungen-kennzeichnen'
+import { AUFGABENWERK_CODE } from './aufgabenwerk/aufgabenwerk-bundle.generated'
 
 /**
  * PROJ-116: Vertrag mit dem Kern.
@@ -224,6 +225,53 @@ describe('QA-Fehler PROJ-116', () => {
     expect(hatKennzeichenFaehige({ chapters: [], final_chapter: { summary: { statements: [] } } })).toBe(true)
     expect(hatKennzeichenFaehige({ chapters: [], final_chapter: {} })).toBe(false)
     expect(hatKennzeichenFaehige({})).toBe(false)
+  })
+})
+
+describe('Mit dem echten Aufgabenwerk (QA PROJ-116, zweite Runde)', () => {
+  const zustand = (modus: string) => ({
+    wkZustand: { modus, lesen: false, mobil: false, schublade: false, leer: [], aufgaben: { 'k0-e4': 'fill_blanks', 'k0-e0': 'multiple_choice' } },
+  })
+  const luecken = { type: 'fill_blanks', text: 'Der *Frachtführer/Carrier* haftet für *Schäden*.' }
+  const auswahl = {
+    type: 'multiple_choice',
+    question: 'Wer haftet?',
+    answers: [
+      { text: 'Absender', correct: false },
+      { text: 'Frachtführer', correct: true },
+      { text: 'Empfänger', correct: false },
+    ],
+  }
+
+  function ablauf(ende: 'abbrechen' | 'fertig', marke: string, block: Record<string, unknown>, nr: number) {
+    const { d, sende } = lade()
+    sende(zustand('bearbeiten'))
+    sende({ wkAufgabenwerk: AUFGABENWERK_CODE })
+    const s = sec(d, nr)
+    expect(s.querySelectorAll('[data-wk-lk]').length).toBeGreaterThan(0)
+    sende({ wkAufgabeStart: { marke, block, typName: 'Aufgabe', typWechsel: true, eintrag: null } })
+    expect(s.classList.contains('wk-aufgabenzone')).toBe(true)
+    sende(ende === 'abbrechen' ? { wkAufgabeVorbei: true } : { wkAufgabeBeende: true })
+    const wiederDa = s.querySelectorAll('[data-wk-lk]').length
+    sende(zustand('ausprobieren'))
+    return {
+      wiederDa,
+      rest: d.querySelectorAll('[data-wk-lk],.wk-lk,[title^="Lösung"]').length,
+      platzhalter: [...s.querySelectorAll<HTMLInputElement>('input.luecke')].map((f) => f.placeholder),
+    }
+  }
+
+  it('Lückentext öffnen und abbrechen: Kennzeichen kommen zurück, in „Ausprobieren“ bleibt nichts', () => {
+    expect(ablauf('abbrechen', 'k0-e4', luecken, 5)).toEqual({ wiederDa: 2, rest: 0, platzhalter: ['', ''] })
+  })
+  it('Lückentext öffnen und ohne Änderung „Fertig“', () => {
+    expect(ablauf('fertig', 'k0-e4', luecken, 5)).toEqual({ wiederDa: 2, rest: 0, platzhalter: ['', ''] })
+  })
+  it('Auswahlfrage öffnen und abbrechen', () => {
+    expect(ablauf('abbrechen', 'k0-e0', auswahl, 1)).toEqual({ wiederDa: 1, rest: 0, platzhalter: [] })
+  })
+  it('Auswahlfrage öffnen und ohne Änderung „Fertig“', () => {
+    expect(ablauf('fertig', 'k0-e0', auswahl, 1)).toEqual({ wiederDa: 1, rest: 0, platzhalter: [] })
   })
 })
 

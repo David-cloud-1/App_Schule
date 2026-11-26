@@ -1,6 +1,6 @@
 # PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-26
 
@@ -220,6 +220,26 @@ Keine neuen Pakete.
 - **Produktionsreif: NEIN.** Erst BUG-1 beheben (klein, Sonnet). BUG-2 kann gleich mit. Danach Browser-Blick auf Optik und Handy.
 
 **Nachtrag:** BUG-1 bis BUG-3 sind behoben (siehe Implementation Notes), erneute QA steht aus.
+
+### Zweite Runde (2026-11-26, Opus, Stand 0e3b372)
+**Methode:** Fix-Diff gelesen; die neuen Regressionstests gegen den alten Stand (439cb25) laufen lassen, dort schlagen sie fehl (6 rot), mit dem Fix sind sie grün. Neu: Ablauf mit dem **echten gebündelten Aufgabenwerk** in der Kern-Seite (öffnen → abbrechen bzw. ohne Änderung „Fertig“ → „Ausprobieren“), für Lückentext und Auswahlfrage. Er ist als dauerhafter Test in `loesungen-kennzeichnen.test.ts` übernommen.
+
+| Prüfung | Ergebnis |
+|---|---|
+| BUG-1 behoben (Abbrechen, Fertig ohne Änderung) | ✅ Kennzeichen kommen nach dem Schließen zurück, in „Ausprobieren“ bleibt keine Spur |
+| Fertig **mit** Änderung: veraltete Lösung auf neuem Inhalt? | ✅ nein. Die Zwischenansicht des Aufgabenwerks trägt keine Nummern und keine Kern-Klassen, also wird bis zum Neubau nichts gekennzeichnet („lieber nichts als falsch“) |
+| BUG-2 behoben (Druck) | ✅ Platzhalter im Druck transparent |
+| BUG-3 behoben (Hinweis) | ✅ aus dem ganzen Material berechnet |
+| Gefälschte Spur im Seiteninhalt | ✅ nur bekannte Attribute und `wk-lk-…`-Klassen werden zurückgesetzt |
+| `npm test` | ✅ 351 Dateien, 4750 Tests grün · `tsc` ohne Fehler |
+
+**Neue Befunde (beide Low, nicht blockierend):**
+- **BUG-4 (Low):** Der Hinweis „Lösungen sichtbar“ erscheint auch, wenn die einzige passende Aufgabe eine Zusammenfassung **nur mit Aussagen** ist (`summary` mit `statements`). Dort gibt es keine Lösung, also auch kein Kennzeichen. Rein kosmetisch.
+- **BUG-5 (Low):** Schlägt der Start einer Aufgabe in der Seite fehl (Aufgabenwerk wirft), fehlen an diesem Block die Kennzeichen bis zum nächsten Zeichnen (Moduswechsel oder Neubau). Es wird nichts Falsches angezeigt.
+- *Beobachtung, nicht von PROJ-116:* Nach „Fertig“ ohne Änderung setzt das Aufgabenwerk den Inhalt als Text zurück, damit sind die Klick-Funktionen der Kern-Seite an diesem Block bis zum nächsten Neubau weg (Verhalten aus PROJ-114). Das betrifft „Ausprobieren“ an genau diesem Block.
+
+**Akzeptanzkriterien:** 5 von 5 bestanden. **Bugs offen:** 0 Critical, 0 High, 0 Medium, 2 Low.
+**Produktionsreif: JA.** Vorbehalt: kein Browser-Test (Optik, Zeilenumbrüche, Handy, Safari/Firefox). Bitte nach dem Deploy einmal selbst ansehen.
 
 ## Deployment
 _To be added by /deploy_
