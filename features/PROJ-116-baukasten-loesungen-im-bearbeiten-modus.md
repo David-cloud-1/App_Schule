@@ -1,6 +1,6 @@
 # PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-26
 
@@ -242,4 +242,8 @@ Keine neuen Pakete.
 **Produktionsreif: JA.** Vorbehalt: kein Browser-Test (Optik, Zeilenumbrüche, Handy, Safari/Firefox). Bitte nach dem Deploy einmal selbst ansehen.
 
 ## Deployment
-_To be added by /deploy_
+- **Datum:** 2026-11-26 · **Stand:** b03dfb2 · **Tag:** v1.116.0-PROJ-116
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Deployment per CLI aus sauberem Worktree, Status Ready)
+- **Nur App:** Kern (Werkzeugkiste) und Datenbank unverändert, keine Migration, keine neuen Umgebungsvariablen.
+- **Mit ausgeliefert:** `46924f2` (nur Doku-Spec PROJ-128, von einer anderen Sitzung, liegt im Verlauf zwischen den PROJ-116-Commits).
+- **Offen:** Browser-Blick auf Optik, lange Lückentexte, Handy, Safari/Firefox (nicht getestet). Zwei Low-Befunde (BUG-4, BUG-5) bleiben stehen.
