@@ -1,6 +1,6 @@
 # PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-26
 **Last Updated:** 2026-11-26
 **Priorität:** P2
@@ -158,6 +158,36 @@ Keine neuen.
 ### Modellwahl
 - Kern und Seitenskript (verschachtelte Aufgaben, Fortschritt): **Opus**
 - Editor-Formular nach dem Vorbild Kapiteltest, Prompt, Tests: **Sonnet**
+
+## Umsetzung Kern (/backend, 2026-11-26)
+Hier gibt es keine Datenbank und kein API. „Backend“ ist bei diesem Feature der Kern der Werkzeugkiste (`../Werkzeugkiste`).
+- **`seite.py`**
+  - `VIDEO_ERLAUBT` (8 Typen). `baue_interactive_video` baut jede Frage mit dem Baustein ihres Typs als `<section class="aufgabe unteraufgabe quizfrage" data-typ=… data-nr="N.k" data-q="k">`.
+  - Schlüssel `N.k` = Nummer des Videos plus Platz in der YAML. Übersprungene Fragen verschieben den Speicherstand der übrigen nicht.
+  - Die Lösung des Videos trägt nur `unter` und `bewertet`. Die Unter-Lösungen stehen eigenständig in `LOESUNGEN`, `ANZAHL` zählt nur die oberste Ebene.
+- **Seitenskript**
+  - `melden` nimmt nur die eigene Rückmeldezeile (`:scope >`).
+  - `erledigt` zählt im Balken nur Schlüssel ohne Punkt und meldet sich bei der umgebenden Aufgabe.
+  - Neuer Video-Handler mit Stand „X von Y gelöst“ (nur offene Fragen: „X von Y bearbeitet“). Er ist vom Kapiteltest getrennt.
+  - Beim Neuladen rechnet das Video seinen Stand aus seinen Fragen aus. Ein alter Speicherstand eines Videos wird so harmlos verworfen.
+- **Auswahl „mehrere richtig“**
+  - Gilt bei `mehrfach: true` oder mehr als einer richtigen Antwort, aber nur für `multiple_choice`, als eigener Block und im Video.
+  - Bedienung: Häkchen-Knöpfe (`aria-pressed`) plus „Prüfen“. Die Rückmeldung sagt, wie viele richtige Antworten noch fehlen.
+  - `single_choice` und Kapiteltest bleiben bei genau einer richtigen Antwort.
+- **CSS/Druck:** Unter-Aufgaben ohne eigenen Kasten. Ein Video darf beim Druck umbrechen, eine einzelne Frage nicht.
+- **`qualitaet.py`**
+  - Jede Videofrage wird mit den Regeln ihres Typs geprüft („Videofrage M“). Feedback je Antwort ist dabei freiwillig, wie im Quiz.
+  - HOCH bei nicht erlaubtem Typ, TIPP bei falscher Zeitfolge und bei mehr als 10 Fragen.
+  - „Mehrere richtige Antworten“ meldet HOCH nur ohne `mehrfach: true`.
+- **`h5p_generator.py`:** Nur Auswahlfragen kommen ins H5P-Video, andere Typen werden mit Warnung übersprungen.
+- **`prompt_seite.py`:** Die Video-Regel nennt die 8 Typen („gern gemischt“), die Regel „2–3 Fragen“ bleibt.
+- **`vorschau.py`:** Die Kurzvorschau zeigt je Frage Typname und Fragetext.
+- **Tests**
+  - Neu ist `kern_video_test.py` mit 15 Tests, darunter Gleichstand der Typlisten, Unter-Aufgaben, Fortschritt, Bestand, Mehrfachauswahl, Prüfstelle und H5P. Ein jsdom-Durchlauf spielt alle 8 Typen durch, lädt neu und prüft einen alten Speicherstand.
+  - Die Prüfsumme in `kern_vorschau_marken_test` wurde absichtlich neu gesetzt.
+  - Gesamt 416 Tests. Davon schlagen 2 Schulrecht-Tests (`kern_recht_test.Schnittstelle`) nur im Gesamtlauf fehl. Das war auch vor der Änderung so (Reihenfolge der Tests), einzeln laufen sie grün.
+- **Für /frontend:** Der Editor muss `mehrfach: true` setzen. Der Typ steht in `type`, Fragen ohne Typ gelten als Auswahlfrage. `VIDEO_TYPEN` in der App muss `seite.VIDEO_ERLAUBT` entsprechen; ein Gegentest in der App ist sinnvoll. Für den Klick in der Vorschau trägt jede Unter-Aufgabe `data-q` = Platz in der YAML.
+- **Noch nicht ausgerollt.** Der Kern muss vor der App live gehen.
 
 ## QA Test Results
 _To be added by /qa_

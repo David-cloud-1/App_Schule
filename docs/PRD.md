@@ -157,7 +157,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-125: Onboarding neuer Lehrkräfte – Mentor/in hakt ab | Planned |
 | P2 | PROJ-126: Checklisten – Fristen aus einem Termin berechnen | Planned |
 | P1 | PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Deployed |
-| P2 | PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | Architected |
+| P2 | PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | In Progress |
 | P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed |
 
 ## Success Metrics
