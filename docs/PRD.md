@@ -145,7 +145,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-113: Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed |
 | P1 | PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | Deployed |
 | P1 | PROJ-115: Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned |
-| P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | In Progress |
+| P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | In Review |
 | P1 | PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik | Deployed |
 | P1 | PROJ-118: Baukasten – Eine Leiste für alles | Deployed |
 | P1 | PROJ-119: Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed |
@@ -157,6 +157,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-125: Onboarding neuer Lehrkräfte – Mentor/in hakt ab | Planned |
 | P2 | PROJ-126: Checklisten – Fristen aus einem Termin berechnen | Planned |
 | P1 | PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Deployed |
+| P2 | PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | Planned |
 | P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed |
 
 ## Success Metrics
