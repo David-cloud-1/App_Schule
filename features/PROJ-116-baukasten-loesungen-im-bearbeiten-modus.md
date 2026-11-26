@@ -1,6 +1,6 @@
 # PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-26
 
@@ -156,7 +156,63 @@ Keine neuen Pakete.
 **Nicht im Browser geprüft** (kein Dev-Server): Optik, Zeilenumbrüche, Handy. Das gehört in die QA.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Datum:** 2026-11-26 · **Modell:** Opus · **Stand:** 439cb25
+**Methode:** Code-Prüfung, echte Kern-Seite in jsdom (mit Kern-Skript und Hilfsskript), Nachstellen der Abläufe mit dem Aufgabenwerk. **Kein Browser-Test** (kein Dev-Server/Playwright auf diesem Rechner), also keine Cross-Browser- und Responsive-Prüfung.
+
+### Automatische Tests
+- `npm test`: **351 Dateien, 4738 Tests grün**
+- `npm run build`: erfolgreich · `tsc --noEmit`: ohne Fehler
+- E2E (Playwright): nicht ausgeführt (Rechner stürzt dabei ab, bekannte Vorgabe)
+
+### Akzeptanzkriterien
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| 1 | Lösungen einheitlich gekennzeichnet (Lücken, Markieren, Auswahl, Richtig/Falsch, Reihenfolge, Zuordnen + weitere) | ✅ bestanden (Vertragstest je Typ mit echter Kern-Seite) |
+| 2 | In Ausprobieren, Download, öffentlichem Link, Regal, Druck nichts sichtbar | ❌ **nicht bestanden** in einem Ablauf: BUG-1 (Ausprobieren nach abgebrochener Aufgabe), BUG-2 (Druck). Download, Link und Regal: ✅ (das Hilfsskript kommt dort nie hin, die Kern-Seite enthält kein Kennzeichen) |
+| 3 | Nicht nur farbig, Kontrast | ✅ ✓, Unterstreichung, Nummer, Schild; Kontrast-Test für die neuen Farben grün. Optik nicht im Browser angesehen |
+| 4 | Hinweis in der Kopfzeile | ✅ bestanden, Grenze siehe BUG-3 |
+| 5 | Kern und gespeicherte Struktur unverändert | ✅ keine Kern-Datei, keine Struktur, keine neue Nachricht |
+
+### Edge Cases
+| Fall | Ergebnis |
+|---|---|
+| Typ ohne lesbare Lösung | ✅ keine Kennzeichnung (Memory, Kreuzworträtsel …) |
+| Lösung bleibt für Schüler verborgen | ✅ Kennzeichen nur durch das Hilfsskript der Vorschau |
+| Vorschau veraltet | ✅ zeigt den Stand der gebauten Seite (liest deren Lösungsblock) |
+| Lange Lückentexte / Zeilenumbrüche | ⚠️ nur im Code geprüft (Wörter ohne Zusatzzeichen, Lücke im vorhandenen Feld); Browser-Blick offen |
+| Seite ohne Lösungsblock | ✅ nichts passiert, kein Fehler |
+| Frageserie mit doppeltem Antworttext | ✅ keine Kennzeichnung statt einer falschen |
+| Aufgabe an Ort und Stelle geöffnet, dann **abgebrochen** oder **ohne Änderung fertig** | ❌ BUG-1 |
+
+### Bugs
+
+**BUG-1 (High): Nach Abbrechen einer Aufgabe bleiben Lösungen in „Ausprobieren“ sichtbar**
+- *Schritte:* Bearbeiten → Lückentext (oder Auswahlfrage) in der Seite öffnen → abbrechen (Esc ohne Änderung bzw. „Fertig“ ohne Änderung) → auf „Ausprobieren“ wechseln.
+- *Erwartet:* keine Spur der Lösung. *Tatsächlich:* Das Lückenfeld zeigt weiter „Frachtführer …“ als Platzhalter, der Tooltip „Lösung: …“ bleibt; bei Antworten bleibt der Tooltip „Lösung“ an der richtigen Antwort. In jsdom nachgestellt.
+- *Ursache:* Das Aufgabenwerk merkt sich beim Öffnen den Inhalt als Text (`innerHTML`, `eintritt.ts` Z. 90) **mit** den Kennzeichen und setzt ihn bei `ab()`/`beende()` ohne Änderung zurück (Z. 276, 327). Die zurückgesetzten Elemente sind neu, das Protokoll von `lkWeg()` kennt sie nicht. Beim nächsten Zeichnen merkt sich `lkSetze` außerdem den Lösungswert als „ursprünglichen“ Wert, und `lkWeg` stellt ihn danach wieder her.
+- *Vorschlag:* Vor dem Start einer Aufgabe in der Seite erst `lkWeg()` (in `startAufgabe`), und `lkWeg` räumt zusätzlich alles weg, was im Dokument noch `.wk-lk` trägt (ursprüngliche Werte am Element selbst merken statt nur in der Liste). Regressions-Test: Abschnitt-`innerHTML` zurücksetzen → Ausprobieren → kein Platzhalter, kein Titel.
+- *Reichweite:* nur die Editor-Vorschau der Lehrkraft (Schüler sehen nie etwas), aber Kriterium 2 ist verletzt, und die Lehrkraft prüft in „Ausprobieren“ mit falschem Bild.
+
+**BUG-2 (Low): Platzhalter mit Lösungswort erscheint im Druck aus der Vorschau**
+- Das CSS gilt nur `@media screen`, der Platzhalter ist aber ein Attribut und wird beim Drucken eines Lückenfelds mitgedruckt. *Vorschlag:* im Druck `input.wk-lk-feld::placeholder{color:transparent}`. Drucken aus der Editor-Vorschau ist selten.
+
+**BUG-3 (Low): Hinweis fehlt bei Seiten, deren einzige gekennzeichnete Aufgabe eine Bilder-Reihenfolge oder ein Kapitelquiz in der Lernzielkontrolle ist**
+- Der Hinweis zählt nur Blöcke mit Bauplan in Themen; `image_sequencing` hat keinen Bauplan, die Lernzielkontrolle steht nicht in `aufgaben`. Die Kennzeichen erscheinen trotzdem. Bekannte Grenze, bisher nur für die Lernzielkontrolle dokumentiert.
+
+### Sicherheit (Red Team)
+- ✅ Lösungswerte landen nur per `setAttribute` (Titel, Platzhalter, Datenattribut) und CSS `attr()` in der Seite, nie als HTML: kein Einschleusen über Kategorienamen oder Lösungswörter möglich (Länge gekürzt).
+- ✅ Keine neue Nachricht zwischen Seite und App; die Seite bekommt keine neuen Rechte.
+- ✅ Kein neues Leck: Die Lösungen standen schon vorher im Seiten-Quelltext (die Schüler-Seite prüft ohne Server). Veröffentlichte Seiten enthalten weder Skript noch Kennzeichen (Test).
+- ℹ️ Schreibgeschützt geöffnete Materialien (z. B. aus dem Regal im Baukasten) zeigen die Kennzeichen ebenfalls. Das sehen nur Lehrkräfte und ist gewollt.
+
+### Regression
+- Hilfsskript (Auswahl, Leiste, Ziehen, Schreiben, Aufgabenwerk), Bedien-Design-Wächter, Schreibwerk/Aufgabenwerk-Bündel: alle Tests grün.
+
+### Ergebnis
+- Akzeptanzkriterien: **4 von 5 bestanden**, 1 nicht bestanden (Nr. 2, durch BUG-1)
+- Bugs: 0 Critical, **1 High**, 0 Medium, 2 Low
+- **Produktionsreif: NEIN.** Erst BUG-1 beheben (klein, Sonnet). BUG-2 kann gleich mit. Danach Browser-Blick auf Optik und Handy.
 
 ## Deployment
 _To be added by /deploy_
