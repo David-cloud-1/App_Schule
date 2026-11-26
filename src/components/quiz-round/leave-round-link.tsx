@@ -45,13 +45,12 @@ export function LeaveRoundLink({ started, href = '/subjects' }: { started: boole
           <AlertDialogCancel className="min-h-11 rounded-2xl border-0 bg-[#58CC02] font-bold text-white hover:bg-[#4CAD02] hover:text-white">
             Weiterspielen
           </AlertDialogCancel>
-          <AlertDialogAction asChild>
-            <Link
-              href={href}
-              className="min-h-11 rounded-2xl border border-[#4B5563] bg-transparent text-[#F9FAFB] hover:bg-[#374151]"
-            >
-              Abbrechen und gehen
-            </Link>
+          {/* Farben an AlertDialogAction, nicht am Link: nur so ersetzen sie die Standardfarben */}
+          <AlertDialogAction
+            asChild
+            className="min-h-11 rounded-2xl border border-[#4B5563] bg-transparent text-[#F9FAFB] hover:bg-[#374151] hover:text-[#F9FAFB]"
+          >
+            <Link href={href}>Abbrechen und gehen</Link>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
