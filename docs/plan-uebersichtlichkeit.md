@@ -36,7 +36,7 @@ Gemessen werden Klicks, Zeit und die Stelle, an der jemand hängen bleibt – vo
 
 ## Phase 0 – Fehler beheben (sofort, 1–2 Tage)
 
-**Stand 26.11.2026:** umgesetzt, 4.763 Tests und Build grün. Noch offen: Sichtprüfung im Browser und Livegang.
+**Stand 26.11.2026:** live und im Browser geprüft (4.763 Tests grün). Offen: ein Übungsprüfungs-Set aktivieren (F5, Entscheidung der Lehrkraft). Nächster Schritt: Phase 1 (klickbare Vorschau, mit Opus).
 
 | # | Fehler | Ursache | Betrifft |
 |---|---|---|---|
