@@ -4,6 +4,7 @@ import { SCHNELLE_TYPEN, auswahlAusMarke } from '@/components/werkzeugkiste/edit
 import { typName } from '@/lib/werkzeugkiste-editor'
 import { BREITE_MAX, BREITE_MIN, BREITE_STUFEN, EINRAST_NAEHE, HANDY_BREITEN } from '@/lib/werkzeugkiste-bild-block'
 import { FINDER } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { LOESUNG_CSS, LOESUNG_JS } from '@/components/werkzeugkiste/editor/loesungen-kennzeichnen'
 
 export { auswahlAusMarke }
 
@@ -97,6 +98,8 @@ const CSS = [
   'body.wk-bearbeiten .wk-aufgabenzone.wk-hover{outline:none}',
   // PROJ-118: die eine Bearbeiten-Leiste auch für Thema, Deckblatt und Bildunterschrift
   elementLeisteCss(),
+  // PROJ-116: Lösungs-Kennzeichen (nur Bearbeiten, nur am Bildschirm)
+  LOESUNG_CSS,
   '@media print{.wk-ui{display:none!important}.wk-aktiv,.wk-hover{outline:none!important}}',
 ].join('')
 
@@ -644,12 +647,14 @@ function lage(){
 addEventListener("scroll",function(){if(!tick){tick=true;requestAnimationFrame(lage)}},{passive:true});
 addEventListener("resize",plaziere);
 
+${LOESUNG_JS}
 function anwenden(){
   document.body.classList.toggle("wk-bearbeiten",modus==="bearbeiten");
   document.body.classList.toggle("wk-mobil",mobil);
   if(modus!=="bearbeiten"){endeZiehen(false);plus.hidden=true;if(hoverEl){hoverEl.classList.remove("wk-hover");hoverEl=null}}
   if(modus!=="bearbeiten"){griffEnde(false);dropAus()}
   baueEinfuegestellen();leisteAktualisieren();plaziere();
+  lkZeichne();
 }
 
 // ── Direkt schreiben (PROJ-103) ──────────────────────────────────────
@@ -774,7 +779,7 @@ addEventListener("message",function(e){
   if(d.wkAufgabeStart&&typeof d.wkAufgabeStart==="object"){startAufgabe(d.wkAufgabeStart);return}
   if(d.wkAufgabeStand&&typeof d.wkAufgabeStand==="object"){if(aufgabeOffen())aufgabe.setze(d.wkAufgabeStand);return}
   if(d.wkAufgabeBeende===true){if(aufgabeOffen())aufgabe.beende();return}
-  if(d.wkAufgabeVorbei===true){if(aufgabeOffen())aufgabe.ab();document.body.classList.remove("wk-aufgabe");aufgabe=null;leisteAktualisieren();plaziere();return}
+  if(d.wkAufgabeVorbei===true){if(aufgabeOffen())aufgabe.ab();document.body.classList.remove("wk-aufgabe");aufgabe=null;leisteAktualisieren();plaziere();lkZeichne();return}
   if("wkDropZeiger" in d){dropZeiger(d.wkDropZeiger);return}
   if(d.wkSchreibBeende===true){if(schreibt&&!schreibt.fertig)schreibt.beende();return}
   if(d.wkSchreibVorbei===true){if(schreibt){schreibt.ab();schreibt=null}return}

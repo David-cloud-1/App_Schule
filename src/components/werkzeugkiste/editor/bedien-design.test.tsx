@@ -54,6 +54,8 @@ describe('Bedien-Design: eine Farbquelle', () => {
       [F.akzentText, F.text],
       [F.hinweis, F.hinweisGrund],
       [F.leerText, F.leerGrund],
+      [F.loesung, F.grund],
+      [F.loesung, F.loesungGrund],
     ]
     for (const [vorn, grund] of paare) expect(kontrast(vorn, grund), `${vorn} auf ${grund}`).toBeGreaterThanOrEqual(4.5)
   })

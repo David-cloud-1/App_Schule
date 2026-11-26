@@ -25,6 +25,9 @@ export const BEDIEN_FARBEN = {
   leerText: '#334155',
   leerGrund: '#ffffff',
   trenner: '#cbd5e1',
+  /** PROJ-116: Lösungs-Kennzeichen in der Vorschau (dunkelgrün auf hellgrün/weiß) */
+  loesung: '#14532d',
+  loesungGrund: '#dcfce7',
 } as const
 
 /** Maße in Pixel: Knopfhöhe am Rechner, auf Touch-Geräten, Rundungen */

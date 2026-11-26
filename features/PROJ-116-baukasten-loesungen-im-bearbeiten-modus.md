@@ -1,6 +1,6 @@
 # PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-17
 **Last Updated:** 2026-11-26
 
@@ -135,6 +135,25 @@ Keine neuen Pakete.
 3. Tech Design freigegeben.
 
 ---
+
+## Implementation Notes (Frontend, 2026-11-26)
+
+**Gebaut nach Tech Design, keine Abweichung im Kern oder in der Struktur.**
+- [loesungen-kennzeichnen.ts](../src/components/werkzeugkiste/editor/loesungen-kennzeichnen.ts): Skript-Stück und CSS fürs Hilfsskript, dazu `LOESUNG_TYPEN`. Liest `LOESUNGEN` der gebauten Seite und setzt nur Klassen und Attribute (kein neuer Knoten, nie `innerHTML`). `lkZeichne()` räumt erst alles weg und zeichnet dann neu. Jede Änderung wird protokolliert und beim Wechsel zu „Ausprobieren“ vollständig zurückgenommen.
+- [vorschau-skript.ts](../src/components/werkzeugkiste/editor/vorschau-skript.ts): bindet CSS und Skript ein; zeichnet bei jedem Zustandswechsel und nach `wkAufgabeVorbei`. Aufgaben, die gerade an Ort und Stelle bearbeitet werden (`.wk-aufgabenzone`), bleiben ausgelassen.
+- [editor-vorschau.tsx](../src/components/werkzeugkiste/editor/editor-vorschau.tsx): Hinweis „Lösungen sichtbar – nur in „Bearbeiten““ in der Kopfzeile, nur in Bearbeiten, nur bei Aufgaben mit Kennzeichnung, nicht beim Laden oder bei Fehler.
+- `bedien-design.ts`: neue Farben `loesung` / `loesungGrund`, Kontrast im bestehenden Test; `bedien-woerter.ts`: `LOESUNGEN_SICHTBAR` (Hinweis, Erklärung). Dadurch Schreibwerk und Aufgabenwerk neu gebaut.
+- **Typen:** Einfach-/Mehrfachauswahl, Richtig/Falsch, Lückentext (beide), Wörter ziehen (inkl. Zusatzwörter), Wörter markieren, Reihenfolge und Bilder-Reihenfolge, Zuordnen, Frageserie/Zusammenfassung, Kapitelquiz, interaktives Video (gleiche Form wie Kapitelquiz).
+- **Kennzeichen (nie nur Farbe):** ✓ + grüner Rand (Antworten), Wort im Feld + Unterstreichung (Lücken), grün + dicke Unterstreichung (Wörter), Positions-Plakette (Reihenfolge), „→ Kategorie“-Schild (Zuordnen), „✗ passt nirgends“ (Zusatzwörter). Alles nur am Bildschirm, im Druck ausgeblendet.
+- **Tests:** Vertragstest [loesungen-kennzeichnen.test.ts](../src/components/werkzeugkiste/editor/loesungen-kennzeichnen.test.ts) lässt eine **echte Kern-Seite** (`__fixtures__/kern-loesungsseite.html`, gebaut mit Kern 9bf59cd, `marken=True`) samt ihrem Skript in jsdom laufen und prüft je Typ die gekennzeichneten Elemente, die vollständige Rücknahme in „Ausprobieren“ (HTML vor und nach dem Hin- und Herwechseln identisch), unveränderte Aufgabentexte und den Fall ohne Lösungsblock. Dazu `editor-vorschau-loesungen.test.tsx` (Hinweis). `src/types/jsdom.d.ts` nur für die Typen im Test.
+- **Bei Kern-Änderungen:** Fixture neu erzeugen (`scripts/werkzeugkiste/kern-loesungsseite-bauen.py`); schlägt der Test fehl, hat der Kern die Form seiner Lösungsdaten geändert.
+
+**Bekannte Grenzen (bewusst):**
+- Ein Lückenfeld, in das beim „Ausprobieren“ schon etwas getippt wurde, zeigt sein Lösungswort nur noch im Tooltip (der Platzhalter verschwindet unter dem Text); der Rand bleibt grün.
+- Der Hinweis in der Kopfzeile zählt nur Blöcke in Themen; ein Kapitelquiz allein in der Lernzielkontrolle löst ihn nicht aus (die Kennzeichen erscheinen trotzdem).
+- Bei Auswahlfragen mit mehreren als richtig eingetragenen Antworten ist nur die erste gekennzeichnet (so prüft es der Kern).
+
+**Nicht im Browser geprüft** (kein Dev-Server): Optik, Zeilenumbrüche, Handy. Das gehört in die QA.
 
 ## QA Test Results
 _To be added by /qa_

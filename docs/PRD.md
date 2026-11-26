@@ -145,7 +145,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-113: Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed |
 | P1 | PROJ-114: Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | Deployed |
 | P1 | PROJ-115: Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned |
-| P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Architected |
+| P2 | PROJ-116: Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | In Progress |
 | P1 | PROJ-117: Baukasten – Einheitliche Bearbeiten-Optik | Deployed |
 | P1 | PROJ-118: Baukasten – Eine Leiste für alles | Deployed |
 | P1 | PROJ-119: Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed |

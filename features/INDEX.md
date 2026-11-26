@@ -133,7 +133,7 @@
 | PROJ-113 | Baukasten – Klicks in die Vorschau nie unnötig blockieren | Deployed | [PROJ-113-baukasten-klicks-nie-blockieren.md](PROJ-113-baukasten-klicks-nie-blockieren.md) | 2026-11-16 |
 | PROJ-114 | Baukasten – Aufgaben an Ort und Stelle bearbeiten (6 Muster) | Deployed | [PROJ-114-baukasten-aufgaben-editor-neu.md](PROJ-114-baukasten-aufgaben-editor-neu.md) | 2026-11-17 |
 | PROJ-115 | Baukasten – Klick in der Seite öffnet den Eintrag (aufgegangen in PROJ-114) | Planned | [PROJ-115-baukasten-klick-oeffnet-eintrag.md](PROJ-115-baukasten-klick-oeffnet-eintrag.md) | 2026-11-17 |
-| PROJ-116 | Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | Architected | [PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md](PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md) | 2026-11-17 |
+| PROJ-116 | Baukasten – Lösungen im Modus „Bearbeiten“ sichtbar | In Progress | [PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md](PROJ-116-baukasten-loesungen-im-bearbeiten-modus.md) | 2026-11-17 |
 | PROJ-117 | Baukasten – Einheitliche Bearbeiten-Optik | Deployed | [PROJ-117-baukasten-einheitliche-bearbeiten-optik.md](PROJ-117-baukasten-einheitliche-bearbeiten-optik.md) | 2026-11-17 |
 | PROJ-118 | Baukasten – Eine Leiste für alles | Deployed | [PROJ-118-baukasten-eine-leiste-fuer-alles.md](PROJ-118-baukasten-eine-leiste-fuer-alles.md) | 2026-11-17 |
 | PROJ-119 | Meine Materialien – „Bearbeiten“ (Baukasten) als Hauptaktion | Deployed | [PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md](PROJ-119-meine-materialien-bearbeiten-als-hauptaktion.md) | 2026-11-18 |

@@ -1,13 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ImagePlus, Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
+import { CircleCheck, ImagePlus, Loader2, Maximize2, Minimize2, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { liesWunsch, type VorschauWunsch } from '@/components/werkzeugkiste/editor/vorschau-nachrichten'
 import type { SchreibTeil } from '@/components/werkzeugkiste/editor/schreiben'
 import type { EintragOrt } from '@/components/werkzeugkiste/editor/aufgabenwerk/bauplan'
+import { LOESUNG_TYPEN } from '@/components/werkzeugkiste/editor/loesungen-kennzeichnen'
+import { LOESUNGEN_SICHTBAR } from '@/components/werkzeugkiste/editor/bedien-woerter'
 import { NEBENAKTION } from '@/components/werkzeugkiste/ablauf-rahmen'
 import { SEITE_GRENZE_BYTES } from '@/lib/werkzeugkiste-bilder'
 import { cn } from '@/lib/utils'
@@ -163,6 +165,8 @@ export function EditorVorschau({
     zustandRef.current = { modus, lesen, mobil, leer, schublade: schubladeOffen, aufgaben }
   })
   const [hinweis, setHinweis] = useState<string | null>(null)
+  // PROJ-116: Hinweis nur, wenn die Seite überhaupt Aufgaben mit sichtbaren Lösungen hat
+  const zeigtLoesungen = modus === 'bearbeiten' && Object.values(aufgaben).some((t) => LOESUNG_TYPEN.includes(t))
   const [dateiZieht, setDateiZieht] = useState(false)
   const dropZiel = useRef<DateiZielMarke | null>(null)
   const dateienRef = useRef(onDateien)
@@ -391,6 +395,11 @@ export function EditorVorschau({
         {!laedt && fehler && html && (
           <span className="text-ws-orange" role="status">
             Vorschau gerade nicht aktuell
+          </span>
+        )}
+        {zeigtLoesungen && !laedt && !fehler && (
+          <span className="flex items-center gap-1.5 text-ws-green" title={LOESUNGEN_SICHTBAR.erklaerung} data-testid="loesungen-hinweis">
+            <CircleCheck className="size-3.5" aria-hidden /> {LOESUNGEN_SICHTBAR.hinweis}
           </span>
         )}
         {hinweis && (

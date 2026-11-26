@@ -79,3 +79,14 @@ export const LEISTE_NAME = 'Textgestaltung'
 
 /** Löschen eines geschützten (unveränderlichen) Teils, in der Schublade */
 export const GESCHUETZT_LOESCHEN = 'Geschützten Teil löschen'
+
+/** PROJ-116: Lösungen in der Vorschau (nur im Modus „Bearbeiten“) */
+export const LOESUNGEN_SICHTBAR = {
+  /** Hinweis in der Kopfzeile der Vorschau */
+  hinweis: 'Lösungen sichtbar – nur in „Bearbeiten“',
+  /** Erklärung beim Darüberfahren */
+  erklaerung: 'In „Bearbeiten“ zeigt die Seite, was als richtig eingestellt ist. In „Ausprobieren“, im Download, im öffentlichen Link und im Druck sieht niemand diese Kennzeichen.',
+  /** Lesbare Zusätze für die Kennzeichen (Screenreader sehen sie als Teil des Textes) */
+  richtig: 'Lösung',
+  passtNirgends: 'passt nirgends',
+} as const

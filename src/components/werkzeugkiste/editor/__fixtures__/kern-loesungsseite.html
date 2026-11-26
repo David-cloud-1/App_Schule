@@ -1,0 +1,1983 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test</title>
+<style>
+/* Farben aus den DESIGN-RICHTLINIEN in CLAUDE.md. Der Rahmen der Seite muss
+   dieselbe Palette tragen wie die `text`-Elemente, die die KI nach eben diesen
+   Richtlinien schreibt – sonst stehen auf einer Seite zwei Designs übereinander:
+   ein grauer Kapitelbalken vom Bauer und direkt darunter ein beiger von der KI. */
+:root { --schrift:Arial,"Helvetica Neue",Helvetica,sans-serif;
+        --blau:#1F497D; --beige:#C4BC96; --mittelblau:#4F81BD; --grau:#E6E6E6;
+        --cyan:#EEF4FB; --gruen:#1E7A34; --rot:#C00000; --rand:#C9CFD8; }
+* { box-sizing:border-box; }
+body { margin:0; background:#EDEBE5; color:#000; font-family:var(--schrift);
+       font-size:16px; line-height:1.5; }
+.huelle { max-width:900px; margin:0 auto; padding:16px; }
+.navi { position:sticky; top:0; z-index:50; background:#fff; border-bottom:2px solid var(--beige);
+        padding:8px 16px; margin:-16px -16px 16px; display:flex; align-items:center;
+        gap:12px; flex-wrap:wrap; }
+.navi b { font-size:.95rem; }
+.balken { flex:1; min-width:120px; height:9px; background:var(--grau); border-radius:99px;
+          overflow:hidden; }
+.balken i { display:block; height:100%; width:0; background:var(--gruen); transition:width .35s; }
+.prozent { font-size:.85rem; font-variant-numeric:tabular-nums; }
+h1 { font-size:1.7rem; margin:0 0 2px; color:var(--blau); }
+.unter, .schule { margin:0 0 4px; color:#444; }
+/* Kapitelbalken dunkelblau, damit er sich von der beigen <h2> der KI absetzt –
+   Kapitel und Abschnitt sind zwei Ebenen und sollen auch so aussehen. */
+.kapitel { background:var(--blau); color:#fff; font-size:1.1rem; padding:9px 14px;
+           margin:22px 0 12px; }
+section { background:#fff; border:1px solid var(--rand); padding:16px 18px; margin-bottom:14px; }
+.kopfzeile { display:flex; justify-content:space-between; align-items:center;
+             margin:-16px -18px 12px; padding:6px 18px; background:var(--grau);
+             border-bottom:1px solid var(--rand); }
+.marke { font-weight:700; font-size:.9rem; color:var(--blau); }
+.stand { font-size:.85rem; font-variant-numeric:tabular-nums; color:#555; }
+.frage { font-weight:700; margin:0 0 8px; }
+.lehrtext :is(h1,h2,h3) { margin-top:0; }
+.bild { margin:0; text-align:center; }
+.bild img { max-width:100%; height:auto; }
+.bildunterschrift { font-size:.85rem; color:#555; font-style:italic; margin:6px 0 0; }
+.klappliste details { border:1px solid var(--rand); margin-bottom:5px; }
+.klappliste summary { padding:7px 11px; background:var(--grau); cursor:pointer;
+                      font-weight:700; color:var(--blau); }
+.klapptext { padding:9px 12px; }
+.antworten { display:flex; flex-direction:column; gap:6px; }
+.antwort { text-align:left; font-family:var(--schrift); font-size:.95rem; padding:8px 12px;
+           border:1px solid #767676; background:#fff; cursor:pointer; }
+.antwort:hover { background:var(--cyan); }
+.antwort.richtig { background:#F2F9F0; border-color:var(--gruen); font-weight:700; }
+.antwort.falsch { background:#FDF3F2; border-color:var(--rot); }
+.luecke { font-family:var(--schrift); font-size:.95rem; padding:2px 6px;
+          border:none; border-bottom:2px solid #767676; background:#FAFAF8; }
+.luecke.richtig { border-color:var(--gruen); background:#F2F9F0; }
+.luecke.falsch { border-color:var(--rot); background:#FDF3F2; }
+.lueckentext { line-height:2.2; }
+.vorrat { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.chip { border:1px solid #767676; background:#fff; padding:5px 11px; font-size:.9rem;
+        font-weight:700; cursor:pointer; font-family:var(--schrift); }
+.chip:hover { background:var(--cyan); }
+.chip[aria-pressed="true"] { background:var(--blau); color:#fff; border-color:var(--blau); }
+.vorrat .chip { user-select:none; -webkit-user-select:none; }
+@media (pointer: fine) { .vorrat .chip { cursor:grab; } }
+.chip.geist { position:fixed; z-index:1000; pointer-events:none; transform:translate(-50%,-60%);
+              box-shadow:0 4px 12px rgba(0,0,0,.25); }
+.chip.wird-gezogen { opacity:.4; }
+.ablage-hier { outline:3px dashed var(--blau); outline-offset:2px; }
+.plaetze { list-style:none; padding:0; margin:10px 0; display:flex; flex-direction:column; gap:5px; }
+.platz { display:flex; align-items:center; gap:9px; border:1px solid #767676; padding:6px 9px;
+         cursor:pointer; }
+.platz:hover { background:var(--cyan); }
+.platz .nr { background:var(--blau); color:#fff; width:22px; height:22px; flex:none; display:flex;
+             align-items:center; justify-content:center; font-size:.78rem; font-weight:700; }
+.platz.richtig { border-color:var(--gruen); background:#F2F9F0; }
+.platz.falsch { border-color:var(--rot); background:#FDF3F2; }
+.knopf { background:var(--blau); color:#fff; border:none; padding:8px 16px; font-size:.92rem;
+         font-weight:700; cursor:pointer; font-family:var(--schrift); margin:8px 6px 0 0; }
+.knopf.leer { background:#fff; color:var(--blau); border:1px solid var(--blau); }
+.rueckmeldung { margin-top:10px; padding:9px 12px; font-size:.92rem; display:none;
+                border:1px solid var(--rand); }
+.rueckmeldung.gut { display:block; background:#CCFFCC; }
+.rueckmeldung.schlecht { display:block; background:#FFF4CC; }
+.fuss { text-align:center; color:#666; font-size:.8rem; padding:10px 0 26px; }
+.antworten.waagrecht { flex-direction:row; flex-wrap:wrap; }
+.antwort.gewaehlt { outline:3px solid var(--blau); outline-offset:-3px; }
+.teilfrage, .quizfrage { border-top:1px solid var(--grau); padding-top:10px; margin-top:12px; }
+.teilfrage:first-child, .quizfrage:first-child { border-top:none; padding-top:0; margin-top:0; }
+.zeitmarke { font-size:.82rem; color:#555; margin:0 0 3px; }
+.hinweiszeile { font-size:.85rem; color:#555; margin:4px 0 8px; }
+button.tipp { border:1px solid #767676; background:#fff; width:20px; height:20px; font-weight:700;
+        cursor:pointer; margin-left:3px; font-family:var(--schrift); }
+.luecke.leer { min-width:80px; border-bottom:2px solid #767676; background:#FAFAF8;
+               cursor:pointer; }
+button.luecke { font-family:var(--schrift); font-size:.95rem; border-top:none;
+                border-left:none; border-right:none; padding:2px 6px; }
+.wort { cursor:pointer; padding:1px 2px; }
+.wort:hover { background:var(--cyan); }
+.wort.gewaehlt { background:var(--blau); color:#fff; }
+.wort.richtig { background:#CCFFCC; color:#000; outline:1px solid var(--gruen); }
+.wort.falsch { background:#FFD9D9; color:#000; outline:1px solid var(--rot); }
+.markiertext { line-height:2; }
+.faecher { display:flex; gap:12px; flex-wrap:wrap; margin-top:10px; }
+.fach { flex:1; min-width:180px; border:1px dashed #767676; padding:10px; min-height:90px;
+        cursor:pointer; }
+.fach h4 { margin:0 0 7px; font-size:.95rem; }
+.fach .inhalt { display:flex; flex-wrap:wrap; gap:5px; }
+.fach.daneben { border-color:var(--rot); background:#FDF3F2; }
+.marke2 { font-weight:700; font-size:.85rem; }
+.marke2.gesetzt { background:var(--blau); color:#fff; padding:3px 9px; }
+.karten { display:flex; flex-wrap:wrap; gap:8px; }
+.karte { border:1px solid #767676; background:#fff; padding:12px 14px; min-width:150px;
+         min-height:64px; cursor:pointer; font-family:var(--schrift); font-size:.95rem;
+         text-align:left; }
+.karte .hinten { display:none; }
+.karte.gedreht { background:#F2F9F0; border-color:var(--gruen); }
+.karte.gedreht .vorne { display:none; }
+.karte.gedreht .hinten { display:block; }
+.kreuzwort { overflow-x:auto; }
+.kreuzwort table { border-collapse:collapse; margin:10px 0; }
+.kreuzwort td { border:none; padding:0; width:30px; height:30px; position:relative; }
+.kreuzwort td.leer { background:transparent; }
+.kreuzwort input { width:30px; height:30px; border:1px solid #000; text-align:center;
+                   font-family:var(--schrift); font-size:.95rem; font-weight:700;
+                   text-transform:uppercase; background:#fff; padding:0; }
+.kreuzwort input.richtig { background:#CCFFCC; }
+.kreuzwort input.falsch { background:#FFD9D9; }
+.ziffer { position:absolute; top:0; left:1px; font-size:9px; font-weight:700; z-index:2; }
+.hinweisspalten { display:flex; gap:18px; flex-wrap:wrap; }
+.hinweisspalte { flex:1; min-width:200px; }
+.hinweisspalte h4 { margin:8px 0 4px; font-size:.95rem; }
+.hinweise { margin:0; padding-left:0; list-style:none; font-size:.9rem; }
+.hinweise li { margin-bottom:3px; }
+.hinweise b { display:inline-block; min-width:18px; }
+.haekchen { margin:0; padding-left:20px; }
+.haekchen li { margin-bottom:4px; }
+.lernbeispiel, .videokasten { background:#FAF7EE; border:1px solid var(--beige);
+                              padding:11px 14px; }
+.formel { font-weight:700; }
+.schritte { margin:6px 0; padding-left:20px; }
+.ergebnis { margin:6px 0 0; }
+.rechenliste { padding-left:20px; }
+.rechenliste li { margin-bottom:6px; }
+.zahl { font-family:var(--schrift); font-size:.95rem; padding:3px 7px; border:1px solid #767676; }
+.zahl.richtig { border-color:var(--gruen); background:#F2F9F0; }
+.zahl.falsch { border-color:var(--rot); background:#FDF3F2; }
+.ergebniszeile { margin:8px 0 0; font-weight:700; }
+.aufgabentext { margin-bottom:6px; }
+
+/* Freitext mit Musterlösung */
+.freitext { width:100%; font-family:var(--schrift); font-size:.95rem; padding:8px 10px;
+            border:1px solid #767676; background:#FAFAF8; resize:vertical; }
+.zeichenstand { font-size:.82rem; color:#555; margin:4px 0 0; }
+.knopf.klein { padding:5px 11px; font-size:.85rem; background:#fff; color:var(--blau);
+               border:1px solid var(--blau); }
+.knopf[disabled] { opacity:.45; cursor:not-allowed; }
+.knopf[hidden] { display:none; }
+.loesungsbox { display:none; margin-top:10px; padding:10px 13px; background:#FAF7EE;
+               border:1px solid #767676; }
+.loesungsbox.offen { display:block; }
+
+/* Adaptiver Trainer */
+.trainerkopf { font-weight:700; margin:8px 0 2px; }
+.trainerkopf .hinweis { display:block; font-weight:400; font-size:.88rem; color:#555; }
+.stand2 { font-size:.85rem; color:#555; margin:0 0 6px; font-variant-numeric:tabular-nums; }
+.platz.sitzt { border-color:var(--gruen); background:#F2F9F0; }
+
+/* Begriffe auf ein Bild setzen */
+.bildfeld { position:relative; display:inline-block; max-width:100%; margin:8px 0;
+            border:1px solid var(--rand); }
+.bildfeld img { display:block; max-width:100%; height:auto; }
+.bildfeld.setzen { cursor:crosshair; }
+.punkt { position:absolute; transform:translate(-50%,-50%); min-width:26px; height:26px;
+         border-radius:99px; border:2px solid #000; background:#fff; padding:0 7px;
+         font-family:var(--schrift); font-size:.8rem; font-weight:700; white-space:nowrap;
+         cursor:pointer; }
+.punkt:hover { background:var(--cyan); }
+.punkt.gesetzt { background:#CCFFCC; border-color:var(--gruen); cursor:default; }
+.punkt.daneben { background:#FFD9D9; border-color:var(--rot); }
+.setzhilfe { display:none; margin-top:10px; padding:10px 13px; background:#FAF7EE;
+             border:1px solid #767676; font-size:.9rem; }
+.setzhilfe.offen { display:block; }
+.setzhilfe textarea { width:100%; font-family:ui-monospace,Menlo,Consolas,monospace;
+                      font-size:.82rem; padding:7px 9px; border:1px solid #767676; }
+
+/* Nur auf Papier: was am Bildschirm das Spiel ist, wird gedruckt zur Liste */
+.nurdruck { display:none; }
+
+/* Memory */
+.memory { display:grid; grid-template-columns:repeat(auto-fill,minmax(132px,1fr));
+          gap:7px; margin:10px 0; }
+.mkarte { border:1px solid #767676; background:#fff; min-height:74px; padding:8px 10px;
+          font-family:var(--schrift); font-size:.87rem; line-height:1.35; text-align:left;
+          cursor:pointer; }
+.mkarte:hover { background:var(--cyan); }
+.mkarte .deckel { font-weight:700; color:#555; }
+.mkarte .wert { display:none; }
+.mkarte.offen { background:var(--cyan); }
+.mkarte.gefunden { background:#F2F9F0; border-color:var(--gruen); cursor:default; }
+.mkarte.offen .deckel, .mkarte.gefunden .deckel { display:none; }
+.mkarte.offen .wert, .mkarte.gefunden .wert { display:block; }
+
+/* Buchstabensalat */
+.suchgitter { overflow-x:auto; }
+.suchgitter table { border-collapse:collapse; margin:10px 0; }
+.suchgitter td { padding:0; }
+.zelle { width:28px; height:28px; border:1px solid #E0DDD5; background:#fff; padding:0;
+         font-family:var(--schrift); font-size:.85rem; font-weight:700; cursor:pointer; }
+.zelle:hover { background:var(--cyan); }
+.zelle.start { background:var(--blau); color:#fff; }
+.zelle.gefunden { background:#CCFFCC; border-color:var(--gruen); }
+.zelle.daneben { background:#FFD9D9; }
+.suchliste { list-style:none; padding:0; margin:8px 0 0; display:flex; flex-wrap:wrap;
+             gap:5px 16px; font-size:.9rem; font-weight:700; }
+.suchliste li.gefunden { text-decoration:line-through; color:#666; font-weight:400; }
+
+/* Lernkarten zum Tippen */
+.lernkarte { border:1px solid var(--rand); padding:10px 12px; margin-bottom:7px; }
+.kartenfrage { font-weight:700; margin:0 0 6px; }
+.kartenfeld { width:100%; font-family:var(--schrift); font-size:.95rem; padding:5px 8px;
+              border:1px solid #767676; background:#FAFAF8; }
+.kartenfeld.richtig { border-color:var(--gruen); background:#F2F9F0; }
+.kartenfeld.falsch { border-color:var(--rot); background:#FDF3F2; }
+
+/* Rechenweg in Schritten */
+.rechenweg { list-style:none; padding:0; margin:10px 0; counter-reset:rw; }
+.rechenschritt { border-left:3px solid var(--rand); padding:8px 0 8px 14px; margin-bottom:8px;
+                 position:relative; opacity:.45; }
+.rechenschritt.offen { opacity:1; border-left-color:#767676; }
+.rechenschritt.sitzt { opacity:1; border-left-color:var(--gruen); }
+.schrittfrage { font-weight:700; margin-bottom:5px; }
+.schrittzeile { margin:0; }
+.einheit { font-size:.9rem; color:#555; }
+
+/* Fallakte */
+/* Die Mission-Box aus den Design-Richtlinien – bewusst eigenes Blau. */
+.fallkopf { background:#EEF0FB; border:2px solid #3A50B0; padding:12px 15px; margin:8px 0 12px; }
+.aktenmarke { font-size:.75rem; font-weight:700; letter-spacing:.08em;
+              text-transform:uppercase; color:#3A50B0; margin:0 0 6px; }
+.aktenschritt { border:1px solid var(--rand); padding:11px 14px; margin-bottom:9px; }
+.aktenschritt.zu { display:none; }
+.aktenschritt.geloest .antworten { pointer-events:none; }
+.enthuellt { display:none; margin-top:9px; padding:9px 12px; background:#F2F9F0;
+             border-left:4px solid var(--gruen); }
+.aktenschritt.geloest .enthuellt:not(:empty) { display:block; }
+.urteil { display:none; margin-top:10px; padding:12px 15px; background:#FAF7EE;
+          border:2px solid var(--beige); }
+.urteil.offen { display:block; }
+
+/* Schätzrunde */
+.schaetzung { border-top:1px solid var(--grau); padding-top:10px; margin-top:11px; }
+.schaetzung:first-of-type { border-top:none; padding-top:0; margin-top:0; }
+.aufloesung { display:none; margin-top:8px; padding:9px 12px; background:#FAF7EE;
+              border-left:4px solid var(--beige); }
+.aufloesung.offen { display:block; }
+.echterwert { margin:0 0 4px; font-weight:700; }
+.abweichung { margin:0 0 6px; font-size:.9rem; color:#555; }
+.quelle { margin:6px 0 0; font-size:.8rem; color:#666; font-style:italic; }
+
+/* Selbsteinschätzung */
+.einschaetzliste { list-style:none; padding:0; margin:10px 0; }
+.einschaetzung { border-top:1px solid var(--grau); padding:10px 0; }
+.einschaetzung:first-child { border-top:none; padding-top:0; }
+.kannsatz { margin-bottom:6px; }
+.stufen { display:flex; gap:6px; flex-wrap:wrap; }
+.stufe { border:1px solid #767676; background:#fff; padding:5px 12px; font-size:.88rem;
+         font-family:var(--schrift); cursor:pointer; }
+.stufe:hover { background:var(--cyan); }
+.stufe.gewaehlt { background:var(--blau); color:#fff; border-color:var(--blau); }
+.nachsehen { display:none; margin:7px 0 0; padding:8px 11px; background:#FDF5E6;
+             border-left:4px solid #D4870F; font-size:.9rem; }
+.einschaetzung.suchen .nachsehen:not(:empty) { display:block; }
+
+
+/* Tabelle und Diagramm (PROJ-91) */
+.tabellenblock, .diagramm { margin:0; }
+.tabellescroll { overflow-x:auto; max-width:100%; }
+.datentabelle { border-collapse:collapse; width:100%; font-size:.95rem; }
+.datentabelle th, .datentabelle td { border:1px solid var(--rand); padding:6px 9px; text-align:left;
+                                      vertical-align:top; overflow-wrap:anywhere; }
+.datentabelle.stil-grau th { background:var(--grau); }
+.datentabelle:not(.stil-grau) th { font-weight:700; }
+.datentabelle.stil-zebra tbody tr:nth-child(even) td { background:#F4F6F9; }
+.datentabelle.stil-zebra.ohnekopf tbody tr:nth-child(even) td { background:none; }
+.datentabelle.stil-zebra.ohnekopf tbody tr:nth-child(odd) td { background:#F4F6F9; }
+.diagrammsvg { display:block; width:100%; max-width:640px; height:auto; margin:6px auto 0; }
+.legende { list-style:none; display:flex; flex-wrap:wrap; gap:4px 16px; justify-content:center;
+           padding:0; margin:8px 0 0; font-size:.9rem; }
+.legende li { display:flex; align-items:center; gap:6px; }
+.diagwerte { margin-top:8px; font-size:.9rem; }
+.diagwerte summary { cursor:pointer; min-height:32px; color:var(--blau); }
+
+/* Reihenfolge mit Bildern */
+.chip.mitbild { display:flex; flex-direction:column; align-items:center; gap:4px;
+                max-width:140px; }
+.chip img, .platz .wert img { max-width:118px; max-height:86px; display:block; }
+.platz .wert { display:flex; align-items:center; gap:9px; }
+/* Bilder: Breite in Prozent, Ausrichtung, Markierungen (PROJ-104, PROJ-106) */
+.bild { margin:0 auto; }
+.bild.bild-links { margin-left:0; margin-right:auto; }
+.bild.bild-rechts { margin-left:auto; margin-right:0; }
+.bildmarkiert { position:relative; display:block; line-height:0; }
+.bildmarkiert img { display:block; width:100%; }
+.bildmarken { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.nurleser { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
+            clip:rect(0 0 0 0); white-space:nowrap; border:0; list-style:none; }
+.wk-altwarnung { margin:4px 0 0; font-size:.8rem; font-weight:700; color:#92400e; }
+/* Bild neben Text (PROJ-105): Das Bild schwebt, der Text fließt darum und darunter weiter */
+.paar { display:flow-root; margin:0 0 18px; }
+.paar > section:first-child { width:var(--bw); margin:0 0 8px; padding:0; border:none; background:none; }
+.paar > section:first-child .bild { width:100% !important; margin:0; }
+.paar-links > section:first-child { float:left; margin-right:18px; }
+.paar-rechts > section:first-child { float:right; margin-left:18px; }
+.paar > section:last-child { margin:0; }
+@media (max-width:600px) {
+  .paar > section:first-child { float:none; width:100%; margin:0 0 10px; }
+}
+/* Stelle im Bild finden (PROJ-107) */
+.hotspotfeld { cursor:crosshair; touch-action:manipulation; }
+.hsflaeche { position:absolute; box-sizing:border-box; pointer-events:none; border:3px solid var(--gruen);
+             background:rgba(30,122,52,.18); }
+.hsflaeche.kreis { border-radius:50%; }
+.hsmarke { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%;
+           border:3px solid var(--rot); background:rgba(192,0,0,.22); pointer-events:none;
+           animation:hswackel .3s; }
+@keyframes hswackel { 0%,100% { transform:translateX(0); } 30% { transform:translateX(-4px); }
+                      70% { transform:translateX(4px); } }
+.hszaehler { font-weight:700; margin:0 0 6px; color:var(--blau); }
+.hsalternativ { margin:8px 0; }
+.hsalternativ summary { cursor:pointer; color:var(--blau); font-weight:700; }
+.hsliste { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.hsliste button { min-height:44px; padding:6px 12px; border:1px solid var(--rand); border-radius:8px;
+                  background:#fff; font:inherit; cursor:pointer; }
+.hsliste button[aria-pressed="true"] { border-color:var(--gruen); background:#e8f5ec; }
+@media (prefers-reduced-motion:reduce) { .hsmarke { animation:none; } }
+/* Galerie (PROJ-105) */
+.galerie { display:grid; gap:12px; list-style:none; margin:0; padding:0; }
+.galerie.spalten-2 { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+.galerie.spalten-3 { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+.galerie.spalten-4 { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.galerie figure { margin:0; text-align:center; }
+.galerie-bild { display:block; width:100%; padding:0; border:1px solid var(--rand); background:#fff;
+                border-radius:6px; cursor:zoom-in; overflow:hidden; }
+.galerie-bild:focus-visible { outline:3px solid var(--blau); outline-offset:2px; }
+.galerie-bild img { display:block; width:100%; height:auto; }
+.galerie-gleich .galerie-bild { aspect-ratio:4 / 3; }
+.galerie-gleich .galerie-bild img { height:100%; object-fit:cover; }
+.galerie-gleich .galerie-bild .bildmarkiert { height:100%; }
+.galerie-fehlt, .galerie-leer { padding:1em; border:2px dashed #b45309; color:#92400e; text-align:center; }
+@media (max-width:600px) {
+  .galerie.spalten-3, .galerie.spalten-4 { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+}
+.leuchtkasten { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center;
+                background:rgba(0,0,0,.86); padding:16px; }
+.leuchtkasten[hidden] { display:none; }
+.leuchtkasten figure { margin:0; max-width:min(1100px, 100%); max-height:100%; text-align:center; color:#fff; }
+.leuchtkasten img { max-width:100%; max-height:78vh; background:#fff; }
+.leuchtkasten figcaption { margin-top:8px; font-size:.95rem; }
+.leuchtkasten button { position:absolute; min-width:44px; min-height:44px; border:2px solid #fff; border-radius:8px;
+                       background:#111; color:#fff; font:700 1.2rem system-ui,sans-serif; cursor:pointer; }
+.leuchtkasten button:focus-visible { outline:3px solid #facc15; outline-offset:2px; }
+.leuchtkasten .lk-zu { top:12px; right:12px; }
+.leuchtkasten .lk-zurueck { left:12px; top:50%; }
+.leuchtkasten .lk-weiter { right:12px; top:50%; }
+/* ── Einbetten (PROJ-109) ─────────────────────────────────────────── */
+.einbett { background:#FAF7EE; border:1px solid var(--beige); padding:11px 14px; }
+.einbett [hidden] { display:none !important; }
+.einb-auftrag { margin:4px 0 8px; }
+.einb-datenhinweis { font-size:.9rem; margin:6px 0; }
+.einb-knoepfe { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:8px 0; }
+.einb-knoepfe a.einb-tab, .einb-pin a.einb-tab { display:inline-flex; align-items:center; min-height:44px;
+    padding:0 14px; border:2px solid currentColor; font-weight:700; text-decoration:none; color:inherit; }
+.einb-knoepfe a.einb-tab.haupt { background:#111; color:#fff; border-color:#111; }
+.einb-merken { font-size:.9rem; display:inline-flex; align-items:center; gap:6px; min-height:44px; }
+.einb-fenster { margin:8px 0; }
+.einb-rahmen { display:block; width:100%; border:1px solid #767676; background:#fff; aspect-ratio:16/9; }
+.einbett[data-verhaeltnis="4-3"] .einb-rahmen { aspect-ratio:4/3; }
+.einbett[data-verhaeltnis="hoch"] .einb-rahmen { aspect-ratio:3/4; max-height:85vh; }
+.einb-qr { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:10px; }
+.einb-qr svg { width:9rem; height:9rem; flex:none; background:#fff; }
+.einb-linktext { word-break:break-all; font-size:.85rem; margin:0; flex:1 1 12rem; }
+.einb-pinzahl { font-size:2.4rem; font-weight:800; letter-spacing:.12em; margin:6px 0; }
+@media print {
+  .galerie-bild { border:none; cursor:default; break-inside:avoid; }
+  .galerie-gleich .galerie-bild { aspect-ratio:auto; }
+  .leuchtkasten { display:none !important; }
+  .paar > section:first-child { break-inside:avoid; }
+}
+@media print {
+  @page { size:A4; margin:14mm 13mm 16mm; }
+  body { background:#fff; font-size:10.5pt; }
+  .huelle { max-width:none; padding:0; }
+  .navi, .knopf, .vorrat, .rueckmeldung, .nurbildschirm, button.tipp { display:none !important; }
+  .karte .hinten { display:block; }
+  .karte .vorne { display:block; font-weight:700; }
+  .faecher, .hinweisspalten { break-inside:avoid; }
+  .kreuzwort input { background:none; }
+  section { border:none; padding:0; margin:0 0 12pt; break-inside:avoid; }
+  .kopfzeile { margin:0 0 6pt; padding:3pt 6pt; border:1px solid #000; }
+  .kapitel { border:1px solid #000; background:none !important; color:#000 !important; }
+  .klappliste details { break-inside:avoid; }
+  .luecke { border-bottom:1px solid #000; background:none; }
+  .freitext { border:1px solid #000; background:none; }
+  .loesungsbox { display:block; border:1px solid #000; background:none; }
+  .bildfeld, .punkt { break-inside:avoid; }
+  .hsflaeche, .hsmarke { display:none; }
+  .nurdruck { display:block; }
+  .nurdruck table, .nurdruck td { border:1px solid #000; }
+  .nurdruck td { padding:3pt 6pt; }
+  .kartenfeld { border:1px solid #000; background:none; }
+  .suchgitter, .lernkarte { break-inside:avoid; }
+  .rechenschritt, .aktenschritt, .schaetzung, .einschaetzung { opacity:1 !important;
+      break-inside:avoid; }
+  .aktenschritt.zu { display:block; }
+  .enthuellt, .urteil, .aufloesung, .nachsehen { display:block !important;
+      border:1px solid #000; background:none; }
+  .fallkopf { border:1px solid #000; background:none; }
+  .stufe { background:none !important; color:#000 !important; }
+  .zelle { background:none !important; color:#000 !important; }
+  .punkt { background:none !important; }
+  .tabellescroll { overflow:visible; }
+  .datentabelle tr, .diagramm { break-inside:avoid; }
+  .datentabelle th, .datentabelle td { border:1px solid #000; background:none !important; }
+  .datentabelle th { font-weight:700; }
+  .diagwerte { display:none; }
+  .einbett { background:none; border:1px solid #000; break-inside:avoid; }
+  .einb-laden, .einb-merken, .einb-fenster, .einb-offline, .einb-kein-fenster, .einb-knoepfe { display:none !important; }
+  .einb-qr svg { width:3.8cm; height:3.8cm; }
+  .einb-linktext { font-size:9pt; }
+  a { color:#000; text-decoration:none; }
+}
+</style>
+</head>
+<body>
+<div class="huelle">
+  <div class="navi nurbildschirm">
+    <b>Test</b>
+    <div class="balken"><i id="balken"></i></div>
+    <span class="prozent" id="prozent">0 %</span>
+    <button class="knopf leer" id="drucken">Drucken / als PDF sichern</button>
+    <button class="knopf leer" id="zuruecksetzen">Alles zurücksetzen</button>
+  </div>
+  <div data-wk="deckblatt"><h1>Test</h1></div>
+  <h2 class="kapitel" data-wk="k0">Thema</h2>
+<section class="aufgabe" data-typ="multiple_choice" data-nr="1" data-wk="k0-e0"><div class="kopfzeile"><span class="marke">Aufgabe 1</span><span class="stand" data-stand="1"></span></div><p class="frage">Wer haftet?</p><div class="antworten"><button class="antwort" data-i="0">Absender</button><button class="antwort" data-i="1">Frachtführer</button><button class="antwort" data-i="2">Empfänger</button></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="single_choice" data-nr="2" data-wk="k0-e1"><div class="kopfzeile"><span class="marke">Aufgabe 2</span><span class="stand" data-stand="2"></span></div><p class="frage">Welche Farbe?</p><div class="antworten"><button class="antwort" data-i="0">rot</button><button class="antwort" data-i="1">blau</button><button class="antwort" data-i="2">grün</button></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="true_false" data-nr="3" data-wk="k0-e2"><div class="kopfzeile"><span class="marke">Aufgabe 3</span><span class="stand" data-stand="3"></span></div><p class="frage">Der Frachtführer haftet nach CMR.</p><div class="antworten waagrecht"><button class="antwort" data-i="1">Wahr</button><button class="antwort" data-i="0">Falsch</button></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="true_false" data-nr="4" data-wk="k0-e3"><div class="kopfzeile"><span class="marke">Aufgabe 4</span><span class="stand" data-stand="4"></span></div><p class="frage">Der Himmel ist grün.</p><div class="antworten waagrecht"><button class="antwort" data-i="1">Wahr</button><button class="antwort" data-i="0">Falsch</button></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="fill_blanks" data-nr="5" data-wk="k0-e4"><div class="kopfzeile"><span class="marke">Aufgabe 5</span><span class="stand" data-stand="5"></span></div><p class="frage">Ergänze die fehlenden Wörter.</p><p class="lueckentext">Der <input type="text" class="luecke" data-i="0" size="14" autocomplete="off"> haftet für <input type="text" class="luecke" data-i="1" size="9" autocomplete="off">.</p><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="advanced_fill_blanks" data-nr="6" data-wk="k0-e5"><div class="kopfzeile"><span class="marke">Aufgabe 6</span><span class="stand" data-stand="6"></span></div><p class="frage">Ergänze die fehlenden Wörter.</p><p class="lueckentext">Der <input type="text" class="luecke" data-i="0" size="11" autocomplete="off"><button class="tipp" data-i="0" title="Tipp anzeigen">?</button> arbeitet im <input type="text" class="luecke" data-i="1" size="8" autocomplete="off">.</p><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="drag_words" data-nr="7" data-wk="k0-e6"><div class="kopfzeile"><span class="marke">Aufgabe 7</span><span class="stand" data-stand="7"></span></div><p class="frage">Zieh die Wörter in die passenden Lücken – oder tippe erst ein Wort und dann die Lücke an.</p><div class="vorrat"></div><p class="lueckentext">Die <button class="luecke leer" data-i="0"><span class="wert">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></button> wird im <button class="luecke leer" data-i="1"><span class="wert">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></button> gelagert.</p><button class="knopf pruefen">Prüfen</button><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="mark_words" data-nr="8" data-wk="k0-e7"><div class="kopfzeile"><span class="marke">Aufgabe 8</span><span class="stand" data-stand="8"></span></div><p class="frage">Markiere die Fachbegriffe im Text.</p><p class="markiertext"><span class="wort" data-i="0">Die</span> <span class="wort" data-i="1">rote</span> <span class="wort" data-i="2">Ampel</span> <span class="wort" data-i="3">und</span> <span class="wort" data-i="4">der</span> <span class="wort" data-i="5">blauen</span> <span class="wort" data-i="6">Himmel.</span></p><button class="knopf pruefen">Prüfen</button><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="reihenfolge" data-nr="9" data-wk="k0-e8"><div class="kopfzeile"><span class="marke">Aufgabe 9</span><span class="stand" data-stand="9"></span></div><p class="frage">Bring die Einträge in die richtige Reihenfolge.</p><div class="vorrat"><button class="chip" data-i="0">Auftrag</button><button class="chip" data-i="1">Abholung</button><button class="chip" data-i="2">Zustellung</button></div><ol class="plaetze"><li class="platz" data-p="0"><span class="nr">1</span><span class="wert">—</span></li><li class="platz" data-p="1"><span class="nr">2</span><span class="wert">—</span></li><li class="platz" data-p="2"><span class="nr">3</span><span class="wert">—</span></li></ol><button class="knopf pruefen">Reihenfolge prüfen</button><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="drag_drop" data-nr="10" data-wk="k0-e9"><div class="kopfzeile"><span class="marke">Aufgabe 10</span><span class="stand" data-stand="10"></span></div><p class="frage">Ordne die Begriffe den richtigen Kategorien zu.</p><div class="vorrat"></div><div class="faecher"><div class="fach" data-k="Lager"><h4>Lager</h4><div class="inhalt"></div></div><div class="fach" data-k="Transport"><h4>Transport</h4><div class="inhalt"></div></div></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="single_choice_set" data-nr="11" data-wk="k0-e10"><div class="kopfzeile"><span class="marke">Aufgabe 11</span><span class="stand" data-stand="11"></span></div><div class="teilfrage" data-t="0"><p class="frage">Eins?</p><div class="antworten"></div></div><div class="rueckmeldung"></div></section>
+<section class="aufgabe" data-typ="question_set" data-nr="12" data-wk="k0-e11"><div class="kopfzeile"><span class="marke">Aufgabe 12</span><span class="stand" data-stand="12"></span></div><p class="frage">Kurzquiz zum Kapitel – 70 % zum Bestehen</p><div class="quizfrage" data-q="0" data-typ="multiple_choice"><p class="frage">QA?</p><div class="antworten"><button class="antwort" data-i="0">a</button><button class="antwort" data-i="1">b</button></div></div><div class="quizfrage" data-q="1" data-typ="true_false"><p class="frage">QB?</p><div class="antworten waagrecht"><button class="antwort" data-i="1">Wahr</button><button class="antwort" data-i="0">Falsch</button></div></div><div class="quizfrage" data-q="2" data-typ="fill_blanks"><p class="frage">Ergänze die fehlenden Wörter.</p><p class="lueckentext">Das <input type="text" class="luecke" data-i="0" size="8" autocomplete="off"> fehlt.</p></div><button class="knopf pruefen">Auswerten</button><button class="knopf leer nochmal nurbildschirm" hidden>Quiz nochmal machen</button><div class="rueckmeldung"></div></section>
+<h2 class="kapitel" data-wk="abschluss">Abschluss</h2>
+  <p class="fuss">Interaktive Seite aus der Werkzeugkiste · Selbstkontrolle,
+     keine Bewertung</p>
+</div>
+<script>
+const LOESUNGEN = {"1": {"richtig": 1, "feedback": ["", "", ""]}, "2": {"richtig": 2, "feedback": ["", "", ""]}, "3": {"richtig": 1, "feedback": ["", ""]}, "4": {"richtig": 0, "feedback": ["", ""]}, "5": {"loesungen": [["Frachtführer", "Carrier"], ["Schäden"]]}, "6": {"loesungen": [["Spediteur"], ["Lager"]], "hinweise": ["Organisiert", ""]}, "7": {"woerter": ["Ware", "Lager", "Auto", "Haus"], "hinweise": ["", "", "", ""]}, "8": {"richtige": [1, 5]}, "9": {"reihe": ["Auftrag", "Abholung", "Zustellung"]}, "10": {"items": [{"text": "Regal", "kategorie": "Lager"}, {"text": "LKW", "kategorie": "Transport"}, {"text": "Palette", "kategorie": "Lager"}]}, "11": {"fragen": [{"richtig": "richtig1", "optionen": ["richtig1", "falsch1", "falsch2"]}]}, "12": {"fragen": [{"typ": "multiple_choice", "richtig": 1, "feedback": ["", ""]}, {"typ": "true_false", "richtig": 0, "feedback": ["", ""]}, {"typ": "fill_blanks", "loesungen": [["Wort"]]}], "huerde": 70}};
+const ANZAHL = 12;
+const SPEICHER = "seite-" + document.title.replace(/\W+/g, "-").toLowerCase();
+const fertig = new Set();
+const ZUSTAND = {};          // Aufgabennummer -> {lesen, schreiben}
+
+function mischen(a){const b=a.slice();for(let i=b.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+
+function melden(sec, art, text){
+  const e = sec.querySelector(".rueckmeldung");
+  e.className = "rueckmeldung " + art; e.textContent = text;
+}
+
+function erledigt(sec, ja, wort){
+  const nr = sec.dataset.nr;
+  if (ja) fertig.add(nr); else fertig.delete(nr);
+  const s = sec.querySelector("[data-stand]");
+  if (s) s.textContent = ja ? (wort || "gelöst") : "";
+  const anteil = ANZAHL ? Math.round(fertig.size / ANZAHL * 100) : 0;
+  document.getElementById("balken").style.width = anteil + "%";
+  document.getElementById("prozent").textContent = anteil + " %";
+  sichern();
+}
+
+function merken(sec, api){ ZUSTAND[sec.dataset.nr] = api; }
+
+/* Ziehen mit Maus oder Stift: Die Bausteine kennen nur „Chip antippen, dann Ziel
+   antippen“. Beim Ablegen spielt das Ziehen genau diese beiden Klicks nach – so
+   gilt dieselbe Prüfung wie beim Tippen. Auf dem Touchscreen bleibt es beim Tippen,
+   sonst ließe sich über den Wörtern nicht mehr scrollen. */
+(function(){
+  const ZIELE = ".luecke, .fach, .platz";
+  let zug = null;
+  document.addEventListener("pointerdown", e => {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    const chip = e.target.closest(".aufgabe .vorrat .chip");
+    if (!chip) return;
+    zug = { chip, x: e.clientX, y: e.clientY, geist: null };
+  });
+  document.addEventListener("pointermove", e => {
+    if (!zug) return;
+    if (!zug.geist) {
+      if (Math.hypot(e.clientX - zug.x, e.clientY - zug.y) < 6) return;
+      zug.geist = zug.chip.cloneNode(true);
+      zug.geist.className = "chip geist";
+      document.body.appendChild(zug.geist);
+      zug.chip.classList.add("wird-gezogen");
+    }
+    zug.geist.style.left = e.clientX + "px";
+    zug.geist.style.top = e.clientY + "px";
+    document.querySelectorAll(".ablage-hier").forEach(z => z.classList.remove("ablage-hier"));
+    const ziel = ablageziel(zug.chip, e);
+    if (ziel) ziel.classList.add("ablage-hier");
+  });
+  function ablageziel(chip, e){
+    const unter = document.elementFromPoint(e.clientX, e.clientY);
+    const ziel = unter && unter.closest(ZIELE);
+    const sec = chip.closest(".aufgabe");
+    return ziel && sec && sec.contains(ziel) ? ziel : null;
+  }
+  function aufraeumen(z){
+    if (z.geist) z.geist.remove();
+    z.chip.classList.remove("wird-gezogen");
+    document.querySelectorAll(".ablage-hier").forEach(x => x.classList.remove("ablage-hier"));
+  }
+  document.addEventListener("pointercancel", () => { if (zug) aufraeumen(zug); zug = null; });
+  document.addEventListener("pointerup", e => {
+    if (!zug) return;
+    const z = zug; zug = null;
+    if (!z.geist) return;                       // nur geklickt: normaler Klick-Weg
+    const ziel = ablageziel(z.chip, e);
+    aufraeumen(z);
+    // Der Browser schickt nach dem Loslassen keinen Klick an den Chip (Drücken und
+    // Loslassen lagen auf verschiedenen Elementen) – darum hier beide Klicks nachspielen.
+    if (!ziel || !z.chip.isConnected) return;
+    if (z.chip.getAttribute("aria-pressed") !== "true") {
+      z.chip.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+    const belegt = ziel.dataset.wort !== undefined || ziel.dataset.wert !== undefined ||
+                   ziel.dataset.belegt !== undefined;
+    if (belegt && !ziel.dataset.sitzt) ziel.click();   // altes Wort geht zurück in den Vorrat
+    ziel.click();
+  });
+})();
+
+/* Manche Bausteine (Trainer, Freitext) melden schon beim Aufbau einen Stand.
+   Bis der gespeicherte Stand gelesen ist, darf nichts geschrieben werden –
+   sonst überschreibt der leere Anfangszustand die Eingaben von gestern. */
+let bereit = false;
+
+function sichern(){
+  if (!bereit) return;
+  try {
+    const stand = {};
+    for (const [nr, api] of Object.entries(ZUSTAND)) {
+      if (api.lesen) stand[nr] = api.lesen();
+    }
+    localStorage.setItem(SPEICHER, JSON.stringify({ fertig: [...fertig], stand }));
+  } catch (e) { /* privates Fenster: die Seite läuft trotzdem */ }
+}
+
+/* Deutsche Zahlen vergleichen: 4.165,00 € == 4165 == 4165,00 */
+function zahl(text){
+  let t = String(text).replace(/[^0-9,.\-]/g, "");
+  if (t.indexOf(",") >= 0) { t = t.replace(/\./g, "").replace(",", "."); }
+  else {
+    const m = t.match(/^-?\d+\.(\d+)$/);
+    if (m && m[1].length === 3) t = t.replace(/\./g, "");
+  }
+  const z = parseFloat(t);
+  return isNaN(z) ? null : z;
+}
+
+function gleich(eingabe, soll){
+  const a = zahl(eingabe), b = zahl(soll);
+  if (a !== null && b !== null) return Math.abs(a - b) < 0.005;
+  return eingabe.trim().toLowerCase() === String(soll).trim().toLowerCase();
+}
+
+/* ── Auswahl: Multiple Choice, Single Choice, Wahr/Falsch ──────────── */
+function auswahlAnbinden(sec, l, knoepfe, fertigMelden){
+  knoepfe.forEach(b => b.addEventListener("click", () => {
+    if (sec.dataset.geloest) return;
+    const i = Number(b.dataset.i);
+    const gut = i === l.richtig;
+    b.classList.add(gut ? "richtig" : "falsch");
+    const hinweis = (l.feedback || [])[i] || "";
+    melden(sec, gut ? "gut" : "schlecht", (gut ? "Richtig. " : "Noch nicht. ") + hinweis);
+    if (gut) { sec.dataset.geloest = "1"; fertigMelden(); }
+  }));
+}
+
+document.querySelectorAll('.aufgabe[data-typ="multiple_choice"], ' +
+                          '.aufgabe[data-typ="single_choice"], ' +
+                          '.aufgabe[data-typ="true_false"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const knoepfe = [...sec.querySelectorAll(".antwort")];
+  auswahlAnbinden(sec, l, knoepfe, () => erledigt(sec, true));
+  merken(sec, {
+    lesen: () => sec.dataset.geloest ? 1 : 0,
+    schreiben: z => { if (z === 1) {
+      const b = knoepfe[l.richtig]; if (b) b.classList.add("richtig");
+      sec.dataset.geloest = "1"; erledigt(sec, true);
+    }}
+  });
+});
+
+/* ── Frageserien: single_choice_set und summary(questions) ─────────── */
+document.querySelectorAll('.aufgabe[data-typ="single_choice_set"], ' +
+                          '.aufgabe[data-typ="summary"]').forEach(sec => {
+  const fragen = (LOESUNGEN[sec.dataset.nr] || {}).fragen || [];
+  const bloecke = [...sec.querySelectorAll(".teilfrage")];
+  const geloest = new Set();
+  bloecke.forEach((block, n) => {
+    const f = fragen[n]; if (!f) return;
+    const feld = block.querySelector(".antworten");
+    mischen(f.optionen).forEach(text => {
+      const b = document.createElement("button");
+      b.className = "antwort"; b.textContent = text;
+      b.addEventListener("click", () => {
+        if (block.dataset.geloest) return;
+        const gut = text === f.richtig;
+        b.classList.add(gut ? "richtig" : "falsch");
+        if (gut) {
+          block.dataset.geloest = "1"; geloest.add(n);
+          melden(sec, "gut", geloest.size === fragen.length
+            ? "Alle Teilfragen richtig." : geloest.size + " von " + fragen.length + " sitzen.");
+          if (geloest.size === fragen.length) erledigt(sec, true); else sichern();
+        } else {
+          melden(sec, "schlecht", "Diese Aussage stimmt nicht – lies sie noch einmal genau.");
+        }
+      });
+      feld.appendChild(b);
+    });
+  });
+  merken(sec, {
+    lesen: () => [...geloest],
+    schreiben: z => {
+      (z || []).forEach(n => {
+        const block = bloecke[n]; if (!block) return;
+        block.dataset.geloest = "1"; geloest.add(n);
+        [...block.querySelectorAll(".antwort")].forEach(b => {
+          if (b.textContent === fragen[n].richtig) b.classList.add("richtig");
+        });
+      });
+      if (geloest.size === fragen.length && fragen.length) erledigt(sec, true);
+    }
+  });
+});
+
+/* ── Lückentexte zum Tippen ────────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="fill_blanks"], ' +
+                          '.aufgabe[data-typ="advanced_fill_blanks"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const loesungen = l.loesungen || [];
+  const felder = [...sec.querySelectorAll(".luecke")];
+  sec.querySelectorAll("button.tipp").forEach(t => t.addEventListener("click", () => {
+    melden(sec, "schlecht", "Tipp: " + (l.hinweise || [])[Number(t.dataset.i)]);
+  }));
+  function pruefen(){
+    let richtig = 0;
+    felder.forEach((f, i) => {
+      const wert = f.value.trim().toLowerCase();
+      if (!wert) { f.className = "luecke"; return; }
+      const gut = (loesungen[i] || []).some(v => v.toLowerCase() === wert);
+      f.className = "luecke " + (gut ? "richtig" : "falsch");
+      if (gut) richtig++;
+    });
+    const alles = richtig === felder.length;
+    if (alles) melden(sec, "gut", "Alle Lücken stimmen.");
+    else {
+      const offen = felder.filter(f => !f.value.trim()).length;
+      melden(sec, "schlecht", richtig + " von " + felder.length + " stimmen" +
+        (offen ? ", " + offen + " noch leer." : "."));
+    }
+    erledigt(sec, alles);
+  }
+  felder.forEach(f => f.addEventListener("input", pruefen));
+  merken(sec, {
+    lesen: () => felder.map(f => f.value),
+    schreiben: z => { (z || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; });
+                      pruefen(); }
+  });
+});
+
+/* ── Wörter in Lücken setzen ───────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="drag_words"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const woerter = l.woerter || [];
+  const vorrat = sec.querySelector(".vorrat");
+  const luecken = [...sec.querySelectorAll(".luecke")];
+  let gewaehlt = null;
+
+  function chip(i){
+    const c = document.createElement("button");
+    c.className = "chip"; c.dataset.i = i; c.textContent = woerter[i];
+    c.title = (l.hinweise || [])[i] || "";
+    c.setAttribute("aria-pressed", "false");
+    c.addEventListener("click", () => {
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "false");
+      gewaehlt = (gewaehlt === c) ? null : c;
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "true");
+    });
+    vorrat.appendChild(c);
+  }
+  function neuAufbauen(belegung){
+    vorrat.innerHTML = "";
+    luecken.forEach(g => { delete g.dataset.wort; g.className = "luecke leer";
+                           g.querySelector(".wert").innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"; });
+    const gesetzt = new Set();
+    (belegung || []).forEach((w, i) => {
+      if (w === null || w === undefined || !luecken[i]) return;
+      luecken[i].dataset.wort = w; luecken[i].className = "luecke";
+      luecken[i].querySelector(".wert").textContent = woerter[w];
+      gesetzt.add(w);
+    });
+    mischen(woerter.map((_, i) => i)).filter(i => !gesetzt.has(i)).forEach(chip);
+  }
+  luecken.forEach((g, i) => g.addEventListener("click", () => {
+    if (g.dataset.wort !== undefined) {
+      chip(Number(g.dataset.wort));
+      delete g.dataset.wort; g.className = "luecke leer";
+      g.querySelector(".wert").innerHTML = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
+      return;
+    }
+    if (!gewaehlt) { melden(sec, "schlecht", "Wähle zuerst ein Wort."); return; }
+    g.dataset.wort = gewaehlt.dataset.i; g.className = "luecke";
+    g.querySelector(".wert").textContent = gewaehlt.textContent;
+    gewaehlt.remove(); gewaehlt = null;
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let richtig = 0;
+    luecken.forEach((g, i) => {
+      if (g.dataset.wort === undefined) { g.className = "luecke leer"; return; }
+      const gut = Number(g.dataset.wort) === i;
+      g.className = "luecke " + (gut ? "richtig" : "falsch");
+      if (gut) richtig++;
+    });
+    const alles = richtig === luecken.length;
+    melden(sec, alles ? "gut" : "schlecht", alles ? "Alle Wörter sitzen."
+      : richtig + " von " + luecken.length + " stehen richtig. Klick auf eine rote " +
+        "Lücke, dann geht das Wort zurück.");
+    erledigt(sec, alles);
+  });
+  neuAufbauen(null);
+  merken(sec, {
+    lesen: () => luecken.map(g => g.dataset.wort === undefined ? null : Number(g.dataset.wort)),
+    schreiben: z => neuAufbauen(z)
+  });
+});
+
+/* ── Begriffe im Text markieren ────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="mark_words"]').forEach(sec => {
+  const richtige = new Set((LOESUNGEN[sec.dataset.nr] || {}).richtige || []);
+  const woerter = [...sec.querySelectorAll(".wort")];
+  woerter.forEach(w => w.addEventListener("click", () => {
+    w.classList.toggle("gewaehlt");
+    w.classList.remove("richtig", "falsch");
+    sichern();
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let treffer = 0, daneben = 0;
+    woerter.forEach(w => {
+      const markiert = w.classList.contains("gewaehlt");
+      const soll = richtige.has(Number(w.dataset.i));
+      w.classList.remove("richtig", "falsch");
+      if (markiert && soll) { w.classList.add("richtig"); treffer++; }
+      else if (markiert && !soll) { w.classList.add("falsch"); daneben++; }
+    });
+    const alles = treffer === richtige.size && daneben === 0;
+    melden(sec, alles ? "gut" : "schlecht", alles
+      ? "Alle Fachbegriffe gefunden, keiner zu viel."
+      : treffer + " von " + richtige.size + " gefunden" +
+        (daneben ? ", " + daneben + " zu viel markiert." : "."));
+    erledigt(sec, alles);
+  });
+  merken(sec, {
+    lesen: () => woerter.filter(w => w.classList.contains("gewaehlt"))
+                        .map(w => Number(w.dataset.i)),
+    schreiben: z => (z || []).forEach(i => {
+      const w = woerter.find(w => Number(w.dataset.i) === i);
+      if (w) w.classList.add("gewaehlt");
+    })
+  });
+});
+
+/* ── Zuordnung zu Kategorien ───────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="drag_drop"]').forEach(sec => {
+  const items = (LOESUNGEN[sec.dataset.nr] || {}).items || [];
+  const vorrat = sec.querySelector(".vorrat");
+  const faecher = [...sec.querySelectorAll(".fach")];
+  let gewaehlt = null, gesetzt = 0;
+
+  function chip(i){
+    const c = document.createElement("button");
+    c.className = "chip"; c.dataset.i = i; c.textContent = items[i].text;
+    c.setAttribute("aria-pressed", "false");
+    c.addEventListener("click", () => {
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "false");
+      gewaehlt = (gewaehlt === c) ? null : c;
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "true");
+    });
+    vorrat.appendChild(c);
+  }
+  function einsortieren(i, fach){
+    const m = document.createElement("span");
+    m.className = "marke2 gesetzt"; m.textContent = items[i].text; m.dataset.i = i;
+    fach.querySelector(".inhalt").appendChild(m);
+    gesetzt++;
+    if (gesetzt === items.length) {
+      melden(sec, "gut", "Alle Begriffe zugeordnet.");
+      erledigt(sec, true);
+    } else { sichern(); }
+  }
+  faecher.forEach(fach => fach.addEventListener("click", () => {
+    if (!gewaehlt) { melden(sec, "schlecht", "Wähle zuerst einen Begriff."); return; }
+    const i = Number(gewaehlt.dataset.i);
+    if (items[i].kategorie === fach.dataset.k) {
+      gewaehlt.remove(); gewaehlt = null;
+      einsortieren(i, fach);
+    } else {
+      fach.classList.add("daneben");
+      setTimeout(() => fach.classList.remove("daneben"), 600);
+      melden(sec, "schlecht", "„" + items[i].text + "“ gehört in ein anderes Fach.");
+    }
+  }));
+  mischen(items.map((_, i) => i)).forEach(chip);
+  merken(sec, {
+    lesen: () => faecher.flatMap(f => [...f.querySelectorAll(".gesetzt")]
+                                      .map(m => Number(m.dataset.i))),
+    schreiben: z => (z || []).forEach(i => {
+      const c = vorrat.querySelector('.chip[data-i="' + i + '"]');
+      const fach = faecher.find(f => f.dataset.k === items[i].kategorie);
+      if (c && fach) { c.remove(); einsortieren(i, fach); }
+    })
+  });
+});
+
+/* ── Kreuzworträtsel ───────────────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="crossword"]').forEach(sec => {
+  const gitter = (LOESUNGEN[sec.dataset.nr] || {}).gitter || {};
+  const felder = [...sec.querySelectorAll("input[data-p]")];
+  felder.forEach(f => f.addEventListener("input", () => {
+    f.value = f.value.toUpperCase().slice(0, 1);
+    f.classList.remove("richtig", "falsch");
+    sichern();
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let richtig = 0, offen = 0;
+    felder.forEach(f => {
+      const soll = gitter[f.dataset.p] || "";
+      if (!f.value) { offen++; f.classList.remove("richtig", "falsch"); return; }
+      const gut = f.value.toUpperCase() === soll;
+      f.classList.toggle("richtig", gut);
+      f.classList.toggle("falsch", !gut);
+      if (gut) richtig++;
+    });
+    const alles = richtig === felder.length;
+    melden(sec, alles ? "gut" : "schlecht", alles ? "Das Rätsel ist gelöst."
+      : richtig + " von " + felder.length + " Buchstaben stimmen" +
+        (offen ? ", " + offen + " Felder sind noch leer." : "."));
+    erledigt(sec, alles);
+  });
+  merken(sec, {
+    lesen: () => felder.map(f => f.value),
+    schreiben: z => (z || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; })
+  });
+});
+
+/* ── Reihenfolge, auch mit Bildern ─────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="reihenfolge"], ' +
+                          '.aufgabe[data-typ="image_sequencing"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const reihe = l.reihe || [];
+  const bilder = l.bilder || [];
+  const vorrat = sec.querySelector(".vorrat");
+  const plaetze = [...sec.querySelectorAll(".platz")];
+  let gewaehlt = null;
+
+  /* Text allein oder Bild plus Bildunterschrift – bewusst über DOM-Knoten
+     zusammengesetzt, nie über innerHTML. */
+  function fuellen(ziel, i){
+    ziel.textContent = "";
+    if (bilder[i]) {
+      const im = document.createElement("img");
+      im.src = bilder[i]; im.alt = reihe[i];
+      ziel.appendChild(im);
+    }
+    const t = document.createElement("span");
+    t.textContent = reihe[i];
+    ziel.appendChild(t);
+  }
+
+  function chip(i){
+    const c = document.createElement("button");
+    c.className = bilder[i] ? "chip mitbild" : "chip";
+    c.dataset.i = i; fuellen(c, i);
+    c.setAttribute("aria-pressed", "false");
+    c.addEventListener("click", () => {
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "false");
+      gewaehlt = (gewaehlt === c) ? null : c;
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "true");
+    });
+    vorrat.appendChild(c);
+  }
+  function neuAufbauen(belegung){
+    vorrat.innerHTML = "";
+    plaetze.forEach(p => { delete p.dataset.belegt; p.className = "platz";
+                           p.querySelector(".wert").textContent = "—"; });
+    const drin = new Set();
+    (belegung || []).forEach((w, i) => {
+      if (w === null || w === undefined || !plaetze[i]) return;
+      plaetze[i].dataset.belegt = String(w);
+      fuellen(plaetze[i].querySelector(".wert"), w);
+      drin.add(w);
+    });
+    mischen(reihe.map((_, i) => i)).filter(i => !drin.has(i)).forEach(chip);
+  }
+  plaetze.forEach(p => p.addEventListener("click", () => {
+    if (p.dataset.belegt !== undefined) {
+      chip(Number(p.dataset.belegt));
+      delete p.dataset.belegt; p.className = "platz";
+      p.querySelector(".wert").textContent = "—";
+      return;
+    }
+    if (!gewaehlt) { melden(sec, "schlecht", "Wähle zuerst einen Eintrag."); return; }
+    fuellen(p.querySelector(".wert"), Number(gewaehlt.dataset.i));
+    p.dataset.belegt = gewaehlt.dataset.i;
+    gewaehlt.remove(); gewaehlt = null;
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    if (plaetze.some(p => p.dataset.belegt === undefined)) {
+      melden(sec, "schlecht", "Es sind noch Plätze frei."); return;
+    }
+    let richtig = 0;
+    plaetze.forEach((p, i) => {
+      const gut = Number(p.dataset.belegt) === i;
+      p.className = "platz " + (gut ? "richtig" : "falsch");
+      if (gut) richtig++;
+    });
+    const alles = richtig === plaetze.length;
+    melden(sec, alles ? "gut" : "schlecht", alles
+      ? "Die Reihenfolge stimmt vollständig."
+      : richtig + " von " + plaetze.length + " stehen richtig. Klick auf einen roten " +
+        "Platz, dann geht der Eintrag zurück.");
+    erledigt(sec, alles);
+  });
+  neuAufbauen(null);
+  merken(sec, {
+    lesen: () => plaetze.map(p => p.dataset.belegt === undefined ? null
+                                                                : Number(p.dataset.belegt)),
+    schreiben: z => neuAufbauen(z)
+  });
+});
+
+/* ── Zahleneingaben: Rechenaufgabe und Kopfrechnen ─────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="calculation_exercise"], ' +
+                          '.aufgabe[data-typ="arithmetic_quiz"]').forEach(sec => {
+  const soll = (LOESUNGEN[sec.dataset.nr] || {}).ergebnisse || [];
+  const felder = [...sec.querySelectorAll(".zahl")];
+  felder.forEach(f => f.addEventListener("input", () => {
+    f.classList.remove("richtig", "falsch"); sichern();
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let richtig = 0, offen = 0;
+    felder.forEach((f, i) => {
+      if (!f.value.trim()) { offen++; return; }
+      const gut = gleich(f.value, soll[i]);
+      f.classList.toggle("richtig", gut);
+      f.classList.toggle("falsch", !gut);
+      if (gut) richtig++;
+    });
+    const alles = richtig === felder.length;
+    melden(sec, alles ? "gut" : "schlecht", alles
+      ? (felder.length > 1 ? "Alle Ergebnisse stimmen." : "Das Ergebnis stimmt.")
+      : richtig + " von " + felder.length + " stimmen" +
+        (offen ? ", " + offen + " noch leer." : ". Schreibweise egal: 4.165,00 € oder 4165."));
+    erledigt(sec, alles);
+  });
+  merken(sec, {
+    lesen: () => felder.map(f => f.value),
+    schreiben: z => (z || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; })
+  });
+});
+
+/* ── Quiz mit Hürde und Video-Fragen ───────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="question_set"], ' +
+                          '.aufgabe[data-typ="interactive_video"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const fragen = l.fragen || [];
+  const bloecke = [...sec.querySelectorAll(".quizfrage")];
+  const gewaehlt = {};
+  bloecke.forEach((block, n) => {
+    const f = fragen[n]; if (!f) return;
+    if (f.typ === "fill_blanks") {
+      block.querySelectorAll(".luecke").forEach(e =>
+        e.addEventListener("input", () => { gewaehlt[n] = "text"; sichern(); }));
+      return;
+    }
+    block.querySelectorAll(".antwort").forEach(b => b.addEventListener("click", () => {
+      block.querySelectorAll(".antwort").forEach(x => x.classList.remove("gewaehlt"));
+      b.classList.add("gewaehlt");
+      gewaehlt[n] = Number(b.dataset.i);
+      sichern();
+    }));
+  });
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let richtig = 0;
+    bloecke.forEach((block, n) => {
+      const f = fragen[n]; if (!f) return;
+      let gut = false;
+      if (f.typ === "fill_blanks") {
+        const felder = [...block.querySelectorAll(".luecke")];
+        gut = felder.every((e, i) => (f.loesungen[i] || [])
+          .some(v => v.toLowerCase() === e.value.trim().toLowerCase()));
+        felder.forEach((e, i) => e.className = "luecke " +
+          ((f.loesungen[i] || []).some(v => v.toLowerCase() === e.value.trim().toLowerCase())
+            ? "richtig" : "falsch"));
+      } else {
+        gut = gewaehlt[n] === f.richtig;
+        block.querySelectorAll(".antwort").forEach(b => {
+          const i = Number(b.dataset.i);
+          if (i === f.richtig) b.classList.add("richtig");
+          else if (i === gewaehlt[n]) b.classList.add("falsch");
+        });
+      }
+      if (gut) richtig++;
+    });
+    const anteil = fragen.length ? Math.round(richtig / fragen.length * 100) : 0;
+    const bestanden = anteil >= (l.huerde || 0);
+    melden(sec, bestanden ? "gut" : "schlecht",
+      richtig + " von " + fragen.length + " richtig (" + anteil + " %) – " +
+      (bestanden ? "bestanden. Du kannst weitermachen."
+                 : "noch nicht bestanden, nötig sind " + l.huerde + " %. Grün ist die richtige " +
+                   "Antwort. Lies den Abschnitt davor noch einmal und mach das Quiz dann nochmal."));
+    erledigt(sec, bestanden);
+    if (nochmal) nochmal.hidden = false;
+  });
+  /* Nur dieses Quiz leeren – „Zurücksetzen“ oben löscht dagegen die ganze Seite */
+  const nochmal = sec.querySelector(".nochmal");
+  if (nochmal) nochmal.addEventListener("click", () => {
+    Object.keys(gewaehlt).forEach(k => delete gewaehlt[k]);
+    bloecke.forEach(b => {
+      b.querySelectorAll(".antwort").forEach(x => x.classList.remove("gewaehlt", "richtig", "falsch"));
+      b.querySelectorAll(".luecke").forEach(e => { e.value = ""; e.className = "luecke"; });
+    });
+    const r = sec.querySelector(".rueckmeldung");
+    if (r) { r.className = "rueckmeldung"; r.textContent = ""; }
+    nochmal.hidden = true;
+    erledigt(sec, false);
+    sec.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  merken(sec, {
+    lesen: () => ({ wahl: gewaehlt,
+                    text: bloecke.map(b => [...b.querySelectorAll(".luecke")].map(e => e.value)) }),
+    schreiben: z => {
+      Object.entries((z || {}).wahl || {}).forEach(([n, i]) => {
+        const b = bloecke[n]; if (!b) return;
+        const knopf = b.querySelector('.antwort[data-i="' + i + '"]');
+        if (knopf) { knopf.classList.add("gewaehlt"); gewaehlt[n] = i; }
+      });
+      ((z || {}).text || []).forEach((werte, n) => {
+        const felder = bloecke[n] ? [...bloecke[n].querySelectorAll(".luecke")] : [];
+        werte.forEach((w, i) => { if (felder[i]) felder[i].value = w; });
+      });
+    }
+  });
+});
+
+/* ── Freitext mit Musterlösung ─────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="freitext"]').forEach(sec => {
+  const mindestens = (LOESUNGEN[sec.dataset.nr] || {}).mindestens || 0;
+  const feld = sec.querySelector(".freitext");
+  const stand = sec.querySelector(".zeichenstand");
+  const knopf = sec.querySelector(".aufdecken");
+  const box = sec.querySelector(".loesungsbox");
+
+  function nachfuehren(){
+    const n = feld.value.trim().length;
+    const reicht = n >= mindestens;
+    stand.textContent = reicht
+      ? n + " Zeichen – jetzt darfst du vergleichen."
+      : n + " von " + mindestens + " Zeichen. Schreib erst deine eigene Antwort.";
+    if (knopf) knopf.disabled = !reicht;
+    /* Fertig ist die Aufgabe, wenn etwas Eigenes dasteht und – falls es eine
+       Musterlösung gibt – damit verglichen wurde. */
+    erledigt(sec, reicht && (!box || box.classList.contains("offen")), "bearbeitet");
+  }
+  feld.addEventListener("input", nachfuehren);
+  if (knopf && box) knopf.addEventListener("click", () => {
+    box.classList.add("offen");
+    melden(sec, "gut", "Vergleiche Satz für Satz: Was fehlt dir noch, was hast du " +
+                       "anders begründet? Ergänze deine Antwort ruhig.");
+    nachfuehren();
+  });
+  nachfuehren();
+  merken(sec, {
+    lesen: () => ({ text: feld.value, offen: box ? box.classList.contains("offen") : false }),
+    schreiben: z => {
+      feld.value = (z || {}).text || "";
+      if ((z || {}).offen && box) box.classList.add("offen");
+      nachfuehren();
+    }
+  });
+});
+
+/* ── Adaptiver Trainer ─────────────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="trainer"]').forEach(sec => {
+  const l = LOESUNGEN[sec.dataset.nr] || {};
+  const gruppen = l.gruppen || [];
+  const runden = l.runden || 1;
+  const kopf = sec.querySelector(".trainerkopf");
+  const stand = sec.querySelector(".stand2");
+  const vorrat = sec.querySelector(".vorrat");
+  const plaetze = sec.querySelector(".plaetze");
+  const knopfPruefen = sec.querySelector(".pruefen");
+  const knopfNaechste = sec.querySelector(".naechste");
+  let stapel = [], gesamt = 0, aktuell = -1, gewaehlt = null, laeuft = false;
+
+  function chip(text){
+    const c = document.createElement("button");
+    c.className = "chip"; c.textContent = text;
+    c.setAttribute("aria-pressed", "false");
+    c.addEventListener("click", () => {
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "false");
+      gewaehlt = (gewaehlt === c) ? null : c;
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "true");
+    });
+    vorrat.appendChild(c);
+  }
+
+  function ziehen(){
+    gewaehlt = null;
+    if (!stapel.length) {
+      kopf.textContent = "Geschafft – alle Reihen sitzen.";
+      stand.textContent = gesamt + " von " + gesamt + " Durchgängen";
+      vorrat.innerHTML = ""; plaetze.innerHTML = "";
+      knopfPruefen.disabled = true; knopfNaechste.disabled = true;
+      melden(sec, "gut", "Der Trainer ist durch – jede Reihe hast du " + runden +
+                         "-mal am Stück richtig gelegt.");
+      erledigt(sec, true);
+      return;
+    }
+    knopfPruefen.disabled = false;
+    knopfNaechste.disabled = stapel.length < 2;
+    aktuell = stapel[0];
+    const g = gruppen[aktuell];
+    kopf.textContent = g.titel;
+    if (g.hinweis) {
+      const h = document.createElement("span");
+      h.className = "hinweis"; h.textContent = g.hinweis;
+      kopf.appendChild(h);
+    }
+    stand.textContent = "Noch " + stapel.length + " von " + gesamt + " Durchgängen";
+    vorrat.innerHTML = ""; plaetze.innerHTML = "";
+    g.reihe.forEach((_, i) => {
+      const li = document.createElement("li");
+      li.className = "platz";
+      const nr = document.createElement("span");
+      nr.className = "nr"; nr.textContent = String(i + 1);
+      const wert = document.createElement("span");
+      wert.className = "wert"; wert.textContent = "—";
+      li.appendChild(nr); li.appendChild(wert);
+      li.addEventListener("click", () => {
+        if (li.dataset.sitzt) return;
+        if (li.dataset.wert !== undefined) {          // zurück in den Vorrat
+          chip(li.dataset.wert);
+          delete li.dataset.wert;
+          li.className = "platz"; wert.textContent = "—";
+          return;
+        }
+        if (!gewaehlt) { melden(sec, "schlecht", "Wähle zuerst einen Eintrag."); return; }
+        li.dataset.wert = gewaehlt.textContent;
+        wert.textContent = gewaehlt.textContent;
+        gewaehlt.remove(); gewaehlt = null;
+      });
+      plaetze.appendChild(li);
+    });
+    mischen(g.reihe.concat(g.stoerer || [])).forEach(chip);
+    sichern();
+  }
+
+  knopfPruefen.addEventListener("click", () => {
+    if (laeuft || aktuell < 0 || !stapel.length) return;
+    const g = gruppen[aktuell];
+    const reihe = [...plaetze.querySelectorAll(".platz")];
+    let richtig = 0, zurueck = 0, frei = 0;
+    reihe.forEach((li, i) => {
+      const wert = li.dataset.wert;
+      if (wert === undefined) { frei++; return; }
+      if (wert === g.reihe[i]) {
+        li.className = "platz sitzt"; li.dataset.sitzt = "1"; richtig++;
+      } else {                                        /* Falsches wandert von selbst
+                                                         zurück – kein Klickaufwand */
+        delete li.dataset.wert;
+        li.className = "platz";
+        li.querySelector(".wert").textContent = "—";
+        chip(wert); zurueck++;
+      }
+    });
+    if (richtig === g.reihe.length) {
+      stapel.shift();
+      melden(sec, "gut", stapel.length ? "Sitzt. Der nächste Durchgang kommt …"
+                                       : "Sitzt.");
+      laeuft = true;
+      setTimeout(() => { laeuft = false; ziehen(); }, 1100);
+    } else {
+      /* Adaptiv: Was danebenging, kommt noch einmal in den Stapel. */
+      if (stapel.filter(x => x === aktuell).length < runden + 2) {
+        stapel.push(aktuell); gesamt++;
+      }
+      melden(sec, "schlecht", richtig + " von " + g.reihe.length + " sitzen" +
+        (zurueck ? ", " + zurueck + " sind zurück im Vorrat" : "") +
+        (frei ? ", " + frei + " Plätze sind noch frei" : "") +
+        ". Diese Reihe kommt gleich noch einmal.");
+      stand.textContent = "Noch " + stapel.length + " von " + gesamt + " Durchgängen";
+      sichern();
+    }
+  });
+
+  knopfNaechste.addEventListener("click", () => {
+    if (laeuft || stapel.length < 2) return;
+    stapel.push(stapel.shift());
+    ziehen();
+  });
+
+  gruppen.forEach((g, i) => { for (let r = 0; r < runden; r++) stapel.push(i); });
+  stapel = mischen(stapel); gesamt = stapel.length;
+  ziehen();
+  merken(sec, {
+    lesen: () => ({ stapel: stapel, gesamt: gesamt }),
+    schreiben: z => {
+      if (!z || !Array.isArray(z.stapel)) return;
+      stapel = z.stapel.filter(i => gruppen[i]);
+      gesamt = Math.max(z.gesamt || 0, stapel.length);
+      ziehen();
+    }
+  });
+});
+
+/* ── Begriffe auf ein Bild setzen ──────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="bildzuordnung"]').forEach(sec => {
+  const punkte = (LOESUNGEN[sec.dataset.nr] || {}).punkte || [];
+  const vorrat = sec.querySelector(".vorrat");
+  const feld = sec.querySelector(".bildfeld");
+  const bild = feld.querySelector("img");
+  const knopfSetz = sec.querySelector(".setzmodus");
+  const hilfe = sec.querySelector(".setzhilfe");
+  const spielbar = punkte.map((p, i) => i)
+    .filter(i => typeof punkte[i].x === "number" && typeof punkte[i].y === "number");
+  const orte = punkte.map(p => ({ label: p.label, x: p.x, y: p.y }));
+  let gewaehlt = null, gesetzt = 0, setzen = false, setzIndex = 0;
+
+  const ablenker = (LOESUNGEN[sec.dataset.nr] || {}).ablenker || [];
+  function chip(i){
+    const c = document.createElement("button");
+    c.className = "chip"; c.dataset.i = i; c.textContent = i < 0 ? ablenker[-i - 1] : punkte[i].label;
+    c.setAttribute("aria-pressed", "false");
+    c.addEventListener("click", () => {
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "false");
+      gewaehlt = (gewaehlt === c) ? null : c;
+      if (gewaehlt) gewaehlt.setAttribute("aria-pressed", "true");
+    });
+    vorrat.appendChild(c);
+  }
+  function setzenMelden(){
+    if (gesetzt === spielbar.length && spielbar.length) {
+      melden(sec, "gut", "Alle Begriffe sitzen an der richtigen Stelle.");
+      erledigt(sec, true);
+    } else { sichern(); }
+  }
+  function marke(i){
+    const p = punkte[i];
+    const m = document.createElement("button");
+    m.className = "punkt"; m.dataset.i = i;
+    m.style.left = p.x + "%"; m.style.top = p.y + "%";
+    m.textContent = String(i + 1);
+    m.addEventListener("click", ev => {
+      ev.stopPropagation();
+      if (setzen || m.classList.contains("gesetzt")) return;
+      if (!gewaehlt) { melden(sec, "schlecht", "Wähle zuerst einen Begriff."); return; }
+      if (Number(gewaehlt.dataset.i) === i) {
+        m.classList.add("gesetzt"); m.textContent = p.label;
+        gewaehlt.remove(); gewaehlt = null; gesetzt++;
+        setzenMelden();
+      } else {
+        m.classList.add("daneben");
+        setTimeout(() => m.classList.remove("daneben"), 600);
+        melden(sec, "schlecht", "„" + gewaehlt.textContent + "“ gehört an eine andere Stelle.");
+      }
+    });
+    feld.appendChild(m);
+  }
+  function markenWeg(){ [...feld.querySelectorAll(".punkt")].forEach(m => m.remove()); }
+  function spielAufbauen(){
+    markenWeg(); vorrat.innerHTML = ""; gesetzt = 0; gewaehlt = null;
+    spielbar.forEach(marke);
+    mischen(spielbar.concat(ablenker.map((a, k) => -k - 1))).forEach(chip);
+  }
+
+  /* ── Setz-Modus: Die Lehrkraft klickt die Punkte einmal aufs Bild ── */
+  function vorschau(){
+    markenWeg();
+    orte.forEach(o => {
+      if (typeof o.x !== "number" || typeof o.y !== "number") return;
+      const m = document.createElement("span");
+      m.className = "punkt gesetzt";
+      m.style.left = o.x + "%"; m.style.top = o.y + "%";
+      m.style.pointerEvents = "none"; m.textContent = o.label;
+      feld.appendChild(m);
+    });
+  }
+  function yamlBlock(){
+    let t = "        punkte:\n";
+    orte.forEach(o => {
+      t += '          - label: "' + String(o.label).replace(/"/g, "'") + '"\n';
+      t += "            x: " + (typeof o.x === "number" ? Math.round(o.x * 10) / 10 : 0) + "\n";
+      t += "            y: " + (typeof o.y === "number" ? Math.round(o.y * 10) / 10 : 0) + "\n";
+    });
+    return t;
+  }
+  function hilfeZeigen(){
+    hilfe.innerHTML = "";
+    const zeile = document.createElement("p");
+    zeile.style.margin = "0 0 7px";
+    if (setzIndex < orte.length) {
+      zeile.appendChild(document.createTextNode("Klick auf dem Bild die Stelle für: "));
+      const b = document.createElement("b");
+      b.textContent = orte[setzIndex].label;
+      zeile.appendChild(b);
+      zeile.appendChild(document.createTextNode(
+        " (" + (setzIndex + 1) + " von " + orte.length + ")"));
+    } else {
+      zeile.textContent = "Fertig. Diesen Block in die YAML-Antwort der KI übernehmen – "
+                        + "er ersetzt dort die bisherigen punkte:";
+    }
+    hilfe.appendChild(zeile);
+    if (setzIndex >= orte.length) {
+      const t = document.createElement("textarea");
+      t.rows = Math.min(24, orte.length * 3 + 2);
+      t.readOnly = true; t.value = yamlBlock();
+      t.addEventListener("focus", () => t.select());
+      hilfe.appendChild(t);
+    }
+    const nochmal = document.createElement("button");
+    nochmal.className = "knopf klein"; nochmal.textContent = "Von vorne setzen";
+    nochmal.addEventListener("click", () => { setzIndex = 0; hilfeZeigen(); });
+    hilfe.appendChild(nochmal);
+  }
+  feld.addEventListener("click", ev => {
+    if (!setzen || setzIndex >= orte.length) return;
+    const r = bild.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    orte[setzIndex].x = Math.max(0, Math.min(100, (ev.clientX - r.left) / r.width * 100));
+    orte[setzIndex].y = Math.max(0, Math.min(100, (ev.clientY - r.top) / r.height * 100));
+    setzIndex++;
+    vorschau(); hilfeZeigen();
+  });
+  knopfSetz.addEventListener("click", () => {
+    setzen = !setzen;
+    feld.classList.toggle("setzen", setzen);
+    hilfe.classList.toggle("offen", setzen);
+    knopfSetz.textContent = setzen ? "Setz-Modus beenden" : "Punkte setzen (Lehrkraft)";
+    if (setzen) { setzIndex = 0; vorschau(); hilfeZeigen(); }
+    else { spielAufbauen(); }
+  });
+
+  spielAufbauen();
+  if (spielbar.length < punkte.length) {
+    melden(sec, "schlecht", "Diese Aufgabe ist noch nicht fertig: " +
+      (punkte.length - spielbar.length) + " von " + punkte.length + " Begriffen fehlt " +
+      "die Stelle auf dem Bild. Die Lehrkraft ergänzt sie über „Punkte setzen“.");
+  }
+  merken(sec, {
+    lesen: () => [...feld.querySelectorAll(".punkt.gesetzt")]
+                 .map(m => Number(m.dataset.i)).filter(n => !isNaN(n)),
+    schreiben: z => {
+      (z || []).forEach(i => {
+        const m = feld.querySelector('.punkt[data-i="' + i + '"]');
+        const c = vorrat.querySelector('.chip[data-i="' + i + '"]');
+        if (m && c) {
+          m.classList.add("gesetzt"); m.textContent = punkte[i].label;
+          c.remove(); gesetzt++;
+        }
+      });
+      setzenMelden();
+    }
+  });
+});
+
+/* ── Memory: Begriff und Erklärung zusammenbringen ─────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="memory_game"]').forEach(sec => {
+  const paare = (LOESUNGEN[sec.dataset.nr] || {}).paare || [];
+  const feld = sec.querySelector(".memory");
+  const stand = sec.querySelector(".stand2");
+  const gefunden = new Set();
+  let offen = [], sperre = false, zuege = 0, folge = [];
+
+  function anzeigen(){
+    stand.textContent = gefunden.size + " von " + paare.length + " Paaren · " +
+                        zuege + " Versuch" + (zuege === 1 ? "" : "e");
+  }
+  function aufbauen(){
+    feld.textContent = "";
+    folge.forEach(([p, seite]) => {
+      const k = document.createElement("button");
+      k.className = "mkarte"; k.dataset.p = p; k.dataset.s = seite;
+      const d = document.createElement("span");
+      d.className = "deckel"; d.textContent = seite === 0 ? "Begriff" : "Erklärung";
+      const w = document.createElement("span");
+      w.className = "wert"; w.innerHTML = paare[p][seite];
+      k.appendChild(d); k.appendChild(w);
+      if (gefunden.has(p)) k.classList.add("gefunden");
+      k.addEventListener("click", () => {
+        if (sperre || k.classList.contains("gefunden") ||
+            k.classList.contains("offen")) return;
+        k.classList.add("offen");
+        offen.push(k);
+        if (offen.length < 2) return;
+        zuege++;
+        const [a, b] = offen;
+        if (a.dataset.p === b.dataset.p && a.dataset.s !== b.dataset.s) {
+          a.classList.add("gefunden"); b.classList.add("gefunden");
+          a.classList.remove("offen"); b.classList.remove("offen");
+          gefunden.add(Number(a.dataset.p));
+          offen = []; anzeigen();
+          if (gefunden.size === paare.length) {
+            melden(sec, "gut", "Alle Paare gefunden – mit " + zuege + " Versuchen.");
+            erledigt(sec, true);
+          } else { sichern(); }
+        } else {
+          sperre = true;
+          melden(sec, "schlecht", "Die beiden gehören nicht zusammen – merk dir, wo sie liegen.");
+          setTimeout(() => {
+            offen.forEach(x => x.classList.remove("offen"));
+            offen = []; sperre = false; anzeigen();
+          }, 1100);
+          anzeigen();
+        }
+      });
+      feld.appendChild(k);
+    });
+    anzeigen();
+  }
+  paare.forEach((_, i) => { folge.push([i, 0]); folge.push([i, 1]); });
+  folge = mischen(folge);
+  aufbauen();
+  merken(sec, {
+    lesen: () => ({ folge: folge, gefunden: [...gefunden], zuege: zuege }),
+    schreiben: z => {
+      if (!z || !Array.isArray(z.folge) || z.folge.length !== folge.length) return;
+      folge = z.folge;
+      (z.gefunden || []).forEach(i => gefunden.add(i));
+      zuege = z.zuege || 0;
+      aufbauen();
+      if (gefunden.size === paare.length && paare.length) erledigt(sec, true);
+    }
+  });
+});
+
+/* ── Buchstabensalat ───────────────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="find_words"]').forEach(sec => {
+  const woerter = (LOESUNGEN[sec.dataset.nr] || {}).woerter || [];
+  const zellen = [...sec.querySelectorAll(".zelle")];
+  const eintraege = [...sec.querySelectorAll(".suchliste li")];
+  const gefunden = new Set();
+  let start = null;
+
+  function punkt(p){ const [x, y] = p.split(","); return [Number(x), Number(y)]; }
+  function strecke(a, b){
+    const [ax, ay] = punkt(a), [bx, by] = punkt(b);
+    const dx = Math.sign(bx - ax), dy = Math.sign(by - ay);
+    const laenge = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
+    const weg = [];
+    for (let i = 0; i <= laenge; i++) weg.push((ax + dx * i) + "," + (ay + dy * i));
+    return weg;
+  }
+  function markieren(n){
+    gefunden.add(n);
+    strecke(woerter[n].a, woerter[n].b).forEach(p => {
+      const z = sec.querySelector('.zelle[data-p="' + p + '"]');
+      if (z) z.classList.add("gefunden");
+    });
+    if (eintraege[n]) eintraege[n].classList.add("gefunden");
+  }
+  zellen.forEach(z => z.addEventListener("click", () => {
+    if (!start) { start = z; z.classList.add("start"); return; }
+    if (start === z) { z.classList.remove("start"); start = null; return; }
+    const a = start.dataset.p, b = z.dataset.p;
+    start.classList.remove("start"); start = null;
+    const n = woerter.findIndex((w, i) => !gefunden.has(i) &&
+      ((w.a === a && w.b === b) || (w.a === b && w.b === a)));
+    if (n >= 0) {
+      markieren(n);
+      const offen = woerter.length - gefunden.size;
+      melden(sec, "gut", "„" + woerter[n].wort + "“ gefunden." +
+        (offen ? " Noch " + offen + "." : ""));
+      if (!offen) erledigt(sec, true); else sichern();
+    } else {
+      z.classList.add("daneben");
+      setTimeout(() => z.classList.remove("daneben"), 600);
+      melden(sec, "schlecht", "Da steht keins der gesuchten Wörter. Klick genau auf den " +
+        "ersten und dann auf den letzten Buchstaben.");
+    }
+  }));
+  merken(sec, {
+    lesen: () => [...gefunden],
+    schreiben: z => {
+      (z || []).forEach(n => { if (woerter[n]) markieren(n); });
+      if (gefunden.size === woerter.length && woerter.length) erledigt(sec, true);
+    }
+  });
+});
+
+/* ── Lernkarten zum Tippen ─────────────────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="flashcards"]').forEach(sec => {
+  const karten = (LOESUNGEN[sec.dataset.nr] || {}).karten || [];
+  const felder = [...sec.querySelectorAll(".kartenfeld")];
+  felder.forEach(f => f.addEventListener("input", () => {
+    f.classList.remove("richtig", "falsch"); sichern();
+  }));
+  sec.querySelector(".pruefen").addEventListener("click", () => {
+    let richtig = 0, leer = 0;
+    felder.forEach((f, i) => {
+      const wert = f.value.trim().toLowerCase();
+      if (!wert) { leer++; f.classList.remove("richtig", "falsch"); return; }
+      const gut = (karten[i] || []).some(v => v.toLowerCase() === wert);
+      f.classList.toggle("richtig", gut);
+      f.classList.toggle("falsch", !gut);
+      if (gut) richtig++;
+    });
+    const alles = richtig === felder.length;
+    melden(sec, alles ? "gut" : "schlecht", alles
+      ? "Alle Karten sitzen."
+      : richtig + " von " + felder.length + " stimmen" +
+        (leer ? ", " + leer + " noch leer." : "."));
+    erledigt(sec, alles);
+  });
+  merken(sec, {
+    lesen: () => felder.map(f => f.value),
+    schreiben: z => (z || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; })
+  });
+});
+
+/* ── Rechenweg: ein Schritt nach dem anderen ───────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="rechenweg"]').forEach(sec => {
+  const schritte = (LOESUNGEN[sec.dataset.nr] || {}).schritte || [];
+  const zeilen = [...sec.querySelectorAll(".rechenschritt")];
+  const felder = [...sec.querySelectorAll(".zahl")];
+  const knopf = sec.querySelector(".pruefen");
+  let dran = 0;
+
+  function stellen(){
+    zeilen.forEach((li, i) => {
+      li.classList.toggle("offen", i === dran);
+      li.classList.toggle("sitzt", i < dran);
+      if (felder[i]) felder[i].disabled = i !== dran;
+    });
+    if (dran >= zeilen.length) {
+      knopf.disabled = true;
+      melden(sec, "gut", "Der ganze Rechenweg stimmt – Schritt für Schritt sauber gerechnet.");
+      erledigt(sec, true);
+    } else {
+      knopf.disabled = false;
+      knopf.textContent = dran ? "Nächsten Schritt prüfen" : "Schritt prüfen";
+    }
+  }
+  knopf.addEventListener("click", () => {
+    const f = felder[dran]; if (!f) return;
+    if (!f.value.trim()) { melden(sec, "schlecht", "Trag erst ein Ergebnis ein."); return; }
+    if (gleich(f.value, schritte[dran].ergebnis)) {
+      f.classList.remove("falsch"); f.classList.add("richtig");
+      dran++; stellen();
+      if (dran < zeilen.length) {
+        melden(sec, "gut", "Stimmt. Weiter zum nächsten Schritt.");
+        const naechstes = felder[dran]; if (naechstes) naechstes.focus();
+      }
+      sichern();
+    } else {
+      f.classList.add("falsch");
+      melden(sec, "schlecht", "Dieser Zwischenschritt stimmt noch nicht. " +
+        (schritte[dran].hinweis || "Rechne ihn allein noch einmal durch – die " +
+         "späteren Schritte bauen darauf auf."));
+    }
+  });
+  stellen();
+  merken(sec, {
+    lesen: () => ({ dran: dran, werte: felder.map(f => f.value) }),
+    schreiben: z => {
+      ((z || {}).werte || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; });
+      dran = Math.min(Number((z || {}).dran) || 0, zeilen.length);
+      felder.forEach((f, i) => { if (i < dran) f.classList.add("richtig"); });
+      stellen();
+    }
+  });
+});
+
+/* ── Fallakte: jede richtige Antwort gibt einen Fakt frei ──────────── */
+document.querySelectorAll('.aufgabe[data-typ="fallakte"]').forEach(sec => {
+  const schritte = (LOESUNGEN[sec.dataset.nr] || {}).schritte || [];
+  const bloecke = [...sec.querySelectorAll(".aktenschritt")];
+  const urteil = sec.querySelector(".urteil");
+  let dran = 0;
+
+  function stellen(){
+    bloecke.forEach((b, i) => {
+      b.classList.toggle("zu", i > dran);
+      b.classList.toggle("geloest", i < dran);
+    });
+    if (dran >= bloecke.length) {
+      if (urteil) urteil.classList.add("offen");
+      melden(sec, "gut", "Der Fall ist aufgeklärt – du hast alle Akten geöffnet.");
+      erledigt(sec, true);
+    }
+  }
+  bloecke.forEach((block, i) => {
+    block.querySelectorAll(".antwort").forEach(b => b.addEventListener("click", () => {
+      if (i !== dran) return;
+      const j = Number(b.dataset.i);
+      const gut = j === schritte[i].richtig;
+      b.classList.add(gut ? "richtig" : "falsch");
+      const hinweis = (schritte[i].feedback || [])[j] || "";
+      melden(sec, gut ? "gut" : "schlecht",
+        (gut ? "Richtig – die nächste Akte ist offen. " : "Noch nicht. ") + hinweis);
+      if (gut) { dran++; stellen(); sichern(); }
+    }));
+  });
+  stellen();
+  merken(sec, {
+    lesen: () => dran,
+    schreiben: z => {
+      dran = Math.min(Number(z) || 0, bloecke.length);
+      bloecke.forEach((block, i) => {
+        if (i >= dran) return;
+        const b = block.querySelector('.antwort[data-i="' + schritte[i].richtig + '"]');
+        if (b) b.classList.add("richtig");
+      });
+      stellen();
+    }
+  });
+});
+
+/* ── Schätzrunde: erst raten, dann auflösen – kein Falsch ──────────── */
+document.querySelectorAll('.aufgabe[data-typ="schaetzrunde"]').forEach(sec => {
+  const fragen = (LOESUNGEN[sec.dataset.nr] || {}).fragen || [];
+  const bloecke = [...sec.querySelectorAll(".schaetzung")];
+  const felder = [...sec.querySelectorAll(".zahl")];
+
+  function aufloesen(){
+    let offen = 0;
+    bloecke.forEach((block, i) => {
+      const f = felder[i];
+      if (!f || !f.value.trim()) { offen++; return; }
+      const soll = zahl(fragen[i].wert), geschaetzt = zahl(f.value);
+      block.querySelector(".echterwert").textContent =
+        "Tatsächlich: " + fragen[i].wert + (fragen[i].einheit ? " " + fragen[i].einheit : "");
+      const ab = block.querySelector(".abweichung");
+      if (soll !== null && geschaetzt !== null && soll !== 0) {
+        const weg = Math.round(Math.abs(geschaetzt - soll) / Math.abs(soll) * 100);
+        ab.textContent = weg <= 10 ? "Deine Schätzung liegt " + weg + " % daneben – sehr nah dran."
+          : weg <= 50 ? "Deine Schätzung liegt " + weg + " % daneben – die Größenordnung stimmt."
+          : "Deine Schätzung liegt " + weg + " % daneben. Genau solche Zahlen unterschätzt man leicht.";
+      } else { ab.textContent = ""; }
+      block.querySelector(".aufloesung").classList.add("offen");
+      f.disabled = true;
+    });
+    if (offen) {
+      melden(sec, "schlecht", offen + " Schätzung" + (offen === 1 ? " fehlt" : "en fehlen") +
+        " noch. Rate ruhig – es zählt nichts.");
+    } else {
+      melden(sec, "gut", "Aufgelöst. Die Zahlen merkst du dir jetzt besser, " +
+                         "weil du vorher geschätzt hast.");
+      erledigt(sec, true, "geschätzt");
+    }
+  }
+  sec.querySelector(".pruefen").addEventListener("click", aufloesen);
+  felder.forEach(f => f.addEventListener("input", sichern));
+  merken(sec, {
+    lesen: () => ({ werte: felder.map(f => f.value),
+                    offen: bloecke.some(b => b.querySelector(".aufloesung")
+                                              .classList.contains("offen")) }),
+    schreiben: z => {
+      ((z || {}).werte || []).forEach((w, i) => { if (felder[i]) felder[i].value = w; });
+      if ((z || {}).offen) aufloesen();
+    }
+  });
+});
+
+/* ── Selbsteinschätzung: bleibt im Browser, geht an niemanden ──────── */
+document.querySelectorAll('.aufgabe[data-typ="selbsteinschaetzung"]').forEach(sec => {
+  const anzahl = (LOESUNGEN[sec.dataset.nr] || {}).anzahl || 0;
+  const zeilen = [...sec.querySelectorAll(".einschaetzung")];
+  const stand = sec.querySelector(".stand2");
+  const wahl = {};
+
+  function anzeigen(){
+    const gesetzt = Object.keys(wahl).length;
+    const offen = Object.values(wahl).filter(s => s > 0).length;
+    stand.textContent = gesetzt < anzahl
+      ? gesetzt + " von " + anzahl + " eingeschätzt"
+      : (offen ? offen + " Punkt(e) stehen noch auf „geht so“ oder „noch nicht“ – "
+                 + "genau die lohnen sich."
+               : "Alles sitzt. Dann ab zur Lernzielkontrolle.");
+    if (gesetzt >= anzahl && anzahl) erledigt(sec, true, "eingeschätzt");
+    else { erledigt(sec, false); }
+  }
+  zeilen.forEach((li, i) => li.querySelectorAll(".stufe").forEach(b =>
+    b.addEventListener("click", () => {
+      li.querySelectorAll(".stufe").forEach(x => x.classList.remove("gewaehlt"));
+      b.classList.add("gewaehlt");
+      wahl[i] = Number(b.dataset.s);
+      li.classList.toggle("suchen", wahl[i] > 0);
+      anzeigen();
+    })));
+  anzeigen();
+  merken(sec, {
+    lesen: () => wahl,
+    schreiben: z => {
+      Object.entries(z || {}).forEach(([i, stufe]) => {
+        const li = zeilen[i]; if (!li) return;
+        const b = li.querySelector('.stufe[data-s="' + stufe + '"]');
+        if (!b) return;
+        b.classList.add("gewaehlt");
+        wahl[Number(i)] = Number(stufe);
+        li.classList.toggle("suchen", Number(stufe) > 0);
+      });
+      anzeigen();
+    }
+  });
+});
+
+/* ── Karten umdrehen ───────────────────────────────────────────────── */
+document.querySelectorAll(".karte").forEach(k =>
+  k.addEventListener("click", () => k.classList.toggle("gedreht")));
+
+/* ── Einbetten (PROJ-109) ───────────────────────────────────────────── */
+(function(){
+  // Läuft die Seite abgeschottet (öffentlicher Link, Vorschau), gibt es keinen Speicher.
+  // Dort ist „In neuem Tab öffnen“ der Hauptweg, geladen wird nichts.
+  let speicherOk = false;
+  try { localStorage.setItem("einb-test", "1"); localStorage.removeItem("einb-test"); speicherOk = true; }
+  catch (e) { /* abgeschottet */ }
+  document.querySelectorAll(".einbett[data-quelle]").forEach(box => {
+    const laden = box.querySelector(".einb-laden"), merken = box.querySelector(".einb-merken");
+    const fenster = box.querySelector(".einb-fenster"), text = box.querySelector(".einb-datenhinweis");
+    const offline = box.querySelector(".einb-offline"), kein = box.querySelector(".einb-kein-fenster");
+    const tab = box.querySelector(".einb-knoepfe .einb-tab");
+    if (!speicherOk) {
+      text.textContent = text.dataset.oeffnen;
+      tab.classList.add("haupt");
+      return;
+    }
+    // Gilt nur für diese Seite (wie der Lernfortschritt), nicht für alle Seiten derselben Adresse
+    const schluessel = SPEICHER + "-einb-immer-" + box.dataset.anbieter;
+    laden.hidden = false; merken.hidden = false;
+    function lade() {
+      if (box.querySelector("iframe")) return;
+      offline.hidden = true;
+      if (navigator.onLine === false) { offline.hidden = false; return; }
+      const f = document.createElement("iframe");
+      f.className = "einb-rahmen";
+      f.title = box.querySelector(".frage") ? box.querySelector(".frage").textContent : "Eingebetteter Inhalt";
+      f.setAttribute("sandbox", box.dataset.rechte);
+      f.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+      if (box.dataset.anbieter === "youtube" || box.dataset.anbieter === "vimeo")
+        f.setAttribute("allow", "fullscreen; picture-in-picture");
+      let geladen = false;
+      f.addEventListener("load", () => { geladen = true; offline.hidden = true; });
+      f.src = box.dataset.quelle;
+      fenster.hidden = false; fenster.appendChild(f);
+      kein.hidden = false; laden.hidden = true;
+      setTimeout(() => { if (!geladen) offline.hidden = false; }, 10000);
+    }
+    laden.addEventListener("click", lade);
+    const haken = merken.querySelector("input");
+    let immer = false;
+    try { immer = localStorage.getItem(schluessel) === "1"; } catch (e) {}
+    haken.checked = immer;
+    haken.addEventListener("change", () => {
+      try { haken.checked ? localStorage.setItem(schluessel, "1") : localStorage.removeItem(schluessel); }
+      catch (e) {}
+      if (haken.checked) lade();
+    });
+    if (immer) lade();
+  });
+})();
+
+/* ── Drucken und Wiederherstellen ──────────────────────────────────── */
+document.getElementById("drucken").addEventListener("click", () => window.print());
+document.getElementById("zuruecksetzen").addEventListener("click", () => {
+  if (!confirm("Wirklich alle Eingaben auf diesem Gerät löschen?")) return;
+  try {
+    localStorage.removeItem(SPEICHER);
+    // PROJ-109: auch „Inhalte von … immer laden“ dieser Seite zurücknehmen
+    Object.keys(localStorage).filter(k => k.startsWith(SPEICHER + "-einb-")).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  location.reload();
+});
+(function(){
+  let g = {};
+  try { g = JSON.parse(localStorage.getItem(SPEICHER) || "{}") || {}; }
+  catch (e) { /* nichts gespeichert oder Speicher gesperrt */ }
+  bereit = true;
+  try {
+    for (const [nr, z] of Object.entries(g.stand || {})) {
+      const api = ZUSTAND[nr];
+      if (api && api.schreiben) api.schreiben(z);
+    }
+    (g.fertig || []).forEach(nr => {
+      if (fertig.has(nr)) return;      // hat sich schon selbst gemeldet
+      const sec = document.querySelector('.aufgabe[data-nr="' + nr + '"]');
+      if (sec) erledigt(sec, true);
+    });
+  } catch (e) { /* nichts gespeichert oder Speicher gesperrt */ }
+})();
+
+/* ── Stelle im Bild finden (PROJ-107) ──────────────────────────────── */
+document.querySelectorAll('.aufgabe[data-typ="hotspot"]').forEach(sec => {
+  const bereiche = (LOESUNGEN[sec.dataset.nr] || {}).bereiche || [];
+  const feld = sec.querySelector(".hotspotfeld");
+  const bild = feld.querySelector("img");
+  const zaehler = sec.querySelector(".hszaehler");
+  const liste = sec.querySelector(".hsliste");
+  const richtige = bereiche.map((b, i) => i).filter(i => bereiche[i].richtig);
+  let gefunden = [];
+  function rahmen(b, r){
+    /* Mindestens 44 x 44 Pixel Trefferfläche, auch wenn der Bereich kleiner gezeichnet ist */
+    let x1 = Math.min(b.x, b.x2), x2 = Math.max(b.x, b.x2);
+    let y1 = Math.min(b.y, b.y2), y2 = Math.max(b.y, b.y2);
+    const minB = r && r.width ? 44 / r.width * 100 : 0;
+    const minH = r && r.height ? 44 / r.height * 100 : 0;
+    const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
+    if (x2 - x1 < minB) { x1 = cx - minB / 2; x2 = cx + minB / 2; }
+    if (y2 - y1 < minH) { y1 = cy - minH / 2; y2 = cy + minH / 2; }
+    return {x1: x1, x2: x2, y1: y1, y2: y2, cx: cx, cy: cy};
+  }
+  function treffer(px, py){
+    const r = bild.getBoundingClientRect();
+    for (let i = bereiche.length - 1; i >= 0; i--) {
+      const b = bereiche[i], f = rahmen(b, r);
+      if (b.art === "kreis") {
+        const rx = (f.x2 - f.x1) / 2, ry = (f.y2 - f.y1) / 2;
+        if (rx > 0 && ry > 0 && Math.pow((px - f.cx) / rx, 2) + Math.pow((py - f.cy) / ry, 2) <= 1) return i;
+      } else if (px >= f.x1 && px <= f.x2 && py >= f.y1 && py <= f.y2) return i;
+    }
+    return -1;
+  }
+  function stand(){
+    zaehler.textContent = gefunden.length + " von " + richtige.length + " gefunden";
+  }
+  function flaecheZeigen(i){
+    const b = bereiche[i];
+    const e = document.createElement("span");
+    e.className = "hsflaeche" + (b.art === "kreis" ? " kreis" : "");
+    e.dataset.i = i;
+    e.style.left = Math.min(b.x, b.x2) + "%"; e.style.top = Math.min(b.y, b.y2) + "%";
+    e.style.width = Math.max(Math.abs(b.x2 - b.x), 2) + "%"; e.style.height = Math.max(Math.abs(b.y2 - b.y), 2) + "%";
+    feld.appendChild(e);
+  }
+  function fertigPruefen(){
+    if (gefunden.length === richtige.length) {
+      melden(sec, "gut", "Alle " + richtige.length + " Stellen gefunden.");
+      erledigt(sec, true);
+    } else { sichern(); }
+  }
+  function ergebnis(i, px, py){
+    if (i >= 0 && bereiche[i].richtig) {
+      if (gefunden.indexOf(i) >= 0) { melden(sec, "gut", "Diese Stelle hast du schon gefunden."); return; }
+      gefunden.push(i); flaecheZeigen(i); stand();
+      melden(sec, "gut", bereiche[i].feedback || "Richtig, das ist eine gesuchte Stelle.");
+      fertigPruefen();
+      return;
+    }
+    const m = document.createElement("span");
+    m.className = "hsmarke";
+    m.style.left = px + "%"; m.style.top = py + "%";
+    feld.appendChild(m);
+    setTimeout(() => { if (m.parentNode) m.parentNode.removeChild(m); }, 900);
+    melden(sec, "schlecht", i >= 0 && bereiche[i].feedback ? bereiche[i].feedback : "Hier ist es nicht. Versuche es noch einmal.");
+  }
+  feld.addEventListener("click", ev => {
+    const r = bild.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const px = (ev.clientX - r.left) / r.width * 100, py = (ev.clientY - r.top) / r.height * 100;
+    ergebnis(treffer(px, py), px, py);
+  });
+  /* Ohne Maus oder Touch: dieselben Bereiche als Auswahlliste (Tastatur, Bildschirmleser) */
+  bereiche.forEach((b, i) => {
+    const k = document.createElement("button");
+    k.type = "button"; k.textContent = b.label || ("Bereich " + (i + 1));
+    k.addEventListener("click", () => {
+      const f = rahmen(b, null);
+      ergebnis(i, f.cx, f.cy);
+      k.setAttribute("aria-pressed", String(gefunden.indexOf(i) >= 0));
+    });
+    liste.appendChild(k);
+  });
+  sec.querySelector(".hsnochmal").addEventListener("click", () => {
+    gefunden = [];
+    [].slice.call(feld.querySelectorAll(".hsflaeche, .hsmarke")).forEach(e => e.remove());
+    [].slice.call(liste.querySelectorAll("button")).forEach(k => k.setAttribute("aria-pressed", "false"));
+    stand(); sichern();
+  });
+  stand();
+  merken(sec, {
+    lesen: () => gefunden.slice(),
+    schreiben: z => {
+      (z || []).forEach(i => {
+        if (typeof i === "number" && bereiche[i] && bereiche[i].richtig && gefunden.indexOf(i) < 0) {
+          gefunden.push(i); flaecheZeigen(i);
+        }
+      });
+      stand();
+      if (gefunden.length === richtige.length && richtige.length) { melden(sec, "gut", "Alle Stellen gefunden."); erledigt(sec, true); }
+    }
+  });
+});
+
+/* ── Galerie: Bild groß ansehen (PROJ-105) ─────────────────────────── */
+(function(){
+  const galerien = document.querySelectorAll("[data-galerie]");
+  if (!galerien.length) return;
+  const kasten = document.createElement("div");
+  kasten.className = "leuchtkasten";
+  kasten.hidden = true;
+  kasten.setAttribute("role", "dialog");
+  kasten.setAttribute("aria-modal", "true");
+  kasten.setAttribute("aria-label", "Bild groß");
+  const fig = document.createElement("figure");
+  const gross = document.createElement("img");
+  const unter = document.createElement("figcaption");
+  fig.appendChild(gross); fig.appendChild(unter);
+  function knopf(klasse, text, label) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = klasse; b.textContent = text; b.setAttribute("aria-label", label);
+    return b;
+  }
+  const zu = knopf("lk-zu", "×", "Schließen");
+  const zurueck = knopf("lk-zurueck", "‹", "Vorheriges Bild");
+  const weiter = knopf("lk-weiter", "›", "Nächstes Bild");
+  [fig, zu, zurueck, weiter].forEach(x => kasten.appendChild(x));
+  document.body.appendChild(kasten);
+  let liste = [], pos = 0, merke = null;
+  function zeige() {
+    const bild = liste[pos].querySelector("img");
+    const figur = liste[pos].closest("figure");
+    const cap = figur ? figur.querySelector("figcaption") : null;
+    gross.src = bild.src; gross.alt = bild.alt;
+    unter.textContent = cap ? cap.textContent : "";
+    zurueck.hidden = weiter.hidden = liste.length < 2;
+  }
+  function auf(g, i) {
+    liste = Array.prototype.slice.call(g.querySelectorAll(".galerie-bild"));
+    pos = i; merke = document.activeElement; kasten.hidden = false; zeige(); zu.focus();
+  }
+  function schliessen() { kasten.hidden = true; if (merke && merke.focus) merke.focus(); }
+  function schritt(d) { pos = (pos + d + liste.length) % liste.length; zeige(); }
+  galerien.forEach(g => g.querySelectorAll(".galerie-bild").forEach((b, i) => {
+    b.addEventListener("click", () => auf(g, i));
+  }));
+  zu.addEventListener("click", schliessen);
+  zurueck.addEventListener("click", () => schritt(-1));
+  weiter.addEventListener("click", () => schritt(1));
+  kasten.addEventListener("click", e => { if (e.target === kasten) schliessen(); });
+  kasten.addEventListener("keydown", e => {
+    if (kasten.hidden) return;
+    if (e.key === "Escape") { e.preventDefault(); schliessen(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); schritt(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); schritt(1); }
+    else if (e.key === "Tab") {
+      const f = Array.prototype.filter.call(kasten.querySelectorAll("button"), x => !x.hidden);
+      const i = f.indexOf(document.activeElement);
+      e.preventDefault();
+      f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>
