@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET, POST } from './route'
 import { NextRequest } from 'next/server'
 import { IHK_DEFAULT_SCALE } from '@/lib/graded-assessments'
@@ -49,6 +49,8 @@ const validBody = {
   closesAt: '2026-10-01T10:00:00.000Z',
   durationMinutes: 45,
   gradingScale: IHK_DEFAULT_SCALE,
+  // PROJ-133: Klasse ist Pflicht (null = „Keine / gemischt“)
+  className: null,
 }
 
 interface Overrides {
@@ -226,8 +228,45 @@ describe('GET /api/admin/assessments – Ablage (PROJ-39)', () => {
 
 describe('POST /api/admin/assessments', () => {
   beforeEach(() => {
+    // Nur das Datum einfrieren: „Beitritt bis“ (closesAt) muss in der Zukunft liegen (PROJ-133)
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-30T12:00:00.000Z'))
     vi.clearAllMocks()
     vi.mocked(checkQuestionSelection).mockResolvedValue({ ok: true, ids: QUESTION_IDS, part: 2 })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('requires the class to be stated explicitly (PROJ-133): missing = 400, null = „Keine / gemischt“', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
+    const { className: _omit, ...withoutClass } = validBody
+    void _omit
+    expect((await POST(makePostRequest(withoutClass))).status).toBe(400)
+    expect((await POST(makePostRequest({ ...validBody, className: null }))).status).toBe(201)
+  })
+
+  it('rejects a „Beitritt bis“ in the past (PROJ-133)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
+    const res = await POST(
+      makePostRequest({ ...validBody, opensAt: '2026-09-29T08:00:00.000Z', closesAt: '2026-09-29T10:00:00.000Z' }),
+    )
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/Vergangenheit/)
+  })
+
+  it('names the rejected questions so the page can mark them (PROJ-133)', async () => {
+    vi.mocked(checkQuestionSelection).mockResolvedValue({
+      ok: false,
+      status: 400,
+      error: '1 gewählte Fragen sind nicht zulässig',
+      invalidIds: [QUESTION_IDS[0]],
+    })
+    vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
+    const res = await POST(makePostRequest(validBody))
+    expect(res.status).toBe(400)
+    expect((await res.json()).invalidQuestionIds).toEqual([QUESTION_IDS[0]])
   })
 
   it('returns 401 when not authenticated', async () => {

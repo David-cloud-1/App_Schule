@@ -129,7 +129,7 @@ export function defaultSubjectIdFor(examParts: ExamPart[], subjects: { id: strin
 
 export type QuestionSelectionCheck =
   | { ok: true; ids: string[]; part: number }
-  | { ok: false; status: number; error: string }
+  | { ok: false; status: number; error: string; /** PROJ-133: die abgelehnten Fragen, damit die Oberfläche sie markieren kann */ invalidIds?: string[] }
 
 /**
  * Serverseitige Prüfung einer Fragenauswahl: Duplikate raus, jede Frage muss
@@ -149,12 +149,13 @@ export async function checkQuestionSelection(
     fetchExamParts(supabase, departmentId),
   ])
   const byId = new Map(selectable.map((q) => [q.id, q]))
-  const invalid = ids.filter((id) => !byId.has(id)).length
-  if (invalid > 0) {
+  const invalidIds = ids.filter((id) => !byId.has(id))
+  if (invalidIds.length > 0) {
     return {
       ok: false,
       status: 400,
-      error: `${invalid} gewählte Fragen sind nicht zulässig (offen, deaktiviert oder aus einem anderen Bereich).`,
+      error: `${invalidIds.length} gewählte Fragen sind nicht zulässig (offen, deaktiviert oder aus einem anderen Bereich).`,
+      invalidIds,
     }
   }
   if (ids.length < MIN_ASSESSMENT_QUESTIONS) {

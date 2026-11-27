@@ -92,7 +92,10 @@ export async function resolveCategory(
     }
   }
 
-  if (input.className !== undefined) {
+  if (input.className === null || (input.className !== undefined && input.className.trim() === '')) {
+    // „Keine / gemischt“ (PROJ-133): nichts zu vereinheitlichen, keine Abfrage nötig
+    columns.class_name = null
+  } else if (input.className !== undefined) {
     const existing = await fetchUsedClassNames(supabase, departmentId, excludeAssessmentId)
     if (existing === null) return { ok: false, status: 500, error: 'Klassen konnten nicht geprüft werden.' }
     columns.class_name = normalizeClassName(input.className, existing)

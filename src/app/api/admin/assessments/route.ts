@@ -24,7 +24,8 @@ const CreateAssessmentSchema = z.object({
   focusTracking: z.boolean().default(false),
   focusAutoSubmitAfter: z.number().int().nullable().default(null),
   // PROJ-39: Ablage, alles optional. Ohne Schuljahr gilt der DB-Standard (aus dem Erstelldatum).
-  className: z.string().max(MAX_CLASS_NAME_LENGTH).nullable().optional(),
+  // PROJ-133: ausdrücklich angeben. null = „Keine / gemischt“, fehlt das Feld, lehnt der Server ab.
+  className: z.string().max(MAX_CLASS_NAME_LENGTH).nullable(),
   subjectId: z.string().uuid().nullable().optional(),
   schoolYear: z.string().optional(),
 })
@@ -188,6 +189,10 @@ export async function POST(request: NextRequest) {
   if (new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
     return NextResponse.json({ error: 'Ende muss nach dem Start liegen.' }, { status: 400 })
   }
+  // PROJ-133: „Beitritt bis“ in der Vergangenheit ist nie sinnvoll
+  if (new Date(closesAt).getTime() <= Date.now()) {
+    return NextResponse.json({ error: 'Beitritt bis liegt in der Vergangenheit.' }, { status: 400 })
+  }
   const scaleError = validateGradingScale(gradingScale)
   if (scaleError) return NextResponse.json({ error: scaleError }, { status: 400 })
   const focusError = validateFocusSettings({ focusTracking, focusAutoSubmitAfter })
@@ -215,7 +220,12 @@ export async function POST(request: NextRequest) {
     console.error('[POST /api/admin/assessments]', err)
     return NextResponse.json({ error: 'Fragen konnten nicht geprüft werden.' }, { status: 500 })
   }
-  if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
+  if (!check.ok) {
+    return NextResponse.json(
+      { error: check.error, ...(check.invalidIds ? { invalidQuestionIds: check.invalidIds } : {}) },
+      { status: check.status },
+    )
+  }
 
   // PROJ-39: Ablage prüfen (Fach gehört zum Zielbereich, Klasse vereinheitlichen)
   const category = await resolveCategory(supabase, departmentId, { className, subjectId, schoolYear })
