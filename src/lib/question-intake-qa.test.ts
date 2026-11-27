@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { detectMaterialKind, MATERIAL_MAX_BYTES } from './assessment-import'
-import { splitMaterial, parseIntakeTable, parseIntakeAnswer, validateIntakeQuestion, intakeDescription } from './question-intake'
+import { ROW_FIELD, splitMaterial, parseIntakeTable, parseIntakeAnswer, validateIntakeQuestion, intakeDescription } from './question-intake'
 import { checkMaterialFile } from '@/components/admin/intake-material-flow'
 
 const ZIP = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0])
@@ -125,5 +125,17 @@ describe('validateIntakeQuestion & intakeDescription – Randfälle (PROJ-132)',
     expect(intakeDescription('table', 1)).toBe('1 Frage aus Tabelle übernommen')
     const long = 'x'.repeat(150) + '.csv'
     expect(intakeDescription('material', 3, long).length).toBeLessThan(120)
+  })
+})
+
+describe('parseIntakeTable – Zeilennummer aus der Datei (QA BUG-9)', () => {
+  const base = { question_text: 'F?', antwort_a: '1', antwort_b: '2', antwort_c: '3', antwort_d: '4', antwort_e: '5', korrekte_antwort: '' }
+  it('nimmt die mitgeschickte Zeilennummer, auch wenn Leerzeilen dazwischen lagen', () => {
+    const result = parseIntakeTable([{ ...base, [ROW_FIELD]: '2' }, { ...base, [ROW_FIELD]: '5' }])
+    expect(result.ok && result.questions.map((q) => q.source_row)).toEqual([2, 5])
+  })
+  it('fällt ohne oder bei unsinniger Nummer auf die Reihenfolge zurück', () => {
+    const result = parseIntakeTable([{ ...base }, { ...base, [ROW_FIELD]: 'abc' }])
+    expect(result.ok && result.questions.map((q) => q.source_row)).toEqual([2, 3])
   })
 })

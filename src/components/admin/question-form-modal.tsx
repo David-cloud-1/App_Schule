@@ -104,7 +104,8 @@ interface BodyProps {
   question?: AdminQuestion | null
   subjects: AdminSubject[]
   /** Nach erfolgreichem Speichern über die Knöpfe des Formulars */
-  onSaved: (opts: { andNew: boolean }) => void
+  /** `topicId`: Thema, in dem die Frage jetzt liegt (null = ohne Thema) */
+  onSaved: (opts: { andNew: boolean; topicId: string | null }) => void
   /** Jemand anderes hat zwischenzeitlich gespeichert (Konflikt-Hinweis wurde gezeigt) */
   onConflict?: () => void
   onOpenHistory?: (question: AdminQuestion) => void
@@ -373,7 +374,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
     const result = await save()
     if (result !== 'ok') return
     const andNew = saveAndNewRef.current
-    onSaved({ andNew })
+    onSaved({ andNew, topicId: isNoTopicValue(form.topic_value) || form.topic_value === '' ? null : form.topic_value })
     if (andNew) {
       saveAndNewRef.current = false
       // Thema und Stufe bleiben für die nächste Frage stehen

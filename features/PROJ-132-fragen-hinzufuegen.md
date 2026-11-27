@@ -1,6 +1,6 @@
 # PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3 Übersichtlichkeit, Teil 2)
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27 (Frontend und Backend gebaut)
 
@@ -415,6 +415,24 @@ Keine neuen. Genutzt werden `fflate` (PowerPoint öffnen), `papaparse` (Tabelle 
 - **Security:** 1 Befund (BUG-1, Medium). Rechte, Validierung und Protokoll sind in Ordnung.
 - **Production Ready:** YES nach der Regel (keine Critical- oder High-Bugs)
 - **Recommendation:** Vor dem Deploy BUG-1 und BUG-2 beheben (beide klein), den Rest im nächsten Durchgang.
+
+### Behebung der QA-Befunde (2026-11-27)
+Alle 11 Befunde sind behoben, jeder mit eigenem Regressionstest (`add-questions-dialog.test.tsx` › „QA-Befunde“, `material-pptx.test.ts`, `question-intake-qa.test.ts`).
+| Bug | Behebung |
+|---|---|
+| BUG-1 | `readPptxText` zählt im Filter die entpackte Gesamtgröße (höchstens 40 MB) und die Folienzahl, **bevor** entpackt wird. Ist die Datei zu groß, gibt die Route 413 mit „Diese PowerPoint-Datei ist zu groß zum Lesen. Teile sie in kleinere Dateien auf.“ zurück. Test: Eine 1-MB-Bombe wird abgelehnt, ohne nennenswerten Speicher. |
+| BUG-2 | Eine neue Zahl der Vorschläge verwirft den zwischengespeicherten Auftrag, er wird neu gebaut. |
+| BUG-3 | Bei mehreren Bereichen nennt der Kopf jedes Schritts „Bereich: …“, festgehalten beim Öffnen. |
+| BUG-4 | Über dem aufgeklappten Auftrag steht: „Diesen Text liest nur deine KI. Am Ende steht, in welcher Form sie antworten soll. Du musst nichts daran ändern.“ |
+| BUG-5 | Abgelehnte Fragen bekommen den Grund des Servers auf ihre Karte und werden abgewählt. |
+| BUG-6 | „Zurück“ mit eingefügter Antwort der KI lässt die Rückfrage beim Schließen bestehen. |
+| BUG-7 | „Verwerfen“ nach „Zurück“ in Weg 1 führt zur Auswahl. |
+| BUG-8 | Weg 1 meldet das Thema der gespeicherten Frage, der Baum springt dorthin. |
+| BUG-9 | Eine eigene Themen-Spalte zählt nur, wenn sie ausgefüllt ist. Leerzeilen werden erst nach dem Nummerieren entfernt, „Zeile N“ passt also zur Datei. Die Anzeige sagt „N Fragen“. Der Satz bei fehlendem Thema lautet jetzt „Gehe zurück und wähle ein Thema, oder trage es in der Tabelle ein.“ |
+| BUG-10 | Das Zurücksetzen beim Öffnen läuft im Rendern statt im Effekt, ohne Lint-Warnung. |
+| BUG-11 | Offene Bearbeitungen in der Vorschau werden beim Übernehmen erst angewendet und neu geprüft. |
+
+Danach: `npm test` 371 Dateien, 4.951 Tests grün, `tsc` sauber, `npm run build` sauber. **Production Ready: YES.**
 
 ## Deployment
 _To be added by /deploy_

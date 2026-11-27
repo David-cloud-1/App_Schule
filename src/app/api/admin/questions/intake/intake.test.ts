@@ -168,7 +168,7 @@ describe('POST intake/preview', () => {
   it('sagt bei einer Tabelle ohne Thema, dass das Thema fehlt', async () => {
     setup()
     const json = await (await previewPost(req({ rows: [goodRow] }))).json()
-    expect(json.items[0].reasons).toContain('Es fehlt das Thema. Wähle oben ein Thema.')
+    expect(json.items[0].reasons).toContain('Es fehlt das Thema. Gehe zurück und wähle ein Thema, oder trage es in der Tabelle ein.')
   })
 
   it('legt nichts in der Datenbank an', async () => {

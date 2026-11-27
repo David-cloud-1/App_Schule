@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     const targetOf = (i: number): string | null => ownTarget.get(i) ?? body.topic_id ?? null
     questions.forEach((q, i) => {
       if (!targetOf(i) && !q.errors.some((e) => e.includes('Thema') || e.includes('Fach'))) {
-        q.errors.push('Es fehlt das Thema. Wähle oben ein Thema.')
+        q.errors.push('Es fehlt das Thema. Gehe zurück und wähle ein Thema, oder trage es in der Tabelle ein.')
       }
     })
 

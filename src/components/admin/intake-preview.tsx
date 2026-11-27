@@ -114,6 +114,21 @@ export function IntakePreview({
   }
 
   async function accept() {
+    // Offene Bearbeitungen gelten mit: erst übernehmen, dann neu prüfen
+    const applied = entries.map((e) => {
+      if (!e.editing || !e.fields) return e
+      const item = recheck(e.item, intakeFromFields(e.fields, e.item.question))
+      return { ...e, item, editing: false, fields: null, checked: e.checked && item.question.errors.length === 0 }
+    })
+    const changed = applied.some((e, i) => e !== entries[i])
+    if (changed) setEntries(applied)
+    const toSend = applied.filter((e) => e.checked)
+    if (changed && toSend.length === 0) {
+      setError('Nach deiner Bearbeitung ist keine Frage mehr angehakt.')
+      return
+    }
+    if (classLevels.length > 0 && toSend.some((e) => e.item.question.class_level == null)) return
+
     setSubmitting(true)
     setError(null)
     try {
@@ -123,8 +138,8 @@ export function IntakePreview({
         body: JSON.stringify({
           source,
           file_name: fileName,
-          allow_flagged: checked.some((e) => e.item.blockers.length > 0),
-          items: checked.map(({ item }) => {
+          allow_flagged: toSend.some((e) => e.item.blockers.length > 0),
+          items: toSend.map(({ item }) => {
             const q = item.question
             return {
               topic_id: item.topic_id,
@@ -142,6 +157,23 @@ export function IntakePreview({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setError(data?.error ?? 'Die Fragen konnten nicht übernommen werden.')
+        // Der Server nennt die Fragen, die nicht in Ordnung sind: Karten markieren und abwählen
+        const rejected = Array.isArray(data?.rejected) ? (data.rejected as { index: number; reason: string }[]) : []
+        if (rejected.length > 0) {
+          const byKey = new Map<number, string>()
+          for (const r of rejected) {
+            const entry = toSend[r.index]
+            if (entry && typeof r.reason === 'string') byKey.set(entry.key, r.reason)
+          }
+          setEntries((all) =>
+            all.map((e) => {
+              const reason = byKey.get(e.key)
+              if (!reason) return e
+              const reasons = e.item.reasons.includes(reason) ? e.item.reasons : [...e.item.reasons, reason]
+              return { ...e, checked: false, expanded: true, item: { ...e.item, reasons } }
+            }),
+          )
+        }
         return
       }
       const name = (response.topic?.label ?? topicLine ?? '').split('›').pop()?.trim()

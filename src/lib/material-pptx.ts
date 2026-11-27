@@ -12,6 +12,20 @@ import { unzipSync } from 'fflate'
 const MAX_SLIDE_BYTES = 5 * 1024 * 1024
 /** Mehr Folien lesen wir nicht (ein Skript hat selten mehr als ein paar hundert) */
 const MAX_SLIDES = 500
+/**
+ * Schutz vor „ZIP-Bomben“: alle Folien zusammen dürfen entpackt nicht größer
+ * sein. fflate legt den Ausgabepuffer in der angegebenen Größe an, die Summe
+ * im Filter begrenzt also den Speicher, bevor etwas entpackt wird.
+ */
+export const MAX_TOTAL_SLIDE_BYTES = 40 * 1024 * 1024
+
+/** Die Datei ist entpackt zu groß – die Route meldet das verständlich */
+export class PptxTooLargeError extends Error {
+  constructor() {
+    super('pptx too large')
+    this.name = 'PptxTooLargeError'
+  }
+}
 
 const SLIDE_PATH = /^ppt\/slides\/slide(\d+)\.xml$/
 
@@ -43,9 +57,24 @@ export function slideXmlToText(xml: string): string {
  * die Datei kein lesbares Archiv ist (zum Beispiel passwortgeschützt).
  */
 export function readPptxText(buffer: Uint8Array): string {
+  let total = 0
+  let count = 0
+  let tooLarge = false
   const files = unzipSync(buffer, {
-    filter: (file) => SLIDE_PATH.test(file.name) && file.originalSize <= MAX_SLIDE_BYTES,
+    filter: (file) => {
+      if (tooLarge || !SLIDE_PATH.test(file.name)) return false
+      if (file.originalSize > MAX_SLIDE_BYTES) return false
+      if (count >= MAX_SLIDES) return false
+      total += file.originalSize
+      if (total > MAX_TOTAL_SLIDE_BYTES) {
+        tooLarge = true
+        return false
+      }
+      count++
+      return true
+    },
   })
+  if (tooLarge) throw new PptxTooLargeError()
   const slides = Object.keys(files)
     .map((name) => ({ name, n: Number(SLIDE_PATH.exec(name)?.[1] ?? 0) }))
     .sort((a, b) => a.n - b.n)

@@ -270,7 +270,7 @@ describe('Weg 3: Aus einer Tabelle übernehmen', () => {
 
     const csv = 'question_text,antwort_a,antwort_b,antwort_c,antwort_d,antwort_e,korrekte_antwort\nFrage?,a,b,c,d,e,A\n'
     fireEvent.change(document.getElementById('table-file') as HTMLInputElement, { target: { files: [new File([csv], 'fragen.csv', { type: 'text/csv' })] } })
-    await screen.findByText(/fragen\.csv · 1 Zeile/)
+    await screen.findByText(/fragen\.csv · 1 Frage/)
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
 
     expect(await screen.findByText('Noch nicht für Azubis sichtbar.')).toBeInTheDocument()
@@ -290,5 +290,94 @@ describe('Weg 3: Aus einer Tabelle übernehmen', () => {
     fireEvent.change(document.getElementById('table-file') as HTMLInputElement, { target: { files: [new File(['x'], 'fragen.xlsx')] } })
     expect(await screen.findByText(/Bitte wähle eine CSV-Datei/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+  })
+})
+
+describe('QA-Befunde (PROJ-132)', () => {
+  async function materialToStepTwo() {
+    fireEvent.click(await screen.findByRole('button', { name: /Aus Material erstellen/ }))
+    fireEvent.change(document.getElementById('material-file') as HTMLInputElement, { target: { files: [new File(['x'], 'skript.pdf')] } })
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Weiter' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+    await screen.findByLabelText('Antwort der KI')
+  }
+
+  it('BUG-2: eine neue Zahl der Vorschläge baut den Auftrag neu', async () => {
+    open()
+    await materialToStepTwo()
+    await waitFor(() => expect(calls.filter((c) => c.url.endsWith('/intake/prompt'))).toHaveLength(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
+    fireEvent.click(await screen.findByRole('radio', { name: '20' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+    await waitFor(() => expect(calls.filter((c) => c.url.endsWith('/intake/prompt'))).toHaveLength(2))
+    expect(calls.filter((c) => c.url.endsWith('/intake/prompt'))[1].body).toMatchObject({ count: 20 })
+  })
+
+  it('BUG-6: nach „Zurück“ mit eingefügter Antwort fragt das Schließen weiter nach', async () => {
+    const { onOpenChange } = open()
+    await materialToStepTwo()
+    fireEvent.change(screen.getByLabelText('Antwort der KI'), { target: { value: 'Antwort' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
+    await screen.findByText('Material wählen')
+    fireEvent.keyDown(screen.getAllByRole('dialog')[0], { key: 'Escape' })
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('BUG-7: „Verwerfen“ nach „Zurück“ in Weg 1 führt zur Auswahl, statt den Dialog zu schließen', async () => {
+    const { onOpenChange } = open()
+    fireEvent.click(await screen.findByRole('button', { name: /Selbst schreiben/ }))
+    fireEvent.change(await screen.findByLabelText(/Fragetext/), { target: { value: 'Eine neue Frage?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Zurück' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Verwerfen' }))
+    expect(await screen.findByText('Wie möchtest du Fragen hinzufügen?')).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+  })
+
+  it('BUG-5: abgelehnte Fragen werden auf ihrer Karte markiert und abgewählt', async () => {
+    open()
+    await materialToStepTwo()
+    fireEvent.change(screen.getByLabelText('Antwort der KI'), { target: { value: 'x' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Vorschau ansehen' }))
+    await screen.findByText('Noch nicht für Azubis sichtbar.')
+
+    const original = global.fetch
+    global.fetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith('/intake/accept')) {
+        return new Response(JSON.stringify({ error: 'Einige Fragen sind noch nicht in Ordnung. Es wurde nichts übernommen.', rejected: [{ index: 1, reason: 'Bitte wähle eine Stufe.' }] }), { status: 400 })
+      }
+      return original(url, init)
+    }) as unknown as typeof fetch
+    fireEvent.click(screen.getByRole('button', { name: '2 Fragen übernehmen' }))
+    expect(await screen.findByText('Bitte wähle eine Stufe.')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Frage 2 übernehmen' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Frage 1 übernehmen' })).toBeChecked()
+  })
+
+  it('BUG-11: eine offene Bearbeitung wird beim Übernehmen mitgenommen', async () => {
+    open()
+    await materialToStepTwo()
+    fireEvent.change(screen.getByLabelText('Antwort der KI'), { target: { value: 'x' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Vorschau ansehen' }))
+    await screen.findByText('Noch nicht für Azubis sichtbar.')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Bearbeiten' })[0])
+    fireEvent.change(document.getElementById('intake-0-question_text') ?? screen.getAllByLabelText(/Fragetext/)[0], {
+      target: { value: 'Geänderte Frage zum Hochregallager?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '2 Fragen übernehmen' }))
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/intake/accept'))).toBe(true))
+    const body = calls.find((c) => c.url.endsWith('/intake/accept'))!.body as { items: { question_text: string }[] }
+    expect(body.items[0].question_text).toBe('Geänderte Frage zum Hochregallager?')
+  })
+
+  it('BUG-9: leere Themen-Spalten zählen nicht als eigenes Thema, Leerzeilen verschieben die Zeilennummer nicht', async () => {
+    open({ initialWay: 'table', defaults: {} })
+    await screen.findByText('Datei wählen')
+    const csv = 'question_text,antwort_a,antwort_b,antwort_c,antwort_d,antwort_e,korrekte_antwort,thema,fach_code\nErste?,a,b,c,d,e,A,,\n\nZweite?,a,b,c,d,e,B,,\n'
+    fireEvent.change(document.getElementById('table-file') as HTMLInputElement, { target: { files: [new File([csv], 'fragen.csv', { type: 'text/csv' })] } })
+    await screen.findByText(/fragen\.csv · 2 Fragen/)
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+    expect(await screen.findByText('Bitte wähle ein Thema. Die Tabelle nennt keins.')).toBeInTheDocument()
+    expect(calls.some((c) => c.url.endsWith('/intake/preview'))).toBe(false)
   })
 })

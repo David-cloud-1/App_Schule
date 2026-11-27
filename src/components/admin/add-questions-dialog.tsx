@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { FileSpreadsheet, FileText, PenLine } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import {
@@ -13,7 +13,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { IntakeLayout } from '@/components/admin/intake-layout'
+import { IntakeDepartmentContext, IntakeLayout } from '@/components/admin/intake-layout'
+import { useTargetDepartment } from '@/components/admin/target-department-field'
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { IntakeMaterialFlow } from '@/components/admin/intake-material-flow'
 import { IntakeTableFlow } from '@/components/admin/intake-table-flow'
 import { QuestionFormBody, type QuestionDefaults } from '@/components/admin/question-form-modal'
@@ -58,20 +60,34 @@ export function AddQuestionsDialog({
 }) {
   const [view, setView] = useState<View>('choose')
   const [dirty, setDirty] = useState(false)
-  const [confirmClose, setConfirmClose] = useState(false)
+  /** Rückfrage vor dem Verwerfen: beim Schließen oder bei „Zurück“ zur Auswahl */
+  const [confirm, setConfirm] = useState<'close' | 'back' | null>(null)
   const topicData = useTopicOptions(open)
+  // Der Bereich wird beim Öffnen festgehalten und im Kopf genannt (nur bei mehreren Bereichen)
+  const scope = useOptionalAdminRole()?.scope
+  const target = useTargetDepartment(open)
+  const departmentName =
+    scope && scope.departments.length > 1
+      ? target.fixedId
+        ? (scope.departments.find((d) => d.id === target.fixedId)?.name ?? null)
+        : 'Alle Bereiche'
+      : null
   const initialTopic = defaults?.topicId && UUID.test(defaults.topicId) ? defaults.topicId : null
 
-  // Beim Öffnen wieder bei der Auswahl beginnen (oder gleich beim gewünschten Weg)
-  useEffect(() => {
-    if (!open) return
-    setView(initialWay ?? 'choose')
-    setDirty(false)
-    setConfirmClose(false)
-  }, [open, initialWay])
+  // Beim Öffnen wieder bei der Auswahl beginnen (oder gleich beim gewünschten Weg).
+  // Anpassung während des Renderns statt im Effekt: so stimmt schon das erste Bild.
+  const [opened, setOpened] = useState<{ open: boolean; way: AddWay | null | undefined }>({ open: false, way: undefined })
+  if (opened.open !== open || (open && opened.way !== initialWay)) {
+    setOpened({ open, way: initialWay })
+    if (open) {
+      setView(initialWay ?? 'choose')
+      setDirty(false)
+      setConfirm(null)
+    }
+  }
 
   const requestClose = useCallback(() => {
-    if (dirty) setConfirmClose(true)
+    if (dirty) setConfirm('close')
     else onOpenChange(false)
   }, [dirty, onOpenChange])
 
@@ -97,6 +113,7 @@ export function AddQuestionsDialog({
             if (dirty) e.preventDefault()
           }}
         >
+          <IntakeDepartmentContext.Provider value={departmentName}>
           {view === 'choose' && (
             <IntakeLayout title="Fragen hinzufügen" description="Wie möchtest du Fragen hinzufügen?">
               <div className="grid gap-3 pb-3">
@@ -128,11 +145,13 @@ export function AddQuestionsDialog({
                 defaults={defaults}
                 topicData={topicData}
                 cancelLabel="Zurück"
-                onCancel={() => (dirty ? setConfirmClose(true) : backToChoice())}
+                onCancel={() => (dirty ? setConfirm('back') : backToChoice())}
                 onDirtyChange={setDirty}
-                onSaved={({ andNew }) => {
-                  if (andNew) onDone({ count: 1, topicIds: [] })
-                  else finish({ count: 1, topicIds: [] })
+                onSaved={({ andNew, topicId }) => {
+                  // Der Baum springt auf das Thema der neuen Frage (wie bei Material und Tabelle)
+                  const topicIds = topicId ? [topicId] : []
+                  if (andNew) onDone({ count: 1, topicIds })
+                  else finish({ count: 1, topicIds })
                 }}
               />
             </IntakeLayout>
@@ -163,10 +182,11 @@ export function AddQuestionsDialog({
               onDirtyChange={setDirty}
             />
           )}
+          </IntakeDepartmentContext.Provider>
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+      <AlertDialog open={confirm !== null} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>{discard.title}</AlertDialogTitle>
@@ -177,9 +197,13 @@ export function AddQuestionsDialog({
             <AlertDialogAction
               className="min-h-11 bg-ws-red text-ws-on-accent hover:bg-ws-red-hover"
               onClick={() => {
-                setConfirmClose(false)
-                setDirty(false)
-                onOpenChange(false)
+                const target = confirm
+                setConfirm(null)
+                if (target === 'back') backToChoice()
+                else {
+                  setDirty(false)
+                  onOpenChange(false)
+                }
               }}
             >
               Verwerfen

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import { DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
@@ -11,6 +11,13 @@ import { cn } from '@/lib/utils'
  * „Zurück“ und der Hauptaktion. Am Handy ist der Dialog ein Vollbild; die
  * Fußzeile bleibt dabei immer sichtbar.
  */
+/**
+ * Bereich, in dem der Dialog geöffnet wurde. Er steht im Kopf jedes Schritts,
+ * damit klar bleibt, wohin die Fragen gehen, auch wenn jemand inzwischen den
+ * Bereich umschaltet. `null` = nichts anzeigen (nur ein Bereich).
+ */
+export const IntakeDepartmentContext = createContext<string | null>(null)
+
 export function IntakeSteps({ steps, current }: { steps: readonly string[]; current: number }) {
   return (
     <ol className="flex w-full items-start gap-2" aria-label="Schritte">
@@ -52,10 +59,16 @@ export function IntakeLayout({
   children: ReactNode
   footer?: ReactNode
 }) {
+  const department = useContext(IntakeDepartmentContext)
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <DialogHeader className="space-y-3 px-4 pb-3 pt-5 sm:px-6">
         <div className="space-y-1.5 pr-8">
+          {department && (
+            <p className="text-xs font-medium text-ws-faint">
+              Bereich: <span className="text-ws-muted">{department}</span>
+            </p>
+          )}
           <DialogTitle className="text-xl font-bold tracking-tight text-ws-text">{title}</DialogTitle>
           {description ? (
             <DialogDescription className="max-w-prose text-ws-muted">{description}</DialogDescription>

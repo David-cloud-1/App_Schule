@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { FachThemaSelect, type TopicOption } from '@/components/admin/fach-thema-select'
 import { IntakeLayout } from '@/components/admin/intake-layout'
 import { IntakePreview } from '@/components/admin/intake-preview'
-import { MAX_INTAKE_QUESTIONS, TABLE_TEMPLATE } from '@/lib/question-intake'
+import { MAX_INTAKE_QUESTIONS, ROW_FIELD, TABLE_TEMPLATE } from '@/lib/question-intake'
 import { useTargetDepartment } from '@/components/admin/target-department-field'
 import { useClassLevelOptions } from '@/components/department-provider'
 import type { IntakePreviewResponse } from '@/app/api/admin/questions/intake/preview/route'
@@ -34,18 +34,26 @@ export function readTable(file: File): Promise<FileState> {
     }
     Papa.parse<Record<string, string>>(file, {
       header: true,
-      skipEmptyLines: true,
+      // Leerzeilen erst nach dem Nummerieren entfernen, damit „Zeile N“ zur Datei passt
+      skipEmptyLines: false,
       complete: (result) => {
-        const fields = (result.meta.fields ?? []).map((f) => f.replace(/^﻿/, '').trim().toLowerCase())
-        if (result.data.length === 0) {
+        const rows = result.data
+          .map((row, i) => ({ row, line: i + 2 }))
+          .filter(({ row }) => Object.values(row).some((v) => typeof v === 'string' && v.trim() !== ''))
+          .map(({ row, line }) => ({ ...row, [ROW_FIELD]: String(line) }))
+        // Eine eigene Fach-/Themen-Spalte zählt nur, wenn sie auch ausgefüllt ist
+        const cell = (row: Record<string, string>, name: string) =>
+          Object.entries(row).find(([k]) => k.replace(/^﻿/, '').trim().toLowerCase() === name)?.[1]?.trim() ?? ''
+        const hasOwnTopic = rows.some((row) => cell(row, 'thema') !== '' && cell(row, 'fach_code') !== '')
+        if (rows.length === 0) {
           resolve({ status: 'error', message: 'In der Tabelle stehen keine Fragen.' })
           return
         }
-        if (result.data.length > MAX_INTAKE_QUESTIONS) {
+        if (rows.length > MAX_INTAKE_QUESTIONS) {
           resolve({ status: 'error', message: `Die Tabelle hat mehr als ${MAX_INTAKE_QUESTIONS} Fragen. Teile sie bitte auf.` })
           return
         }
-        resolve({ status: 'ready', name: file.name, rows: result.data, hasOwnTopic: fields.includes('thema') && fields.includes('fach_code') })
+        resolve({ status: 'ready', name: file.name, rows, hasOwnTopic })
       },
       error: () => resolve({ status: 'error', message: 'Die Tabelle konnte nicht gelesen werden. Nimm die Beispiel-Tabelle als Vorlage.' }),
     })
@@ -214,7 +222,7 @@ export function IntakeTableFlow({
               <p className="flex items-center gap-2 text-ws-text">
                 <Check className="size-4 text-ws-green" aria-hidden />
                 <span className="min-w-0 truncate" title={file.name}>
-                  {file.name} · {file.rows.length} {file.rows.length === 1 ? 'Zeile' : 'Zeilen'}
+                  {file.name} · {file.rows.length} {file.rows.length === 1 ? 'Frage' : 'Fragen'}
                 </span>
               </p>
             )}

@@ -3,6 +3,7 @@ import { requireContentAdmin } from '../../../_lib/auth'
 import { extractText } from '../../../ai-generate/_lib/process-job'
 import { detectMaterialKind, MATERIAL_MAX_BYTES, MIME_BY_KIND, MIN_MATERIAL_CHARS } from '@/lib/assessment-import'
 import { splitMaterial } from '@/lib/question-intake'
+import { PptxTooLargeError } from '@/lib/material-pptx'
 
 export const maxDuration = 60
 
@@ -48,7 +49,13 @@ export async function POST(request: NextRequest) {
   let text: string
   try {
     text = await extractText(buffer, MIME_BY_KIND[kind])
-  } catch {
+  } catch (err) {
+    if (err instanceof PptxTooLargeError) {
+      return NextResponse.json(
+        { error: 'Diese PowerPoint-Datei ist zu groß zum Lesen. Teile sie in kleinere Dateien auf.' },
+        { status: 413 },
+      )
+    }
     return NextResponse.json(
       { error: 'Aus dieser Datei lässt sich kein Text lesen. Vielleicht ist sie mit einem Passwort geschützt.' },
       { status: 422 },

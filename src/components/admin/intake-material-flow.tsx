@@ -79,7 +79,8 @@ export function IntakeMaterialFlow({
 
   function changeStepDirty(next: 0 | 1 | 2) {
     setStep(next)
-    onDirtyChange(next > 0)
+    // Eine eingefügte Antwort der KI bleibt beim Zurückgehen erhalten – dann bleibt auch die Rückfrage beim Schließen
+    onDirtyChange(next > 0 || Object.values(answers).some((a) => a.trim() !== ''))
   }
 
   async function pickFile(selected: File | undefined) {
@@ -300,6 +301,9 @@ export function IntakeMaterialFlow({
                     <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
+                    <p className="mt-1 max-w-prose text-xs text-ws-muted">
+                      Diesen Text liest nur deine KI. Am Ende steht, in welcher Form sie antworten soll. Du musst nichts daran ändern.
+                    </p>
                     <Textarea
                       readOnly
                       value={current.prompt}
@@ -429,7 +433,11 @@ export function IntakeMaterialFlow({
         <div className="space-y-2">
           <Label>Wie viele Vorschläge?{parts.length > 1 ? ' (je Teil)' : ''}</Label>
           <div>
-            <AdminSegmented value={String(count)} onChange={(v) => setCount(Number(v) as IntakeCount)} options={COUNT_OPTIONS} ariaLabel="Wie viele Vorschläge" />
+            <AdminSegmented value={String(count)} onChange={(v) => {
+                setCount(Number(v) as IntakeCount)
+                // Der Auftrag nennt die Zahl: neu bauen lassen
+                setPrompts({})
+              }} options={COUNT_OPTIONS} ariaLabel="Wie viele Vorschläge" />
           </div>
         </div>
       </div>

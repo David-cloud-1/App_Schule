@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { strToU8, zipSync } from 'fflate'
-import { readPptxText, slideXmlToText } from './material-pptx'
+import { PptxTooLargeError, readPptxText, slideXmlToText } from './material-pptx'
 import { detectMaterialKind, MIME_BY_KIND } from './assessment-import'
 
 const slide = (...paras: string[]) =>
@@ -52,5 +52,23 @@ describe('readPptxText (PROJ-132)', () => {
     expect(detectMaterialKind(buffer, 'Skript.PPTX')).toBe('pptx')
     expect(detectMaterialKind(buffer, 'skript.zip')).toBeNull()
     expect(MIME_BY_KIND.pptx).toContain('presentationml')
+  })
+})
+
+describe('readPptxText – Schutz vor ZIP-Bomben (PROJ-132, QA BUG-1)', () => {
+  it('bricht ab, wenn alle Folien zusammen entpackt zu groß sind, bevor etwas entpackt wird', () => {
+    const big = new Uint8Array(4 * 1024 * 1024).fill(32)
+    const files: Record<string, Uint8Array> = {}
+    for (let i = 1; i <= 12; i++) files[`ppt/slides/slide${i}.xml`] = big
+    const zip = zipSync(files, { level: 9 })
+    expect(zip.length).toBeLessThan(1024 * 1024)
+    const before = process.memoryUsage().rss
+    expect(() => readPptxText(zip)).toThrow(PptxTooLargeError)
+    expect(process.memoryUsage().rss - before).toBeLessThan(200 * 1024 * 1024)
+  })
+
+  it('liest normale Präsentationen unter der Grenze weiter', () => {
+    const buffer = pptx({ 'ppt/slides/slide1.xml': slide('Hallo') })
+    expect(readPptxText(buffer)).toBe('Hallo')
   })
 })

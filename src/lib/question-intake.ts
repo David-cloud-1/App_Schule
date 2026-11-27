@@ -377,6 +377,9 @@ export const TABLE_TEMPLATE = [
   '"Nenne zwei Aufgaben eines Spediteurs.",,,,,,,"Der Spediteur organisiert Transporte.",mittel,,,freitext,"Transport organisieren und Sendungen versichern"',
 ].join('\n')
 
+/** Spalte, in der der Browser die Zeilennummer der Datei mitschickt (keine echte Tabellenspalte) */
+export const ROW_FIELD = '__zeile'
+
 const norm = (s: string) => s.replace(/^﻿/, '').trim().toLowerCase()
 
 export type IntakeTableResult =
@@ -410,7 +413,9 @@ export function parseIntakeTable(rows: Record<string, unknown>[]): IntakeTableRe
 
   const questions = keyed.map((r, i) => {
     const q = normalizeRow({ ...r, korrekte_antwort: str(r.korrekte_antwort) })
-    q.source_row = i + 2
+    // Zeile in der Datei (vom Browser mitgeschickt, zählt Leerzeilen mit), sonst Reihenfolge
+    const line = Number(str(r[ROW_FIELD]))
+    q.source_row = Number.isInteger(line) && line >= 2 ? line : i + 2
     q.fach_code = str(r.fach_code).toUpperCase() || null
     q.thema = str(r.thema) || null
     return q
