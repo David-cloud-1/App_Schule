@@ -55,7 +55,15 @@ Kleinkram im selben Zug: „(PROJ-48)“ aus der Zuständigkeiten-Seite, „Prev
 - 2–3 Kolleg/innen (mindestens eine, die die App nicht kennt) lösen die 5 Prüfaufgaben – erst in der echten App, dann in der Vorschau.
 - **Ergebnis:** Wir wissen, ob der neue Aufbau trägt, bevor eine Zeile App-Code geändert wird.
 
+**Stand 27.11.2026:** Vorschau gebaut: `docs/vorschau/phase1-neuer-aufbau.html` (eine Datei, Beispieldaten, kein App-Code geändert), auch als privater Link veröffentlicht. Enthalten sind Menü nach Phase 2 (Verwaltung unten, ein Bereichs-Umschalter), Start mit einer Liste „Zu erledigen“, Lerninhalte an einem Ort (Phase 3) und Leistungsnachweis in 3 Schritten mit Detailseite (Phase 4). Unten rechts gibt es eine „Testleitung“: Prüfaufgabe wählen, Zeit und Klicks mitzählen, Ergebnisse kopieren. **Nicht enthalten:** Abwesenheiten (zurückgestellt, Prüfaufgabe 2 entfällt) und Werkzeugkiste (Prüfaufgabe 4). Diese Punkte und Nachschlagen, Lehrerzimmer und Verwaltung sind nur Platzhalter. **Nächster Schritt:** Test mit 2–3 Kolleg/innen, erst in der echten App, dann in der Vorschau. Danach die Ergebnisse hier eintragen.
+
+**Test 27.11.2026 (Kolleg/innen, Vorschau):** Menü, Begriffe und Aufbau kamen gut an („gefällt uns schon gut“). Drei Wünsche wurden als neue Befunde aufgenommen: B102 (Antworten aufklappen) und B103 (Fach-/Themenbaum unübersichtlich) für Phase 3, B104 (Ersteller des Nachweises sichtbar) für Phase 4. Phase 2 startet damit als **PROJ-130**.
+
+Was die Vorschau aus der Befundliste schon zeigt (zum Prüfen im Test, in der App erst ab Phase 2–4 abgehakt): B1–B4, B6, B9, B24 (Menü und Begriffe), B16 (Erste Schritte statt fester Linkliste), B22–B33 (Nachweis), B34–B50 außer B46 (Lerninhalte), dazu B7 teilweise (Suche findet auch Fragen und Nachweise) und B83 teilweise (aktive Menüpunkte und Segmente neutral statt grün).
+
 ## Phase 2 – Begriffe & Menü
+
+**Feature:** [PROJ-130](../features/PROJ-130-begriffe-und-menue.md) (Architected, 27.11.2026) – „Lerninhalte“ bis Phase 3 als aufklappbarer Menüpunkt, „Nachschlagen“ als Einstiegsseite mit zwei Karten.
 
 **Menü (für alle Lehrkräfte gleich, Verwaltung gesammelt unten):**
 
@@ -290,3 +298,10 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B99 | Beitritt: „Code von deinem Ausbilder“ (gemeint: Lehrkraft); Platzhalter „7K2M-QX“ sieht aus wie ein echter Code | 7 | ☐ |
 | B100 | Fantasienamen grammatisch falsch („Gewandter Lieferung“, „Beharrlicher Hubgerüst“) | 7 | ☐ |
 | B101 | „Opt-out-Einstellungen“ | 7 | ☐ |
+
+### Aus dem Test mit Kolleg/innen (27.11.2026)
+| # | Befund | Ph. | |
+|---|---|---|---|
+| B102 | Fragen: Klick auf eine Frage soll die Antwortmöglichkeiten aufklappen | 3 | ☐ |
+| B103 | Fach-/Themenbaum unübersichtlich: lange Fachnamen über 3 Zeilen, Themen größer als Fächer und kaum eingerückt, „Stufe“ unter jedem Thema | 3 | ☐ |
+| B104 | Leistungsnachweise: sichtbar, welche Lehrkraft den Nachweis erstellt hat (heute nur für den Super-Admin) | 4 | ☐ |
