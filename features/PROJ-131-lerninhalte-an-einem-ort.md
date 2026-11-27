@@ -1,8 +1,8 @@
 # PROJ-131: Lerninhalte an einem Ort (Phase 3 Übersichtlichkeit, Teil 1)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27
+**Last Updated:** 2026-11-27 (Tech Design)
 
 ## Worum es geht
 
@@ -19,6 +19,7 @@ Teil 2, „Fragen hinzufügen“ mit drei Wegen, steht in [PROJ-132](PROJ-132-fr
 - **E1 – Zuschnitt:** Phase 3 wird in zwei Features geteilt. Dieses Feature ist die Seite, PROJ-132 ist „Fragen hinzufügen“.
 - **E2 – Alte Seiten:** Sie fallen aus dem Menü, und ihre Adressen **leiten weiter** auf „Lerninhalte“ mit dem passenden Reiter. Lesezeichen funktionieren also weiter.
 - **E3 – Ausschalten:** Eine einzelne Frage wird sofort ausgeblendet, danach erscheint ein Toast mit „Rückgängig“. Wer ein ganzes Fach ausblendet, bekommt vorher eine **Rückfrage** mit der Zahl der betroffenen Fragen.
+- **E4 – Mehrfachauswahl (bei /architecture):** Die Mehrfachauswahl der alten Seite „Fragen“ zieht mit in den Reiter „Fragen“ um.
 
 ## Dependencies
 - Baut auf: PROJ-85 (Inhalts-Baum), PROJ-130 (Menü, Bereichs-Umschalter, Wörterliste), PROJ-83 (Bedienmuster: `AdminTabs`, `AdminRowActions`, `AdminSegmented`, Zustände)
@@ -68,6 +69,7 @@ Teil 2, „Fragen hinzufügen“ mit drei Wegen, steht in [PROJ-132](PROJ-132-fr
 - [ ] **Ausblenden (B40, E3):** Ein Klick auf den Schalter blendet die Frage sofort aus. Ein Toast meldet „Ausgeblendet. Azubis sehen die Frage nicht mehr.“ und bietet etwa 7 Sekunden lang „Rückgängig“ an. Einblenden meldet „Wieder für Azubis sichtbar“, ebenfalls mit „Rückgängig“.
 - [ ] Bei einer ausgeblendeten Frage steht klein, **warum** und **von wem**, zum Beispiel: „Ausgeblendet von Frau Huber am 27.11.“ oder „Ausgeblendet nach einer Meldung“. Das gilt auch für Bestandsfragen, die bei Einführung schon ausgeblendet waren: Bei ihnen steht „Schon vor dieser Änderung ausgeblendet“. Ein „Inaktiv“ ohne Erklärung gibt es nicht mehr.
 - [ ] Jedes Aus- und Einblenden und jedes „Rückgängig“ wird im Änderungsprotokoll erfasst (wie PROJ-70).
+- [ ] **Mehrfachauswahl (E4):** Jede Zeile hat ein Häkchen. Sobald etwas angehakt ist, erscheint über der Liste eine Leiste „N ausgewählt“ mit Thema ändern, Stufe, Fach, Schwierigkeit, Ausblenden/Einblenden und Löschen. Löschen und Ausblenden fragen vorher mit der Zahl nach. Alles kann die alte Seite „Fragen“ heute auch.
 - [ ] Ist die Auswahl leer, zeigt `AdminEmptyState` den Satz „Hier gibt es noch keine Fragen“ und den Knopf „Fragen hinzufügen“. Ist eine Suche ohne Treffer, zeigt er „Keine Frage gefunden“ mit einem Tipp zur Schreibweise.
 
 ### Fach ausblenden (B41, E3)
@@ -126,7 +128,106 @@ Teil 2, „Fragen hinzufügen“ mit drei Wegen, steht in [PROJ-132](PROJ-132-fr
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-27 · **Ergebnis:** kein neues Datenmodell, keine Migration, keine neuen Pakete. Die Seite `/admin/inhalte` wird ausgebaut, und die vorhandenen Bausteine (Baum, Fragen-Panel, Meldungs-Inbox, Schwierigste Fragen, Papierkorb) ziehen als Reiter auf diese Seite.
+
+**Entscheidung E4 (27.11.2026, Nutzer):** Die **Mehrfachauswahl** der alten Seite „Fragen“ kommt mit in den Reiter „Fragen“: Häkchen je Zeile, darüber die Leiste „N ausgewählt: Thema ändern · Stufe · Fach · Schwierigkeit · Ausblenden/Einblenden · Löschen“. Die vorhandene Schnittstelle für Massenänderungen wird weiter genutzt. Erst danach darf die alte Adresse weiterleiten.
+
+### A) Aufbau der Seite
+
+```
+Lerninhalte  (/admin/inhalte)
++-- Seitenkopf „Lerninhalte“ + ein Satz
+|   +-- [Fragen hinzufügen]  (grün, öffnet heute den Dialog „Neue Frage“)
+|   +-- ⋯  Neues Fach … · Tabelle exportieren · Tabelle importieren · Fragen aus Material
+|
++-- Linke Spalte (ab 1024 px) / einklappbare Leiste „Fach und Thema: …“ (Handy)
+|   +-- Stufe: Alle · 10 · 11 · 12            (wie PROJ-85)
+|   +-- Baum
+|       +-- Alle Fächer ................ 1.234
+|       +-- [Zwischenüberschrift Bereich – nur bei „Alle Bereiche“]
+|       +-- LOP  (fett)  ................. 312   ⋯  Bearbeiten · Thema hinzufügen ·
+|       |   Logistische Leistungsprozesse (klein, eine Zeile, „…“)   Für Azubis ausblenden … ·
+|       |   │ Lagerlogistik  Stufe 10 ..... 24     Verlauf
+|       |   │ Ohne Thema .................... 3
+|       |   │ + Thema hinzufügen (leise)
+|       +-- BGP  [ausgeblendet] .......... 834
+|
++-- Rechte Spalte
+    +-- Reiter: Fragen · Gemeldet (3) · Schwierig · Papierkorb (5)
+    |
+    +-- Reiter „Fragen“
+    |   +-- Kopf „LOP › Lagerlogistik · 24 Fragen, davon 3 ausgeblendet“
+    |   +-- Suchfeld · Filter (Alle · Für Azubis sichtbar · Ausgeblendet) · „Suche und Filter zurücksetzen“
+    |   +-- Leiste für die Mehrfachauswahl (erscheint, sobald etwas angehakt ist)
+    |   +-- Fragenzeile (× 25)
+    |   |   +-- ☐  Fragetext (ganz)  ·  Fach › Thema · Stufe · Schwierigkeit · [ausgeblendet]
+    |   |   +-- „Ausgeblendet von Frau Huber am 27.11.“ (nur wenn ausgeblendet)
+    |   |   +-- rechts: Schalter „Für Azubis sichtbar“ · Stift · ⋯ (Verlauf, Duplizieren, Löschen)
+    |   |   +-- aufgeklappt: Antworten (✓ richtig), Erklärung bzw. Musterlösung
+    |   +-- „Weitere 25 anzeigen (noch N)“
+    |   +-- Leerzustand / „Keine Frage gefunden“
+    |
+    +-- Reiter „Gemeldet“    → vorhandene Meldungs-Inbox, eingeschränkt auf die Auswahl im Baum
+    +-- Reiter „Schwierig“   → vorhandene Liste, fester Satz „ab 30 Antworten“, Zeilen klappen auf
+    +-- Reiter „Papierkorb“  → Fragen · Themen · Fächer (Segment), Wiederherstellen
+```
+
+**Was mit den Teilen passiert:**
+
+| Teil heute | Künftig |
+|---|---|
+| Inhalts-Baum (PROJ-85) | bleibt, neu gezeichnet: Kürzel fett, Name klein auf einer Zeile, Themen eingerückt, Stufe in derselben Zeile, „Alle Fächer“ oben, „Thema hinzufügen“ unten, „Fach ausblenden“ im `⋯`-Menü statt Schalter |
+| Fragen-Panel der Inhalte-Seite | wird zum Reiter „Fragen“: Aufklappen, „Weitere 25“, Mehrfachauswahl, neuer Ausblenden-Ablauf, Suche über alle Fächer |
+| Seite „Fragen“ (1.261 Zeilen) | Mehrfachauswahl, Export/Import und der Dialog „Neue Frage“ ziehen um, danach Weiterleitung |
+| Seiten „Fächer“ und „Themen“ | alles Nötige steht schon im Baum, Weiterleitung |
+| Seite „Gemeldete Fragen“ | Inbox wird in den Reiter eingehängt, Weiterleitung |
+| Seite „Schwierigste Fragen“ | Liste wird in den Reiter eingehängt, Weiterleitung |
+| Seite „Papierkorb“ | Fragen/Themen/Fächer → Reiter; Übungsprüfungen → Seite „Übungsprüfungen“; Lehrerzimmer hat schon einen eigenen Papierkorb; danach Weiterleitung |
+| Seite „Fragen aus Material“ | bleibt bis PROJ-132, nur über `⋯` erreichbar |
+
+### B) Daten (kein neues Datenmodell)
+
+Alles, was die Seite braucht, ist schon gespeichert:
+
+- **Frage:** Text, Antworten mit „richtig“, Erklärung, Musterlösung, Stufe, Schwierigkeit, Thema, Fach (über die Fach-Zuordnung), „für Azubis sichtbar“, Papierkorb-Datum.
+- **Wer hat wann ausgeblendet:** Die Versionsgeschichte aus PROJ-47 legt bei jedem Aus- und Einblenden automatisch einen Eintrag mit Person und Zeitpunkt an. Daraus entsteht „Ausgeblendet von Frau Huber am 27.11.“. Ist der letzte Eintrag der Einführungsstand („Stand bei Einführung“), steht dort „Schon vor dieser Änderung ausgeblendet“.
+- **Warum ausgeblendet („nach einer Meldung“):** Änderungen lassen sich heute schon zu einem Vorgang mit kurzer Beschreibung bündeln. Wird eine Frage aus der Meldungs-Inbox heraus ausgeblendet, bekommt der Vorgang die Beschreibung „Nach einer Meldung“. Dafür braucht es keine neue Spalte, nur die Inbox muss den Vorgang mitschicken.
+- **Rückgängig** ist einfach ein zweites Umschalten. Es landet als eigener Eintrag im Verlauf und im Änderungsprotokoll. Damit gilt die Forderung „jedes Rückgängig wird erfasst“.
+- **Zahlen im Baum:** Der Baum lädt heute schon jede Frage einmal (nur Stufe, Thema, Fach). Neu kommt „sichtbar ja/nein“ dazu, damit „davon N ausgeblendet“ ohne zweiten Abruf stimmt.
+
+### C) Technische Entscheidungen (und warum)
+
+1. **Ausbauen statt neu bauen.** `/admin/inhalte` hat schon Baum, Adresse mit Auswahl, Handy-Ansicht und Fehlerzustände. Das spart Zeit und hält bewährtes Verhalten.
+2. **Reiter und Auswahl stehen in der Adresse** (z. B. `?reiter=gemeldet&fach=…&thema=…`). Wie heute ändert ein Klick nur die Adresse, ohne die Seite neu zu laden. So funktionieren Neu laden, Zurück und geteilte Links.
+3. **Weiterleitungen zentral in den Next.js-Einstellungen** statt auf jeder alten Seite. Eine Liste: alte Adresse → neue Adresse mit Reiter. Suchbegriffe und Filter werden dabei übersetzt (z. B. `?subject=LOP` → `?fach=<LOP>`), wo das geht. Die alten Seiten-Dateien werden danach gelöscht. **Reihenfolge:** Erst wenn ein Reiter fertig ist, wird die zugehörige alte Seite umgeleitet. So fehlt nie etwas.
+4. **Eine Zählregel an einer Stelle.** Heute zählen Baum (alle Fragen) und Start (nur sichtbare, über die Fächerliste) verschieden, daher 834 gegen 736. Künftig rechnet **ein** gemeinsamer Baustein: „nicht im Papierkorb, im gewählten Bereich, sichtbare und ausgeblendete zusammen“. Baum, Listenkopf, Start und Schnellsuche nutzen ihn. Ein Test prüft, dass alle für ein Fach dieselbe Zahl liefern. Für Lehrkräfte ohne Super-Admin-Recht bleiben private Nachweis-Fragen wie heute draußen, auf allen Wegen gleich.
+5. **Antworten kommen mit der Liste.** Die Fragenliste liefert für die 25 Zeilen gleich Antworten (mit „richtig“), Erklärung und Musterlösung mit. Aufklappen ist dann sofort da, ohne Wartezeit und ohne Extra-Abruf. Die Liste ist nur für Lehrkräfte, damit bleibt die richtige Antwort geschützt.
+6. **„Weitere 25 anzeigen“ statt Seitenzahlen.** Die Schnittstelle liefert wie bisher Abschnitte, nur jetzt mit 25 statt 20 Fragen. Die Oberfläche hängt den nächsten Abschnitt unten an und behält die Bildlaufposition.
+7. **Ausblenden sofort, mit Rückgängig.** Der Schalter ändert die Zeile sofort und speichert im Hintergrund. Der Toast (7 s) trägt die Kennung **seiner** Frage. „Rückgängig“ holt nur diese Frage zurück. Ändert jemand anderes die Frage gleichzeitig, meldet die vorhandene Versionsprüfung (PROJ-47) den Konflikt, und B bekommt einen Hinweis.
+8. **Fach ausblenden mit Rückfrage.** Die Zahl in der Rückfrage („312 Fragen in 9 Themen“) kommt aus dem schon geladenen Baum, ohne neuen Abruf.
+9. **Reiter „Gemeldet“ und „Schwierig“ übernehmen die fertigen Bausteine** und bekommen nur eine Einschränkung auf Fach/Thema. Die Meldungs-Schnittstelle kann das schon. Die Auswertung „Schwierig“ kann schon nach Fach filtern, und das Thema wird danach aussortiert. Der Filter „Mindestens … Antworten“ entfällt. Die Schwelle ist fest 30.
+10. **Zahlen an den Reitern** („Gemeldet 3“) kommen aus derselben Aufgaben-Zählung wie die Liste „Zu erledigen“ auf dem Start. Damit sind sie gleich.
+11. **Papierkorb:** Die vorhandene Papierkorb-Schnittstelle bleibt, der Reiter zeigt nur Fragen, Themen und Fächer. Gelöschte Übungsprüfungen bekommen auf der Seite „Übungsprüfungen“ einen Link „Papierkorb“.
+12. **Rechte und Freigaben:** wie PROJ-70. Es entstehen keine neuen Schnittstellen. Die Freigabelisten in `roles.ts` werden aufgeräumt (alte Seiten raus, Weiterleitungen bleiben erreichbar). Die Wächter-Tests prüfen das.
+13. **Menü, Schnellsuche, Brotkrumen, Start-Aufgaben** zeigen auf `/admin/inhalte?reiter=…`. Ein Test durchsucht den Lehrkräfte-Bereich nach Links auf alte Adressen und schlägt fehl, wenn noch einer übrig ist.
+
+### D) Abhängigkeiten (Pakete)
+
+Keine neuen Pakete. Genutzt wird, was schon da ist: shadcn/ui (Collapsible, Checkbox, Switch, AlertDialog), `AdminTabs`, `AdminSegmented`, `AdminRowActions`, `admin-states`, `sonner` (Toast mit Aktion „Rückgängig“).
+
+### E) Bauschritte (Vorschlag, je Schritt Tests + Build)
+
+1. **Zählregel und Baum:** gemeinsamer Zählbaustein, Baum neu gezeichnet (B103, B45), „Alle Fächer“, „Ohne Thema“, Fach ausblenden mit Rückfrage (B41), Zahlen-Vergleichstest (B35).
+2. **Reiter „Fragen“:** Kopf, Suche über alle Fächer, ein Filter, Aufklappen (B102), „Weitere 25“ (B39), Ausblenden mit Rückgängig und „von wem“ (B40), Mehrfachauswahl (E4).
+3. **Reiter „Gemeldet“, „Schwierig“, „Papierkorb“** samt Zahlen an den Reitern (B49, B74 anteilig), Papierkorb-Link bei Übungsprüfungen.
+4. **Umzug und Aufräumen:** Seitenkopf mit `⋯`-Menü (B44), Weiterleitungen, Menü als ein Punkt, Schnellsuche, Start-Links, alte Seiten löschen, Navigations- und Wörterlisten-Tests anpassen (B34).
+
+**Modellwahl:** Bauen nach dieser Spec mit **Sonnet**. Schritt 4 (Weiterleitungen und Freigabelisten) danach mit **Opus** gegenlesen, weil neue oder entfallende Seiten in zwei Freigabelisten stehen müssen (`roles.ts`).
+
+**Risiken:**
+- Die Seite „Fragen“ ist groß. Wird beim Umzug etwas vergessen, fehlt es nach der Weiterleitung. Deshalb vor Schritt 4 eine Liste aller Funktionen der alten Seite abhaken.
+- Tempo: Die Antworten in der Liste machen jeden Abschnitt etwas größer (25 Fragen, unkritisch). Der Baum lädt eine Spalte mehr, die Zahl der Abrufe bleibt gleich.
 
 ## QA Test Results
 _To be added by /qa_
