@@ -1,6 +1,6 @@
 # PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3 Übersichtlichkeit, Teil 2)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27 (Frontend und Backend gebaut)
 
@@ -435,4 +435,9 @@ Alle 11 Befunde sind behoben, jeder mit eigenem Regressionstest (`add-questions-
 Danach: `npm test` 371 Dateien, 4.951 Tests grün, `tsc` sauber, `npm run build` sauber. **Production Ready: YES.**
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Deployment `dpl_7GkVK7X5XMmrUVd4BXjJvFkD3kUu`, Commit `9098b17` auf `main`)
+- **Deployed:** 2026-11-27 · Build READY, keine Laufzeitfehler in der ersten Stunde
+- **Datenbank:** keine Migration nötig (keine neue Tabelle)
+- **Geprüft nach dem Deploy:** Weiterleitung `/admin/ai-generator` → Anmeldung mit Ziel `/admin/inhalte?hinzufuegen=material`; Sicherheits-Header vorhanden
+- **Noch von Hand im Browser zu prüfen (laut QA):** Dialog am Handy (360 px, Vollbild, feste Fußzeile), 768/1440 px, Hell/Dunkel; ein echtes Skript (PDF, Word, PowerPoint) durch alle drei Schritte mit einer echten Antwort von ChatGPT/Claude.ai; Tabelle mit der Beispiel-Tabelle; Übernehmen und den Eintrag „Fragen übernommen“ im Änderungsprotokoll prüfen
+- **Rollback:** Vercel → Deployments → vorheriges Deployment `dpl_BuG4LSAUfAF8AC68r6M1N2ZzGqEj` „Promote to Production“
