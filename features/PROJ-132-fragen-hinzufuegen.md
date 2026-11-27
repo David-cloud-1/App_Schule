@@ -1,8 +1,8 @@
 # PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3 Übersichtlichkeit, Teil 2)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27
+**Last Updated:** 2026-11-27 (Architected)
 
 ## Worum es geht
 
@@ -116,7 +116,111 @@ Neue Fragen aus Material und Tabelle erscheinen **erst als Vorschau**. Für Azub
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Stand:** 2026-11-27 · **Backend nötig:** ja, aber klein. Es gibt **keine neue Tabelle** und **keinen neuen Dienst**. Vorschläge liegen nur im Browser, bis die Lehrkraft „Übernehmen“ klickt.
+
+### Was es schon gibt (und was wir weiterverwenden)
+| Baustein | Herkunft | Wird zu |
+|---|---|---|
+| Datei → Text (PDF, Word) | PROJ-38 (`assessments/questions/material`) | Gemeinsamer Leser, dazu PowerPoint |
+| Auftrag für die KI zusammenbauen, Antwort der KI einlesen, Duplikat- und Qualitätsprüfung | PROJ-38 (`assessment-import`, Vorschau-Schnittstelle) | Kern von Weg 2 |
+| Torwächter, „Auftrag zum Verbessern“ | PROJ-16 / PROJ-9 (`question-import`) | Markierung in der Vorschau |
+| Hinweise des Bereichs im Auftrag | PROJ-22 (`question-prompt`) | Bleibt Teil des Auftrags |
+| Formular „Neue Frage / Frage bearbeiten“ | `question-form-modal` | Wird umgebaut (Weg 1) und in der Vorschau wiederverwendet |
+| CSV lesen und Export | `csv-import-dialog`, `questions/export` | Weg 3 und Menüpunkt im `⋯`-Menü |
+| Stapel-Protokoll („12 Fragen in einem Vorgang“) | PROJ-47 (`groupIntoBatch`) | Eintrag „aus Material“ bzw. „aus Tabelle“ |
+
+### A) Aufbau der Oberfläche
+```
+Lerninhalte (PROJ-131)
++-- Seitenkopf
+|   +-- [Fragen hinzufügen]  (grün, einzige Hauptaktion)
+|   +-- ⋯-Menü: „Alle Fragen als Tabelle herunterladen“  (Knopf „Fragen aus Material“ entfällt)
+|
++-- Dialog „Fragen hinzufügen“  (EIN Dialog, der Inhalt wechselt je Schritt; nie Dialog im Dialog)
+    +-- Auswahl: „Wie möchtest du Fragen hinzufügen?“
+    |   +-- Karte „Selbst schreiben“
+    |   +-- Karte „Aus Material erstellen“
+    |   +-- Karte „Aus einer Tabelle übernehmen“
+    |
+    +-- Weg 1: Selbst schreiben
+    |   +-- Formular (Fach und Thema · Schwierigkeit · Fragetyp · Text · Antworten · Erklärung · Sichtbar)
+    |
+    +-- Weg 2: Aus Material erstellen   (Schrittleiste: Material wählen · Mit deiner KI · Vorschau)
+    |   +-- Schritt 1: Thema, Datei, „Wie viele Vorschläge?“ (5 · 10 · 15 · 20)
+    |   +-- Schritt 2: 1 Auftrag kopieren · 2 In deiner KI einfügen · 3 Antwort einfügen
+    |   |             („Auftrag ansehen“ zugeklappt; bei langem Skript: Auswahl „Teil 1 · 2 · 3“)
+    |   +-- Schritt 3: Vorschau
+    |
+    +-- Weg 3: Aus einer Tabelle übernehmen   (Schrittleiste: Datei wählen · Vorschau)
+    |   +-- Schritt 1: Thema (falls die Tabelle keins nennt), Datei, „Beispiel-Tabelle herunterladen“
+    |   +-- Schritt 2: Vorschau (dieselbe wie Weg 2)
+    |
+    +-- Gemeinsame Vorschau  (Weg 2 und 3)
+    |   +-- Hinweis „Noch nicht für Azubis sichtbar … Ins Thema: LOP › Lagerlogistik“
+    |   +-- Karten mit Kästchen: Frage, richtige Antwort, aufklappbar, „Bearbeiten“
+    |   +-- Markierte Karten (Grund in einem Satz, nicht vorangehakt)
+    |   +-- Fußzeile: „Zurück“ · „N Fragen übernehmen“
+    |
+    +-- Rückfrage beim Schließen: „Fragen verwerfen? Die Antwort der KI geht verloren.“
+```
+Am Handy ist derselbe Dialog ein Vollbild mit fester Fußzeile. Es gibt nur **eine** Vorschau-Komponente für Weg 2 und Weg 3, damit sich beide gleich anfühlen und nur einmal getestet werden müssen.
+
+### B) Daten (in Alltagssprache)
+- **Eine Frage in der Vorschau** hat: Fragetext, Fragetyp (Auswahl oder Freitext), Antworten mit der richtigen oder bei Freitext eine Musterantwort, Erklärung, Schwierigkeit und Stufe. Dazu kommen die Prüfergebnisse: Fehler, Hinweise des Torwächters und „Gibt es schon in diesem Thema“.
+- **Wo liegt das?** Nur im Browser, solange der Dialog offen ist. Es gibt **keine Entwürfe in der Datenbank**. Schließt jemand den Dialog, fragt die App nach und verwirft dann alles. Das ist gewollt: Azubis können eine Vorschau nie sehen, weil sie gar nicht gespeichert ist.
+- **Beim Übernehmen** werden alle angehakten Fragen in **einem Vorgang** gespeichert (alle oder keine). Jede Frage bekommt ihre Version wie heute, das Änderungsprotokoll bündelt sie als einen Eintrag: „12 Fragen aus Material ‚skript.pdf‘ übernommen“ bzw. „… aus Tabelle ‚fragen.csv‘ …“. Das ist die Herkunft aus den Kriterien.
+- **Hochgeladene Dateien** werden gelesen und sofort vergessen. Gespeichert wird nichts, auch nicht der Text.
+- **Das Format der KI-Antwort** bleibt wie in PROJ-38. Die Lehrkraft sieht es nie. Es wird nur um den Fragetyp Freitext erweitert (Musterantwort statt fünf Antworten).
+- **Die Tabelle** bekommt zwei freiwillige Spalten: Fragetyp und Musterantwort. Alte Tabellen ohne diese Spalten laufen unverändert weiter.
+
+### C) Entscheidungen zu den offenen Fragen
+1. **Wo wird der Text aus PDF, Word und PowerPoint gelesen?** In der App selbst, im vorhandenen Leser. PDF und Word kann er schon. **PowerPoint** kommt dazu (eine .pptx ist ein Archiv aus Folien-Dateien, das wir mit dem schon installierten Paket `fflate` öffnen und deren Text sammeln). *Warum nicht der Python-Kern der Werkzeugkiste?* Er ist ein eigener Dienst. Ein zusätzlicher Dienst brächte Wartung, eine weitere Fehlerquelle und das Speicherlimit der Vercel-Funktionen mit, obwohl der Leser in der App längst läuft. Dateien bis **4 MB**, weil Vercel nicht mehr als 4,5 MB pro Aufruf annimmt. Größere Dateien bekommen den Hinweis, den Text direkt einzufügen (das gibt es heute schon).
+2. **Zu langes Skript:** Die App kürzt **nie** stillschweigend. Ein Auftrag fasst höchstens rund 30.000 Zeichen (heutige Grenze). Ist das Skript länger, teilt die App es an Absatzgrenzen in **Teile** und sagt es offen: „Dein Skript ist lang. Wir teilen es in 3 Teile. Du kopierst nacheinander 3 Aufträge.“ In Schritt 2 wählt man „Teil 1 · Teil 2 · Teil 3“, jeder Teil hat seinen eigenen Auftrag und sein eigenes Antwortfeld. Die Vorschau sammelt die Fragen aller Teile. „Wie viele Vorschläge?“ gilt **je Teil**. So sieht die Lehrkraft nie ein halbes Skript. Das ist das Muster aus PROJ-69.
+3. **Der bezahlte Weg (PROJ-10, „Methode 2“):** Nur **aus der Oberfläche nehmen**. Der Code und die Tabellen bleiben, weil PROJ-64 pausiert ist und ein Zurückholen billiger ist als ein Neubau. Die Seite `/admin/ai-generator` wird zur Weiterleitung (E3). Beim Bauen wird gezählt, ob noch offene Entwürfe aus früheren Läufen in der Datenbank liegen. Wenn ja, melden wir das, statt sie unsichtbar zu lassen.
+4. **Format der KI-Antwort:** Es bleibt das bewährte Format aus PROJ-38. Es verträgt schon Eigenheiten der Chat-Programme (Markdown-Zeichen, Text vor und nach der Antwort, abgeschnittene Antworten). Ein „lesbareres“ Format würde das neu erfinden, ohne dass die Lehrkraft etwas davon merkt.
+
+### D) Wichtige Abweichung von der Spec: die Stufe
+Die Spec sagt „Die Stufe ergibt sich aus dem Thema“. **Themen haben in der Datenbank keine eigene Stufe.** Die Stufe hängt an der einzelnen Frage, und der Baum zeigt sie nur als Zählung. Wir lösen das so, ohne die Datenbank umzubauen:
+- Hat das Thema schon Fragen, schlägt die App die **häufigste Stufe** der vorhandenen Fragen vor und zeigt „Stufe 10, wie die anderen Fragen im Thema“.
+- Hat das Thema noch keine Fragen oder gemischte Stufen, steht **eine** Auswahl 10 · 11 · 12 (nur Stufen des Bereichs) direkt unter „Fach und Thema“. Ein „Alle“ gibt es nicht mehr.
+Damit erreicht das Kriterium sein Ziel (keine Frage ohne Stufe, kein Feld „Alle“), und niemand muss Themen nachpflegen. Eine echte Stufe am Thema wäre ein größerer Umbau und gehört nicht in dieses Feature.
+
+### E) Neue und geänderte Schnittstellen (kurz)
+| Zweck | Art |
+|---|---|
+| Text aus Datei lesen (jetzt auch PowerPoint) | vorhanden, erweitert |
+| Auftrag für die KI bauen (mit Thema, Stufe, Bereichshinweisen, Zahl, Skripttext, Teilen) | **neu**, baut auf dem Auftrag-Baustein von PROJ-38 und PROJ-22 auf |
+| Antwort der KI oder Tabellenzeilen einlesen und prüfen (Fehler, Torwächter, Duplikate im Thema) | **neu**, ein Weg für beide |
+| Angehakte Fragen übernehmen (alle oder keine, Protokoll mit Herkunft und Dateiname, prüft Thema und Bereich noch einmal) | **neu** |
+| Frage anlegen/ändern (Weg 1) | vorhanden, bekommt den Fragetyp und die Stufe wie oben |
+| Alter Tabellen-Import | wird ersetzt und nach dem Umzug entfernt, wenn ihn nichts anderes nutzt |
+Alle neuen Routen kommen in die Freigabelisten (`roles.ts`). Rechte wie PROJ-70: alle Lehrkräfte, im Bereich, den sie bearbeiten dürfen, alles protokolliert. Beim Übernehmen wird das Thema gegen den Bereich geprüft (Schutz vor einem fremden Thema in der Anfrage) und die Zahl der Fragen begrenzt.
+
+### F) Reihenfolge beim Bauen
+1. **Backend zuerst (klein):** PowerPoint-Leser, Auftrag-Bau mit Teilen, Einlesen und Prüfen, Übernehmen mit Protokoll, Tabellenspalten für Freitext. Alles mit Unit-Tests auf Beispieldateien.
+2. **Frontend:** Dialog mit Auswahl und Schrittleiste, gemeinsame Vorschau, Formular-Umbau, Menü und Weiterleitung, Wörterwächter-Test.
+(Die Skills laufen laut Anweisung trotzdem in der Reihenfolge Frontend → Backend. Wir bauen die Backend-Teile zuerst, weil die Oberfläche auf ihnen aufsetzt. Das ist nur eine Abfolge der Arbeit, kein Konflikt.)
+
+### G) Wörter und Wächter
+Auf dem ganzen Weg fehlen Prompt, JSON, API-Key, „Methode 1/2“ und Code-Beispiele. Ein Wächter-Test (wie `begriffe.test.ts`) liest die neuen Dateien und schlägt fehl, wenn ein solches Wort auftaucht. Wörter: „Auftrag für die KI“, „Antwort der KI“, „Vorschau“, „Übernehmen“.
+
+### H) Risiken
+| Risiko | Gegenmaßnahme |
+|---|---|
+| Sehr große Antwort der KI | Obergrenze für Zeichen und Fragen je Übernahme, klare Meldung |
+| Dialog im Dialog durch das wiederverwendete Formular | Das Formular wird in den Dialoginhalt eingebettet, nicht als eigener Dialog geöffnet |
+| Alte Lesezeichen `/admin/ai-generator` | Weiterleitung mit Absicht auf „Fragen hinzufügen → Aus Material“ |
+| Unvollständige KI-Antwort | Lesbare Fragen werden übernommen, die Zahl genannt, der Rest als Hinweis |
+| PowerPoint mit Bildern statt Text | Meldung wie bei gescanntem PDF: „kein lesbarer Text“ |
+
+### I) Pakete
+Keine neuen. Genutzt werden `fflate` (PowerPoint öffnen), `papaparse` (Tabelle lesen), `mammoth` und `pdf-parse` (vorhanden).
+
+### Offen für Sie (nur wenn Sie etwas anders wollen)
+- Abweichung D (Stufe aus den vorhandenen Fragen statt aus einem Thema-Feld).
+- Entscheidung C3 (bezahlten Weg nur ausblenden, nicht löschen).
+- Entscheidung C2 (lange Skripte in Teile teilen statt Abschnitt wählen).
 
 ## QA Test Results
 _To be added by /qa_
