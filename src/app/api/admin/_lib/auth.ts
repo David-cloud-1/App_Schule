@@ -177,7 +177,7 @@ export function requireSuperAdmin(): Promise<AdminAuthResult> {
 export function assertSingleDepartment(auth: Extract<AdminAuthResult, { error: null }>): NextResponse | null {
   if (auth.isSuperAdmin || !auth.scopeIsAll) return null
   return NextResponse.json(
-    { error: 'Bitte wähle oben in der Bereichsleiste einen Bereich aus.', field: 'department_id' },
+    { error: 'Bitte wähle oben im Menü unter „Bereich“ einen einzelnen Bereich.', field: 'department_id' },
     { status: 400 }
   )
 }

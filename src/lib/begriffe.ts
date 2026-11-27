@@ -58,5 +58,6 @@ export const ALTE_BEGRIFFE: readonly AlterBegriff[] = [
   { muster: /\bLvl\b/, stattdessen: 'Level' },
   { muster: /\bSessions?\b|Lern-Session/, stattdessen: BEGRIFFE.lernrunde },
   { muster: /\bPrompts?\b|Prompt-|-Prompt/, stattdessen: BEGRIFFE.auftragFuerDieKi },
+  { muster: /Bereichsleiste/, stattdessen: BEGRIFFE.bereich },
   { muster: /Nicht zu verwechseln/, stattdessen: 'eine Beschreibung in einem Satz' },
 ]

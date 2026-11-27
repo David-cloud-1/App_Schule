@@ -63,7 +63,9 @@ Was die Vorschau aus der Befundliste schon zeigt (zum Prüfen im Test, in der Ap
 
 ## Phase 2 – Begriffe & Menü
 
-**Feature:** [PROJ-130](../features/PROJ-130-begriffe-und-menue.md) (Architected, 27.11.2026) – „Lerninhalte“ bis Phase 3 als aufklappbarer Menüpunkt, „Nachschlagen“ als Einstiegsseite mit zwei Karten.
+**Feature:** [PROJ-130](../features/PROJ-130-begriffe-und-menue.md) (In Progress, 27.11.2026) – „Lerninhalte“ bis Phase 3 als aufklappbarer Menüpunkt, „Nachschlagen“ als Einstiegsseite mit zwei Karten.
+
+**Stand 27.11.2026:** alle vier Bauschritte fertig (4776 Tests grün, Build sauber), Befunde unten abgehakt. **Noch nicht live und noch nicht im Browser geprüft.** Nächster Schritt: `/qa` für PROJ-130, dann `/deploy`.
 
 **Menü (für alle Lehrkräfte gleich, Verwaltung gesammelt unten):**
 
@@ -161,18 +163,18 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 ### Allgemein & Menü
 | # | Befund | Ph. | |
 |---|---|---|---|
-| B1 | 20 Menüpunkte (auch für normale Lehrkräfte), Gruppen „Weitere Seiten“/„Verwaltung“ ohne erkennbare Logik | 2 | ☐ |
-| B2 | „Fachbereich“ und „Fachbereiche“ stehen untereinander | 2 | ☐ |
-| B3 | Bereich wird bis zu 3× pro Seite abgefragt (Umschalter, „Du siehst“, „Wird angelegt in“), Dialoge übernehmen ihn nicht | 2 | ☐ |
-| B4 | 4 Wörter für Bereich (Bereich, Fachbereich, Zielbereich, Abteilung) | 2 | ☐ |
-| B5 | Doppelte Wortbedeutungen: Thema (Kapitel/Lernthema), Klasse (Stufe/SP10C), Offen (gut/Alarm), Kalender (nur Abwesenheiten) | 2 | ☐ |
-| B6 | Konto-Menü: „Mein Konto“, „Spielerprofil“, „Zur Lern-App“ – drei ähnliche Einträge, dazu „Zur Lern-App“ oben rechts | 2 | ☐ |
+| B1 | 20 Menüpunkte (auch für normale Lehrkräfte), Gruppen „Weitere Seiten“/„Verwaltung“ ohne erkennbare Logik | 2 | ☑ |
+| B2 | „Fachbereich“ und „Fachbereiche“ stehen untereinander | 2 | ☑ |
+| B3 | Bereich wird bis zu 3× pro Seite abgefragt (Umschalter, „Du siehst“, „Wird angelegt in“), Dialoge übernehmen ihn nicht | 2 | ☑ |
+| B4 | 4 Wörter für Bereich (Bereich, Fachbereich, Zielbereich, Abteilung) | 2 | ☑ |
+| B5 | Doppelte Wortbedeutungen: Thema (Kapitel/Lernthema), Klasse (Stufe/SP10C), Offen (gut/Alarm), Kalender (nur Abwesenheiten) | 2 | ☑ |
+| B6 | Konto-Menü: „Mein Konto“, „Spielerprofil“, „Zur Lern-App“ – drei ähnliche Einträge, dazu „Zur Lern-App“ oben rechts | 2 | ☑ |
 | B7 | Schnellsuche findet nur Seitennamen („Frachtbrief“, „Ex Heft“ → nichts); „krank“ → Werkzeugkiste zuerst | 6 | ☐ |
 | B8 | Übersicht: Klicks in den ersten 3–5 s wirkungslos, ohne Rückmeldung | 6 | ☐ |
-| B9 | Seitenbeschreibungen brauchen „Nicht zu verwechseln mit …“ (Zeichen für unklare Begriffe) | 2 | ☐ |
+| B9 | Seitenbeschreibungen brauchen „Nicht zu verwechseln mit …“ (Zeichen für unklare Begriffe) | 2 | ☑ |
 | B10 | Keine Hilfe/„Erste Schritte“ außerhalb der Werkzeugkiste, kein gefahrloses Ausprobieren | 6 | ☐ |
 | B11 | Interne Nummer „(PROJ-48)“ sichtbar | 0 | ☑ |
-| B12 | Englisch: „Previous/Next“, Items, Opt-out, Session, Lvl – *Previous/Next und Opt-out erledigt; Items, Session, Lvl in Phase 2* | 0 / 2 | ◐ |
+| B12 | Englisch: „Previous/Next“, Items, Opt-out, Session, Lvl – *Items, Session, Lvl im Lehrkräfte-Bereich erledigt; Schülerseite in Phase 7* | 0 / 2 | ◐ |
 
 ### Übersicht & Aufgaben
 | # | Befund | Ph. | |
@@ -192,7 +194,7 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B21 | Platzhalter „Titel oder Code such“ abgeschnitten | 0 | ☑ |
 | B22 | Anlegen: ein Riesendialog, 3.355 Fragen auf einmal (≈40.000 Elemente, 6.710 Kästchen), „Alle angezeigten wählen“ markiert alle | 4 | ☐ |
 | B23 | Zwei konkurrierende Startwege (Vorschlag vs. Startauswahl aus Prüfungssimulation); Vorschlag als Dialog im Dialog | 4 | ☐ |
-| B24 | Zielbereich nicht vorausgefüllt | 2 / 4 | ☐ |
+| B24 | Zielbereich nicht vorausgefüllt – *Bereich kommt aus dem Umschalter (Phase 2); Rest mit dem neuen Anlegen in Phase 4* | 2 / 4 | ◐ |
 | B25 | Klasse versteckt in „Ablage – nur zum Sortieren“ | 4 | ☐ |
 | B26 | Beitritt-Standard ≈ 2 Stunden ab jetzt, wechselt (23:59 / 00:10) | 4 | ☐ |
 | B27 | „Gesperrte Fragen“, „Bearbeitungszeit je Teilnehmer“ – Fachwörter | 4 | ☐ |
@@ -222,7 +224,7 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B47 | Fragen aus Material: „Prompt“, „API-Key“, „Methode 1“, JSON-Beispiel; Platzhalter selbst im langen Text ersetzen; Scrollfalle im Textkasten | 3 | ☐ |
 | B48 | Fragen aus Material: „sofort aktiv“ ohne Vorschau | 3 | ☐ |
 | B49 | Schwierigste Fragen: Zeilen führen nirgends hin (kein „Üben lassen“/„In Nachweis“); Filter „Mindestens … Antworten“ | 3 | ☐ |
-| B50 | Gemeldete Fragen: eigener Bereichsfilter (B3) | 2 | ☐ |
+| B50 | Gemeldete Fragen: eigener Bereichsfilter (B3) | 2 | ☑ |
 
 ### Werkzeugkiste & Baukasten
 | # | Befund | Ph. | |
@@ -231,17 +233,17 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B52 | „Skript hochladen“ als Hauptknopf und Werkzeug-Kacheln: unklar, was zuerst | 6 | ☐ |
 | B53 | „Podcast – kommt bald“ gleichrangig zwischen fertigen Werkzeugen | 6 | ☐ |
 | B54 | Assistent-Hilfe schiebt das Upload-Feld aus dem Bild | 6 | ☐ |
-| B55 | Schritte „Prompt“/„Antwort“ als Fachwörter | 2 | ☐ |
+| B55 | Schritte „Prompt“/„Antwort“ als Fachwörter | 2 | ☑ |
 | B56 | Meine Materialien: „Bearbeiten“ am Laptop nur nach Seitwärtsscrollen; am Handy (Karten) besser | 6 | ☐ |
 | B57 | Suchfeld „Titel“ winzig | 6 | ☐ |
-| B58 | Teilen-Begriffe: Öffentlich / Nicht veröffentlicht / Regal 1 Person·privat·alle / Veröffentlichen / Teilen … / Öffentlicher Link … | 2 | ☐ |
+| B58 | Teilen-Begriffe: Öffentlich / Nicht veröffentlicht / Regal 1 Person·privat·alle / Veröffentlichen / Teilen … / Öffentlicher Link … | 2 | ☑ |
 | B59 | ⋯-Menü mit 8+ Einträgen, „KI-Antwort herunterladen“ | 6 | ☐ |
-| B60 | „Leere Seite anlegen“ vs. „Eigene Seite bauen“; „Bearbeiten“ vs. „Anpassen“ | 2 | ☐ |
+| B60 | „Leere Seite anlegen“ vs. „Eigene Seite bauen“; „Bearbeiten“ vs. „Anpassen“ | 2 | ☑ |
 | B61 | Regal: keine Vorschau, nur Herunterladen; Material ohne sprechenden Titel („Kahoot-Quiz“); „Von: Lehrkraft“ anonym | 6 | ☐ |
 | B62 | Baukasten: „Entwurf gespeichert“ beim bloßen Öffnen, „Entwurf verwerfen“ zugleich ausgegraut | 0 | ☑ |
 | B63 | Baukasten: Block-Leiste verdeckt die Kapitel-Überschrift – *nach Phase 6 verschoben: Eingriff ins Vorschau-Skript, nicht nebenbei* | 6 | ☐ |
 | B64 | Baukasten: Gliederung kürzt Kapitelnamen („Einstieg und …“) | 6 | ☐ |
-| B65 | „Veröffentlichen“ im Baukasten ≠ „Öffentlich“ in der Liste (B58) | 2 | ☐ |
+| B65 | „Veröffentlichen“ im Baukasten ≠ „Öffentlich“ in der Liste (B58) | 2 | ☑ |
 
 ### Kalender (Abwesenheiten) – zurückgestellt (26.11.2026)
 | # | Befund | Ph. | |
@@ -260,7 +262,7 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B73 | Neuer Beitrag: Kategorie-Karten zu niedrig, Text ragt über den Rahmen | 0 | ☑ |
 | B74 | 7 Filter; eigener zweiter Papierkorb | 6 / 3 | ☐ |
 | B75 | Checklisten: „Angefangen: 0 von 7“, obwohl nichts angefangen | 0 | ☑ |
-| B76 | Schulrecht und Checklisten getrennt, obwohl beides Nachschlagen | 2 | ☐ |
+| B76 | Schulrecht und Checklisten getrennt, obwohl beides Nachschlagen | 2 | ☑ |
 
 ### Verwaltung
 | # | Befund | Ph. | |
@@ -268,8 +270,8 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B77 | F3: Streak veraltet in Nutzerliste/Detail | 0 | ☑ |
 | B78 | Nutzer ohne Namen („—“), keine Klasse sichtbar/filterbar | 5 | ☐ |
 | B79 | Änderungsprotokoll: Rohcodes „user.name_set“, „Objekt-Typ: user“ | 6 | ☐ |
-| B80 | Prüfungssimulation: Zeilenknöpfe „Leistungsnachweis“/„Aktivieren“ unklar; kein Hinweis, dass nichts aktiv ist (F5) – *Hinweis „nichts aktiv“ erledigt; Knopf-Namen in Phase 2* | 0 / 2 | ◐ |
-| B81 | Fachbereich-Einstellungen: „Zusatzhinweise für den Fragen-Prompt“ – Fachwort | 2 | ☐ |
+| B80 | Prüfungssimulation: Zeilenknöpfe „Leistungsnachweis“/„Aktivieren“ unklar; kein Hinweis, dass nichts aktiv ist (F5) | 0 / 2 | ☑ |
+| B81 | Fachbereich-Einstellungen: „Zusatzhinweise für den Fragen-Prompt“ – Fachwort | 2 | ☑ |
 | B82 | Testdaten in der Live-App („Test“, „Ex“, „Test_Eintrag1“) | 7 | ☐ |
 
 ### Design

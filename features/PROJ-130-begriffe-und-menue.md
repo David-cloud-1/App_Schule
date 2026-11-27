@@ -111,7 +111,7 @@ Gilt für alle sichtbaren Texte im Lehrkräfte-Bereich: Menü, Seitenköpfe, Bes
 - [ ] Die Wörterliste steht dauerhaft in `docs/DESIGN.md` (Abschnitt Lehrkräfte-Bereich), damit neue Seiten sie übernehmen.
 
 ### E. Abhaken im Plan
-- [ ] B1–B6, B9, B12, B24 (Teil 2), B50, B55, B58, B60, B65, B76, B80 und B81 sind in `docs/plan-uebersichtlichkeit.md` abgehakt (☑ bzw. ◐ mit Hinweis auf den Rest in Phase 4).
+- [x] B1–B6, B9, B12, B24 (Teil 2), B50, B55, B58, B60, B65, B76, B80 und B81 sind in `docs/plan-uebersichtlichkeit.md` abgehakt (☑ bzw. ◐ mit Hinweis auf den Rest in Phase 4).
 
 ## Edge Cases
 - **Alte Adressen und Lesezeichen:** Seitenadressen bleiben gleich (z. B. `/admin/exam-sets`, `/admin/kalender`). Geändert wird nur, was man liest. Neu ist nur die Adresse von „Nachschlagen“. Alte Links aus Mails, Toasts oder dem Lehrerzimmer funktionieren weiter.
@@ -247,7 +247,7 @@ Keine neuen. Genutzt wird, was schon da ist: shadcn `Sidebar`, `Collapsible`, `S
 
 ## Implementation Notes (Frontend)
 
-Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☐**
+Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☑**
 
 ### Schritt 1: Menü, „Nachschlagen“, Konto-Menü (27.11.2026)
 - `src/lib/admin-nav.ts` neu geordnet: Unterricht · Lerninhalte (aufklappbar) · Werkzeuge und Austausch · Verwaltung (aufklappbar). Neu je Eintrag: `hint`, `aliases` (alte Namen, nur Suchwörter), `subPages` (Schulrecht, Checklisten unter „Nachschlagen“).
@@ -285,6 +285,12 @@ Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☐**
   - Seitenbeschreibungen auf einen Satz gekürzt (Übersicht, Gemeldete Fragen, Schwierigste Fragen, Meine Fächer, Leistungsnachweise, Themen, Abwesenheiten, Abwesenheitsarten, Checklisten).
 - Unverändert: Azubi-Seite außer „Übungsprüfung“ (auch dort „Item“, „Lvl“, „Klasse“; Phase 7).
 - Prüfung: 4776 Tests grün, Build sauber. `eslint src` meldet nur einen alten Fehler in `shop-items/[id]/route.test.ts`. **Noch nicht im Browser geprüft** (u. a. Breite der Schrittleiste, der Regal-Spalte und des Knopfs „Als Leistungsnachweis verwenden“ am Handy).
+
+### Schritt 4: Abschluss (27.11.2026)
+- Nachgebessert: Zwei sichtbare Texte nannten noch die gelöschte „Bereichsleiste“ (Server-Meldung in `api/admin/_lib/auth.ts`, Leerzustand in „Einstellungen des Bereichs“). Der Wächter kennt das Wort jetzt.
+- Befunde im Plan abgehakt. ◐ bleiben B12 (Schülerseite: Phase 7) und B24 (Rest: Phase 4).
+- Prüfung: 4776 Tests grün, Build sauber. `eslint src --quiet` meldet nur den alten Fehler in `shop-items/[id]/route.test.ts`.
+- **Für /qa:** Die Akzeptanzkriterien A–D sind noch nicht einzeln abgenommen. Zwei Meldungen weichen vom Wortlaut der Spec ab: Beim Anlegen unter „Alle Bereiche“ sagt der Server „Bitte wähle aus, in welchem Bereich das angelegt werden soll.“ Der Leerzustand „Du hast noch keine Fächer eingetragen“ (C, nur als Beispiel genannt) kommt im Code nicht vor.
 
 ## QA Test Results
 _To be added by /qa_

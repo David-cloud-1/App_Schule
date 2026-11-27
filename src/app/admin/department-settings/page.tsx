@@ -115,7 +115,7 @@ export default function DepartmentSettingsPage() {
         <AdminEmptyState
           icon={Settings}
           title="Bitte wähle einen Bereich"
-          description="Einstellungen gehören zu einem Bereich. Wähle oben in der Bereichsleiste Spedition oder Tourismus."
+          description="Einstellungen gehören zu einem Bereich. Wähle oben im Menü unter „Bereich“ Spedition oder Tourismus."
         />
       </div>
     )
