@@ -195,7 +195,7 @@ function TopicsPageContent() {
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader title="Themen" description="Themen und Klassenstufen pflegen." />
+      <AdminPageHeader title="Themen" description="Lege Themen an und ordne sie einer Stufe zu." />
 
       {/* Create new topic */}
       <div className="bg-ws-surface border border-ws-line rounded-2xl p-5">

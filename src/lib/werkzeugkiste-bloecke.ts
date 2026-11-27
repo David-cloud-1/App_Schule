@@ -173,7 +173,7 @@ export function setzeUebernahmeEin(
   if (bloecke.length > 0) {
     if (blockThema < 0) {
       // Kein gültiges Ziel: ans Ende des letzten Themas, ohne Thema in ein neues Thema 1
-      if (n.chapters.length === 0) n = { ...n, chapters: [{ title: 'Thema 1', elements: [] }] }
+      if (n.chapters.length === 0) n = { ...n, chapters: [{ title: 'Kapitel 1', elements: [] }] }
       blockThema = n.chapters.length - 1
       const r = fuegeBloeckeEin(n, { thema: blockThema, index: n.chapters[blockThema].elements.length }, bloecke)
       n = r.struktur

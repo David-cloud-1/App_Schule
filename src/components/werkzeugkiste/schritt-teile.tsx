@@ -103,7 +103,7 @@ export function SchrittTeile({ ablauf, onAblauf }: { ablauf: Ablauf; onAblauf: (
           Dein Skript ist lang, deshalb bekommst du es in <strong>{von} Teilen</strong>. So geht es, für jeden Teil gleich:
         </p>
         <ol className="space-y-2 text-ws-text">
-          {['Prompt kopieren', 'In der KI einfügen und abschicken', 'Antwort der KI hier einfügen'].map((text, i) => (
+          {['Auftrag kopieren', 'In der KI einfügen und abschicken', 'Antwort der KI hier einfügen'].map((text, i) => (
             <li key={i} className="flex items-center gap-3">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ws-raised text-sm font-bold">{i + 1}</span>
               <span className="leading-relaxed">{text}</span>
@@ -227,7 +227,7 @@ function TeilKarte({
     setLadeFehler(null)
     ladeTeilPrompt(ablauf.id, teil.nr)
       .then((r) => aktiv && setPrompt(r.prompt))
-      .catch((e) => aktiv && setLadeFehler(e instanceof WerkzeugFehler ? e.message : 'Der Prompt konnte gerade nicht erstellt werden.'))
+      .catch((e) => aktiv && setLadeFehler(e instanceof WerkzeugFehler ? e.message : 'Der Auftrag für die KI konnte gerade nicht erstellt werden.'))
     return () => {
       aktiv = false
     }
@@ -295,10 +295,10 @@ function TeilKarte({
             </Button>
           )}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-ws-text">1. Prompt kopieren, in der KI einfügen und abschicken</p>
+            <p className="text-sm font-semibold text-ws-text">1. Auftrag kopieren, in der KI einfügen und abschicken</p>
             {prompt !== null ? (
               <>
-                <KopierKnopf text={prompt} label={`Prompt für Teil ${teil.nr} kopieren`} className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
+                <KopierKnopf text={prompt} label={`Auftrag für Teil ${teil.nr} kopieren`} className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
                 <p className="text-sm text-ws-faint">
                   ca. {prompt.length.toLocaleString('de-DE')} Zeichen · Teil {teil.nr} von {von}
                 </p>
@@ -310,7 +310,7 @@ function TeilKarte({
             ) : (
               <Button disabled className="min-h-11 rounded-xl bg-ws-surface px-5 text-ws-muted ring-1 ring-ws-line">
                 <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                Prompt wird erstellt …
+                Auftrag wird erstellt …
               </Button>
             )}
           </div>
@@ -384,9 +384,9 @@ function TeilKarte({
         {!pruefend && ergebnis?.nachbesserungsPrompt && teil.befund === 'hoch' && (
           <div className="space-y-2">
             <p className="text-sm text-ws-muted">
-              Füge den Nachbesserungs-Prompt in dieselbe KI-Unterhaltung ein und ersetze die Antwort dieses Teils durch die neue.
+              Füge den Nachbesserungs-Auftrag in dieselbe KI-Unterhaltung ein und ersetze die Antwort dieses Teils durch die neue.
             </p>
-            <KopierKnopf text={ergebnis.nachbesserungsPrompt} label="Nachbesserungs-Prompt kopieren" className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
+            <KopierKnopf text={ergebnis.nachbesserungsPrompt} label="Nachbesserungs-Auftrag kopieren" className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
           </div>
         )}
       </div>

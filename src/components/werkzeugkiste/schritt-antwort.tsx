@@ -56,7 +56,7 @@ export function SchrittAntwort({
       {entwurfImEditor && (
         <div role="status" className="flex flex-col gap-3 rounded-2xl border border-ws-gold/30 bg-ws-gold/15 p-4 text-sm text-ws-text sm:flex-row sm:items-center sm:justify-between">
           <p>
-            <strong>Zu diesem Material gibt es einen Entwurf im Editor.</strong> Veröffentliche oder verwirf ihn dort, dann kannst du
+            <strong>Zu diesem Material gibt es einen Entwurf im Editor.</strong> Übernimm oder verwirf die Änderungen dort, dann kannst du
             die Antwort hier wieder ändern.
           </p>
           <Button asChild variant="outline" className="min-h-11 shrink-0 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">
@@ -121,7 +121,7 @@ function PruefErgebnis({ pruefung }: { pruefung: AblaufPruefung }) {
         icon={XCircle}
         titel={
           pruefung.fehler ??
-          'Die Antwort ist unvollständig. Bitte die KI um die vollständige Antwort bitten oder den Prompt erneut senden.'
+          'Die Antwort ist unvollständig. Bitte die KI um die vollständige Antwort bitten oder den Auftrag erneut senden.'
         }
       />
     )
@@ -152,11 +152,11 @@ function PruefErgebnis({ pruefung }: { pruefung: AblaufPruefung }) {
       {pruefung.nachbesserungsPrompt && (
         <div className="space-y-2 pt-1">
           <p className="text-sm text-ws-muted">
-            Füge den Nachbesserungs-Prompt in dieselbe KI-Unterhaltung ein und ersetze oben die Antwort durch die neue.
+            Füge den Nachbesserungs-Auftrag in dieselbe KI-Unterhaltung ein und ersetze oben die Antwort durch die neue.
           </p>
           <KopierKnopf
             text={pruefung.nachbesserungsPrompt}
-            label="Nachbesserungs-Prompt kopieren"
+            label="Nachbesserungs-Auftrag kopieren"
             className="w-full bg-ws-surface text-ws-text ring-1 ring-ws-line hover:bg-ws-raised sm:w-auto"
           />
         </div>

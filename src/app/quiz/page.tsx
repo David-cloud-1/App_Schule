@@ -129,7 +129,7 @@ export default async function QuizPage({
               </Link>
               <Link href="/exam">
                 <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold px-8 py-5 transition-all duration-200">
-                  Prüfungssimulation starten
+                  Übungsprüfung starten
                 </Button>
               </Link>
             </div>
@@ -241,7 +241,7 @@ export default async function QuizPage({
             </Link>
             <Link href="/exam">
               <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] font-semibold px-8 py-5 transition-all duration-200">
-                Prüfungssimulation starten
+                Übungsprüfung starten
               </Button>
             </Link>
             <Link href="/leaderboard">

@@ -51,7 +51,7 @@ describe('Regal-Moderation (PROJ-53, Paket 2)', () => {
     expect(await screen.findByText('Haftung im Frachtrecht')).toBeInTheDocument()
     expect(screen.getByText('Frau Meier')).toBeInTheDocument()
     expect(screen.getByText('Alle Lehrkräfte')).toBeInTheDocument()
-    expect(screen.getByText('Fachbereich')).toBeInTheDocument()
+    expect(screen.getByText('Bereich')).toBeInTheDocument()
     expect(screen.getByText('4×')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /Aus dem Regal nehmen/ })).toHaveLength(2)
   })

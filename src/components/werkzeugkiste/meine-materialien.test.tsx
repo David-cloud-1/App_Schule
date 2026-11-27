@@ -102,7 +102,7 @@ describe('Meine Materialien (PROJ-52)', () => {
 
     // Desktop-Tabelle und Handy-Karten stehen beide im Dokument (CSS blendet eine aus)
     expect(screen.getAllByText('Entwurf').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('bei Schritt 3 · Prompt').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('bei Schritt 3 · Auftrag kopieren').length).toBeGreaterThan(0)
     expect(screen.getAllByText('wird morgen gelöscht').length).toBeGreaterThan(0)
     expect(screen.getAllByText('H5P für Moodle · aus Heft 2 Haftung.pdf').length).toBeGreaterThan(0)
 
@@ -229,7 +229,7 @@ describe('Meine Materialien (PROJ-52)', () => {
   })
 
   describe('Regal (PROJ-53)', () => {
-    it('zeigt in der Spalte „Regal“, wer das Material sieht, und „privat“ ohne Freigabe', async () => {
+    it('zeigt in der Spalte „Fürs Kollegium (Regal)“, wer das Material sieht, und „aus“ ohne Freigabe', async () => {
       api.ladeMaterialien.mockResolvedValue(
         liste([
           zeile({ id: 'm1', titel: 'Privat' }),
@@ -241,7 +241,7 @@ describe('Meine Materialien (PROJ-52)', () => {
       )
       render(<MeineMaterialien />)
       await screen.findAllByText('Privat')
-      for (const text of ['privat', 'Fachbereich', 'alle', '3 Personen', 'vom Admin aus dem Regal genommen']) {
+      for (const text of ['aus', 'an · Bereich', 'an · alle', 'an · 3 Personen', 'vom Admin aus dem Regal genommen']) {
         expect(screen.getAllByText(text).length).toBeGreaterThan(0)
       }
     })
@@ -250,10 +250,10 @@ describe('Meine Materialien (PROJ-52)', () => {
       api.ladeMaterialien.mockResolvedValue(liste([zeile({ id: 'e1', art: 'entwurf', titel: 'Entwurf.docx', schritt: 2, format: null, hatDatei: false })]))
       render(<MeineMaterialien />)
       await screen.findAllByText('Entwurf.docx')
-      expect(screen.queryByText('privat')).not.toBeInTheDocument()
+      expect(screen.queryByText('aus')).not.toBeInTheDocument()
       oeffneMenue('Entwurf.docx')
       await screen.findByRole('menuitem', { name: /Löschen/ })
-      expect(screen.queryByRole('menuitem', { name: /Teilen/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: /Fürs Kollegium/ })).not.toBeInTheDocument()
     })
 
     it('öffnet „Teilen …“ aus dem Menü und zeigt danach die neue Stufe in der Zeile', async () => {
@@ -262,17 +262,17 @@ describe('Meine Materialien (PROJ-52)', () => {
       await screen.findAllByText('Haftung im Frachtrecht')
 
       oeffneMenue('Haftung im Frachtrecht')
-      fireEvent.click(await screen.findByRole('menuitem', { name: /Teilen/ }))
+      fireEvent.click(await screen.findByRole('menuitem', { name: /Fürs Kollegium/ }))
       const dialog = await screen.findByRole('dialog')
-      expect(within(dialog).getByText('Material teilen')).toBeInTheDocument()
+      expect(within(dialog).getByText('Fürs Kollegium (Regal)')).toBeInTheDocument()
       expect(await within(dialog).findByText('Nur du siehst dieses Material.')).toBeInTheDocument()
 
       fireEvent.click(within(dialog).getByRole('radio', { name: /^Alle Lehrkräfte/ }))
       fireEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }))
       await waitFor(() => expect(api.speichereFreigabe).toHaveBeenCalledWith('m1', expect.objectContaining({ stufe: 'alle' })))
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(screen.getAllByText('alle').length).toBeGreaterThan(0)
-      expect(screen.queryByText('privat')).not.toBeInTheDocument()
+      expect(screen.getAllByText('an · alle').length).toBeGreaterThan(0)
+      expect(screen.queryByText('aus')).not.toBeInTheDocument()
     })
 
     it('warnt im Löschen-Fenster, dass das Material auch aus dem Regal verschwindet', async () => {
@@ -316,7 +316,7 @@ describe('Meine Materialien (PROJ-52)', () => {
       expect(anderes).toHaveAttribute('aria-disabled', 'true')
       expect(anderes).toHaveTextContent('Stammt aus dem Regal, es gibt kein Skript dazu')
       // Teilen, Umbenennen, Löschen bleiben möglich
-      expect(screen.getByRole('menuitem', { name: /Teilen/ })).not.toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByRole('menuitem', { name: /Fürs Kollegium/ })).not.toHaveAttribute('aria-disabled', 'true')
     })
   })
 })

@@ -37,8 +37,8 @@ const ICON_LABEL: Record<ArtIcon, string> = {
   briefcase: 'Aktentasche',
   'clipboard-check': 'Klemmbrett',
   bus: 'Bus',
-  'calendar-x': 'Kalender durchgestrichen',
-  calendar: 'Kalender',
+  'calendar-x': 'Termin durchgestrichen',
+  calendar: 'Termin',
   users: 'Gruppe',
   'map-pin': 'Ort',
   plane: 'Flugzeug',
@@ -156,7 +156,7 @@ export function AbsenceTypesManager() {
     <div className="mx-auto w-full max-w-screen-lg space-y-6">
       <AdminPageHeader
         title="Abwesenheitsarten"
-        description="Welche Arten von Abwesenheit es im Kalender gibt. Eine Art mit Einträgen kannst du nur ausblenden, nicht löschen."
+        description="Lege fest, welche Arten von Abwesenheit es gibt – eine Art mit Einträgen kannst du nur ausblenden."
         breadcrumb="Abwesenheitsarten"
         actions={
           <Button
@@ -250,7 +250,7 @@ export function AbsenceTypesManager() {
             <>
               <DialogHeader>
                 <DialogTitle>{draft.id ? 'Art bearbeiten' : 'Art hinzufügen'}</DialogTitle>
-                <DialogDescription className="text-ws-muted">Name, Farbe und Symbol erscheinen überall im Kalender.</DialogDescription>
+                <DialogDescription className="text-ws-muted">Name, Farbe und Symbol erscheinen überall in den Abwesenheiten.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -304,7 +304,7 @@ export function AbsenceTypesManager() {
                   <Switch id="art-freitext" checked={draft.mit_freitext} disabled={draft.fest} onCheckedChange={(on) => setDraft({ ...draft, mit_freitext: on })} />
                 </div>
                 <div>
-                  <p className="mb-1.5 text-sm text-ws-muted">So sieht die Art im Kalender aus:</p>
+                  <p className="mb-1.5 text-sm text-ws-muted">So sieht die Art in den Abwesenheiten aus:</p>
                   <TypeBadge absence={{ typeName: draft.name.trim() || 'Beispiel', typeColor: draft.farbe, typeIcon: draft.icon }} />
                 </div>
                 {error && (

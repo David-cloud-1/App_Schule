@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const { bereich } = parsed.data
   if (bereich !== SCOPE_ALL && !auth.departmentIds.includes(bereich)) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
   }
 
   const response = NextResponse.json({ ok: true, bereich })

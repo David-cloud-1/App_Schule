@@ -31,7 +31,7 @@ export function ChecklistenUebersicht() {
     <div className="mx-auto max-w-screen-2xl space-y-6">
       <AdminPageHeader
         title="Checklisten"
-        description="Schritt für Schritt durch Vorgänge der Schule – mit dem Original der Leitlinie daneben. Deine Haken sieht nur du."
+        description="Geh Vorgänge der Schule Schritt für Schritt durch, mit dem Original der Leitlinie daneben und Haken, die nur du siehst."
       />
       <p className="max-w-prose text-sm text-ws-muted">{HINWEIS}</p>
 

@@ -219,7 +219,7 @@ describe('Assistent-Panel', () => {
     const s = steuerung()
     const { rerender } = render(<HilfePanel steuerung={s} kontext={kontext()} />)
     fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 3/ }))
-    expect(screen.getByRole('heading')).toHaveTextContent('Auftrag an die KI (Prompt) kopieren')
+    expect(screen.getByRole('heading')).toHaveTextContent('Auftrag für die KI kopieren')
     fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 2/ }))
     fireEvent.click(screen.getByRole('button', { name: /Hilfe zu Schritt 1/ }))
     expect(screen.getByRole('heading')).toHaveTextContent('Skript hochladen')
@@ -272,14 +272,14 @@ describe('Assistent-Panel', () => {
     expect(screen.queryByText(/Kopiere die ganze Antwort der KI/)).toBeNull()
   })
 
-  it('bietet bei Kontrollfehlern „Nachbesserungs-Prompt kopieren“', () => {
+  it('bietet bei Kontrollfehlern „Nachbesserungs-Auftrag kopieren“', () => {
     render(
       <HilfePanel
         steuerung={steuerung()}
         kontext={kontext({ variante: 'antwort', problem: 'kontrolle_fehler', nachbesserung: 'Bitte ergänze …' })}
       />,
     )
-    expect(screen.getByRole('button', { name: /Nachbesserungs-Prompt kopieren/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Nachbesserungs-Auftrag kopieren/ })).toBeInTheDocument()
   })
 
   it('zeigt nie Technik: der allgemeine Fall nennt einen Ausweg', () => {

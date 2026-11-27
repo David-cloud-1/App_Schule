@@ -105,17 +105,17 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     expect(await screen.findByText(/Erstelle sie unter „Werkzeuge“/)).toBeInTheDocument()
   })
 
-  it('zeigt die Gliederung, wählt ein Thema und übernimmt nur Verweise (Quelle und Nummern)', async () => {
+  it('zeigt die Gliederung, wählt ein Kapitel und übernimmt nur Verweise (Quelle und Nummern)', async () => {
     const { onUebernommen, onOpenChange } = zeige()
     fireEvent.click(await screen.findByText('Mein Heft'))
     expect(await screen.findByText('Lagerarten')).toBeInTheDocument()
     expect(screen.getByText(/Wird ausgelassen/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Thema „Lagerarten“/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Kapitel „Lagerarten“/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Richtig oder falsch/ }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Frage 1/ }))
-    const knopf = await screen.findByRole('button', { name: '1 Thema und 2 Blöcke übernehmen' })
+    const knopf = await screen.findByRole('button', { name: '1 Kapitel und 2 Blöcke übernehmen' })
     fireEvent.click(knopf)
 
     await waitFor(() => expect(m.hole).toHaveBeenCalled())
@@ -129,16 +129,16 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('einzelne Blöcke eines ganz gewählten Themas sind schon enthalten (nicht extra wählbar)', async () => {
+  it('einzelne Blöcke eines ganz gewählten Kapitels sind schon enthalten (nicht extra wählbar)', async () => {
     zeige()
     fireEvent.click(await screen.findByText('Mein Heft'))
     await screen.findByText('Lagerarten')
     const block = screen.getByRole('checkbox', { name: /Lehrtext: Ein Lager ist/ })
     fireEvent.click(block)
     expect(block).toBeChecked()
-    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Thema „Lagerarten“/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Kapitel „Lagerarten“/ }))
     expect(screen.getByRole('checkbox', { name: /Lehrtext: Ein Lager ist/ })).toBeDisabled()
-    expect(await screen.findByRole('button', { name: '1 Thema übernehmen' })).toBeEnabled()
+    expect(await screen.findByRole('button', { name: '1 Kapitel übernehmen' })).toBeEnabled()
   })
 
   it('baut die Vorschau erst beim Anklicken', async () => {
@@ -146,7 +146,7 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     fireEvent.click(await screen.findByText('Mein Heft'))
     await screen.findByText('Lagerarten')
     expect(m.vorschau).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Vorschau von Thema „Verpackung“/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Vorschau von Kapitel „Verpackung“/ }))
     await waitFor(() => expect(m.vorschau).toHaveBeenCalledWith('ziel', { art: 'eigen', id: EIGEN_ID }, { themen: [1], bloecke: [], fragen: [] }))
     expect(await screen.findByTitle('Vorschau des Gewählten')).toHaveAttribute('sandbox', 'allow-scripts')
   })
@@ -158,8 +158,8 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     klick(screen.getByRole('tab', { name: 'Regal' }))
     fireEvent.click(await screen.findByText('Regal-Heft'))
     await screen.findByText('Lagerarten')
-    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Thema „Verpackung“/ }))
-    fireEvent.click(await screen.findByRole('button', { name: '1 Thema übernehmen' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Kapitel „Verpackung“/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '1 Kapitel übernehmen' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('nicht mehr')
     expect(onUebernommen).not.toHaveBeenCalled()
     expect(onOpenChange).not.toHaveBeenCalledWith(false)
@@ -181,8 +181,8 @@ describe('Aus Material übernehmen (PROJ-108)', () => {
     const { rerender } = render(<UebernehmenDialog offen {...props} />)
     fireEvent.click(await screen.findByText('Mein Heft'))
     await screen.findByText('Lagerarten')
-    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Thema „Verpackung“/ }))
-    fireEvent.click(await screen.findByRole('button', { name: '1 Thema übernehmen' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Ganzes Kapitel „Verpackung“/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '1 Kapitel übernehmen' }))
     await waitFor(() => expect(m.hole).toHaveBeenCalled())
     rerender(<UebernehmenDialog offen={false} {...props} />)
     fertig({ themen: [{ title: 'X', elements: [] }], bloecke: [], ausgelassen: 0, fehlend: 0, titel: 'T' })

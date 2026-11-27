@@ -6,7 +6,7 @@ export default function GemeldeteFragenPage() {
     <div className="mx-auto w-full max-w-screen-2xl space-y-6">
       <AdminPageHeader
         title="Gemeldete Fragen"
-        description="Azubis melden Fragen, die ihnen fehlerhaft vorkommen. Prüfe sie, korrigiere die Frage und schließe die Meldung ab."
+        description="Prüfe Fragen, die Azubis als fehlerhaft gemeldet haben, korrigiere sie und schließe die Meldung ab."
       />
       <QuestionReportsInbox />
     </div>

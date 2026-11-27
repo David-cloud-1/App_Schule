@@ -121,7 +121,7 @@ export default function MySubjectsPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Meine Fächer"
-        description="Kreuze an, in welchen Fachbereichen und Fächern du unterrichtest. Änderungen gelten sofort — keine Freigabe nötig."
+        description="Kreuze an, in welchen Bereichen und Fächern du unterrichtest – Änderungen gelten sofort."
       />
 
       {loading && <AdminLoadingState variant="cards" rows={3} />}
@@ -208,7 +208,7 @@ export default function MySubjectsPage() {
               <span className="flex size-12 items-center justify-center rounded-2xl bg-ws-raised text-ws-muted">
                 <UserCog className="size-6" aria-hidden />
               </span>
-              <p className="text-base font-semibold text-ws-text">Keine Fachbereiche verfügbar</p>
+              <p className="text-base font-semibold text-ws-text">Keine Bereiche verfügbar</p>
             </div>
           )}
         </div>

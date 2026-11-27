@@ -159,13 +159,13 @@ export function SchrittFertig({
         </div>
         {linkMoeglich && link && (
           <p className="flex flex-wrap items-center justify-center gap-x-2 text-sm text-ws-muted">
-            <span>Öffentlich · {aufrufeText(link.aufrufe)}</span>
+            <span>Für Azubis (Link): an · {aufrufeText(link.aufrufe)}</span>
             <Button variant="link" onClick={() => setLinkOffen(true)} className="h-auto min-h-11 px-1 py-0 text-ws-blue">
               Link verwalten
             </Button>
           </p>
         )}
-        {!linkMoeglich && !zumKopieren && <p className="text-xs text-ws-faint">Link für alle: {LINK_TEXTE.nurSeite.toLowerCase()}.</p>}
+        {!linkMoeglich && !zumKopieren && <p className="text-xs text-ws-faint">Für Azubis (Link): {LINK_TEXTE.nurSeite.toLowerCase()}.</p>}
         <p className="flex flex-wrap items-center justify-center gap-x-1 text-xs text-ws-faint">
           <Library className="size-3.5" aria-hidden />
           Automatisch unter{' '}
@@ -219,7 +219,7 @@ export function SchrittFertig({
             className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}
           >
             <Share2 className="mr-2 size-4 shrink-0" aria-hidden />
-            Teilen …
+            Fürs Kollegium (Regal) …
           </Button>
           {!direkt && (
             <Button asChild variant="outline" className={`${NEBENAKTION} h-auto min-h-12 justify-start whitespace-normal py-3 text-left`}>

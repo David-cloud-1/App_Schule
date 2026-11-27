@@ -36,6 +36,8 @@ import { SCHULRECHT_HREF } from '@/lib/schulrecht'
 import { ABSENCE_HREF } from '@/lib/absence'
 // PROJ-122: Checklisten zu den Handlungsleitlinien
 import { CHECKLISTEN_HREF } from '@/lib/checklisten/liste'
+// PROJ-130: Namen, die Menü und Seitenköpfe teilen
+import { BEGRIFFE } from '@/lib/begriffe'
 
 /**
  * Navigation des Admin-Bereichs (PROJ-40, neu geordnet in PROJ-130) — einzige
@@ -139,7 +141,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         href: '/admin/exam-sets',
-        label: 'Übungsprüfungen',
+        label: BEGRIFFE.uebungspruefungen,
         hint: 'ohne Note',
         aliases: ['Prüfungssimulation', 'Prüfungsset', 'Prüfung üben'],
         description: 'Übungsprüfungen, die Azubis selbst ohne Note spielen',
@@ -196,7 +198,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       {
         href: '/admin/topics',
         label: 'Themen',
-        description: 'Themen und Klassenstufen pflegen',
+        description: 'Themen und Stufen pflegen',
         icon: Tag,
         teacherVisible: true,
       },
@@ -230,7 +232,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         href: ABSENCE_HREF,
-        label: 'Abwesenheiten',
+        label: BEGRIFFE.abwesenheiten,
         aliases: ['Kalender'],
         description: 'Wer fehlt wann? Abwesenheiten eintragen und Vertretungen im Blick behalten',
         icon: CalendarDays,
@@ -270,7 +272,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         href: '/admin/department-settings',
-        label: 'Einstellungen des Bereichs',
+        label: BEGRIFFE.bereichsEinstellungen,
         aliases: ['Fachbereich'],
         description: 'Namen, Farben und Texte des Bereichs einstellen',
         icon: SlidersHorizontal,
@@ -279,7 +281,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         href: '/admin/shop-items',
-        label: 'Shop-Gegenstände',
+        label: BEGRIFFE.shopGegenstaende,
         aliases: ['Items', 'Hof-Items', 'Resort-Items', 'Shop'],
         description: 'Gegenstände im Shop der Lern-App pflegen',
         icon: Store,
@@ -310,7 +312,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
       },
       {
         href: '/admin/departments',
-        label: 'Bereiche anlegen',
+        label: BEGRIFFE.bereicheAnlegen,
         aliases: ['Fachbereiche'],
         description: 'Alle Bereiche verwalten',
         icon: Building2,

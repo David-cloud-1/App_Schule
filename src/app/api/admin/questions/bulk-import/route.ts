@@ -82,9 +82,9 @@ export async function POST(request: NextRequest) {
   parsed.data.rows.forEach((row, index) => {
     let reason: string | null = null
     if (!subjectMap.has(normalizeSubjectCode(row.fach_code))) {
-      reason = `fach_code "${row.fach_code}" gibt es in diesem Fachbereich nicht — erlaubt: ${allowedCodes}`
+      reason = `fach_code "${row.fach_code}" gibt es in diesem Bereich nicht — erlaubt: ${allowedCodes}`
     } else if (row.klassenstufe != null && !classLevels.includes(row.klassenstufe)) {
-      reason = `klassenstufe ${row.klassenstufe} gibt es in diesem Fachbereich nicht — erlaubt: ${classLevels.join(', ') || 'keine (weglassen)'}`
+      reason = `klassenstufe ${row.klassenstufe} gibt es in diesem Bereich nicht — erlaubt: ${classLevels.join(', ') || 'keine (weglassen)'}`
     }
     if (reason) {
       rejected.push({ index, question_text: row.question_text, reason })

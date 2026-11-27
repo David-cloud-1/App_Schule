@@ -201,7 +201,7 @@ function AssessmentsPageContent() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Leistungsnachweise"
-        description="Benotete Tests für deine Klasse: Die Azubis treten per Code bei, du siehst Noten und Auswertung. Nicht zu verwechseln mit der Prüfungssimulation, die Azubis ohne Note selbst üben."
+        description="Lege benotete Tests für deine Klasse an, denen die Azubis per Code beitreten, und sieh Noten und Auswertung."
         actions={
           showEmpty ? undefined : (
             <>
@@ -267,7 +267,7 @@ function AssessmentsPageContent() {
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
                 <TableHead className="text-ws-muted">Titel</TableHead>
                 <TableHead className="text-ws-muted">Status</TableHead>
-                <TableHead className="text-ws-muted">Zielbereich</TableHead>
+                <TableHead className="text-ws-muted">Bereich</TableHead>
                 {isSuperAdmin && <TableHead className="text-ws-muted">Erstellt von</TableHead>}
                 <TableHead className="text-ws-muted">Code</TableHead>
                 <TableHead className="text-ws-muted">Teilnehmer</TableHead>

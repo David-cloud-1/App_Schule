@@ -81,7 +81,7 @@ export async function PATCH(
       !iconKeyBelongsToCategory(department.code, finalCategory as HofCategory, finalIconKey)
     ) {
       return NextResponse.json(
-        { error: 'Illustration passt nicht zur Kategorie oder zum Fachbereich' },
+        { error: 'Illustration passt nicht zur Kategorie oder zum Bereich' },
         { status: 400 },
       )
     }

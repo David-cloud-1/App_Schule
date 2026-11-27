@@ -121,7 +121,7 @@ export function SteckbriefCard({
       <dl>
         <Fact label="Registriert am">{formatDate(overview.registeredAt)}</Fact>
         <Fact label="Letzter Login">{formatDateTime(overview.lastSignInAt)}</Fact>
-        <Fact label="Letzte Lern-Session">{formatDate(overview.lastSessionDate)}</Fact>
+        <Fact label="Letzte Lernrunde">{formatDate(overview.lastSessionDate)}</Fact>
         <Fact label="E-Mail bestätigt">
           {overview.emailConfirmed ? (
             <span className="text-ws-green">Ja</span>

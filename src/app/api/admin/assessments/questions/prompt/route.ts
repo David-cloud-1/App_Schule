@@ -34,11 +34,11 @@ export async function POST(request: NextRequest) {
 
   // PROJ-46 (BUG-4): ein deaktivierter Bereich bekommt keinen neuen Inhalt mehr.
   if (!(await isDepartmentActive(supabase, departmentId))) {
-    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+    return NextResponse.json({ error: 'Dieser Bereich ist nicht verfügbar.' }, { status: 400 })
   }
 
   const department = await getDepartmentById(supabase, departmentId)
-  if (!department) return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+  if (!department) return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
 
   let subjects
   try {

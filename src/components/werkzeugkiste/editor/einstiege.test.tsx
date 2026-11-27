@@ -64,7 +64,7 @@ describe('Meine Materialien', () => {
     render(<MeineMaterialien />)
     const links = await screen.findAllByRole('link', { name: /^Bearbeiten: Haftung im Frachtrecht/ })
     expect(links[0]).toHaveAttribute('href', '/admin/werkzeugkiste/bearbeiten/m1')
-    expect(screen.getAllByText('Nicht veröffentlicht')[0]).toHaveAttribute('title', 'Es gibt unveröffentlichte Änderungen im Baukasten')
+    expect(screen.getAllByText('Änderungen noch nicht übernommen')[0]).toHaveAttribute('title', 'Im Baukasten gibt es Änderungen, die Azubis und Kollegium noch nicht sehen')
   })
 
   it('H5P: fragt nach einer Kopie als Seite und öffnet sie dann im Editor', async () => {

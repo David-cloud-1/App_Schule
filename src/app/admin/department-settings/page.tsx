@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { BEGRIFFE } from '@/lib/begriffe'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { LastChangedLine } from '@/components/admin/content-meta'
 
@@ -100,7 +101,7 @@ export default function DepartmentSettingsPage() {
   }
 
   if (loadFailed) {
-    return <AdminErrorState message="Die Fachbereich-Einstellungen konnten gerade nicht geladen werden." onRetry={load} />
+    return <AdminErrorState message="Die Einstellungen des Bereichs konnten gerade nicht geladen werden." onRetry={load} />
   }
 
   if (loading || !settings) {
@@ -110,7 +111,7 @@ export default function DepartmentSettingsPage() {
   if (settings.needsDepartment) {
     return (
       <div className="space-y-6">
-        <AdminPageHeader title="Fachbereich-Einstellungen" description="Bitte wähle zuerst einen Bereich." />
+        <AdminPageHeader title={BEGRIFFE.bereichsEinstellungen} description="Bitte wähle zuerst einen Bereich." />
         <AdminEmptyState
           icon={Settings}
           title="Bitte wähle einen Bereich"
@@ -122,7 +123,7 @@ export default function DepartmentSettingsPage() {
 
   return (
     <div className="space-y-6 max-w-xl">
-      <AdminPageHeader title="Fachbereich-Einstellungen" description={`${settings.name} (${settings.appName})`} />
+      <AdminPageHeader title={BEGRIFFE.bereichsEinstellungen} description={`${settings.name} (${settings.appName})`} />
       <LastChangedLine by={settings.lastChange?.by} at={settings.lastChange?.at} />
 
       {settings.domain && (
@@ -143,13 +144,13 @@ export default function DepartmentSettingsPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="promptNotes">Zusatzhinweise für den Fragen-Prompt</Label>
+          <Label htmlFor="promptNotes">Zusatzhinweise für die KI beim Erstellen von Fragen</Label>
           <Textarea
             id="promptNotes"
             rows={5}
             value={form.promptNotes}
             onChange={(e) => setForm({ ...form, promptNotes: e.target.value })}
-            placeholder="Wird an das Ende des kopierbaren Prompts angehängt, z. B. besondere Schwerpunkte oder Formatwünsche."
+            placeholder="Wird an das Ende des Auftrags für die KI angehängt, z. B. besondere Schwerpunkte oder Formatwünsche."
             className="bg-ws-surface border-ws-line text-ws-text"
             maxLength={2000}
           />

@@ -134,7 +134,7 @@ function NeuerFall() {
       await zuruecksetzen()
       router.replace(fallHref(fall.id, 2))
     } catch (e) {
-      setFehler(fehlertext(e, 'Der Prompt konnte gerade nicht erstellt werden.'))
+      setFehler(fehlertext(e, 'Der Auftrag für die KI konnte gerade nicht erstellt werden.'))
       setLaeuft(false)
     }
   }
@@ -179,7 +179,7 @@ function NeuerFall() {
           ) : (
             <Button onClick={promptErstellen} disabled={laeuft || blockiert} className={HAUPTAKTION}>
               {laeuft && <Loader2 className="mr-2 size-5 animate-spin" aria-hidden />}
-              Prompt erstellen
+              Auftrag erstellen
             </Button>
           )}
         </>
@@ -364,12 +364,12 @@ function FallSchritte({
 
   const kannLaden = antwort.trim().length > 0 && pruefung?.lesbar !== false && !prueftGerade && gepruefterText.current.trim() === antwort.trim()
 
-  const titel = schritt === 1 ? 'Dein Sachverhalt' : schritt === 2 ? 'Prompt kopieren' : 'Antwort einfügen'
+  const titel = schritt === 1 ? 'Dein Sachverhalt' : schritt === 2 ? 'Auftrag für die KI kopieren' : 'Antwort der KI einfügen'
   const beschreibung =
     schritt === 1
       ? 'So geht der Fall an die KI. Namen und Daten sind schon ersetzt.'
       : schritt === 2
-        ? 'Der Prompt enthält die Fundstellen im Wortlaut und deinen Sachverhalt. Die KI kann so keine Paragraphen erfinden.'
+        ? 'Der Auftrag enthält die Fundstellen im Wortlaut und deinen Sachverhalt. Die KI kann so keine Paragraphen erfinden.'
         : 'Füge die ganze Antwort deiner KI ein. Die App prüft, ob sie Stellen nennt, die ihr nicht gegeben wurden.'
 
   return (

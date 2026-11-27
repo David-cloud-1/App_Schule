@@ -6,7 +6,7 @@ export default function SchwierigsteFragenPage() {
     <div className="mx-auto w-full max-w-screen-2xl space-y-6">
       <AdminPageHeader
         title="Schwierigste Fragen"
-        description="Welche Themen und Fragen fallen den Azubis insgesamt am schwersten? Ohne Namen, nur Summen."
+        description="Hier siehst du ohne Namen, welche Themen und Fragen den Azubis insgesamt am schwersten fallen."
       />
       <DifficultQuestions />
     </div>

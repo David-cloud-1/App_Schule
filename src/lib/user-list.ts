@@ -29,7 +29,7 @@ export const SORT_LABEL: Record<SortKey, string> = {
   department: 'Bereich',
   xp: 'XP',
   streak: 'Streak',
-  session: 'Letzte Session',
+  session: 'Letzte Lernrunde',
   login: 'Letzter Login',
   status: 'Status',
 }

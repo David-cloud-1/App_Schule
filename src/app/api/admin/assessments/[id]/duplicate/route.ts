@@ -59,7 +59,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .eq('is_active', true)
     .maybeSingle()
   if (!targetDepartment) {
-    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+    return NextResponse.json({ error: 'Dieser Bereich ist nicht verfügbar.' }, { status: 400 })
   }
 
   const set = original.exam_question_sets as unknown as { question_ids: string[] } | null
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       const byId = new Map(selectable.map((q) => [q.id, q]))
       const derived = derivePartNumber(examParts, questionIds.map((qid) => byId.get(qid)).filter((q) => !!q))
       if (derived === null) {
-        return NextResponse.json({ error: 'Für diesen Fachbereich sind keine Prüfungsteile eingerichtet.' }, { status: 400 })
+        return NextResponse.json({ error: 'Für diesen Bereich sind keine Prüfungsteile eingerichtet.' }, { status: 400 })
       }
       part = derived
       subjectId = null // Fächer gehören zum Bereich

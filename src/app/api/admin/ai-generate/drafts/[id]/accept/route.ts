@@ -49,7 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (!subject) {
     return NextResponse.json(
-      { error: `Fach "${draft.subject_code ?? draft.subject_id}" gibt es in diesem Fachbereich nicht.` },
+      { error: `Fach "${draft.subject_code ?? draft.subject_id}" gibt es in diesem Bereich nicht.` },
       { status: 422 }
     )
   }

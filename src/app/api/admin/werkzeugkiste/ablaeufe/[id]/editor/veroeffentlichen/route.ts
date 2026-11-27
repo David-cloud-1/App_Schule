@@ -43,7 +43,7 @@ interface BauErgebnis {
   aufgaben: number
 }
 
-const NICHT_VEROEFFENTLICHT = 'Das Veröffentlichen hat nicht geklappt. Die bisherige Fassung ist weiter sichtbar.'
+const NICHT_VEROEFFENTLICHT = 'Das Übernehmen hat nicht geklappt. Die bisherige Fassung ist weiter sichtbar.'
 
 /** Zwischendatei an ihre endgültige Stelle kopieren (überschreibt) */
 async function ersetze(service: SupabaseClient, von: string, nach: string) {
@@ -71,7 +71,7 @@ export async function POST(request: Request, { params }: Kontext) {
   if (!eingabe.success) return ungueltig(eingabe.error)
   const { zeile, antwort } = await editorZeileOderFehler(auth.supabase, (await params).id)
   if (!zeile) return antwort
-  if (!zeile.entwurf || !zeile.entwurf_am) return fehler('Es gibt keine Änderungen zum Veröffentlichen.', 400)
+  if (!zeile.entwurf || !zeile.entwurf_am) return fehler('Es gibt keine Änderungen zum Übernehmen.', 400)
   if (!gleicherStand(eingabe.data.stand, zeile.entwurf_am)) return fehler(ANDERES_FENSTER, 409, 'Neu laden')
 
   const service = createServiceClient()
@@ -160,7 +160,7 @@ export async function POST(request: Request, { params }: Kontext) {
     await aufraeumen()
     if (error) return fehler('Die neue Fassung konnte nicht gespeichert werden.', 500)
     // Ein anderes Fenster hat während des Veröffentlichens weitergespeichert: Dessen Entwurf bleibt erhalten
-    return fehler(ANDERES_FENSTER, 409, 'Neu laden und erneut veröffentlichen')
+    return fehler(ANDERES_FENSTER, 409, 'Neu laden und die Änderungen erneut übernehmen')
   }
 
   // 4. Erst jetzt wird die neue Fassung sichtbar

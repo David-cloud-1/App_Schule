@@ -14,21 +14,21 @@ export const LINK_CODE_MUSTER = /^[0-9a-f]{48}$/
 export const LINK_ADMIN_SEITE = 50
 
 export const LINK_TEXTE = {
-  erzeugen: 'Link für alle erzeugen',
+  erzeugen: 'Link für Azubis erzeugen',
   kopieren: 'Link kopieren',
   kopiert: 'Link kopiert',
   abschalten: 'Link abschalten',
   nurSeite: 'Nur bei Interaktiver Seite',
   nichtAktiv: 'Dieser Link ist nicht mehr aktiv.',
-  hinweisTitel: 'Link für alle erzeugen?',
+  hinweisTitel: 'Link für Azubis erzeugen?',
   hinweis: 'Jeder, der diesen Link hat, kann das Material öffnen, auch ohne Konto. Du kannst ihn jederzeit abschalten.',
   hinweisFortschritt:
     'Im Link merkt sich die Seite deinen Lernfortschritt nicht. Heruntergeladen und lokal geöffnet merkt sie ihn sich wie bisher.',
   hinweisDatenschutz: 'Bitte stehen keine Namen oder Noten von Schülerinnen und Schülern im Material.',
   abschaltenTitel: 'Link abschalten?',
   abschaltenText: 'Der Link funktioniert danach nicht mehr. Wer ihn schon hat, sieht „nicht mehr aktiv“.',
-  loeschenHinweis: 'Der öffentliche Link wird dabei ebenfalls abgeschaltet.',
-  ueberarbeitenHinweis: 'Dein öffentlicher Link zeigt danach die neue Fassung.',
+  loeschenHinweis: 'Der Link für Azubis wird dabei ebenfalls abgeschaltet.',
+  ueberarbeitenHinweis: 'Dein Link für Azubis zeigt danach die neue Fassung.',
 } as const
 
 export interface LinkStand {

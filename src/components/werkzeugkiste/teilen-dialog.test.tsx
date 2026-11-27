@@ -81,7 +81,7 @@ describe('Teilen-Dialog (PROJ-53)', () => {
   it('teilt mit dem eigenen Fachbereich: ein einziger Bereich ist schon vorgewählt', async () => {
     const { gespeichert } = oeffne()
     await screen.findByText('Nur du siehst dieses Material.')
-    fireEvent.click(radio(/Mein Fachbereich/))
+    fireEvent.click(radio(/Mein Bereich/))
     expect(speichern()).toBeEnabled()
     fireEvent.click(speichern())
     await waitFor(() => expect(api.speichereFreigabe).toHaveBeenCalled())
@@ -92,7 +92,7 @@ describe('Teilen-Dialog (PROJ-53)', () => {
       bereiche: ['d1'],
       personen: [],
     })
-    expect(toast.success).toHaveBeenCalledWith('Mit deinem Fachbereich geteilt')
+    expect(toast.success).toHaveBeenCalledWith('Mit deinem Bereich geteilt')
     expect(gespeichert).toHaveBeenCalledWith('m1', { stufe: 'fachbereich', personen: 0, bereiche: 1, entnommen: false })
   })
 
@@ -100,7 +100,7 @@ describe('Teilen-Dialog (PROJ-53)', () => {
     api.ladeFreigabeOptionen.mockResolvedValue(optionen({ bereiche: [SPED, TOUR] }))
     oeffne()
     await screen.findByText('Nur du siehst dieses Material.')
-    fireEvent.click(radio(/Mein Fachbereich/))
+    fireEvent.click(radio(/Mein Bereich/))
     expect(screen.getByRole('checkbox', { name: 'Spedition' })).not.toBeChecked()
     expect(speichern()).toBeDisabled()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Tourismus' }))
@@ -111,11 +111,11 @@ describe('Teilen-Dialog (PROJ-53)', () => {
     expect(api.speichereFreigabe.mock.calls[0][1].bereiche.sort()).toEqual(['d1', 'd2'])
   })
 
-  it('graut „Mein Fachbereich“ ohne Fachbereich aus und nennt den Weg dorthin', async () => {
+  it('graut „Mein Bereich“ ohne Fachbereich aus und nennt den Weg dorthin', async () => {
     api.ladeFreigabeOptionen.mockResolvedValue(optionen({ bereiche: [] }))
     oeffne()
     expect(await screen.findByText('Trage dich unter Meine Fächer ein')).toBeInTheDocument()
-    expect(radio(/Mein Fachbereich/)).toBeDisabled()
+    expect(radio(/Mein Bereich/)).toBeDisabled()
     // Die anderen Stufen gehen weiter
     fireEvent.click(radio(/^Alle Lehrkräfte/))
     expect(speichern()).toBeEnabled()

@@ -208,16 +208,16 @@ export function CreateQuestionDialog({ open, onOpenChange, departmentId, onCreat
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cq-class">Klassenstufe</Label>
+              <Label htmlFor="cq-class">Stufe</Label>
               <Select value={classLevel} onValueChange={setClassLevel}>
                 <SelectTrigger id="cq-class" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
-                  <SelectItem value={NO_CLASS}>Ohne Klassenstufe</SelectItem>
-                  <SelectItem value="10">Klasse 10</SelectItem>
-                  <SelectItem value="11">Klasse 11</SelectItem>
-                  <SelectItem value="12">Klasse 12</SelectItem>
+                  <SelectItem value={NO_CLASS}>Ohne Stufe</SelectItem>
+                  <SelectItem value="10">Stufe 10</SelectItem>
+                  <SelectItem value="11">Stufe 11</SelectItem>
+                  <SelectItem value="12">Stufe 12</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -188,7 +188,7 @@ export async function processJob(
 
     // Prompt aus dem Fachbereich des Admins, der den Upload gestartet hat (PROJ-22)
     const department = await getDepartmentForUser(supabase, job?.admin_id as string)
-    if (!department) throw new Error('Fachbereich nicht gefunden.')
+    if (!department) throw new Error('Bereich nicht gefunden.')
     const subjects = await fetchDepartmentSubjects(supabase, department.id, { activeOnly: true })
     const subject = subjects.find((s) => s.id === subjectId) ?? null
     const examContext = buildUploadExamContext(department, subjects)

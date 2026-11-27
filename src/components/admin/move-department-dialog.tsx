@@ -70,7 +70,7 @@ export function MoveDepartmentDialog({
         toast.error(data?.error ?? 'Verschieben fehlgeschlagen')
         return
       }
-      toast.success('In anderen Fachbereich verschoben')
+      toast.success('In anderen Bereich verschoben')
       onOpenChange(false)
       onSuccess()
     } catch (err) {
@@ -87,20 +87,20 @@ export function MoveDepartmentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-sm">
         <DialogHeader>
-          <DialogTitle>In anderen Fachbereich verschieben</DialogTitle>
+          <DialogTitle>In anderen Bereich verschieben</DialogTitle>
           <DialogDescription className="text-ws-muted">
-            {userLabel} wechselt sofort in den gewählten Fachbereich — passend für falsch registrierte Konten.
-            {isManager && ' Die Verwaltungsrechte gelten danach für den neuen Fachbereich.'}
+            {userLabel} wechselt sofort in den gewählten Bereich — passend für falsch registrierte Konten.
+            {isManager && ' Die Verwaltungsrechte gelten danach für den neuen Bereich.'}
           </DialogDescription>
         </DialogHeader>
 
         <Select value={target} onValueChange={setTarget}>
           <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
-            <SelectValue placeholder="Zielbereich wählen…" />
+            <SelectValue placeholder="Bereich wählen…" />
           </SelectTrigger>
           <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
             {otherDepartments.length === 0 ? (
-              <div className="px-2 py-1.5 text-sm text-ws-muted">Kein anderer Fachbereich vorhanden</div>
+              <div className="px-2 py-1.5 text-sm text-ws-muted">Kein anderer Bereich vorhanden</div>
             ) : (
               otherDepartments.map((d) => (
                 <SelectItem key={d.id} value={d.id} className="focus:bg-ws-bg focus:text-ws-text">

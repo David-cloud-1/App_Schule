@@ -211,7 +211,7 @@ export function BildBearbeiten({ quelle, mitAlt, alt: altStart, fortschritt, feh
           <AlertTriangle className="size-4" aria-hidden />
           <AlertDescription className="space-y-2 text-ws-text">
             <p>
-              Mit diesem Bild wird die Seite wohl größer als 8 MB. Dann lässt sie sich nicht veröffentlichen, bis du Bilder entfernst oder das
+              Mit diesem Bild wird die Seite wohl größer als 8 MB. Dann lassen sich die Änderungen nicht übernehmen, bis du Bilder entfernst oder das
               Material aufteilst.
             </p>
             <div className="flex flex-wrap gap-2">

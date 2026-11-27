@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
   const parts = await fetchExamParts(supabase, departmentId).catch(() => [])
   if (!findExamPart(parts, parsed.data.part)) {
-    return NextResponse.json({ error: `Prüfungsteil ${parsed.data.part} gibt es in diesem Fachbereich nicht.` }, { status: 400 })
+    return NextResponse.json({ error: `Prüfungsteil ${parsed.data.part} gibt es in diesem Bereich nicht.` }, { status: 400 })
   }
 
   const { name, part, question_ids, is_active, duration_minutes } = parsed.data

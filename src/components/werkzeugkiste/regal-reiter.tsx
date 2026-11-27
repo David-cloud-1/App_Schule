@@ -392,7 +392,7 @@ function Karte({ karte: k }: { karte: RegalKarte }) {
         {k.anpassbar && !k.vonMir && (
           <Button variant="outline" onClick={() => void anpassen(false)} disabled={laedt || kopiert} className={`${NEBENAKTION} flex-1`}>
             {kopiert ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Copy className="mr-2 size-4" aria-hidden />}
-            Anpassen
+            Kopie bearbeiten
             <span className="sr-only">: {k.titel}</span>
           </Button>
         )}

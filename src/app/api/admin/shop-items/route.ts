@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   const department = await getDepartmentById(supabase, departmentId)
   if (!department || !iconKeyBelongsToCategory(department.code, parsed.data.category, parsed.data.icon_key)) {
     return NextResponse.json(
-      { error: 'Illustration passt nicht zur Kategorie oder zum Fachbereich' },
+      { error: 'Illustration passt nicht zur Kategorie oder zum Bereich' },
       { status: 400 },
     )
   }

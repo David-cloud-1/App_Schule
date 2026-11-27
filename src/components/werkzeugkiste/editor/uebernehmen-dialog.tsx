@@ -248,7 +248,7 @@ export function UebernehmenDialog({
         <DialogHeader className="space-y-1 border-b border-ws-line p-4 pr-14 text-left sm:p-6 sm:pr-16">
           <DialogTitle className="text-xl font-bold">Aus Material übernehmen</DialogTitle>
           <DialogDescription className="text-ws-muted">
-            Hole Themen oder einzelne Blöcke aus deinen Materialien oder dem Regal. Du bekommst eine eigene Kopie, das Original bleibt unberührt.
+            Hole Kapitel oder einzelne Blöcke aus deinen Materialien oder dem Regal. Du bekommst eine eigene Kopie, das Original bleibt unberührt.
           </DialogDescription>
         </DialogHeader>
 
@@ -365,12 +365,12 @@ export function UebernehmenDialog({
                     <li key={ti} className="rounded-xl border border-ws-line">
                       <div className="flex items-center gap-1 px-2">
                         <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-3 px-2">
-                          <Checkbox checked={themaGewaehlt(ti)} onCheckedChange={(c) => schalteThema(ti, c === true)} aria-label={`Ganzes Thema „${t.titel}“ übernehmen`} />
+                          <Checkbox checked={themaGewaehlt(ti)} onCheckedChange={(c) => schalteThema(ti, c === true)} aria-label={`Ganzes Kapitel „${t.titel}“ übernehmen`} />
                           <span className="min-w-0 truncate font-semibold" title={t.titel}>
                             {t.titel}
                           </span>
                         </label>
-                        <Button variant="ghost" size="icon" className="size-11 shrink-0" onClick={() => zeigeVorschau({ art: 'thema', thema: ti })} aria-label={`Vorschau von Thema „${t.titel}“`} title="Vorschau">
+                        <Button variant="ghost" size="icon" className="size-11 shrink-0" onClick={() => zeigeVorschau({ art: 'thema', thema: ti })} aria-label={`Vorschau von Kapitel „${t.titel}“`} title="Vorschau">
                           <Eye className="size-5" aria-hidden />
                         </Button>
                       </div>
@@ -437,7 +437,7 @@ export function UebernehmenDialog({
 
             <section aria-label="Vorschau" className="flex min-h-72 flex-col gap-2 lg:min-h-0">
               {!zeig ? (
-                <p className="m-auto max-w-xs text-center text-sm text-ws-muted">Tippe auf das Auge neben einem Thema oder Block, um ihn hier anzusehen.</p>
+                <p className="m-auto max-w-xs text-center text-sm text-ws-muted">Tippe auf das Auge neben einem Kapitel oder Block, um ihn hier anzusehen.</p>
               ) : vorschau.laedt ? (
                 <p className="m-auto flex items-center gap-2 text-sm text-ws-muted" role="status">
                   <Loader2 className="size-4 animate-spin" aria-hidden /> Vorschau wird gebaut …

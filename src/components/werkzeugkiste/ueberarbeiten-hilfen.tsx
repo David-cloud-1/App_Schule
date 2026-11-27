@@ -232,16 +232,16 @@ function KapitelNeu({ ablaufId, onAblauf }: { ablaufId: string; onAblauf: (a: Ab
             className="min-h-11 rounded-xl bg-ws-green font-semibold text-ws-on-accent hover:bg-ws-green-hover focus-visible:ring-ws-green"
           >
             {beschaeftigt && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
-            Prompt für dieses Kapitel erstellen
+            Auftrag für dieses Kapitel erstellen
           </Button>
         </>
       ) : (
         <>
           <ol className="list-decimal space-y-1 pl-5 text-sm text-ws-muted">
-            <li>Kopiere den Prompt und schicke ihn an die KI.</li>
+            <li>Kopiere den Auftrag und schicke ihn an die KI.</li>
             <li>Füge die Antwort der KI unten ein. Sie darf nur dieses eine Kapitel enthalten.</li>
           </ol>
-          <KopierKnopf text={prompt} label="Prompt kopieren" className="w-full sm:w-auto" />
+          <KopierKnopf text={prompt} label="Auftrag kopieren" className="w-full sm:w-auto" />
           <div className="space-y-1.5">
             <Label htmlFor="wk-kapitel-antwort">Antwort der KI zum Kapitel</Label>
             <Textarea

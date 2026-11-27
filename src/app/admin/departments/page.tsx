@@ -19,6 +19,7 @@ import {
   type AdminDepartmentRow,
 } from '@/components/admin/department-form-modal'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { BEGRIFFE } from '@/lib/begriffe'
 import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
 
 export default function AdminDepartmentsPage() {
@@ -57,9 +58,9 @@ export default function AdminDepartmentsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Fachbereiche"
+        title={BEGRIFFE.bereiche}
         description={
-          loading && departments.length === 0 ? 'Wird geladen …' : <>{departments.length} {departments.length === 1 ? 'Fachbereich' : 'Fachbereiche'}</>
+          loading && departments.length === 0 ? 'Wird geladen …' : <>{departments.length} {departments.length === 1 ? 'Bereich' : 'Bereiche'}</>
         }
         actions={
           showEmpty ? undefined : (
@@ -71,19 +72,19 @@ export default function AdminDepartmentsPage() {
               className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Neuer Fachbereich
+              Neuer Bereich
             </Button>
           )
         }
       />
 
       {loadFailed ? (
-        <AdminErrorState message="Die Fachbereiche konnten gerade nicht geladen werden." onRetry={load} />
+        <AdminErrorState message="Die Bereiche konnten gerade nicht geladen werden." onRetry={load} />
       ) : showEmpty ? (
         <AdminEmptyState
           icon={Building2}
-          title="Noch keine Fachbereiche"
-          description="Lege den ersten Fachbereich an."
+          title="Noch keine Bereiche"
+          description="Lege den ersten Bereich an."
           action={
             <Button
               onClick={() => {
@@ -93,7 +94,7 @@ export default function AdminDepartmentsPage() {
               className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Neuer Fachbereich
+              Neuer Bereich
             </Button>
           }
         />
@@ -121,7 +122,7 @@ export default function AdminDepartmentsPage() {
               ) : departments.length === 0 ? (
                 <TableRow className="border-ws-line">
                   <TableCell colSpan={4} className="text-center text-ws-muted py-10">
-                    Keine Fachbereiche angelegt.
+                    Keine Bereiche angelegt.
                   </TableCell>
                 </TableRow>
               ) : (

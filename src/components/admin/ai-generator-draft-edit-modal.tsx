@@ -209,7 +209,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>Klassenstufe</Label>
+              <Label>Stufe</Label>
               <Select
                 value={form.class_level}
                 onValueChange={(v) => setForm({ ...form, class_level: v })}
@@ -220,7 +220,7 @@ export function AiGeneratorDraftEditModal({ draft, onClose, onSave }: Props) {
                 <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
                   <SelectItem value="_all">Alle</SelectItem>
                   {classLevelOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>Kl. {o.value}</SelectItem>
+                    <SelectItem key={o.value} value={o.value}>Stufe {o.value}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

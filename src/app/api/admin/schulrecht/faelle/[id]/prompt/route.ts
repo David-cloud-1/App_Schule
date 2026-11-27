@@ -16,7 +16,7 @@ export async function POST(_request: Request, { params }: Kontext) {
   try {
     const r = await kern<{ prompt: string }>('/api/recht/prompt', { sachverhalt: zeile.sachverhalt, fundstellen: zeile.fundstellen })
     const neu = await aktualisiereFall(auth.supabase, zeile.id, { prompt: r.prompt, schritt: Math.max(zeile.schritt, 2) })
-    if (!neu) return fehler('Der Prompt konnte nicht gespeichert werden.', 500)
+    if (!neu) return fehler('Der Auftrag für die KI konnte nicht gespeichert werden.', 500)
     return ohneZwischenspeicher(NextResponse.json({ fall: zeileZuFall(neu) }))
   } catch (e) {
     return kernFehlerAntwort(e)

@@ -247,7 +247,7 @@ Keine neuen. Genutzt wird, was schon da ist: shadcn `Sidebar`, `Collapsible`, `S
 
 ## Implementation Notes (Frontend)
 
-Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☐ · 4 ☐**
+Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☐**
 
 ### Schritt 1: Menü, „Nachschlagen“, Konto-Menü (27.11.2026)
 - `src/lib/admin-nav.ts` neu geordnet: Unterricht · Lerninhalte (aufklappbar) · Werkzeuge und Austausch · Verwaltung (aufklappbar). Neu je Eintrag: `hint`, `aliases` (alte Namen, nur Suchwörter), `subPages` (Schulrecht, Checklisten unter „Nachschlagen“).
@@ -270,6 +270,21 @@ Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☐ · 4 ☐**
 - Anlegen-Dialoge: Das gemeinsame Feld heißt „Bereich: …“ bzw. „Bereich (Pflicht)“. Der Leistungsnachweis-Dialog übernimmt den Bereich aus dem Umschalter als ruhige Zeile und fragt nur bei „Alle Bereiche“ (Pflicht, ohne Vorauswahl). B24 ist damit für Phase 2 erledigt.
 - Server, Cookies und Rechte sind unverändert.
 - Prüfung: 4770 Tests grün (neu: `bereichs-umschalter.test.tsx`), Build sauber.
+
+### Schritt 3: Wörterliste (27.11.2026)
+- Neu ist `src/lib/begriffe.ts` mit den Namen, den alten Begriffen und dem Erklärsatz zur „Abteilung“. Menü und die Seitenköpfe Übungsprüfungen, Shop-Gegenstände, Einstellungen des Bereichs und Bereiche lesen daraus.
+- Neu ist der Wächter `begriffe.test.ts`. Er liest nur sichtbare Texte (keine Kommentare, Code-Namen oder Suchwörter) in Lehrkräfte-Seiten, Admin-Schnittstellen, Komponenten und den zugehörigen `lib`-Dateien. Ausnahmen sind der KI-Auftrag in `process-job.ts` und die Kasten-Überschrift „⭐ IHK-Prüfungssimulation“.
+- Wörterliste steht in `docs/DESIGN.md`. Schreibwerk und Aufgabenwerk sind neu gebaut.
+- Der Werkzeugkiste-Kern (Python) ist unverändert.
+- **Festlegungen, wo die Spec keinen Wortlaut vorgab:**
+  - Meldungen: Status „Neu“, Reiter „Zu prüfen“. Fragentyp „Freitext“. So bleibt „Offen“ dem laufenden Leistungsnachweis vorbehalten.
+  - Schritte im Assistenten: „Auftrag kopieren“ und „Antwort der KI“ (Schulrecht: „Auftrag kopieren“).
+  - Spalte „Fürs Kollegium (Regal)“: „aus“, „an · alle“, „an · Bereich“, „an · 3 Personen“. Der Menüpunkt „Teilen …“ heißt „Fürs Kollegium (Regal) …“.
+  - Kasten-Auswahl im Baukasten: „IHK-Prüfung“. Die Überschrift **in** der Lernseite bleibt „⭐ IHK-Prüfungssimulation“, weil fertige Seiten ihren Inhalt nicht ändern (Kern).
+  - Neue eigene Seiten beginnen mit „Kapitel 1“. Bestehende Materialien bleiben unverändert.
+  - Seitenbeschreibungen auf einen Satz gekürzt (Übersicht, Gemeldete Fragen, Schwierigste Fragen, Meine Fächer, Leistungsnachweise, Themen, Abwesenheiten, Abwesenheitsarten, Checklisten).
+- Unverändert: Azubi-Seite außer „Übungsprüfung“ (auch dort „Item“, „Lvl“, „Klasse“; Phase 7).
+- Prüfung: 4776 Tests grün, Build sauber. `eslint src` meldet nur einen alten Fehler in `shop-items/[id]/route.test.ts`. **Noch nicht im Browser geprüft** (u. a. Breite der Schrittleiste, der Regal-Spalte und des Knopfs „Als Leistungsnachweis verwenden“ am Handy).
 
 ## QA Test Results
 _To be added by /qa_

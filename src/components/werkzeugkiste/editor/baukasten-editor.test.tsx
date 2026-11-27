@@ -122,7 +122,7 @@ beforeEach(() => {
 })
 
 describe('Baukasten-Editor', () => {
-  it('zeigt Deckblatt, Themen und Blöcke in Klartext und die Verbesserungsvorschläge', async () => {
+  it('zeigt Deckblatt, Kapitel und Blöcke in Klartext und die Verbesserungsvorschläge', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     expect(await screen.findByRole('heading', { name: 'Mein Material' })).toBeInTheDocument()
     const gliederung = screen.getByRole('region', { name: 'Gliederung' })
@@ -190,18 +190,18 @@ describe('Baukasten-Editor', () => {
     api.speichereEntwurf.mockRejectedValue(new WerkzeugFehler('Dieses Material wurde in einem anderen Fenster geändert.', 409))
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByText('Lückentext')
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     expect(await screen.findByText(/in einem anderen Fenster geändert/, {}, { timeout: 3000 })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Änderungen übernehmen' })).toBeDisabled()
   })
 
   it('ohne Zugriff: schreibgeschützt mit klarem Satz, kein endloses Wiederholen (QA BUG-4)', async () => {
     api.speichereEntwurf.mockRejectedValue(new WerkzeugFehler('Kein Zugriff', 403))
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByText('Lückentext')
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     expect(await screen.findByText(/keinen Zugriff mehr auf die Werkzeugkiste/, {}, { timeout: 3000 })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Änderungen übernehmen' })).toBeDisabled()
     // Das neue Thema ist gewählt, die Schublade offen und die Gliederung eingeklappt (PROJ-97): im Aufbau bleibt sie stehen
     expect(document.querySelector('section[aria-label="Gliederung"]')).toHaveAttribute('inert')
     // Kein zweiter Versuch nach 5 Sekunden
@@ -214,17 +214,17 @@ describe('Baukasten-Editor', () => {
     api.veroeffentlicheEntwurf.mockResolvedValue({ befunde: [] })
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByText('Lückentext')
-    fireEvent.click(screen.getByRole('button', { name: 'Veröffentlichen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Änderungen übernehmen' }))
     const dialog = await screen.findByRole('alertdialog')
-    expect(within(dialog).getByText(/öffentlichen Link/)).toBeInTheDocument()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Veröffentlichen' }))
+    expect(within(dialog).getByText(/Link für Azubis/)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Änderungen übernehmen' }))
     await waitFor(() => expect(api.veroeffentlicheEntwurf).toHaveBeenCalledWith(ID, 'stand-alt'))
   })
 
   it('ohne Änderungen gibt es nichts zu veröffentlichen', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByText('Lückentext')
-    expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Änderungen übernehmen' })).toBeDisabled()
   })
 
   it('zeigt einen verständlichen Fehler, wenn das Material nicht geht', async () => {
@@ -284,7 +284,7 @@ describe('Sprung-Skript', () => {
 describe('Block einfügen (PROJ-90)', () => {
   const letzteStruktur = () => api.speichereEntwurf.mock.calls.at(-1)![1] as Struktur
 
-  it('„Element hinzufügen“ fügt am Ende des Themas mit Beispiel ein, wählt ihn und speichert', async () => {
+  it('„Element hinzufügen“ fügt am Ende des Kapitels mit Beispiel ein, wählt ihn und speichert', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Grundlagen“/ }))
@@ -297,7 +297,7 @@ describe('Block einfügen (PROJ-90)', () => {
     expect(JSON.parse(window.localStorage.getItem('wk-katalog-zuletzt')!)).toEqual(['true_false'])
   })
 
-  it('fügt in ein leeres Thema ein und meldet den Beispielinhalt als Hinweis', async () => {
+  it('fügt in ein leeres Kapitel ein und meldet den Beispielinhalt als Hinweis', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: /Element hinzufügen in „Haftungsgrenzen“/ }))
@@ -307,7 +307,7 @@ describe('Block einfügen (PROJ-90)', () => {
     expect(await within(gliederung).findByText('Kreuzworträtsel')).toBeInTheDocument()
     expect(within(gliederung).queryByText('Noch keine Elemente')).not.toBeInTheDocument()
     fireEvent.click(within(gliederung).getByRole('button', { name: /Verbesserungsvorschläge/, hidden: true }))
-    expect(await within(gliederung).findByText(/Thema 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
+    expect(await within(gliederung).findByText(/Kapitel 2 – Kreuzworträtsel: Beispielinhalt noch nicht ersetzt/)).toBeInTheDocument()
   })
 
   it('PROJ-111: Die Schublade zeigt keine doppelten Aktionen (Darunter einfügen, Löschen, zweites „Fertig“); sie liegen in der Leiste und im ⋯-Menü', async () => {
@@ -440,14 +440,14 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     expect(await screen.findByRole('complementary', { name: 'Lernzielkontrolle' })).toBeInTheDocument()
   })
 
-  it('PROJ-118: „Bearbeiten“ am Thema öffnet den Titel in der Seite; eine offene Schublade schließt dabei', async () => {
+  it('PROJ-118: „Bearbeiten“ am Kapitel öffnet den Titel in der Seite; eine offene Schublade schließt dabei', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     const senden = vi.spyOn(rahmen.contentWindow!, 'postMessage')
     nachricht({ wkBereit: true }, rahmen)
     nachricht({ wkFormular: 'k1' }, rahmen)
-    await screen.findByRole('complementary', { name: 'Thema' })
+    await screen.findByRole('complementary', { name: 'Kapitel' })
     nachricht({ wkBearbeite: 'k1' }, rahmen)
     await waitFor(() => expect(senden).toHaveBeenCalledWith({ wkSchreibStart: { marke: 'k1', teil: 'kapitel' } }, '*'))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
@@ -496,7 +496,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     // Ungespeicherte Änderung macht die Vorschau veraltet; der Neubau scheitert
     api.baueEntwurfVorschau.mockRejectedValue(new Error('Die Vorschau konnte nicht gebaut werden.'))
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     // Speichern, Wartezeit, Neubau scheitert: Erst dann steht die alte Seite dauerhaft „nicht aktuell“
@@ -524,7 +524,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument())
@@ -540,7 +540,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
     const rahmen = (await screen.findByTitle('Vorschau der Seite')) as HTMLIFrameElement
     await waitFor(() => expect(screen.queryByText(/Vorschau wird aktualisiert/)).not.toBeInTheDocument())
     // Eine Änderung: Der Entwurf ist noch nicht gespeichert und die Seite noch nicht neu gebaut
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     nachricht({ wkWaehle: 'k2' }, rahmen) // das neue Thema kennt die gezeigte Seite noch nicht
@@ -586,7 +586,7 @@ describe('Vorschau als Hauptfläche (PROJ-96)', () => {
 })
 
 describe('Marken aus der Vorschau', () => {
-  it('liest Themen, Blöcke und Lernzielkontrolle', () => {
+  it('liest Kapitel, Blöcke und Lernzielkontrolle', () => {
     expect(auswahlAusMarke('k0')).toEqual({ art: 'thema', thema: 0 })
     expect(auswahlAusMarke('k12-e3')).toEqual({ art: 'block', thema: 12, block: 3 })
     expect(auswahlAusMarke('abschluss')).toEqual({ art: 'abschluss' })
@@ -618,7 +618,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
   }
   const waehleTyp = (typ: string) => waehleImKatalog(typ)
 
-  it('Leiste „Block“ ohne Auswahl: am Ende des letzten Themas', async () => {
+  it('Leiste „Block“ ohne Auswahl: am Ende des letzten Kapitels', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
     fireEvent.click(screen.getByRole('button', { name: 'Element' }))
@@ -629,13 +629,13 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(typen(0)).toEqual(['text', 'fill_blanks'])
   })
 
-  it('Leiste „Thema“ hängt ein Thema an; das Themen-Menü fügt eines direkt darunter ein', async () => {
+  it('Leiste „Kapitel“ hängt ein Kapitel an; das Kapitel-Menü fügt eines direkt darunter ein', async () => {
     renderInWorkspace(<BaukastenEditor id={ID} />, { withSidebar: false })
     await screen.findByRole('heading', { name: 'Mein Material' })
-    oeffneMenu(/Weitere Aktionen für Thema „Grundlagen“/)
-    fireEvent.click(await screen.findByRole('menuitem', { name: /Thema darunter einfügen/ }))
+    oeffneMenu(/Weitere Aktionen für Kapitel „Grundlagen“/)
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Kapitel darunter einfügen/ }))
     await gespeichert()
-    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Neues Thema', 'Haftungsgrenzen'])
+    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Neues Kapitel', 'Haftungsgrenzen'])
     // Das neue Thema ist gewählt, die Schublade offen
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
   })
@@ -690,7 +690,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(typen(0)).toEqual(['text', 'memory_game', 'fill_blanks'])
   })
 
-  it('„+ Block“ an einem Thema in der Vorschau fügt am Anfang des Themas ein', async () => {
+  it('„+ Block“ an einem Kapitel in der Vorschau fügt am Anfang des Kapitels ein', async () => {
     const rahmen = await bereit()
     nachricht({ wkEinfuegen: 'k0' }, rahmen)
     expect(await screen.findByRole('heading', { name: 'Element hinzufügen' })).toBeInTheDocument()
@@ -710,7 +710,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
     expect(katalogOffen()).not.toBeInTheDocument()
   })
 
-  it('„Löschen“ in der Vorschau entfernt den Block; fremde Absender, Themen und Unbekanntes werden verworfen (PROJ-98)', async () => {
+  it('„Löschen“ in der Vorschau entfernt den Block; fremde Absender, Kapitel und Unbekanntes werden verworfen (PROJ-98)', async () => {
     const rahmen = await bereit()
     nachricht({ wkLoesche: 'k0-e1' }, rahmen, window) // fremder Absender
     nachricht({ wkLoesche: 'k0' }, rahmen) // Thema: nicht über die Vorschau
@@ -725,7 +725,7 @@ describe('Hinzufügen präsenter (PROJ-97)', () => {
 
   it('lehnt „+“ ab, solange die Vorschau veraltet ist, und sagt es', async () => {
     const rahmen = await bereit()
-    fireEvent.click(screen.getByRole('button', { name: /Thema hinzufügen/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Kapitel hinzufügen/ }))
     await screen.findByRole('complementary')
     fireEvent.click(screen.getByRole('button', { name: 'Bearbeiten schließen' }))
     nachricht({ wkEinfuegen: 'k2' }, rahmen)
@@ -788,7 +788,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     return { rahmen, senden }
   }
 
-  it('sagt der Seite beim „bereit“ Modus, Schreibschutz, Handy und leere Themen', async () => {
+  it('sagt der Seite beim „bereit“ Modus, Schreibschutz, Handy und leere Kapitel', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkBereit: true }, rahmen)
     expect(senden).toHaveBeenCalledWith({ wkZustand: { modus: 'bearbeiten', lesen: false, mobil: false, leer: [1], schublade: false, aufgaben: { 'k0-e1': 'fill_blanks' } } }, '*')
@@ -824,13 +824,13 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(await screen.findByRole('complementary', { name: 'Lehrtext' })).toBeInTheDocument()
   })
 
-  it('Pfeil hoch/runter wechselt die Auswahl durch Themen und Blöcke', async () => {
+  it('Pfeil hoch/runter wechselt die Auswahl durch Kapitel und Blöcke', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkWaehle: 'k0-e0' }, rahmen)
     nachricht({ wkTaste: 'ArrowDown' }, rahmen)
     await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
     nachricht({ wkTaste: 'ArrowDown' }, rahmen) // weiter zum nächsten Thema
-    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k1', name: 'Thema' }), '*'))
+    await waitFor(() => expect(senden).toHaveBeenCalledWith(expect.objectContaining({ wk: 'k1', name: 'Kapitel' }), '*'))
     nachricht({ wkTaste: 'ArrowUp' }, rahmen)
     await waitFor(() => expect(senden).toHaveBeenLastCalledWith(expect.objectContaining({ wk: 'k0-e1' }), '*'))
   })
@@ -855,7 +855,7 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(typen(0)).toEqual(['text', 'fill_blanks', 'fill_blanks'])
   })
 
-  it('Schnellauswahl im leeren Thema fügt den Block ohne Katalog ein; unbekannte Typen werden verworfen', async () => {
+  it('Schnellauswahl im leeren Kapitel fügt den Block ohne Katalog ein; unbekannte Typen werden verworfen', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkSchnell: 'k1', typ: 'drag_words' }, rahmen)
     nachricht({ wkSchnell: 'k1', typ: 'text' }, rahmen, window)
@@ -871,12 +871,12 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
  }, 15000)
 
-  it('„Löschen“ am Thema (Leiste) fragt per Dialog nach und löscht erst nach Bestätigung', async () => {
+  it('„Löschen“ am Kapitel (Leiste) fragt per Dialog nach und löscht erst nach Bestätigung', async () => {
     const { rahmen } = await bereit()
     nachricht({ wkLoesche: 'k1' }, rahmen)
-    expect(await screen.findByText(/Thema „Haftungsgrenzen“ löschen\?/)).toBeInTheDocument()
+    expect(await screen.findByText(/Kapitel „Haftungsgrenzen“ löschen\?/)).toBeInTheDocument()
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Thema löschen' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kapitel löschen' }))
     await gespeichert()
     expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen'])
   })
@@ -899,12 +899,12 @@ describe('Direkt auf der Seite (PROJ-101)', () => {
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
   })
 
-  it('„+ Thema“ am Ende der Seite hängt ein Thema an und öffnet sein Formular', async () => {
+  it('„+ Kapitel“ am Ende der Seite hängt ein Kapitel an und öffnet sein Formular', async () => {
     const { rahmen } = await bereit()
     nachricht({ wkThemaNeu: true }, rahmen)
     await gespeichert()
-    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Haftungsgrenzen', 'Neues Thema'])
-    expect(await screen.findByRole('complementary', { name: 'Thema' })).toBeInTheDocument()
+    expect(letzteStruktur().chapters.map((t) => t.title)).toEqual(['Grundlagen', 'Haftungsgrenzen', 'Neues Kapitel'])
+    expect(await screen.findByRole('complementary', { name: 'Kapitel' })).toBeInTheDocument()
   })
 
   it('das „⋯“-Menü öffnet an der Klickstelle und verschiebt den Block; die Auswahl folgt ihm', async () => {
@@ -1051,7 +1051,7 @@ describe('Direkt in der Seite schreiben (PROJ-103)', () => {
     expect(api.speichereEntwurf).not.toHaveBeenCalled()
   })
 
-  it('Überschrift eines Themas und Deckblatt-Titel schreiben direkt (ohne Schreibwerk)', async () => {
+  it('Überschrift eines Kapitels und Deckblatt-Titel schreiben direkt (ohne Schreibwerk)', async () => {
     const { rahmen, senden } = await bereit()
     nachricht({ wkBereit: true }, rahmen)
     nachricht({ wkSchreibe: 'k1', teil: 'kapitel' }, rahmen)
@@ -1386,21 +1386,21 @@ describe('Ein Weg zum Bearbeiten (PROJ-114, Schritt 3)', () => {
   it('Klick auf einen Hinweis der Prüfstelle öffnet die Aufgabe in der Seite', async () => {
     const { senden } = await bereit()
     fireEvent.click(within(gliederung()).getByRole('button', { name: /Verbesserungsvorschläge/ }))
-    fireEvent.click(await within(gliederung()).findByText('Thema 1 – Keine richtige Antwort'))
+    fireEvent.click(await within(gliederung()).findByText('Kapitel 1 – Keine richtige Antwort'))
     await waitFor(() => expect(gestartet(senden, 'k0-e1')).toBe(true))
     expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
   })
 
-  it('Hinweis zum Lehrtext oder Thema öffnet weiter die Schublade', async () => {
+  it('Hinweis zum Lehrtext oder Kapitel öffnet weiter die Schublade', async () => {
     api.baueEntwurfVorschau.mockResolvedValue({
       adresse: 'https://speicher.test/entwurf.html',
-      befunde: [{ text: 'Thema 2 ist leer', schwere: 'mittel', stellen: [{ kapitel: 1 }] }],
+      befunde: [{ text: 'Kapitel 2 ist leer', schwere: 'mittel', stellen: [{ kapitel: 1 }] }],
       groesse: 1000,
       stand: null,
     })
     const { senden } = await bereit()
     fireEvent.click(within(gliederung()).getByRole('button', { name: /Verbesserungsvorschläge/ }))
-    fireEvent.click(await within(gliederung()).findByText('Thema 2 ist leer'))
+    fireEvent.click(await within(gliederung()).findByText('Kapitel 2 ist leer'))
     expect(await screen.findByRole('complementary')).toBeInTheDocument()
     expect(gestartet(senden)).toBe(false)
   })

@@ -506,7 +506,7 @@ export function SeitenGroesse({ bytes }: { bytes: number }) {
   return (
     <span
       className={cn('ml-auto flex items-center gap-2', voll ? 'text-ws-red' : knapp ? 'text-ws-orange' : 'text-ws-muted')}
-      title={voll ? 'Die Seite ist zu groß zum Veröffentlichen. Entferne Bilder oder teile das Material auf.' : undefined}
+      title={voll ? 'Die Seite ist zu groß, um die Änderungen zu übernehmen. Entferne Bilder oder teile das Material auf.' : undefined}
     >
       <span className="whitespace-nowrap" role="status">
         Seitengröße: {mb} MB von 8 MB

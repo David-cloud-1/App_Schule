@@ -109,7 +109,7 @@ export function DeleteAccountDialog({ open, onOpenChange, user, onDeleted }: Del
                 <ul className="list-disc space-y-1 pl-5">
                   <li>Login, E-Mail, Anzeigename und Pseudonym</li>
                   <li>XP, Streak und Frachtmünzen</li>
-                  <li>Hof, Betrieb und gekaufte Items</li>
+                  <li>Hof, Betrieb und gekaufte Gegenstände</li>
                   <li>Lernverlauf, Badges und Blitzrunden</li>
                   <li>Push-Abos und Platz in der Rangliste</li>
                 </ul>

@@ -343,12 +343,12 @@ export function AssessmentSuggestDialog({ open, onOpenChange, departmentId, ques
                 emptyText="Keine Themen zu dieser Auswahl."
               />
               <div className="space-y-1.5">
-                <Label htmlFor="suggest-class" className="text-sm text-ws-muted">Klassenstufe</Label>
+                <Label htmlFor="suggest-class" className="text-sm text-ws-muted">Stufe</Label>
                 <Select value={classLevel} onValueChange={setClassLevel}>
                   <SelectTrigger id="suggest-class" className={TRIGGER}><SelectValue /></SelectTrigger>
                   <SelectContent className={CONTENT}>
                     <SelectItem value="all">Alle</SelectItem>
-                    {classOptions.map((l) => <SelectItem key={l} value={String(l)}>Klasse {l}</SelectItem>)}
+                    {classOptions.map((l) => <SelectItem key={l} value={String(l)}>Stufe {l}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

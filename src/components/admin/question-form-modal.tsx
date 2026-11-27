@@ -408,7 +408,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
                       : 'border-ws-line text-ws-muted hover:text-ws-text'
                   }`}
                 >
-                  {t === 'multiple_choice' ? 'Multiple Choice' : 'Freitext (Offen)'}
+                  {t === 'multiple_choice' ? 'Multiple Choice' : 'Freitext'}
                 </button>
               ))}
             </div>
@@ -537,7 +537,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
 
             <div className="space-y-2">
               <Label>
-                Klassenstufe <span className="text-ws-red">*</span>
+                Stufe <span className="text-ws-red">*</span>
               </Label>
               <Select
                 value={form.class_level}
@@ -549,7 +549,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                  <SelectItem value="_all">Alle Klassen</SelectItem>
+                  <SelectItem value="_all">Alle Stufen</SelectItem>
                   {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                 </SelectContent>
               </Select>

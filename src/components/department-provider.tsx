@@ -37,9 +37,9 @@ export function useExamParts(): ExamPart[] {
   return useDepartmentContext().examParts
 }
 
-/** Klassenstufen des Bereichs als Auswahl: [{ value: '10', label: 'Klasse 10' }, …] */
+/** Klassenstufen des Bereichs als Auswahl: [{ value: '10', label: 'Stufe 10' }, …] */
 export function useClassLevelOptions(): { value: string; label: string }[] {
-  return useDepartment().classLevels.map((level) => ({ value: String(level), label: `Klasse ${level}` }))
+  return useDepartment().classLevels.map((level) => ({ value: String(level), label: `Stufe ${level}` }))
 }
 
 /** Beschriftung eines Prüfungsteils: 3 → „Teil 3 – WiSo" (unbekannt: „Teil 3") */

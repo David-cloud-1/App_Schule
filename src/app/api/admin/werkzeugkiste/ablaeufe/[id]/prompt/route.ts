@@ -20,7 +20,7 @@ type Kontext = { params: Promise<{ id: string }> }
 
 /** Lang, aber ohne Kapitel- oder Seitengrenzen (z. B. .txt): ein Prompt, die Rettung greift bei Abbruch */
 const KEIN_TEILEN_HINWEIS =
-  'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Prompt.'
+  'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Auftrag.'
 
 /**
  * POST /api/admin/werkzeugkiste/ablaeufe/:id/prompt (PROJ-51) — der Kern baut
@@ -90,7 +90,7 @@ export async function POST(_request: Request, { params }: Kontext) {
       ...(zeile.teile ? { teile: null } : {}),
       schritt: Math.max(zeile.schritt, 3),
     })
-    if (!neu) return fehler('Der Prompt konnte nicht gespeichert werden.', 500)
+    if (!neu) return fehler('Der Auftrag für die KI konnte nicht gespeichert werden.', 500)
     return NextResponse.json({ ablauf: zeileZuAblauf(neu), hinweis: [r.hinweis, r.warnung, zuLang ? KEIN_TEILEN_HINWEIS : null].filter(Boolean).join(' ') || null })
   } catch (e) {
     return kernFehlerAntwort(e)

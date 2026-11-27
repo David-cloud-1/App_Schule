@@ -127,7 +127,7 @@ export function KopierKnopf({
   )
 }
 
-/** Schritt 3 (PROJ-51): großer Kopierknopf, Zeichenzahl, „Prompt ansehen“, drei Kurzschritte */
+/** Schritt 3 (PROJ-51): großer Kopierknopf, Zeichenzahl, „Auftrag ansehen“, drei Kurzschritte */
 export function SchrittPrompt({ prompt, beiKopiert }: { prompt: string; beiKopiert?: () => void }) {
   const zeichen = prompt.length.toLocaleString('de-DE')
   return (
@@ -136,19 +136,19 @@ export function SchrittPrompt({ prompt, beiKopiert }: { prompt: string; beiKopie
         data-hilfe="kopieren"
         className="flex flex-col items-center gap-3 rounded-2xl border border-ws-line bg-ws-surface px-5 py-8 text-center"
       >
-        <KopierKnopf text={prompt} label="Prompt kopieren" gross className="w-full sm:w-auto" beiKopiert={beiKopiert} />
+        <KopierKnopf text={prompt} label="Auftrag kopieren" gross className="w-full sm:w-auto" beiKopiert={beiKopiert} />
         <span className="text-sm text-ws-faint">ca. {zeichen} Zeichen</span>
         <KiOeffnenLink className="w-full sm:w-auto" />
         <Collapsible className="w-full">
           <CollapsibleTrigger className="group mx-auto flex min-h-11 items-center gap-1 rounded-xl px-3 text-sm text-ws-blue hover:text-ws-blue-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green">
-            Prompt ansehen
+            Auftrag ansehen
             <ChevronDown className="size-4 transition-transform duration-200 group-data-[state=open]:rotate-180" aria-hidden />
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3">
             <Textarea
               readOnly
               value={prompt}
-              aria-label="Prompt"
+              aria-label="Auftrag für die KI"
               className="h-72 rounded-xl border-ws-line bg-ws-bg text-left font-mono text-xs leading-relaxed text-ws-text"
             />
           </CollapsibleContent>
@@ -158,7 +158,7 @@ export function SchrittPrompt({ prompt, beiKopiert }: { prompt: string; beiKopie
       <ol className="space-y-4">
         {[
           'Öffne die Bayerncloud KI (großer blauer Knopf) in einem neuen Tab.',
-          'Füge den Prompt ein und schicke ihn ab.',
+          'Füge den Auftrag ein und schicke ihn ab.',
           'Kopiere die ganze Antwort und komm hierher zurück.',
         ].map((text, i) => (
           <li key={i} className="flex items-center gap-4">

@@ -85,7 +85,7 @@ export const LOESUNGEN_SICHTBAR = {
   /** Hinweis in der Kopfzeile der Vorschau */
   hinweis: 'Lösungen sichtbar – nur in „Bearbeiten“',
   /** Erklärung beim Darüberfahren */
-  erklaerung: 'In „Bearbeiten“ zeigt die Seite, was als richtig eingestellt ist. In „Ausprobieren“, im Download, im öffentlichen Link und im Druck sieht niemand diese Kennzeichen.',
+  erklaerung: 'In „Bearbeiten“ zeigt die Seite, was als richtig eingestellt ist. In „Ausprobieren“, im Download, im Link für Azubis und im Druck sieht niemand diese Kennzeichen.',
   /** Lesbare Zusätze für die Kennzeichen (Screenreader sehen sie als Teil des Textes) */
   richtig: 'Lösung',
   passtNirgends: 'passt nirgends',

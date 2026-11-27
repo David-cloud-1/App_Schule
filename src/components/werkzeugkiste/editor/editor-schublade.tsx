@@ -57,7 +57,7 @@ interface SchubladeProps {
 function titelUndZeile(auswahl: Exclude<Auswahl, null>, struktur: Struktur): { titel: string; zeile: string } {
   if (auswahl.art === 'deckblatt') return { titel: 'Deckblatt', zeile: String(struktur.cover?.title ?? '') }
   if (auswahl.art === 'abschluss') return { titel: 'Lernzielkontrolle', zeile: String(struktur.final_chapter?.title ?? '') }
-  if (auswahl.art === 'thema') return { titel: 'Thema', zeile: String(struktur.chapters[auswahl.thema]?.title ?? '') }
+  if (auswahl.art === 'thema') return { titel: 'Kapitel', zeile: String(struktur.chapters[auswahl.thema]?.title ?? '') }
   const block = struktur.chapters[auswahl.thema]?.elements[auswahl.block]
   return { titel: typName(String(block?.type ?? '')), zeile: block ? kurzzeile(block) : '' }
 }
@@ -159,7 +159,7 @@ function SchubladeInhalt({ auswahl, struktur, aendere, rueckgaengig, materialId,
     const titel = String(struktur.chapters[index]?.title ?? '')
     return (
       <div className="space-y-2">
-        <Label htmlFor={`thema-titel-${index}`}>Titel des Themas</Label>
+        <Label htmlFor={`thema-titel-${index}`}>Titel des Kapitels</Label>
         <Input
           id={`thema-titel-${index}`}
           value={titel}

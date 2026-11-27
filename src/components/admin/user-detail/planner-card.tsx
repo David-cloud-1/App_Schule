@@ -85,7 +85,7 @@ export function PlannerCard({
           </div>
           <p className="text-sm text-ws-muted">
             Vertretungsplaner sehen, wo noch eine Vertretung fehlt, und haken sie ab.
-            {isSuperAdmin && ' Ein Super-Admin gilt im Kalender immer als Vertretungsplaner.'}
+            {isSuperAdmin && ' Ein Super-Admin gilt bei den Abwesenheiten immer als Vertretungsplaner.'}
           </p>
         </CardContent>
       </Card>
@@ -98,7 +98,7 @@ export function PlannerCard({
               {name}
               {overview.email ? ` (${overview.email})` : ''}{' '}
               {pending
-                ? 'darf danach den Vertretungsstatus im Kalender setzen.'
+                ? 'darf danach den Vertretungsstatus bei den Abwesenheiten setzen.'
                 : 'kann danach den Vertretungsstatus nicht mehr setzen. Frühere Haken bleiben erhalten.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

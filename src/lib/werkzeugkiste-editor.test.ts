@@ -31,13 +31,13 @@ const S: Struktur = {
 const inhalte = (s: Struktur) => s.chapters.map((t) => t.elements.map((e) => e.content))
 
 describe('Blöcke verschieben', () => {
-  it('innerhalb eines Themas nach unten und oben (Ziel = Position vor dem Entfernen)', () => {
+  it('innerhalb eines Kapitels nach unten und oben (Ziel = Position vor dem Entfernen)', () => {
     expect(inhalte(verschiebeBlock(S, { thema: 0, block: 0 }, { thema: 0, block: 2 }))[0]).toEqual(['a1', 'a0', 'a2'])
     expect(inhalte(verschiebeBlock(S, { thema: 0, block: 0 }, { thema: 0, block: 3 }))[0]).toEqual(['a1', 'a2', 'a0'])
     expect(inhalte(verschiebeBlock(S, { thema: 0, block: 2 }, { thema: 0, block: 0 }))[0]).toEqual(['a2', 'a0', 'a1'])
   })
 
-  it('in ein anderes Thema, auch ans Ende und in ein leeres', () => {
+  it('in ein anderes Kapitel, auch ans Ende und in ein leeres', () => {
     expect(inhalte(verschiebeBlock(S, { thema: 0, block: 1 }, { thema: 1, block: 0 }))).toEqual([['a0', 'a2'], ['a1', 'b0']])
     expect(inhalte(verschiebeBlock(S, { thema: 0, block: 1 }, { thema: 1, block: 99 }))).toEqual([['a0', 'a2'], ['b0', 'a1']])
     const mitLeer = neuesThema(S)
@@ -55,7 +55,7 @@ describe('Blöcke verschieben', () => {
   })
 })
 
-describe('Themen', () => {
+describe('Kapitel', () => {
   it('verschieben, löschen, duplizieren, umbenennen, hinzufügen', () => {
     expect(verschiebeThema(S, 0, 1).chapters.map((t) => t.title)).toEqual(['B', 'A'])
     expect(verschiebeThema(S, 0, 5)).toBe(S)
@@ -66,7 +66,7 @@ describe('Themen', () => {
     d.chapters[1].elements[0].content = 'geändert'
     expect(d.chapters[0].elements[0].content).toBe('a0') // tiefe Kopie
     expect(setzeThemaTitel(S, 1, 'Neu').chapters[1].title).toBe('Neu')
-    expect(neuesThema(S).chapters[2]).toEqual({ title: 'Neues Thema', elements: [] })
+    expect(neuesThema(S).chapters[2]).toEqual({ title: 'Neues Kapitel', elements: [] })
   })
 })
 
@@ -102,7 +102,7 @@ describe('Anzeige', () => {
     expect(kurzzeile({ type: 'text', content: '<script>alert(1)</script>' })).toBe('')
   })
 
-  it('Befunde je Thema und Block zählen', () => {
+  it('Befunde je Kapitel und Block zählen', () => {
     const k = befundeJeStelle([
       { text: 'a', schwere: 'hoch', stellen: [{ kapitel: 0, element: 2 }, { kapitel: 1 }] },
       { text: 'b', schwere: 'mittel', stellen: [{ kapitel: 0, element: 2 }, { abschluss: true }] },

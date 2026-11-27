@@ -37,7 +37,7 @@ export const REPORT_STATUSES = ['offen', 'in_pruefung', 'korrigiert', 'nicht_ueb
 export type ReportStatus = (typeof REPORT_STATUSES)[number]
 
 export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
-  offen: 'Offen',
+  offen: 'Neu',
   in_pruefung: 'In Prüfung',
   korrigiert: 'Korrigiert',
   nicht_uebernommen: 'Nicht übernommen',

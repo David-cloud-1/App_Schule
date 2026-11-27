@@ -32,6 +32,7 @@ import { useClassLevelOptions, useExamParts } from '@/components/department-prov
 import { examPartLabel, examPartSubjectCodes, findExamPart, type ExamPart } from '@/lib/exam-parts'
 import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { BEGRIFFE } from '@/lib/begriffe'
 import { toast } from 'sonner'
 import { AdminEmptyState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
@@ -71,7 +72,7 @@ type PickerSort = 'newest' | 'class' | 'subject' | 'topic' | 'difficulty' | 'tex
 
 const PICKER_SORT_LABELS: Record<PickerSort, string> = {
   newest: 'Neueste zuerst',
-  class: 'Klasse',
+  class: 'Stufe',
   subject: 'Fach',
   topic: 'Thema',
   difficulty: 'Schwierigkeit',
@@ -118,7 +119,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   }
   const [sets, setSets] = useState(initialSets)
   const [historyTarget, setHistoryTarget] = useState<ExamSet | null>(null)
-  const emptyScopeText = useEmptyScopeText('Prüfungssimulationen')
+  const emptyScopeText = useEmptyScopeText('Übungsprüfungen')
   const needsTarget = useNeedsTargetDepartment()
   const [targetDepartment, setTargetDepartment] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -236,7 +237,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       if (res.ok) {
         // Multiple sets can be active per part — only flip the toggled one.
         setSets((prev) => prev.map((s) => (s.id === set.id ? { ...s, is_active: !set.is_active } : s)))
-        toast.success(set.is_active ? 'Set deaktiviert' : 'Set aktiviert')
+        toast.success(set.is_active ? 'Für Azubis zurückgezogen' : 'Für Azubis freigegeben')
       } else {
         toast.error('Der Status konnte nicht geändert werden.')
       }
@@ -251,9 +252,9 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       const res = await fetch(`/api/admin/exam-sets/${id}`, { method: 'DELETE' })
       if (res.ok) {
         setSets((prev) => prev.filter((s) => s.id !== id))
-        toast.success('Set gelöscht')
+        toast.success('Übungsprüfung gelöscht')
       } else {
-        toast.error('Das Set konnte nicht gelöscht werden.')
+        toast.error('Die Übungsprüfung konnte nicht gelöscht werden.')
       }
     } finally {
       setDeletingId(null)
@@ -318,7 +319,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       }
       const { set } = await res.json()
       setSets((prev) => prev.map((s) => (s.id === editingId ? { ...s, ...set } : s)))
-      toast.success('Set gespeichert')
+      toast.success('Übungsprüfung gespeichert')
       setShowCreateModal(false)
       setEditingId(null)
     } catch {
@@ -334,7 +335,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       return
     }
     if (needsTarget && !targetDepartment) {
-      setCreateError('Bitte wähle den Bereich, in dem das Set angelegt wird.')
+      setCreateError('Bitte wähle den Bereich, in dem die Übungsprüfung angelegt wird.')
       return
     }
     setIsCreating(true)
@@ -360,7 +361,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       }
       const { set } = await res.json()
       setSets((prev) => [set, ...prev])
-      toast.success('Set erstellt')
+      toast.success('Übungsprüfung erstellt')
       setShowCreateModal(false)
       setNewName('')
       setNewPart(null)
@@ -438,7 +439,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
         return
       }
       setSets((prev) => [data.set, ...prev])
-      toast.success('Set importiert')
+      toast.success('Übungsprüfung importiert')
       setShowImportDialog(false)
       resetImportDialog()
     } catch {
@@ -465,17 +466,8 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
     <div>
       <div className="mb-6">
         <AdminPageHeader
-          title="Prüfungssimulation"
-          description={
-            <>
-              Übungsprüfungen, die Azubis jederzeit selbst und ohne Note spielen. Pro Prüfungsteil können mehrere
-              gleichzeitig aktiv sein. Für einen benoteten Test deiner Klasse nutze{' '}
-              <Link href="/admin/leistungsnachweise" className="font-semibold text-ws-blue hover:underline">
-                Leistungsnachweise
-              </Link>
-              .
-            </>
-          }
+          title={BEGRIFFE.uebungspruefungen}
+          description="Frei und ohne Note. Azubis üben damit für die Abschlussprüfung."
           actions={
             <>
               {canImportFromFile && (
@@ -494,17 +486,17 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                   className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
                 >
                   <Plus size={16} className="mr-2" />
-                  Neues Set
+                  Neue Übungsprüfung
                 </Button>
               )}
             </>
           }
         />
-        {/* F5: ohne aktives Set sehen Azubis unter „Prüfung üben“ nichts */}
+        {/* F5: ohne freigegebene Übungsprüfung sehen Azubis nichts */}
         {sets.length > 0 && !sets.some((s) => s.is_active) && (
           <p role="status" className="mt-4 rounded-xl border border-ws-orange/30 bg-ws-orange/15 px-4 py-3 text-sm text-ws-orange">
-            Im Moment ist keine Übungsprüfung aktiv. Azubis sehen deshalb unter „Prüfung üben“ nichts. Wähle bei einem Set
-            „Aktivieren“, damit sie es spielen können.
+            Im Moment ist keine Übungsprüfung für Azubis sichtbar. Sie sehen deshalb unter „Übungsprüfung“ nichts. Wähle
+            „Für Azubis freigeben“, damit sie üben können.
           </p>
         )}
       </div>
@@ -512,15 +504,15 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       {sets.length === 0 ? (
         <AdminEmptyState
           icon={Shield}
-          title="Noch keine Prüfungssimulationen"
-          description={`${emptyScopeText} Stelle ein Fragenset zusammen, das die Azubis als Prüfungssimulation spielen können.`}
+          title="Noch keine Übungsprüfungen"
+          description={`${emptyScopeText} Stelle Fragen zusammen, mit denen sich die Azubis auf die Prüfung vorbereiten.`}
           action={
             <Button
               onClick={openCreate}
               className="min-h-11 rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
             >
               <Plus size={16} className="mr-2" />
-              Neues Set
+              Neue Übungsprüfung
             </Button>
           }
         />
@@ -537,7 +529,10 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-ws-text text-sm">{set.name}</span>
                       {set.is_active && (
-                        <Badge className="text-xs bg-ws-green/20 text-ws-green border-0">Aktiv</Badge>
+                        <Badge className="text-xs bg-ws-green/20 text-ws-green border-0">Für Azubis sichtbar</Badge>
+                      )}
+                      {!set.is_active && (
+                        <Badge className="text-xs bg-ws-line/40 text-ws-muted border-0">Nicht sichtbar</Badge>
                       )}
                       <DepartmentTag
                         name={set.department_name ?? set.departments?.name}
@@ -564,7 +559,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                       className="rounded-lg text-xs px-3 border-ws-blue/50 text-ws-blue hover:bg-ws-blue/10"
                     >
                       <GraduationCap size={14} className="mr-1" />
-                      Leistungsnachweis
+                      Als Leistungsnachweis verwenden
                     </Button>
                   </Link>
                   <Button
@@ -580,11 +575,11 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                     )}
                   >
                     {set.is_active ? <ShieldOff size={14} className="mr-1" /> : <Shield size={14} className="mr-1" />}
-                    {set.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                    {set.is_active ? 'Zurückziehen' : 'Für Azubis freigeben'}
                   </Button>
                   <AdminRowActions
-                    subject={`Prüfungssimulation ${set.name}`}
-                    editLabel="Prüfungssimulation bearbeiten"
+                    subject={`Übungsprüfung ${set.name}`}
+                    editLabel="Übungsprüfung bearbeiten"
                     editIcon={<Pencil size={16} />}
                     onEdit={() => openEdit(set)}
                     items={[
@@ -631,9 +626,9 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       <AlertDialog open={confirmDeleteId !== null} onOpenChange={(open) => { if (!open) setConfirmDeleteId(null) }}>
         <AlertDialogContent className="bg-ws-surface border-ws-line text-ws-text">
           <AlertDialogHeader>
-            <AlertDialogTitle>Prüfungssimulation löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Übungsprüfung löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
-              Dieser Vorgang kann nicht rückgängig gemacht werden. Das Set wird dauerhaft gelöscht.
+              Dieser Vorgang kann nicht rückgängig gemacht werden. Die Übungsprüfung wird dauerhaft gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -652,7 +647,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
         <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Prüfungssimulation bearbeiten' : 'Neue Prüfungssimulation erstellen'}</DialogTitle>
+            <DialogTitle>{editingId ? 'Übungsprüfung bearbeiten' : 'Neue Übungsprüfung erstellen'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
@@ -759,7 +754,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                   <Select value={pickerClass} onValueChange={(v) => { setPickerClass(v); setPickerTopic('all') }}>
                     <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                      <SelectItem value="all">Alle Klassen</SelectItem>
+                      <SelectItem value="all">Alle Stufen</SelectItem>
                       {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
@@ -823,8 +818,8 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                           'text-xs',
                           q.type === 'open' ? 'text-ws-orange' : 'text-ws-blue',
                         )}>
-                          {q.type === 'open' ? 'Offen' : 'MC'} · {q.difficulty}
-                          {q.class_level != null && ` · Kl. ${q.class_level}`}
+                          {q.type === 'open' ? 'Freitext' : 'MC'} · {q.difficulty}
+                          {q.class_level != null && ` · Stufe ${q.class_level}`}
                           {subjectCodeOf(q) && ` · ${subjectCodeOf(q)}`}
                           {q.topics?.name && ` · ${q.topics.name}`}
                         </span>
@@ -851,7 +846,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
               disabled={isCreating}
               className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
             >
-              {editingId ? (isCreating ? 'Wird gespeichert…' : 'Speichern') : (isCreating ? 'Wird erstellt…' : 'Set erstellen')}
+              {editingId ? (isCreating ? 'Wird gespeichert…' : 'Speichern') : (isCreating ? 'Wird erstellt…' : 'Übungsprüfung erstellen')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -879,7 +874,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
           {importStep === 'configure' && (
             <div className="space-y-4 py-2 overflow-y-auto flex-1">
               <div className="space-y-2">
-                <Label className="text-ws-muted">Name des Sets</Label>
+                <Label className="text-ws-muted">Name der Übungsprüfung</Label>
                 <Input
                   value={importName}
                   onChange={(e) => setImportName(e.target.value)}
@@ -954,7 +949,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                 <p>1. Lade eine Prüfungsaufgabe als PDF oder Word-Datei hoch.</p>
                 <p>2. Die KI extrahiert alle Multiple-Choice-Fragen <span className="text-ws-text">exakt wie sie im Dokument stehen</span>.</p>
                 <p>3. Du siehst eine Vorschau und kannst Fragen prüfen oder entfernen.</p>
-                <p>4. Beim Bestätigen werden die Fragen gespeichert und das Set erstellt.</p>
+                <p>4. Beim Bestätigen werden die Fragen gespeichert und die Übungsprüfung erstellt.</p>
               </div>
 
               {importError && (
@@ -989,7 +984,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
               <p className="text-ws-muted text-sm">
                 {importStep === 'extracting'
                   ? 'Fragen werden aus dem Dokument extrahiert…'
-                  : 'Set wird erstellt und Fragen werden gespeichert…'}
+                  : 'Übungsprüfung wird erstellt und Fragen werden gespeichert…'}
               </p>
               <p className="text-xs text-ws-faint">Das kann einen Moment dauern.</p>
             </div>
@@ -1106,7 +1101,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                   disabled={previewQuestions.length === 0}
                   className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent font-semibold"
                 >
-                  {previewQuestions.length} Fragen importieren & Set erstellen
+                  {previewQuestions.length} Fragen importieren & Übungsprüfung erstellen
                 </Button>
               </DialogFooter>
             </div>

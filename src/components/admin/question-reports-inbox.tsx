@@ -182,7 +182,7 @@ export function QuestionReportsInbox() {
           }}
         >
           <AdminTabsList>
-            <AdminTabsTrigger value="offen">Offen</AdminTabsTrigger>
+            <AdminTabsTrigger value="offen">Zu prüfen</AdminTabsTrigger>
             <AdminTabsTrigger value="korrigiert">Korrigiert</AdminTabsTrigger>
             <AdminTabsTrigger value="nicht_uebernommen">Nicht übernommen</AdminTabsTrigger>
             <AdminTabsTrigger value="entfaellt">Frage entfällt</AdminTabsTrigger>

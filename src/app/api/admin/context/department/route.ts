@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     .eq('id', parsed.data.department_id)
     .maybeSingle()
   if (!dept) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
   }
 
   const response = NextResponse.json({ ok: true })

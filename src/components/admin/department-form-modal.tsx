@@ -118,7 +118,7 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
     if (!form.metaTitle.trim()) e.metaTitle = 'Seitentitel ist Pflicht.'
     if (!form.currencyName.trim()) e.currencyName = 'Name der Münzen ist Pflicht.'
     if (!form.hofName.trim()) e.hofName = 'Name des Hofs ist Pflicht.'
-    if (!form.promptRole.trim()) e.promptRole = 'Prompt-Rolle ist Pflicht.'
+    if (!form.promptRole.trim()) e.promptRole = 'Die Rolle der KI ist Pflicht.'
     if (!form.targetGroup.trim()) e.targetGroup = 'Zielgruppe ist Pflicht.'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -159,7 +159,7 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
         toast.error(data?.error ?? 'Speichern fehlgeschlagen')
         return
       }
-      toast.success(isEdit ? 'Fachbereich aktualisiert' : 'Fachbereich angelegt')
+      toast.success(isEdit ? 'Bereich aktualisiert' : 'Bereich angelegt')
       onSuccess()
       onOpenChange(false)
     } catch (err) {
@@ -174,10 +174,10 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Fachbereich bearbeiten' : 'Neuen Fachbereich anlegen'}</DialogTitle>
+          <DialogTitle>{isEdit ? 'Bereich bearbeiten' : 'Neuen Bereich anlegen'}</DialogTitle>
           <DialogDescription className="text-ws-muted">
             {isEdit
-              ? 'Branding, Prompt-Grundlage und Gamification-Namen anpassen.'
+              ? 'Branding, Vorgaben für die KI und Gamification-Namen anpassen.'
               : 'Kürzel und Slug lassen sich später nicht mehr ändern.'}
           </DialogDescription>
         </DialogHeader>
@@ -289,7 +289,7 @@ export function DepartmentFormModal({ open, onOpenChange, department, onSuccess 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="promptRole">Prompt-Rolle</Label>
+            <Label htmlFor="promptRole">Rolle der KI</Label>
             <Textarea
               id="promptRole"
               rows={2}

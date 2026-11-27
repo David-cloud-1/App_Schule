@@ -87,13 +87,13 @@ export const HILFE_SEITEN: Record<HilfeVariante, HilfeSeite> = {
     ueberschrift: 'Was soll daraus werden?',
     anweisung: 'Wähle das Format und das Niveau für dein Material.',
     beispiel: 'Zum Beispiel: Interaktive Seite, Niveau mittel.',
-    fertigWenn: 'Fertig, wenn du unten auf „Prompt erstellen“ geklickt hast.',
+    fertigWenn: 'Fertig, wenn du unten auf „Auftrag erstellen“ geklickt hast.',
     mehrDazu: 'Die Voreinstellung passt meistens. Weitere Angaben wie Bildungsgang und Lernfeld sind freiwillig.',
     zeige: 'einstellungen',
     zeigeErledigt: 'weiter',
   },
   auftrag: {
-    ueberschrift: 'Auftrag an die KI (Prompt) kopieren',
+    ueberschrift: 'Auftrag für die KI kopieren',
     anweisung: 'Klicke auf den grünen Knopf. Öffne die KI und füge den Text dort ein.',
     beispiel: 'Zum Beispiel Bayerncloud KI, ChatGPT oder Copilot.',
     fertigWenn: 'Fertig, wenn die KI ihre Antwort geschrieben hat.',
@@ -117,7 +117,7 @@ export const HILFE_SEITEN: Record<HilfeVariante, HilfeSeite> = {
     beispiel: 'Die Kontrolle startet nach dem Einfügen von allein.',
     fertigWenn: 'Fertig, wenn die Kontrolle keine Fehler meldet.',
     mehrDazu:
-      'Die Kontrolle prüft nur, ob die Antwort vollständig und lesbar ist. Dafür braucht die App keine KI, das kostet nichts. Meldet sie Hinweise, zum Beispiel fehlende Tabellen oder Bilder, wird das Material trotzdem gebaut, nur mit Lücken. Du hast dann drei Möglichkeiten. Erstens: Du lässt es so, wenn es dir reicht. Zweitens: Du kopierst den „Nachbesserungs-Prompt“, fügst ihn in dieselbe KI-Unterhaltung ein und ersetzt oben die Antwort durch die neue. Die KI ergänzt dann nur das Fehlende. Drittens: Unter dem Antwortfeld änderst du einzelne Stellen. „Tippfehler direkt korrigieren“ geht ohne KI, „Ein einzelnes Kapitel neu anfragen“ holt nur ein Kapitel neu von der KI. Alles andere bleibt, wie es ist.',
+      'Die Kontrolle prüft nur, ob die Antwort vollständig und lesbar ist. Dafür braucht die App keine KI, das kostet nichts. Meldet sie Hinweise, zum Beispiel fehlende Tabellen oder Bilder, wird das Material trotzdem gebaut, nur mit Lücken. Du hast dann drei Möglichkeiten. Erstens: Du lässt es so, wenn es dir reicht. Zweitens: Du kopierst den „Nachbesserungs-Auftrag“, fügst ihn in dieselbe KI-Unterhaltung ein und ersetzt oben die Antwort durch die neue. Die KI ergänzt dann nur das Fehlende. Drittens: Unter dem Antwortfeld änderst du einzelne Stellen. „Tippfehler direkt korrigieren“ geht ohne KI, „Ein einzelnes Kapitel neu anfragen“ holt nur ein Kapitel neu von der KI. Alles andere bleibt, wie es ist.',
     zeige: 'antwortfeld',
     zeigeErledigt: 'weiter',
   },
@@ -292,12 +292,12 @@ export const HILFE_PROBLEME: Record<HilfeProblemId, HilfeProblem> = {
   },
   hinweise: {
     was: 'Die Kontrolle hat Hinweise gefunden. Das Material wird trotzdem gebaut.',
-    tun: 'Du kannst es so lassen. Willst du es genauer, kopiere den „Nachbesserungs-Prompt“, schicke ihn in dieselbe KI-Unterhaltung und ersetze die Antwort durch die neue.',
+    tun: 'Du kannst es so lassen. Willst du es genauer, kopiere den „Nachbesserungs-Auftrag“, schicke ihn in dieselbe KI-Unterhaltung und ersetze die Antwort durch die neue.',
     knopf: 'nachbesserung',
   },
   bilder_fehlen: {
     was: 'Bilder, Tabellen oder Lösungen fehlen. Das Material wird trotzdem gebaut, nur mit Lücken.',
-    tun: 'Lass es so oder kopiere den „Nachbesserungs-Prompt“. Die KI ergänzt dann nur das Fehlende, du ersetzt die Antwort durch die neue.',
+    tun: 'Lass es so oder kopiere den „Nachbesserungs-Auftrag“. Die KI ergänzt dann nur das Fehlende, du ersetzt die Antwort durch die neue.',
     knopf: 'nachbesserung',
   },
   allgemein: {

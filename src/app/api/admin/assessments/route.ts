@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
     .eq('is_active', true)
     .maybeSingle()
   if (!targetDepartment) {
-    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+    return NextResponse.json({ error: 'Dieser Bereich ist nicht verfügbar.' }, { status: 400 })
   }
 
   // Fragen serverseitig prüfen: aktiv, Multiple-Choice, Fachbereichs-Pool

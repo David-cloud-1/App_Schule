@@ -55,7 +55,7 @@ export function WerkzeugkisteSeite() {
               {reiter === 'materialien' && (
                 <Button variant="outline" onClick={() => setLeereSeiteOffen(true)} className="min-h-11 rounded-2xl border-ws-line px-5 font-semibold">
                   <PencilRuler className="mr-2 size-5" aria-hidden />
-                  Leere Seite anlegen
+                  Eigene Seite bauen
                 </Button>
               )}
               <Button asChild className={HAUPTAKTION_KLASSE}>

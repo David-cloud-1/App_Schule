@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     .eq('is_active', true)
     .maybeSingle()
   if (!department) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden.' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden.' }, { status: 404 })
   }
 
   if (subject_id) {

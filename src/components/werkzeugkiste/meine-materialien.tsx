@@ -232,7 +232,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
             {onLeereSeite && (
               <Button variant="outline" onClick={onLeereSeite} className={`${NEBENAKTION} px-5`}>
                 <PencilRuler className="mr-2 size-5" aria-hidden />
-                Leere Seite anlegen
+                Eigene Seite bauen
               </Button>
             )}
           </div>
@@ -287,7 +287,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
           className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-ws-line bg-ws-surface px-3 text-sm font-normal"
         >
           <Checkbox id="wk-nur-oeffentlich" checked={nurOeffentlich} onCheckedChange={(an) => setNurOeffentlich(an === true)} />
-          Nur öffentliche
+          Nur mit Azubi-Link
         </Label>
         <AdminSegmented value={herkunft} onChange={setHerkunft} options={HERKUNFT_FILTER} ariaLabel="Nach Herkunft filtern" />
       </div>
@@ -322,7 +322,7 @@ export function MeineMaterialien({ onLeer, onLeereSeite }: { onLeer?: (leer: boo
                     <TableHead className="text-ws-muted">Titel</TableHead>
                     <TableHead className="text-ws-muted">Werkzeug</TableHead>
                     <TableHead className="text-ws-muted">Von</TableHead>
-                    <TableHead className="text-ws-muted">Regal</TableHead>
+                    <TableHead className="text-ws-muted">Fürs Kollegium (Regal)</TableHead>
                     <TableHead className="text-ws-muted">Erstellt</TableHead>
                     <TableHead className="text-right text-ws-muted">Aktionen</TableHead>
                   </TableRow>
@@ -473,19 +473,19 @@ function TitelZelle({ z }: { z: MaterialZeile }) {
         )}
         {z.entwurfOffen && (
           <Badge
-            title="Es gibt unveröffentlichte Änderungen im Baukasten"
+            title="Im Baukasten gibt es Änderungen, die Azubis und Kollegium noch nicht sehen"
             className="rounded-full border border-ws-gold/30 bg-ws-gold/15 px-2.5 py-0.5 text-xs font-semibold text-ws-gold hover:bg-ws-gold/15"
           >
-            Nicht veröffentlicht
+            Änderungen noch nicht übernommen
           </Badge>
         )}
         {z.oeffentlich && (
           <Badge
-            title={`Öffentlicher Link aktiv · ${z.oeffentlich.aufrufe} ${z.oeffentlich.aufrufe === 1 ? 'Aufruf' : 'Aufrufe'}`}
+            title={`Für Azubis (Link): an · ${z.oeffentlich.aufrufe} ${z.oeffentlich.aufrufe === 1 ? 'Aufruf' : 'Aufrufe'}`}
             className="rounded-full border border-ws-orange/30 bg-ws-orange/15 px-2.5 py-0.5 text-xs font-semibold text-ws-orange hover:bg-ws-orange/15"
           >
             <Globe className="mr-1 size-3" aria-hidden />
-            Öffentlich
+            Für Azubis (Link): an
           </Badge>
         )}
         {hatBaukastenAlsHaupt(z) ? (
@@ -788,15 +788,15 @@ function ZeilenMenue({
             <DropdownMenuItem disabled className={`${punkt} items-start`}>
               <Share2 className="mt-0.5 size-4" aria-hidden />
               <span className="grid">
-                Teilen …
-                <span className="text-xs text-ws-faint">Erst veröffentlichen</span>
+                Fürs Kollegium (Regal) …
+                <span className="text-xs text-ws-faint">Erst Änderungen übernehmen</span>
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem disabled className={`${punkt} items-start`}>
               <Globe className="mt-0.5 size-4" aria-hidden />
               <span className="grid">
                 {LINK_TEXTE.erzeugen} …
-                <span className="text-xs text-ws-faint">Erst veröffentlichen</span>
+                <span className="text-xs text-ws-faint">Erst Änderungen übernehmen</span>
               </span>
             </DropdownMenuItem>
           </>
@@ -804,13 +804,13 @@ function ZeilenMenue({
         {!entwurf && !erst && (
           <DropdownMenuItem className={punkt} onSelect={() => setTeilen({ id: z.id, titel: z.titel, linkMoeglich: kannLinkHaben(z.format, z.hatDatei) })}>
             <Share2 className="size-4" aria-hidden />
-            Teilen …
+            Fürs Kollegium (Regal) …
           </DropdownMenuItem>
         )}
         {!entwurf && !erst && kannLinkHaben(z.format, z.hatDatei) && (
           <DropdownMenuItem className={punkt} onSelect={() => setLink({ id: z.id, titel: z.titel })}>
             <Globe className="size-4" aria-hidden />
-            {z.oeffentlich ? 'Öffentlicher Link …' : `${LINK_TEXTE.erzeugen} …`}
+            {z.oeffentlich ? 'Für Azubis (Link) …' : `${LINK_TEXTE.erzeugen} …`}
           </DropdownMenuItem>
         )}
         {!entwurf && (

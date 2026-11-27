@@ -99,7 +99,7 @@ function analyzeInput(value: string): ParseState {
       return { status: 'invalid', reason: 'Das ist kein JSON-Objekt. Bitte die vollständige Antwort von Claude.ai einfügen.' }
     }
     if (!('rows' in parsed)) {
-      return { status: 'no_rows', reason: 'Das JSON hat kein "rows"-Feld. Hast du den Prompt verändert? Bitte unverändert verwenden.' }
+      return { status: 'no_rows', reason: 'Das JSON hat kein "rows"-Feld. Hast du den Auftrag für die KI verändert? Bitte unverändert verwenden.' }
     }
     if (!Array.isArray(parsed.rows) || parsed.rows.length === 0) {
       return { status: 'no_rows', reason: 'Das "rows"-Feld ist leer oder kein Array. Claude.ai hat keine Fragen generiert.' }
@@ -189,7 +189,7 @@ function ManualImportSection() {
           if (details['rows']) fieldErrors.push('rows: ' + details['rows'].join(', '))
           const hint = fieldErrors.length > 0
             ? `Formatfehler: ${fieldErrors.join(' · ')}`
-            : 'Das JSON-Format stimmt nicht. Hast du den Prompt unverändert verwendet?'
+            : 'Das JSON-Format stimmt nicht. Hast du den Auftrag für die KI unverändert verwendet?'
           toast.error(hint)
         } else {
           toast.error(data?.error ?? 'Import fehlgeschlagen')
@@ -242,7 +242,7 @@ function ManualImportSection() {
         <div className="flex items-center gap-2">
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">1</span>
           <p className="text-sm font-semibold text-ws-text">
-            Prompt kopieren und in{' '}
+            Auftrag für die KI kopieren und in{' '}
             <a
               href="https://claude.ai"
               target="_blank"
@@ -261,7 +261,7 @@ function ManualImportSection() {
             </pre>
           ) : promptError ? (
             <p className="text-sm text-ws-red bg-ws-bg rounded-xl p-4">
-              Der Prompt konnte nicht geladen werden. Bitte Seite neu laden.
+              Der Auftrag für die KI konnte nicht geladen werden. Bitte Seite neu laden.
             </p>
           ) : (
             <Skeleton className="h-48 w-full rounded-xl bg-ws-bg" />
@@ -442,7 +442,7 @@ function AutoGenerationSection({
               </Badge>
             </p>
             <p className="text-xs text-ws-muted mt-0.5">
-              PDF/DOCX hochladen → KI generiert Fragen vollautomatisch. Verbraucht API-Guthaben — der Weg über den kopierten Prompt oben ist kostenlos.
+              PDF/DOCX hochladen → KI generiert Fragen vollautomatisch. Verbraucht API-Guthaben — der Weg über den kopierten Auftrag oben ist kostenlos.
             </p>
           </div>
         </div>

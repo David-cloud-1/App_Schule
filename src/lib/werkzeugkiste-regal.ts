@@ -17,7 +17,7 @@ export const SUCHE_MAX = 100
 
 export const STUFEN: { id: SichtbarkeitWahl; label: string }[] = [
   { id: 'privat', label: 'Nur ich' },
-  { id: 'fachbereich', label: 'Mein Fachbereich' },
+  { id: 'fachbereich', label: 'Mein Bereich' },
   { id: 'alle', label: 'Alle Lehrkräfte' },
   { id: 'ausgewaehlte', label: 'Ausgewählte Kolleginnen und Kollegen' },
 ]
@@ -89,7 +89,7 @@ export const MODERATION_SEITE = 50
 
 /** „Fachbereich“, „alle“, „5 Personen“ — Stufe in der Moderationstabelle */
 export function stufeKurz(stufe: RegalStufe): string {
-  return stufe === 'alle' ? 'Alle Lehrkräfte' : stufe === 'fachbereich' ? 'Fachbereich' : 'Ausgewählte'
+  return stufe === 'alle' ? 'Alle Lehrkräfte' : stufe === 'fachbereich' ? 'Bereich' : 'Ausgewählte'
 }
 
 export type RegalSortierung = 'neueste' | 'geladen'
@@ -153,13 +153,13 @@ export interface FreigabeEingabe {
 
 // ── Anzeige ────────────────────────────────────────────────────────────────
 
-/** Pill in der Spalte „Regal“ von Meine Materialien */
+/** Pill in der Spalte „Fürs Kollegium (Regal)“ von Meine Materialien: an / aus (PROJ-130) */
 export function regalPill(r: MaterialRegal | null | undefined): { text: string; ton: 'still' | 'gruen' | 'blau' | 'rot' } {
-  if (!r) return { text: 'privat', ton: 'still' }
+  if (!r) return { text: 'aus', ton: 'still' }
   if (r.entnommen) return { text: 'vom Admin aus dem Regal genommen', ton: 'rot' }
-  if (r.stufe === 'alle') return { text: 'alle', ton: 'gruen' }
-  if (r.stufe === 'fachbereich') return { text: 'Fachbereich', ton: 'blau' }
-  return { text: r.personen === 1 ? '1 Person' : `${r.personen} Personen`, ton: 'blau' }
+  if (r.stufe === 'alle') return { text: 'an · alle', ton: 'gruen' }
+  if (r.stufe === 'fachbereich') return { text: 'an · Bereich', ton: 'blau' }
+  return { text: r.personen === 1 ? 'an · 1 Person' : `an · ${r.personen} Personen`, ton: 'blau' }
 }
 
 /** Toast nach dem Speichern */
@@ -168,7 +168,7 @@ export function teilenToast(stufe: SichtbarkeitWahl, personen = 0): string {
     case 'privat':
       return 'Aus dem Regal genommen. Nur du siehst das Material.'
     case 'fachbereich':
-      return 'Mit deinem Fachbereich geteilt'
+      return 'Mit deinem Bereich geteilt'
     case 'alle':
       return 'Mit allen Lehrkräften geteilt'
     case 'ausgewaehlte':
@@ -187,7 +187,7 @@ export function stufenText(stufe: SichtbarkeitWahl, bereichName?: string): strin
     case 'privat':
       return 'Nur du siehst dieses Material.'
     case 'fachbereich':
-      return bereichName ? `Alle Lehrkräfte in ${bereichName} sehen es im Regal.` : 'Alle Lehrkräfte in den gewählten Fachbereichen sehen es im Regal.'
+      return bereichName ? `Alle Lehrkräfte in ${bereichName} sehen es im Regal.` : 'Alle Lehrkräfte in den gewählten Bereichen sehen es im Regal.'
     case 'alle':
       return 'Alle Lehrkräfte der Schule sehen es im Regal.'
     case 'ausgewaehlte':

@@ -29,7 +29,7 @@ export function HofIconPicker({ departmentCode, category, value, onChange }: Pro
   if (icons.length === 0) {
     return (
       <p className="text-xs text-ws-faint py-2">
-        Für deinen Fachbereich sind für diese Kategorie noch keine Illustrationen hinterlegt.
+        Für deinen Bereich sind für diese Kategorie noch keine Illustrationen hinterlegt.
       </p>
     )
   }

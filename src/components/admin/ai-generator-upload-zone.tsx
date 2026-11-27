@@ -132,15 +132,15 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
     <div className="space-y-4">
       {/* Metadata selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {/* Klassenstufe */}
+        {/* Stufe */}
         <div className="space-y-1.5">
-          <Label className="text-ws-text text-sm">Klassenstufe</Label>
+          <Label className="text-ws-text text-sm">Stufe</Label>
           <Select value={classLevel} onValueChange={setClassLevel}>
             <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-              <SelectItem value="all">Alle Klassenstufen</SelectItem>
+              <SelectItem value="all">Alle Stufen</SelectItem>
               {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>

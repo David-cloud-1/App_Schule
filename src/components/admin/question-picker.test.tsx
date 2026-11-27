@@ -13,20 +13,20 @@ const q = (over: Partial<PickerQuestion>): PickerQuestion => ({
 })
 
 describe('QuestionPicker – PROJ-46', () => {
-  it('leitet die Klassenstufen-Filteroptionen aus den geladenen Fragen ab, nicht aus einem Bereichs-Kontext', () => {
+  it('leitet die Stufen-Filteroptionen aus den geladenen Fragen ab, nicht aus einem Bereichs-Kontext', () => {
     const questions = [
       q({ id: 'a', class_level: 11 }),
       q({ id: 'b', class_level: 10 }),
       q({ id: 'c', class_level: null }),
     ]
     render(<QuestionPicker questions={questions} selectedIds={new Set()} onChange={() => {}} />)
-    const select = screen.getByLabelText('Klasse')
+    const select = screen.getByLabelText('Stufe')
     // nur die tatsächlich vorkommenden Stufen, aufsteigend sortiert
-    expect(within(select).queryByText('Klasse 12')).not.toBeInTheDocument()
+    expect(within(select).queryByText('Stufe 12')).not.toBeInTheDocument()
     fireEvent.click(select)
-    expect(screen.getByRole('option', { name: 'Klasse 10' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'Klasse 11' })).toBeInTheDocument()
-    expect(screen.queryByRole('option', { name: 'Klasse 12' })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Stufe 10' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Stufe 11' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Stufe 12' })).not.toBeInTheDocument()
   })
 
   it('zeigt das Schild „Meine Frage“ nur bei privaten Fragen, nie bei Pool-Fragen', () => {

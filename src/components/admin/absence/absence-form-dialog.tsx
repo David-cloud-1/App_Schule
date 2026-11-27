@@ -25,6 +25,7 @@ import {
   type AbsenceType,
   type TeacherOption,
 } from '@/lib/absence'
+import { ABTEILUNG_ERKLAERUNG } from '@/lib/begriffe'
 import { cn } from '@/lib/utils'
 
 interface OverlapHit {
@@ -389,6 +390,7 @@ export function AbsenceFormDialog({
 
           <fieldset>
             <legend className="text-sm font-medium text-ws-text">Abteilungen</legend>
+            <p className="mt-1 text-xs text-ws-muted">{ABTEILUNG_ERKLAERUNG}</p>
             <div className="mt-1.5 space-y-1">
               <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-ws-raised">
                 <Checkbox checked={values.allDepartments} onCheckedChange={(on) => set('allDepartments', on === true)} />

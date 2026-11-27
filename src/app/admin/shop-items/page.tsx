@@ -30,6 +30,7 @@ import { HofRarityLabel } from '@/components/hof-rarity-frame'
 import { hofCategoryLabel, type HofCategory } from '@/lib/hof-icons'
 import type { HofRarity } from '@/lib/hof-rarity'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { BEGRIFFE } from '@/lib/begriffe'
 import { AdminErrorState, AdminEmptyState } from '@/components/admin/admin-states'
 import { LastChangedLine } from '@/components/admin/content-meta'
 
@@ -93,7 +94,7 @@ export default function AdminShopItemsPage() {
         toast.error(data?.error ?? 'Status konnte nicht geändert werden.')
         return
       }
-      toast.success(next ? 'Item aktiviert' : 'Item deaktiviert')
+      toast.success(next ? 'Gegenstand aktiviert' : 'Gegenstand deaktiviert')
       load()
     } catch (err) {
       console.error(err)
@@ -107,9 +108,9 @@ export default function AdminShopItemsPage() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title={<>{hofShortName}-Items</>}
+        title={BEGRIFFE.shopGegenstaende}
         description={
-          loading && items.length === 0 ? 'Wird geladen …' : <>{items.length} {items.length === 1 ? 'Item' : 'Items'} im {hofName}-Katalog</>
+          loading && items.length === 0 ? 'Wird geladen …' : <>{items.length} {items.length === 1 ? 'Gegenstand' : 'Gegenstände'} im {hofName}-Katalog</>
         }
         actions={
           showEmpty || needsDepartment ? undefined : (
@@ -121,25 +122,25 @@ export default function AdminShopItemsPage() {
               className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Neues Item
+              Neuer Gegenstand
             </Button>
           )
         }
       />
 
       {loadFailed ? (
-        <AdminErrorState message="Die Items konnten gerade nicht geladen werden." onRetry={load} />
+        <AdminErrorState message="Die Gegenstände konnten gerade nicht geladen werden." onRetry={load} />
       ) : needsDepartment ? (
         <AdminEmptyState
           icon={Store}
           title="Bitte wähle einen Bereich"
-          description="Items gehören zu einem Bereich. Wähle oben in der Bereichsleiste Spedition oder Tourismus."
+          description="Shop-Gegenstände gehören zu einem Bereich. Wähle in der Seitenleiste bei „Bereich“ Spedition oder Tourismus."
         />
       ) : showEmpty ? (
         <AdminEmptyState
           icon={Store}
-          title={`Noch keine ${hofShortName}-Items`}
-          description="Lege das erste Item für den Katalog an."
+          title={`Noch keine Gegenstände für ${hofShortName}`}
+          description="Lege den ersten Gegenstand für den Katalog an."
           action={
             <Button
               onClick={() => {
@@ -149,7 +150,7 @@ export default function AdminShopItemsPage() {
               className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Neues Item
+              Neuer Gegenstand
             </Button>
           }
         />
@@ -158,7 +159,7 @@ export default function AdminShopItemsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-ws-bg hover:bg-ws-bg border-ws-line">
-                <TableHead className="text-ws-muted">Item</TableHead>
+                <TableHead className="text-ws-muted">Gegenstand</TableHead>
                 <TableHead className="text-ws-muted">Kategorie</TableHead>
                 <TableHead className="text-ws-muted">Seltenheit</TableHead>
                 <TableHead className="text-ws-muted">Preis</TableHead>
@@ -197,7 +198,7 @@ export default function AdminShopItemsPage() {
               ) : items.length === 0 ? (
                 <TableRow className="border-ws-line">
                   <TableCell colSpan={7} className="text-center text-ws-muted py-10">
-                    Noch keine {hofShortName}-Items angelegt.
+                    Noch keine Gegenstände für {hofShortName} angelegt.
                   </TableCell>
                 </TableRow>
               ) : (

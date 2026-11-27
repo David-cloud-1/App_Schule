@@ -184,3 +184,29 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 - **Block-Leiste beim Anklicken:** immer Name · Bearbeiten · Darunter einfügen · Duplizieren · ⋯ · Löschen (was nicht geht, fehlt; die Reihenfolge bleibt). „Bearbeiten“, Doppelklick und Enter öffnen die Leiste oben, wo das in der Seite geht, sonst die Schublade.
 - **Maße:** Knopfhöhe 36 px am Rechner, 44 px auf Touch-Geräten. Rundung 8 px, Leiste 10 px. Ist die Leiste schmaler als 560 px, bleibt sie einzeilig und die Mitte scrollt waagerecht.
 - **Regel:** Neue Bearbeitungsstellen übernehmen diese Leiste und Quelle, statt eine eigene Optik oder eigene Wörter zu erfinden. Der Test `bedien-design.test.tsx` schlägt fehl, wenn eine Stelle eine eigene Bedien-Farbe, eigene Beschriftungen oder Kürzel einbaut. Nach Änderungen an der Quelle `npm run schreibwerk:bauen` und `npm run aufgabenwerk:bauen`.
+
+### Wörterliste (PROJ-130)
+**Ein Wort, eine Bedeutung.** Gilt für alle sichtbaren Texte im Lehrkräfte-Bereich, „Übungsprüfung“ auch auf der Schülerseite. Namen für Menü und Seitenköpfe stehen in `src/lib/begriffe.ts`, die Wörter des Baukastens in `bedien-woerter.ts`. Der Test `src/lib/begriffe.test.ts` schlägt fehl, wenn ein alter Begriff zurückkommt. Code, Datenbank und Seitenadressen behalten ihre Namen.
+
+| Wir sagen | Bedeutung | Nicht mehr |
+|---|---|---|
+| **Bereich** | Spedition oder Tourismus | Fachbereich, Zielbereich |
+| **Abteilung** (mit Erklärsatz) | Abteilung der Schule, nur bei den Abwesenheiten | – |
+| **Übungsprüfung** | frei, ohne Note | Prüfungssimulation, Prüfungsset, Prüfung üben |
+| **Stufe** | Jahrgangsstufe 10, 11, 12 | Klasse, Klassenstufe, „Kl.“ |
+| **Klasse** | nur SP10C usw. | – |
+| **Thema** | nur Lernthema | – |
+| **Kapitel** | Abschnitt einer Lernseite im Baukasten | Thema |
+| **Abwesenheiten** | wer fehlt wann | Kalender |
+| **Vertretung fehlt** | Status und Filter bei Abwesenheiten | Offen |
+| **Offen** | nur: Leistungsnachweis läuft | – (Meldungen: „Neu“ / „Zu prüfen“, Fragentyp: „Freitext“) |
+| **Für Azubis (Link)**: an / aus | Link ohne Konto | Öffentlich, Link für alle |
+| **Fürs Kollegium (Regal)**: an / aus | Teilen mit Lehrkräften | Teilen …, privat |
+| **Änderungen übernehmen** | neue Fassung im Baukasten | Veröffentlichen (im Lehrerzimmer bleibt es) |
+| **Kopie bearbeiten** | aus dem Regal | Anpassen |
+| **Eigene Seite bauen** | leere Seite im Baukasten | Leere Seite anlegen |
+| **Shop-Gegenstände** | Katalog im Shop | Items, Hof-Items |
+| **Level**, **Lernrunde** | – | Lvl, Session |
+| **Auftrag für die KI**, **Antwort der KI** | kopieren und einfügen | Prompt, Antwort (als Schrittname) |
+
+Jede Seitenbeschreibung ist **ein** Satz, der sagt, was man auf der Seite tut. „Nicht zu verwechseln mit …“ zeigt einen unklaren Begriff und ist nicht erlaubt.

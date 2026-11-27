@@ -71,7 +71,7 @@ export const CONTENT_TYPE_LABEL: Record<KontoContentType, string> = {
   question: 'Frage',
   topic: 'Thema',
   subject: 'Fach',
-  exam_question_set: 'Prüfungsset',
+  exam_question_set: 'Übungsprüfung',
 }
 
 /** Länge des Suchtexts im Direktlink: lang genug zum Finden, kurz genug für eine saubere Adresse */

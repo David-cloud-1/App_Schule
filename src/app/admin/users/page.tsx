@@ -728,7 +728,7 @@ export default function AdminUsersPage() {
                             // Bereich verschieben — Azubis: beide Admin-Rollen; Lehrer-Konten: nur Super-Admin
                             {
                               key: 'move',
-                              label: 'In anderen Fachbereich verschieben',
+                              label: 'In anderen Bereich verschieben',
                               icon: <MapPinned className="size-4" />,
                               onSelect: () => setMoveTarget(u),
                               hidden: !canMove,

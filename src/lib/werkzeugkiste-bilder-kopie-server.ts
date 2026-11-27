@@ -26,7 +26,7 @@ import {
 /** Was der Kern nach dem Neukodieren höchstens liefern darf (wie beim Hochladen) */
 const ERGEBNIS_MAX_BYTES = 3_000_000
 
-export const ZU_GROSS = 'Die Seite wäre mit diesen Bildern zu groß zum Veröffentlichen (8 MB). Es wurde nichts eingefügt. Lass Bilder weg oder teile das Material auf.'
+export const ZU_GROSS = 'Die Seite wäre mit diesen Bildern zu groß, um die Änderungen zu übernehmen (8 MB). Es wurde nichts eingefügt. Lass Bilder weg oder teile das Material auf.'
 
 type Ablage = Pick<AblaufZeile, 'owner_id' | 'id'>
 

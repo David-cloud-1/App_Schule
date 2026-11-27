@@ -133,12 +133,12 @@ export function DifficultQuestions() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="df-class" className="text-ws-muted">Klassenstufe</Label>
+          <Label htmlFor="df-class" className="text-ws-muted">Stufe</Label>
           <Select value={classLevel} onValueChange={(v) => { setClassLevel(v); setTopicKey(null) }}>
             <SelectTrigger id="df-class" className="min-h-11 w-full"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value={ALL}>Alle Stufen</SelectItem>
-              {[10, 11, 12].map((c) => <SelectItem key={c} value={String(c)}>Klasse {c}</SelectItem>)}
+              {[10, 11, 12].map((c) => <SelectItem key={c} value={String(c)}>Stufe {c}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

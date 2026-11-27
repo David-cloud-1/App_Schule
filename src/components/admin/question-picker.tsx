@@ -26,7 +26,7 @@ type PickerSort = 'newest' | 'class' | 'subject' | 'topic' | 'difficulty' | 'tex
 
 const SORT_LABELS: Record<PickerSort, string> = {
   newest: 'Neueste zuerst',
-  class: 'Klasse',
+  class: 'Stufe',
   subject: 'Fach',
   topic: 'Thema',
   difficulty: 'Schwierigkeit',
@@ -72,7 +72,7 @@ interface Props {
 export function QuestionPicker({ questions, selectedIds, onChange, minSelection = 5, onOpenQuestion, onDeletePrivate, canEditPool = false, fill = false, actions }: Props) {
   const classLevelOptions = useMemo(() => {
     const levels = [...new Set(questions.map((q) => q.class_level).filter((l): l is number => l != null))]
-    return levels.sort((a, b) => a - b).map((l) => ({ value: String(l), label: `Klasse ${l}` }))
+    return levels.sort((a, b) => a - b).map((l) => ({ value: String(l), label: `Stufe ${l}` }))
   }, [questions])
   const [search, setSearch] = useState('')
   const [classLevel, setClassLevel] = useState('all')
@@ -145,9 +145,9 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
 
       <div className="grid shrink-0 grid-cols-1 gap-2 sm:grid-cols-3">
         <Select value={classLevel} onValueChange={(v) => { setClassLevel(v); setTopic('all') }}>
-          <SelectTrigger className={TRIGGER} aria-label="Klasse"><SelectValue /></SelectTrigger>
+          <SelectTrigger className={TRIGGER} aria-label="Stufe"><SelectValue /></SelectTrigger>
           <SelectContent className={CONTENT}>
-            <SelectItem value="all">Klasse: gemischt</SelectItem>
+            <SelectItem value="all">Stufe: gemischt</SelectItem>
             {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -223,7 +223,7 @@ export function QuestionPicker({ questions, selectedIds, onChange, minSelection 
                     </p>
                     <span className="text-xs text-ws-blue">
                       {q.difficulty}
-                      {q.class_level != null && ` · Kl. ${q.class_level}`}
+                      {q.class_level != null && ` · Stufe ${q.class_level}`}
                       {q.subject_codes.length > 0 && ` · ${q.subject_codes.join('/')}`}
                       {q.topic && ` · ${q.topic}`}
                     </span>

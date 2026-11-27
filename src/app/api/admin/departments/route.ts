@@ -47,7 +47,7 @@ export async function GET() {
 
     if (error) {
       console.error('[GET /api/admin/departments]', error)
-      return NextResponse.json({ error: 'Fachbereiche konnten nicht geladen werden.' }, { status: 500 })
+      return NextResponse.json({ error: 'Bereiche konnten nicht geladen werden.' }, { status: 500 })
     }
     return NextResponse.json({ departments: data ?? [] })
   }
@@ -60,7 +60,7 @@ export async function GET() {
 
   if (error) {
     console.error('[GET /api/admin/departments]', error)
-    return NextResponse.json({ error: 'Fachbereiche konnten nicht geladen werden.' }, { status: 500 })
+    return NextResponse.json({ error: 'Bereiche konnten nicht geladen werden.' }, { status: 500 })
   }
 
   const departments: Department[] = (data ?? []).map((row) =>
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Kürzel, Slug oder Adresse existiert bereits.' }, { status: 409 })
     }
     console.error('[POST /api/admin/departments]', error)
-    return NextResponse.json({ error: 'Fachbereich konnte nicht angelegt werden.' }, { status: 500 })
+    return NextResponse.json({ error: 'Bereich konnte nicht angelegt werden.' }, { status: 500 })
   }
 
   revalidateTag(DEPARTMENTS_CACHE_TAG, { expire: 0 })

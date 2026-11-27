@@ -37,11 +37,11 @@ describe('Prüfergebnis in Schritt 4 (PROJ-51)', () => {
     expect(screen.getByText('3 Kleinigkeiten wurden automatisch korrigiert.')).toBeInTheDocument()
   })
 
-  it('zeigt Befunde als Liste, sagt dass trotzdem gebaut wird, und bietet den Nachbesserungs-Prompt', () => {
+  it('zeigt Befunde als Liste, sagt dass trotzdem gebaut wird, und bietet den Nachbesserungs-Auftrag', () => {
     zeige({ ...basis, befunde: [{ text: 'Kapitel 3: Abbildung fehlt' }, { text: 'Kapitel 5: Frage ohne Lösung' }], nachbesserungsPrompt: 'Bitte korrigiere …' })
     expect(screen.getByText('2 Hinweise – die Datei wird trotzdem gebaut')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(2)
-    expect(screen.getByRole('button', { name: /Nachbesserungs-Prompt kopieren/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Nachbesserungs-Auftrag kopieren/ })).toBeInTheDocument()
   })
 
   it('bietet bei einem Fehler der Prüfstelle „Erneut versuchen“ an (BUG-4)', () => {

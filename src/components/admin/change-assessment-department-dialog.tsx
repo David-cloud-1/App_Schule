@@ -72,13 +72,13 @@ export function ChangeAssessmentDepartmentDialog({ open, onOpenChange, assessmen
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data?.error ?? 'Zielbereich konnte nicht geändert werden.')
+        toast.error(data?.error ?? 'Bereich konnte nicht geändert werden.')
         return
       }
       toast.success(
         data.removedCount > 0
-          ? `Zielbereich geändert – ${data.removedCount} Fragen aus dem alten Bereich entfernt`
-          : 'Zielbereich geändert',
+          ? `Bereich geändert – ${data.removedCount} Fragen aus dem alten Bereich entfernt`
+          : 'Bereich geändert',
       )
       onSaved()
       onOpenChange(false)
@@ -93,9 +93,9 @@ export function ChangeAssessmentDepartmentDialog({ open, onOpenChange, assessmen
     <Dialog open={open} onOpenChange={(o) => !saving && onOpenChange(o)}>
       <DialogContent className="max-w-md border-ws-line bg-ws-surface text-ws-text">
         <DialogHeader>
-          <DialogTitle>Zielbereich ändern</DialogTitle>
+          <DialogTitle>Bereich ändern</DialogTitle>
           <DialogDescription className="text-ws-muted">
-            Nach dem Öffnen des Nachweises ist der Zielbereich fest.
+            Nach dem Öffnen des Nachweises ist der Bereich fest.
           </DialogDescription>
         </DialogHeader>
 

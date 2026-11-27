@@ -143,7 +143,7 @@ export function BlockMenue({
                 <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
                   {struktur.chapters.map((t, ti) => (
                     <DropdownMenuItem key={ti} onSelect={() => onVerschiebe({ thema: ti, index: Number.MAX_SAFE_INTEGER })}>
-                      <span className="max-w-64 truncate">{t.title || `Thema ${ti + 1}`}</span>
+                      <span className="max-w-64 truncate">{t.title || `Kapitel ${ti + 1}`}</span>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuSubContent>
@@ -210,7 +210,7 @@ export function BlockMenue({
                     <SquareDashedMousePointer className="mr-2 size-4" aria-hidden /> Alle gleichen auswählen
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
-                    <DropdownMenuItem onSelect={() => onGleiche(true)}>In diesem Thema</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onGleiche(true)}>In diesem Kapitel</DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onGleiche(false)}>Auf der ganzen Seite</DropdownMenuItem>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>

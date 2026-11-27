@@ -62,7 +62,7 @@ export async function PATCH(
       .neq('id', id)
       .maybeSingle()
     if (clash) {
-      return NextResponse.json({ error: 'Fach-Code existiert in diesem Fachbereich bereits.' }, { status: 409 })
+      return NextResponse.json({ error: 'Fach-Code existiert in diesem Bereich bereits.' }, { status: 409 })
     }
   }
 

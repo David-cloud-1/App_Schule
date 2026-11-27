@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   const departmentSubjects = await fetchDepartmentSubjects(supabase, departmentId)
   if (subject_code && !(await resolveDraftSubject(supabase, departmentId, { subject_code }, departmentSubjects))) {
     return NextResponse.json(
-      { error: `Fach "${subject_code}" gibt es in diesem Fachbereich nicht.` },
+      { error: `Fach "${subject_code}" gibt es in diesem Bereich nicht.` },
       { status: 400 }
     )
   }

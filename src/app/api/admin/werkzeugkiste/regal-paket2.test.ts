@@ -125,7 +125,7 @@ describe('Anpassen – Kopie ohne Skript', () => {
     mitQuelle({ auszug_am: null })
     const r = await anpassen(json({}), ctxF)
     expect(r.status).toBe(409)
-    expect((await r.json()).error).toMatch(/nicht anpassen/)
+    expect((await r.json()).error).toMatch(/keine Kopie bearbeiten|leider keine Kopie/)
     mitQuelle({ antwort: null })
     expect((await anpassen(json({}), ctxF)).status).toBe(409)
     expect(svc.writes).toHaveLength(0)

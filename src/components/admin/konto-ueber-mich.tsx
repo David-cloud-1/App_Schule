@@ -197,8 +197,8 @@ export function KontoUeberMich({ head }: { head: KontoHead }) {
 
       <dl className="grid gap-4 sm:grid-cols-2">
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wider text-ws-faint">Fachbereich</dt>
-          <dd className="mt-1 text-sm text-ws-text">{head.departmentName ?? 'Kein Fachbereich'}</dd>
+          <dt className="text-xs font-semibold uppercase tracking-wider text-ws-faint">Bereich</dt>
+          <dd className="mt-1 text-sm text-ws-text">{head.departmentName ?? 'Kein Bereich'}</dd>
         </div>
         <div>
           <dt className="text-xs font-semibold uppercase tracking-wider text-ws-faint">Kürzel</dt>

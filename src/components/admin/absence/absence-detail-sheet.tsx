@@ -158,7 +158,7 @@ export function AbsenceDetailSheet({
                     {absence.substituteStatus !== 'open' && (
                       <Button disabled={busy} variant="outline" onClick={() => onSetStatus('open')} className="min-h-11 rounded-xl">
                         <Hourglass className="mr-2 size-4" aria-hidden />
-                        Zurück auf offen
+                        Zurück auf „Vertretung fehlt“
                       </Button>
                     )}
                   </div>
@@ -201,7 +201,7 @@ export function AbsenceDetailSheet({
             <SheetHeader className="text-left">
               <SheetTitle className="text-ws-text">Eintrag wurde gelöscht</SheetTitle>
               <SheetDescription className="text-ws-muted">
-                Jemand hat diese Abwesenheit gerade entfernt. Der Kalender zeigt den aktuellen Stand.
+                Jemand hat diese Abwesenheit gerade entfernt. Die Liste zeigt den aktuellen Stand.
               </SheetDescription>
             </SheetHeader>
           )}
@@ -215,7 +215,7 @@ export function AbsenceDetailSheet({
             <AlertDialogDescription className="text-ws-muted">
               {absence ? `${absence.personName}, ${formatRange(absence)}. ` : ''}
               {absence?.substituteStatus === 'entered'
-                ? 'Für diese Abwesenheit ist die Vertretung schon in Untis erfasst. Der Eintrag bleibt deshalb gelb im Kalender sichtbar, bis die Vertretungsplaner die Vertretung zurückgenommen haben. Du kannst die Löschung zurücknehmen.'
+                ? 'Für diese Abwesenheit ist die Vertretung schon in Untis erfasst. Der Eintrag bleibt deshalb gelb in den Abwesenheiten sichtbar, bis die Vertretungsplaner die Vertretung zurückgenommen haben. Du kannst die Löschung zurücknehmen.'
                 : 'Du kannst das gleich danach noch rückgängig machen.'}
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -381,7 +381,7 @@ export const WERKZEUGE: Werkzeug[] = [
           { key: 'mc', label: 'Multiple Choice' },
           { key: 'cloze', label: 'Lückentext' },
           { key: 'tf', label: 'Wahr/Falsch' },
-          { key: 'open', label: 'Offen (Freitext)' },
+          { key: 'open', label: 'Freitext' },
         ],
       },
       { id: 'videolen', label: 'Videolänge (optional)', art: 'text', ort: 'mehr', standard: '', platzhalter: 'mm:ss, z. B. 8:30' },
@@ -464,7 +464,7 @@ export const WERKZEUGE: Werkzeug[] = [
         ort: 'mehr',
         standard: 'offen,mc,rechnen',
         optionen: [
-          { key: 'offen', label: 'Offen (Freitext)' },
+          { key: 'offen', label: 'Freitext' },
           { key: 'mc', label: 'Multiple Choice / Wahr-Falsch' },
           { key: 'rechnen', label: 'Rechenaufgaben' },
           { key: 'fall', label: 'Situations-/Fallaufgabe' },
@@ -519,7 +519,7 @@ export const WERKZEUGE: Werkzeug[] = [
     aktiv: true,
     formate: [],
     tipps: [
-      'Die Werkzeugkiste schreibt den Liedtext. Singen muss ihn eine Musik-KI, dafür liegt im ZIP ein fertiger Prompt zum Kopieren (zum Beispiel für suno.com).',
+      'Die Werkzeugkiste schreibt den Liedtext. Singen muss ihn eine Musik-KI, dafür liegt im ZIP ein fertiger Auftrag für die KI zum Kopieren (zum Beispiel für suno.com).',
       'Das Karaoke-Blatt mit Lücken und seine Lösung funktionieren auch ohne Musik: Die Klasse kann den Text gemeinsam sprechen oder singen.',
       '„Ein Lied je Kapitel“ passt für längere Skripte, „Nur Refrain-Merksprüche“ für kurze Hooks zum Auswendiglernen.',
       'Prüfen Sie den Liedtext fachlich, bevor Sie ihn austeilen. Ein Reim darf nie eine falsche Aussage rechtfertigen.',
@@ -759,12 +759,12 @@ export type AblaufSchritt = 1 | 2 | 3 | 4 | 5
 export const ABLAUF_SCHRITTE: { nr: AblaufSchritt; label: string }[] = [
   { nr: 1, label: 'Skript' },
   { nr: 2, label: 'Einstellungen' },
-  { nr: 3, label: 'Prompt' },
-  { nr: 4, label: 'Antwort' },
+  { nr: 3, label: 'Auftrag kopieren' },
+  { nr: 4, label: 'Antwort der KI' },
   { nr: 5, label: 'Fertig' },
 ]
 
-/** Beim direkten Weg (PROJ-64) gibt es vier Schritte: Schritt 3 heißt „Erstellen“, Prompt und Antwort entfallen */
+/** Beim direkten Weg (PROJ-64) gibt es vier Schritte: Schritt 3 heißt „Erstellen“, Auftrag und Antwort entfallen */
 export const DIREKT_SCHRITTE: { nr: AblaufSchritt; label: string }[] = [
   { nr: 1, label: 'Skript' },
   { nr: 2, label: 'Einstellungen' },

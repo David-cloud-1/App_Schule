@@ -156,7 +156,7 @@ export function LinkFeld({
         <>
           <div className="space-y-2">
             <label htmlFor="wk-link-adresse" className="text-sm font-medium">
-              Dein Link für alle
+              Dein Link für Azubis
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
@@ -242,7 +242,7 @@ export function LinkDialog({
     <Dialog open={!!ziel} onOpenChange={(offen) => !offen && schliessen()}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-2xl border-ws-line bg-ws-surface text-ws-text sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Link für alle</DialogTitle>
+          <DialogTitle>Für Azubis (Link)</DialogTitle>
           <DialogDescription className="break-words text-ws-muted" title={ziel?.titel}>
             {ziel ? `„${ziel.titel}“` : ''}
           </DialogDescription>

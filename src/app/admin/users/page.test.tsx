@@ -40,7 +40,7 @@ describe('Nutzerverwaltung – Zeilenmenü je Rolle (PROJ-44, QA BUG-3/5a)', () 
 
   it('Bereichs-Admin: sperren und verschieben nur bei Azubis, bei Lehrer-Konten kein Menü', async () => {
     await setup('department_admin')
-    expect(menuOf('Anna Azubi')).toEqual(['In anderen Fachbereich verschieben', 'Passwort neu vergeben', 'Sperren'])
+    expect(menuOf('Anna Azubi')).toEqual(['In anderen Bereich verschieben', 'Passwort neu vergeben', 'Sperren'])
     closeMenu()
     for (const name of ['Petra Lehrkraft', 'Bernd Bereich']) {
       expect(screen.queryByRole('button', { name: `Weitere Aktionen: ${name}` })).not.toBeInTheDocument()
@@ -51,7 +51,7 @@ describe('Nutzerverwaltung – Zeilenmenü je Rolle (PROJ-44, QA BUG-3/5a)', () 
     await setup('admin')
     for (const name of ['Anna Azubi', 'Petra Lehrkraft', 'Bernd Bereich']) {
       const entries = menuOf(name)
-      expect(entries).toContain('In anderen Fachbereich verschieben')
+      expect(entries).toContain('In anderen Bereich verschieben')
       expect(entries).toContain('Sperren')
       expect(entries).toContain('Konto löschen')
       expect(entries.some((e) => e?.startsWith('Rolle ändern'))).toBe(true)

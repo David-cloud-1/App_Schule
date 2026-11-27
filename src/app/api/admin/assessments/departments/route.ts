@@ -20,7 +20,7 @@ export async function GET() {
     .order('created_at')
   if (error) {
     console.error('[GET /api/admin/assessments/departments]', error)
-    return NextResponse.json({ error: 'Fachbereiche konnten nicht geladen werden.' }, { status: 500 })
+    return NextResponse.json({ error: 'Bereiche konnten nicht geladen werden.' }, { status: 500 })
   }
 
   return NextResponse.json({

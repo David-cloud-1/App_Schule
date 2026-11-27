@@ -289,7 +289,7 @@ export function departmentLabel(a: Pick<Absence, 'allDepartments' | 'departments
 export function substituteLabel(status: SubstituteStatus): string {
   if (status === 'entered') return 'In Untis erfasst'
   if (status === 'not_needed') return 'Keine Vertretung nötig'
-  return 'Vertretung offen'
+  return 'Vertretung fehlt'
 }
 
 /* ------------------------------------------------------------- Formular */

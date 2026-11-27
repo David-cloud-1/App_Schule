@@ -635,10 +635,10 @@ function AdminQuestionsPageContent() {
           />
           <Select value={classLevelFilter} onValueChange={setClassLevelFilter}>
             <SelectTrigger className="w-[140px] bg-ws-surface border-ws-line text-ws-text">
-              <SelectValue placeholder="Klasse" />
+              <SelectValue placeholder="Stufe" />
             </SelectTrigger>
             <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-              <SelectItem value="all">Alle Klassen</SelectItem>
+              <SelectItem value="all">Alle Stufen</SelectItem>
               {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -694,7 +694,7 @@ function AdminQuestionsPageContent() {
                 <SelectValue placeholder="Jahrgangsstufe…" />
               </SelectTrigger>
               <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                <SelectItem value="_all">Alle Klassen</SelectItem>
+                <SelectItem value="_all">Alle Stufen</SelectItem>
                 {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -793,7 +793,7 @@ function AdminQuestionsPageContent() {
                 </TableHead>
                 <TableHead className="text-ws-muted hidden lg:table-cell">Thema</TableHead>
                 <TableHead className="hidden text-ws-muted sm:table-cell">Fach</TableHead>
-                <TableHead className="text-ws-muted hidden md:table-cell">Klasse</TableHead>
+                <TableHead className="text-ws-muted hidden md:table-cell">Stufe</TableHead>
                 <TableHead className="text-ws-muted hidden sm:table-cell">
                   <button
                     onClick={() => handleSort('difficulty')}
@@ -917,7 +917,7 @@ function AdminQuestionsPageContent() {
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-xs text-ws-muted">
                             {q.class_level != null ? (
-                              <span>Kl. {q.class_level}</span>
+                              <span>Stufe {q.class_level}</span>
                             ) : (
                               <span className="text-ws-line">—</span>
                             )}

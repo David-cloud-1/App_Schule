@@ -445,8 +445,8 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
   return (
     <div className="mx-auto w-full max-w-screen-2xl space-y-5">
       <AdminPageHeader
-        title="Kalender"
-        description="Wer fehlt wann? Trag Fortbildungen, Dienstreisen und andere Abwesenheiten ein, damit eine Vertretung geplant werden kann."
+        title="Abwesenheiten"
+        description="Trag Fortbildungen, Dienstreisen und andere Abwesenheiten ein, damit eine Vertretung geplant werden kann."
         actions={
           <Button
             onClick={() => openCreate()}
@@ -507,7 +507,7 @@ export function AbsenceCalendar({ initialSubstitute }: { initialSubstitute?: Sub
             onChange={(v) => setFilter('substitute', v)}
             options={[
               { value: 'alle', label: 'Alle' },
-              { value: 'open', label: 'Offen' },
+              { value: 'open', label: 'Vertretung fehlt' },
               { value: 'entered', label: 'In Untis erfasst' },
             ]}
           />
@@ -666,7 +666,7 @@ function Chip({ absence, day, highlighted, onOpen, showTime }: { absence: Absenc
     <button
       type="button"
       onClick={() => onOpen(absence)}
-      title={`${absence.personName}: ${absence.typeName}${timeText ? `, ${timeText} Uhr` : ''}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung offen' : entered ? ', In Untis erfasst' : ''}`}
+      title={`${absence.personName}: ${absence.typeName}${timeText ? `, ${timeText} Uhr` : ''}${cancelled ? ', gelöscht – Vertretung zurücknehmen' : open ? ', Vertretung fehlt' : entered ? ', In Untis erfasst' : ''}`}
       className={cn(
         'flex min-h-11 w-full items-center gap-1 border px-1.5 text-left text-xs font-medium sm:min-h-7',
         cancelled
@@ -695,7 +695,7 @@ function Chip({ absence, day, highlighted, onOpen, showTime }: { absence: Absenc
       {showTime && timeText && absence.dateFrom === day && <span className="shrink-0 font-normal">{timeText.slice(0, 5)}</span>}
       <span className="truncate font-semibold">{absence.personName}</span>
       {cancelled && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">gelöscht</span>}
-      {open && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">offen</span>}
+      {open && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">fehlt</span>}
       {entered && <span className="ml-auto shrink-0 text-[10px] font-bold uppercase">Untis</span>}
     </button>
   )

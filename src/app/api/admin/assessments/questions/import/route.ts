@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   // PROJ-46 (BUG-4): ein deaktivierter Bereich bekommt keinen neuen Inhalt
   // mehr — bestehende, bereits importierte Fragen bleiben davon unberührt.
   if (!(await isDepartmentActive(supabase, departmentId))) {
-    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+    return NextResponse.json({ error: 'Dieser Bereich ist nicht verfügbar.' }, { status: 400 })
   }
 
   // Eigener Bereich (PROJ-127): Super-Admin überall, jede Lehrer-Rolle im Bereich
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       return true
     })
     if (questions.length === 0) {
-      return NextResponse.json({ error: 'Alle Fragen existieren bereits im Fachbereich.' }, { status: 409 })
+      return NextResponse.json({ error: 'Alle Fragen existieren bereits im Bereich.' }, { status: 409 })
     }
   }
   const department = assessmentOnly ? await getDepartmentById(supabase, departmentId) : null
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
   // Ohne erkanntes Fachkürzel: Standardfach des ersten Prüfungsteils
   const defaultSubjectId = defaultSubjectIdFor(examParts, subjects)
   if (!defaultSubjectId) {
-    return NextResponse.json({ error: 'Für diesen Fachbereich sind keine Fächer eingerichtet.' }, { status: 500 })
+    return NextResponse.json({ error: 'Für diesen Bereich sind keine Fächer eingerichtet.' }, { status: 500 })
   }
 
   const subjectMap: Record<string, string> = {}

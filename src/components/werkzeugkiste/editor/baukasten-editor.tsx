@@ -399,7 +399,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       : gewaehlt.art === 'block'
         ? typName(String(z.struktur.chapters[gewaehlt.thema]?.elements[gewaehlt.block]?.type ?? ''))
         : gewaehlt.art === 'thema'
-          ? 'Thema'
+          ? 'Kapitel'
           : gewaehlt.art === 'deckblatt'
             ? 'Deckblatt'
             : 'Lernzielkontrolle'
@@ -565,7 +565,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (z.gesperrt) return
     const ziel = einfuegeZiel()
     if (!ziel) {
-      toast.info('Lege zuerst ein Thema an.')
+      toast.info('Lege zuerst ein Kapitel an.')
       return
     }
     let bloecke: Block[]
@@ -642,7 +642,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (ergebnis.orte.length > 0) waehleOrte(ergebnis.orte)
     else if (ergebnis.themaIndizes.length > 0) setAuswahl({ art: 'thema', thema: ergebnis.themaIndizes[0] })
     setVollbreit(false)
-    const teile = [themen.length === 1 ? '1 Thema' : themen.length > 1 ? `${themen.length} Themen` : '', bloecke.length > 0 ? blockZahl(bloecke.length) : '']
+    const teile = [themen.length === 1 ? '1 Kapitel' : themen.length > 1 ? `${themen.length} Kapitel` : '', bloecke.length > 0 ? blockZahl(bloecke.length) : '']
     toast.success(`${teile.filter(Boolean).join(' und ')} übernommen${r.herkunft ? ` (aus: ${r.herkunft})` : ''}`, {
       action: { label: 'Rückgängig', onClick: z.rueckgaengig },
     })
@@ -856,7 +856,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
     if (!dz) {
       const zl = einfuegeZiel()
       if (!zl) {
-        toast.info('Lege zuerst ein Thema an.')
+        toast.info('Lege zuerst ein Kapitel an.')
         return
       }
       dz = { art: 'einfuegen', ziel: zl }
@@ -1395,7 +1395,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       z.neuStart(z.struktur, null)
       v.setBefunde(r.befunde)
       setDialog(null)
-      toast.success('Veröffentlicht')
+      toast.success('Änderungen übernommen')
     } catch (e) {
       const f = e as { message: string; hinweis?: string }
       toast.error(f.hinweis ? `${f.message} ${f.hinweis}` : f.message)
@@ -1505,7 +1505,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
         disabled={!hatAenderungen || z.konflikt || !!z.gesperrt}
         onClick={() => setDialog('veroeffentlichen')}
       >
-        Veröffentlichen
+        Änderungen übernehmen
       </Button>
     </>
   )
@@ -1784,15 +1784,15 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
       <AlertDialog open={dialog === 'veroeffentlichen'} onOpenChange={(o) => !o && !laeuft && setDialog(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Neue Fassung veröffentlichen?</AlertDialogTitle>
+            <AlertDialogTitle>Änderungen übernehmen?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
                   Die neue Fassung wird für alle sichtbar, die das Material nutzen
                   {daten.oeffentlich && daten.imRegal
-                    ? ' – über den öffentlichen Link und im Regal'
+                    ? ' – über den Link für Azubis und im Regal'
                     : daten.oeffentlich
-                      ? ' – auch über den öffentlichen Link'
+                      ? ' – auch über den Link für Azubis'
                       : daten.imRegal
                         ? ' – auch im Regal'
                         : ''}
@@ -1800,7 +1800,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
                 </p>
                 {offeneHinweise > 0 && (
                   <p className="text-ws-orange">
-                    Die Prüfstelle hat {offeneHinweise} {offeneHinweise === 1 ? 'Hinweis' : 'Hinweise'}. Du kannst trotzdem veröffentlichen.
+                    Die Prüfstelle hat {offeneHinweise} {offeneHinweise === 1 ? 'Hinweis' : 'Hinweise'}. Du kannst die Änderungen trotzdem übernehmen.
                   </p>
                 )}
                 {beispiele.length > 0 && (
@@ -1808,9 +1808,9 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
                     {beispiele.length === 1 ? '1 Block enthält' : `${beispiele.length} Blöcke enthalten`} noch Beispielinhalt.
                   </p>
                 )}
-                {z.struktur.chapters.length === 0 && <p className="text-ws-orange">Das Material hat keine Themen mehr.</p>}
+                {z.struktur.chapters.length === 0 && <p className="text-ws-orange">Das Material hat keine Kapitel mehr.</p>}
                 {nie && !hatAufgaben(z.struktur) && (
-                  <p className="text-ws-orange">Die Seite hat noch keine Aufgaben. Du kannst trotzdem veröffentlichen.</p>
+                  <p className="text-ws-orange">Die Seite hat noch keine Aufgaben. Du kannst die Änderungen trotzdem übernehmen.</p>
                 )}
               </div>
             </AlertDialogDescription>
@@ -1828,7 +1828,7 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
               }}
             >
               {laeuft && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />}
-              Veröffentlichen
+              Änderungen übernehmen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1840,8 +1840,8 @@ function Arbeitsflaeche({ daten, neuLaden }: { daten: EditorDaten; neuLaden: () 
             <AlertDialogTitle>{nie ? 'Zurück auf das Grundgerüst?' : 'Entwurf verwerfen?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {nie
-                ? 'Alle Änderungen gehen verloren. Die Seite beginnt wieder mit dem Grundgerüst aus Deckblatt, Thema 1 und Lernzielkontrolle.'
-                : 'Alle Änderungen seit dem letzten Veröffentlichen gehen verloren. Das Material ist danach wieder so, wie es veröffentlicht ist.'}
+                ? 'Alle Änderungen gehen verloren. Die Seite beginnt wieder mit dem Grundgerüst aus Deckblatt, Kapitel 1 und Lernzielkontrolle.'
+                : 'Alle Änderungen, die du noch nicht übernommen hast, gehen verloren. Das Material ist danach wieder auf dem zuletzt übernommenen Stand.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

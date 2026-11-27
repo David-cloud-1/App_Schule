@@ -113,7 +113,7 @@ const WOERTER = {
   fertig: FERTIG,
   enter: ELEMENT_LEISTE.enterHinweis,
   leisteName: ELEMENT_LEISTE.name('#'),
-  einfachNamen: { kapitel: 'Thema', titel: 'Deckblatt', untertitel: 'Deckblatt', unterschrift: 'Bildunterschrift' },
+  einfachNamen: { kapitel: 'Kapitel', titel: 'Deckblatt', untertitel: 'Deckblatt', unterschrift: 'Bildunterschrift' },
 }
 
 const SVG = (pfad: string) =>
@@ -246,7 +246,7 @@ function leisteAktualisieren(){
   bKopie.hidden=lesen||(art!=="block"&&art!=="viele");
   bMehr.hidden=lesen||(art!=="block"&&art!=="viele");
   bWeg.hidden=lesen||(art!=="block"&&art!=="thema"&&art!=="viele");
-  bWeg.setAttribute("aria-label",art==="thema"?"Thema löschen":(viele?"Ausgewählte Elemente löschen":W.loeschen.lang));
+  bWeg.setAttribute("aria-label",art==="thema"?"Kapitel löschen":(viele?"Ausgewählte Elemente löschen":W.loeschen.lang));
   bildLeiste(art);
 }
 // PROJ-104: Knöpfe für Bilder (nur bei genau einem Bild-Block, nicht in der Galerie)
@@ -306,7 +306,7 @@ function markiere(m,name,liste){
   return e;
 }
 
-// ── Leere Themen und Einfügestellen am Ende ───────────────────────────
+// ── Leere Kapitel und Einfügestellen am Ende ───────────────────────────
 function themenKoepfe(){return Array.prototype.slice.call(document.querySelectorAll("h2[data-wk]"))}
 function baueEinfuegestellen(){
   var alt=document.querySelectorAll(".wk-leer,.wk-ende"),i;
@@ -319,7 +319,7 @@ function baueEinfuegestellen(){
     var nr=Number(m.slice(1));
     if(leer.indexOf(nr)>=0){
       var box=neu("div","wk-ui wk-leer"),satz=neu("p",null);
-      satz.textContent="Dieses Thema ist noch leer.";box.appendChild(satz);
+      satz.textContent="Dieses Kapitel ist noch leer.";box.appendChild(satz);
       var reihe=neu("div","wk-leer-knoepfe");
       SCHNELL.forEach(function(s){
         var b=knopf("schnell","<span></span>",null);b.querySelector("span").textContent=s[1];
@@ -330,17 +330,17 @@ function baueEinfuegestellen(){
       k.parentNode.insertBefore(box,k.nextSibling);
       continue;
     }
-    // Ende dieses Themas: vor der nächsten Überschrift (oder nach dem letzten Element)
+    // Ende dieses Kapitels: vor der nächsten Überschrift (oder nach dem letzten Element)
     var ende=neu("div","wk-ui wk-ende"),letzterBlock=m,n=k.nextElementSibling;
     while(n&&!(n.tagName==="H2"&&n.hasAttribute("data-wk"))){
       var nm=n.getAttribute&&n.getAttribute("data-wk");
       if(nm&&/^k\d+-e\d+$/.test(nm))letzterBlock=nm;
       n=n.nextElementSibling;
     }
-    var bb=knopf("einfuegen",ICON.plus+"<span>Element</span>","Element am Ende des Themas einfügen");
+    var bb=knopf("einfuegen",ICON.plus+"<span>Element</span>","Element am Ende des Kapitels einfügen");
     bb.setAttribute("data-wk-marke",letzterBlock);ende.appendChild(bb);
     if(i===letzte){
-      var bt=knopf("thema",ICON.plus+"<span>Thema</span>","Neues Thema am Ende einfügen");ende.appendChild(bt);
+      var bt=knopf("thema",ICON.plus+"<span>Kapitel</span>","Neues Kapitel am Ende einfügen");ende.appendChild(bt);
     }
     if(n)n.parentNode.insertBefore(ende,n);else k.parentNode.appendChild(ende);
   }
@@ -455,7 +455,7 @@ function grenzen(thema,gesperrt){
   for(i=0;i<els.length;i++){
     var x=els[i],m=x.getAttribute("data-wk"),r=x.getBoundingClientRect();
     if(x.tagName==="H2"&&/^k\d+$/.test(m)){
-      // Ende der Überschrift; ein leeres Thema zeigt dahinter die Vorschläge (auch dort darf abgelegt werden)
+      // Ende der Überschrift; ein leeres Kapitel zeigt dahinter die Vorschläge (auch dort darf abgelegt werden)
       var nx=x.nextElementSibling,unten=r.bottom;
       if(nx&&nx.classList.contains("wk-leer"))unten=nx.getBoundingClientRect().bottom;
       liste.push({marke:m,wo:"anfang",y:unten,x:r.left,b:r.width});

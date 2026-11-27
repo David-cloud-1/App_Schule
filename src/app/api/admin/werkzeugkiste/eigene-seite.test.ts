@@ -43,13 +43,13 @@ const NEU = {
   antwort: null,
   pruefung: null,
   ergebnis: null,
-  titel: 'Mein Thema',
+  titel: 'Mein Kapitel',
   skript_hochgeladen_am: '2026-11-12T10:00:00Z',
   skript_entfernt_am: null,
   herkunft_name: null,
   hat_entwurf: true,
   updated_at: '2026-11-12T10:00:00Z',
-  entwurf: grundgeruest('Mein Thema', 'Untertitel'),
+  entwurf: grundgeruest('Mein Kapitel', 'Untertitel'),
   entwurf_am: '2026-11-12T10:00:00+00:00',
   entwurf_pruefung: null,
 }
@@ -106,11 +106,11 @@ beforeEach(() => {
 })
 
 describe('Grundgerüst (E2)', () => {
-  it('hat Deckblatt, Thema 1 mit Lernziele-Box und eine leere Lernzielkontrolle', () => {
+  it('hat Deckblatt, Kapitel 1 mit Lernziele-Box und eine leere Lernzielkontrolle', () => {
     const s = grundgeruest('  Haftung  ', ' Ein Überblick ')
     expect(s.cover).toEqual({ title: 'Haftung', subtitle: 'Ein Überblick', school: STANDARD_SCHULE, duration: '' })
     expect(s.chapters).toHaveLength(1)
-    expect(s.chapters[0].title).toBe('Thema 1')
+    expect(s.chapters[0].title).toBe('Kapitel 1')
     expect(s.chapters[0].elements).toHaveLength(1)
     const text = s.chapters[0].elements[0]
     expect(text.type).toBe('text')
@@ -119,7 +119,7 @@ describe('Grundgerüst (E2)', () => {
     expect(html).toContain('Nach diesem Kapitel kannst du…')
     // Boxen nur mit Klasse, nie mit Inline-Stil
     expect(html).not.toContain('style=')
-    expect(html).toContain('<h2>Thema 1</h2>')
+    expect(html).toContain('<h2>Kapitel 1</h2>')
     expect(s.final_chapter).toEqual({ title: 'Lernzielkontrolle' })
   })
 
@@ -168,7 +168,7 @@ describe('Meine Materialien: Zeile einer eigenen Seite', () => {
     werkzeug: EIGENE_SEITE,
     status: 'fertig',
     schritt: 5,
-    titel: 'Mein Thema',
+    titel: 'Mein Kapitel',
     datei_name: null,
     hat_antwort: false,
     hat_entwurf: true,
@@ -189,7 +189,7 @@ describe('Meine Materialien: Zeile einer eigenen Seite', () => {
     expect(m).toMatchObject({
       art: 'material',
       format: 'seite',
-      titel: 'Mein Thema',
+      titel: 'Mein Kapitel',
       hatDatei: false,
       hatVorschau: false,
       entwurfOffen: true,
@@ -200,7 +200,7 @@ describe('Meine Materialien: Zeile einer eigenen Seite', () => {
   })
 
   it('hat nach dem Veröffentlichen eine Datei und gilt nicht mehr als unveröffentlicht', () => {
-    const m = zeileZuMaterial({ ...basis, hat_antwort: true, hat_entwurf: false, ergebnis_titel: 'Mein Thema', ergebnis_format: 'seite' })
+    const m = zeileZuMaterial({ ...basis, hat_antwort: true, hat_entwurf: false, ergebnis_titel: 'Mein Kapitel', ergebnis_format: 'seite' })
     expect(m.hatDatei).toBe(true)
     expect(m.hatVorschau).toBe(true)
     expect(m.nochNichtVeroeffentlicht).toBeUndefined()
@@ -210,7 +210,7 @@ describe('Meine Materialien: Zeile einer eigenen Seite', () => {
 
 describe('POST …/materialien (Leere Seite anlegen)', () => {
   it('legt ein fertiges Material mit Grundgerüst und ohne Fassung an', async () => {
-    const res = await anlegen(json({ titel: '  Mein Thema ', untertitel: 'Untertitel' }))
+    const res = await anlegen(json({ titel: '  Mein Kapitel ', untertitel: 'Untertitel' }))
     expect(res.status).toBe(201)
     expect((await res.json()).id).toBe(ID)
     const neu = writes.find((w) => w.methode === 'insert')!.payload as Record<string, unknown>
@@ -218,10 +218,10 @@ describe('POST …/materialien (Leere Seite anlegen)', () => {
       owner_id: 'u1',
       werkzeug: EIGENE_SEITE,
       status: 'fertig',
-      titel: 'Mein Thema',
+      titel: 'Mein Kapitel',
       einstellungen: { format: 'seite' },
     })
-    expect(neu.entwurf).toMatchObject({ cover: { title: 'Mein Thema', subtitle: 'Untertitel', school: STANDARD_SCHULE } })
+    expect(neu.entwurf).toMatchObject({ cover: { title: 'Mein Kapitel', subtitle: 'Untertitel', school: STANDARD_SCHULE } })
     expect(typeof neu.entwurf_am).toBe('string')
     // keine Fassung, kein Skript, kein Ablauftermin
     for (const feld of ['antwort', 'ergebnis', 'datei_name', 'laeuft_ab_am', 'prompt']) expect(feld in neu).toBe(false)
@@ -265,7 +265,7 @@ describe('Editor öffnen und zurücksetzen', () => {
     expect(res.status).toBe(200)
     const d = await res.json()
     expect(d.nieVeroeffentlicht).toBe(true)
-    expect(d.struktur.chapters[0].title).toBe('Thema 1')
+    expect(d.struktur.chapters[0].title).toBe('Kapitel 1')
     expect(d.stand).toBe(NEU.entwurf_am)
     expect(kernAufrufe).toHaveLength(0)
   })
@@ -275,7 +275,7 @@ describe('Editor öffnen und zurücksetzen', () => {
     const res = await editorLaden(new Request('http://t'), ctx)
     expect(res.status).toBe(200)
     const d = await res.json()
-    expect(d.struktur.cover.title).toBe('Mein Thema')
+    expect(d.struktur.cover.title).toBe('Mein Kapitel')
     expect(d.stand).toBeNull()
   })
 
@@ -290,7 +290,7 @@ describe('Editor öffnen und zurücksetzen', () => {
     const res = await editorVerwerfen(new Request('http://t', { method: 'DELETE' }), ctx)
     expect(res.status).toBe(200)
     const u = writes.find((w) => w.methode === 'update')!.payload as Record<string, unknown>
-    expect(u.entwurf).toEqual(grundgeruest('Mein Thema', 'Unter'))
+    expect(u.entwurf).toEqual(grundgeruest('Mein Kapitel', 'Unter'))
     expect(typeof u.entwurf_am).toBe('string')
     expect(u.entwurf).not.toBeNull()
   })
@@ -313,11 +313,11 @@ describe('Kern bekommt „arbeitsblatt“ statt „eigen“', () => {
   })
 })
 
-describe('Vor dem ersten Veröffentlichen: „Erst veröffentlichen“', () => {
+describe('Vor dem ersten Veröffentlichen: „Erst Änderungen übernehmen“', () => {
   it('Download', async () => {
     const res = await download(new Request('http://t'), ctx)
     expect(res.status).toBe(409)
-    expect((await res.json()).error).toBe('Erst veröffentlichen.')
+    expect((await res.json()).error).toBe('Erst Änderungen übernehmen.')
   })
 
   it('öffentlicher Link: kein Aufruf der Datenbankfunktion', async () => {

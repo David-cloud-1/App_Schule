@@ -28,7 +28,7 @@ const TABS: { type: TabType; label: string; labelField: (item: TrashItem) => str
   { type: 'question', label: 'Fragen', labelField: (i) => (i.question_text as string) ?? '—' },
   { type: 'topic', label: 'Themen', labelField: (i) => (i.name as string) ?? '—' },
   { type: 'subject', label: 'Fächer', labelField: (i) => `${i.code ?? ''} — ${i.name ?? ''}` },
-  { type: 'exam_question_set', label: 'Prüfungssets', labelField: (i) => (i.name as string) ?? '—' },
+  { type: 'exam_question_set', label: 'Übungsprüfungen', labelField: (i) => (i.name as string) ?? '—' },
   {
     type: 'forum',
     label: 'Lehrerzimmer',
@@ -132,7 +132,7 @@ export default function PapierkorbPage() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Papierkorb"
-        description="Gelöschte Fragen, Themen, Fächer, Prüfungssets und Beiträge im Lehrerzimmer wiederherstellen."
+        description="Gelöschte Fragen, Themen, Fächer, Übungsprüfungen und Beiträge im Lehrerzimmer wiederherstellen."
       />
 
       <AdminTabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>

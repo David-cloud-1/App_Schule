@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
 
   if (assessment.status !== 'draft') {
-    return NextResponse.json({ error: 'Der Zielbereich ist nach dem Öffnen fest.' }, { status: 400 })
+    return NextResponse.json({ error: 'Der Bereich ist nach dem Öffnen fest.' }, { status: 400 })
   }
 
   if (assessment.department_id === departmentId) {
@@ -56,7 +56,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .eq('is_active', true)
     .maybeSingle()
   if (!targetDepartment) {
-    return NextResponse.json({ error: 'Dieser Fachbereich ist nicht verfügbar.' }, { status: 400 })
+    return NextResponse.json({ error: 'Dieser Bereich ist nicht verfügbar.' }, { status: 400 })
   }
 
   // Pool-Fragen des alten Bereichs raus, eigene private Fragen bleiben —
@@ -108,7 +108,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     newPart = [...examParts].sort((a, b) => a.partNumber - b.partNumber)[0]?.partNumber ?? null
   }
   if (newPart === null) {
-    return NextResponse.json({ error: 'Für diesen Fachbereich sind keine Prüfungsteile eingerichtet.' }, { status: 400 })
+    return NextResponse.json({ error: 'Für diesen Bereich sind keine Prüfungsteile eingerichtet.' }, { status: 400 })
   }
 
   // Fach-Ablage (PROJ-39) leeren, wenn ihr Fach nicht zum neuen Bereich gehört

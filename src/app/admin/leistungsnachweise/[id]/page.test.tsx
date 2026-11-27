@@ -55,7 +55,7 @@ describe('Nachweis-Detailseite (PROJ-84)', () => {
     expect(screen.queryByRole('button', { name: /Drucken/ })).toBeNull()
     openMenu()
     expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual([
-      'Fragen bearbeiten', 'Zielbereich ändern', 'Duplizieren', 'Löschen',
+      'Fragen bearbeiten', 'Bereich ändern', 'Duplizieren', 'Löschen',
     ])
   })
 

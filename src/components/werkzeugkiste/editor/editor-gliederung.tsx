@@ -402,10 +402,10 @@ export function EditorGliederung({
           variant="outline"
           className={cn(NEBENAKTION, 'min-w-0 flex-1 justify-center')}
           onClick={() => themaHinzu(themaDerAuswahl(auswahl))}
-          title="Thema hinzufügen"
+          title="Kapitel hinzufügen"
         >
           <Plus className="mr-2 size-4 shrink-0" aria-hidden />
-          Thema
+          Kapitel
         </Button>
       </div>
 
@@ -466,7 +466,7 @@ export function EditorGliederung({
 
       <DndContext sensors={sensoren} collisionDetection={closestCenter} onDragEnd={ziehEnde}>
         <SortableContext items={themen.map((_, i) => `t-${i}`)} strategy={verticalListSortingStrategy}>
-          <ol className="space-y-3" aria-label="Themen">
+          <ol className="space-y-3" aria-label="Kapitel">
             {themen.map((thema, ti) => (
               <ThemaKarte
                 key={`t-${ti}`}
@@ -512,7 +512,7 @@ export function EditorGliederung({
         }}
       >
         <Plus className="mr-2 size-4" aria-hidden />
-        Thema hinzufügen
+        Kapitel hinzufügen
       </Button>
 
       {/* Lernzielkontrolle */}
@@ -571,11 +571,11 @@ export function EditorGliederung({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Thema „{String(themaLoeschen !== null ? (themen[themaLoeschen]?.title ?? '') : '')}“ löschen?
+              Kapitel „{String(themaLoeschen !== null ? (themen[themaLoeschen]?.title ?? '') : '')}“ löschen?
             </AlertDialogTitle>
             <AlertDialogDescription>
               {themaLoeschen !== null && themen[themaLoeschen]
-                ? `Das Thema und seine ${themen[themaLoeschen].elements.length} Elemente werden aus dem Entwurf entfernt. Mit „Rückgängig“ holst du es zurück.`
+                ? `Das Kapitel und seine ${themen[themaLoeschen].elements.length} Elemente werden aus dem Entwurf entfernt. Mit „Rückgängig“ holst du es zurück.`
                 : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -592,7 +592,7 @@ export function EditorGliederung({
                 setThemaLoeschen(null)
               }}
             >
-              Thema löschen
+              Kapitel löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -654,7 +654,7 @@ function ThemaKarte({
     id: `t-${index}`,
   })
   const ende = useDroppable({ id: `ende-${index}` })
-  const name = titel || `Thema ${index + 1}`
+  const name = titel || `Kapitel ${index + 1}`
   const hinweiseImThema =
     (befundKarte.get(`k${index}`) ?? 0) +
     bloecke.reduce((n, _, bi) => n + (befundKarte.get(`k${index}-e${bi}`) ?? 0), 0)
@@ -670,7 +670,7 @@ function ThemaKarte({
           type="button"
           ref={setActivatorNodeRef}
           className={GRIFF}
-          aria-label={`Thema „${name}“ verschieben`}
+          aria-label={`Kapitel „${name}“ verschieben`}
           {...attributes}
           {...listeners}
         >
@@ -680,7 +680,7 @@ function ThemaKarte({
           type="button"
           onClick={umschalten}
           aria-expanded={!zu}
-          aria-label={zu ? `Thema „${name}“ aufklappen` : `Thema „${name}“ zuklappen`}
+          aria-label={zu ? `Kapitel „${name}“ aufklappen` : `Kapitel „${name}“ zuklappen`}
           className="flex size-11 shrink-0 items-center justify-center rounded-xl text-ws-muted hover:bg-ws-raised"
         >
           {zu ? <ChevronRight className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
@@ -693,10 +693,10 @@ function ThemaKarte({
             {bloecke.length} {bloecke.length === 1 ? 'Element' : 'Elemente'}
           </span>
         </button>
-        <HinweisMarke anzahl={hinweiseImThema} was={`Thema „${name}“`} />
+        <HinweisMarke anzahl={hinweiseImThema} was={`Kapitel „${name}“`} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className={MENUKNOPF} aria-label={`Weitere Aktionen für Thema „${name}“`}>
+            <Button variant="ghost" size="icon" className={MENUKNOPF} aria-label={`Weitere Aktionen für Kapitel „${name}“`}>
               <MoreHorizontal className="size-4" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
@@ -714,7 +714,7 @@ function ThemaKarte({
               <Plus className="mr-2 size-4" aria-hidden /> Element hinzufügen …
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={themaDarunter}>
-              <Plus className="mr-2 size-4" aria-hidden /> Thema darunter einfügen
+              <Plus className="mr-2 size-4" aria-hidden /> Kapitel darunter einfügen
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => aendere((s) => dupliziereThema(s, index))}>
               <Copy className="mr-2 size-4" aria-hidden /> Duplizieren
@@ -759,7 +759,7 @@ function ThemaKarte({
                 ende.isOver && 'border-ws-green bg-ws-green/10',
               )}
             >
-              {bloecke.length === 0 ? 'Noch keine Elemente' : <span className="sr-only">Ende des Themas</span>}
+              {bloecke.length === 0 ? 'Noch keine Elemente' : <span className="sr-only">Ende des Kapitels</span>}
             </li>
           </ol>
           <div className="mt-2 pl-2 sm:pl-6">
@@ -903,13 +903,13 @@ function BlockZeile({
             {alleThemen.length > 1 && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <ArrowRightLeft className="mr-2 size-4" aria-hidden /> In anderes Thema …
+                  <ArrowRightLeft className="mr-2 size-4" aria-hidden /> In anderes Kapitel …
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
                   {alleThemen.map((t, ti) =>
                     ti === thema ? null : (
                       <DropdownMenuItem key={ti} onSelect={() => bewegeBlock(ort, { thema: ti, block: Number.MAX_SAFE_INTEGER })}>
-                        <span className="max-w-64 truncate">{t || `Thema ${ti + 1}`}</span>
+                        <span className="max-w-64 truncate">{t || `Kapitel ${ti + 1}`}</span>
                       </DropdownMenuItem>
                     ),
                   )}

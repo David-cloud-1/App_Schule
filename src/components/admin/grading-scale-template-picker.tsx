@@ -197,7 +197,7 @@ export function GradingScaleTemplatePicker({ scale, onApply, disabled }: Props) 
                 value={name}
                 maxLength={MAX_TEMPLATE_NAME_LENGTH}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="z. B. Mein Schlüssel Klasse 11"
+                placeholder="z. B. Mein Schlüssel Stufe 11"
                 className="min-h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text"
               />
             </div>

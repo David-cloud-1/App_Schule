@@ -37,7 +37,7 @@ export async function PATCH(
     .eq('id', id)
     .single()
 
-  if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
+  if (!existing) return NextResponse.json({ error: 'Übungsprüfung nicht gefunden' }, { status: 404 })
   const forbidden = assertCanAdminDepartmentContent(auth, existing.department_id as string)
   if (forbidden) return forbidden
 
@@ -46,7 +46,7 @@ export async function PATCH(
 
   const { expected_version, ...changes } = parsed.data
   const conflict = await checkVersionConflict(supabase, 'exam_question_set', id, expected_version)
-  if (conflict) return NextResponse.json(versionConflictBody(conflict, 'Dieses Prüfungsset'), { status: 409 })
+  if (conflict) return NextResponse.json(versionConflictBody(conflict, 'Diese Übungsprüfung'), { status: 409 })
 
   const { data, error } = await supabase
     .from('exam_question_sets')
@@ -73,7 +73,7 @@ export async function DELETE(
     .select('department_id')
     .eq('id', id)
     .maybeSingle()
-  if (!existing) return NextResponse.json({ error: 'Set not found' }, { status: 404 })
+  if (!existing) return NextResponse.json({ error: 'Übungsprüfung nicht gefunden' }, { status: 404 })
   const forbidden = assertCanAdminDepartmentContent(auth, existing.department_id as string)
   if (forbidden) return forbidden
 

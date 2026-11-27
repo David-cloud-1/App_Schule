@@ -11,7 +11,7 @@ function laufenLassen() {
   document.head.innerHTML = ''
   document.body.innerHTML =
     '<div data-wk="deckblatt"><h1 id="titel">Mein Titel</h1><p class="unter" id="unter">Untertitel</p></div>' +
-    '<h2 data-wk="k0" id="kapitel">Thema</h2>' +
+    '<h2 data-wk="k0" id="kapitel">Kapitel</h2>' +
     '<section class="inhalt" data-wk="k0-e0"><div class="lehrtext" id="lehr"><p id="absatz">Gebauter Text</p></div></section>' +
     '<section class="inhalt" data-wk="k0-e1"><figure class="bild"><p class="bildunterschrift" id="unterschrift">Abbildung 1</p></figure></section>' +
     '<section class="aufgabe" data-wk="k0-e2"><button id="aufgabe">Prüfen</button></section>' +
@@ -122,8 +122,8 @@ describe('Schreiben: Einfach-Schreiber (Überschrift, Deckblatt, Bildunterschrif
     const gesendet = laufenLassen()
     vomEditor({ wkSchreibStart: { marke: 'k0', teil: 'kapitel' } })
     const leiste = document.querySelector<HTMLElement>('[role="toolbar"].wk-el')!
-    expect(leiste.getAttribute('aria-label')).toBe('Thema bearbeiten')
-    expect(leiste.querySelector('.wk-el-name')?.textContent).toBe('Thema')
+    expect(leiste.getAttribute('aria-label')).toBe('Kapitel bearbeiten')
+    expect(leiste.querySelector('.wk-el-name')?.textContent).toBe('Kapitel')
     expect(leiste.querySelector('.wk-el-hinweis')?.textContent).toBe('Enter = Fertig')
     // Die Leiste steht direkt über dem Element
     expect(leiste.nextElementSibling).toBe(id('kapitel'))
@@ -131,7 +131,7 @@ describe('Schreiben: Einfach-Schreiber (Überschrift, Deckblatt, Bildunterschrif
     leiste.dispatchEvent(md)
     expect(md.defaultPrevented).toBe(true)
     klick(leiste.querySelector('.wk-el-fertig')!)
-    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Thema' }, '*')
+    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Kapitel' }, '*')
     expect(document.querySelector('.wk-el')).toBeNull()
   })
 
@@ -170,7 +170,7 @@ describe('Schreiben: Einfach-Schreiber (Überschrift, Deckblatt, Bildunterschrif
     vomEditor({ wkSchreibStart: { marke: 'k0', teil: 'kapitel' } })
     gesendet.mockClear()
     klick(id('aufgabe'))
-    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Thema' }, '*')
+    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Kapitel' }, '*')
     expect(gesendet).not.toHaveBeenCalledWith({ wkWaehle: 'k0-e2' }, '*')
   })
 
@@ -178,7 +178,7 @@ describe('Schreiben: Einfach-Schreiber (Überschrift, Deckblatt, Bildunterschrif
     const gesendet = laufenLassen()
     vomEditor({ wkSchreibStart: { marke: 'k0', teil: 'kapitel' } })
     vomEditor({ wkSchreibBeende: true })
-    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Thema' }, '*')
+    expect(gesendet).toHaveBeenCalledWith({ wkSchreibEnde: 'k0', teil: 'kapitel', html: 'Kapitel' }, '*')
     vomEditor({ wkSchreibVorbei: true })
     expect(id('kapitel').getAttribute('contenteditable')).toBe('false')
   })

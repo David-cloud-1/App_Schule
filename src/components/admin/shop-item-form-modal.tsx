@@ -123,7 +123,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
         toast.error(data?.error ?? 'Speichern fehlgeschlagen')
         return
       }
-      toast.success(isEdit ? 'Item aktualisiert' : 'Item erstellt')
+      toast.success(isEdit ? 'Gegenstand aktualisiert' : 'Gegenstand erstellt')
       onSuccess()
       onOpenChange(false)
     } catch (err) {
@@ -138,10 +138,10 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEdit ? `${hofShortName}-Item bearbeiten` : `Neues ${hofShortName}-Item`}</DialogTitle>
+          <DialogTitle>{isEdit ? `Gegenstand für ${hofShortName} bearbeiten` : `Neuer Gegenstand für ${hofShortName}`}</DialogTitle>
           <DialogDescription className="text-ws-muted">
             {isEdit
-              ? 'Item-Details anpassen. Wirkt nur auf künftige Käufe.'
+              ? 'Angaben zum Gegenstand ändern. Wirkt nur auf künftige Käufe.'
               : `Neues Sammelstück für den ${hofName} anlegen.`}
           </DialogDescription>
         </DialogHeader>

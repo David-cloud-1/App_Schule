@@ -164,7 +164,7 @@ describe('Seite „Schulrecht“ (PROJ-55, überarbeitet in PROJ-88)', () => {
     expect(screen.getByRole('button', { name: BEISPIEL_FRAGEN[1] })).toBeInTheDocument()
   })
 
-  it('„Mit meiner KI beantworten“ kopiert den Prompt aus Frage und gezeigten Stellen, mit Hinweis „keine Namen“', async () => {
+  it('„Mit meiner KI beantworten“ kopiert den Auftrag aus Frage und gezeigten Stellen, mit Hinweis „keine Namen“', async () => {
     const schreibe = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText: schreibe } })
     sucheFundstellen.mockResolvedValue({ fundstellen: [handy] })
@@ -172,7 +172,7 @@ describe('Seite „Schulrecht“ (PROJ-55, überarbeitet in PROJ-88)', () => {
     render(<SchulrechtSeite />)
     frageStellen('Darf ich das Handy einsammeln?')
     expect(await screen.findByText('Die Frage geht an deine eigene KI. Schreibe keine Namen hinein.')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Prompt kopieren/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Auftrag für die KI kopieren/ }))
     await waitFor(() => expect(schreibe).toHaveBeenCalledWith('PROMPT'))
     expect(holeFragePrompt).toHaveBeenCalledWith('Darf ich das Handy einsammeln?', [{ kuerzel: 'BayEUG', nr: 'Art. 56' }])
     expect(toast.success).toHaveBeenCalled()

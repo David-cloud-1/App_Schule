@@ -165,7 +165,7 @@ export function entwurfSperre(zeile: { status: string; werkzeug?: string; hat_en
   if (eigene) return eigene
   if (zeile.status !== 'fertig' || !zeile.hat_entwurf) return null
   return NextResponse.json(
-    { error: ENTWURF_IM_EDITOR, hint: 'Öffne ihn im Editor, veröffentliche oder verwirf ihn, dann geht es hier weiter.', code: 'entwurf_im_editor' },
+    { error: ENTWURF_IM_EDITOR, hint: 'Öffne ihn im Editor, übernimm oder verwirf die Änderungen, dann geht es hier weiter.', code: 'entwurf_im_editor' },
     { status: 409 },
   )
 }

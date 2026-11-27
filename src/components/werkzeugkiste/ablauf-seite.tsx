@@ -79,7 +79,7 @@ const TITEL_ERSTELLEN = { titel: 'Dein Material wird erstellt', beschreibung: 'D
 const TITEL: Record<AblaufSchritt, { titel: string; beschreibung?: string }> = {
   1: { titel: 'Skript hochladen', beschreibung: 'Word, PDF oder PowerPoint. Rot markierter oder versteckter Text wird als Lösung erkannt.' },
   2: { titel: 'Was soll daraus werden?' },
-  3: { titel: 'Prompt in deine KI kopieren', beschreibung: 'Kostenlos – du nutzt die KI, die du sowieso verwendest.' },
+  3: { titel: 'Auftrag in deine KI kopieren', beschreibung: 'Kostenlos – du nutzt die KI, die du sowieso verwendest.' },
   4: { titel: 'Antwort der KI einfügen', beschreibung: 'Die App prüft die Antwort automatisch, ganz ohne KI.' },
   5: { titel: 'Dein Material ist fertig' },
 }
@@ -507,7 +507,7 @@ export function AblaufSeite({ id }: { id: string }) {
       fuss = !DIREKT_ERSTELLEN_AKTIV ? (
         <>
           {zurueck}
-          {weiter('Prompt erstellen', () => void kostenlos())}
+          {weiter('Auftrag erstellen', () => void kostenlos())}
         </>
       ) : (
         <>

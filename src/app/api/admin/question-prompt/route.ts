@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
 
   const department = await getDepartmentById(supabase, departmentId)
   if (!department) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
   }
 
   let subjects

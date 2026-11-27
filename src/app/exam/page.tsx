@@ -50,7 +50,7 @@ export default async function ExamPage() {
           </Link>
           <div className="flex items-center gap-2">
             <Timer size={20} className="text-[#1CB0F6]" />
-            <h1 className="font-bold text-[#F9FAFB]">Prüfung üben</h1>
+            <h1 className="font-bold text-[#F9FAFB]">Übungsprüfung</h1>
           </div>
         </div>
       </header>

@@ -378,7 +378,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
 
               {departmentId && visibleSets.length > 0 && (
                 <div className="space-y-2">
-                  <Label htmlFor="startSet" className="text-base">Startauswahl aus Prüfungssimulation <span className="font-normal text-ws-faint">— optional</span></Label>
+                  <Label htmlFor="startSet" className="text-base">Startauswahl aus Übungsprüfung <span className="font-normal text-ws-faint">— optional</span></Label>
                   <Select value={startSetId} onValueChange={handleStartSetChange}>
                     <SelectTrigger id="startSet" className={field}>
                       <SelectValue />
@@ -393,11 +393,11 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                     </SelectContent>
                   </Select>
                   <p className="text-sm text-ws-faint">
-                    Die Fragen werden kopiert und sind danach unabhängig vom Set.
+                    Die Fragen werden kopiert und sind danach unabhängig von der Übungsprüfung.
                   </p>
                   {skippedFromSet > 0 && (
                     <p className="text-xs text-ws-orange">
-                      {skippedFromSet} Fragen aus dem Set wurden übersprungen (offene oder deaktivierte Fragen).
+                      {skippedFromSet} Fragen aus der Übungsprüfung wurden übersprungen (offene oder deaktivierte Fragen).
                     </p>
                   )}
                 </div>
@@ -514,7 +514,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                   onLoaded={handleLoaded}
                 />
               ) : (
-                <p className="text-sm text-ws-muted">Wähle zuerst einen Zielbereich, dann erscheinen hier die Fragen.</p>
+                <p className="text-sm text-ws-muted">Wähle zuerst einen Bereich, dann erscheinen hier die Fragen.</p>
               )}
             </section>
           </div>

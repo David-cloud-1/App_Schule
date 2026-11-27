@@ -39,7 +39,7 @@ describe('Mehrfachauswahl', () => {
     ])
   })
 
-  it('wählt alle gleichen Typen im Thema oder auf der Seite', () => {
+  it('wählt alle gleichen Typen im Kapitel oder auf der Seite', () => {
     expect(gleicheTypOrte(s, { thema: 0, block: 1 }, true)).toEqual([{ thema: 0, block: 1 }])
     expect(gleicheTypOrte(s, { thema: 0, block: 1 }, false)).toEqual([{ thema: 0, block: 1 }, { thema: 1, block: 1 }])
   })
@@ -52,14 +52,14 @@ describe('Löschen und Verschieben', () => {
     expect(inhalt(r)).toEqual([['b'], ['e']])
   })
 
-  it('verschiebt mehrere Blöcke in anderes Thema in alter Reihenfolge', () => {
+  it('verschiebt mehrere Blöcke in anderes Kapitel in alter Reihenfolge', () => {
     const s = bau(['a', 'b', 'c'], ['d'])
     const r = verschiebeBloecke(s, [{ thema: 0, block: 2 }, { thema: 0, block: 0 }], { thema: 1, index: 0 })
     expect(inhalt(r.struktur)).toEqual([['b'], ['a', 'c', 'd']])
     expect(r.orte).toEqual([{ thema: 1, block: 0 }, { thema: 1, block: 1 }])
   })
 
-  it('zählt das Ziel im selben Thema vor dem Entfernen', () => {
+  it('zählt das Ziel im selben Kapitel vor dem Entfernen', () => {
     const s = bau(['a', 'b', 'c', 'd'])
     const r = verschiebeBloecke(s, [{ thema: 0, block: 0 }], { thema: 0, index: 3 })
     expect(inhalt(r.struktur)).toEqual([['b', 'c', 'a', 'd']])
@@ -72,7 +72,7 @@ describe('Löschen und Verschieben', () => {
     expect(verschiebeBloecke(s, [{ thema: 0, block: 1 }], { thema: 0, index: 2 }).struktur).toBe(s)
   })
 
-  it('setzt ans Ende eines leeren Themas', () => {
+  it('setzt ans Ende eines leeren Kapitels', () => {
     const s = bau(['a'], [])
     const r = verschiebeBloecke(s, [{ thema: 0, block: 0 }], { thema: 1, index: 0 })
     expect(inhalt(r.struktur)).toEqual([[], ['a']])
@@ -111,7 +111,7 @@ describe('Einsetzen', () => {
     expect(r.orte).toEqual([{ thema: 0, block: 1 }])
     expect(r.struktur.chapters[0].elements[1]).not.toBe(r.struktur.chapters[0].elements[0])
   })
-  it('begrenzt die Stelle auf das Themenende und tut bei fehlendem Thema nichts', () => {
+  it('begrenzt die Stelle auf das Themenende und tut bei fehlendem Kapitel nichts', () => {
     const s = bau(['a'])
     expect(inhalt(fuegeBloeckeEin(s, { thema: 0, index: 99 }, [{ type: 'text', content: 'z' }]).struktur)).toEqual([['a', 'z']])
     expect(fuegeBloeckeEin(s, { thema: 3, index: 0 }, [{ type: 'text', content: 'z' }]).struktur).toBe(s)
@@ -161,7 +161,7 @@ describe('setzeUebernahmeEin (PROJ-108)', () => {
     expect(r.orte).toEqual([{ thema: 0, block: 1 }])
     expect(S.chapters[0].elements).toHaveLength(2)
   })
-  it('setzt Themen hinter das Thema der Blöcke bzw. des Ziels', async () => {
+  it('setzt Kapitel hinter das Kapitel der Blöcke bzw. des Ziels', async () => {
     const { setzeUebernahmeEin } = await import('@/lib/werkzeugkiste-bloecke')
     const r = setzeUebernahmeEin(S, { thema: 0, index: 0 }, [neuT], [neuB])
     expect(r.struktur.chapters.map((t) => t.title)).toEqual(['A', 'Neu', 'B'])
@@ -169,11 +169,11 @@ describe('setzeUebernahmeEin (PROJ-108)', () => {
     const nur = setzeUebernahmeEin(S, { thema: 1, index: 0 }, [neuT], [])
     expect(nur.struktur.chapters.map((t) => t.title)).toEqual(['A', 'B', 'Neu'])
   })
-  it('ohne Ziel: ans Ende, ohne Thema in ein neues Thema 1, Themen ans Ende', async () => {
+  it('ohne Ziel: ans Ende, ohne Kapitel in ein neues Kapitel 1, Kapitel ans Ende', async () => {
     const { setzeUebernahmeEin } = await import('@/lib/werkzeugkiste-bloecke')
     const leer = { cover: {}, chapters: [] } as Struktur
     const r = setzeUebernahmeEin(leer, null, [neuT], [neuB])
-    expect(r.struktur.chapters.map((t) => t.title)).toEqual(['Thema 1', 'Neu'])
+    expect(r.struktur.chapters.map((t) => t.title)).toEqual(['Kapitel 1', 'Neu'])
     expect(r.struktur.chapters[0].elements).toHaveLength(1)
     const ende = setzeUebernahmeEin(S, null, [], [neuB])
     expect(ende.struktur.chapters[1].elements).toHaveLength(1)

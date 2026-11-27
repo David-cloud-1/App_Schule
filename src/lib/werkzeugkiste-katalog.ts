@@ -131,7 +131,7 @@ const ROH: Roh[] = [
     typ: 'question_set',
     gruppe: 'abfragen',
     beschreibung: 'Ein kleiner Test aus mehreren Fragen mit Bestehensgrenze.',
-    gutFuer: 'den Abschluss eines Themas: Haben alle das Wichtigste verstanden?',
+    gutFuer: 'den Abschluss eines Kapitels: Haben alle das Wichtigste verstanden?',
     suchbegriffe: ['Kapiteltest', 'Test', 'Question Set', 'Quiz', 'Lernzielkontrolle', 'Prüfung'],
   },
   {
@@ -182,7 +182,7 @@ const ROH: Roh[] = [
     typ: 'drag_drop',
     gruppe: 'ordnen',
     beschreibung: 'Begriffe werden in die passenden Kategorien gezogen.',
-    gutFuer: 'Einordnen und Unterscheiden, z. B. Vor- und Nachteile oder Fachbereiche.',
+    gutFuer: 'Einordnen und Unterscheiden, z. B. Vor- und Nachteile oder Bereiche.',
     suchbegriffe: ['Zuordnen', 'Drag and Drop', 'Kategorien', 'Sortieren', 'Gruppieren'],
   },
   {
@@ -249,7 +249,7 @@ const ROH: Roh[] = [
     typ: 'crossword',
     gruppe: 'spiele',
     beschreibung: 'Ein Kreuzworträtsel aus Fachbegriffen und ihren Umschreibungen.',
-    gutFuer: 'Fachbegriffe spielerisch wiederholen, z. B. am Ende eines Themas.',
+    gutFuer: 'Fachbegriffe spielerisch wiederholen, z. B. am Ende eines Kapitels.',
     suchbegriffe: ['Kreuzworträtsel', 'Crossword', 'Rätsel', 'Begriffe'],
   },
   {
@@ -277,7 +277,7 @@ const ROH: Roh[] = [
     typ: 'fallakte',
     gruppe: 'spiele',
     beschreibung: 'Ein Fall, der sich Schritt für Schritt aufklärt: Jede richtige Antwort enthüllt einen neuen Fakt.',
-    gutFuer: 'einen roten Faden durchs Kapitel, höchstens einmal pro Thema.',
+    gutFuer: 'einen roten Faden durchs Kapitel, höchstens einmal pro Kapitel.',
     suchbegriffe: ['Fallakte', 'Fall', 'Krimi', 'Fallstudie', 'Detektiv', 'Story'],
   },
   // Selbstcheck & Wiederholen
@@ -507,7 +507,7 @@ export function beispielBefunde(s: Struktur): EditorBefund[] {
       const frageBeispiel = b.type === 'question_set' && Array.isArray(b.questions) && b.questions.some(istBeispielFrage)
       if (istBeispiel(b) || frageBeispiel) {
         befunde.push({
-          text: `Thema ${ti + 1} – ${typName(String(b.type))}: ${BEISPIEL_HINWEIS}`,
+          text: `Kapitel ${ti + 1} – ${typName(String(b.type))}: ${BEISPIEL_HINWEIS}`,
           schwere: 'mittel',
           stellen: [{ kapitel: ti, element: bi }],
         })
@@ -533,7 +533,7 @@ export function editorBefunde(s: Struktur): EditorBefund[] {
       const url = typeof b.url === 'string' ? b.url.trim() : ''
       if (!/^https?:\/\/\S+$/i.test(url)) {
         befunde.push({
-          text: `Thema ${ti + 1} – Video mit Fragen: Video-Adresse prüfen (sie muss mit https:// beginnen)`,
+          text: `Kapitel ${ti + 1} – Video mit Fragen: Video-Adresse prüfen (sie muss mit https:// beginnen)`,
           schwere: 'mittel',
           stellen: [{ kapitel: ti, element: bi }],
         })

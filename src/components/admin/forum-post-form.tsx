@@ -210,7 +210,7 @@ export function ForumPostForm({ postId }: { postId?: string }) {
         const key = issue.path[0]
         if ((key === 'category' || key === 'title' || key === 'body') && !next[key]) next[key] = issue.message
         // Fachbereich/Fach haben kein eigenes Feld für Fehler: sichtbar im Formular-Fehler statt still verschluckt
-        else if (!next.form) next.form = 'Bitte prüfe Fachbereich und Fach und wähle sie neu aus.'
+        else if (!next.form) next.form = 'Bitte prüfe Bereich und Fach und wähle sie neu aus.'
       }
       setErrors(next)
       return
@@ -328,7 +328,7 @@ export function ForumPostForm({ postId }: { postId?: string }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="forum-department">Fachbereich (optional)</Label>
+            <Label htmlFor="forum-department">Bereich (optional)</Label>
             <Select value={departmentId} onValueChange={onDepartmentChange}>
               <SelectTrigger id="forum-department" className={triggerClass}><SelectValue /></SelectTrigger>
               <SelectContent className={contentClass}>

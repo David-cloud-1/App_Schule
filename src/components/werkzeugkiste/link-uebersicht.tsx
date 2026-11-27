@@ -93,7 +93,7 @@ export function LinkUebersicht() {
     <section aria-labelledby="wk-links-titel" className="space-y-4">
       <div className="space-y-1">
         <h2 id="wk-links-titel" className="text-lg font-semibold">
-          Öffentliche Links
+          Links für Azubis
         </h2>
         <p className="max-w-prose text-sm leading-relaxed text-ws-muted">
           Diese Materialien kann jeder mit dem Link ohne Konto öffnen. Wenn du einen Link abschaltest, bleibt das Material bei der Besitzerin oder dem Besitzer.
@@ -105,7 +105,7 @@ export function LinkUebersicht() {
       ) : fehler && !liste ? (
         <AdminErrorState message={fehler} onRetry={() => void lade()} />
       ) : liste && liste.eintraege.length === 0 ? (
-        <AdminEmptyState icon={Globe} title="Keine öffentlichen Links." description="Sobald eine Lehrkraft einen Link für alle erzeugt, erscheint er hier." />
+        <AdminEmptyState icon={Globe} title="Keine Links für Azubis." description="Sobald eine Lehrkraft einen Link für Azubis erzeugt, erscheint er hier." />
       ) : (
         <>
           <div className="ws-table-scroll ws-table-sticky overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">

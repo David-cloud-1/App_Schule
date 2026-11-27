@@ -162,7 +162,7 @@ export async function checkQuestionSelection(
   }
   const part = derivePartNumber(examParts, ids.map((id) => byId.get(id)!))
   if (part === null) {
-    return { ok: false, status: 400, error: 'Für diesen Fachbereich sind keine Prüfungsteile eingerichtet.' }
+    return { ok: false, status: 400, error: 'Für diesen Bereich sind keine Prüfungsteile eingerichtet.' }
   }
   return { ok: true, ids, part }
 }

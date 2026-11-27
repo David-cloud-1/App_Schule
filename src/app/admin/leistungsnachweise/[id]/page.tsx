@@ -430,7 +430,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   },
                   {
                     key: 'department',
-                    label: 'Zielbereich ändern',
+                    label: 'Bereich ändern',
                     icon: <Building2 className="size-4 text-ws-muted" />,
                     onSelect: () => setChangeDepartmentOpen(true),
                     hidden: detail.status !== 'draft',

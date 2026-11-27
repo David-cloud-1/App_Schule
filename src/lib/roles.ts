@@ -35,8 +35,8 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 /** Ein Satz, was die Rolle darf (Konto-Menü, PROJ-49) */
 export const ROLE_DESCRIPTION: Record<TeacherRole, string> = {
   teacher: 'Du verwaltest Inhalte, Nutzer und Einstellungen aller Bereiche und führst Leistungsnachweise durch.',
-  department_admin: 'Du verwaltest Inhalte, Nutzer und Einstellungen deines Fachbereichs.',
-  admin: 'Du verwaltest alle Fachbereiche, Nutzer und Rollen.',
+  department_admin: 'Du verwaltest Inhalte, Nutzer und Einstellungen deines Bereichs.',
+  admin: 'Du verwaltest alle Bereiche, Nutzer und Rollen.',
 }
 
 /**

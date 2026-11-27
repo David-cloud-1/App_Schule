@@ -56,7 +56,7 @@ export function TeacherWelcomeDialog({ initialOpen }: { initialOpen: boolean }) 
           </DialogTitle>
           <DialogDescription className="text-center text-base leading-relaxed text-ws-muted">
             Du bist jetzt als Lehrkraft freigeschaltet. Trag unter „Meine Fächer“ ein, was du unterrichtest —
-            danach kannst du dort Fragen, Themen und Prüfungssets pflegen. Hier findest du außerdem die
+            danach kannst du dort Fragen, Themen und Übungsprüfungen pflegen. Hier findest du außerdem die
             Werkzeugkiste für Arbeitsblätter, Klassenarbeiten und mehr.
           </DialogDescription>
         </DialogHeader>

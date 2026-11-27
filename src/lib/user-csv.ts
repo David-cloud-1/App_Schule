@@ -28,7 +28,7 @@ export const CSV_HEADER = [
   'XP',
   'Level',
   'Streak',
-  'Letzte Session',
+  'Letzte Lernrunde',
   'Letzter Login',
   'Status',
   'Registriert am',

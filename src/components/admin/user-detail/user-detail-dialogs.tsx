@@ -330,8 +330,8 @@ function EmailForm({
           className={inputClass}
         />
         <p id="detail-email-hint" className="text-sm text-ws-muted">
-          Der Fachbereich wird nicht automatisch an die neue Adresse angepasst. Das geht in der Nutzerliste über „In
-          anderen Fachbereich verschieben“.
+          Der Bereich wird nicht automatisch an die neue Adresse angepasst. Das geht in der Nutzerliste über „In
+          anderen Bereich verschieben“.
         </p>
         {same && <p className="text-sm text-ws-red">Das ist schon die aktuelle Adresse.</p>}
       </div>
@@ -411,9 +411,9 @@ function ResetForm({
             </p>
             <ul className="list-disc space-y-1 pl-5">
               <li>XP, Level, Streak und Frachtmünzen</li>
-              <li>Lernverlauf und Prüfungssimulationen</li>
+              <li>Lernverlauf und Übungsprüfungen</li>
               <li>Badges und Blitzrunden</li>
-              <li>Gekaufte Items und der Aufbau von Hof und Betrieb</li>
+              <li>Gekaufte Gegenstände und der Aufbau von Hof und Betrieb</li>
             </ul>
             <p>
               <span className="font-medium text-ws-text">Nicht betroffen:</span> Leistungsnachweise und ihre Noten.

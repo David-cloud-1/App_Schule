@@ -20,7 +20,7 @@ export async function POST(request: Request, { params }: Kontext) {
   if (!parsed.success) return ungueltig(parsed.error)
   const zeile = await ladeEigenenFall(auth.supabase, (await params).id)
   if (!zeile) return fehler(FALL_FEHLT, 404)
-  if (!zeile.prompt) return fehler('Der Prompt ist noch nicht erstellt.', 400)
+  if (!zeile.prompt) return fehler('Der Auftrag für die KI ist noch nicht erstellt.', 400)
   try {
     const pruefung = await kern<FallPruefung>('/api/recht/pruefen', { antwort: parsed.data.antwort, fundstellen: zeile.fundstellen })
     const neu = await aktualisiereFall(auth.supabase, zeile.id, { antwort: parsed.data.antwort, pruefung, schritt: Math.max(zeile.schritt, 3) })

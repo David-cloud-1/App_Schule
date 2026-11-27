@@ -291,7 +291,7 @@ function InhaltePageContent() {
     <div className="space-y-6">
       <AdminPageHeader
         title="Inhalte"
-        description="Fächer und Themen als Baum. Wähle links einen Knoten, rechts siehst du seine Fragen."
+        description="Wähle links im Baum ein Fach oder Thema und sieh rechts die Fragen dazu."
       />
 
       {failed && !tree ? (
@@ -324,12 +324,12 @@ function InhaltePageContent() {
           <div className={showList ? 'hidden lg:block' : undefined}>
             <div className="overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">
               <div className="border-b border-ws-line p-3">
-                <p className="mb-2 text-xs font-medium text-ws-muted">Klassenstufe</p>
+                <p className="mb-2 text-xs font-medium text-ws-muted">Stufe</p>
                 <AdminSegmented
                   value={(klasse === 'all' ? 'all' : String(klasse)) as ClassParam}
                   onChange={changeKlasse}
                   options={CLASS_OPTIONS}
-                  ariaLabel="Klassenstufe"
+                  ariaLabel="Stufe"
                 />
               </div>
               <div className="max-h-[70vh] overflow-y-auto">

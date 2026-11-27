@@ -34,7 +34,7 @@ export async function GET() {
 
   const department = await getDepartmentById(auth.supabase, auth.departmentId)
   if (!department) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
   }
 
   const lastChange = (await lastChangesFor('department', [department.id])).get(department.id) ?? null
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest) {
     .eq('id', departmentId)
     .maybeSingle()
   if (readError || !beforeRow) {
-    return NextResponse.json({ error: 'Fachbereich nicht gefunden' }, { status: 404 })
+    return NextResponse.json({ error: 'Bereich nicht gefunden' }, { status: 404 })
   }
   const before = beforeRow as Record<string, unknown>
 

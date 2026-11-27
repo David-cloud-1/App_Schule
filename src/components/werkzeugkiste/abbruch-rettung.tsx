@@ -54,7 +54,7 @@ export function RettungsBox({
     try {
       setPrompt(await ladePrompt())
     } catch (e) {
-      setFehler(e instanceof WerkzeugFehler ? e.message : 'Der Prompt konnte gerade nicht erstellt werden. Bitte versuche es erneut.')
+      setFehler(e instanceof WerkzeugFehler ? e.message : 'Der Auftrag für die KI konnte gerade nicht erstellt werden. Bitte versuche es erneut.')
     } finally {
       setLaedt(false)
     }
@@ -119,26 +119,26 @@ export function RettungsBox({
         {automatisch && prompt === null && laedt && (
           <p className="flex items-center gap-2 text-sm text-ws-muted" role="status">
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            Weiterschreib-Prompt wird erstellt …
+            Weiterschreib-Auftrag wird erstellt …
           </p>
         )}
 
         {prompt !== null && (
           <div className="space-y-4">
             <p className="text-sm leading-relaxed text-ws-muted">
-              Kopiere diesen Prompt in <strong className="font-semibold text-ws-text">dieselbe Unterhaltung</strong> deiner KI. Er sagt ihr,
+              Kopiere diesen Auftrag in <strong className="font-semibold text-ws-text">dieselbe Unterhaltung</strong> deiner KI. Er sagt ihr,
               welche Kapitel schon da sind. Füge ihre Antwort danach hier ein.
             </p>
-            <KopierKnopf text={prompt} label="Weiterschreib-Prompt kopieren" className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
+            <KopierKnopf text={prompt} label="Weiterschreib-Auftrag kopieren" className={`w-full sm:w-auto ${NEBEN_KOPIEREN}`} />
             <div className="space-y-2">
               <Label htmlFor="wk-weiter-antwort" className="sr-only">
-                Antwort auf den Weiterschreib-Prompt
+                Antwort auf den Weiterschreib-Auftrag
               </Label>
               <Textarea
                 id="wk-weiter-antwort"
                 value={antwort}
                 onChange={(e) => setAntwort(e.target.value)}
-                placeholder="Antwort auf den Weiterschreib-Prompt hier einfügen …"
+                placeholder="Antwort auf den Weiterschreib-Auftrag hier einfügen …"
                 spellCheck={false}
                 className="min-h-40 resize-y rounded-xl border-ws-line bg-ws-surface p-3 font-mono text-sm leading-relaxed text-ws-text placeholder:text-ws-faint focus-visible:ring-ws-green"
               />

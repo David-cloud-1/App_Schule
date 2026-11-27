@@ -306,7 +306,7 @@ describe('Zu große Abschnitte zerlegen (PROJ-71)', () => {
 })
 
 describe('Lange Texte ohne Teilungsmöglichkeit und fertige Materialien (Prompt-Route)', () => {
-  it('gibt einem langen Text, der sich nicht teilen lässt, einen Prompt und den Hinweis auf den Nachhol-Prompt', async () => {
+  it('gibt einem langen Text, der sich nicht teilen lässt, einen Prompt und den Hinweis auf den Nachhol-Auftrag', async () => {
     zeile = { ...BASIS, schritt: 2 }
     kernSagt('/api/teilen', { teile: [{ auswahl: { seiten: '', abschnitte: [] }, zeichen: 40000 }] })
     kernSagt('/api/prompt', { prompt: 'Du bist …', hinweis: '', warnung: '' })
@@ -314,7 +314,7 @@ describe('Lange Texte ohne Teilungsmöglichkeit und fertige Materialien (Prompt-
     expect(b.ablauf.prompt).toBe('Du bist …')
     expect(b.ablauf.teile).toBeNull()
     expect(b.hinweis).toBe(
-      'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Prompt.',
+      'Dein Text lässt sich nicht in kleinere Teile zerlegen. Bei sehr langen Texten kann die Antwort abbrechen. Dann hilft der Nachhol-Auftrag.',
     )
   })
 
@@ -410,7 +410,7 @@ describe('Prompt je Teil', () => {
     expect(updates).toHaveLength(0)
   })
 
-  it('baut mit weiter den Weiterschreib-Prompt aus den fertigen Kapiteln', async () => {
+  it('baut mit weiter den Weiterschreib-Auftrag aus den fertigen Kapiteln', async () => {
     await teilPrompt(json({ weiter: true }), mitNr(2))
     expect(letzter('/api/prompt').teil).toEqual({ nr: 2, von: 3, fertig: ['Haftung 1', 'Haftung 2'] })
   })
@@ -456,7 +456,7 @@ describe('Teil-Antwort einfügen', () => {
     expect(dateien.get(`u1/${ID}/teil-frei-2.yaml`)).toBe('chapters: gerettet')
   })
 
-  it('hängt die Antwort auf den Weiterschreib-Prompt an und zählt die Runde', async () => {
+  it('hängt die Antwort auf den Weiterschreib-Auftrag an und zählt die Runde', async () => {
     zeile = { ...BASIS, teile: teileListe(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['A', 'B'], fingerabdruck: 'x' }), teil(3)) }
     dateien.set(`u1/${ID}/teil-frei-2.yaml`, 'chapters: bisher')
     kernSagt('/api/teil-pruefen', teilCheck({ kapitel: ['C'] }))
@@ -468,7 +468,7 @@ describe('Teil-Antwort einfügen', () => {
     expect(dateien.get(`u1/${ID}/teil-frei-2.yaml`)).toBe('chapters: bisher plus neu')
   })
 
-  it('warnt bei der Antwort auf den Weiterschreib-Prompt nicht vor einem „falschen Teil“', async () => {
+  it('warnt bei der Antwort auf den Weiterschreib-Auftrag nicht vor einem „falschen Teil“', async () => {
     zeile = { ...BASIS, teile: teileListe(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['A'], fingerabdruck: 'x' }), teil(3)) }
     dateien.set(`u1/${ID}/teil-frei-2.yaml`, 'chapters: bisher')
     kernSagt('/api/teil-pruefen', teilCheck({ kapitel: ['C'], eherTeil: 3 }))
@@ -538,7 +538,7 @@ describe('Teil-Antwort einfügen', () => {
     expect(b.fehler).toBe('Die Antwort bricht ab, bevor ein Kapitel fertig war. Frage Teil 2 noch einmal an.')
   })
 
-  it('zeigt einen schweren Befund mit Nachbesserungs-Prompt', async () => {
+  it('zeigt einen schweren Befund mit Nachbesserungs-Auftrag', async () => {
     kernSagt('/api/pruefen', pruefOk({ befunde: [{ text: 'Kapitel 1 – Bild fehlt', schwere: 'hoch' }, { text: 'Kapitel 2 – Tipp', schwere: 'mittel' }], nachbesserungsPrompt: 'Bitte …' }))
     const b = await (await teilAntwort(json({ antwort: 'chapters: x' }), mitNr(2))).json()
     expect(b.teil.befund).toBe('hoch')
@@ -679,7 +679,7 @@ describe('Antwort ohne Teile: abgeschnitten, weiterschreiben, fortsetzen', () =>
     expect((await pruefen(json({ antwort: 'cover: x' }), ctx)).status).toBe(200)
   })
 
-  it('Weiterschreiben kürzt auf die vollständigen Kapitel und liefert den Weiterschreib-Prompt', async () => {
+  it('Weiterschreiben kürzt auf die vollständigen Kapitel und liefert den Weiterschreib-Auftrag', async () => {
     zeile = mitAbbruch()
     kernSagt('/api/retten', { antwort: 'chapters: gerettet', kapitel: 3 })
     kernSagt('/api/kapitel-liste', { kapitel: ['A', 'B', 'C'] })

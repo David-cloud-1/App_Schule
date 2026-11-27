@@ -27,13 +27,13 @@ describe('Gliederung', () => {
 })
 
 describe('waehleInhalte', () => {
-  it('nimmt ganze Themen und lässt unbekannte Typen mit Zählung aus', () => {
+  it('nimmt ganze Kapitel und lässt unbekannte Typen mit Zählung aus', () => {
     const r = waehleInhalte(S, { ...leer, themen: [0] })
     expect(r.themen).toHaveLength(1)
     expect(r.themen[0].elements.map((b) => b.type)).toEqual(['text', 'true_false'])
     expect(r.ausgelassen).toBe(1)
   })
-  it('zählt Blöcke eines ganz gewählten Themas nicht doppelt', () => {
+  it('zählt Blöcke eines ganz gewählten Kapitels nicht doppelt', () => {
     const r = waehleInhalte(S, { themen: [1], bloecke: [{ thema: 1, block: 0 }, { thema: 0, block: 0 }], fragen: [] })
     expect(r.themen).toHaveLength(1)
     expect(r.bloecke).toHaveLength(1)
@@ -60,8 +60,8 @@ describe('waehleInhalte', () => {
 
 describe('Hilfen', () => {
   it('Text für die Fußzeile', () => {
-    expect(auswahlText(1, 0)).toBe('1 Thema')
-    expect(auswahlText(2, 3)).toBe('2 Themen und 3 Blöcke')
+    expect(auswahlText(1, 0)).toBe('1 Kapitel')
+    expect(auswahlText(2, 3)).toBe('2 Kapitel und 3 Blöcke')
     expect(auswahlText(0, 1)).toBe('1 Block')
   })
   it('Mini-Struktur: Deckblatt der Quelle, einzelne Blöcke unter „Auswahl“', () => {

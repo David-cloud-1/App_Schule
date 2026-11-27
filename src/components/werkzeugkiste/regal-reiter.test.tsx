@@ -196,7 +196,7 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     Object.defineProperty(window, 'location', { configurable: true, value: orig })
   })
 
-  it('zeigt „Anpassen“ nur bei anpassbaren Karten anderer Lehrkräfte', async () => {
+  it('zeigt „Kopie bearbeiten“ nur bei anpassbaren Karten anderer Lehrkräfte', async () => {
     api.ladeRegal.mockResolvedValue(
       liste([
         karte({ id: 'a', titel: 'Anpassbar', anpassbar: true }),
@@ -206,15 +206,15 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     )
     render(<RegalReiter />)
     await screen.findByText('Anpassbar')
-    expect(screen.getAllByRole('button', { name: /^Anpassen/ })).toHaveLength(1)
-    expect(screen.getByRole('button', { name: /^Anpassen.*Anpassbar/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Kopie bearbeiten/ })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: /^Kopie bearbeiten.*Anpassbar/ })).toBeInTheDocument()
   })
 
   it('legt eine Kopie an und öffnet sie bei Schritt 4', async () => {
     api.ladeRegal.mockResolvedValue(liste([karte({ id: 'f1', anpassbar: true })]))
     api.passeAn.mockResolvedValue({ ablauf: { id: 'neu1' } })
     render(<RegalReiter />)
-    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Kopie bearbeiten/ }))
     await waitFor(() => expect(api.passeAn).toHaveBeenCalledWith('f1', false))
     await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/ablauf/neu1?schritt=4'))
   })
@@ -223,7 +223,7 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     api.ladeRegal.mockResolvedValue(liste([karte({ id: 'f1', anpassbar: true })]))
     api.passeAn.mockResolvedValue({ ablauf: { id: 'neu1', werkzeug: 'skript', status: 'fertig', ergebnis: { format: 'seite' } } })
     render(<RegalReiter />)
-    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Kopie bearbeiten/ }))
     await waitFor(() => expect(window.location.href).toBe('/admin/werkzeugkiste/bearbeiten/neu1'))
   })
 
@@ -232,7 +232,7 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     api.passeAn.mockRejectedValueOnce(new WerkzeugFehler('Schon eine Kopie.', 409, undefined, 'schon_kopiert'))
     api.passeAn.mockResolvedValueOnce({ ablauf: { id: 'neu2' } })
     render(<RegalReiter />)
-    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Kopie bearbeiten/ }))
     expect(await screen.findByText('Du hast davon schon eine Kopie')).toBeInTheDocument()
     expect(toast.error).not.toHaveBeenCalled()
     expect(window.location.href).toBe('http://localhost/')
@@ -245,10 +245,10 @@ describe('Regal – Anpassen (PROJ-53, Paket 2)', () => {
     api.ladeRegal.mockResolvedValue(liste([karte({ anpassbar: true })]))
     api.passeAn.mockRejectedValue(new WerkzeugFehler('Dein Speicher ist voll.', 409))
     render(<RegalReiter />)
-    fireEvent.click(await screen.findByRole('button', { name: /^Anpassen/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Kopie bearbeiten/ }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Dein Speicher ist voll.'))
     expect(window.location.href).toBe('http://localhost/')
-    expect(screen.getByRole('button', { name: /^Anpassen/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /^Kopie bearbeiten/ })).toBeEnabled()
   })
 })
 

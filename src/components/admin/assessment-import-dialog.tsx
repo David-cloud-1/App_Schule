@@ -42,7 +42,7 @@ interface PreviewItem {
 const LETTERS = ['A', 'B', 'C', 'D', 'E'] as const
 const STEP_LABEL: Record<Exclude<Step, 'importing'>, string> = {
   material: '1 von 4 · Material',
-  prompt: '2 von 4 · Prompt kopieren',
+  prompt: '2 von 4 · Auftrag kopieren',
   answer: '3 von 4 · Antwort einfügen',
   preview: '4 von 4 · Vorschau',
 }
@@ -135,7 +135,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data?.error ?? 'Prompt konnte nicht erstellt werden.')
+        setError(data?.error ?? 'Der Auftrag für die KI konnte nicht erstellt werden.')
         return
       }
       setPrompt(data.prompt)
@@ -341,7 +341,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
         {step === 'prompt' && (
           <div className="space-y-3">
             <ol className="list-decimal space-y-1 pl-5 text-sm text-ws-muted">
-              <li>Prompt kopieren.</li>
+              <li>Auftrag für die KI kopieren.</li>
               <li>In einen KI-Chat einfügen und abschicken.</li>
               <li>Die Antwort der KI (das JSON) kopieren und im nächsten Schritt einfügen.</li>
             </ol>
@@ -349,7 +349,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
               <Alert className="border-ws-orange/50 bg-ws-orange/10">
                 <AlertTriangle className="size-4 text-ws-orange" />
                 <AlertDescription className="text-ws-orange">
-                  Der Prompt ist sehr lang und passt vielleicht nicht in einen kostenlosen Chat. Besser das Material in Teilen importieren
+                  Der Auftrag ist sehr lang und passt vielleicht nicht in einen kostenlosen Chat. Besser das Material in Teilen importieren
                   (z. B. nur einige Aufgaben je Durchgang).
                 </AlertDescription>
               </Alert>
@@ -361,7 +361,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
               className="min-h-11 w-full rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
             >
               {copied ? <Check size={16} className="mr-2" /> : <ClipboardCopy size={16} className="mr-2" />}
-              {copied ? 'Kopiert' : 'Prompt kopieren'}
+              {copied ? 'Kopiert' : 'Auftrag kopieren'}
             </Button>
           </div>
         )}
@@ -399,7 +399,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
                   {blockedCount} Fragen haben Qualitätsmängel und lassen sich so nicht importieren. Du kannst die KI bitten, sie zu überarbeiten.
                   <Button type="button" size="sm" variant="outline" onClick={() => copy(fixPrompt())} className="min-h-11 w-fit rounded-xl border-ws-orange text-ws-orange">
                     <ClipboardCopy size={14} className="mr-1.5" />
-                    Korrektur-Prompt kopieren
+                    Korrektur-Auftrag kopieren
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -493,7 +493,7 @@ export function AssessmentImportDialog({ open, onOpenChange, departmentId, onImp
                 className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
               >
                 {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-                Prompt erstellen
+                Auftrag erstellen
               </Button>
             </>
           )}

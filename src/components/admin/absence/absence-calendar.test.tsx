@@ -79,16 +79,16 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     render(<AbsenceCalendar />)
     expect(await screen.findByText('Anna Beispiel')).toBeInTheDocument()
     expect(screen.getAllByText('Fortbildung').length).toBeGreaterThan(0)
-    expect(screen.getByText('Vertretung offen')).toBeInTheDocument()
+    expect(screen.getAllByText('Vertretung fehlt').length).toBeGreaterThan(0)
   })
 
-  it('zeigt im Monatsraster Name und „offen“ als Text an der Marke', async () => {
+  it('zeigt im Monatsraster Name und „fehlt“ als Text an der Marke', async () => {
     window.localStorage.setItem('absence-calendar-prefs', JSON.stringify({ view: 'month' }))
     mockApi([row()])
     render(<AbsenceCalendar />)
-    const chip = await screen.findByTitle('Anna Beispiel: Fortbildung, Vertretung offen')
+    const chip = await screen.findByTitle('Anna Beispiel: Fortbildung, Vertretung fehlt')
     expect(chip).toHaveTextContent('Anna Beispiel')
-    expect(chip).toHaveTextContent('offen')
+    expect(chip).toHaveTextContent('fehlt')
   })
 
   it('zeigt den Leerzustand mit Hauptaktion', async () => {
@@ -126,7 +126,7 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Bearbeiten/ })).toBeInTheDocument())
   })
 
-  it('öffnet mit „?vertretung=offen“ gleich mit dem Filter „Offen“', async () => {
+  it('öffnet mit „?vertretung=offen“ gleich mit dem Filter „Vertretung fehlt“', async () => {
     mockApi([row(), row({ id: '22222222-2222-4222-8222-222222222222', person_name: 'Carla Fertig', vertretung_status: 'eingetragen' })])
     render(<AbsenceCalendar initialSubstitute="open" />)
     expect(await screen.findByText('Anna Beispiel')).toBeInTheDocument()
@@ -146,7 +146,7 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     expect(screen.queryByText('Vertretung eingetragen')).not.toBeInTheDocument()
   })
 
-  it('zeigt gelöschte Einträge auch im Filter „Offen“ (Planer müssen noch handeln)', async () => {
+  it('zeigt gelöschte Einträge auch im Filter „Vertretung fehlt“ (Planer müssen noch handeln)', async () => {
     mockApi([row(storniert)])
     render(<AbsenceCalendar initialSubstitute="open" />)
     expect(await screen.findByText('Anna Beispiel')).toBeInTheDocument()
@@ -157,7 +157,7 @@ describe('AbsenceCalendar (PROJ-120)', () => {
     render(<AbsenceCalendar />)
     fireEvent.click(await screen.findByText('Anna Beispiel'))
     await waitFor(() => expect(screen.getByRole('button', { name: /Vertretung zurückgenommen/ })).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: /Zurück auf offen/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Zurück auf „Vertretung fehlt“/ })).not.toBeInTheDocument()
   })
 
   it('zeigt Normal-Lehrkräften nur den Hinweis und „Löschung zurücknehmen“, kein Bearbeiten', async () => {

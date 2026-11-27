@@ -123,7 +123,7 @@ export function EinbettenFormular({ block, onChange }: FormProps) {
           </div>
           <p className="text-xs text-ws-muted">
             {darstellung === 'einbetten'
-              ? `Die Schüler klicken „Inhalt laden“, dann erscheint der Inhalt in der Seite (Daten gehen an ${anbieter.anzeigeHost}). Im öffentlichen Link und in der Vorschau öffnet er sich stattdessen in einem neuen Tab.`
+              ? `Die Schüler klicken „Inhalt laden“, dann erscheint der Inhalt in der Seite (Daten gehen an ${anbieter.anzeigeHost}). Im Link für Azubis und in der Vorschau öffnet er sich stattdessen in einem neuen Tab.`
               : `Die Schüler bekommen den Link und einen QR-Code, zum Beispiel für den Ausdruck. Beim Öffnen gehen Daten an ${sicht.url ? linkHost(sicht.url) : anbieter.anzeigeHost}.`}
           </p>
         </div>

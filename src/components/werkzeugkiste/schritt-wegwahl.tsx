@@ -56,7 +56,7 @@ export function WegKarte({ daten, fehler }: { daten: WegDaten | null; fehler: bo
           <Gift className="mt-0.5 size-5 shrink-0 text-ws-blue" aria-hidden />
           <div className="space-y-1 text-sm leading-relaxed">
             <p className="font-semibold">Kostenlos mit eigener KI</p>
-            <p className="text-ws-muted">Du kopierst einen Prompt in deine KI (z. B. ChatGPT) und fügst die Antwort wieder ein.</p>
+            <p className="text-ws-muted">Du kopierst einen Auftrag in deine KI (z. B. ChatGPT) und fügst die Antwort wieder ein.</p>
           </div>
         </div>
       </div>

@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
 
   if (sameCode) {
-    return NextResponse.json({ error: 'Fach-Code existiert in diesem Fachbereich bereits.' }, { status: 409 })
+    return NextResponse.json({ error: 'Fach-Code existiert in diesem Bereich bereits.' }, { status: 409 })
   }
 
   const maxSort = Math.max(0, ...((existing ?? []) as { sort_order: number | null }[]).map((s) => s.sort_order ?? 0))

@@ -251,7 +251,7 @@ export function ContentQuestionPanel({
               <TableRow className="border-ws-line hover:bg-transparent">
                 <TableHead className="text-ws-muted">Frage</TableHead>
                 {topic === null && <TableHead className="hidden text-ws-muted xl:table-cell">Thema</TableHead>}
-                <TableHead className="hidden text-ws-muted md:table-cell">Klasse</TableHead>
+                <TableHead className="hidden text-ws-muted md:table-cell">Stufe</TableHead>
                 <TableHead className="hidden text-ws-muted sm:table-cell">Schwierigkeit</TableHead>
                 <TableHead className="text-ws-muted">Status</TableHead>
                 <TableHead className="text-right text-ws-muted">
@@ -273,7 +273,7 @@ export function ContentQuestionPanel({
                     </TableCell>
                   )}
                   <TableCell className="hidden text-xs text-ws-muted md:table-cell">
-                    {q.class_level != null ? `Kl. ${q.class_level}` : '—'}
+                    {q.class_level != null ? `Stufe ${q.class_level}` : '—'}
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <DifficultyBadge difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'} />

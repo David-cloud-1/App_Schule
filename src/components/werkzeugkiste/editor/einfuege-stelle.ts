@@ -46,7 +46,7 @@ export function einfuegeortAusMarke(marke: unknown, struktur: Struktur): Einfueg
 }
 
 /** Neues Thema direkt hinter dem Thema `nach`; ohne gültiges `nach` am Ende */
-export function neuesThemaNach(s: Struktur, nach: number | null, titel = 'Neues Thema'): { struktur: Struktur; index: number } {
+export function neuesThemaNach(s: Struktur, nach: number | null, titel = 'Neues Kapitel'): { struktur: Struktur; index: number } {
   const index = nach !== null && nach >= 0 && nach < s.chapters.length ? nach + 1 : s.chapters.length
   const themen = [...s.chapters]
   themen.splice(index, 0, { title: titel, elements: [] })

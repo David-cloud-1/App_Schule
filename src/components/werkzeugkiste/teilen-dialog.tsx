@@ -81,7 +81,7 @@ export function TeilenDialog({
               // Außerhalb des Formulars: Die Knöpfe hier dürfen „Speichern“ nicht auslösen
               <section aria-labelledby="teilen-link-titel" className="space-y-3 border-t border-ws-line pt-5">
                 <h3 id="teilen-link-titel" className="text-base font-semibold">
-                  Öffentlicher Link
+                  Für Azubis (Link)
                 </h3>
                 <p className="text-sm text-ws-muted">Unabhängig vom Regal: für alle, die den Link haben, auch ohne Konto.</p>
                 <LinkFeld key={ziel.id} ablaufId={ziel.id} geaendert={(s) => linkGeaendert?.(ziel.id, s)} />
@@ -188,7 +188,7 @@ function TeilenInhalt({
   return (
     <form onSubmit={speichern} className="space-y-5">
       <DialogHeader>
-        <DialogTitle>Material teilen</DialogTitle>
+        <DialogTitle>Fürs Kollegium (Regal)</DialogTitle>
         <DialogDescription className="break-words text-ws-muted" title={ziel.titel}>
           „{ziel.titel}“
         </DialogDescription>
@@ -233,7 +233,7 @@ function TeilenInhalt({
 
                   {s.id === 'fachbereich' && wahl === 'fachbereich' && optionen && optionen.bereiche.length > 1 && (
                     <fieldset className="space-y-1 pl-3">
-                      <legend className="sr-only">Fachbereiche</legend>
+                      <legend className="sr-only">Bereiche</legend>
                       {optionen.bereiche.map((b) => (
                         <Label key={b.id} htmlFor={`teilen-bereich-${b.id}`} className="flex min-h-11 cursor-pointer items-center gap-3">
                           <Checkbox

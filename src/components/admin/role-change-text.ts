@@ -16,9 +16,9 @@ export function roleChangeDescription(
 
   switch (newRole) {
     case 'admin':
-      return `${head}. Diese Person erhält vollen Zugriff auf alle Fachbereiche.`
+      return `${head}. Diese Person erhält vollen Zugriff auf alle Bereiche.`
     case 'department_admin':
-      return `${head} für den eigenen Fachbereich und kann dessen Inhalte verwalten.`
+      return `${head} für den eigenen Bereich und kann dessen Inhalte verwalten.`
     case 'teacher':
       return isTeacherRole(user.role)
         ? `${head}: Der Zugang zum Lehrkräfte-Bereich bleibt, nur die Super-Admin-Rechte entfallen.`

@@ -24,7 +24,7 @@ import { HILFE_PROBLEME, HILFE_SEITEN, HILFE_VERBOTEN, type HilfeProblemId } fro
 
 /** Anführungszeichen („…“) nennen Knöpfe der Oberfläche und zählen nicht als Fachwort */
 function ohneKnopfnamen(text: string) {
-  return text.replace(/„[^“]*“/g, '').replace(/\(Prompt\)/g, '')
+  return text.replace(/„[^“]*“/g, '')
 }
 
 const alleTexte = (werkzeug: string) =>
@@ -72,10 +72,8 @@ describe('Hilfetexte: Wortwahl', () => {
       }
     })
 
-    it(`${werkzeug}: „Prompt“ steht nur einmal in Klammern oder als Knopfname in Anführungszeichen`, () => {
-      for (const { v, t } of alleTexte(werkzeug)) expect(ohneKnopfnamen(t), `${v}: „${t}“`).not.toMatch(/prompt/i)
-      const klammern = alleTexte(werkzeug).filter(({ t }) => t.includes('(Prompt)'))
-      expect(klammern).toHaveLength(1)
+    it(`${werkzeug}: sagt „Auftrag“, nie „Prompt“ (PROJ-130)`, () => {
+      for (const { v, t } of alleTexte(werkzeug)) expect(t, `${v}: „${t}“`).not.toMatch(/prompt/i)
     })
 
     it(`${werkzeug}: duzt die Lehrkraft, nie „Sie“`, () => {

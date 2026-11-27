@@ -31,7 +31,7 @@ export type FallSchritt = 1 | 2 | 3
 
 export const FALL_SCHRITTE: { nr: FallSchritt; label: string }[] = [
   { nr: 1, label: 'Sachverhalt' },
-  { nr: 2, label: 'Prompt' },
+  { nr: 2, label: 'Auftrag kopieren' },
   { nr: 3, label: 'Aktennotiz' },
 ]
 

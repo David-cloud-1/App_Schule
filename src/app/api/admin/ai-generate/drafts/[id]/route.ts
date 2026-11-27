@@ -60,7 +60,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const subject = await resolveDraftSubject(supabase, departmentId, { subject_code: parsed.data.subject_code })
       if (!subject) {
         return NextResponse.json(
-          { error: `Fach "${parsed.data.subject_code}" gibt es in diesem Fachbereich nicht.` },
+          { error: `Fach "${parsed.data.subject_code}" gibt es in diesem Bereich nicht.` },
           { status: 400 }
         )
       }

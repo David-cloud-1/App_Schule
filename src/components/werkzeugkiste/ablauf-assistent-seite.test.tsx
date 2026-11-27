@@ -73,7 +73,7 @@ describe('Assistent im Ablauf', () => {
     expect(panel).toHaveTextContent('Schritt 2 von 5')
     expect(panel).toHaveTextContent('Wähle das Format und das Niveau')
     // Der Ablauf selbst bleibt unverändert und bedienbar
-    expect(screen.getByRole('button', { name: 'Prompt erstellen' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Auftrag erstellen' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'Hilfe schließen' }))
     expect(screen.queryByRole('complementary')).toBeNull()
   })
@@ -92,9 +92,9 @@ describe('Assistent im Ablauf', () => {
     api.ladeAblauf.mockResolvedValue({ ablauf: ablauf() })
     render(<AblaufSeite id="a1" />)
     fireEvent.click(await screen.findByRole('button', { name: /Hilfe: Schritt für Schritt/ }))
-    expect(screen.getByRole('heading', { name: 'Auftrag an die KI (Prompt) kopieren' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Auftrag für die KI kopieren' })).toBeInTheDocument()
     expect(screen.queryByText('Erledigt')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Prompt kopieren/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Auftrag kopieren/ }))
     await waitFor(() => expect(screen.getByText('Erledigt')).toBeInTheDocument())
   })
 

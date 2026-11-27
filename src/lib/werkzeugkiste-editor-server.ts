@@ -208,7 +208,7 @@ export async function geteiltStatus(supabase: SupabaseClient, id: string): Promi
 
 // ── Eigene Seite (PROJ-94) ────────────────────────────────────────────────
 
-export const ERST_VEROEFFENTLICHEN = 'Erst veröffentlichen.'
+export const ERST_VEROEFFENTLICHEN = 'Erst Änderungen übernehmen.'
 
 /**
  * Download, öffentlicher Link und Regal lesen nur die veröffentlichte Datei.
@@ -217,5 +217,5 @@ export const ERST_VEROEFFENTLICHEN = 'Erst veröffentlichen.'
  */
 export function erstVeroeffentlichen(zeile: { werkzeug: string; antwort?: string | null; ergebnis?: unknown }) {
   if (!nieVeroeffentlicht(zeile)) return null
-  return fehler(ERST_VEROEFFENTLICHEN, 409, 'Veröffentliche die Seite im Baukasten, dann geht es hier weiter.')
+  return fehler(ERST_VEROEFFENTLICHEN, 409, 'Übernimm die Änderungen im Baukasten, dann geht es hier weiter.')
 }

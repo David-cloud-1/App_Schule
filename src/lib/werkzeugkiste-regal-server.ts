@@ -39,7 +39,7 @@ export const freigabeSchema = z.object({
   bereiche: z.array(z.string().uuid()).max(50).optional(),
   personen: z
     .array(z.string().uuid())
-    .max(MAX_PERSONEN, `Du kannst höchstens ${MAX_PERSONEN} Personen auswählen. Teile besser mit dem Fachbereich oder allen.`)
+    .max(MAX_PERSONEN, `Du kannst höchstens ${MAX_PERSONEN} Personen auswählen. Teile besser mit dem Bereich oder allen.`)
     .optional(),
 })
 

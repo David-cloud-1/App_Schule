@@ -429,7 +429,7 @@ function KiKarte({ frage, fundstellen }: { frage: string; fundstellen: Fundstell
     try {
       const { prompt } = await holeFragePrompt(frage, fundstellen.map((f) => ({ kuerzel: f.kuerzel, nr: f.nr })))
       await navigator.clipboard.writeText(prompt)
-      toast.success('Prompt kopiert. Füge ihn jetzt in deine KI ein.')
+      toast.success('Auftrag kopiert. Füge ihn jetzt in deine KI ein.')
     } catch (e) {
       toast.error(e instanceof SchulrechtFehler ? e.message : 'Kopieren hat nicht geklappt. Bitte versuche es noch einmal.')
     } finally {
@@ -441,7 +441,7 @@ function KiKarte({ frage, fundstellen }: { frage: string; fundstellen: Fundstell
     <div className="space-y-2 rounded-2xl border border-ws-line bg-ws-surface p-4">
       <p className="font-semibold text-ws-text">Mit meiner KI beantworten</p>
       <p className="text-sm text-ws-muted">
-        Kopiert deine Frage und diese {fundstellen.length} Stellen im Wortlaut als Prompt. Die KI darf nur daraus zitieren.
+        Kopiert deine Frage und diese {fundstellen.length} Stellen im Wortlaut als Auftrag für die KI. Die KI darf nur daraus zitieren.
       </p>
       <blockquote className="max-h-24 overflow-y-auto whitespace-pre-line rounded-xl border-l-4 border-ws-line bg-ws-raised/60 px-3 py-2 text-sm text-ws-text">
         {frage}
@@ -449,7 +449,7 @@ function KiKarte({ frage, fundstellen }: { frage: string; fundstellen: Fundstell
       <p className="text-sm font-medium text-ws-orange">{KI_HINWEIS}</p>
       <Button variant="outline" onClick={() => void kopiere()} disabled={laedt} className={NEBENAKTION}>
         {laedt ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Bot className="mr-2 size-4" aria-hidden />}
-        Prompt kopieren
+        Auftrag für die KI kopieren
       </Button>
     </div>
   )

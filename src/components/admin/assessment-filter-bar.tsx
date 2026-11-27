@@ -102,11 +102,11 @@ export function AssessmentFilterBar({
 
         {departments.length > 1 && (
           <Select value={filters.departmentId} onValueChange={(v) => onChange({ ...filters, departmentId: v })}>
-            <SelectTrigger className={triggerClass} aria-label="Zielbereich">
+            <SelectTrigger className={triggerClass} aria-label="Bereich">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className={contentClass}>
-              <SelectItem value={FILTER_ALL}>Alle Zielbereiche</SelectItem>
+              <SelectItem value={FILTER_ALL}>Alle Bereiche</SelectItem>
               {departments.map((d) => (
                 <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
               ))}

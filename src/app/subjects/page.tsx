@@ -78,7 +78,7 @@ export default async function SubjectsPage() {
               <Timer size={18} className="text-[#1CB0F6]" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-bold text-[#F9FAFB]">Prüfung üben</span>
+              <span className="block text-sm font-bold text-[#F9FAFB]">Übungsprüfung</span>
               <span className="block text-xs text-[#9CA3AF]">IHK-Simulation</span>
             </span>
           </Link>

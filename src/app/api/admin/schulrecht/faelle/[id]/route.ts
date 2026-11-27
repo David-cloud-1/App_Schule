@@ -30,7 +30,7 @@ export async function PATCH(request: Request, { params }: Kontext) {
   if (!parsed.success) return ungueltig(parsed.error)
   const zeile = await ladeEigenenFall(auth.supabase, (await params).id)
   if (!zeile) return fehler(FALL_FEHLT, 404)
-  if (parsed.data.schritt > 1 && !zeile.prompt) return fehler('Der Prompt ist noch nicht erstellt.', 400)
+  if (parsed.data.schritt > 1 && !zeile.prompt) return fehler('Der Auftrag für die KI ist noch nicht erstellt.', 400)
   const neu = await aktualisiereFall(auth.supabase, zeile.id, { schritt: Math.max(zeile.schritt, parsed.data.schritt) })
   if (!neu) return fehler('Das konnte nicht gespeichert werden.', 500)
   return ohneZwischenspeicher(NextResponse.json({ fall: zeileZuFall(neu) }))

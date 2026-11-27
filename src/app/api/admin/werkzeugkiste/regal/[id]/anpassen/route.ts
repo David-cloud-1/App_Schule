@@ -63,7 +63,7 @@ export async function POST(request: Request, { params }: Kontext) {
 
   if (quelle.von_mir) return fehler('Das ist dein eigenes Material. Du kannst es unter „Meine Materialien“ überarbeiten.', 409)
   if (!quelle.antwort || !quelle.pruefung || !quelle.ergebnis || !quelle.auszug_am) {
-    return fehler('Dieses Material lässt sich leider nicht anpassen. Du kannst es herunterladen.', 409)
+    return fehler('Von diesem Material lässt sich leider keine Kopie bearbeiten. Du kannst es herunterladen.', 409)
   }
 
   // Wie bei einem neuen Ablauf: Die Speichergrenze zählt am Anfang, nie mittendrin

@@ -143,7 +143,7 @@ export function EditQuestionDialog({ question, editable, onOpenChange, onSaved }
     ? question?.isPrivate
       ? 'Diese Frage ist nur für dich sichtbar und bleibt es auch nach dem Speichern.'
       : 'Diese Änderung wirkt sich auf die Frage im Bereichs-Pool aus — auch im Quiz, in der Blitzrunde und in anderen Nachweisen.'
-    : 'Nur Bereichs-Admins dieses Fachbereichs können Pool-Fragen bearbeiten.'
+    : 'Nur Bereichs-Admins dieses Bereichs können Pool-Fragen bearbeiten.'
 
   return (
     <Dialog open={question !== null} onOpenChange={(o) => !saving && onOpenChange(o)}>
@@ -227,16 +227,16 @@ export function EditQuestionDialog({ question, editable, onOpenChange, onSaved }
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="eq-class">Klassenstufe</Label>
+                <Label htmlFor="eq-class">Stufe</Label>
                 <Select value={classLevel} onValueChange={(v) => editable && setClassLevel(v)} disabled={!editable}>
                   <SelectTrigger id="eq-class" className="h-11 rounded-xl border-ws-line bg-ws-bg text-ws-text">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="border-ws-line bg-ws-surface text-ws-text">
-                    <SelectItem value={NO_CLASS}>Ohne Klassenstufe</SelectItem>
-                    <SelectItem value="10">Klasse 10</SelectItem>
-                    <SelectItem value="11">Klasse 11</SelectItem>
-                    <SelectItem value="12">Klasse 12</SelectItem>
+                    <SelectItem value={NO_CLASS}>Ohne Stufe</SelectItem>
+                    <SelectItem value="10">Stufe 10</SelectItem>
+                    <SelectItem value="11">Stufe 11</SelectItem>
+                    <SelectItem value="12">Stufe 12</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

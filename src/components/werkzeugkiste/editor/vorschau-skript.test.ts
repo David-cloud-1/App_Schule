@@ -14,10 +14,10 @@ function laufenLassen(zustand?: Record<string, unknown>, leeren = true) {
   document.head.innerHTML = ''
   document.body.innerHTML =
     '<div class="navi">Kopf</div>' +
-    '<h2 data-wk="k0">Thema</h2>' +
+    '<h2 data-wk="k0">Kapitel</h2>' +
     '<section data-wk="k0-e0"><p id="text">Block A</p></section>' +
     '<section data-wk="k0-e1"><button id="aufgabe">Prüfen</button><input id="eingabe"></section>' +
-    '<h2 data-wk="k1">Zweites Thema</h2>' +
+    '<h2 data-wk="k1">Zweites Kapitel</h2>' +
     '<h2 data-wk="abschluss">Lernzielkontrolle</h2>' +
     '<div data-wk="abschluss-summary"><span id="teil">Teil</span></div>' +
     '<div data-wk="k9;x"><span id="fremd">Fremd</span></div><p id="leer">Zwischenraum</p>'
@@ -184,7 +184,7 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     expect(leiste.hidden).toBe(true)
   })
 
-  it('an einem Block: alle Aktionen; am Thema dieselben Wörter; an der Lernzielkontrolle: nur „Bearbeiten“ (PROJ-118)', () => {
+  it('an einem Block: alle Aktionen; am Kapitel dieselben Wörter; an der Lernzielkontrolle: nur „Bearbeiten“ (PROJ-118)', () => {
     laufenLassen()
     const sichtbar = () =>
       [...document.querySelectorAll<HTMLElement>('.wk-leiste [data-wk-aktion]')].filter((b) => !b.hidden).map((b) => b.getAttribute('data-wk-aktion'))
@@ -194,11 +194,11 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
     expect(aktion('bearbeite').textContent).toBe('Bearbeiten')
     expect(aktion('dupliziere').textContent).toBe('Duplizieren')
     expect(aktion('loesche').textContent).toBe('Löschen')
-    vomEditor({ wk: 'k0', name: 'Thema' })
+    vomEditor({ wk: 'k0', name: 'Kapitel' })
     // Am Thema geht auch Löschen (die App fragt per Dialog nach)
     expect(sichtbar()).toEqual(['griff', 'bearbeite', 'einfuegen', 'loesche'])
     expect(aktion('einfuegen').textContent).toBe('Darunter einfügen')
-    expect(aktion('loesche').getAttribute('aria-label')).toBe('Thema löschen')
+    expect(aktion('loesche').getAttribute('aria-label')).toBe('Kapitel löschen')
     vomEditor({ wk: 'abschluss', name: 'Lernzielkontrolle' })
     expect(sichtbar()).toEqual(['bearbeite'])
   })
@@ -262,11 +262,11 @@ describe('Modus Bearbeiten: Rahmen und Leiste', () => {
 })
 
 describe('Modus Bearbeiten: Leerzustand und Einfügestellen', () => {
-  it('ein leeres Thema zeigt Vorschläge; ein Klick meldet Typ und Thema', () => {
+  it('ein leeres Kapitel zeigt Vorschläge; ein Klick meldet Typ und Kapitel', () => {
     const gesendet = laufenLassen({ modus: 'bearbeiten', leer: [1] })
     const leer = document.querySelector('.wk-leer')!
     expect(leer.previousElementSibling?.getAttribute('data-wk')).toBe('k1')
-    expect(leer.textContent).toContain('Dieses Thema ist noch leer.')
+    expect(leer.textContent).toContain('Dieses Kapitel ist noch leer.')
     const typen = [...leer.querySelectorAll('[data-wk-aktion="schnell"]')].map((b) => b.getAttribute('data-wk-typ'))
     expect(typen).toEqual([...SCHNELLE_TYPEN])
     expect([...leer.querySelectorAll('[data-wk-aktion="schnell"]')].map((b) => b.textContent)).toEqual([
@@ -283,7 +283,7 @@ describe('Modus Bearbeiten: Leerzustand und Einfügestellen', () => {
     expect(gesendet).toHaveBeenCalledWith({ wkEinfuegen: 'k1' }, '*')
   })
 
-  it('verschwindet wieder, wenn das Thema nicht mehr leer ist, und im Modus Ausprobieren', () => {
+  it('verschwindet wieder, wenn das Kapitel nicht mehr leer ist, und im Modus Ausprobieren', () => {
     laufenLassen({ modus: 'bearbeiten', leer: [1] })
     expect(document.querySelectorAll('.wk-leer')).toHaveLength(1)
     vomEditor({ wkZustand: { modus: 'bearbeiten', leer: [] } })
@@ -294,7 +294,7 @@ describe('Modus Bearbeiten: Leerzustand und Einfügestellen', () => {
     expect(document.head.querySelector('style')!.textContent).toContain('body:not(.wk-bearbeiten) .wk-ui{display:none!important}')
   })
 
-  it('am Ende der Themen steht „+ Block“, am Ende des letzten Themas auch „+ Thema“', () => {
+  it('am Ende der Kapitel steht „+ Block“, am Ende des letzten Kapitels auch „+ Kapitel“', () => {
     const gesendet = laufenLassen({ modus: 'bearbeiten', leer: [] })
     const enden = [...document.querySelectorAll('.wk-ende')]
     expect(enden).toHaveLength(2)
@@ -440,7 +440,7 @@ describe('Nachrichten der Seite an die App (liesWunsch)', () => {
       expect(liesWunsch(n)).toBeNull()
   })
 
-  it('Marken: Deckblatt, Themen, Blöcke, Lernzielkontrolle', () => {
+  it('Marken: Deckblatt, Kapitel, Blöcke, Lernzielkontrolle', () => {
     expect(auswahlAusMarke('deckblatt')).toEqual({ art: 'deckblatt' })
     expect(auswahlAusMarke('k0')).toEqual({ art: 'thema', thema: 0 })
     expect(auswahlAusMarke('k12-e3')).toEqual({ art: 'block', thema: 12, block: 3 })
@@ -534,7 +534,7 @@ describe('Mehrfachauswahl und Ziehen (PROJ-102)', () => {
     expect(document.querySelector('.wk-zieht')).toBeNull()
   })
 
-  it('Ziehen an den Anfang eines Themas meldet „anfang“', () => {
+  it('Ziehen an den Anfang eines Kapitels meldet „anfang“', () => {
     const gesendet = laufenLassen()
     lageSetzen()
     vomEditor({ wk: 'k0-e1', name: 'x' })
@@ -557,10 +557,10 @@ describe('Mehrfachauswahl und Ziehen (PROJ-102)', () => {
     expect(document.querySelector('.wk-zieht')).toBeNull()
   })
 
-  it('ein Thema wird am Griff gezogen und vor ein anderes Thema oder ans Ende gelegt', () => {
+  it('ein Kapitel wird am Griff gezogen und vor ein anderes Kapitel oder ans Ende gelegt', () => {
     const gesendet = laufenLassen()
     lageSetzen()
-    vomEditor({ wk: 'k0', name: 'Thema' })
+    vomEditor({ wk: 'k0', name: 'Kapitel' })
     expect(sichtbar()).toContain('griff')
     aktion('griff').dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, clientY: 5 }))
     maus('pointermove', { clientY: 290 })

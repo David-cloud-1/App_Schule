@@ -43,7 +43,7 @@ describe('relativesDatum (PROJ-52)', () => {
 
 describe('Entwürfe (PROJ-52)', () => {
   it('nennt den zuletzt erreichten Schritt', () => {
-    expect(entwurfStand(3)).toBe('bei Schritt 3 · Prompt')
+    expect(entwurfStand(3)).toBe('bei Schritt 3 · Auftrag kopieren')
     expect(entwurfStand(2)).toBe('bei Schritt 2 · Einstellungen')
   })
 

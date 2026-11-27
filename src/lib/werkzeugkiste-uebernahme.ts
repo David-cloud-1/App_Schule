@@ -130,7 +130,7 @@ export function istLeer(a: UebernahmeAuswahl): boolean {
 /** Kurzer Satz für die Fußzeile des Dialogs und den Hinweis danach */
 export function auswahlText(themen: number, bloecke: number): string {
   const teile: string[] = []
-  if (themen > 0) teile.push(themen === 1 ? '1 Thema' : `${themen} Themen`)
+  if (themen > 0) teile.push(themen === 1 ? '1 Kapitel' : `${themen} Kapitel`)
   if (bloecke > 0) teile.push(bloecke === 1 ? '1 Block' : `${bloecke} Blöcke`)
   return teile.join(' und ')
 }

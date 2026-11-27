@@ -26,7 +26,7 @@ export const BOX_ARTEN: BoxArt[] = [
   { klasse: 'ausgangssituation', label: 'Ausgangssituation', titel: 'Ausgangssituation' },
   { klasse: 'arbeitsauftrag', label: 'Arbeitsauftrag', titel: 'Arbeitsauftrag' },
   { klasse: 'mission', label: 'Fall (Mission)', titel: '📁 Neuer Fall' },
-  { klasse: 'pruefung', label: 'Prüfungssimulation', titel: '⭐ IHK-Prüfungssimulation' },
+  { klasse: 'pruefung', label: 'IHK-Prüfung', titel: '⭐ IHK-Prüfungssimulation' },
 ]
 
 /** Schreibvarianten wie `_ALIAS` in schuldesign.py */

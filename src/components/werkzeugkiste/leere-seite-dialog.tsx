@@ -57,7 +57,7 @@ export function LeereSeiteDialog({ offen, onOpenChange }: { offen: boolean; onOp
       <DialogContent className="rounded-2xl border-ws-line bg-ws-surface text-ws-text sm:max-w-md">
         <form onSubmit={anlegen} className="space-y-4">
           <DialogHeader>
-            <DialogTitle>Leere Seite anlegen</DialogTitle>
+            <DialogTitle>Eigene Seite bauen</DialogTitle>
             <DialogDescription className="text-ws-muted">
               Ohne Skript und ohne KI: Du startest mit einem Grundgerüst und baust die Seite Block für Block selbst auf.
             </DialogDescription>

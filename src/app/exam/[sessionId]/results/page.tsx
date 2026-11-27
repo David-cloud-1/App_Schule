@@ -90,7 +90,7 @@ export default async function ExamResultsPage({
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Link
             href={session.assessment_id ? '/leistungsnachweise' : '/exam'}
-            aria-label={session.assessment_id ? 'Zurück zu Leistungsnachweise' : 'Zurück zu Prüfung üben'}
+            aria-label={session.assessment_id ? 'Zurück zu Leistungsnachweise' : 'Zurück zur Übungsprüfung'}
             className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
           >
             <ArrowLeft size={20} />

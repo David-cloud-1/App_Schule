@@ -44,7 +44,7 @@ export function bildArt(bytes: Uint8Array): 'png' | 'jpg' | null {
 
 export const FORMAT_FEHLER = 'Dieses Format wird nicht unterstützt. Erlaubt sind PNG, JPG und WebP.'
 export const ZU_GROSS_FEHLER = 'Das Bild ist größer als 10 MB. Bitte wähle ein kleineres.'
-export const ZU_VIELE_BILDER = `Dieses Material hat schon ${EIGENE_MAX_ANZAHL} eigene Bilder. Entferne nicht benutzte Bilder aus den Blöcken und veröffentliche, dann sind sie wieder frei.`
+export const ZU_VIELE_BILDER = `Dieses Material hat schon ${EIGENE_MAX_ANZAHL} eigene Bilder. Entferne nicht benutzte Bilder aus den Blöcken und übernimm die Änderungen, dann sind sie wieder frei.`
 
 /**
  * Schätzung der Seitengröße, wenn ein Bild dazukommt: bisherige Größe plus

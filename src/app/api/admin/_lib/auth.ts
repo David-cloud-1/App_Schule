@@ -134,7 +134,7 @@ async function loadAdminAuth(mode: 'manager' | 'super'): Promise<AdminAuthResult
   if (!departmentId) {
     console.error('[requireManager] no department found', { userId: user.id, role })
     return {
-      error: NextResponse.json({ error: 'Kein Fachbereich zugeordnet' }, { status: 403 }),
+      error: NextResponse.json({ error: 'Kein Bereich zugeordnet' }, { status: 403 }),
       user: null,
       supabase: null,
     }

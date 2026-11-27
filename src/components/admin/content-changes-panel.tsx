@@ -59,7 +59,7 @@ const TYPE_LABEL: Record<string, string> = {
   question: 'Frage',
   topic: 'Thema',
   subject: 'Fach',
-  exam_question_set: 'Prüfungsset',
+  exam_question_set: 'Übungsprüfung',
 }
 const CHANGE_LABEL: Record<string, string> = {
   created: 'Angelegt',
@@ -246,7 +246,7 @@ export function ContentChangesPanel() {
             ))}
           </SelectContent>
         </Select>
-        <p className="text-sm text-ws-muted">Änderungen an Fragen, Themen, Fächern und Prüfungssets je Person.</p>
+        <p className="text-sm text-ws-muted">Änderungen an Fragen, Themen, Fächern und Übungsprüfungen je Person.</p>
       </div>
 
       {loadFailed ? (

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
   }
   if (!examPart) {
-    return NextResponse.json({ error: `Prüfungsteil ${part} gibt es in diesem Fachbereich nicht.` }, { status: 400 })
+    return NextResponse.json({ error: `Prüfungsteil ${part} gibt es in diesem Bereich nicht.` }, { status: 400 })
   }
 
   const subjectMap: Record<string, string> = {}
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Import = EIN Vorgang (PROJ-70)
-  await groupIntoBatch(supabase, 'question', insertedIds, `Prüfungsset-Import (${insertedIds.length} Fragen)`)
+  await groupIntoBatch(supabase, 'question', insertedIds, `Übungsprüfung-Import (${insertedIds.length} Fragen)`)
 
   await writeAuditLog(supabase, {
     admin_id: user.id,

@@ -264,13 +264,13 @@ export function loescheThema(s: Struktur, index: number): Struktur {
 export function dupliziereThema(s: Struktur, index: number): Struktur {
   const t = s.chapters[index]
   if (!t) return s
-  const neu = { ...kopie(t), title: `${t.title ?? 'Thema'} (Kopie)` }
+  const neu = { ...kopie(t), title: `${t.title ?? 'Kapitel'} (Kopie)` }
   const themen = [...s.chapters]
   themen.splice(index + 1, 0, neu)
   return { ...s, chapters: themen }
 }
 
-export function neuesThema(s: Struktur, titel = 'Neues Thema'): Struktur {
+export function neuesThema(s: Struktur, titel = 'Neues Kapitel'): Struktur {
   return { ...s, chapters: [...s.chapters, { title: titel, elements: [] }] }
 }
 
@@ -369,11 +369,11 @@ export function grundgeruest(titel: string, untertitel?: string | null): Struktu
     },
     chapters: [
       {
-        title: 'Thema 1',
+        title: 'Kapitel 1',
         elements: [
           {
             type: 'text',
-            content: '<div class="lernziele"><p>Nach diesem Kapitel kannst du…</p><ul><li></li></ul></div><h2>Thema 1</h2><p></p>',
+            content: '<div class="lernziele"><p>Nach diesem Kapitel kannst du…</p><ul><li></li></ul></div><h2>Kapitel 1</h2><p></p>',
           },
         ],
       },

@@ -97,7 +97,7 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
 
   it('klappt von selbst den nächsten offenen Teil auf und holt dessen Prompt', async () => {
     render(<SchrittTeile ablauf={ablaufMit(fertig(1), teil(2), teil(3))} onAblauf={vi.fn()} />)
-    expect(await screen.findByRole('button', { name: 'Prompt für Teil 2 kopieren' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Auftrag für Teil 2 kopieren' })).toBeInTheDocument()
     expect(api.ladeTeilPrompt).toHaveBeenCalledTimes(1)
     expect(api.ladeTeilPrompt).toHaveBeenCalledWith('a1', 2)
     expect(screen.getByText(/Teil 2 von 3/, { selector: 'p' })).toBeInTheDocument()
@@ -105,7 +105,7 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
 
   it('kopiert den schon geladenen Prompt direkt, ohne Umweg über das Netz', async () => {
     render(<SchrittTeile ablauf={ablaufMit(teil(1), teil(2), teil(3))} onAblauf={vi.fn()} />)
-    const knopf = await screen.findByRole('button', { name: 'Prompt für Teil 1 kopieren' })
+    const knopf = await screen.findByRole('button', { name: 'Auftrag für Teil 1 kopieren' })
     fireEvent.click(knopf)
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('PROMPT Teil 1'))
     expect(api.ladeTeilPrompt).toHaveBeenCalledTimes(1)
@@ -176,14 +176,14 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
     expect(await screen.findByText(/Die Prüfung hat gerade nicht geklappt/)).toBeInTheDocument()
   })
 
-  it('bleibt bei einem schweren Befund auf dem Teil und bietet den Nachbesserungs-Prompt an', async () => {
+  it('bleibt bei einem schweren Befund auf dem Teil und bietet den Nachbesserungs-Auftrag an', async () => {
     const hoch = ablaufMit(fertig(1), fertig(2, { befund: 'hoch', satz: 'Achtung: Kapitel 1 – Bild fehlt. Frage diesen Teil am besten noch einmal an.' }), teil(3))
     api.sendeTeilAntwort.mockResolvedValue({ uebernommen: true, ablauf: hoch, teil: hoch.teile!.teile[1], geretteteKapitel: 0, nachbesserungsPrompt: 'Bitte nachbessern …', tippKleiner: false })
     render(<Huelle start={ablaufMit(fertig(1), teil(2), teil(3))} />)
     fireEvent.change(await screen.findByLabelText('Antwort der KI zu Teil 2'), { target: { value: 'x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Einfügen und prüfen' }))
     expect(await screen.findByText(/Achtung: Kapitel 1 – Bild fehlt/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Nachbesserungs-Prompt kopieren' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nachbesserungs-Auftrag kopieren' })).toBeInTheDocument()
     expect(screen.getByText('Fehler')).toBeInTheDocument()
     // Teil 3 ist nicht aufgeklappt
     expect(screen.queryByLabelText('Antwort der KI zu Teil 3')).not.toBeInTheDocument()
@@ -196,26 +196,26 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
     fireEvent.change(await screen.findByLabelText('Antwort der KI zu Teil 2'), { target: { value: 'x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Einfügen und prüfen' }))
     expect(await screen.findByText('Teil 2 bricht ab.')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Weiterschreib-Prompt kopieren' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Weiterschreib-Auftrag kopieren' })).toBeInTheDocument()
   })
 
-  it('zeigt bei einem abgeschnittenen Teil die Rettungs-Box mit dem Weiterschreib-Prompt', async () => {
+  it('zeigt bei einem abgeschnittenen Teil die Rettungs-Box mit dem Weiterschreib-Auftrag', async () => {
     const ablauf = ablaufMit(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['Haftung 1', 'Haftung 2'], satz: 'bricht ab' }), teil(3))
     render(<SchrittTeile ablauf={ablauf} onAblauf={vi.fn()} />)
     expect(await screen.findByText('Teil 2 bricht ab.')).toBeInTheDocument()
     expect(screen.getByText(/2 Kapitel sind vollständig angekommen, zuletzt „Haftung 2“/)).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Weiterschreib-Prompt kopieren' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Weiterschreib-Auftrag kopieren' })).toBeInTheDocument()
     expect(api.ladeTeilPrompt).toHaveBeenCalledWith('a1', 2, true)
     // der normale Prompt wird dabei nicht geholt
     expect(api.ladeTeilPrompt).not.toHaveBeenCalledWith('a1', 2)
   })
 
-  it('hängt die Antwort auf den Weiterschreib-Prompt an', async () => {
+  it('hängt die Antwort auf den Weiterschreib-Auftrag an', async () => {
     const neu = ablaufMit(fertig(1), fertig(2), teil(3))
     api.sendeTeilAntwort.mockResolvedValue({ uebernommen: true, ablauf: neu, teil: fertig(2), geretteteKapitel: 0, nachbesserungsPrompt: null, tippKleiner: false })
     const onAblauf = vi.fn()
     render(<SchrittTeile ablauf={ablaufMit(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['A'] }), teil(3))} onAblauf={onAblauf} />)
-    fireEvent.change(await screen.findByLabelText('Antwort auf den Weiterschreib-Prompt'), { target: { value: 'chapters: Rest' } })
+    fireEvent.change(await screen.findByLabelText('Antwort auf den Weiterschreib-Auftrag'), { target: { value: 'chapters: Rest' } })
     fireEvent.click(screen.getByRole('button', { name: 'Anhängen und prüfen' }))
     await waitFor(() => expect(api.sendeTeilAntwort).toHaveBeenCalledWith('a1', 2, { antwort: 'chapters: Rest', weiter: true }))
     await waitFor(() => expect(onAblauf).toHaveBeenCalledWith(neu))
@@ -224,7 +224,7 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
   it('lässt einen abgeschnittenen Teil auch ganz neu anfragen und wieder zurück', async () => {
     render(<SchrittTeile ablauf={ablaufMit(fertig(1), teil(2, { zustand: 'abgeschnitten', kapitel: ['A'] }), teil(3))} onAblauf={vi.fn()} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Stattdessen den ganzen Teil neu anfragen' }))
-    expect(await screen.findByRole('button', { name: 'Prompt für Teil 2 kopieren' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Auftrag für Teil 2 kopieren' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Zurück zum Weiterschreiben' }))
     expect(await screen.findByText('Teil 2 bricht ab.')).toBeInTheDocument()
   })
@@ -240,7 +240,7 @@ describe('Schritt 3 in Teilen (PROJ-69)', () => {
   it('zeigt einen Hinweis, wenn der Prompt nicht geladen werden konnte', async () => {
     api.ladeTeilPrompt.mockRejectedValue(new Error('x'))
     render(<SchrittTeile ablauf={ablaufMit(teil(1), teil(2))} onAblauf={vi.fn()} />)
-    expect(await screen.findByText('Der Prompt konnte gerade nicht erstellt werden.')).toBeInTheDocument()
+    expect(await screen.findByText('Der Auftrag für die KI konnte gerade nicht erstellt werden.')).toBeInTheDocument()
   })
 
   it('zeigt ohne Teil-Liste nichts', () => {
@@ -255,7 +255,7 @@ describe('Rettungs-Box', () => {
     render(<RettungsBox titel="Die Antwort wurde abgeschnitten." fertig={['A', 'B', 'C']} ladePrompt={ladePrompt} senden={vi.fn()} />)
     expect(ladePrompt).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Fertige Kapitel behalten, Rest nachholen' }))
-    expect(await screen.findByRole('button', { name: 'Weiterschreib-Prompt kopieren' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Weiterschreib-Auftrag kopieren' })).toBeInTheDocument()
     expect(ladePrompt).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/3 Kapitel sind vollständig angekommen, zuletzt „C“/)).toBeInTheDocument()
   })
@@ -263,7 +263,7 @@ describe('Rettungs-Box', () => {
   it('nennt den Fehlersatz, wenn das Absenden scheitert, und behält den Text', async () => {
     const senden = vi.fn().mockResolvedValue({ ok: false, fehler: 'Aus dieser Antwort ließ sich kein vollständiges Kapitel übernehmen.' })
     render(<RettungsBox titel="x" fertig={['A']} ladePrompt={async () => 'p'} senden={senden} automatisch />)
-    const feld = await screen.findByLabelText('Antwort auf den Weiterschreib-Prompt')
+    const feld = await screen.findByLabelText('Antwort auf den Weiterschreib-Auftrag')
     fireEvent.change(feld, { target: { value: 'Mist' } })
     fireEvent.click(screen.getByRole('button', { name: 'Anhängen und prüfen' }))
     expect(await screen.findByText(/kein vollständiges Kapitel übernehmen/)).toBeInTheDocument()
@@ -274,7 +274,7 @@ describe('Rettungs-Box', () => {
     const senden = vi.fn().mockResolvedValue({ ok: true, tippKleiner: true })
     render(<RettungsBox titel="x" fertig={['A']} ladePrompt={async () => 'p'} senden={senden} automatisch />)
     expect(screen.queryByText(/Wähle in Schritt 1 einen kleineren/)).not.toBeInTheDocument()
-    fireEvent.change(await screen.findByLabelText('Antwort auf den Weiterschreib-Prompt'), { target: { value: 'x' } })
+    fireEvent.change(await screen.findByLabelText('Antwort auf den Weiterschreib-Auftrag'), { target: { value: 'x' } })
     fireEvent.click(screen.getByRole('button', { name: 'Anhängen und prüfen' }))
     expect(await screen.findByText(/Wähle in Schritt 1 einen kleineren/)).toBeInTheDocument()
   })

@@ -67,7 +67,7 @@ export function KontoSpielstand({ spiel }: { spiel: KontoSpiel }) {
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold text-ws-text">Mein Spielstand</span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ws-muted">
-            <span className="rounded-full border border-ws-green/30 bg-ws-green/15 px-2 py-0.5 text-xs font-bold text-ws-green">Lvl {level}</span>
+            <span className="rounded-full border border-ws-green/30 bg-ws-green/15 px-2 py-0.5 text-xs font-bold text-ws-green">Level {level}</span>
             <span>{spiel.totalXp.toLocaleString('de-DE')} XP</span>
             <span className="inline-flex items-center gap-1">
               <Flame aria-hidden className="size-4 text-ws-orange" />

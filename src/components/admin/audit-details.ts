@@ -16,7 +16,7 @@ const FIELD_LABEL: Record<string, string> = {
   price: 'Preis',
   rarity_override: 'Seltenheit',
   is_active: 'Aktiv',
-  prompt_notes: 'Prompt-Hinweise',
+  prompt_notes: 'Hinweise für die KI',
   currency_name: 'Name der Münzen',
   hof_name: 'Name des Hofs',
   hof_short_name: 'Kurzform des Hofs',

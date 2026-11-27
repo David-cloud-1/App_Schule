@@ -144,15 +144,15 @@ describe('Schritt „Fertig“ (PROJ-67)', () => {
     titel: 'Haftung', dateiname: 'haftung.html', format: 'seite', kapitel: 2, aufgaben: 12, ...extra,
   })
 
-  it('zeigt bei der Interaktiven Seite „Link für alle erzeugen“ als Nebenaktion und lässt „Herunterladen“ die Hauptaktion sein', async () => {
+  it('zeigt bei der Interaktiven Seite „Link für Azubis erzeugen“ als Nebenaktion und lässt „Herunterladen“ die Hauptaktion sein', async () => {
     render(<SchrittFertig ablaufId="a1" ergebnis={ergebnis()} />)
-    expect(await screen.findByRole('button', { name: 'Link für alle erzeugen' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Link für Azubis erzeugen' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Herunterladen/ })).toBeInTheDocument()
   })
 
   it('öffnet beim ersten Mal den Hinweis-Dialog statt gleich zu erzeugen', async () => {
     render(<SchrittFertig ablaufId="a1" ergebnis={ergebnis()} />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Link für alle erzeugen' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Link für Azubis erzeugen' }))
     expect(await screen.findByText(/Jeder, der diesen Link hat/)).toBeInTheDocument()
     expect(api.erzeugeLink).not.toHaveBeenCalled()
   })
@@ -161,7 +161,7 @@ describe('Schritt „Fertig“ (PROJ-67)', () => {
     api.ladeLink.mockResolvedValue({ link: STAND })
     render(<SchrittFertig ablaufId="a1" ergebnis={ergebnis()} />)
     const knopf = await screen.findByRole('button', { name: 'Link kopieren' })
-    expect(screen.getByText(/Öffentlich · 4 Aufrufe/)).toBeInTheDocument()
+    expect(screen.getByText(/Für Azubis \(Link\): an · 4 Aufrufe/)).toBeInTheDocument()
     fireEvent.click(knopf)
     await waitFor(() => expect(schreiben).toHaveBeenCalledWith(ADRESSE))
     expect(toast.success).toHaveBeenCalledWith('Link kopiert')
@@ -170,25 +170,25 @@ describe('Schritt „Fertig“ (PROJ-67)', () => {
 
   it('zeigt bei H5P nur den Hinweis und fragt den Link gar nicht ab', () => {
     render(<SchrittFertig ablaufId="a1" ergebnis={ergebnis({ format: 'h5p', dateiname: 'x.h5p' })} />)
-    expect(screen.queryByRole('button', { name: 'Link für alle erzeugen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Link für Azubis erzeugen' })).not.toBeInTheDocument()
     expect(screen.getByText(/nur bei interaktiver seite/i)).toBeInTheDocument()
     expect(api.ladeLink).not.toHaveBeenCalled()
   })
 
   it('zeigt bei reinen Texten zum Kopieren weder Knopf noch Hinweis', () => {
     render(<SchrittFertig ablaufId="a1" ergebnis={ergebnis({ format: 'texte', texte: [{ titel: 'T', text: 'x' }] })} />)
-    expect(screen.queryByRole('button', { name: 'Link für alle erzeugen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Link für Azubis erzeugen' })).not.toBeInTheDocument()
     expect(screen.queryByText(/nur bei interaktiver seite/i)).not.toBeInTheDocument()
   })
 })
 
 describe('Teilen-Dialog (PROJ-67)', () => {
-  it('zeigt den öffentlichen Link nur bei einer Interaktiven Seite', async () => {
+  it('zeigt den Link für Azubis nur bei einer Interaktiven Seite', async () => {
     const { rerender } = render(<TeilenDialog ziel={{ id: 'm1', titel: 'T', linkMoeglich: true }} schliessen={() => undefined} gespeichert={() => undefined} />)
-    expect(await screen.findByRole('heading', { name: 'Öffentlicher Link' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Für Azubis (Link)' })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: /Link erzeugen und kopieren/ })).toHaveAttribute('type', 'button')
     rerender(<TeilenDialog ziel={{ id: 'm2', titel: 'T', linkMoeglich: false }} schliessen={() => undefined} gespeichert={() => undefined} />)
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Öffentlicher Link' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Für Azubis (Link)' })).not.toBeInTheDocument())
   })
 
   it('meldet den neuen Link-Stand der Liste, ohne das Regal zu speichern', async () => {
@@ -213,11 +213,11 @@ describe('Meine Materialien (PROJ-67)', () => {
   })
   const menue = (titel: string) => fireEvent.keyDown(screen.getAllByRole('button', { name: `Weitere Aktionen für ${titel}` })[0], { key: 'Enter' })
 
-  it('kennzeichnet öffentliche Materialien mit „Öffentlich“', async () => {
+  it('kennzeichnet öffentliche Materialien mit „Für Azubis (Link): an“', async () => {
     api.ladeMaterialien.mockResolvedValue(liste([zeile({ oeffentlich: { aufrufe: 3 } }), zeile({ id: 'm2', titel: 'Privat' })]))
     render(<MeineMaterialien />)
-    expect((await screen.findAllByText('Öffentlich')).length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Öffentlich')).toHaveLength(2) // Tabelle und Karte derselben Zeile, nicht die zweite
+    expect((await screen.findAllByText('Für Azubis (Link): an')).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Für Azubis (Link): an')).toHaveLength(2) // Tabelle und Karte derselben Zeile, nicht die zweite
   })
 
   it('bietet den Link im Menü nur bei Interaktiver Seite an', async () => {
@@ -225,7 +225,7 @@ describe('Meine Materialien (PROJ-67)', () => {
     render(<MeineMaterialien />)
     await screen.findAllByText('Haftung')
     menue('Haftung')
-    expect(await screen.findByRole('menuitem', { name: /Link für alle erzeugen/ })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: /Link für Azubis erzeugen/ })).toBeInTheDocument()
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })
   })
 
@@ -234,15 +234,15 @@ describe('Meine Materialien (PROJ-67)', () => {
     render(<MeineMaterialien />)
     await screen.findAllByText('Quiz')
     menue('Quiz')
-    await screen.findByRole('menuitem', { name: /Teilen/ })
-    expect(screen.queryByRole('menuitem', { name: /Link für alle|Öffentlicher Link/ })).not.toBeInTheDocument()
+    await screen.findByRole('menuitem', { name: /Fürs Kollegium/ })
+    expect(screen.queryByRole('menuitem', { name: /Link für Azubis|Für Azubis \(Link\)/ })).not.toBeInTheDocument()
   })
 
-  it('filtert mit „Nur öffentliche“ über die Schnittstelle', async () => {
+  it('filtert mit „Nur mit Azubi-Link“ über die Schnittstelle', async () => {
     api.ladeMaterialien.mockResolvedValue(liste([zeile({ oeffentlich: { aufrufe: 0 } })]))
     render(<MeineMaterialien />)
     await screen.findAllByText('Haftung')
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Nur öffentliche' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Nur mit Azubi-Link' }))
     await waitFor(() => expect(api.ladeMaterialien).toHaveBeenLastCalledWith({ suche: '', werkzeug: '', seite: 1, nurOeffentlich: true, herkunft: 'alle' }))
   })
 
@@ -252,7 +252,7 @@ describe('Meine Materialien (PROJ-67)', () => {
     await screen.findAllByText('Haftung')
     menue('Haftung')
     fireEvent.click(await screen.findByRole('menuitem', { name: /Löschen/ }))
-    expect(await screen.findByText(/Der öffentliche Link wird dabei ebenfalls abgeschaltet/)).toBeInTheDocument()
+    expect(await screen.findByText(/Der Link für Azubis wird dabei ebenfalls abgeschaltet/)).toBeInTheDocument()
   })
 })
 
@@ -277,7 +277,7 @@ describe('Link-Übersicht für den Super-Admin (PROJ-67)', () => {
   it('zeigt einen ruhigen Leerzustand', async () => {
     api.ladeLinkUebersicht.mockResolvedValue(liste(0))
     render(<LinkUebersicht />)
-    expect(await screen.findByText('Keine öffentlichen Links.')).toBeInTheDocument()
+    expect(await screen.findByText('Keine Links für Azubis.')).toBeInTheDocument()
   })
 
   it('schaltet nach Bestätigung ab und lädt die Liste neu', async () => {
@@ -289,7 +289,7 @@ describe('Link-Übersicht für den Super-Admin (PROJ-67)', () => {
     const knoepfe = await screen.findAllByRole('button', { name: 'Link abschalten' })
     fireEvent.click(knoepfe[knoepfe.length - 1])
     await waitFor(() => expect(api.schalteLinkAdminAb).toHaveBeenCalledWith('l0'))
-    expect(await screen.findByText('Keine öffentlichen Links.')).toBeInTheDocument()
+    expect(await screen.findByText('Keine Links für Azubis.')).toBeInTheDocument()
     expect(toast.success).toHaveBeenCalledWith('Link abgeschaltet')
   })
 

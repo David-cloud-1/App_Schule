@@ -42,7 +42,7 @@ export async function POST(request: Request, { params }: Kontext) {
   }
   // Eine Kopie aus dem Regal hat keinen Prompt (PROJ-53); alle anderen brauchen zuerst den Prompt
   const ausRegal = !!zeile.herkunft_name
-  if (!ausRegal && (!zeile.kennzahlen || (!zeile.prompt && !zeile.teile))) return fehler('Erstelle zuerst den Prompt.', 400)
+  if (!ausRegal && (!zeile.kennzahlen || (!zeile.prompt && !zeile.teile))) return fehler('Erstelle zuerst den Auftrag für die KI.', 400)
 
   const einlesung = await leseAdresse(createServiceClient(), einlesungPfad(zeile.owner_id, zeile.id))
   if (!einlesung) return fehler('Das eingelesene Skript fehlt. Bitte lade es erneut hoch.', 400)
