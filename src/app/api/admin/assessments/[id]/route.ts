@@ -12,12 +12,16 @@ import {
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { fetchAnswerKey } from '@/lib/answer-key'
 import { finalizeOverdueAttempts } from '@/lib/assessment-submit'
+import { closeExpiredAssessments } from '@/lib/nachweis-sync'
+import { erstellerName, pruefeVerlaengern } from '@/lib/nachweis-ablauf'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { fetchUsedClassNames } from '@/lib/assessment-category'
 import { findUnavailableIds } from '@/lib/assessment-copy'
 import { buildGroupOrders, newMixSeed, type MixQuestion } from '@/lib/assessment-groups'
 
 const ActionSchema = z.object({ action: z.enum(['open', 'close', 'release_results']) })
+// PROJ-134: „Beitritt verlängern“ – die einzige Änderung, die bei einem offenen Nachweis erlaubt ist
+const ExtendSchema = z.object({ action: z.literal('extend_join'), closesAt: z.string().datetime() })
 
 const EditSchema = z.object({
   title: z.string().min(1).max(100).optional(),
@@ -50,8 +54,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   if (auth.error) return auth.error
   const { supabase } = auth
 
+  // PROJ-134: abgelaufenen Nachweis zuerst nachziehen, dann liegengebliebene Abgaben abschließen
+  await closeExpiredAssessments()
   const assessment = await loadAssessment(supabase, id)
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+  if (assessment.status === 'closed') await finalizeOverdueAttempts(id)
 
   const service = createServiceClient()
   const { data: sessions } = await service
@@ -66,6 +73,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   const set = assessment.exam_question_sets as unknown as { name: string; question_ids: string[] } | null
+
+  // PROJ-134: Ersteller für alle Rollen sichtbar, nur Name aus dem Profil
+  type CreatorProfile = { first_name: string | null; last_name: string | null; display_name: string | null }
+  let creatorProfile = null as CreatorProfile | null
+  if (assessment.created_by) {
+    const { data } = await service
+      .from('profiles')
+      .select('first_name, last_name, display_name')
+      .eq('id', assessment.created_by)
+      .maybeSingle()
+    creatorProfile = (data as CreatorProfile | null) ?? null
+  }
 
   // PROJ-39: Auswahl für die Ablage gehört zum Bereich des Nachweises (nicht zum Arbeitsbereich
   // des Umschalters). Fehler hier blockieren die Seite nicht — die Ablage bleibt dann frei tippbar.
@@ -122,6 +141,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     subjectId: assessment.subject_id ?? null,
     categoryOptions: { subjects: subjectRows ?? [], classes: classSuggestions },
     createdAt: assessment.created_at,
+    createdBy: assessment.created_by ?? null,
+    createdByName: erstellerName({
+      createdBy: assessment.created_by ?? null,
+      firstName: creatorProfile?.first_name,
+      lastName: creatorProfile?.last_name,
+      displayName: creatorProfile?.display_name,
+      profileFound: !!creatorProfile,
+    }),
+    autoClosedAt: assessment.auto_closed_at ?? null,
     questionCount: assessment.question_ids_snapshot?.length ?? assessment.draft_question_ids?.length ?? set?.question_ids?.length ?? 0,
     // Nur im Entwurf: Auswahl zum Bearbeiten (Altnachweise: Fragen des Sets)
     draftQuestionIds: assessment.status === 'draft' ? (assessment.draft_question_ids ?? set?.question_ids ?? []) : undefined,
@@ -144,6 +172,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const assessment = await loadAssessment(supabase, id)
   if (!assessment) return NextResponse.json({ error: 'Nicht gefunden' }, { status: 404 })
+
+  const extendParsed = ExtendSchema.safeParse(body)
+  if (extendParsed.success) {
+    const newClosesAt = extendParsed.data.closesAt
+    const problem = pruefeVerlaengern({
+      status: assessment.status,
+      autoClosedAt: assessment.auto_closed_at ?? null,
+      currentClosesAt: assessment.closes_at,
+      newClosesAt,
+    })
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 })
+    // Nur wenn der Stand noch derselbe ist (kein Wettlauf mit dem automatischen Schließen)
+    const { data: updated, error } = await supabase
+      .from('graded_assessments')
+      .update({ closes_at: new Date(newClosesAt).toISOString() })
+      .eq('id', id)
+      .eq('status', assessment.status)
+      .eq('closes_at', assessment.closes_at)
+      .select('id')
+    if (error) return NextResponse.json({ error: 'Verlängern fehlgeschlagen.' }, { status: 500 })
+    if (!updated || updated.length === 0) {
+      return NextResponse.json({ error: 'Der Nachweis hat sich gerade geändert. Bitte lade die Seite neu.' }, { status: 409 })
+    }
+    await writeAuditLog(supabase, {
+      admin_id: user.id,
+      action_type: 'graded_assessment.extend_join',
+      object_type: 'graded_assessment',
+      object_id: id,
+      object_label: assessment.title,
+      details: { von: assessment.closes_at, nach: new Date(newClosesAt).toISOString() },
+    })
+    return NextResponse.json({ success: true, closesAt: new Date(newClosesAt).toISOString() })
+  }
 
   const actionParsed = ActionSchema.safeParse(body)
   if (actionParsed.success) {
@@ -245,12 +306,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     if (action === 'close') {
+      // PROJ-134: Wurde er gerade automatisch geschlossen, ist das Ergebnis derselbe Zustand – kein Fehler
+      if (assessment.status === 'closed' && assessment.auto_closed_at) {
+        await finalizeOverdueAttempts(id)
+        return NextResponse.json({ success: true, alreadyClosed: true })
+      }
       if (assessment.status !== 'open') {
         return NextResponse.json({ error: 'Nur ein offener Nachweis kann geschlossen werden.' }, { status: 400 })
       }
-      const { error } = await supabase.from('graded_assessments').update({ status: 'closed' }).eq('id', id)
+      const { data: closed, error } = await supabase
+        .from('graded_assessments')
+        .update({ status: 'closed' })
+        .eq('id', id)
+        .eq('status', 'open')
+        .select('id')
       if (error) return NextResponse.json({ error: 'Schließen fehlgeschlagen.' }, { status: 500 })
       await finalizeOverdueAttempts(id)
+      if (!closed || closed.length === 0) return NextResponse.json({ success: true, alreadyClosed: true })
       await writeAuditLog(supabase, { admin_id: user.id, action_type: 'graded_assessment.close', object_type: 'graded_assessment', object_id: id, object_label: assessment.title })
       return NextResponse.json({ success: true })
     }

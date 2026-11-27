@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronDown, Loader2, Sparkles } from 'lucide-react'
+import { ChevronDown, Loader2, PencilLine, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -232,19 +232,32 @@ export function WizardStepWhat({
         </CollapsibleContent>
       </Collapsible>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-ws-line pt-4 sm:flex-row sm:justify-between">
-        <Button type="button" variant="outline" className="min-h-11 rounded-xl border-ws-line" onClick={onStartEmpty} disabled={busy || noDepartment}>
-          Leer beginnen
-        </Button>
-        <Button
-          type="button"
-          onClick={onSuggest}
-          disabled={busy || noDepartment}
-          className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
-        >
-          {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Sparkles className="mr-2 size-4" aria-hidden />}
-          Vorschlag erstellen
-        </Button>
+      <div className="flex flex-col gap-2 border-t border-ws-line pt-4 sm:flex-row sm:items-start">
+        <div className="flex-1 sm:flex-none">
+          <Button
+            type="button"
+            onClick={onStartEmpty}
+            disabled={busy || noDepartment}
+            className="min-h-11 w-full rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover sm:w-auto"
+          >
+            <PencilLine className="mr-2 size-4" aria-hidden />
+            Selbst erstellen
+          </Button>
+          <p className="mt-1 text-xs text-ws-muted">Du suchst die Fragen selbst aus.</p>
+        </div>
+        <div className="flex-1 sm:flex-none">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onSuggest}
+            disabled={busy || noDepartment}
+            className="min-h-11 w-full rounded-xl border-ws-line sm:w-auto"
+          >
+            {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : <Sparkles className="mr-2 size-4" aria-hidden />}
+            Vorschlag erstellen
+          </Button>
+          <p className="mt-1 text-xs text-ws-muted">Nutzt die Angaben oben.</p>
+        </div>
       </div>
     </div>
   )

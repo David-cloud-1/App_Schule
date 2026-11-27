@@ -1,6 +1,6 @@
 # PROJ-134: Leistungsnachweis – Detailseite & Ablauf (Phase 4 Übersichtlichkeit, Teil 2)
 
-## Status: Planned
+## Status: In Progress
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -212,6 +212,28 @@ Keine neuen Pakete. Alles mit vorhandenen shadcn/ui-Bausteinen (Dialog, AlertDia
 ### Offene Punkte für /backend
 - Prüfen, ob das Änderungsprotokoll einen Eintrag ohne handelnde Person (System) zulässt; sonst einen festen System-Absender vorsehen.
 - Im Entwurf hat der Nachweis noch keinen eingefrorenen Fragen-Stand: Der Testlauf nimmt die aktuellen Entwurfsfragen und friert sie nur für diesen Testlauf ein.
+
+## Implementation Notes (Frontend + Backend, 2026-11-27)
+
+**Datenbank** (`supabase/migrations/20261127_proj134_nachweis_ablauf.sql`, mit `_down`): `graded_assessments.auto_closed_at`, `exam_sessions.trial_assessment_id` (mit Prüfregel „nie zugleich assessment_id“), Funktion `close_expired_assessments()` (eine Anweisung, schreibt den Verlaufseintrag „System“ im selben Schritt, kein Doppeleintrag), Funktion `cleanup_assessment_trials()` (30 Tage), pg_cron: alle 5 Minuten schließen, täglich 03:40 Testläufe aufräumen. **Keine RLS-Änderung.** **Die Migration ist noch NICHT auf die Datenbank angewendet.** Bis dahin laufen Liste und Detailseite wie bisher (die Nachziehen-Funktion fängt die fehlende Funktion ab); Testlauf und Auto-Schließen brauchen sie.
+
+**Backend:**
+- `src/lib/nachweis-ablauf.ts` (+ Tests): Schritt, Satz, Hauptaktion, Beitrittszeiten (Europe/Berlin), „Heute 23:59“, Verlängern-Prüfung, Ersteller-Name.
+- `src/lib/nachweis-sync.ts`: zieht abgelaufene Nachweise bei Liste und Detailseite nach; Detailseite schließt außerdem liegengebliebene Abgaben ab.
+- `PATCH /api/admin/assessments/[id]`: neu `extend_join` (nur Entwurf/Offen, nur nach hinten, bedingtes Update gegen Wettlauf, Verlauf `graded_assessment.extend_join` mit von/nach); `close` ist nach Auto-Schließen oder bei Wettlauf kein Fehler und schreibt keinen zweiten Eintrag. GET liefert `createdByName`, `autoClosedAt`.
+- `POST/GET /api/admin/assessments/[id]/testlauf`, `DELETE …/testlauf/[sessionId]`: Testlauf = eigene Sitzung mit `trial_assessment_id`, `assessment_id` bleibt leer, deshalb sehen ihn alle Auswertungen nie. Im Entwurf mit den aktuellen Entwurfsfragen, Gruppe A/B wählbar, höchstens 20 je Person und Nachweis. Abgabe über dieselbe Logik, sofort bewertet, kein Fokus-Protokoll.
+- Spieler: `/exam/[sessionId]` und `/results` erkennen Testläufe (Band „Testlauf: zählt nicht“, Zurück zur Detailseite). Übungsprüfungs-Verlauf (`exam-history.ts`, `/api/exam/history`) schließt Testläufe aus; Wächtertest `src/lib/testlauf-waechter.test.ts`.
+- Liste `GET /api/admin/assessments`: Ersteller-Name für alle Rollen (nur Vor-/Nachname aus dem Profil, Super-Admin zusätzlich Rückfall auf Anzeigename/E-Mail), `createdByMe`, Parameter `nurMeine=1`. Gelöschtes Konto: „Ehemaliges Konto“.
+
+**Frontend:** `nachweis-schrittleiste.tsx`, `beitritt-verlaengern-dialog.tsx` (Schnellwahlen +30 Min. · +1 Std. · Heute 23:59 · Eigene Zeit), `nachweis-testlaeufe.tsx` („Meine Testläufe“, Gruppenwahl), Detailseite (Schrittleiste, „Beitritt ab/bis“ + Restzeit, „Beitritt verlängern“, „Erstellt von … am …“ / „Kopie von …“, Menüpunkt „Als Azubi ausprobieren“, Hauptaktion „Schließen“, Freigabe-Rückfrage mit Zahl der Abgaben), Liste (Spalte „Erstellt von“ für alle, `AdminSegmented` „Alle · Nur meine“ ersetzt den Super-Admin-Filter „Erstellt“), „?“-Erklärung bei Trennschärfe.
+
+**Abweichungen / offen für QA:**
+- **Wiederöffnen:** Heute gibt es keinen Weg, einen geschlossenen Nachweis wieder zu öffnen (Spec-Annahme „Wiederöffnen bleibt möglich“ trifft nicht zu). Nach Auto-Schließen verweist der Hinweis auf „Duplizieren“.
+- **Handy-Liste:** Die Liste ist überall eine Tabelle, die in ihrem Rahmen scrollt. Eine eigene Kartenansicht gibt es nicht; „Erstellt von“ ist dort eine Spalte.
+- **Aufgabenliste (PROJ-81):** unverändert. Sie liest Sitzungen über `assessment_id`, Testläufe tauchen dort nie auf; Nachweise ohne Abgaben führt sie ohnehin nicht als „Ergebnisse freigeben“.
+- **Änderungsverlauf-Anzeige:** Eintrag `graded_assessment.auto_close` (Absender „System“) und `extend_join` werden geschrieben. Ob die Verlauf-Ansicht (PROJ-47/70) die neuen Aktionstypen lesbar benennt, ist in QA zu prüfen.
+- **E2E-Tests** („Beitritt abgelaufen → automatisch geschlossen“, Testlauf) sind noch nicht geschrieben; sie brauchen die angewendete Migration.
+- Gleichzeitig geändert auf Wunsch (PROJ-133-Assistent): „Selbst erstellen“ ist die grüne Hauptaktion in Schritt 1 (öffnet gleich „Frage suchen“), „Vorschlag erstellen“ steht als zweite Aktion daneben; das Fenster „Frage suchen“ ist breiter (bis `max-w-4xl`, zweispaltige Trefferliste) bzw. am Handy 92 % der Höhe.
 
 ## QA Test Results
 _To be added by /qa_

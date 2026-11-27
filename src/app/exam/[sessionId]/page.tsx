@@ -66,7 +66,7 @@ export default async function ExamSessionPage({
   // but that must never reach the browser before the exam is over. Strip it
   // here, in the Server Component, so it never enters the RSC payload sent
   // to the client while the attempt is still in progress.
-  if (session.assessment_id) {
+  if (session.assessment_id || session.trial_assessment_id) {
     questions = questions.map((q) => ({
       ...q,
       // Redacted, not omitted, so the shape still matches ExamQuestion —
@@ -110,6 +110,7 @@ export default async function ExamSessionPage({
       initialAnswers={initialAnswers}
       assessmentTitle={resultsJson?.assessment?.title ?? null}
       assessmentGroup={(session.group_label as 'A' | 'B' | null) ?? null}
+      trialBackHref={session.trial_assessment_id ? `/admin/leistungsnachweise/${session.trial_assessment_id}` : null}
       focusTracking={focusTracking}
       focusAutoSubmitAfter={focusAutoSubmitAfter}
       initialFocusCount={initialFocusCount}

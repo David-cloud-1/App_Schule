@@ -4,6 +4,7 @@ import { PATCH } from './route'
 
 vi.mock('../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn(), writeAuditLog: vi.fn() }))
 vi.mock('@/lib/supabase-server', () => ({ createServiceClient: vi.fn() }))
+vi.mock('@/lib/assessment-submit', () => ({ finalizeOverdueAttempts: vi.fn().mockResolvedValue(0) }))
 
 import { requireTeacherOrAdmin } from '../../_lib/auth'
 
@@ -120,5 +121,94 @@ describe('PATCH /api/admin/assessments/[id] – open mit Gruppen (PROJ-76)', () 
     const { update } = setup(ids(6), (chunk) => ({ data: chunk.map((id) => ({ id, type: 'multiple_choice', is_active: true })) }))
     await open()
     expect(update.mock.calls[0][0]).not.toHaveProperty('group_orders')
+  })
+})
+
+// ── PROJ-134: Beitritt verlängern, Schließen ohne Wettlauf ───────────────────
+
+function setupAblauf(assessment: Record<string, unknown>, updatedRows: { id: string }[] = [{ id: 'a1' }]) {
+  const chain: Record<string, unknown> = {}
+  const updates: Record<string, unknown>[] = []
+  chain.eq = vi.fn(() => chain)
+  chain.select = vi.fn(() => Promise.resolve({ data: updatedRows, error: null }))
+  chain.then = (resolve: (v: unknown) => void) => resolve({ error: null })
+  const supabase = {
+    from: vi.fn(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn().mockResolvedValue({
+        data: { id: 'a1', title: 'LN', part: 1, department_id: 'dept', exam_question_sets: null, ...assessment },
+      }),
+      update: vi.fn((patch: Record<string, unknown>) => {
+        updates.push(patch)
+        return chain
+      }),
+    })),
+  }
+  vi.mocked(requireTeacherOrAdmin).mockResolvedValue({
+    error: null, user: { id: 'u' }, supabase, role: 'teacher', isSuperAdmin: false, isDepartmentAdmin: false, suggestedDepartmentId: 'dept',
+  } as never)
+  return { updates }
+}
+
+const patch = (body: unknown) =>
+  PATCH(
+    new NextRequest('http://localhost/api/admin/assessments/a1', {
+      method: 'PATCH', body: JSON.stringify(body), headers: { 'content-type': 'application/json' },
+    }),
+    { params: Promise.resolve({ id: 'a1' }) },
+  )
+
+describe('PATCH /api/admin/assessments/[id] – verlängern (PROJ-134)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const future = (min: number) => new Date(Date.now() + min * 60000).toISOString()
+
+  it('verlängert „Beitritt bis“ bei einem offenen Nachweis', async () => {
+    const closesAt = future(10)
+    const { updates } = setupAblauf({ status: 'open', closes_at: closesAt })
+    const res = await patch({ action: 'extend_join', closesAt: future(70) })
+    expect(res.status).toBe(200)
+    expect(updates).toHaveLength(1)
+    expect(Object.keys(updates[0])).toEqual(['closes_at'])
+  })
+
+  it('lehnt eine Verkürzung ab', async () => {
+    const { updates } = setupAblauf({ status: 'open', closes_at: future(60) })
+    const res = await patch({ action: 'extend_join', closesAt: future(30) })
+    expect(res.status).toBe(400)
+    expect(updates).toHaveLength(0)
+  })
+
+  it('lehnt das Verlängern nach dem automatischen Schließen ab', async () => {
+    setupAblauf({ status: 'closed', closes_at: future(-30), auto_closed_at: future(-20) })
+    const res = await patch({ action: 'extend_join', closesAt: future(60) })
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/automatisch geschlossen/)
+  })
+
+  it('meldet einen Wettlauf (Stand hat sich geändert) als 409', async () => {
+    setupAblauf({ status: 'open', closes_at: future(10) }, [])
+    const res = await patch({ action: 'extend_join', closesAt: future(70) })
+    expect(res.status).toBe(409)
+  })
+})
+
+describe('PATCH /api/admin/assessments/[id] – schließen (PROJ-134)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('ist nach dem automatischen Schließen kein Fehler und schreibt keinen zweiten Eintrag', async () => {
+    const { updates } = setupAblauf({ status: 'closed', closes_at: '2026-11-27T09:00:00Z', auto_closed_at: '2026-11-27T09:05:00Z' })
+    const res = await patch({ action: 'close' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).alreadyClosed).toBe(true)
+    expect(updates).toHaveLength(0)
+  })
+
+  it('meldet „bereits geschlossen“, wenn jemand gleichzeitig geschlossen hat', async () => {
+    setupAblauf({ status: 'open', closes_at: '2026-11-27T09:00:00Z' }, [])
+    const res = await patch({ action: 'close' })
+    expect(res.status).toBe(200)
+    expect((await res.json()).alreadyClosed).toBe(true)
   })
 })

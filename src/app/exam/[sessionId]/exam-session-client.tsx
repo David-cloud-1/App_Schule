@@ -32,6 +32,8 @@ interface Props {
   assessmentTitle?: string | null
   /** PROJ-76: Gruppe A/B, nur bei Nachweisen mit Gruppen */
   assessmentGroup?: 'A' | 'B' | null
+  /** PROJ-134: Testlauf einer Lehrkraft – Ziel für „Zurück“, zeigt das Band „Testlauf: zählt nicht“ */
+  trialBackHref?: string | null
   /** PROJ-30: Verlassen der Prüfung wird protokolliert (nur Leistungsnachweise). */
   focusTracking?: boolean
   /** PROJ-30: Automatische Abgabe ab dieser Zahl zählender Wechsel; null = keine. */
@@ -48,6 +50,7 @@ export function ExamSessionClient({
   initialAnswers,
   assessmentTitle,
   assessmentGroup = null,
+  trialBackHref = null,
   focusTracking = false,
   focusAutoSubmitAfter = null,
   initialFocusCount = 0,
@@ -250,6 +253,15 @@ export function ExamSessionClient({
               </AlertDialogContent>
             </AlertDialog>
           </div>
+
+          {trialBackHref && (
+            <p
+              role="status"
+              className="mb-2 rounded-xl border border-[#FF9600]/40 bg-[#FF9600]/15 px-3 py-2 text-center text-sm font-bold text-[#FF9600]"
+            >
+              Testlauf: zählt nicht
+            </p>
+          )}
 
           {/* Part label + autosave indicator */}
           <div className="flex items-center justify-between gap-2 mb-2">

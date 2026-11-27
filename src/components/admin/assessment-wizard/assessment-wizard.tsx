@@ -378,6 +378,8 @@ export function AssessmentWizard() {
     setSuggested(false)
     setLocked(new Set())
     goTo(2)
+    // „Selbst erstellen“: gleich die Suche öffnen, damit man sofort Fragen wählen kann
+    setSearchOpen(true)
   }
 
   async function openSwap(id: string) {

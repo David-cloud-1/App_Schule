@@ -16,9 +16,11 @@ function makeSupabaseMock({
     from: () => ({
       select: () => ({
         eq: () => ({
-          neq: () => ({
-            order: () => ({
-              limit: () => Promise.resolve({ data: sessions, error }),
+          is: () => ({
+            neq: () => ({
+              order: () => ({
+                limit: () => Promise.resolve({ data: sessions, error }),
+              }),
             }),
           }),
         }),

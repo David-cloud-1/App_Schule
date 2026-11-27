@@ -18,7 +18,7 @@ export async function PATCH(
 
   const { data: session } = await supabase
     .from('exam_sessions')
-    .select('results_json, assessment_id')
+    .select('results_json, assessment_id, trial_assessment_id')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -26,7 +26,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
   // Leistungsnachweise (PROJ-21) sind Multiple-Choice-only und werden
   // serverseitig automatisch benotet — keine Selbstbewertung.
-  if (session.assessment_id) {
+  if (session.assessment_id || session.trial_assessment_id) {
     return NextResponse.json({ error: 'Selbstbewertung ist bei Leistungsnachweisen nicht verfügbar.' }, { status: 403 })
   }
 

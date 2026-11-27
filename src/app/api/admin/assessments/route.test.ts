@@ -5,16 +5,23 @@ import { IHK_DEFAULT_SCALE } from '@/lib/graded-assessments'
 
 // Sitzungen liest die Liste mit dem Dienst-Client (F1); Tests setzen sie hier.
 const serviceSessions: { data: unknown[] } = { data: [] }
+// PROJ-134: Namen der Ersteller liest die Liste für alle Rollen mit dem Dienst-Client
+const serviceProfiles: { data: unknown[] } = { data: [] }
 
 vi.mock('@/lib/supabase-server', () => ({
   createClient: vi.fn(),
   createServiceClient: vi.fn(() => ({
     auth: { admin: { getUserById: vi.fn().mockResolvedValue({ data: { user: null } }) } },
-    from: vi.fn(() => ({
-      select: vi.fn().mockReturnThis(),
-      in: vi.fn().mockReturnThis(),
-      limit: vi.fn(() => Promise.resolve(serviceSessions)),
-    })),
+    rpc: vi.fn().mockResolvedValue({ data: 0, error: null }),
+    from: vi.fn((table: string) =>
+      table === 'profiles'
+        ? { select: vi.fn().mockReturnThis(), in: vi.fn(() => Promise.resolve(serviceProfiles)) }
+        : {
+            select: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            limit: vi.fn(() => Promise.resolve(serviceSessions)),
+          },
+    ),
   })),
 }))
 
@@ -173,6 +180,16 @@ describe('GET /api/admin/assessments', () => {
     expect(body.assessments).toEqual([])
   })
 
+  it('zeigt den Ersteller-Namen auch Lehrkräften und Bereichs-Admins, aber ohne die Nutzer-ID (PROJ-134)', async () => {
+    const row = { id: 'a1', title: 'LN', part: 1, status: 'open', access_code: 'ABCD1234', created_at: '2026-10-01T00:00:00Z', exam_question_sets: null, created_by: 'other-uuid', department_id: 'dept-sped' }
+    serviceProfiles.data = [{ id: 'other-uuid', first_name: 'Ada', last_name: 'Lovelace', display_name: null, role: 'teacher' }]
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'teacher', listData: [row] }) as never)
+    const body = await (await GET(makeGetRequest())).json()
+    serviceProfiles.data = []
+    expect(body.assessments[0]).toMatchObject({ createdByName: 'Ada Lovelace', createdByMe: false })
+    expect(body.assessments[0].createdBy).toBeUndefined()
+  })
+
   it('does not include createdBy fields for a department admin', async () => {
     const row = { id: 'a1', title: 'LN', part: 1, status: 'open', access_code: 'ABCD1234', created_at: '2026-10-01T00:00:00Z', exam_question_sets: null, created_by: 'other-uuid', department_id: 'dept-sped', departments: { name: 'Spedition', code: 'SPED' } }
     vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'department_admin', listData: [row] }) as never)
@@ -183,12 +200,10 @@ describe('GET /api/admin/assessments', () => {
 
   it('includes createdBy name + former-flag for the super-admin', async () => {
     const row = { id: 'a1', title: 'LN', part: 1, status: 'open', access_code: 'ABCD1234', created_at: '2026-10-01T00:00:00Z', exam_question_sets: null, created_by: 'teacher-uuid', department_id: 'dept-tour', departments: { name: 'Tourismus', code: 'TOUR' } }
-    vi.mocked(createClient).mockResolvedValue(makeSupabase({
-      role: 'admin',
-      listData: [row],
-      creatorProfiles: [{ id: 'teacher-uuid', display_name: 'Frau Muster', pseudonym: null, role: 'teacher' }],
-    }) as never)
+    serviceProfiles.data = [{ id: 'teacher-uuid', first_name: null, last_name: null, display_name: 'Frau Muster', role: 'teacher' }]
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'admin', listData: [row] }) as never)
     const body = await (await GET(makeGetRequest())).json()
+    serviceProfiles.data = []
     expect(body.assessments[0]).toMatchObject({ createdBy: 'teacher-uuid', createdByName: 'Frau Muster', createdByFormer: false })
   })
 
@@ -205,11 +220,11 @@ describe('GET /api/admin/assessments', () => {
     expect(body.assessments[0]).toMatchObject({ participantCount: 2, submittedCount: 1 })
   })
 
-  it('shows "Gelöschtes Konto" when the creator account is gone', async () => {
+  it('shows "Ehemaliges Konto" when the creator account is gone', async () => {
     const row = { id: 'a1', title: 'LN', part: 1, status: 'closed', access_code: 'ABCD1234', created_at: '2026-10-01T00:00:00Z', exam_question_sets: null, created_by: null, department_id: 'dept-sped' }
     vi.mocked(createClient).mockResolvedValue(makeSupabase({ role: 'admin', listData: [row] }) as never)
     const body = await (await GET(makeGetRequest())).json()
-    expect(body.assessments[0]).toMatchObject({ createdBy: null, createdByName: 'Gelöschtes Konto' })
+    expect(body.assessments[0]).toMatchObject({ createdBy: null, createdByName: 'Ehemaliges Konto' })
   })
 })
 

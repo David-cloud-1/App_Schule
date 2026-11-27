@@ -10,6 +10,7 @@ export async function GET() {
     .from('exam_sessions')
     .select('id, parts_selected, started_at, ended_at, status, results_json')
     .eq('user_id', user.id)
+    .is('trial_assessment_id', null) // PROJ-134: Testläufe gehören nicht in den Verlauf
     .neq('status', 'in_progress')
     .order('started_at', { ascending: false })
     .limit(50)

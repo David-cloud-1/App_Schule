@@ -41,6 +41,8 @@ export type CategorizedAssessment = {
   createdBy?: string | null
   createdByName?: string | null
   createdByFormer?: boolean
+  /** PROJ-134: vom Server berechnet, gilt für alle Rollen */
+  createdByMe?: boolean
 }
 
 export type AssessmentFilters = {
@@ -56,6 +58,8 @@ export type AssessmentFilters = {
   departmentId: string
   /** Ersteller-ID, FILTER_ALL für alle, 'deleted' für gelöschte Konten; nur für den Super-Admin wirksam (PROJ-46) */
   createdBy: string
+  /** PROJ-134: nur meine Nachweise (gilt für alle Rollen) */
+  onlyMine: boolean
   /** Suche in Titel und Code */
   query: string
 }
@@ -68,6 +72,7 @@ export function defaultFilters(currentSchoolYear: string): AssessmentFilters {
     status: FILTER_ALL,
     departmentId: FILTER_ALL,
     createdBy: FILTER_ALL,
+    onlyMine: false,
     query: '',
   }
 }
@@ -86,6 +91,7 @@ export function filtersFromParams(params: URLSearchParams, currentSchoolYear: st
     status: status && STATUSES.includes(status) ? status : base.status,
     departmentId: params.get('bereich') || base.departmentId,
     createdBy: params.get('erstellt') || base.createdBy,
+    onlyMine: params.get('meine') === '1',
     query: base.query,
   }
 }
@@ -93,13 +99,14 @@ export function filtersFromParams(params: URLSearchParams, currentSchoolYear: st
 /** Nur vom Standard abweichende Werte in die Adresszeile schreiben (Suche bleibt lokal) */
 export function filtersToParams(filters: AssessmentFilters, currentSchoolYear: string, into: URLSearchParams): URLSearchParams {
   const params = new URLSearchParams(into)
-  for (const key of ['sj', 'klasse', 'fach', 'status', 'bereich', 'erstellt']) params.delete(key)
+  for (const key of ['sj', 'klasse', 'fach', 'status', 'bereich', 'erstellt', 'meine']) params.delete(key)
   if (filters.schoolYear !== currentSchoolYear) params.set('sj', filters.schoolYear)
   if (filters.className !== FILTER_ALL) params.set('klasse', filters.className)
   if (filters.subjectId !== FILTER_ALL) params.set('fach', filters.subjectId)
   if (filters.status !== FILTER_ALL) params.set('status', filters.status)
   if (filters.departmentId !== FILTER_ALL) params.set('bereich', filters.departmentId)
   if (filters.createdBy !== FILTER_ALL) params.set('erstellt', filters.createdBy)
+  if (filters.onlyMine) params.set('meine', '1')
   return params
 }
 
@@ -126,6 +133,7 @@ export function filterAssessments<T extends CategorizedAssessment>(items: T[], f
         const wantDeleted = filters.createdBy === 'deleted'
         if (wantDeleted ? a.createdBy !== null : a.createdBy !== filters.createdBy) return false
       }
+      if (filters.onlyMine && !a.createdByMe) return false
       if (query && !normalizeSearch(a.title).includes(query) && !normalizeSearch(a.accessCode).includes(query)) return false
       return true
     })

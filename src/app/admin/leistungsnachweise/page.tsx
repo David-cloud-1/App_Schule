@@ -23,13 +23,12 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
-import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { schoolYearFor } from '@/lib/assessment-category'
 import { saveListQuery } from '@/lib/assessment-list-memory'
 import {
   FILTER_ALL,
   classOptions,
-  creatorOptions,
   defaultFilters,
   departmentOptions,
   filterAssessments,
@@ -71,6 +70,7 @@ type AssessmentListItem = {
   createdBy?: string | null
   createdByName?: string | null
   createdByFormer?: boolean
+  createdByMe?: boolean
 }
 
 const STATUS_LABELS: Record<AssessmentListItem['status'], string> = {
@@ -89,7 +89,6 @@ function AssessmentsPageContent() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const { isSuperAdmin } = useAdminRole()
   // Bereichsleiste (PROJ-70): ein Bereich oder „Alle Bereiche“; ohne Leiste bleibt der Arbeitsbereich
   const barScope = useOptionalAdminRole()?.scope
   const scopeQuery = !barScope ? 'scope=workspace' : barScope.current ? `departmentId=${barScope.current}` : ''
@@ -149,11 +148,10 @@ function AssessmentsPageContent() {
       classes: classOptions(assessments),
       subjects: subjectOptions(assessments),
       departments: departmentOptions(assessments),
-      creators: isSuperAdmin ? creatorOptions(assessments) : [],
       hasUnassignedClass: assessments.some((a) => a.className === null),
       hasUnassignedSubject: assessments.some((a) => a.subjectId === null),
     }),
-    [assessments, currentSchoolYear, isSuperAdmin],
+    [assessments, currentSchoolYear],
   )
 
   // Alte Adressen weiterleiten (PROJ-133): „Neuer Leistungsnachweis“ aus der Schnellsuche und „Als Leistungsnachweis verwenden“
@@ -168,7 +166,7 @@ function AssessmentsPageContent() {
 
   // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
   const showEmpty = !failed && !loading && assessments.length === 0
-  const columnCount = 7 + (isSuperAdmin ? 1 : 0)
+  const columnCount = 8
 
   return (
     <div className="space-y-6">
@@ -203,7 +201,6 @@ function AssessmentsPageContent() {
           classes={filterOptions.classes}
           subjects={filterOptions.subjects}
           departments={filterOptions.departments}
-          creators={filterOptions.creators}
           hasUnassignedClass={filterOptions.hasUnassignedClass}
           hasUnassignedSubject={filterOptions.hasUnassignedSubject}
         />
@@ -233,7 +230,7 @@ function AssessmentsPageContent() {
                 <TableHead className="text-ws-muted">Titel</TableHead>
                 <TableHead className="text-ws-muted">Status</TableHead>
                 <TableHead className="text-ws-muted">Bereich</TableHead>
-                {isSuperAdmin && <TableHead className="text-ws-muted">Erstellt von</TableHead>}
+                <TableHead className="text-ws-muted">Erstellt von</TableHead>
                 <TableHead className="text-ws-muted">Code</TableHead>
                 <TableHead className="text-ws-muted">Teilnehmer</TableHead>
                 <TableHead className="text-ws-muted">Erstellt</TableHead>
@@ -247,7 +244,7 @@ function AssessmentsPageContent() {
                     <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    {isSuperAdmin && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
@@ -328,12 +325,10 @@ function AssessmentsPageContent() {
                         <Badge className="text-xs border-0 bg-ws-blue/15 text-ws-blue">{a.departmentName}</Badge>
                       )}
                     </TableCell>
-                    {isSuperAdmin && (
-                      <TableCell className="text-ws-muted text-sm">
-                        {a.createdByName ?? '—'}
-                        {a.createdByFormer && <span className="text-ws-faint"> (ehemalig)</span>}
-                      </TableCell>
-                    )}
+                    <TableCell className="text-ws-muted text-sm">
+                      <span className="block max-w-40 truncate" title={a.createdByName ?? undefined}>{a.createdByName ?? 'Unbekannt'}</span>
+                      {a.createdByFormer && <span className="text-ws-faint"> (ehemalig)</span>}
+                    </TableCell>
                     <TableCell className="text-ws-text font-mono text-sm">{a.accessCode}</TableCell>
                     <TableCell className="text-ws-text text-sm">
                       {a.submittedCount}/{a.participantCount}

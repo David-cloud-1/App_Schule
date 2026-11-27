@@ -157,9 +157,11 @@ describe('Nachweis anlegen in drei Schritten (PROJ-133)', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('beginnt mit „Leer beginnen“ bei Schritt 2 ohne Frage; „Weiter“ erst ab 5 Fragen', async () => {
+  it('„Selbst erstellen“ führt zu Schritt 2 ohne Frage und öffnet die Suche; „Weiter“ erst ab 5 Fragen', async () => {
     render(<AssessmentWizard />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Leer beginnen' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Selbst erstellen/ }))
+    expect(await screen.findByRole('dialog', { name: 'Frage suchen' })).toBeInTheDocument()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
     expect(await screen.findByText(/Noch keine Frage gewählt/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Weiter/ })).toBeDisabled()
     expect(calls.some((c) => c.url.endsWith('/suggest'))).toBe(false)
@@ -209,7 +211,7 @@ describe('Nachweis anlegen in drei Schritten (PROJ-133)', () => {
     fireEvent.click(await screen.findByRole('combobox', { name: 'Bereich' }))
     fireEvent.click(await screen.findByRole('option', { name: 'Tourismus' }))
     expect(await screen.findByText(/Du hast den Bereich gewechselt/)).toBeInTheDocument()
-    // Schritt 2 ist wieder gesperrt, bis ein neuer Vorschlag oder „Leer beginnen“ kommt
+    // Schritt 2 ist wieder gesperrt, bis ein neuer Vorschlag oder „Selbst erstellen“ kommt
     expect(within(screen.getByRole('navigation', { name: 'Schritte' })).getByRole('button', { name: /Schritt 2/ })).toBeDisabled()
   })
 

@@ -24,6 +24,8 @@ export type AssessmentSession = {
   id: string
   started_at: string
   assessment_id: string | null
+  /** PROJ-134: Testlauf einer Lehrkraft (assessment_id ist dann leer) */
+  trial_assessment_id?: string | null
   results_json: unknown
 }
 
@@ -75,11 +77,14 @@ export async function finishAssessmentAttempt(params: {
     ? { ...(resultsJson.draft_answers ?? {}) }
     : { ...(resultsJson.draft_answers ?? {}), ...answers }
 
+  // PROJ-134: Ein Testlauf wird wie eine Abgabe nach der Freigabe behandelt: sofort
+  // bewertet, die Lehrkraft sieht Note und Antworten. Er zählt nirgends mit.
+  const isTrial = !session.assessment_id && !!session.trial_assessment_id
   const service = createServiceClient()
   const { data: assessment } = await service
     .from('graded_assessments')
     .select('title, access_code, part, grading_scale, results_released_at, focus_tracking, excluded_question_ids')
-    .eq('id', session.assessment_id!)
+    .eq('id', (session.assessment_id ?? session.trial_assessment_id)!)
     .single()
 
   if (!assessment) return { ok: false, status: 404, error: 'Leistungsnachweis nicht gefunden.' }
@@ -94,7 +99,7 @@ export async function finishAssessmentAttempt(params: {
   }
 
   // Straggler: results were released while this attempt was still running.
-  if (assessment.results_released_at) {
+  if (assessment.results_released_at || isTrial) {
     const key = await fetchAnswerKey(snapshot.map((q) => q.id))
     const { part, scored } = gradeSnapshot(
       snapshot,
@@ -123,7 +128,7 @@ export async function finishAssessmentAttempt(params: {
 
   // PROJ-30: ein noch offener „weg"-Eintrag endet mit der Abgabe. Fehler hier
   // dürfen die Abgabe nie rückgängig machen oder verzögern.
-  if (assessment.focus_tracking) {
+  if (assessment.focus_tracking && !isTrial) {
     try {
       await service.rpc('focus_report', {
         p_session_id: session.id,

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin, writeAuditLog } from '../_lib/auth'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
+import { closeExpiredAssessments } from '@/lib/nachweis-sync'
+import { erstellerName } from '@/lib/nachweis-ablauf'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 import { validateFocusSettings } from '@/lib/focus-tracking'
 import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
@@ -36,6 +38,8 @@ const ListQuerySchema = z.object({
   // für den Super-Admin wirksam — alle anderen sehen laut Datenbank-Regel
   // ohnehin nur ihre eigenen bzw. die geteilten ihres Bereichs.
   createdBy: z.string().optional(),
+  // PROJ-134: „Nur meine“ gilt für alle Rollen und wird in der Datenbank gefiltert
+  nurMeine: z.literal('1').optional(),
   // 'workspace' = nur der aktive Arbeitsbereich (Umschalter bzw. eigener Bereich).
   // Für die Startseite: sonst sähe der Super-Admin in „Spedition" auch die Nachweise
   // von Tourismus. Eine Lehrkraft ohne Bereich ist davon nicht betroffen.
@@ -45,7 +49,10 @@ const ListQuerySchema = z.object({
 export async function GET(request: NextRequest) {
   const auth = await requireTeacherOrAdmin()
   if (auth.error) return auth.error
-  const { supabase } = auth
+  const { supabase, user } = auth
+
+  // PROJ-134: abgelaufene Nachweise zuerst nachziehen
+  await closeExpiredAssessments()
 
   const parsedQuery = ListQuerySchema.safeParse(
     Object.fromEntries(request.nextUrl.searchParams.entries())
@@ -53,7 +60,7 @@ export async function GET(request: NextRequest) {
   if (!parsedQuery.success) {
     return NextResponse.json({ error: 'Invalid query parameters' }, { status: 400 })
   }
-  const { departmentId, createdBy, scope } = parsedQuery.data
+  const { departmentId, createdBy, scope, nurMeine } = parsedQuery.data
 
   // Keine .eq('department_id', ...) mehr auf den Arbeitsbereich der anfragenden
   // Person: die Datenbank-Regel (PROJ-46) entscheidet bereits, welche Zeilen
@@ -68,7 +75,8 @@ export async function GET(request: NextRequest) {
   else if (scope === 'workspace' && auth.suggestedDepartmentId) {
     query = query.eq('department_id', auth.suggestedDepartmentId)
   }
-  if (auth.isSuperAdmin && createdBy) {
+  if (nurMeine) query = query.eq('created_by', user.id)
+  else if (auth.isSuperAdmin && createdBy) {
     query = createdBy === 'deleted' ? query.is('created_by', null) : query.eq('created_by', createdBy)
   }
 
@@ -96,37 +104,40 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Namen der Erstellerinnen — nur für den Super-Admin interessant (die
-  // anderen Rollen sehen laut Regel ohnehin nur sich selbst bzw. den eigenen
-  // Bereich, da ist „Erstellt von" redundant). „Ehemalige / ohne Rolle":
-  // das Konto existiert noch, hat aber keine Lehrer-Rolle mehr (E5).
+  // PROJ-134: Der Name der Ersteller gilt für alle Rollen. Nur Vor- und Nachname aus dem
+  // Profil (Super-Admin zusätzlich der Anzeigename/E-Mail als Rückfall). Gelöschtes Konto:
+  // „Ehemaliges Konto“. „Ehemalig“ = das Konto existiert, hat aber keine Lehrer-Rolle mehr (E5).
   const creatorNameById = new Map<string, { name: string; former: boolean }>()
-  if (auth.isSuperAdmin) {
+  {
     const creatorIds = [...new Set((data ?? []).map((a) => a.created_by as string | null).filter((id): id is string => !!id))]
     if (creatorIds.length > 0) {
-      const { data: profiles } = await supabase
+      const service = createServiceClient()
+      const { data: profiles } = await service
         .from('profiles')
-        .select('id, display_name, role')
+        .select('id, first_name, last_name, display_name, role')
         .in('id', creatorIds)
 
-      // display_name wird bei der Registrierung nie automatisch gesetzt (kein
-      // Namensfeld im Signup) — als Klarname-Fallback die E-Mail laden, wie an
-      // allen anderen Stellen der App auch (z. B. /admin/users).
-      const service = createServiceClient()
       const emailById = new Map<string, string>()
-      await Promise.all(
-        creatorIds.map(async (id) => {
-          const { data } = await service.auth.admin.getUserById(id)
-          if (data.user?.email) emailById.set(id, data.user.email)
-        })
-      )
+      if (auth.isSuperAdmin) {
+        await Promise.all(
+          creatorIds.map(async (id) => {
+            const { data } = await service.auth.admin.getUserById(id)
+            if (data.user?.email) emailById.set(id, data.user.email)
+          })
+        )
+      }
 
       for (const p of profiles ?? []) {
-        const row = p as { id: string; display_name: string | null; role: string }
+        const row = p as { id: string; first_name: string | null; last_name: string | null; display_name: string | null; role: string }
+        const name = erstellerName({
+          createdBy: row.id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          displayName: row.display_name,
+          profileFound: true,
+        })
         creatorNameById.set(row.id, {
-          // Hier bewusst der Klarname statt Pseudonym: nur Super-Admins sehen
-          // diese Spalte, anders als bei der Rangliste (Datenschutz dort).
-          name: row.display_name ?? emailById.get(row.id) ?? 'Unbekannt',
+          name: name === 'Unbekannt' ? (emailById.get(row.id) ?? name) : name,
           former: row.role === 'student',
         })
       }
@@ -159,9 +170,8 @@ export async function GET(request: NextRequest) {
       departmentCode: (a.departments as unknown as { code: string } | null)?.code ?? null,
       // Nur für den Super-Admin befüllt (s. o.)
       createdBy: auth.isSuperAdmin ? ((a.created_by as string | null) ?? null) : undefined,
-      createdByName: auth.isSuperAdmin
-        ? (a.created_by ? creator?.name ?? 'Unbekannt' : 'Gelöschtes Konto')
-        : undefined,
+      createdByName: a.created_by ? (creator?.name ?? 'Ehemaliges Konto') : 'Ehemaliges Konto',
+      createdByMe: a.created_by === user.id,
       createdByFormer: auth.isSuperAdmin ? (creator?.former ?? false) : undefined,
     }
   })

@@ -23,7 +23,7 @@ interface Props {
   locked: Set<string>
   swap: SwapState | null
   busy: boolean
-  /** Wurde ein Vorschlag erstellt (sonst „Leer beginnen“)? Steuert die Hinweise */
+  /** Wurde ein Vorschlag erstellt (sonst „Selbst erstellen“)? Steuert die Hinweise */
   suggested: boolean
   meta: SuggestMeta | null
   /** Gewählte Fragen, die der Server abgelehnt hat (mit Hinweis markiert) */

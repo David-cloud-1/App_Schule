@@ -3,6 +3,7 @@
 import { Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FILTER_ALL, FILTER_NONE, FILTER_UNRELEASED, classFilterValue, classFromFilter, type AssessmentFilters } from '@/lib/assessment-filter'
 
@@ -24,8 +25,6 @@ interface Props {
   hasUnassignedSubject: boolean
   /** PROJ-46: nur anzeigen, wenn es mehr als einen Zielbereich gibt */
   departments?: { id: string; name: string }[]
-  /** PROJ-46: nur für den Super-Admin befüllt */
-  creators?: { id: string; name: string }[]
 }
 
 /** PROJ-39/46: Filterleiste über der Nachweis-Tabelle */
@@ -38,7 +37,6 @@ export function AssessmentFilterBar({
   hasUnassignedClass,
   hasUnassignedSubject,
   departments = [],
-  creators = [],
 }: Props) {
   const triggerClass = 'h-11 bg-ws-surface border-ws-line text-ws-text w-full'
   const contentClass = 'bg-ws-surface border-ws-line text-ws-text'
@@ -113,22 +111,9 @@ export function AssessmentFilterBar({
             </SelectContent>
           </Select>
         )}
-
-        {creators.length > 0 && (
-          <Select value={filters.createdBy} onValueChange={(v) => onChange({ ...filters, createdBy: v })}>
-            <SelectTrigger className={triggerClass} aria-label="Erstellt von">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className={contentClass}>
-              <SelectItem value={FILTER_ALL}>Alle Erstellerinnen</SelectItem>
-              {creators.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       <Select value={filters.status} onValueChange={(status) => onChange({ ...filters, status })}>
         <SelectTrigger className={cn(triggerClass, 'sm:w-64')} aria-label="Status filtern">
           <SelectValue />
@@ -139,6 +124,14 @@ export function AssessmentFilterBar({
           ))}
         </SelectContent>
       </Select>
+      {/* PROJ-134: „Nur meine“ gilt für alle Rollen und ersetzt den Ersteller-Filter des Super-Admins */}
+      <AdminSegmented
+        ariaLabel="Erstellt von"
+        value={filters.onlyMine ? 'mine' : 'all'}
+        onChange={(v) => onChange({ ...filters, onlyMine: v === 'mine' })}
+        options={[{ value: 'all', label: 'Alle' }, { value: 'mine', label: 'Nur meine' }]}
+      />
+      </div>
     </div>
   )
 }

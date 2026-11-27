@@ -28,7 +28,7 @@ export async function fetchExamHistory(
     .select('id, parts_selected, started_at, ended_at, status, results_json')
     .eq('user_id', userId)
     .neq('status', 'in_progress')
-  query = kind === 'assessment' ? query.not('assessment_id', 'is', null) : query.is('assessment_id', null)
+  query = kind === 'assessment' ? query.not('assessment_id', 'is', null) : query.is('assessment_id', null).is('trial_assessment_id', null)
   const { data, error } = await query.order('started_at', { ascending: false }).limit(50)
   if (error) console.error('[fetchExamHistory]', error)
   return (data ?? []) as ExamHistorySession[]

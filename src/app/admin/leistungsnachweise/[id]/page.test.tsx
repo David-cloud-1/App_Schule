@@ -55,7 +55,7 @@ describe('Nachweis-Detailseite (PROJ-84)', () => {
     expect(screen.queryByRole('button', { name: /Drucken/ })).toBeNull()
     openMenu()
     expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual([
-      'Fragen bearbeiten', 'Bereich ändern', 'Duplizieren', 'Löschen',
+      'Fragen bearbeiten', 'Bereich ändern', 'Als Azubi ausprobieren', 'Duplizieren', 'Löschen',
     ])
   })
 
@@ -69,15 +69,15 @@ describe('Nachweis-Detailseite (PROJ-84)', () => {
     expect(calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'DELETE')).toBe(false)
   })
 
-  it('Offen: „Beitritt schließen“ ist die Hauptaktion, Menü ohne Entwurf-Einträge, Live-Kacheln und Code sichtbar', async () => {
+  it('Offen: „Schließen“ ist die Hauptaktion, Menü ohne Entwurf-Einträge, Live-Kacheln und Code sichtbar', async () => {
     stubFetch(detail('open'))
     await renderPage()
-    expect(screen.getByRole('button', { name: /Beitritt schließen/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Schließen$/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Drucken & Export/ })).toBeInTheDocument()
     expect(screen.getByText('ABC123')).toBeInTheDocument()
     expect(screen.getByText('Beigetreten').previousElementSibling).toHaveTextContent('7')
     openMenu()
-    expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(['Duplizieren', 'Löschen'])
+    expect(screen.getAllByRole('menuitem').map((e) => e.textContent)).toEqual(['Als Azubi ausprobieren', 'Duplizieren', 'Löschen'])
   })
 
   it('Geschlossen: keine Code-Karte mehr, Zahlen bleiben; „Ergebnisse freigeben“ ist die Hauptaktion', async () => {

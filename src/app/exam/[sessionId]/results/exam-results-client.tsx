@@ -22,6 +22,8 @@ interface Props {
   assessment?: AssessmentResultInfo | null
   /** PROJ-30: Die Arbeit wurde automatisch abgegeben, weil die Prüfung zu oft verlassen wurde. */
   autoSubmittedByFocus?: boolean
+  /** PROJ-134: Testlauf einer Lehrkraft – Ziel zurück zur Detailseite */
+  trialBackHref?: string | null
 }
 
 function PartSummaryCard({ part, partNum, label, readOnly }: { part: PartResult; partNum: number; label: string; readOnly?: boolean }) {
@@ -245,7 +247,7 @@ function OpenResultCard({
   )
 }
 
-export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment, autoSubmittedByFocus = false }: Props) {
+export function ExamResultsClient({ sessionId: _sessionId, results, status, partsSelected, startedAt, endedAt, assessment, autoSubmittedByFocus = false, trialBackHref = null }: Props) {
   const partLabel = useExamPartLabel()
   const router = useRouter()
   const refresh = useCallback(() => router.refresh(), [router])
@@ -308,6 +310,12 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
 
   return (
     <div className="space-y-4">
+      {trialBackHref && (
+        <p role="status" className="rounded-xl border border-[#FF9600]/40 bg-[#FF9600]/15 px-3 py-2 text-center text-sm font-bold text-[#FF9600]">
+          Testlauf: zählt nicht
+        </p>
+      )}
+
       {/* Overall result card */}
       {assessment?.released ? (
         <div className="rounded-2xl border border-[#1CB0F6]/30 bg-[#1CB0F6]/5 p-5 text-center">
@@ -368,9 +376,9 @@ export function ExamResultsClient({ sessionId: _sessionId, results, status, part
             </Button>
           </Link>
         )}
-        <Link href={assessment ? '/leistungsnachweise' : '/exam#simulationen'}>
+        <Link href={trialBackHref ?? (assessment ? '/leistungsnachweise' : '/exam#simulationen')}>
           <Button variant="outline" className="w-full rounded-2xl border-[#4B5563] text-[#9CA3AF] hover:text-[#F9FAFB] hover:bg-[#374151] py-6">
-            {assessment ? 'Meine Leistungsnachweise' : 'Meine Simulationen'}
+            {trialBackHref ? 'Zurück zum Leistungsnachweis' : assessment ? 'Meine Leistungsnachweise' : 'Meine Simulationen'}
           </Button>
         </Link>
         <Link href="/">

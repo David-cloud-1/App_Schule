@@ -74,6 +74,7 @@ export default async function ExamResultsPage({
 
   // PROJ-30: Wurde automatisch abgegeben, bekommt der Azubi den Grund genannt.
   // Das Protokoll selbst bleibt unlesbar — nur dieses eine Kennzeichen geht raus.
+  const trialBackHref = session.trial_assessment_id ? `/admin/leistungsnachweise/${session.trial_assessment_id}` : null
   let autoSubmittedByFocus = false
   if (session.assessment_id) {
     const { data: summary } = await createServiceClient()
@@ -89,8 +90,8 @@ export default async function ExamResultsPage({
       <header className="bg-[#1F2937] border-b border-[#4B5563] px-4 py-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center gap-3">
           <Link
-            href={session.assessment_id ? '/leistungsnachweise' : '/exam'}
-            aria-label={session.assessment_id ? 'Zurück zu Leistungsnachweise' : 'Zurück zur Übungsprüfung'}
+            href={trialBackHref ?? (session.assessment_id ? '/leistungsnachweise' : '/exam')}
+            aria-label={trialBackHref ? 'Zurück zum Leistungsnachweis' : session.assessment_id ? 'Zurück zu Leistungsnachweise' : 'Zurück zur Übungsprüfung'}
             className="text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
           >
             <ArrowLeft size={20} />
@@ -112,6 +113,7 @@ export default async function ExamResultsPage({
           startedAt={session.started_at}
           assessment={results?.assessment ?? null}
           autoSubmittedByFocus={autoSubmittedByFocus}
+          trialBackHref={trialBackHref}
         />
       </main>
     </div>

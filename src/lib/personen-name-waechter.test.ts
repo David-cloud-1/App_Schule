@@ -19,6 +19,9 @@ const ALLOWED = new Set(
     // PROJ-127: Name der handelnden Person im Änderungsprotokoll, Name des betroffenen Kontos
     'app/api/admin/_lib/auth.ts',
     'app/api/admin/_lib/last-change.ts',
+    'app/api/admin/assessments/[id]/route.ts',
+    'app/api/admin/assessments/[id]/testlauf/route.ts',
+    'app/api/admin/assessments/route.ts',
     'app/api/admin/audit-log/route.ts',
     'app/api/admin/users/[id]/password/route.ts',
     'app/api/admin/users/[id]/route.ts',
@@ -36,6 +39,8 @@ const ALLOWED = new Set(
     // PROJ-131: „Ausgeblendet von <Name>“, nur in der Fragen-Schnittstelle der Lehrkräfte
     'lib/hidden-info.ts',
     'lib/konto-data.ts',
+    // PROJ-134: „Erstellt von“ in Liste und Detailseite der Nachweise (nur Lehrkräfte-Bereich)
+    'lib/nachweis-ablauf.ts',
     'lib/personen-name.ts',
     'lib/roles.ts',
     'lib/user-detail-server.ts',

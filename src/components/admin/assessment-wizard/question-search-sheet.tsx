@@ -106,7 +106,7 @@ export function QuestionSearchSheet({ open, onOpenChange, departmentId, facets, 
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={isMobile ? 'bottom' : 'right'}
-        className="flex w-full flex-col gap-3 border-ws-line bg-ws-surface p-4 text-ws-text data-[side=bottom]:max-h-[90vh] data-[side=right]:sm:max-w-lg"
+        className="flex w-full flex-col gap-3 border-ws-line bg-ws-surface p-4 text-ws-text data-[side=bottom]:h-[92dvh] data-[side=bottom]:max-h-[92dvh] data-[side=bottom]:rounded-t-2xl data-[side=right]:sm:max-w-3xl lg:data-[side=right]:max-w-4xl"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="text-ws-text">Frage suchen</SheetTitle>
@@ -126,7 +126,7 @@ export function QuestionSearchSheet({ open, onOpenChange, departmentId, facets, 
               className="min-h-11 rounded-xl border-ws-line bg-ws-bg pl-9 text-ws-text"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <MultiPick label="Fach" options={facets?.subjects ?? []} value={subjects} onChange={setSubjects} emptyText="Keine Fächer vorhanden." />
             <MultiPick
               label="Thema"
@@ -150,8 +150,8 @@ export function QuestionSearchSheet({ open, onOpenChange, departmentId, facets, 
             <AdminEmptyState icon={Search} title="Keine passende Frage" description="Ändere das Suchwort oder die Filter." />
           ) : (
             <>
-              <p className="mb-2 text-xs text-ws-muted">{total} {total === 1 ? 'Treffer' : 'Treffer'}</p>
-              <ul className="space-y-2">
+              <p className="mb-2 text-xs text-ws-muted">{total} Treffer</p>
+              <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
                 {hits.map((h) => {
                   const chosen = chosenIds.has(h.id)
                   return (

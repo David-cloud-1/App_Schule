@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Ban, CheckCircle2, Loader2, RotateCcw, ShieldAlert } from 'lucide-react'
+import { Ban, CheckCircle2, HelpCircle, Loader2, RotateCcw, ShieldAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
@@ -31,6 +32,10 @@ interface AnalysisResponse {
   status: 'draft' | 'open' | 'closed'
   released: boolean
 }
+
+/** PROJ-134 (B31): ein Satz, was Trennschärfe heißt */
+export const TRENNSCHAERFE_ERKLAERUNG =
+  'Zeigt, wie gut eine Frage zwischen starken und schwachen Azubis unterscheidet. Nahe 0 oder negativ: Frage prüfen.'
 
 type SortKey = 'light' | 'rate' | 'discrimination' | 'position'
 
@@ -233,7 +238,23 @@ export function AssessmentItemAnalysis({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-ws-muted">Trennschärfe</dt>
+                  <dt className="flex items-center gap-0.5 text-xs text-ws-muted">
+                    Trennschärfe
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Was bedeutet Trennschärfe?"
+                          className="-my-2.5 inline-flex size-11 items-center justify-center rounded-full text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
+                        >
+                          <HelpCircle className="size-4" aria-hidden />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 border-ws-line bg-ws-surface text-sm text-ws-text">
+                        {TRENNSCHAERFE_ERKLAERUNG}
+                      </PopoverContent>
+                    </Popover>
+                  </dt>
                   <dd className="font-semibold tabular-nums text-ws-text">
                     {q.correctRate === 100
                       ? 'alle richtig'

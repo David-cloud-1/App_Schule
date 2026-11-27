@@ -163,7 +163,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-131: Lerninhalte an einem Ort (Phase 3, Teil 1) | Deployed |
 | P1 | PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3, Teil 2) | Deployed |
 | P1 | PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4, Teil 1) | Deployed |
-| P1 | PROJ-134: Leistungsnachweis – Detailseite & Ablauf (Phase 4, Teil 2) | Planned |
+| P1 | PROJ-134: Leistungsnachweis – Detailseite & Ablauf (Phase 4, Teil 2) | In Progress |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

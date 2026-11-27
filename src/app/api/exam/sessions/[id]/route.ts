@@ -74,8 +74,8 @@ export async function PATCH(
     draft_answers?: Record<string, string>
   }
 
-  if (session.assessment_id) {
-    // Leistungsnachweis (PROJ-21): Zeitlimit, Snapshot und Bewertung in der gemeinsamen Abgabe-Logik
+  if (session.assessment_id || session.trial_assessment_id) {
+    // Leistungsnachweis (PROJ-21), auch Testlauf einer Lehrkraft (PROJ-134): Zeitlimit, Snapshot und Bewertung in der gemeinsamen Abgabe-Logik
     const outcome = action === 'save'
       ? await saveAssessmentDraft(supabase, session, answers)
       : await finishAssessmentAttempt({ client: supabase, session, action, answers })

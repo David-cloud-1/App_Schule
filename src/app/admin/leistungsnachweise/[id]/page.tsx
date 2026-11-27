@@ -7,8 +7,10 @@ import { toast } from 'sonner'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   AlertTriangle,
+  Clock,
   ArrowLeft,
   Building2,
+  FlaskConical,
   ChevronDown,
   Copy,
   CopyPlus,
@@ -70,6 +72,10 @@ import { AdminErrorState } from '@/components/admin/admin-states'
 import { AssessmentItemAnalysis } from '@/components/admin/assessment-item-analysis'
 import { AssessmentCopyReview } from '@/components/admin/assessment-copy-review'
 import { DuplicateAssessmentDialog } from '@/components/admin/duplicate-assessment-dialog'
+import { NachweisSchrittleiste } from '@/components/admin/nachweis-schrittleiste'
+import { BeitrittVerlaengernDialog } from '@/components/admin/beitritt-verlaengern-dialog'
+import { NachweisTestlaeufe, TestlaufGruppeDialog, startTestlauf } from '@/components/admin/nachweis-testlaeufe'
+import { ablaufInfo, beitrittInfo, formatBeitrittZeit } from '@/lib/nachweis-ablauf'
 
 type AssessmentStatus = 'draft' | 'open' | 'closed'
 
@@ -96,6 +102,9 @@ type AssessmentDetail = {
   focusTracking: boolean
   focusAutoSubmitAfter: number | null
   createdAt: string
+  /** PROJ-134: Ersteller (für alle Rollen), automatisches Schließen */
+  createdByName?: string
+  autoClosedAt?: string | null
   /** PROJ-39 */
   schoolYear: string
   className: string | null
@@ -182,6 +191,11 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [confirmRelease, setConfirmRelease] = useState(false)
   const [expandedFocus, setExpandedFocus] = useState<string | null>(null)
+  // PROJ-134
+  const [extendOpen, setExtendOpen] = useState(false)
+  const [trialGroupOpen, setTrialGroupOpen] = useState(false)
+  const [trialStarting, setTrialStarting] = useState(false)
+  const [trialRefresh, setTrialRefresh] = useState(0)
 
   const load = useCallback(async () => {
     const [d, r] = await Promise.all([fetchDetail(id), fetchResults(id)])
@@ -234,6 +248,18 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
     } finally {
       setActionPending(false)
     }
+  }
+
+  async function beginTrial(group?: 'A' | 'B') {
+    setTrialStarting(true)
+    const result = await startTestlauf(id, group)
+    if ('error' in result) {
+      toast.error(result.error)
+      setTrialStarting(false)
+      return
+    }
+    setTrialRefresh((n) => n + 1)
+    router.push(`/exam/${result.sessionId}`)
   }
 
   async function handleDelete() {
@@ -320,6 +346,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const gradeCounts = results?.gradeDistribution.counts ?? {}
   const showFocus = Boolean(results?.focusTracking)
   const conspicuousCount = (results?.participants ?? []).filter((p) => p.focus?.conspicuous).length
+  const ablauf = ablaufInfo({
+    status: detail.status,
+    resultsReleasedAt: detail.resultsReleasedAt,
+    closesAt: detail.closesAt,
+    inProgress: detail.live.inProgress,
+  })
+  const beitritt = beitrittInfo({ status: detail.status, opensAt: detail.opensAt, closesAt: detail.closesAt })
   const maxGradeCount = Math.max(1, ...Object.values(gradeCounts).map((n) => Number(n) || 0))
 
   return (
@@ -356,7 +389,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                 >
                   <Lock size={14} className="mr-1.5" />
-                  {isJoinEnded(detail.status, detail.closesAt) ? 'Nachweis abschließen' : 'Beitritt schließen'}
+                  Schließen
                 </Button>
               )}
               {detail.status === 'closed' && !detail.resultsReleasedAt && (
@@ -437,6 +470,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                     disabled: actionPending,
                   },
                   {
+                    key: 'testlauf',
+                    label: 'Als Azubi ausprobieren',
+                    icon: <FlaskConical className="size-4 text-ws-muted" />,
+                    onSelect: () => (detail.groupsEnabled ? setTrialGroupOpen(true) : void beginTrial()),
+                    hidden: detail.status === 'closed',
+                    disabled: actionPending || trialStarting,
+                  },
+                  {
                     key: 'duplicate',
                     label: 'Duplizieren',
                     icon: <CopyPlus className="size-4 text-ws-muted" />,
@@ -479,8 +520,25 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               </Badge>
             )}
           </div>
+          <p className="mt-2 text-sm text-ws-muted">
+            Erstellt von <span className="font-medium text-ws-text">{detail.createdByName ?? 'Unbekannt'}</span> am{' '}
+            {new Date(detail.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Berlin' })}
+            {detail.copiedFromTitle != null && <> · Kopie von „{detail.copiedFromTitle}“</>}
+          </p>
         </AdminPageHeader>
+
+        <NachweisSchrittleiste
+          info={ablauf}
+          autoClosedText={
+            detail.autoClosedAt && detail.status === 'closed'
+              ? `Automatisch geschlossen (Beitritt abgelaufen) · ${formatBeitrittZeit(detail.autoClosedAt)}. Der Beitritt lässt sich nicht mehr verlängern.`
+              : null
+          }
+        />
       </div>
+
+      {/* PROJ-134: eigene Testläufe */}
+      <NachweisTestlaeufe assessmentId={id} refreshKey={trialRefresh} />
 
       {/* PROJ-39: Ablage — in jedem Status änderbar */}
       <AssessmentCategoryCard
@@ -512,6 +570,20 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               <Button variant="outline" size="sm" onClick={copyLink} className="rounded-xl border-ws-line text-ws-muted hover:text-ws-text">
                 <Copy size={14} className="mr-1.5" />
                 Link kopieren
+              </Button>
+              <div className="space-y-1 text-sm" aria-label="Beitrittszeitraum">
+                <p className="text-ws-text">{beitritt.range}</p>
+                <p className={cn(beitritt.phase === 'ended' ? 'text-ws-orange' : 'text-ws-muted')}>{beitritt.state}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExtendOpen(true)}
+                className="min-h-11 rounded-xl border-ws-line text-ws-muted hover:text-ws-text"
+              >
+                <Clock size={14} className="mr-1.5" />
+                Beitritt verlängern
               </Button>
               {detail.status === 'draft' && (
                 <p className="text-xs text-ws-muted">Beitreten geht erst, wenn du den Nachweis öffnest.</p>
@@ -798,8 +870,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           <AlertDialogHeader>
             <AlertDialogTitle>Ergebnisse freigeben?</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
-              Alle {activeParticipants.length} Teilnehmer sehen ab sofort ihre Note und die Auflösung. Das gilt für alle
-              gemeinsam und lässt sich nicht zurücknehmen.
+              {detail.live.submitted} {detail.live.submitted === 1 ? 'Abgabe' : 'Abgaben'}. Danach sehen die Azubis ihre Note und die
+              Auflösung. Das gilt für alle gemeinsam und lässt sich nicht zurücknehmen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -815,6 +887,21 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <BeitrittVerlaengernDialog
+        open={extendOpen}
+        onOpenChange={setExtendOpen}
+        assessmentId={id}
+        status={detail.status}
+        closesAt={detail.closesAt}
+        autoClosedAt={detail.autoClosedAt ?? null}
+        onExtended={() => void load()}
+      />
+      <TestlaufGruppeDialog
+        open={trialGroupOpen}
+        onOpenChange={setTrialGroupOpen}
+        onStart={(g) => void beginTrial(g)}
+        starting={trialStarting}
+      />
       <DuplicateAssessmentDialog
         open={duplicateOpen}
         onOpenChange={setDuplicateOpen}
