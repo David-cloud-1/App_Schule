@@ -247,6 +247,12 @@ describe('POST /api/admin/assessments', () => {
     expect((await POST(makePostRequest({ ...validBody, className: null }))).status).toBe(201)
   })
 
+  it('rejects a class name with special characters (PROJ-133)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
+    expect((await POST(makePostRequest({ ...validBody, className: '<b>SP10</b>' }))).status).toBe(400)
+    expect((await POST(makePostRequest({ ...validBody, className: '!!!' }))).status).toBe(400)
+  })
+
   it('rejects a „Beitritt bis“ in the past (PROJ-133)', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
     const res = await POST(

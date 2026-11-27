@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  defaultClosesAt,
   endOfTodayInSchoolZone,
   fromSchoolInputValue,
   inOneHour,
@@ -7,6 +8,22 @@ import {
   quickDeadline,
   toSchoolInputValue,
 } from './assessment-deadline'
+
+describe('defaultClosesAt (Vorschlag für „Beitritt bis“)', () => {
+  it('ist tagsüber heute 23:59', () => {
+    expect(defaultClosesAt(new Date('2026-11-27T10:00:00Z')).toISOString()).toBe('2026-11-27T22:59:00.000Z')
+  })
+
+  it('springt auf morgen 23:59, wenn 23:59 schon vorbei ist', () => {
+    // 22:59:30 UTC = 23:59:30 Schulzeit (Winter)
+    expect(defaultClosesAt(new Date('2026-11-27T22:59:30Z')).toISOString()).toBe('2026-11-28T22:59:00.000Z')
+  })
+
+  it('bleibt auch bei der Umstellung auf Sommerzeit (29.3.2026) bei 23:59 Schulzeit', () => {
+    // 28.3. um 23:59:30 Schulzeit (UTC+1) -> morgen ist Sommerzeit, 23:59 = 21:59 UTC
+    expect(defaultClosesAt(new Date('2026-03-28T22:59:30Z')).toISOString()).toBe('2026-03-29T21:59:00.000Z')
+  })
+})
 
 describe('assessment-deadline (PROJ-133)', () => {
   it('heute 23:59 im Sommer (UTC+2)', () => {

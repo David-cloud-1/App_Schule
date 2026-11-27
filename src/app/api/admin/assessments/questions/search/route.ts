@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
-import { loadCandidates } from '@/lib/assessment-candidates'
+import { cachedPool } from '@/lib/assessment-pool-cache'
 import { buildFacets, lookupQuestions, searchQuestions, MAX_LOOKUP_IDS } from '@/lib/assessment-question-search'
 
 const ROUTE = 'api/admin/assessments/questions/search'
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   const body = parsed.data
 
   try {
-    const { all } = await loadCandidates(supabase, user.id, body.departmentId)
+    const all = await cachedPool(supabase, user.id, body.departmentId)
     if (body.action === 'facets') {
       return NextResponse.json(buildFacets(all))
     }

@@ -3,7 +3,7 @@
  * Reine Logik ohne Oberfläche: Titelvorschlag, Prüfung von Schritt 3,
  * Umwandlung von Suchtreffern und die Übergabe aus „Schwierig“.
  */
-import { MAX_CLASS_NAME_LENGTH } from '@/lib/assessment-category'
+import { isValidClassNameFormat, MAX_CLASS_NAME_LENGTH } from '@/lib/assessment-category'
 import { MIN_ASSESSMENT_QUESTIONS } from '@/lib/assessment-questions'
 import type { SearchHit } from '@/lib/assessment-question-search'
 import { levelFor, MAX_COUNT, MIN_COUNT, MIX_PRESETS, mixSum, type Candidate, type Mix } from '@/lib/assessment-suggest'
@@ -53,11 +53,14 @@ export function suggestTitle(subjects: string[], topics: string[], now: Date): s
   return parts.join(' · ').slice(0, 100)
 }
 
-/** Schritt 2 → 3: mindestens eine Frage; unter 5 nur ein Hinweis, kein Verbot */
+/** Schritt 2 → 3: Ein Nachweis braucht mindestens 5 Fragen (wie auf dem Server) */
 export function reviewState(count: number): { canContinue: boolean; hint: string | null } {
-  if (count < 1) return { canContinue: false, hint: 'Wähle mindestens eine Frage.' }
   if (count < MIN_ASSESSMENT_QUESTIONS) {
-    return { canContinue: true, hint: `Ein Nachweis mit weniger als ${MIN_ASSESSMENT_QUESTIONS} Fragen ist kurz. Du kannst trotzdem weitermachen.` }
+    const missing = MIN_ASSESSMENT_QUESTIONS - count
+    return {
+      canContinue: false,
+      hint: `Ein Nachweis braucht mindestens ${MIN_ASSESSMENT_QUESTIONS} Fragen. ${missing === 1 ? 'Es fehlt noch 1 Frage' : `Es fehlen noch ${missing} Fragen`}.`,
+    }
   }
   return { canContinue: true, hint: null }
 }
@@ -78,6 +81,7 @@ export function validateWhen(
     const name = v.classChoice.name.replace(/\s+/g, ' ').trim()
     if (!name) e.className = 'Bitte gib eine Klasse ein oder wähle „Keine / gemischt“.'
     else if (name.length > MAX_CLASS_NAME_LENGTH) e.className = `Die Klasse darf höchstens ${MAX_CLASS_NAME_LENGTH} Zeichen lang sein.`
+    else if (!isValidClassNameFormat(name)) e.className = 'Bitte nur Buchstaben und Ziffern verwenden, zum Beispiel SP10C.'
   }
 
   const closes = v.closesAt ? inputToDate(v.closesAt) : null

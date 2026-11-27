@@ -5,6 +5,7 @@ vi.mock('../../../_lib/auth', () => ({ requireTeacherOrAdmin: vi.fn() }))
 vi.mock('@/lib/assessment-candidates', () => ({ loadCandidates: vi.fn() }))
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { loadCandidates } from '@/lib/assessment-candidates'
+import { clearPoolCache } from '@/lib/assessment-pool-cache'
 import { POST } from './route'
 
 const DEPT = '11111111-1111-4111-8111-111111111111'
@@ -35,6 +36,7 @@ const cand = (n: number) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  clearPoolCache()
   vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: null, user: { id: 'u1' }, supabase: {} } as never)
   vi.mocked(loadCandidates).mockResolvedValue({ all: Array.from({ length: 30 }, (_, i) => cand(i + 1)), statsAvailable: true } as never)
 })
@@ -70,6 +72,21 @@ describe('POST /api/admin/assessments/questions/search', () => {
     const page2 = await (await post({ action: 'search', departmentId: DEPT, offset: 25 })).json()
     expect(page2.items).toHaveLength(5)
     expect(page2.nextOffset).toBeNull()
+  })
+
+  it('lädt den Pool bei mehreren Anfragen nur einmal (kurzer Zwischenspeicher)', async () => {
+    await post({ action: 'search', departmentId: DEPT })
+    await post({ action: 'search', departmentId: DEPT, offset: 25 })
+    await post({ action: 'facets', departmentId: DEPT })
+    expect(loadCandidates).toHaveBeenCalledTimes(1)
+  })
+
+  it('trennt den Zwischenspeicher nach Person und Bereich', async () => {
+    await post({ action: 'search', departmentId: DEPT })
+    await post({ action: 'search', departmentId: '22222222-2222-4222-8222-222222222222' })
+    vi.mocked(requireTeacherOrAdmin).mockResolvedValue({ error: null, user: { id: 'u2' }, supabase: {} } as never)
+    await post({ action: 'search', departmentId: DEPT })
+    expect(loadCandidates).toHaveBeenCalledTimes(3)
   })
 
   it('lädt Fragen per Nummer nach und nennt fehlende', async () => {

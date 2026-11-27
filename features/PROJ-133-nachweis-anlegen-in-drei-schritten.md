@@ -64,7 +64,7 @@ Der Nachweis entsteht als **Entwurf**. Öffnen, Schrittleiste, automatisches Sch
 - [ ] Die Auswahl bleibt oben als feste Liste sichtbar (Anzahl „18 Fragen“), auch während die Suche offen ist.
 - [ ] Es erscheinen nur Fragen, die für Nachweise zulässig sind (aktiv, im richtigen Bereich, „nur für Nachweise“ eingeschlossen). Der Server prüft das beim Speichern erneut.
 - [ ] Gibt es zu wenige passende Fragen, wird angezeigt, wie viele fehlen. Es wird nie mit unpassenden Fragen aufgefüllt.
-- [ ] „Weiter“ ist erst mit mindestens **einer** Frage möglich. Bei weniger als 5 Fragen erscheint ein Hinweis, aber kein Verbot.
+- [ ] „Weiter“ ist erst mit mindestens **5** Fragen möglich (Entscheidung 27.11.2026, wie auf dem Server). Darunter nennt ein Hinweis, wie viele noch fehlen.
 
 ### Schritt 3 – Wann und für wen?
 - [ ] Felder: **Titel** (Vorschlag aus Fach, Thema und Datum, änderbar), **Klasse** (Pflicht, siehe unten), **Schuljahr** (vorausgefüllt), **Beitritt bis** (Pflicht), **Beitritt ab** (optional, „sofort nach dem Öffnen“), **Dauer** je Teilnehmer in Minuten, **Notenschlüssel**.
@@ -99,9 +99,9 @@ Der Nachweis entsteht als **Entwurf**. Öffnen, Schrittleiste, automatisches Sch
 - **Bereichswechsel mitten im Ablauf:** Wer den Bereich in einem anderen Tab ändert, ändert nicht den Bereich des laufenden Ablaufs. Er behält den Bereich, mit dem er gestartet wurde. Der Server prüft die Berechtigung beim Speichern.
 - **Mehrere Bereiche aus „Schwierig“:** siehe Abschnitt oben, nicht erlaubte Fragen werden benannt.
 - **Zeitzone und Sommerzeit:** „Heute 23:59“ gilt in der Schulzeitzone, auch bei Zeitumstellung.
-- **Klasse mit Sonderzeichen oder zu lang:** wird am Feld abgelehnt, es entsteht kein Entwurf.
+- **Klasse mit Sonderzeichen oder zu lang:** wird am Feld abgelehnt, es entsteht kein Entwurf. Erlaubt sind Buchstaben und Ziffern, dazu Leerzeichen, Punkt, Bindestrich, Unterstrich und Schrägstrich.
 - **Offline:** Beim Speichern ohne Verbindung bleibt die Seite offen, die Angaben bleiben erhalten, ein Fehlerzustand bietet „Erneut versuchen“.
-- **Nur eine Frage:** erlaubt, mit Hinweis; kein Verbot.
+- **Weniger als 5 Fragen:** „Weiter“ bleibt gesperrt, der Hinweis nennt, wie viele fehlen (Entscheidung 27.11.2026: 5 bleiben die Mindestzahl).
 
 ## Nicht Teil dieses Features
 - Detailseite, Schrittleiste „Entwurf → Offen → Geschlossen → Freigegeben“, „Beitritt bis“ auf der Detailseite, automatisches Schließen, „Als Azubi ausprobieren“, Ersteller sichtbar (alles PROJ-134)
@@ -292,7 +292,7 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - [x] „Vorschlag erstellen“ führt zu Schritt 2. Fehler stehen am Feld (Rendertest „fehlendes Fach“).
 - [x] „Leer beginnen“ führt zu Schritt 2 mit leerer Liste
 - [x] „Ausgeschlossene Fragen“ mit Erklärsatz und „Dauer“ stehen in `begriffe.ts`, der Wächtertest kennt die alten Wörter
-- [ ] BUG-2: Ein Wechsel des Bereichs in Schritt 1 behält die Fragen aus dem alten Bereich
+- [x] BUG-2 (behoben): Ein Wechsel des Bereichs in Schritt 1 leert die Auswahl
 
 #### Schritt 2 – Prüfen
 - [x] Liste mit Text, Thema, Chip und Lösungsquote, darüber die Zusammenfassung
@@ -301,12 +301,12 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - [x] Die Anzahl steht oben und in der Kopfzeile der Suche
 - [x] Nur zulässige Fragen (`loadCandidates`), der Server prüft beim Speichern erneut
 - [x] Bei zu wenigen Fragen nennt die Seite die Lücke und füllt nicht mit unpassenden auf (Logik aus PROJ-78)
-- [ ] **BUG-1 (High):** „Weiter“ geht ab einer Frage, unter 5 Fragen erscheint nur ein Hinweis. **Speichern scheitert aber am Server.**
+- [x] BUG-1 (behoben): „Weiter“ erst ab 5 Fragen, der Hinweis nennt die fehlende Zahl
 
 #### Schritt 3 – Wann und für wen?
 - [x] Titel (Vorschlag), Klasse, Schuljahr, Beitritt bis/ab, Dauer, Notenschlüssel
 - [x] Klasse ist Pflicht im Browser und auf dem Server (`className` ohne `.optional()`, 400 ohne Angabe), mit „Keine / gemischt“ und freier Eingabe
-- [ ] BUG-3: Die freie Eingabe prüft nur die Länge, nicht das Format „wie SP10C“
+- [x] BUG-3 (behoben): Die freie Eingabe prüft jetzt das Format, im Browser und auf dem Server
 - [x] Beitritt bis: Vorschlag heute 23:59 in Europe/Berlin, drei Schnellwahlen, Vergangenheit und „vor Beitritt ab“ werden am Feld abgelehnt (der Server lehnt die Vergangenheit ebenfalls ab), Datum und Uhrzeit ausgeschrieben
 - [x] Erklärsätze unter „Beitritt bis“ und „Dauer“ wörtlich wie in der Spec
 - [x] Notenschlüssel: Vorlagen-Auswahl und „Neue Vorlage anlegen“ (Dialog, neue Vorlage sofort gewählt)
@@ -320,7 +320,7 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - [x] Häkchen je Frage (44 px), Leiste „N markiert · In neuen Nachweis“, höchstens 60 Fragen
 - [x] Start bei Schritt 2 mit den markierten Fragen in ihrer Reihenfolge. Fach und Thema werden aus den Fragen abgeleitet, Schritt 1 ist erreichbar (Rendertest).
 - [x] Bei mehreren Bereichen kommt eine Rückfrage mit der Auswahl je Bereich. Nicht zulässige Fragen meldet ein Hinweis mit ihrer Anzahl.
-- [ ] Gleiche Ursache wie BUG-1: Wer weniger als 5 Fragen markiert, kommt bis Schritt 3, kann dort aber nicht speichern
+- [x] BUG-1 (behoben): Wer weniger als 5 Fragen markiert, bleibt in Schritt 2 und sieht, wie viele fehlen
 
 #### Rechte, Wörter und Technik
 - [x] Rechte unverändert (`requireTeacherOrAdmin`, gleiches Muster wie beim Vorschlag in PROJ-78)
@@ -335,9 +335,9 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - [x] Frage verschwindet: Der Server nennt die Fragen (`invalidQuestionIds`), die Seite springt zu Schritt 2 und markiert sie (Rendertest)
 - [x] Bereichswechsel in einem anderen Tab: Der Bereich wird nur beim Start gelesen und gilt dann fest
 - [x] Zeitzone und Sommerzeit: Unit-Tests für den 25.10. und den 29.3.
-- [ ] Klasse mit Sonderzeichen: wird nicht abgelehnt (BUG-3). Zu lang: wird abgelehnt
+- [x] Klasse mit Sonderzeichen oder zu lang: wird abgelehnt (BUG-3 behoben)
 - [x] Offline: Die Seite bleibt offen, die Angaben bleiben, Meldung „Keine Verbindung …“, der Knopf heißt dann „Erneut versuchen“
-- [ ] Nur eine Frage: Die Seite erlaubt sie, der Server lehnt sie ab (BUG-1)
+- [x] Weniger als 5 Fragen: Die Seite sperrt „Weiter“ wie der Server (BUG-1 behoben)
 - [x] Zusätzlich geprüft: Kaputter oder fehlender sessionStorage-Eintrag (geteilter Link) führt zum normalen Start, der Eintrag wird nach dem Lesen gelöscht (Unit-Test)
 
 ### Security Audit Results
@@ -346,7 +346,7 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - [x] Eingaben: Alle Felder prüft Zod (Länge, UUIDs, `offset` ≤ 100.000, `ids` ≤ 60). Die Suche filtert im Speicher, es gibt kein SQL aus Nutzereingaben. React maskiert alle Texte, und kein neuer Code nutzt `dangerouslySetInnerHTML`.
 - [x] sessionStorage-Übergabe: Der Inhalt wird geprüft (nur Strings, höchstens 60) und nur als Nummern an den Server geschickt. Der Server lässt unbekannte Nummern als `missing` weg.
 - [x] Keine Geheimnisse und keine fremden Personendaten in den Antworten (Treffer ohne Urheber)
-- [ ] Rate-Limiting: keines auf der Suche (Low, siehe BUG-7). Jede Anfrage lädt den ganzen Bereichs-Pool samt Statistik.
+- [x] Rate-Limiting: Die Suche ist ein POST und fällt unter die allgemeine Grenze für Schreibzugriffe (120 pro Minute und Person). Das hatte der erste Befund übersehen. Die Last durch das Neuladen des Pools ist mit BUG-7 behoben.
 
 ### Bugs Found
 
@@ -413,6 +413,24 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - **Actual:** `found.question_ids.slice(0, 60)` übernimmt nur die ersten 60, ohne Hinweis auf die übrigen
 - **Priority:** Nice to have
 
+### Bugfixes (2026-11-27, nach der QA)
+
+Entscheidung des Product Owners zu BUG-1: **5 bleiben die Mindestzahl.** Alle 9 Befunde sind behoben. Tests: 5.013 grün (vorher 5.001), `tsc` und `eslint` sauber. **Eine zweite QA-Runde (`/qa`) steht noch aus.**
+
+| Bug | Behebung |
+|---|---|
+| BUG-1 | `reviewState` (`assessment-draft.ts`): „Weiter“ nur ab `MIN_ASSESSMENT_QUESTIONS` (5), Hinweis „Es fehlen noch N Fragen“. Spec angepasst. |
+| BUG-2 | `onDepartmentChange` im Wizard leert Fragen, Vorschlag, Fixierungen und Schrittstand, geht zu Schritt 1 und zeigt einen Hinweis. |
+| BUG-3 | `isValidClassNameFormat` (`assessment-category.ts`) wird in `validateWhen` und im Zod-Schema von `POST /api/admin/assessments` geprüft. |
+| BUG-4 | `defaultClosesAt` (`assessment-deadline.ts`): heute 23:59, ist das vorbei, morgen 23:59. |
+| BUG-5 | Zwischeneintrag im Browser-Verlauf plus `popstate`-Abfang: Zurück-Taste und Wischgeste fragen nach („Verlassen“ geht dann wirklich zurück). |
+| BUG-6 | Die Rückfrage gilt schon ab geänderten Angaben in Schritt 1 und bleibt danach aktiv. Der vorbelegte Bereich zählt nicht als Änderung. |
+| BUG-7 | `assessment-pool-cache.ts`: Der Pool wird je Person und Bereich 30 Sekunden gemerkt (höchstens 50 Einträge). Tippen und „Weitere 25“ laden ihn nicht mehr jedes Mal neu. |
+| BUG-8 | `toggleMark` löst den Hinweis außerhalb des State-Updaters aus. |
+| BUG-9 | Kürzung auf 60 Fragen bei „Als Leistungsnachweis verwenden“ wird im Hinweis genannt. |
+
+Neue Tests: Mindestzahl und Hinweis, Klassenformat (Browser und Server), `defaultClosesAt` (auch bei Zeitumstellung), Bereichswechsel, Zurück-Taste, Rückfrage nur mit Schritt 1, Zwischenspeicher der Suche (einmal laden, getrennt nach Person und Bereich).
+
 ### Einschränkungen dieser Prüfung
 - Der Ablauf mit echtem Konto, echten Fragen und echtem Speichern ist nicht im Browser getestet. Es gab keine Datenbank und kein Lehrkraft-Konto. Nach den Korrekturen bitte einmal mit echtem Konto prüfen: Vorschlag → Prüfen → Speichern und der Weg aus „Schwierig“.
 - Die Breiten 375, 768 und 1440 px sowie Firefox und Safari sind nur über die Tailwind-Klassen im Code geprüft, nicht visuell.
@@ -421,8 +439,8 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - **Acceptance Criteria:** 33 von 37 bestanden. Offen sind 4: unter 5 Fragen speichern, Bereichswechsel, Klassenformat, Weg aus „Schwierig“ mit wenigen Fragen. Drei davon gehen auf BUG-1 bis BUG-3 zurück, der vierte ebenfalls auf BUG-1.
 - **Bugs Found:** 9 total (0 critical, 1 high, 2 medium, 6 low)
 - **Security:** bestanden. Keine kritischen Befunde, nur das fehlende Rate-Limit (Low).
-- **Production Ready:** **NO**
-- **Recommendation:** Erst BUG-1 beheben (dazu die Produktentscheidung zur Untergrenze), dann BUG-2 und BUG-3, danach `/qa` erneut
+- **Production Ready:** **NO, bis die zweite QA-Runde bestanden ist** (alle Befunde sind behoben, aber noch nicht erneut geprüft)
+- **Recommendation:** `/qa` erneut ausführen, dazu den Ablauf einmal mit echtem Konto durchspielen
 
 ## Deployment
 _To be added by /deploy_

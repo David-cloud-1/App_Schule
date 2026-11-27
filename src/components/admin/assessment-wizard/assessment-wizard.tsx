@@ -22,7 +22,7 @@ import { IHK_DEFAULT_SCALE, validateGradingScale, type GradeBoundary } from '@/c
 import type { SwapState } from '@/components/admin/assessment-suggest-preview'
 import { schoolYearFor } from '@/lib/assessment-category'
 import {
-  endOfTodayInSchoolZone,
+  defaultClosesAt,
   fromSchoolInputValue,
   toSchoolInputValue,
 } from '@/lib/assessment-deadline'
@@ -53,6 +53,8 @@ import { STEP_LABELS, WizardSteps } from './wizard-steps'
 
 const SUGGEST = '/api/admin/assessments/suggest'
 const SEARCH = '/api/admin/assessments/questions/search'
+/** Markiert in der Rückfrage „Zurück-Taste“ statt eines Links */
+const BACK = '__back__'
 const FAIL = 'Das hat nicht geklappt. Bitte versuche es erneut.'
 
 async function postJson(url: string, body: unknown) {
@@ -120,7 +122,12 @@ export function AssessmentWizard() {
   const now = useCallback(() => new Date(), [])
   const currentSchoolYear = useMemo(() => schoolYearFor(new Date()), [])
 
-  const dirty = items.length > 0 || reached > 1
+  // Sobald etwas eingegeben wurde, bleibt die Rückfrage aktiv, auch wenn man alles wieder zurückstellt
+  const dirtyNow = items.length > 0 || reached > 1 || JSON.stringify(what) !== JSON.stringify(initialWhat())
+  const dirtyLatch = useRef(false)
+  if (dirtyNow) dirtyLatch.current = true
+  const dirty = dirtyLatch.current
+  const sentinelPushed = useRef(false)
 
   // Bereiche laden; ein Bereich: fest, sonst der Bereich aus dem Umschalter (PROJ-130)
   useEffect(() => {
@@ -184,6 +191,7 @@ export function AssessmentWizard() {
       let dept = departmentId
       let duration: number | null = null
       let title: string | null = null
+      let cutOff = 0
       if (fromDifficult) {
         const handoff = readHandoff(window.sessionStorage)
         if (handoff) {
@@ -198,6 +206,7 @@ export function AssessmentWizard() {
           | undefined
         if (found) {
           ids = found.question_ids.slice(0, 60)
+          if (found.question_ids.length > 60) cutOff = found.question_ids.length - 60
           duration = found.duration_minutes
           title = `${found.name} – Leistungsnachweis`
           if (found.department_id && departments.some((d) => d.id === found.department_id)) dept = found.department_id
@@ -224,11 +233,16 @@ export function AssessmentWizard() {
       }
       if (duration) setWhen((v) => ({ ...v, durationMinutes: String(duration) }))
       const missing = (data.missing as string[]).length
+      const notes: string[] = []
       if (missing > 0) {
-        setNotice(
+        notes.push(
           `${missing} ${missing === 1 ? 'Frage gehört' : 'Fragen gehören'} nicht zu diesem Bereich oder ${missing === 1 ? 'ist' : 'sind'} nicht für Nachweise zulässig und bleiben außen vor.`,
         )
       }
+      if (cutOff > 0) {
+        notes.push(`Ein Nachweis aus einer Übungsprüfung nimmt höchstens 60 Fragen auf. ${cutOff} ${cutOff === 1 ? 'Frage wurde' : 'Fragen wurden'} nicht übernommen.`)
+      }
+      if (notes.length > 0) setNotice(notes.join(' '))
       setReached(2)
       setStep(2)
     })()
@@ -257,10 +271,22 @@ export function AssessmentWizard() {
       e.stopPropagation()
       setPendingHref(href)
     }
+    // Zurück-Taste und Wischgeste: Ein Zwischeneintrag im Verlauf fängt sie ab und fragt nach
+    if (!sentinelPushed.current) {
+      sentinelPushed.current = true
+      window.history.pushState({ nachweisNeu: true }, '', window.location.href)
+    }
+    const onPopState = () => {
+      if (done.current) return
+      window.history.pushState({ nachweisNeu: true }, '', window.location.href)
+      setPendingHref(BACK)
+    }
     window.addEventListener('beforeunload', onBeforeUnload)
+    window.addEventListener('popstate', onPopState)
     document.addEventListener('click', onClick, true)
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload)
+      window.removeEventListener('popstate', onPopState)
       document.removeEventListener('click', onClick, true)
     }
   }, [dirty])
@@ -308,6 +334,24 @@ export function AssessmentWizard() {
     } finally {
       setBusy(false)
     }
+  }
+
+  // Ein anderer Bereich hat andere Fragen: Auswahl und Vorschlag beginnen von vorn (BUG-2)
+  function onDepartmentChange(id: string) {
+    if (id === departmentId) return
+    const hadQuestions = items.length > 0
+    setDepartmentId(id)
+    setDepartmentError(null)
+    setWhat((w) => ({ ...w, subjects: [], topics: [] }))
+    setItems([])
+    setLocked(new Set())
+    setRejectedIds(new Set())
+    setSwap(null)
+    setMeta(null)
+    setSuggested(false)
+    setReached(1)
+    whenInitialised.current = false
+    setNotice(hadQuestions ? 'Du hast den Bereich gewechselt. Die bisher gewählten Fragen gehören zum anderen Bereich und wurden entfernt.' : null)
   }
 
   function goTo(next: WizardStep) {
@@ -404,7 +448,7 @@ export function AssessmentWizard() {
       setWhen((v) => ({
         ...v,
         title: v.title || suggestTitle(what.subjects, what.topics, new Date()),
-        closesAt: v.closesAt || toSchoolInputValue(endOfTodayInSchoolZone(new Date())),
+        closesAt: v.closesAt || toSchoolInputValue(defaultClosesAt(new Date())),
         durationMinutes: v.durationMinutes === '45' ? String(Math.max(5, Math.ceil(minutes / 5) * 5)) : v.durationMinutes,
       }))
     }
@@ -508,11 +552,7 @@ export function AssessmentWizard() {
           onRetryFacets={() => void loadFacets(departmentId)}
           departments={departments}
           departmentId={departmentId}
-          onDepartmentChange={(id) => {
-            setDepartmentId(id)
-            setDepartmentError(null)
-            setWhat((w) => ({ ...w, subjects: [], topics: [] }))
-          }}
+          onDepartmentChange={onDepartmentChange}
           departmentError={departmentError}
           busy={busy}
           onSuggest={onSuggest}
@@ -631,7 +671,8 @@ export function AssessmentWizard() {
                 done.current = true
                 const href = pendingHref
                 setPendingHref(null)
-                if (href) router.push(href)
+                if (href === BACK) window.history.go(-2)
+                else if (href) router.push(href)
               }}
             >
               Verlassen

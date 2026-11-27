@@ -158,10 +158,13 @@ export function DifficultQuestions({
   const topics = useMemo(() => rankTopics(rows, HARD_MIN_ATTEMPTS).ranked, [rows])
 
   function toggleMark(id: string) {
+    if (!marked.has(id) && marked.size >= MAX_HANDOFF_QUESTIONS) {
+      toast.error(`Du kannst höchstens ${MAX_HANDOFF_QUESTIONS} Fragen markieren.`)
+      return
+    }
     setMarked((cur) => {
       const next = new Set(cur)
       if (next.has(id)) next.delete(id)
-      else if (next.size >= MAX_HANDOFF_QUESTIONS) toast.error(`Du kannst höchstens ${MAX_HANDOFF_QUESTIONS} Fragen markieren.`)
       else next.add(id)
       return next
     })

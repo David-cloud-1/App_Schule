@@ -32,6 +32,20 @@ function memory() {
   }
 }
 
+describe('Klassenformat (PROJ-133)', () => {
+  it('akzeptiert übliche Klassennamen', () => {
+    for (const name of ['SP10C', 'SP 11a', 'BK-2/3', 'Tourismus 12.1', 'ÄB10']) {
+      expect(check({ classChoice: { kind: 'name', name } }).className, name).toBeUndefined()
+    }
+  })
+
+  it('lehnt Sonderzeichen und Markup am Feld ab', () => {
+    for (const name of ['!!! test', '<b>SP10</b>', 'SP10;DROP', '-SP10', '😀']) {
+      expect(check({ classChoice: { kind: 'name', name } }).className, name).toMatch(/Buchstaben und Ziffern/)
+    }
+  })
+})
+
 describe('validateWhen (PROJ-133, Schritt 3)', () => {
   it('lässt gültige Angaben durch', () => {
     expect(check()).toEqual({})
@@ -67,9 +81,10 @@ describe('classNameForApi', () => {
 })
 
 describe('reviewState (Schritt 2)', () => {
-  it('ab einer Frage weiter, unter 5 mit Hinweis', () => {
-    expect(reviewState(0)).toEqual({ canContinue: false, hint: expect.any(String) })
-    expect(reviewState(1)).toEqual({ canContinue: true, hint: expect.stringContaining('5') })
+  it('erst ab 5 Fragen weiter, darunter nennt der Hinweis, wie viele fehlen', () => {
+    expect(reviewState(0)).toEqual({ canContinue: false, hint: expect.stringContaining('Es fehlen noch 5 Fragen') })
+    expect(reviewState(1)).toEqual({ canContinue: false, hint: expect.stringContaining('mindestens 5') })
+    expect(reviewState(4)).toEqual({ canContinue: false, hint: expect.stringContaining('Es fehlt noch 1 Frage') })
     expect(reviewState(5)).toEqual({ canContinue: true, hint: null })
   })
 })

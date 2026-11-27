@@ -3,6 +3,13 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /** Höchstlänge der Klassenbezeichnung (entspricht der DB-Prüfung) */
 export const MAX_CLASS_NAME_LENGTH = 30
 
+/** Klassenname wie SP10C, SP 11a oder BK-2/3: Buchstaben und Ziffern, dazu Leerzeichen, Punkt, Bindestrich, Unterstrich und Schrägstrich (PROJ-133) */
+const CLASS_NAME_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} ._/-]*$/u
+
+export function isValidClassNameFormat(name: string): boolean {
+  return CLASS_NAME_PATTERN.test(name.replace(/\s+/g, ' ').trim())
+}
+
 const SCHOOL_YEAR_PATTERN = /^(\d{4})\/(\d{2})$/
 
 /**

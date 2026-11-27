@@ -50,6 +50,14 @@ export function endOfTodayInSchoolZone(now: Date): Date {
   return schoolWallTimeToDate(t.year, t.month, t.day, 23, 59)
 }
 
+/** Vorschlag für „Beitritt bis“: heute 23:59, ist das schon vorbei, morgen 23:59 */
+export function defaultClosesAt(now: Date): Date {
+  const today = endOfTodayInSchoolZone(now)
+  if (today.getTime() > now.getTime()) return today
+  const t = wallTimeInSchoolZone(now)
+  return schoolWallTimeToDate(t.year, t.month, t.day + 1, 23, 59)
+}
+
 export function inOneHour(now: Date): Date {
   return new Date(now.getTime() + 60 * 60 * 1000)
 }

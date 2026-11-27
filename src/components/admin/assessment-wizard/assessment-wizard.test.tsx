@@ -30,13 +30,14 @@ const cand = (n: number) => ({
 
 type Call = { url: string; body: Record<string, unknown> | null }
 let calls: Call[] = []
+let departmentList = [{ id: DEPT, name: 'Spedition', code: 'SP' }]
 let saveResponse: { ok: boolean; status?: number; json: unknown } = { ok: true, json: { id: 'new-1' } }
 
 function route(url: string, init?: RequestInit) {
   const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : null
   calls.push({ url, body })
   const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json })
-  if (url === '/api/admin/assessments/departments') return ok({ departments: [{ id: DEPT, name: 'Spedition', code: 'SP' }], suggestedDepartmentId: DEPT })
+  if (url === '/api/admin/assessments/departments') return ok({ departments: departmentList, suggestedDepartmentId: DEPT })
   if (url.startsWith('/api/admin/assessments/category-options')) return ok({ subjects: [], classes: ['SP10C', 'SP11A'] })
   if (url === '/api/admin/assessments/questions/search') {
     if (body?.action === 'facets') {
@@ -53,6 +54,7 @@ function route(url: string, init?: RequestInit) {
 beforeEach(() => {
   calls = []
   search = ''
+  departmentList = [{ id: DEPT, name: 'Spedition', code: 'SP' }]
   push.mockClear()
   saveResponse = { ok: true, json: { id: 'new-1' } }
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => route(url, init)))
@@ -155,12 +157,49 @@ describe('Nachweis anlegen in drei Schritten (PROJ-133)', () => {
     expect(push).not.toHaveBeenCalled()
   })
 
-  it('beginnt mit „Leer beginnen“ bei Schritt 2 ohne Frage; „Weiter“ erst ab einer Frage', async () => {
+  it('beginnt mit „Leer beginnen“ bei Schritt 2 ohne Frage; „Weiter“ erst ab 5 Fragen', async () => {
     render(<AssessmentWizard />)
     fireEvent.click(await screen.findByRole('button', { name: 'Leer beginnen' }))
     expect(await screen.findByText(/Noch keine Frage gewählt/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Weiter/ })).toBeDisabled()
     expect(calls.some((c) => c.url.endsWith('/suggest'))).toBe(false)
+  })
+
+  it('erlaubt „Weiter“ erst ab 5 Fragen und nennt, wie viele fehlen', async () => {
+    await toStep2()
+    expect(screen.getByRole('button', { name: /Weiter/ })).toBeEnabled()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Frage entfernen' })[0])
+    expect(screen.getByRole('button', { name: /Weiter/ })).toBeEnabled() // 5 Fragen
+    fireEvent.click(screen.getAllByRole('button', { name: 'Frage entfernen' })[0])
+    expect(screen.getByRole('button', { name: /Weiter/ })).toBeDisabled() // 4 Fragen
+    expect(screen.getByText(/Es fehlt noch 1 Frage/)).toBeInTheDocument()
+  })
+
+  it('leert beim Bereichswechsel die Auswahl und geht zu Schritt 1 zurück', async () => {
+    departmentList = [
+      { id: DEPT, name: 'Spedition', code: 'SP' },
+      { id: 'dept-2', name: 'Tourismus', code: 'TO' },
+    ]
+    await toStep2()
+    fireEvent.click(screen.getByRole('button', { name: /Zurück/ }))
+    fireEvent.click(await screen.findByRole('combobox', { name: 'Bereich' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'Tourismus' }))
+    expect(await screen.findByText(/Du hast den Bereich gewechselt/)).toBeInTheDocument()
+    // Schritt 2 ist wieder gesperrt, bis ein neuer Vorschlag oder „Leer beginnen“ kommt
+    expect(within(screen.getByRole('navigation', { name: 'Schritte' })).getByRole('button', { name: /Schritt 2/ })).toBeDisabled()
+  })
+
+  it('fängt die Zurück-Taste ab und fragt nach, sobald etwas eingegeben ist', async () => {
+    await toStep2()
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    expect(await screen.findByText('Angaben gehen verloren')).toBeInTheDocument()
+  })
+
+  it('fragt auch nach, wenn nur Schritt 1 ausgefüllt ist', async () => {
+    render(<AssessmentWizard />)
+    await pickSubject()
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    expect(await screen.findByText('Angaben gehen verloren')).toBeInTheDocument()
   })
 
   it('startet aus „Schwierig“ bei Schritt 2 mit den übergebenen Fragen', async () => {
