@@ -431,16 +431,64 @@ Entscheidung des Product Owners zu BUG-1: **5 bleiben die Mindestzahl.** Alle 9 
 
 Neue Tests: Mindestzahl und Hinweis, Klassenformat (Browser und Server), `defaultClosesAt` (auch bei Zeitumstellung), Bereichswechsel, Zurück-Taste, Rückfrage nur mit Schritt 1, Zwischenspeicher der Suche (einmal laden, getrennt nach Person und Bereich).
 
+### QA Runde 2 (2026-11-27)
+
+**Geprüft:** alle 9 Korrekturen per Code-Review des Diffs (`55fb1b6..4d9c8b6`), Unit- und Rendertests, `tsc`, `eslint`, `npm run build`, Playwright (18 Tests grün, Desktop und Handy) und ein Angriffsversuch gegen die Schnittstellen ohne Anmeldung. Der Ablauf mit echtem Konto war wieder nicht möglich (keine Datenbank).
+
+| Bug | Ergebnis | Wie bestätigt |
+|---|---|---|
+| BUG-1 | behoben | Komponententest: 5 Fragen = „Weiter“ frei, 4 = gesperrt mit „Es fehlt noch 1 Frage“. Server und Seite nutzen dieselbe Zahl (`MIN_ASSESSMENT_QUESTIONS`). |
+| BUG-2 | behoben | Komponententest mit zwei Bereichen: Auswahl weg, Hinweis sichtbar, Schritt 2 in der Leiste gesperrt |
+| BUG-3 | behoben, aber **mit Nebenwirkung (BUG-10)** | Unit-Tests Browser und Server (400 bei `<b>SP10</b>`, `!!!`) |
+| BUG-4 | behoben | Unit-Test `defaultClosesAt` (Winter, nach 23:59, Umstellung 29.3.) |
+| BUG-5 | behoben | Komponententest; zusätzlich in der Next.js-Quelle bestätigt, dass `history.pushState` den internen Verlaufsstatus (`__NA`) übernimmt, der Zwischeneintrag stört den App-Router also nicht |
+| BUG-6 | behoben | Komponententest: Rückfrage schon mit nur Schritt 1 |
+| BUG-7 | behoben | Unit-Test: 3 Anfragen = 1 Ladevorgang, getrennt nach Person und Bereich |
+| BUG-8 | behoben (nur Code-Review) | Der Hinweis steht jetzt außerhalb des State-Updaters. Kein eigener Test. |
+| BUG-9 | behoben (nur Code-Review) | Hinweis zählt die nicht übernommenen Fragen. Kein eigener Test. |
+
+**Automatisch:** `npm test` 5.012 von 5.013 grün. Der eine Fehler (`bulk-account-import.test.tsx`, PROJ-62) tritt bei gleichem Code nur manchmal auf (bei drei Einzelläufen: 2 grün, 1 rot). Die Datei wurde nicht angefasst, es ist ein vorbestehender, instabiler Test (er prüft `beforeunload` direkt nach dem Rendern), keine Regression. `tsc` und `eslint`: sauber. `npm run build`: erfolgreich, beide Routen vorhanden. E2E PROJ-133: 18 grün.
+
+**Sicherheit:** Seiten leiten ohne Anmeldung zum Login, die Suche und das Anlegen geben 401 (auch bei `<script>`, SQL-Text, negativem `offset`, HTML im Klassennamen). 30 Anfragen hintereinander ergaben nur 401, nichts Auffälliges. Der Zwischenspeicher ist nach Person und Bereich getrennt, private Fragen gelangen also nicht zu anderen. Beobachtung: Änderungen an Fragen (neue eigene Frage, neue Meldung) erscheinen in der Suche bis zu 30 Sekunden später. Das ist gewollt und unkritisch.
+
+#### BUG-10: Bestehende Klassennamen mit Sonderzeichen lassen sich nicht mehr wählen (durch die Korrektur von BUG-3)
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Im Bereich gibt es einen älteren Nachweis mit der Klasse `SP10C+D`, `BK 10 (neu)` oder `10a, 10b`. Die Datenbank erlaubte bisher jeden Namen von 1 bis 30 Zeichen (`graded_assessments_class_name_check`).
+  2. Schritt 3 → Klasse → diesen Namen aus der Liste wählen → „Entwurf speichern“
+  3. Expected: Eine Klasse, die schon in der Liste steht, lässt sich wählen
+  4. Actual: `validateWhen` meldet „Bitte nur Buchstaben und Ziffern verwenden“. Selbst wenn man das umgeht, lehnt der Server mit 400 ab (`isValidClassNameFormat` im Zod-Schema). Die Klasse ist für neue Nachweise nicht mehr erreichbar. Nur „Keine / gemischt“ bleibt.
+- **Nachgerechnet:** `SP10C+D`, `BK 10 (neu)`, `SP10 & SP11`, `10a, 10b`, `SP10C–neu` (Gedankenstrich) und `O’Brien` fallen alle durch die Regel. Wie viele solche Namen es in der echten Datenbank gibt, war hier nicht prüfbar.
+- **Hinweis:** Entweder die Regel großzügiger fassen (zum Beispiel alles außer `< > " ; \` und Steuerzeichen), oder Namen zulassen, die in dieser Abteilung schon vorkommen (Browser aus `classOptions`, Server über `fetchUsedClassNames`).
+- **Priority:** Fix before deployment (klein, aber es kann echte Klassen sperren)
+
+#### BUG-11: Titel, Dauer und Beitritt-Vorschlag veralten, wenn man nach Schritt 3 zurückgeht
+- **Severity:** Low
+- **Steps to Reproduce:** Schritt 3 öffnen (Titel „BGP · Luftfracht · 27.11.2026“) → „Angaben ändern“ → anderes Fach oder Thema wählen → neuer Vorschlag → Schritt 3
+- **Actual:** Der Titel nennt weiter das alte Fach. Auch der Bereichswechsel (Korrektur BUG-2) setzt `whenInitialised` zurück, behält den alten Titel aber über `v.title ||`. `titleTouched` wird geschrieben, aber nirgends gelesen. Die Dauer bleibt ebenfalls auf dem ersten Wert.
+- **Expected:** Ein nicht von Hand geänderter Titel folgt Fach und Thema, die Dauer der Fragenzahl
+- **Priority:** Fix in next sprint
+
+#### BUG-12: Nach dem Speichern führt „Zurück“ erst auf einen leeren Ablauf (abgeleitet, nicht im Browser geprüft)
+- **Severity:** Low
+- **Details:** Der Zwischeneintrag aus der Korrektur von BUG-5 bleibt im Verlauf. Auf der Detailseite des neuen Entwurfs bringt „Zurück“ zuerst zu einem leeren Ablauf (Schritt 1), erst die nächste Taste zur Liste. Vorher war es ein Schritt weniger. Lösung: Nach dem Speichern den Zwischeneintrag mit `history.replaceState`/`router.replace` ersetzen.
+- **Priority:** Nice to have
+
+#### BUG-13: „Heute Abend (23:59)“ ist ab 23:59 schon vergangen
+- **Severity:** Low
+- **Details:** Der Vorschlag springt jetzt auf morgen (BUG-4), die Schnellwahl „Heute Abend (23:59)“ aber nicht. Ab 23:59 Uhr wählt sie einen Zeitpunkt in der Vergangenheit. Erst beim Speichern erscheint die Meldung. Kurz vor 23:59 bleibt für den Vorschlag selbst nur wenig Zeit.
+- **Priority:** Nice to have
+
 ### Einschränkungen dieser Prüfung
 - Der Ablauf mit echtem Konto, echten Fragen und echtem Speichern ist nicht im Browser getestet. Es gab keine Datenbank und kein Lehrkraft-Konto. Nach den Korrekturen bitte einmal mit echtem Konto prüfen: Vorschlag → Prüfen → Speichern und der Weg aus „Schwierig“.
 - Die Breiten 375, 768 und 1440 px sowie Firefox und Safari sind nur über die Tailwind-Klassen im Code geprüft, nicht visuell.
 
-### Summary
-- **Acceptance Criteria:** 33 von 37 bestanden. Offen sind 4: unter 5 Fragen speichern, Bereichswechsel, Klassenformat, Weg aus „Schwierig“ mit wenigen Fragen. Drei davon gehen auf BUG-1 bis BUG-3 zurück, der vierte ebenfalls auf BUG-1.
-- **Bugs Found:** 9 total (0 critical, 1 high, 2 medium, 6 low)
-- **Security:** bestanden. Keine kritischen Befunde, nur das fehlende Rate-Limit (Low).
-- **Production Ready:** **NO, bis die zweite QA-Runde bestanden ist** (alle Befunde sind behoben, aber noch nicht erneut geprüft)
-- **Recommendation:** `/qa` erneut ausführen, dazu den Ablauf einmal mit echtem Konto durchspielen
+### Summary (nach Runde 2)
+- **Acceptance Criteria:** 37 von 37 bestanden (die vier offenen aus Runde 1 sind durch die Korrekturen erfüllt). Einschränkung: Das Klassenformat verletzt für Altdaten ein implizites Kriterium, siehe BUG-10.
+- **Bugs:** Runde 1: 9 gefunden, 9 behoben. Runde 2: 4 neue (0 critical, 0 high, 1 medium, 3 low).
+- **Security:** bestanden, keine Befunde
+- **Production Ready:** Nach der Regel (keine Critical/High) **YES**. Ich empfehle trotzdem, **BUG-10 vorher zu beheben**, weil er echte Klassen für neue Nachweise sperren kann, und er durch eine Korrektur entstanden ist. Status deshalb vorerst **In Review**, bis das entschieden ist.
+- **Recommendation:** BUG-10 beheben (klein), dann Freigabe. BUG-11 bis BUG-13 können warten. Den Ablauf einmal mit echtem Konto durchspielen (Vorschlag → Prüfen → Speichern, Weg aus „Schwierig“, Zurück-Taste am Handy).
 
 ## Deployment
 _To be added by /deploy_
