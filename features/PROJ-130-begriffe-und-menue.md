@@ -1,6 +1,6 @@
 # PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -293,7 +293,88 @@ Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☑**
 - **Für /qa:** Die Akzeptanzkriterien A–D sind noch nicht einzeln abgenommen. Zwei Meldungen weichen vom Wortlaut der Spec ab: Beim Anlegen unter „Alle Bereiche“ sagt der Server „Bitte wähle aus, in welchem Bereich das angelegt werden soll.“ Der Leerzustand „Du hast noch keine Fächer eingetragen“ (C, nur als Beispiel genannt) kommt im Code nicht vor.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Geprüft:** 2026-11-27 · **Stand:** 683dbe1 · **Art:** Code-Prüfung, Unit-Tests, Build (kein Dev-Server und kein Playwright auf diesem Rechner, siehe Memory „Kein Dev-Server“). **Nicht im Browser geprüft.** Laptop, Handy, Safari und Firefox stehen noch aus.
+
+### Automatische Prüfung
+- `npm test`: 354 Dateien, **4776 Tests grün**. Neu dazu `src/app/admin/nachschlagen/page.test.tsx` (3 Tests grün): Seitenkopf, zwei Karten mit je einem Satz und richtiger Adresse, Freigabe für Lehrkräfte.
+- `npm run build`: sauber, `/admin/nachschlagen` wird gebaut.
+- `eslint src --quiet`: nur der bekannte alte Fehler in `shop-items/[id]/route.test.ts`.
+- Zusätzlich zum Wächter `begriffe.test.ts` wurden die sichtbaren Texte mit weiteren Mustern durchsucht (Klasse/Stufe, Öffentlich, Offen, Spielerprofil, Zur Lern-App, Du siehst, Aktivieren, Anpassen, Prompt, Teilen, Session, Item, Kalender, Zielbereich). Funde stehen unten bei den Befunden.
+
+### Akzeptanzkriterien
+
+| # | Kriterium | Ergebnis |
+|---|---|---|
+| A1 | Reihenfolge Start … Lehrerzimmer, Trennlinie, Verwaltung, für jede Rolle gleich | ✅ Code und Test |
+| A2 | Lerninhalte aufklappbar, Unterpunkte, öffnet sich von selbst auf eigener Seite | ✅ |
+| A3 | Verwaltung, die drei Zusätze mit „Super-Admin“ gekennzeichnet | ✅ |
+| A4 | Keine Gruppen „Mein Unterricht“, „Inhalte“, „Weitere Seiten“ | ✅ |
+| A5 | „Fachbereich“/„Fachbereiche“ nicht mehr untereinander | ✅ |
+| A6 | „Meine Fächer“ nicht im Menü, erreichbar über Mein Konto und Schnellsuche | ✅ (Schnellsuche nur für Lehrkräfte) |
+| A7 | Höchstens 9 Hauptpunkte | ✅ genau 9 |
+| A8 | Brotkrumen und Handy-Titel mit Menünamen | ✅ (mit führendem „Start ›“) |
+| A9 | Schnellsuche findet alte Namen (Kalender, Fachbereich, Prüfungssimulation …) | ✅ `aliases` als cmdk-Suchwörter |
+| A10 | Schnellaktionen der Startseite mit neuen Namen | ✅ |
+| A11 | Nachschlagen: Seitenkopf, zwei Karten, Menü aktiv, Brotkrumen | ✅ |
+| A12 | Schublade schließt nach Auswahl, Gruppen per Tastatur, `aria-expanded` | ✅ Radix-Collapsible. Am Gerät nicht geprüft |
+| B1–B3 | Konto-Menü gekürzt, „Zur Lern-App“ in der Kopfzeile weg | ✅ |
+| B4 | Spielerprofil weiter erreichbar | ✅ über „Als Azubi ansehen“ und „Zum Spielerprofil“ in Mein Konto |
+| C1–C2 | Ein Umschalter für alle Rollen, ruhige Anzeige bei einem Bereich | ✅ |
+| C3 | Zeile „Du siehst …“ entfällt | ✅ Datei gelöscht |
+| C4 | Anlegen-Dialoge fragen bei festem Bereich nicht | ✅ siehe aber BUG-1 |
+| C5 | „Alle Bereiche“: Pflichtfeld „Bereich“ ohne Vorauswahl | ✅ |
+| C6 | Leistungsnachweis-Dialog vorausgefüllt | ✅ |
+| C7 | Gemeldete Fragen ohne eigenen Bereichsfilter | ✅ nur noch Filter „Grund“ |
+| C8 | Seiten mit Schülerdaten fest im eigenen Bereich | ⚠️ bewusst abgewichen (siehe Implementation Notes Schritt 2, Grund PROJ-127). Als richtig bestätigt, kein Fehler |
+| C9 | Bereichsunabhängige Seiten zeigen den Umschalter ohne Fehler | ✅ |
+| C10 | „Meine Fächer“ für Lehrkräfte erreichbar | ✅ |
+| D1 | Keine alten Begriffe, Wächter-Test vorhanden | ✅ mit kleinen Lücken (BUG-3, BUG-4) |
+| D2 | Erklärung „Abteilung“ im Eintragen-Dialog | ✅ |
+| D3 | Doppelte Bedeutungen aufgelöst | ✅ |
+| D4 | Übungsprüfungen: Kopf, Knöpfe, Status | ✅ |
+| D5 | Schülerseite „Übungsprüfung“ | ✅ Wächter-Test |
+| D6 | Seitenbeschreibungen ohne „Nicht zu verwechseln“ | ✅ Wächter |
+| D7 | Kein Items/Item/Session/Lvl | ✅ |
+| D8 | Assistent: „Auftrag kopieren“, „Antwort der KI einfügen“ | ✅ |
+| D9 | Teilen-Wörter, Liste „Änderungen noch nicht übernommen“ | ✅ |
+| D10 | „Eigene Seite bauen“, „Kopie bearbeiten“ | ✅ |
+| D11 | Bereichs-Einstellungen „Zusatzhinweise für die KI …“ | ✅ |
+| D12 | Wörterliste in DESIGN.md | ✅ |
+| E | Plan abgehakt | ✅ |
+
+**Ergebnis: 37 von 37 Kriterien im Code erfüllt** (C8 mit begründeter, akzeptierter Abweichung). Der Blick im Browser fehlt noch.
+
+### Edge Cases
+- Alte Adressen bleiben: ✅. Neu ist nur `/admin/nachschlagen`, in `TEACHER_ADMIN_PATHS` eingetragen. Die Seite hat keine eigene Schnittstelle und braucht daher keinen Eintrag in der API-Liste.
+- „Alle Bereiche“ und Anlegen: ✅ gesperrt. Die Meldung weicht im Wortlaut ab (BUG-2).
+- **Bereichswechsel mitten im Dialog: ❌ siehe BUG-1.**
+- Gespeicherter Menü-Zustand: ✅ `sidebar_state` unverändert, Aufklappen in `sessionStorage`.
+- Lehrkraft ohne Fach: ✅ Menü vollständig. Der Leerzustand „Du hast noch keine Fächer eingetragen“ ist seit PROJ-70 überflüssig, weil die Inhalte allen offen stehen.
+- Tests angepasst statt abgeschaltet: ✅.
+
+### Sicherheit (Red Team)
+- Keine neue Schnittstelle, keine neuen Rechte. `/api/admin/context/bereich` ist unverändert: Zod-Prüfung, nur bekannte Bereichs-IDs, Cookies `httpOnly` und `sameSite=lax`.
+- Das Menü ist reine Anzeige. Seiten und APIs prüfen die Rechte weiter auf dem Server. „Super-Admin“-Einträge sind für andere Rollen ausgeblendet, die Seiten bleiben serverseitig gesperrt.
+- Die Seite „Nachschlagen“ rendert Icons auf dem Server und gibt keine Funktion an Client-Komponenten weiter (keine Falle mit 500 in Produktion).
+- Keine Funde.
+
+### Befunde
+
+| Nr. | Schwere | Befund | Schritte / Ort |
+|---|---|---|---|
+| BUG-1 | **Medium** (bestand schon seit PROJ-70) | Bei fest gewähltem Bereich schicken die Anlegen-Dialoge **keine** Bereichs-ID mit. Der Server nimmt deshalb das Cookie, das beim **Speichern** gilt. Das gilt für neue Frage, CSV-Import, Fragen aus Material, Übungsprüfung und Fach. Die Spec verlangt: „Ein offener Dialog behält den Bereich, mit dem er geöffnet wurde.“ Nur der Leistungsnachweis-Dialog erfüllt das. | 1. Tab A: Bereich Spedition, „Neue Frage“ öffnen (zeigt „Bereich: Spedition“). 2. Tab B: auf Tourismus wechseln. 3. In Tab A speichern → die Frage landet in Tourismus. Lösung: In `TargetDepartmentField`-Dialogen immer `scope.current` als `department_id` mitschicken. |
+| BUG-2 | Low | Die Server-Meldung bei „Alle Bereiche“ lautet „Bitte wähle aus, in welchem Bereich das angelegt werden soll.“ Die Spec nennt „… die Frage angelegt wird.“ | `src/app/api/admin/_lib/auth.ts:378` |
+| BUG-3 | Low | „Ziel-Bereich“ (mit Bindestrich) umgeht den Wächter. | `user-bulk-dialog.tsx:154,157` (aria-label und Platzhalter „Ziel-Bereich wählen“) |
+| BUG-4 | Low | Der Wächter prüft nicht alle Zeilen der Wörterliste: „11. Klasse“ für die Stufe, „Öffentlich“ allein, „Offen“ bei Abwesenheiten, „Anpassen“ außerhalb der Werkzeugkiste. Ein Fund: Platzhalter „z. B. Für die 11. Klasse, ca. 2 Doppelstunden“. | `werkzeugkiste/teilen-dialog.tsx:287` |
+| BUG-5 | Low | Der Zusatz „mit Note“ an „Leistungsnachweise“ verschwindet, sobald der Zähler offener Aufgaben erscheint (gewollt, damit die Zeile passt). Gerade dann fehlt die Unterscheidung zu „ohne Note“. | `admin-nav.tsx` (`hint && !countText`) |
+| BUG-6 | Low (bestand schon) | Die Karte „Meine Fächer“ in Mein Konto sagt „Hier siehst du nur die Inhalte der Fächer, in denen du unterrichtest.“ Seit PROJ-70 sehen Lehrkräfte alle Inhalte. | `konto-faecher.tsx:133` |
+| BUG-7 | Low | Breiten nicht geprüft: Seitenleiste 18 rem, Schrittleiste, Regal-Spalte, Knopf „Als Leistungsnachweis verwenden“ am Handy. | Browser-Blick nach dem Livegang |
+
+**Zusammenfassung:** 0 Critical, 0 High, 1 Medium, 6 Low.
+
+### Empfehlung
+**Produktionsreif: JA** (keine Critical- oder High-Befunde). BUG-1 bestand schon vor diesem Feature und betrifft nur den Wechsel in einem zweiten Tab. Es lohnt sich trotzdem, ihn vor dem Livegang zu beheben, weil der Dialog jetzt ausdrücklich „Bereich: …“ anzeigt. Nach dem Deploy auf Laptop und Handy durchklicken (BUG-7).
 
 ## Deployment
 _To be added by /deploy_
