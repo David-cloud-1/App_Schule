@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { readPptxText } from '@/lib/material-pptx'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { buildUploadExamContext } from '@/lib/question-prompt'
 import { getDepartmentForUser } from '@/lib/departments'
@@ -75,6 +76,10 @@ export async function extractText(buffer: Buffer, mimeType: string): Promise<str
     const extractor = new WordExtractor()
     const doc = await extractor.extract(buffer)
     return doc.getBody()
+  }
+
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+    return readPptxText(buffer)
   }
 
   throw new Error(`Unsupported file type: ${mimeType}`)

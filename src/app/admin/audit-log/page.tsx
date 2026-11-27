@@ -73,6 +73,7 @@ const ACTION_TYPES = [
   { value: 'question.activate', label: 'Frage aktiviert' },
   { value: 'question.deactivate', label: 'Frage deaktiviert' },
   { value: 'question.bulk_import', label: 'CSV-Import' },
+  { value: 'question.intake', label: 'Fragen übernommen' },
   { value: 'question.restore', label: 'Frage wiederherstellt' },
   { value: 'batch.rollback', label: 'Vorgang zurückgenommen' },
   { value: 'subject.create', label: 'Fach erstellt' },

@@ -132,7 +132,7 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E']
  * Unterstrichen/Klammern stehen lassen (z. B. "antwort\_e", "\[ … \]"). Das sind keine
  * gültigen JSON-Escapes — JSON.parse scheitert sonst komplett daran.
  */
-function stripInvalidEscapes(text: string): string {
+export function stripInvalidEscapes(text: string): string {
   return text.replace(/\\([^"\\/bfnrtu])/g, '$1')
 }
 
@@ -276,13 +276,14 @@ export function assessQuestionQuality(q: Pick<ParsedQuestion, 'question_text' | 
 
 export const MATERIAL_MAX_BYTES = 4 * 1024 * 1024 // Vercel begrenzt den Request-Body auf 4,5 MB
 
-export type MaterialKind = 'pdf' | 'docx' | 'doc'
+export type MaterialKind = 'pdf' | 'docx' | 'doc' | 'pptx'
 
 /** Erkennt den Typ am Dateiinhalt, dann an der Endung — Browser melden .doc oft falsch. */
 export function detectMaterialKind(buffer: Buffer, fileName: string): MaterialKind | null {
   if (buffer.length >= 4 && buffer.subarray(0, 4).toString('latin1') === '%PDF') return 'pdf'
   if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04) {
-    // ZIP-Container: nur Word-Endungen zulassen (auch .doc, das in Wahrheit .docx ist)
+    // ZIP-Container: nur Word- und PowerPoint-Endungen zulassen (auch .doc, das in Wahrheit .docx ist)
+    if (/\.pptx$/i.test(fileName)) return 'pptx'
     return /\.docx?$/i.test(fileName) ? 'docx' : null
   }
   if (
@@ -298,4 +299,5 @@ export const MIME_BY_KIND: Record<MaterialKind, string> = {
   pdf: 'application/pdf',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   doc: 'application/msword',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
