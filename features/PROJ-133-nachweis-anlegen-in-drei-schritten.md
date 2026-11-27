@@ -1,6 +1,6 @@
 # PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4 Übersichtlichkeit, Teil 1)
 
-## Status: Planned
+## Status: Architected
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
