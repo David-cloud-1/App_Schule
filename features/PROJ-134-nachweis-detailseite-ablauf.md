@@ -112,7 +112,106 @@ Phase 4 aus [docs/plan-uebersichtlichkeit.md](../docs/plan-uebersichtlichkeit.md
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Erstellt:** 2026-11-27 · Grundlage: bestehende Detailseite `/admin/leistungsnachweise/[id]`, Liste `/admin/leistungsnachweise`, Spieler `/exam/[sessionId]`, Tabellen `graded_assessments` und `exam_sessions`.
+
+### Was es schon gibt (wird weiterverwendet)
+- **Zustände:** `draft` / `open` / `closed` plus `results_released_at`. „Beitritt ab“ = `opens_at`, „Beitritt bis“ = `closes_at`. Keine neue Statusart nötig.
+- **Gemeinsame Regeln** in `src/lib/graded-assessments.ts` (`effectiveAssessmentStatus`, `isJoinEnded`). Die Schrittleiste baut darauf auf.
+- **Liegengebliebene Abgaben:** `finalizeOverdueAttempts` (in `assessment-submit.ts`) schließt Versuche ab, deren Zeit vorbei ist. Läuft heute nur beim Öffnen der Detailseite.
+- **Zeitgesteuerte Jobs:** pg_cron ist in der Datenbank installiert und wird schon genutzt (Forum-Papierkorb). Vercel-Crons laufen im Hobby-Tarif nur täglich und reichen für „alle paar Minuten“ nicht.
+- **Änderungsprotokoll** über `writeAuditLog` mit `graded_assessment.*`-Aktionen. Der Verlauf liest daraus.
+- **Ersteller:** `created_by` und `copied_from_title` sind gespeichert. Die Liste löst Namen heute nur für den Super-Admin auf.
+
+### A) Aufbau der Oberfläche
+
+```
+Detailseite Leistungsnachweis
++-- AdminPageHeader
+|   +-- Titel · „Erstellt von Vorname Nachname am 27.11.2026“ (· „Kopie von …“)
+|   +-- Rechts: EINE grüne Hauptaktion je Schritt
+|   |     Entwurf → „Öffnen“ · Offen → „Schließen“ · Geschlossen → „Ergebnisse freigeben“
+|   |     Freigegeben → keine grüne Aktion
+|   +-- ⋯-Menü: Als Azubi ausprobieren (nur Entwurf/Offen), Duplizieren, Drucken, Löschen …
++-- Schrittleiste (NEU)  Entwurf ✓ · Offen ● · Geschlossen · Freigegeben
+|   +-- Ein Satz: was jetzt gilt und zu tun ist
+|   +-- Zusatz bei Bedarf: „Beitritt beendet, noch 3 schreiben“
++-- Karte „Beitritt“ (erweitert die bisherige Code-Karte)
+|   +-- Beitrittscode
+|   +-- „Beitritt ab Mi, 27.11., 08:00 · Beitritt bis Do, 28.11., 23:59“
+|   +-- Zustand: „noch nicht geöffnet“ / „noch 1 Std. 20 Min.“ / „Beitritt beendet“
+|   +-- Knopf „Beitritt verlängern“ (Entwurf + Offen) → Dialog mit
+|         Schnellwahlen +30 Min. · +1 Std. · Heute 23:59 · eigene Zeit
+|   +-- Hinweis nach Auto-Schließen: „Zum Verlängern erst wieder öffnen.“
++-- Meine Testläufe (NEU, nur wenn vorhanden)
+|   +-- Zeile je Testlauf: Datum · abgegeben/nicht abgegeben · Note · Ansehen · Löschen
++-- Teilnehmer, Auswertung, Gruppen, Fokus-Protokoll (unverändert, ohne Testläufe)
++-- Aufgabenanalyse
+    +-- „Trennschärfe“ mit „?“-Erklärung (Tooltip/Popover), Werte mit Komma
+
+Rückfrage „Ergebnisse freigeben“ (AlertDialog)
++-- „24 Abgaben. Danach sehen die Azubis ihre Note.“ · Abbrechen · Freigeben
+
+Nachweis-Liste
++-- Filterleiste: AdminSegmented „Alle · Nur meine“ (ersetzt den Super-Admin-Filter „Erstellt“)
++-- Tabelle: neue Spalte „Erstellt von“ für alle Rollen
++-- Handy-Karte: Zeile „Erstellt von …“
+
+Schülersicht im Testlauf (/exam/[sessionId], gleicher Spieler)
++-- Band oben, auffällig (orange): „Testlauf: zählt nicht“
++-- Gruppe A/B wählbar beim Start, wenn Gruppen aktiv
++-- Ergebnisseite wie bei Azubis, Zurück-Link zur Detailseite
+```
+
+Neue Bausteine (alle mit `ws-*`-Farben und `admin-states.tsx`): **Schrittleiste**, **Beitritts-Karte mit Zeitangaben**, **Dialog „Beitritt verlängern“**, **Liste „Meine Testläufe“**, **Erklär-„?“** für Trennschärfe. Die Schrittleiste nutzt eine kleine reine Funktion „In welchem Schritt bin ich, welcher Satz, welche Hauptaktion?“, die Detailseite und Tests gemeinsam verwenden.
+
+### B) Daten (in einfachen Worten)
+
+**Leistungsnachweis** bekommt zwei Felder:
+- **Automatisch geschlossen am** (Zeitpunkt, leer bei Schließen von Hand). Dient Verlauf und Hinweis „Zum Verlängern erst wieder öffnen“.
+- Sonst nichts Neues. „Beitritt bis“ ist das bestehende Ende-Feld.
+
+**Prüfungs-Sitzung** (eine Zeile je Versuch, wie bisher) bekommt ein Feld:
+- **Testlauf von Nachweis** (Verweis auf den Nachweis). Beim Testlauf ist das normale Nachweis-Feld **leer**, nur dieses Feld ist gesetzt.
+  - Warum so: Alle Auswertungen (Teilnehmer, Notenspiegel, Klassenauswertung, Aufgabenanalyse, Fokus-Protokoll, Export, Notenliste, Aufgabenliste, automatisches Schließen) suchen Sitzungen über das normale Nachweis-Feld. Ein Testlauf **kann dort gar nicht auftauchen**, ohne dass wir rund 15 Stellen einzeln anpassen und hoffen, keine zu vergessen. Das erfüllt „serverseitig gefiltert, nicht nur in der Anzeige“ am sichersten.
+  - Wird der Nachweis gelöscht, verschwinden seine Testläufe mit.
+  - Die wenigen Stellen, die „Sitzungen ohne Nachweis“ als Übungsprüfung lesen (Übungsprüfungs-Verlauf, Konto-Seite, Nutzer-Detail, Fortschritt zurücksetzen), schließen Testläufe ausdrücklich aus. Ein Wächtertest prüft das.
+  - Die bisherige Regel „ein Versuch je Person und Nachweis“ bleibt für echte Teilnahmen. Testläufe sind beliebig oft möglich.
+- Teilnehmername im Testlauf: „Testlauf (Name der Lehrkraft)“. Keine XP, keine Rangliste, kein Fokus-Protokoll.
+- Zeilenschutz: Testläufe sieht und ändert nur, wer sie gestartet hat. Löschen dürfen zusätzlich Personen mit Bearbeitungsrecht am Nachweis (serverseitig geprüft).
+
+**Gespeichert in:** Supabase (bestehende Tabellen, eine Migration mit Rückweg-Datei).
+
+### C) Technische Entscheidungen (warum)
+
+1. **Automatisches Schließen in der Datenbank, alle 5 Minuten (pg_cron).** Läuft ohne geöffnete Seite, kostet nichts extra und ist schon im Einsatz. Ein Datenbank-Job schließt jeden offenen Nachweis, bei dem „Beitritt bis“ vorbei ist und keine Sitzung mehr innerhalb ihrer Dauer liegt. Er setzt „Automatisch geschlossen am“ und schreibt den Verlaufseintrag „Automatisch geschlossen (Beitritt abgelaufen)“ – **im selben Schritt**, nur wenn der Nachweis da noch offen war. So entsteht nie ein doppelter Eintrag, auch wenn gleichzeitig jemand von Hand schließt (Edge Case „Zwei Lehrkräfte“). Der Handschluss prüft ebenso „nur wenn noch offen“ und meldet sonst einfach den neuen Stand statt eines Fehlers.
+2. **Nachziehen beim Aufruf.** Liste und Detailseite rufen vor dem Laden dieselbe Schließ-Regel auf und schließen liegengebliebene Versuche ab (`finalizeOverdueAttempts`, jetzt auch in Liste, Freigeben und im täglichen Aufräum-Cron). So hängt nichts auf „Offen“, und Abgaben ohne Klick auf „Abgeben“ sind vor dem Freigeben fertig bewertet. Der erste Job-Lauf zieht alte Nachweise nach; bereits freigegebene bleiben unberührt.
+3. **Testlauf über den vorhandenen Spieler.** Kein zweiter Spieler: `/exam/[sessionId]` und die Abgabe-Logik erkennen „Nachweis oder Testlauf eines Nachweises“ und verhalten sich gleich (Dauer, Reihenfolge, Gruppe, Note). Unterschiede: Band „Testlauf: zählt nicht“, kein Fokus-Protokoll, kein Beitrittscode nötig, auch im Entwurf (dann mit den aktuellen Entwurfsfragen). Start über eine neue, nur für Lehrkräfte erreichbare Route.
+4. **Aufräumen nach 30 Tagen** im bestehenden täglichen Cron `werkzeugkiste-aufraeumen` (oder als zweiter pg_cron-Job). Abgebrochene Testläufe blockieren nichts, weil sie nirgends mitgezählt werden.
+5. **Verlängern als eigene Aktion** („Beitritt bis“ ändern), erlaubt im Entwurf und im Status Offen, nie früher als jetzt, nie nach automatischem Schließen. Eintrag im Verlauf `graded_assessment.extend_join` mit alt → neu. Heute ist Bearbeiten nur im Entwurf erlaubt; das Verlängern ist bewusst die einzige Änderung im Status Offen.
+6. **Ersteller für alle:** Die Liste löst die Namen jetzt für jede Rolle auf (nur Vor- und Nachname aus dem Profil). Leer wegen gelöschtem Konto → „Ehemaliges Konto“; Altbestand ohne Eintrag → „Unbekannt“. „Nur meine“ filtert serverseitig auf die eigene ID.
+7. **Aufgabenliste (PROJ-81):** zählt „Ergebnisse freigeben“ nur bei mindestens einer echten Abgabe. Testläufe zählen dort automatisch nicht (siehe Datenmodell).
+8. **Zeiten in der Schulzeitzone (Europe/Berlin)**, auch für „Heute 23:59“ und am Umstellungstag. Anzeige „Do, 28.11., 23:59“ und „noch 1 Std. 20 Min.“ über eine gemeinsame Formatierungsfunktion mit Tests.
+9. **Wörter:** neue Texte in `begriffe.ts` / bestehende Wörterliste; „Freigegeben“ ersetzt andere Bezeichnungen, „Trennschärfe“ wird dem Begriffs-Wächtertest bekannt gemacht.
+
+### D) Was gebaut wird (Überblick für /frontend und /backend)
+
+| Bereich | Neu oder geändert |
+|---|---|
+| Datenbank | 2 Felder, Job „Nachweise automatisch schließen“ (alle 5 Min.), Zeilenschutz Testläufe, Aufräumen 30 Tage |
+| API | Verlängern, Testlauf starten / auflisten / löschen, „Nur meine“ + Ersteller in der Liste, Nachziehen beim Laden, Freigeben mit Abgabenzahl |
+| Detailseite | Schrittleiste, Hauptaktion je Schritt, Beitritts-Karte, Verlängern-Dialog, Meine Testläufe, Ersteller-Zeile |
+| Liste | Spalte/Zeile „Erstellt von“, Segment „Alle · Nur meine“ |
+| Spieler | Band „Testlauf: zählt nicht“, Gruppenwahl, Zurück zur Detailseite |
+| Aufgabenanalyse | „?“ bei Trennschärfe, Komma-Schreibweise |
+| Tests | Unit: Schritt-Regel, Zeitformat, Schließ-Regel, Wächter „Testläufe nie in Übungsprüfungen/Auswertungen“; E2E: Ablauf → automatisch geschlossen, Testlauf |
+
+### E) Abhängigkeiten (Pakete)
+Keine neuen Pakete. Alles mit vorhandenen shadcn/ui-Bausteinen (Dialog, AlertDialog, Popover/Tooltip, Badge), Lucide-Icons und der eingebauten Datumsformatierung des Browsers (`Intl`, Zeitzone Europe/Berlin).
+
+### Offene Punkte für /backend
+- Prüfen, ob das Änderungsprotokoll einen Eintrag ohne handelnde Person (System) zulässt; sonst einen festen System-Absender vorsehen.
+- Im Entwurf hat der Nachweis noch keinen eingefrorenen Fragen-Stand: Der Testlauf nimmt die aktuellen Entwurfsfragen und friert sie nur für diesen Testlauf ein.
 
 ## QA Test Results
 _To be added by /qa_
