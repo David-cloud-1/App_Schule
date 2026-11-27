@@ -1,8 +1,8 @@
 # PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3 Übersichtlichkeit, Teil 2)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27 (Architected)
+**Last Updated:** 2026-11-27 (Frontend und Backend gebaut)
 
 ## Worum es geht
 
@@ -221,6 +221,28 @@ Keine neuen. Genutzt werden `fflate` (PowerPoint öffnen), `papaparse` (Tabelle 
 - Abweichung D (Stufe aus den vorhandenen Fragen statt aus einem Thema-Feld).
 - Entscheidung C3 (bezahlten Weg nur ausblenden, nicht löschen).
 - Entscheidung C2 (lange Skripte in Teile teilen statt Abschnitt wählen).
+
+## Implementation Notes (2026-11-27)
+
+**Gebaut (Backend zuerst, dann Frontend):**
+- **PowerPoint-Leser** `src/lib/material-pptx.ts` (mit `fflate`), eingehängt in den gemeinsamen Dateileser; `.pptx` wird als Dateiart erkannt.
+- **Logik** `src/lib/question-intake.ts` (reine Funktionen, vom Server und vom Browser genutzt): Skript in Teile teilen, Auftrag bauen, Antwort der KI einlesen (verträgt Text drumherum, Formatierungszeichen und abgeschnittene Antworten), Tabelle einlesen (neue Spalten `typ`, `musterantwort`, `fach_code`, `thema`), Fragen prüfen (Aufbau, Torwächter, Duplikate), Stufe vorschlagen, Verbesserungsauftrag, Protokolltext.
+- **Schnittstellen** unter `/api/admin/questions/intake/`: `material` (Datei lesen und teilen), `prompt` (Auftrag), `preview` (einlesen und prüfen, legt nichts an), `accept` (übernehmen: alle oder keine, prüft Thema/Bereich/Stufe/Torwächter erneut, ein Protokolleintrag `question.intake` mit Herkunft und Dateiname, sonst Rücknahme). Die Freigabe kommt über das bestehende Präfix `/api/admin/questions` (keine Änderung an `roles.ts` nötig).
+- **Oberfläche:** `AddQuestionsDialog` (Auswahl, drei Wege, Schrittleiste, Vollbild am Handy, Rückfrage beim Schließen), `IntakeMaterialFlow`, `IntakeTableFlow`, gemeinsame `IntakePreview` (Karten mit Kästchen, Aufklappen, Bearbeiten, „Auftrag zum Verbessern kopieren“, „N Fragen übernehmen“), `FachThemaSelect` (ein Feld, nach Fach gruppiert), gemeinsame `QuestionFields` (Formular und Karten zeigen dieselben Felder).
+- **Formular „Frage schreiben/bearbeiten“** umgebaut: „Fach und Thema“ zuerst, Thema Pflicht, Stufe als Hinweis („Stufe 10, aus dem Thema“) mit „Ändern“, Schwierigkeit und Fragetyp als Segmente, Schalter „Für Azubis sichtbar“ (neu: `is_active` beim Anlegen), Toast „Frage gespeichert“, der Satz „Antworten werden vollständig ersetzt“ ist weg.
+- **Seite „Lerninhalte“:** „Fragen hinzufügen“ öffnet den neuen Dialog; im `⋯`-Menü steht „Alle Fragen als Tabelle herunterladen“, der Import-Eintrag und „Fragen aus Material“ sind entfernt. Nach dem Übernehmen springt der Baum auf das Thema.
+- **Alte Seite:** `/admin/ai-generator` leitet auf `/admin/inhalte?hinzufuegen=material` und öffnet den Weg „Aus Material“. Entfernt: die alte Seite, `csv-import-dialog` und die vier Entwurfs-Komponenten des bezahlten Wegs. Die bezahlten Schnittstellen und Tabellen bleiben (PROJ-64 pausiert). In der Datenbank liegen keine Entwürfe (`questions_draft` ist leer).
+- **Wächter:** `fragen-hinzufuegen-woerter.test.ts` (keine Fachwörter in sichtbaren Texten) und ein Rendertest über alle Bildschirme.
+- Tests: 370 Dateien, 4.925 grün; Build sauber.
+
+**Abweichungen von der Spec (bewusst):**
+1. **Stufe:** Themen haben in der Datenbank keine Stufe. Die Stufe wird aus den vorhandenen Fragen des Themas abgeleitet (Formular: genau eine Stufe im Thema; Vorschau: klar häufigste Stufe, mindestens 60 %). Sonst wählt die Lehrkraft aus den Stufen des Bereichs. Ein „Alle Stufen“ gibt es nicht mehr.
+2. **Bestehende Fragen ohne Thema oder Stufe** bleiben beim Bearbeiten ohne beides speicherbar (Pflicht gilt nur für neue Fragen), sonst ließen sich solche Fragen aus der Meldungs-Inbox nicht mehr korrigieren.
+3. **Tabellen mit unbekanntem Thema:** Die Zeile wird markiert („Das Thema … gibt es im Fach … nicht“), statt das Thema stillschweigend anzulegen wie der alte Import.
+4. **Alle Bereiche (Super-Admin):** Für Tabellen mit eigener Fach- und Themen-Spalte braucht der Server einen festen Bereich. Es gibt dafür noch keine Auswahl im Dialog (bei fest gewähltem Bereich geht es).
+5. Der alte Tabellen-Import `questions/bulk-import` bleibt als Schnittstelle bestehen, wird aber von der Oberfläche nicht mehr genutzt.
+
+**Für /qa besonders prüfen:** PowerPoint- und Word-Dateien mit echten Skripten, sehr lange Skripte (Teile), abgeschnittene Antworten der KI, Übernehmen mit Protokolleintrag und Rücknahme, Dialog am Handy (360 px, feste Fußzeile), Rechte in fremdem Bereich, das Formular beim Bearbeiten aus „Gemeldet“ und „Schwierig“.
 
 ## QA Test Results
 _To be added by /qa_

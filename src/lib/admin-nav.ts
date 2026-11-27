@@ -1,6 +1,5 @@
 import {
   BookOpen,
-  Bot,
   CalendarCog,
   CalendarDays,
   Building2,
@@ -85,7 +84,6 @@ export const LEHRERZIMMER_HREF = '/admin/lehrerzimmer'
 /** PROJ-131: die eine Seite für Fächer, Themen und Fragen */
 export const CONTENT_HREF = '/admin/inhalte'
 /** Bis PROJ-132 nur über „Lerninhalte“ erreichbar, nicht über das Menü */
-export const AI_GENERATOR_HREF = '/admin/ai-generator'
 
 /** PROJ-130: Einstiegsseite für Schulrecht und Checklisten */
 export const NACHSCHLAGEN_HREF = '/admin/nachschlagen'
@@ -162,16 +160,6 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
         icon: BookOpen,
         // PROJ-85: jede Lehrer-Rolle
         teacherVisible: true,
-        subPages: [
-          {
-            href: AI_GENERATOR_HREF,
-            label: 'Fragen aus Material',
-            description: 'Aus Lernmaterial neue Fragen erstellen lassen',
-            icon: Bot,
-            // PROJ-127: bezahlte KI bleibt beim Super-Admin
-            superAdminOnly: true,
-          },
-        ],
       },
     ],
   },
@@ -496,14 +484,6 @@ export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
     href: CONTENT_HREF,
     icon: FileText,
     requiresHref: CONTENT_HREF,
-  },
-  {
-    id: 'material',
-    label: 'Fragen aus Material',
-    description: 'Aus einem Skript neue Fragen erstellen lassen',
-    href: AI_GENERATOR_HREF,
-    icon: Bot,
-    requiresHref: AI_GENERATOR_HREF,
   },
   {
     id: 'nutzer',

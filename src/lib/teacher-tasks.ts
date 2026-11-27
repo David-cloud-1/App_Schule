@@ -58,7 +58,7 @@ const SENTENCE: Record<TaskId, { href: string; text: (n: number) => string }> = 
     text: (n) => `${n} ${plural(n, 'gemeldete Frage wartet', 'gemeldete Fragen warten')} auf dich`,
   },
   draftQuestions: {
-    href: '/admin/ai-generator',
+    href: '/admin/inhalte',
     text: (n) => `${n} ${plural(n, 'Fragen-Entwurf wartet', 'Fragen-Entwürfe warten')} auf Prüfung`,
   },
   unreleasedAssessments: {

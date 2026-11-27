@@ -41,6 +41,8 @@ const CreateQuestionSchema = z.object({
   subject_ids: z.array(z.string().uuid()).min(1),
   class_level: z.union([z.literal(10), z.literal(11), z.literal(12), z.null()]),
   topic_id: z.string().uuid().nullable().optional(),
+  // PROJ-132: „Für Azubis sichtbar“ im Formular (Standard: an)
+  is_active: z.boolean().default(true),
 }).refine(
   (val) => val.type === 'open' || (val.answers && val.answers.length === 5),
   { message: 'Multiple-Choice-Fragen benötigen genau 5 Antworten.', path: ['answers'] }
@@ -248,7 +250,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { question_text, difficulty, explanation, type, sample_answer, answers, subject_ids, class_level, topic_id } = parsed.data
+  const { question_text, difficulty, explanation, type, sample_answer, answers, subject_ids, class_level, topic_id, is_active } = parsed.data
 
   // Exactly one correct answer required for MC
   if (type === 'multiple_choice' && answers) {
@@ -270,7 +272,7 @@ export async function POST(request: NextRequest) {
       explanation: explanation ?? null,
       type,
       sample_answer: sample_answer ?? null,
-      is_active: true,
+      is_active,
       class_level: class_level ?? null,
       topic_id: topic_id ?? null,
     })

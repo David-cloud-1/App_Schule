@@ -149,6 +149,6 @@
 | PROJ-129 | Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed | [PROJ-129-quiz-varianten-abwechslung.md](PROJ-129-quiz-varianten-abwechslung.md) | 2026-11-23 |
 | PROJ-130 | Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | Deployed | [PROJ-130-begriffe-und-menue.md](PROJ-130-begriffe-und-menue.md) | 2026-11-27 |
 | PROJ-131 | Lerninhalte an einem Ort (Phase 3, Teil 1) | Deployed | [PROJ-131-lerninhalte-an-einem-ort.md](PROJ-131-lerninhalte-an-einem-ort.md) | 2026-11-27 |
-| PROJ-132 | Fragen hinzufügen – drei Wege mit Vorschau (Phase 3, Teil 2) | Architected | [PROJ-132-fragen-hinzufuegen.md](PROJ-132-fragen-hinzufuegen.md) | 2026-11-27 |
+| PROJ-132 | Fragen hinzufügen – drei Wege mit Vorschau (Phase 3, Teil 2) | In Progress | [PROJ-132-fragen-hinzufuegen.md](PROJ-132-fragen-hinzufuegen.md) | 2026-11-27 |
 
 ## Next Available ID: PROJ-133

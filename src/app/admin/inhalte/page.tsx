@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, Bot, ChevronDown, Download, FolderPlus, FolderTree, MoreHorizontal, Plus, Upload } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Download, FolderPlus, FolderTree, MoreHorizontal, Plus } from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
@@ -13,16 +13,14 @@ import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/
 import { QuestionReportsInbox, type ListRestriction } from '@/components/admin/question-reports-inbox'
 import { DifficultQuestions } from '@/components/admin/difficult-questions'
 import { TrashList } from '@/components/admin/trash-list'
-import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
-import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { AI_GENERATOR_HREF } from '@/lib/admin-nav'
 import { cn } from '@/lib/utils'
 import { ContentHistorySheet, type ContentType } from '@/components/admin/content-history-sheet'
 import { SubjectFormModal } from '@/components/admin/subject-form-modal'
 import { TopicNameDialog } from '@/components/admin/topic-name-dialog'
 import { showVersionConflict } from '@/components/admin/content-meta'
-import { QuestionFormModal, type AdminSubject } from '@/components/admin/question-form-modal'
+import type { AdminSubject } from '@/components/admin/question-form-modal'
+import { AddQuestionsDialog, type AddWay } from '@/components/admin/add-questions-dialog'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -156,9 +154,8 @@ function InhaltePageContent() {
     TRASH_OPTIONS.some((o) => o.value === legacyTrash) ? (legacyTrash as TrashTab) : 'question',
   )
   const [newSubjectOpen, setNewSubjectOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
+  const [addWay, setAddWay] = useState<AddWay | null>(null)
   const [exporting, setExporting] = useState(false)
-  const role = useOptionalAdminRole()?.role
   const initializedRef = useRef(false)
 
   const loadTree = useCallback(async () => {
@@ -257,6 +254,19 @@ function InhaltePageContent() {
     if (!initializedRef.current || !subjectParam) return
     setExpanded((prev) => (prev.has(`s:${subjectParam}`) ? prev : new Set(prev).add(`s:${subjectParam}`)))
   }, [subjectParam])
+
+  // Link der alten Seite „Fragen aus Material“: öffnet „Fragen hinzufügen“ gleich beim passenden Weg
+  const addParam = searchParams.get('hinzufuegen')
+  useEffect(() => {
+    if (!tree || addParam == null) return
+    const way: AddWay | null = addParam === 'material' ? 'material' : addParam === 'tabelle' ? 'table' : addParam === 'schreiben' ? 'write' : null
+    if (way) {
+      setAddWay(way)
+      setAddOpen(true)
+    }
+    navigate({ hinzufuegen: null }, 'replace')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, addParam])
 
   const toggleKey = useCallback((key: string) => {
     setExpanded((prev) => {
@@ -459,7 +469,10 @@ function InhaltePageContent() {
             {/* Bei einem leeren Bereich steht die Hauptaktion im Leerzustand */}
             {!isEmptyTree && (
               <Button
-                onClick={() => setAddOpen(true)}
+                onClick={() => {
+                  setAddWay(null)
+                  setAddOpen(true)
+                }}
                 disabled={!tree}
                 className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
               >
@@ -485,20 +498,8 @@ function InhaltePageContent() {
                 </DropdownMenuItem>
                 <DropdownMenuItem className="min-h-11" onSelect={exportTable} disabled={exporting}>
                   <Download className="size-4" aria-hidden />
-                  Tabelle exportieren
+                  Alle Fragen als Tabelle herunterladen
                 </DropdownMenuItem>
-                <DropdownMenuItem className="min-h-11" onSelect={() => setImportOpen(true)}>
-                  <Upload className="size-4" aria-hidden />
-                  Tabelle importieren
-                </DropdownMenuItem>
-                {role === 'admin' && (
-                  <DropdownMenuItem asChild className="min-h-11">
-                    <a href={AI_GENERATOR_HREF}>
-                      <Bot className="size-4" aria-hidden />
-                      Fragen aus Material
-                    </a>
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </>
@@ -625,7 +626,10 @@ function InhaltePageContent() {
                   initialSearch={searchTerm}
                   onSearchChange={changeSearch}
                   reloadKey={reloadKey}
-                  onAdd={() => setAddOpen(true)}
+                  onAdd={() => {
+                    setAddWay(null)
+                    setAddOpen(true)
+                  }}
                   subjects={subjectsForForm}
                   onChanged={refreshAll}
                 />
@@ -663,18 +667,22 @@ function InhaltePageContent() {
         </div>
       )}
 
-      <QuestionFormModal
+      <AddQuestionsDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        subjects={subjectsForForm}
-        onSuccess={() => {
-          setReloadKey((k) => k + 1)
-          refreshAll()
-        }}
+        initialWay={addWay}
         defaults={{
           subjectId: selectedSubject?.id,
           topicId: selection?.kind === 'topic' ? selection.topic.id : null,
           classLevel: klasse === 'all' ? null : klasse,
+        }}
+        onDone={({ topicIds }) => {
+          setReloadKey((k) => k + 1)
+          refreshAll()
+          // Der Baum springt auf das Thema, in das die Fragen gekommen sind
+          const topicId = topicIds.length === 1 ? topicIds[0] : null
+          const owner = topicId ? tree?.departments.flatMap((d) => d.subjects).find((sub) => sub.topics.some((t) => t.id === topicId)) : null
+          if (owner && topicId) showInTopic(owner.id, topicId)
         }}
       />
 
@@ -683,16 +691,6 @@ function InhaltePageContent() {
         onOpenChange={setNewSubjectOpen}
         subject={null}
         onSuccess={refreshAll}
-      />
-
-      <CsvImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        subjects={subjectsForForm}
-        onSuccess={() => {
-          setReloadKey((k) => k + 1)
-          refreshAll()
-        }}
       />
 
       <SubjectFormModal

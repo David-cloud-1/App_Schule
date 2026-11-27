@@ -17,6 +17,8 @@ export interface IntakePromptResponse {
   prompt: string
   length: number
   tooLong: boolean
+  /** Zielgruppe des Bereichs (für den „Auftrag zum Verbessern“) */
+  targetGroup: string
 }
 
 /**
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
   try {
     guard = await guardTopics(supabase, auth, [topic_id])
   } catch (err) {
-    console.error('[POST intake/prompt]', err)
+    console.error('[POST intake/auftrag]', err)
     return NextResponse.json({ error: 'Das Thema konnte nicht geladen werden.' }, { status: 500 })
   }
   if (!guard.ok) return guard.response
@@ -63,6 +65,6 @@ export async function POST(request: NextRequest) {
     text,
     part,
   })
-  const body: IntakePromptResponse = { prompt, length: prompt.length, tooLong: prompt.length > MAX_INTAKE_PROMPT_CHARS }
+  const body: IntakePromptResponse = { prompt, length: prompt.length, tooLong: prompt.length > MAX_INTAKE_PROMPT_CHARS, targetGroup: department.targetGroup }
   return NextResponse.json(body)
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
 import {
@@ -12,21 +12,20 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
+import { QuestionFields, EMPTY_FIELDS, LETTERS, type QuestionFieldValues } from '@/components/admin/question-fields'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  FachThemaSelect,
+  isNoTopicValue,
+  noTopicValue,
+  subjectOfNoTopic,
+  useTopicOptions,
+  type TopicOption,
+} from '@/components/admin/fach-thema-select'
 import { useClassLevelOptions } from '@/components/department-provider'
 import { showVersionConflict } from '@/components/admin/content-meta'
-import { useNeedsTargetDepartment } from '@/components/admin/target-department-field'
 
 export type AdminSubject = {
   id: string
@@ -111,6 +110,8 @@ interface BodyProps {
   onOpenHistory?: (question: AdminQuestion) => void
   /** Knöpfe am Formularende ausblenden (Prüf-Dialog hat eine eigene Leiste) */
   hideFooter?: boolean
+  /** Beschriftung des linken Knopfes („Abbrechen“; im Dialog „Fragen hinzufügen“: „Zurück“) */
+  cancelLabel?: string
   /** Kein eigener Erfolgs-Toast (der Aufrufer meldet das Gesamtergebnis) */
   quietSuccess?: boolean
   onCancel?: () => void
@@ -118,41 +119,27 @@ interface BodyProps {
   onDirtyChange?: (dirty: boolean) => void
   defaults?: QuestionDefaults
   template?: AdminQuestion | null
+  /** Schon geladene Themen (der Dialog „Fragen hinzufügen“ lädt sie einmal für alle Wege) */
+  topicData?: ReturnType<typeof useTopicOptions>
 }
 
-type FormState = {
-  question_text: string
-  type: 'multiple_choice' | 'open'
-  sample_answer: string
-  answer_a: string
-  answer_b: string
-  answer_c: string
-  answer_d: string
-  answer_e: string
-  correct_letter: 'A' | 'B' | 'C' | 'D' | 'E'
-  explanation: string
-  difficulty: 'leicht' | 'mittel' | 'schwer'
-  subject_ids: string[]
-  class_level: '10' | '11' | '12' | '_all'
-  topic_id: string
+type FormState = QuestionFieldValues & {
+  /** Themen-ID, `none:<Fach-ID>` (nur beim Bearbeiten einer Frage ohne Thema) oder leer */
+  topic_value: string
+  subject_id: string
+  class_level: '' | '10' | '11' | '12'
+  is_active: boolean
 }
 
 const EMPTY: FormState = {
-  question_text: '',
-  type: 'multiple_choice',
-  sample_answer: '',
-  answer_a: '',
-  answer_b: '',
-  answer_c: '',
-  answer_d: '',
-  answer_e: '',
-  correct_letter: 'A',
-  explanation: '',
-  difficulty: 'mittel',
-  subject_ids: [],
-  class_level: '_all',
-  topic_id: '_none',
+  ...EMPTY_FIELDS,
+  topic_value: '',
+  subject_id: '',
+  class_level: '',
+  is_active: true,
 }
+
+const AUTO_LEVEL_HINT = (level: string) => `Stufe ${level}, aus dem Thema`
 
 export function QuestionFormModal({
   open,
@@ -170,14 +157,14 @@ export function QuestionFormModal({
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-ws-text">
-            {isEdit ? 'Frage bearbeiten' : template ? 'Frage duplizieren' : 'Neue Frage erstellen'}
+            {isEdit ? 'Frage bearbeiten' : template ? 'Frage duplizieren' : 'Frage schreiben'}
           </DialogTitle>
           <DialogDescription className="text-ws-muted">
             {isEdit
-              ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
+              ? 'Ändere, was nicht mehr stimmt.'
               : template
                 ? 'Passe die Kopie an. Die ursprüngliche Frage bleibt unverändert.'
-                : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
+                : 'Schreibe eine Frage mit Antworten oder als Freitext.'}
           </DialogDescription>
         </DialogHeader>
         <QuestionFormBody
@@ -203,65 +190,44 @@ export function QuestionFormModal({
 }
 
 /**
- * Das Fragenformular ohne Dialog-Hülle. Wird im Frage-Dialog der Fragenliste
- * und im Prüf-Dialog der Meldungs-Inbox (PROJ-82) verwendet, damit beide
- * dieselben Felder, Prüfungen und denselben Konflikt-Schutz haben.
+ * Das Fragenformular ohne Dialog-Hülle. Wird im Frage-Dialog der Fragenliste,
+ * im Weg „Selbst schreiben“ von „Fragen hinzufügen“ (PROJ-132) und im
+ * Prüf-Dialog der Meldungs-Inbox (PROJ-82) verwendet, damit alle dieselben
+ * Felder, Prüfungen und denselben Konflikt-Schutz haben.
  */
 export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(function QuestionFormBody(
-  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange, defaults, template },
+  { active: open, question, onSaved, onConflict, onOpenHistory, hideFooter, cancelLabel = 'Abbrechen', quietSuccess, onCancel, onDirtyChange, defaults, template, topicData },
   ref
 ) {
   const classLevelOptions = useClassLevelOptions()
-  const inAllScopes = useNeedsTargetDepartment()
+  const ownTopics = useTopicOptions(open && !topicData)
+  const { options: topicOptions, loading: loadingTopics, failed: topicsFailed, reload } = topicData ?? ownTopics
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
   const saveAndNewRef = useRef(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [topics, setTopics] = useState<AdminTopic[]>([])
-  const [loadingTopics, setLoadingTopics] = useState(false)
+  const [changeLevel, setChangeLevel] = useState(false)
 
   const isEdit = Boolean(question)
   const initialRef = useRef<string>('')
-  const defaultSubjectId = defaults?.subjectId
+  const originalSubjectIds = (question?.question_subjects ?? [])
+    .map((qs) => qs.subjects?.id)
+    .filter((id): id is string => Boolean(id))
   const defaultTopicId = defaults?.topicId ?? null
   const defaultClassLevel = defaults?.classLevel ?? null
-
-  const loadTopicsForSubjects = useCallback(async (subjectIds: string[]) => {
-    if (subjectIds.length === 0) { setTopics([]); return }
-    setLoadingTopics(true)
-    try {
-      const params = new URLSearchParams()
-      // Load topics for the first selected subject (primary subject)
-      params.set('subject_id', subjectIds[0])
-      const res = await fetch(`/api/admin/topics?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-        setTopics(data.topics ?? [])
-      }
-    } finally {
-      setLoadingTopics(false)
-    }
-  }, [])
+  // Eine bestehende Frage ohne Thema oder Stufe darf ohne beides gespeichert werden (nur neue Fragen brauchen sie)
+  const legacyNoTopic = isEdit && !question?.topic_id
+  const legacyNoLevel = isEdit && !question?.class_level
 
   // Seed form state when opening / switching question
   useEffect(() => {
     if (!open) return
     const source = question ?? template
     if (source) {
-      const ordered = [...source.answer_options].sort(
-        (a, b) => a.display_order - b.display_order
-      )
+      const ordered = [...source.answer_options].sort((a, b) => a.display_order - b.display_order)
       const [a, b, c, d, e] = [0, 1, 2, 3, 4].map((i) => ordered[i]?.option_text ?? '')
       const correctIdx = ordered.findIndex((o) => o.is_correct)
-      const correct_letter = (['A', 'B', 'C', 'D', 'E'][correctIdx >= 0 ? correctIdx : 0]) as
-        | 'A'
-        | 'B'
-        | 'C'
-        | 'D'
-        | 'E'
-      const subjectIds = source.question_subjects
-        .map((qs) => qs.subjects?.id)
-        .filter((id): id is string => Boolean(id))
+      const subjectId = source.question_subjects.map((qs) => qs.subjects?.id).find((id): id is string => Boolean(id)) ?? ''
       const seeded: FormState = {
         question_text: source.question_text,
         type: source.type ?? 'multiple_choice',
@@ -271,49 +237,77 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
         answer_c: c,
         answer_d: d,
         answer_e: e,
-        correct_letter,
+        correct_letter: correctIdx >= 0 ? LETTERS[correctIdx] : '',
         explanation: source.explanation ?? '',
         difficulty: source.difficulty,
-        subject_ids: subjectIds,
-        class_level: source.class_level ? String(source.class_level) as '10' | '11' | '12' : '_all',
-        topic_id: source.topic_id ?? '_none',
+        subject_id: subjectId,
+        topic_value: source.topic_id ?? (question && subjectId ? noTopicValue(subjectId) : ''),
+        class_level: source.class_level ? (String(source.class_level) as FormState['class_level']) : '',
+        is_active: template ? true : (source.is_active ?? true),
       }
       initialRef.current = JSON.stringify(seeded)
       setForm(seeded)
-      loadTopicsForSubjects(subjectIds)
     } else {
       const seeded: FormState = {
         ...EMPTY,
-        subject_ids: defaultSubjectId ? [defaultSubjectId] : [],
-        topic_id: defaultSubjectId && defaultTopicId ? defaultTopicId : '_none',
-        class_level: defaultClassLevel ? (String(defaultClassLevel) as FormState['class_level']) : '_all',
+        subject_id: defaults?.subjectId ?? '',
+        topic_value: defaultTopicId ?? '',
+        class_level: defaultClassLevel ? (String(defaultClassLevel) as FormState['class_level']) : '',
       }
       initialRef.current = JSON.stringify(seeded)
       setForm(seeded)
-      setTopics([])
-      if (defaultSubjectId) loadTopicsForSubjects([defaultSubjectId])
     }
     setErrors({})
-  }, [open, question, template, loadTopicsForSubjects, defaultSubjectId, defaultTopicId, defaultClassLevel])
+    setChangeLevel(false)
+  }, [open, question, template, defaults?.subjectId, defaultTopicId, defaultClassLevel])
 
-  const remaining = useMemo(() => 1000 - form.question_text.length, [form.question_text])
+  const selectedTopic: TopicOption | null = topicOptions.find((t) => t.id === form.topic_value) ?? null
+
+  // Das Thema bestimmt die Stufe, wenn es nur Fragen einer Stufe hat (Themen haben selbst keine Stufe)
+  useEffect(() => {
+    if (!open || !selectedTopic) return
+    if (form.subject_id !== selectedTopic.subjectId) setForm((f) => ({ ...f, subject_id: selectedTopic.subjectId }))
+    if (selectedTopic.classLevels.length === 1 && form.class_level === '' && !legacyNoLevel) {
+      setForm((f) => ({ ...f, class_level: String(selectedTopic.classLevels[0]) as FormState['class_level'] }))
+      initialRef.current = initialRef.current ? JSON.stringify({ ...JSON.parse(initialRef.current), class_level: String(selectedTopic.classLevels[0]) }) : initialRef.current
+    }
+  }, [open, selectedTopic, form.subject_id, form.class_level, legacyNoLevel])
 
   useEffect(() => {
     onDirtyChange?.(open && JSON.stringify(form) !== initialRef.current)
   }, [form, open, onDirtyChange])
 
+  function pickTopic(value: string, option: TopicOption | null) {
+    setForm((f) => {
+      const next: FormState = { ...f, topic_value: value }
+      if (option) {
+        next.subject_id = option.subjectId
+        if (option.classLevels.length === 1) next.class_level = String(option.classLevels[0]) as FormState['class_level']
+        else if (f.class_level !== '' && option.classLevels.length > 0 && !option.classLevels.includes(Number(f.class_level))) next.class_level = ''
+      } else if (isNoTopicValue(value)) {
+        next.subject_id = subjectOfNoTopic(value)
+      }
+      return next
+    })
+    setChangeLevel(false)
+  }
+
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (!form.question_text.trim()) e.question_text = 'Fragetext ist Pflicht.'
-    if (form.question_text.length > 1000) e.question_text = 'Max. 1000 Zeichen.'
+    if (!form.question_text.trim()) e.question_text = 'Bitte schreibe den Fragetext.'
+    if (form.question_text.length > 1000) e.question_text = 'Der Fragetext ist zu lang (höchstens 1000 Zeichen).'
     if (form.type === 'multiple_choice') {
-      if (!form.answer_a.trim()) e.answer_a = 'Antwort A ist Pflicht.'
-      if (!form.answer_b.trim()) e.answer_b = 'Antwort B ist Pflicht.'
-      if (!form.answer_c.trim()) e.answer_c = 'Antwort C ist Pflicht.'
-      if (!form.answer_d.trim()) e.answer_d = 'Antwort D ist Pflicht.'
-      if (!form.answer_e.trim()) e.answer_e = 'Antwort E ist Pflicht.'
+      for (const letter of LETTERS) {
+        const key = `answer_${letter.toLowerCase()}` as 'answer_a'
+        if (!form[key].trim()) e[key] = `Bitte schreibe Antwort ${letter}.`
+      }
+      if (form.correct_letter === '') e.correct_letter = 'Bitte wähle die richtige Antwort.'
     }
-    if (form.subject_ids.length === 0) e.subject_ids = 'Mindestens ein Fach auswählen.'
+    const noTopicOk = legacyNoTopic && isNoTopicValue(form.topic_value)
+    if (!noTopicOk && (form.topic_value === '' || isNoTopicValue(form.topic_value))) {
+      e.topic = 'Bitte wähle ein Thema. So finden Azubis die Frage im richtigen Lernpfad.'
+    }
+    if (classLevelOptions.length > 0 && form.class_level === '' && !legacyNoLevel) e.class_level = 'Bitte wähle eine Stufe.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -322,25 +316,25 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
     if (!validate()) return 'invalid'
     setSubmitting(true)
 
+    // Eine bestehende Frage behält ihre Fächer, solange das gewählte Fach dazugehört
+    const subjectIds = isEdit && originalSubjectIds.includes(form.subject_id) ? originalSubjectIds : [form.subject_id]
     const payload: Record<string, unknown> = {
       question_text: form.question_text.trim(),
       difficulty: form.difficulty,
       explanation: form.explanation.trim() ? form.explanation.trim() : null,
       type: form.type,
-      sample_answer: form.sample_answer.trim() ? form.sample_answer.trim() : null,
-      subject_ids: form.subject_ids,
-      class_level: form.class_level === '_all' ? null : Number(form.class_level),
-      topic_id: form.topic_id === '_none' ? null : form.topic_id,
+      sample_answer: form.type === 'open' && form.sample_answer.trim() ? form.sample_answer.trim() : null,
+      subject_ids: subjectIds,
+      class_level: form.class_level === '' ? null : Number(form.class_level),
+      topic_id: isNoTopicValue(form.topic_value) ? null : form.topic_value,
     }
+    if (!isEdit || form.is_active !== (question?.is_active ?? true)) payload.is_active = form.is_active
 
     if (form.type === 'multiple_choice') {
-      payload.answers = [
-        { text: form.answer_a.trim(), is_correct: form.correct_letter === 'A' },
-        { text: form.answer_b.trim(), is_correct: form.correct_letter === 'B' },
-        { text: form.answer_c.trim(), is_correct: form.correct_letter === 'C' },
-        { text: form.answer_d.trim(), is_correct: form.correct_letter === 'D' },
-        { text: form.answer_e.trim(), is_correct: form.correct_letter === 'E' },
-      ]
+      payload.answers = LETTERS.map((letter) => ({
+        text: form[`answer_${letter.toLowerCase()}` as 'answer_a'].trim(),
+        is_correct: form.correct_letter === letter,
+      }))
     }
 
     try {
@@ -358,14 +352,14 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
           onConflict?.()
           return 'conflict'
         }
-        toast.error(data?.error ?? 'Speichern fehlgeschlagen')
+        toast.error(data?.error ?? 'Die Frage konnte nicht gespeichert werden.')
         return 'error'
       }
-      if (!quietSuccess) toast.success(isEdit ? 'Frage aktualisiert' : 'Frage erstellt')
+      if (!quietSuccess) toast.success('Frage gespeichert')
       return 'ok'
     } catch (err) {
       console.error(err)
-      toast.error('Netzwerkfehler')
+      toast.error('Keine Verbindung. Bitte versuche es noch einmal.')
       return 'error'
     } finally {
       setSubmitting(false)
@@ -382,288 +376,100 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
     onSaved({ andNew })
     if (andNew) {
       saveAndNewRef.current = false
-      setForm(EMPTY)
-      initialRef.current = JSON.stringify(EMPTY)
-      setTopics([])
+      // Thema und Stufe bleiben für die nächste Frage stehen
+      const next: FormState = { ...EMPTY, topic_value: form.topic_value, subject_id: form.subject_id, class_level: form.class_level }
+      setForm(next)
+      initialRef.current = JSON.stringify(next)
       setErrors({})
     }
   }
 
-  function toggleSubject(id: string, checked: boolean) {
-    setForm((f) => {
-      const next = checked
-        ? Array.from(new Set([...f.subject_ids, id]))
-        : f.subject_ids.filter((sid) => sid !== id)
-      loadTopicsForSubjects(next)
-      return { ...f, subject_ids: next, topic_id: '_none' }
-    })
-  }
+  const levelHint =
+    selectedTopic && selectedTopic.classLevels.length === 1 && form.class_level === String(selectedTopic.classLevels[0])
+      ? AUTO_LEVEL_HINT(form.class_level)
+      : null
+  const showLevelChoice = classLevelOptions.length > 0 && (levelHint === null || changeLevel)
 
   return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Question type selector */}
-          <div className="space-y-2">
-            <Label>Fragetyp</Label>
-            <div className="flex gap-3">
-              {(['multiple_choice', 'open'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, type: t }))}
-                  className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-colors ${
-                    form.type === t
-                      ? 'bg-ws-green/20 border-ws-green text-ws-green'
-                      : 'border-ws-line text-ws-muted hover:text-ws-text'
-                  }`}
-                >
-                  {t === 'multiple_choice' ? 'Multiple Choice' : 'Freitext'}
-                </button>
-              ))}
-            </div>
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <FachThemaSelect
+        value={form.topic_value}
+        onChange={pickTopic}
+        options={topicOptions}
+        loading={loadingTopics}
+        failed={topicsFailed}
+        onRetry={reload}
+        error={errors.topic}
+        noTopicFor={legacyNoTopic && form.subject_id ? { subjectId: form.subject_id, subjectCode: '' } : null}
+      />
 
-          <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <Label htmlFor="question_text">Fragetext</Label>
-              <span
-                className={`text-xs ${
-                  remaining < 0 ? 'text-ws-red' : 'text-ws-muted'
-                }`}
-              >
-                {remaining} Zeichen übrig
-              </span>
-            </div>
-            <Textarea
-              id="question_text"
-              rows={3}
-              value={form.question_text}
-              onChange={(e) => setForm({ ...form, question_text: e.target.value })}
-              className="bg-ws-bg border-ws-line text-ws-text"
-              maxLength={1000}
-            />
-            {errors.question_text && (
-              <p className="text-xs text-ws-red">{errors.question_text}</p>
-            )}
-          </div>
-
-          {form.type === 'multiple_choice' && (
-            <div className="space-y-3">
-              <Label>Antworten (eine muss richtig sein)</Label>
-              <RadioGroup
-                value={form.correct_letter}
-                onValueChange={(v) =>
-                  setForm({ ...form, correct_letter: v as 'A' | 'B' | 'C' | 'D' | 'E' })
-                }
-                className="space-y-2"
-              >
-                {(['A', 'B', 'C', 'D', 'E'] as const).map((letter) => {
-                  const key = (`answer_${letter.toLowerCase()}` as
-                    | 'answer_a'
-                    | 'answer_b'
-                    | 'answer_c'
-                    | 'answer_d'
-                    | 'answer_e')
-                  const errorKey = key
-                  return (
-                    <div key={letter} className="space-y-1">
-                      <div className="flex items-center gap-3">
-                        <RadioGroupItem
-                          value={letter}
-                          id={`ans-${letter}`}
-                          className="border-ws-line"
-                        />
-                        <Label
-                          htmlFor={`ans-${letter}`}
-                          className="w-6 text-center text-sm font-semibold text-ws-green"
-                        >
-                          {letter}
-                        </Label>
-                        <Input
-                          value={form[key]}
-                          onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                          placeholder={`Antwort ${letter}`}
-                          className="flex-1 bg-ws-bg border-ws-line text-ws-text"
-                        />
-                      </div>
-                      {errors[errorKey] && (
-                        <p className="text-xs text-ws-red pl-12">{errors[errorKey]}</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </RadioGroup>
-            </div>
+      {classLevelOptions.length > 0 && (
+        <div className="space-y-2">
+          {levelHint && !changeLevel && (
+            <p className="flex flex-wrap items-center gap-2 text-sm text-ws-muted">
+              {levelHint}
+              <button type="button" onClick={() => setChangeLevel(true)} className="min-h-11 px-1 text-ws-blue underline underline-offset-2">
+                Ändern
+              </button>
+            </p>
           )}
-
-          {form.type === 'open' && (
-            <div className="space-y-2">
-              <Label htmlFor="sample_answer">Musterlösung (für Selbstbewertung)</Label>
-              <Textarea
-                id="sample_answer"
-                rows={4}
-                value={form.sample_answer}
-                onChange={(e) => setForm({ ...form, sample_answer: e.target.value })}
-                placeholder="Erwartete Antwort — wird dem Azubi nach der Prüfung gezeigt"
-                className="bg-ws-bg border-ws-line text-ws-text"
-                maxLength={2000}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="explanation">Erklärung (optional)</Label>
-            <Textarea
-              id="explanation"
-              rows={2}
-              value={form.explanation}
-              onChange={(e) => setForm({ ...form, explanation: e.target.value })}
-              className="bg-ws-bg border-ws-line text-ws-text"
-              maxLength={2000}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Schwierigkeit</Label>
-              <Select
-                value={form.difficulty}
-                onValueChange={(v) =>
-                  // Radix meldet beim Befüllen kurz '' (Option noch nicht bekannt) — ignorieren
-                  v && setForm({ ...form, difficulty: v as 'leicht' | 'mittel' | 'schwer' })
-                }
-              >
-                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                  <SelectItem value="leicht">Leicht</SelectItem>
-                  <SelectItem value="mittel">Mittel</SelectItem>
-                  <SelectItem value="schwer">Schwer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
+          {showLevelChoice && (
+            <>
               <Label>
-                Stufe <span className="text-ws-red">*</span>
+                Stufe {!legacyNoLevel && <span className="text-ws-red" aria-hidden>*</span>}
               </Label>
-              <Select
-                value={form.class_level}
-                onValueChange={(v) =>
-                  v && setForm({ ...form, class_level: v as FormState['class_level'] })
-                }
-              >
-                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                  <SelectItem value="_all">Alle Stufen</SelectItem>
-                  {classLevelOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Fächer</Label>
-              <div className="flex flex-wrap gap-2 p-3 bg-ws-bg border border-ws-line rounded-xl">
-                {subjects.length === 0 ? (
-                  <span className="text-xs text-ws-muted">Keine Fächer verfügbar.</span>
-                ) : (
-                  subjects.map((s) => {
-                    const checked = form.subject_ids.includes(s.id)
-                    return (
-                      <label
-                        key={s.id}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer text-sm transition-colors ${
-                          checked
-                            ? 'bg-ws-green/20 border-ws-green text-ws-text'
-                            : 'border-ws-line text-ws-muted hover:text-ws-text'
-                        }`}
-                      >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={(c) => toggleSubject(s.id, c === true)}
-                          className="border-ws-line"
-                        />
-                        <span className="font-semibold">{s.code}</span>
-                        {inAllScopes && s.department_name && (
-                          <span className="text-xs text-ws-muted">{s.department_name}</span>
-                        )}
-                      </label>
-                    )
-                  })
-                )}
+              <div>
+                <AdminSegmented
+                  value={form.class_level === '' ? ('' as FormState['class_level']) : form.class_level}
+                  onChange={(v) => setForm((f) => ({ ...f, class_level: v as FormState['class_level'] }))}
+                  options={classLevelOptions as { value: FormState['class_level']; label: string }[]}
+                  ariaLabel="Stufe"
+                />
               </div>
-              {inAllScopes && (
-                <p className="text-xs text-ws-muted">Das Fach bestimmt, in welchem Bereich die Frage liegt.</p>
-              )}
-              {errors.subject_ids && (
-                <p className="text-xs text-ws-red">{errors.subject_ids}</p>
-              )}
-            </div>
+            </>
+          )}
+          {errors.class_level && <p className="text-xs text-ws-red">{errors.class_level}</p>}
+        </div>
+      )}
 
-            <div className="space-y-2">
-              <Label>Thema (optional)</Label>
-              <Select
-                value={form.topic_id}
-                onValueChange={(v) => v && setForm({ ...form, topic_id: v })}
-                disabled={form.subject_ids.length === 0}
-              >
-                <SelectTrigger className="bg-ws-bg border-ws-line text-ws-text">
-                  {loadingTopics ? (
-                    <span className="text-ws-muted text-sm">Laden…</span>
-                  ) : (
-                    <SelectValue placeholder="Kein Thema" />
-                  )}
-                </SelectTrigger>
-                <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                  <SelectItem value="_none">Kein Thema</SelectItem>
-                  {topics.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {form.subject_ids.length === 0 && (
-                <p className="text-xs text-ws-muted">Erst ein Fach auswählen.</p>
-              )}
-            </div>
-          </div>
+      <QuestionFields values={form} onChange={(patch) => setForm((f) => ({ ...f, ...patch }))} errors={errors} />
 
-          {!hideFooter && (
-          <DialogFooter className="gap-2 pt-2 flex-wrap">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onCancel?.()}
-              disabled={submitting}
-            >
-              Abbrechen
-            </Button>
-            {!isEdit && (
-              <Button
-                type="submit"
-                disabled={submitting}
-                variant="outline"
-                onClick={() => { saveAndNewRef.current = true }}
-                className="rounded-xl border-ws-line text-ws-text hover:bg-ws-raised"
-              >
-                {submitting && saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Speichern & Neue
-              </Button>
-            )}
+      <div className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-ws-line bg-ws-bg px-3">
+        <Label htmlFor="question-active" className="cursor-pointer py-3 text-sm">
+          Für Azubis sichtbar
+          <span className="block text-xs font-normal text-ws-muted">Ausgeschaltet bleibt die Frage versteckt.</span>
+        </Label>
+        <Switch id="question-active" checked={form.is_active} onCheckedChange={(checked) => setForm((f) => ({ ...f, is_active: checked }))} />
+      </div>
+
+      {!hideFooter && (
+        <DialogFooter className="flex-wrap gap-2 pt-2">
+          <Button type="button" variant="ghost" onClick={() => onCancel?.()} disabled={submitting} className="min-h-11">
+            {cancelLabel}
+          </Button>
+          {!isEdit && (
             <Button
               type="submit"
               disabled={submitting}
-              onClick={() => { saveAndNewRef.current = false }}
-              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
+              variant="outline"
+              onClick={() => { saveAndNewRef.current = true }}
+              className="min-h-11 rounded-xl border-ws-line text-ws-text hover:bg-ws-raised"
             >
-              {submitting && !saveAndNewRef.current && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEdit ? 'Speichern' : 'Erstellen'}
+              {submitting && saveAndNewRef.current && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Speichern und nächste Frage
             </Button>
-          </DialogFooter>
           )}
-        </form>
+          <Button
+            type="submit"
+            disabled={submitting}
+            onClick={() => { saveAndNewRef.current = false }}
+            className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+          >
+            {submitting && !saveAndNewRef.current && <Loader2 className="mr-2 size-4 animate-spin" />}
+            Speichern
+          </Button>
+        </DialogFooter>
+      )}
+    </form>
   )
 })

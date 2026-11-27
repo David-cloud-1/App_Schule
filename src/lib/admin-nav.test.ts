@@ -89,11 +89,11 @@ describe('Admin-Navigation (PROJ-40/130)', () => {
     expect(labels).toEqual(expect.arrayContaining(['Lerninhalte', 'Übungsprüfungen']))
   })
 
-  it('führt „Fragen aus Material“ nur für den Super-Admin und nicht im Menü (PROJ-131)', () => {
-    expect(adminPagesFor('admin').map((p) => p.href)).toContain('/admin/ai-generator')
-    expect(adminPagesFor('teacher').map((p) => p.href)).not.toContain('/admin/ai-generator')
-    expect(adminNavGroupsFor('admin').flatMap((g) => g.items.map((i) => i.href))).not.toContain('/admin/ai-generator')
-    expect(adminNavMatch('/admin/ai-generator')?.item.label).toBe('Lerninhalte')
+  it('führt „Fragen aus Material“ nicht mehr als eigene Seite, sondern als Schnellaktion in „Fragen hinzufügen“ (PROJ-132)', () => {
+    for (const role of ['admin', 'teacher'] as const) {
+      expect(adminPagesFor(role).map((p) => p.href)).not.toContain('/admin/ai-generator')
+    }
+    expect(adminNavMatch('/admin/ai-generator')).toBeNull()
   })
 
   it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {

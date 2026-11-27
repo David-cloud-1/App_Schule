@@ -19,6 +19,8 @@ export const LEGACY_ADMIN_REDIRECTS: LegacyRedirect[] = [
   { source: '/admin/questions', destination: CONTENT, permanent: false },
   { source: '/admin/subjects', destination: CONTENT, permanent: false },
   { source: '/admin/topics', destination: CONTENT, permanent: false },
+  // PROJ-132: „Fragen aus Material“ ist jetzt ein Weg im Dialog „Fragen hinzufügen“
+  { source: '/admin/ai-generator', destination: `${CONTENT}?hinzufuegen=material`, permanent: false },
   { source: '/admin/gemeldete-fragen', destination: `${CONTENT}?reiter=gemeldet`, permanent: false },
   { source: '/admin/schwierigste-fragen', destination: `${CONTENT}?reiter=schwierig`, permanent: false },
   { source: '/admin/papierkorb', has: tabQuery('forum'), destination: '/admin/lehrerzimmer?papierkorb=1', permanent: false },

@@ -33,11 +33,6 @@ describe('adminCrumbs (PROJ-45)', () => {
 
   it('nennt die Gruppe vor der Seite (PROJ-130)', () => {
     expect(adminCrumbs('/admin/inhalte', null)).toEqual([start, { label: 'Lerninhalte' }])
-    expect(adminCrumbs('/admin/ai-generator', null)).toEqual([
-      start,
-      { label: 'Lerninhalte', href: '/admin/inhalte' },
-      { label: 'Fragen aus Material' },
-    ])
     expect(adminCrumbs('/admin/users', null)).toEqual([start, { label: 'Verwaltung' }, { label: 'Nutzer' }])
   })
 
