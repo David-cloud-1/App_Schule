@@ -15,11 +15,38 @@ const QuerySchema = z.object({
  * verknüpften Fach-Join, genau wie in den übrigen Verwaltungsrouten.
  */
 type Dept = { name: string; code: string } | null
+type ContentSupabase = NonNullable<Awaited<ReturnType<typeof requireContentAdmin>>['supabase']>
+
+/** Gelöschte Fragen, Themen und Fächer des Bereichs zusammen (für die Zahl am Reiter) */
+async function countTrash(supabase: ContentSupabase, scopeDepartmentIds: string[] | null) {
+  const base = (table: string, select: string) =>
+    supabase.from(table).select(select, { count: 'exact', head: true }).not('deleted_at', 'is', null)
+
+  let subjects = base('subjects', 'id')
+  let topics = base('topics', 'id, subjects!inner(department_id)')
+  let questions = base('questions', 'id, qs_filter:question_subjects!inner ( subjects!inner ( department_id ) )')
+  if (scopeDepartmentIds) {
+    subjects = subjects.in('department_id', scopeDepartmentIds)
+    topics = topics.in('subjects.department_id', scopeDepartmentIds)
+    questions = questions.in('qs_filter.subjects.department_id', scopeDepartmentIds)
+  }
+  const results = await Promise.all([questions, topics, subjects])
+  if (results.some((r) => r.error)) {
+    console.error('[GET /api/admin/trash?type=count]', results.find((r) => r.error)?.error)
+    return NextResponse.json({ error: 'Papierkorb konnte nicht geladen werden.' }, { status: 500 })
+  }
+  return NextResponse.json({ count: results.reduce((sum, r) => sum + (r.count ?? 0), 0) })
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase, scopeDepartmentIds } = auth
+
+  // PROJ-131: nur die Zahl für den Reiter „Papierkorb“ auf „Lerninhalte“
+  if (request.nextUrl.searchParams.get('type') === 'count') {
+    return countTrash(supabase, scopeDepartmentIds)
+  }
 
   const parsed = QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))
   if (!parsed.success) {

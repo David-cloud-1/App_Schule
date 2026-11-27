@@ -3,12 +3,17 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, FolderTree, Plus } from 'lucide-react'
+import { AlertTriangle, ChevronDown, FolderTree, Plus } from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { ContentTree } from '@/components/admin/content-tree'
 import { ContentQuestionPanel } from '@/components/admin/content-question-panel'
+import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
+import { QuestionReportsInbox, type ListRestriction } from '@/components/admin/question-reports-inbox'
+import { DifficultQuestions } from '@/components/admin/difficult-questions'
+import { TrashList } from '@/components/admin/trash-list'
+import { cn } from '@/lib/utils'
 import { ContentHistorySheet, type ContentType } from '@/components/admin/content-history-sheet'
 import { SubjectFormModal } from '@/components/admin/subject-form-modal'
 import { TopicNameDialog } from '@/components/admin/topic-name-dialog'
@@ -56,6 +61,35 @@ function describeHide(subject: TreeSubject): string {
   return `${q}${t} ${questions === 1 ? 'ist' : 'sind'} dann nicht mehr im Quiz.`
 }
 
+const TABS = ['fragen', 'gemeldet', 'schwierig', 'papierkorb'] as const
+type Tab = (typeof TABS)[number]
+
+function parseTab(value: string | null): Tab {
+  return TABS.includes(value as Tab) ? (value as Tab) : 'fragen'
+}
+
+const TRASH_OPTIONS = [
+  { value: 'question', label: 'Fragen' },
+  { value: 'topic', label: 'Themen' },
+  { value: 'subject', label: 'Fächer' },
+] as const
+type TrashTab = (typeof TRASH_OPTIONS)[number]['value']
+
+/** Zahl an einem Reiter, nur wenn dort etwas liegt */
+function TabCount({ value }: { value: number | null }) {
+  if (!value) return null
+  return (
+    <span className="rounded-full bg-ws-raised px-2 py-0.5 text-xs font-medium tabular-nums text-ws-text">{value}</span>
+  )
+}
+
+/** „LOP“ oder „LOP › Lagerlogistik“ */
+function selectionLabel(selection: TreeSelection): string {
+  if (selection.kind === 'all') return 'Alle Fächer'
+  if (selection.kind === 'subject') return selection.subject.code
+  return `${selection.subject.code} › ${selection.kind === 'topic' ? selection.topic.name : 'Ohne Thema'}`
+}
+
 /** Zahlen der Auswahl aus dem Baum, für den Kopf der Fragenliste */
 function selectionTotals(tree: ContentTreeData, selection: TreeSelection, klasse: ClassFilter) {
   if (selection.kind === 'all') return totalsFor(tree, klasse)
@@ -75,9 +109,9 @@ type TopicDialog =
   | { mode: 'rename'; subject: TreeSubject; topic: TreeTopic }
 
 /**
- * Inhalte (PROJ-85): Fächer und Themen als Baum links, Fragen des gewählten
- * Knotens rechts. Auswahl, Klassenfilter und (auf dem Handy) die Listenansicht
- * stehen in der Adresse. `useSearchParams` braucht eine Suspense-Grenze.
+ * Lerninhalte (PROJ-85, PROJ-131): Fächer und Themen als Baum links, rechts die
+ * Reiter Fragen · Gemeldet · Schwierig · Papierkorb. Reiter, Auswahl und
+ * Stufe stehen in der Adresse. `useSearchParams` braucht eine Suspense-Grenze.
  */
 export default function InhaltePage() {
   return (
@@ -94,7 +128,7 @@ function InhaltePageContent() {
   const subjectParam = searchParams.get('fach')
   const topicParam = searchParams.get('thema')
   const klasse = parseKlasse(searchParams.get('klasse'))
-  const listView = searchParams.get('ansicht') === 'liste'
+  const tab = parseTab(searchParams.get('reiter'))
   const searchTerm = searchParams.get('q') ?? ''
 
   const [tree, setTree] = useState<ContentTreeData | null>(null)
@@ -109,7 +143,10 @@ function InhaltePageContent() {
   const [deleteTarget, setDeleteTarget] = useState<{ subject: TreeSubject; topic: TreeTopic } | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [history, setHistory] = useState<{ type: ContentType; id: string; title: string } | null>(null)
-  const pushedRef = useRef(false)
+  const [treeOpen, setTreeOpen] = useState(false)
+  const [taskCount, setTaskCount] = useState<number | null>(null)
+  const [trashCount, setTrashCount] = useState<number | null>(null)
+  const [trashType, setTrashType] = useState<TrashTab>('question')
   const initializedRef = useRef(false)
 
   const loadTree = useCallback(async () => {
@@ -128,6 +165,28 @@ function InhaltePageContent() {
   useEffect(() => {
     loadTree()
   }, [loadTree])
+
+  // Zahlen an den Reitern: „Gemeldet“ aus derselben Zählung wie „Zu erledigen“ auf dem Start
+  const loadCounts = useCallback(async () => {
+    const [tasks, trash] = await Promise.all(
+      ['/api/admin/tasks', '/api/admin/trash?type=count'].map((url) =>
+        fetch(url, { cache: 'no-store' })
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null),
+      ),
+    )
+    setTaskCount(typeof tasks?.counts?.openReports === 'number' ? tasks.counts.openReports : null)
+    setTrashCount(typeof trash?.count === 'number' ? trash.count : null)
+  }, [])
+
+  useEffect(() => {
+    loadCounts()
+  }, [loadCounts])
+
+  const refreshAll = useCallback(() => {
+    loadTree()
+    loadCounts()
+  }, [loadTree, loadCounts])
 
   const selection = useMemo(
     () => (tree ? resolveSelection(tree, { subjectId: subjectParam, topicId: topicParam }, klasse) : null),
@@ -157,7 +216,7 @@ function InhaltePageContent() {
     if (!selection || !tree) return
     if (selection.kind === 'all' && selection.reason === 'missing') {
       if (topicParam != null) toast.info('Dieses Thema gibt es nicht mehr. Du siehst jetzt alle Fächer.')
-      navigate({ fach: null, thema: null, ansicht: null }, 'replace')
+      navigate({ fach: null, thema: null }, 'replace')
     } else if (selection.kind === 'subject' && topicParam != null) {
       navigate({ thema: null }, 'replace')
     }
@@ -180,23 +239,24 @@ function InhaltePageContent() {
     })
   }, [])
 
-  const isDesktop = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
-
   function select(subject: TreeSubject | null, topicId: string | null) {
     if (subject) setExpanded((prev) => new Set(prev).add(`s:${subject.id}`))
-    const updates = { fach: subject?.id ?? null, thema: topicId }
-    if (isDesktop()) {
-      navigate(updates, 'replace')
-    } else {
-      pushedRef.current = true
-      navigate({ ...updates, ansicht: 'liste' }, 'push')
-    }
+    setTreeOpen(false)
+    navigate({ fach: subject?.id ?? null, thema: topicId }, 'push')
   }
 
-  function backToTree() {
-    if (pushedRef.current) window.history.back()
-    else navigate({ ansicht: null }, 'replace')
-    pushedRef.current = false
+  function changeTab(next: Tab) {
+    navigate({ reiter: next === 'fragen' ? null : next }, 'push')
+  }
+
+  /** Aus „Schwierig“: Thema im Baum wählen und zum Reiter „Fragen“ wechseln */
+  function showInTopic(subjectId: string, topicId: string) {
+    setExpanded((prev) => new Set(prev).add(`s:${subjectId}`))
+    navigate({ fach: subjectId, thema: topicId, reiter: null }, 'push')
+  }
+
+  function showAll() {
+    navigate({ fach: null, thema: null }, 'push')
   }
 
   function changeKlasse(value: ClassParam) {
@@ -291,6 +351,7 @@ function InhaltePageContent() {
         loadTree()
       } else {
         toast.success('Thema gelöscht')
+        loadCounts()
         // Die eigene Auswahl räumen wir selbst, damit kein „gibt es nicht mehr“-Hinweis erscheint
         if (topicParam === deleteTarget.topic.id) navigate({ thema: null }, 'replace')
         loadTree()
@@ -311,8 +372,23 @@ function InhaltePageContent() {
     [tree],
   )
 
-  const showList = listView && selection != null
   const selectedSubject = selection && selection.kind !== 'all' ? selection.subject : null
+  const restriction: ListRestriction | null =
+    !selection || selection.kind === 'all'
+      ? null
+      : {
+          subjectId: selection.subject.id,
+          topicId: selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : undefined,
+          label: selectionLabel(selection),
+        }
+  const subjectCodes = useMemo(
+    () => Object.fromEntries((tree?.departments ?? []).flatMap((d) => d.subjects.map((s) => [s.id, s.code]))),
+    [tree],
+  )
+  const topicIds = useMemo(
+    () => new Set((tree?.departments ?? []).flatMap((d) => d.subjects.flatMap((s) => s.topics.map((t) => t.id)))),
+    [tree],
+  )
   const isEmptyTree = !!tree && tree.departments.every((d) => d.subjects.length === 0)
   const deleteCount = deleteTarget ? countFor(deleteTarget.topic.counts, 'all') : 0
 
@@ -360,69 +436,130 @@ function InhaltePageContent() {
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start">
-          <div className={showList ? 'hidden lg:block' : undefined}>
-            <div className="overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">
-              <div className="border-b border-ws-line p-3">
-                <p className="mb-2 text-xs font-medium text-ws-muted">Stufe</p>
-                <AdminSegmented
-                  value={(klasse === 'all' ? 'all' : String(klasse)) as ClassParam}
-                  onChange={changeKlasse}
-                  options={CLASS_OPTIONS}
-                  ariaLabel="Stufe"
-                />
+          <div className="min-w-0">
+            {/* Handy: der Baum ist eine einklappbare Leiste über den Fragen */}
+            <Button
+              variant="outline"
+              onClick={() => setTreeOpen((o) => !o)}
+              aria-expanded={treeOpen}
+              aria-controls="lerninhalte-baum"
+              className="min-h-11 w-full justify-between rounded-xl border-ws-line bg-ws-surface text-left text-ws-text hover:bg-ws-raised lg:hidden"
+            >
+              <span className="min-w-0 truncate">
+                Fach und Thema:{' '}
+                <span className="font-semibold">{selection ? selectionLabel(selection) : 'Alle Fächer'}</span>
+              </span>
+              <ChevronDown
+                className={cn('size-4 shrink-0 transition-transform duration-200', treeOpen && 'rotate-180')}
+                aria-hidden
+              />
+            </Button>
+            <div id="lerninhalte-baum" className={cn('mt-2 lg:mt-0 lg:block', !treeOpen && 'hidden')}>
+              <div className="overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">
+                <div className="border-b border-ws-line p-3">
+                  <p className="mb-2 text-xs font-medium text-ws-muted">Stufe</p>
+                  <AdminSegmented
+                    value={(klasse === 'all' ? 'all' : String(klasse)) as ClassParam}
+                    onChange={changeKlasse}
+                    options={CLASS_OPTIONS}
+                    ariaLabel="Stufe"
+                  />
+                </div>
+                <div className="max-h-[70vh] overflow-y-auto">
+                  <ContentTree
+                    tree={tree}
+                    klasse={klasse}
+                    selected={{
+                      subjectId: selectedSubject?.id ?? null,
+                      topicId:
+                        selection?.kind === 'topic' ? selection.topic.id : selection?.kind === 'notopic' ? NO_TOPIC : null,
+                    }}
+                    expanded={expanded}
+                    onToggle={toggleKey}
+                    onSelectAll={() => select(null, null)}
+                    onSelectSubject={(s) => select(s, null)}
+                    onSelectTopic={(s, topicId) => select(s, topicId)}
+                    onEditSubject={setEditingSubject}
+                    onToggleSubjectActive={askToggleSubject}
+                    onCreateTopic={(subject) => setTopicDialog({ mode: 'create', subject })}
+                    onSubjectHistory={(s) => setHistory({ type: 'subject', id: s.id, title: s.name })}
+                    onRenameTopic={(subject, topic) => setTopicDialog({ mode: 'rename', subject, topic })}
+                    onTopicHistory={(t) => setHistory({ type: 'topic', id: t.id, title: t.name })}
+                    onDeleteTopic={(subject, topic) => setDeleteTarget({ subject, topic })}
+                  />
+                </div>
               </div>
-              <div className="max-h-[70vh] overflow-y-auto">
-                <ContentTree
-                  tree={tree}
-                  klasse={klasse}
-                  selected={{
-                    subjectId: selectedSubject?.id ?? null,
-                    topicId:
-                      selection?.kind === 'topic' ? selection.topic.id : selection?.kind === 'notopic' ? NO_TOPIC : null,
-                  }}
-                  expanded={expanded}
-                  onToggle={toggleKey}
-                  onSelectAll={() => select(null, null)}
-                  onSelectSubject={(s) => select(s, null)}
-                  onSelectTopic={(s, topicId) => select(s, topicId)}
-                  onEditSubject={setEditingSubject}
-                  onToggleSubjectActive={askToggleSubject}
-                  onCreateTopic={(subject) => setTopicDialog({ mode: 'create', subject })}
-                  onSubjectHistory={(s) => setHistory({ type: 'subject', id: s.id, title: s.name })}
-                  onRenameTopic={(subject, topic) => setTopicDialog({ mode: 'rename', subject, topic })}
-                  onTopicHistory={(t) => setHistory({ type: 'topic', id: t.id, title: t.name })}
-                  onDeleteTopic={(subject, topic) => setDeleteTarget({ subject, topic })}
-                />
-              </div>
+              {failed && (
+                <p role="alert" className="mt-2 text-sm text-ws-red">
+                  Der Baum konnte nicht aktualisiert werden.{' '}
+                  <button type="button" className="underline" onClick={loadTree}>
+                    Erneut versuchen
+                  </button>
+                </p>
+              )}
             </div>
-            {failed && (
-              <p role="alert" className="mt-2 text-sm text-ws-red">
-                Der Baum konnte nicht aktualisiert werden.{' '}
-                <button type="button" className="underline" onClick={loadTree}>
-                  Erneut versuchen
-                </button>
-              </p>
-            )}
           </div>
 
-          <div className={showList ? undefined : 'hidden lg:block'}>
-            {selection && (
-              <ContentQuestionPanel
-                key={`${selectedSubject?.id ?? 'alle'}:${selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : ''}`}
-                subject={selectedSubject}
-                topic={selection.kind === 'topic' ? selection.topic : selection.kind === 'notopic' ? NO_TOPIC : null}
+          <AdminTabs value={tab} onValueChange={(v) => changeTab(v as Tab)} className="min-w-0">
+            <AdminTabsList>
+              <AdminTabsTrigger value="fragen">Fragen</AdminTabsTrigger>
+              <AdminTabsTrigger value="gemeldet">
+                Gemeldet
+                <TabCount value={taskCount} />
+              </AdminTabsTrigger>
+              <AdminTabsTrigger value="schwierig">Schwierig</AdminTabsTrigger>
+              <AdminTabsTrigger value="papierkorb">
+                Papierkorb
+                <TabCount value={trashCount} />
+              </AdminTabsTrigger>
+            </AdminTabsList>
+
+            <AdminTabsContent value="fragen" className="mt-4">
+              {selection && (
+                <ContentQuestionPanel
+                  key={`${selectedSubject?.id ?? 'alle'}:${selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : ''}`}
+                  subject={selectedSubject}
+                  topic={selection.kind === 'topic' ? selection.topic : selection.kind === 'notopic' ? NO_TOPIC : null}
+                  klasse={klasse}
+                  tree={tree}
+                  totals={selectionTotals(tree, selection, klasse)}
+                  initialSearch={searchTerm}
+                  reloadKey={reloadKey}
+                  onAdd={() => setAddOpen(true)}
+                  subjects={subjectsForForm}
+                  onChanged={refreshAll}
+                />
+              )}
+            </AdminTabsContent>
+
+            <AdminTabsContent value="gemeldet" className="mt-4">
+              <QuestionReportsInbox restriction={restriction} onShowAll={showAll} onChanged={refreshAll} />
+            </AdminTabsContent>
+
+            <AdminTabsContent value="schwierig" className="mt-4">
+              <DifficultQuestions
                 klasse={klasse}
-                tree={tree}
-                totals={selectionTotals(tree, selection, klasse)}
-                initialSearch={searchTerm}
-                reloadKey={reloadKey}
-                onAdd={() => setAddOpen(true)}
+                restriction={restriction}
+                onShowAll={showAll}
+                onShowInTopic={showInTopic}
                 subjects={subjectsForForm}
-                onChanged={loadTree}
-                onBack={showList ? backToTree : undefined}
+                subjectCodes={subjectCodes}
+                topicIds={topicIds}
+                onChanged={refreshAll}
               />
-            )}
-          </div>
+            </AdminTabsContent>
+
+            <AdminTabsContent value="papierkorb" className="mt-4 space-y-3">
+              <AdminSegmented value={trashType} onChange={setTrashType} options={TRASH_OPTIONS} ariaLabel="Gelöschte Inhalte" />
+              <TrashList
+                type={trashType}
+                onChanged={() => {
+                  setReloadKey((k) => k + 1)
+                  refreshAll()
+                }}
+              />
+            </AdminTabsContent>
+          </AdminTabs>
         </div>
       )}
 
@@ -432,7 +569,7 @@ function InhaltePageContent() {
         subjects={subjectsForForm}
         onSuccess={() => {
           setReloadKey((k) => k + 1)
-          loadTree()
+          refreshAll()
         }}
         defaults={{
           subjectId: selectedSubject?.id,

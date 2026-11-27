@@ -90,6 +90,7 @@ export interface TopicStat {
   key: string
   topic_id: string | null
   name: string
+  subject_id: string
   subject_name: string
   attempts: number
   correct: number
@@ -113,6 +114,7 @@ export function rankTopics(rows: DifficultyRow[], minAttempts: number): RankedTo
         key,
         topic_id: r.topic_id,
         name: r.topic_name ?? 'Ohne Thema',
+        subject_id: r.subject_id,
         subject_name: r.subject_name,
         attempts: 0,
         correct: 0,
@@ -131,21 +133,4 @@ export function rankTopics(rows: DifficultyRow[], minAttempts: number): RankedTo
     ranked: all.filter((t) => t.attempts >= minAttempts).sort(byRate),
     tooFew: all.filter((t) => t.attempts < minAttempts).sort((a, b) => b.attempts - a.attempts),
   }
-}
-
-/**
- * Suchlink in die Fragenliste. Die Suche vergleicht Teiltext exakt (ilike), deshalb
- * darf der Suchtext nichts enthalten, was im Original anders steht: Wir nehmen das
- * längste Stück der Frage am Stück, ohne Zeichen, die den Filter stören oder die
- * der Text unterbrochen hat (Komma, Klammern, Prozent, Stern, Backslash, Zeilenumbruch).
- */
-export function questionSearchLink(text: string): string {
-  const parts = text.split(/[,()%*\\\r\n]/)
-  let best = ''
-  for (const part of parts) {
-    const t = part.trim()
-    if (t.length > best.length) best = t
-  }
-  const q = best.slice(0, 60).trim()
-  return `/admin/questions?q=${encodeURIComponent(q)}`
 }

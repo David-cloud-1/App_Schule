@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { AdminTabs, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { TrashDialog } from '@/components/admin/trash-dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
@@ -69,6 +70,11 @@ export function LehrerzimmerOverview() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [failed, setFailed] = useState(false)
   const [reportsCount, setReportsCount] = useState<number | null>(null)
+  // PROJ-131: gelöschte Beiträge als Fenster hier; die alte Adresse leitet mit ?papierkorb=1 her
+  const [trashOpen, setTrashOpen] = useState(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('papierkorb') === '1') setTrashOpen(true)
+  }, [])
   const [searchText, setSearchText] = useState(filters.q ?? '')
   const requestId = useRef(0)
   const visited = useRef(false)
@@ -158,16 +164,26 @@ export function LehrerzimmerOverview() {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
+      <TrashDialog
+        open={trashOpen}
+        onOpenChange={setTrashOpen}
+        type="forum"
+        title="Papierkorb – Lehrerzimmer"
+        description="Gelöschte Beiträge und Antworten bleiben 30 Tage und lassen sich wiederherstellen."
+        onChanged={() => void load()}
+      />
       <AdminPageHeader
         title="Lehrerzimmer"
         description="Tipps, Fragen und Ideen für den Austausch im Kollegium."
         actions={
           <>
-            <Button asChild variant="outline" className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text">
-              <Link href="/admin/papierkorb?tab=forum">
-                <Trash2 className="mr-2 size-4" aria-hidden />
-                Papierkorb
-              </Link>
+            <Button
+              variant="outline"
+              onClick={() => setTrashOpen(true)}
+              className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+            >
+              <Trash2 className="mr-2 size-4" aria-hidden />
+              Papierkorb
             </Button>
             {!isEmptyForum && newPostButton}
           </>

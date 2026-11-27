@@ -1,23 +1,22 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { BarChart3, ExternalLink, Info } from 'lucide-react'
+import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { toast } from 'sonner'
+import { BarChart3, ChevronDown, FolderOpen, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { AdminTabs, AdminTabsList, AdminTabsTrigger } from '@/components/admin/admin-tabs'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
+import { QuestionAnswers } from '@/components/admin/question-answers'
+import { QuestionFormModal, type AdminSubject } from '@/components/admin/question-form-modal'
+import type { ListQuestion } from '@/components/admin/question-list-item'
+import type { ListRestriction } from '@/components/admin/question-reports-inbox'
+import type { ClassFilter } from '@/lib/content-tree'
 import {
   changedAfterAnswers,
-  DEFAULT_MIN_ATTEMPTS,
-  filterRows,
-  MIN_ATTEMPTS_LOWEST,
   needsAnswerCheck,
-  questionSearchLink,
+  NO_TOPIC_KEY,
   rankQuestions,
   rankTopics,
   solveRate,
@@ -25,16 +24,24 @@ import {
   type DifficultyRow,
   type TopicStat,
 } from '@/lib/difficulty'
+import { cn } from '@/lib/utils'
 
-type Tab = 'themen' | 'fragen'
+/** Feste Schwelle (PROJ-131, B49): darunter schwanken die Zahlen zu stark. */
+export const HARD_MIN_ATTEMPTS = 30
+const PAGE_SIZE = 25
 
-interface Response {
-  items: DifficultyRow[]
-  totalQuestions: number
-}
+type View = 'fragen' | 'themen'
+type Days = 'all' | '30' | '90'
 
-const ALL = 'alle'
-const MIN_OPTIONS = [5, 10, 20, 50]
+const VIEW_OPTIONS = [
+  { value: 'fragen', label: 'Fragen' },
+  { value: 'themen', label: 'Themen' },
+] as const
+const DAY_OPTIONS = [
+  { value: 'all', label: 'Gesamt' },
+  { value: '90', label: '90 Tage' },
+  { value: '30', label: '30 Tage' },
+] as const
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -44,319 +51,315 @@ function RateBar({ correct, attempts }: { correct: number; attempts: number }) {
   const rate = solveRate(correct, attempts) ?? 0
   const fill = rate < 40 ? '[&>div]:bg-ws-red' : rate < 70 ? '[&>div]:bg-ws-orange' : '[&>div]:bg-ws-green'
   return (
-    <div className="flex min-w-32 items-center gap-2">
-      <Progress value={rate} aria-label={`Lösungsquote ${rate} Prozent`} className={`h-2 flex-1 bg-ws-raised ${fill}`} />
-      <span className="w-10 text-right text-sm font-medium tabular-nums text-ws-text">{rate} %</span>
+    <div className="max-w-xs space-y-1">
+      <p className="text-sm tabular-nums text-ws-text">
+        <span className="font-semibold">{rate} % richtig</span> bei {attempts} Antworten
+      </p>
+      <Progress value={rate} aria-label={`${rate} Prozent richtig`} className={`h-2 bg-ws-raised ${fill}`} />
     </div>
   )
 }
 
-/**
- * Auswertung „Schwierigste Fragen“ (PROJ-74): Themen und Einzelfragen mit
- * Lösungsquote. Daten kommen einmal je Klassenstufe/Zeitraum vom Server
- * (nur Summen); Fach, Thema und Mindestanzahl wirken hier im Browser.
- */
-export function DifficultQuestions() {
-  const [tab, setTab] = useState<Tab>('themen')
-  const [classLevel, setClassLevel] = useState<string>(ALL)
-  const [days, setDays] = useState<string>(ALL)
-  const [subject, setSubject] = useState<string>(ALL)
-  const [topicKey, setTopicKey] = useState<string | null>(null)
-  const [minAttempts, setMinAttempts] = useState<number>(DEFAULT_MIN_ATTEMPTS)
+/** Eine Frage mehrerer Fächer erscheint nur einmal */
+function dedupe(rows: DifficultyRow[]): DifficultyRow[] {
+  const seen = new Set<string>()
+  return rows.filter((r) => (seen.has(r.question_id) ? false : (seen.add(r.question_id), true)))
+}
 
-  const [data, setData] = useState<Response | null>(null)
+/**
+ * Reiter „Schwierig“ (PROJ-74, seit PROJ-131 auf „Lerninhalte“): Fragen mit
+ * der niedrigsten Quote zuerst, ab 30 Antworten. Fach, Thema und Stufe kommen
+ * aus dem Baum. Jede Zeile führt weiter: aufklappen, bearbeiten, im Thema zeigen.
+ */
+export function DifficultQuestions({
+  klasse = 'all',
+  restriction = null,
+  onShowAll,
+  onShowInTopic,
+  subjects = [],
+  subjectCodes = {},
+  topicIds,
+  onChanged,
+}: {
+  klasse?: ClassFilter
+  restriction?: ListRestriction | null
+  onShowAll?: () => void
+  onShowInTopic?: (subjectId: string, topicId: string) => void
+  subjects?: AdminSubject[]
+  /** Fach-ID → Kürzel aus dem Baum */
+  subjectCodes?: Record<string, string>
+  /** Themen, die es noch gibt; „Im Thema zeigen“ fehlt sonst */
+  topicIds?: ReadonlySet<string>
+  onChanged?: () => void
+} = {}) {
+  const [view, setView] = useState<View>('fragen')
+  const [days, setDays] = useState<Days>('all')
+  const [data, setData] = useState<DifficultyRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  const [shown, setShown] = useState(PAGE_SIZE)
+  const [editing, setEditing] = useState<ListQuestion | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setFailed(false)
     try {
       const params = new URLSearchParams()
-      if (classLevel !== ALL) params.set('class_level', classLevel)
-      if (days !== ALL) params.set('days', days)
+      if (klasse !== 'all') params.set('class_level', String(klasse))
+      if (days !== 'all') params.set('days', days)
       const res = await fetch(`/api/admin/schwierigste-fragen?${params}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('load')
-      setData((await res.json()) as Response)
+      const body = (await res.json()) as { items: DifficultyRow[] }
+      setData(body.items)
     } catch {
       setFailed(true)
     } finally {
       setLoading(false)
     }
-  }, [classLevel, days])
+  }, [klasse, days])
 
   useEffect(() => {
     void load()
   }, [load])
 
-  const subjects = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const r of data?.items ?? []) m.set(r.subject_id, r.subject_name)
-    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'de'))
-  }, [data])
+  const subjectId = restriction?.subjectId
+  const topicId = restriction?.topicId
 
-  const subjectRows = useMemo(
-    () => filterRows(data?.items ?? [], { subjectId: subject === ALL ? null : subject }),
-    [data, subject],
-  )
-  const topics = useMemo(() => rankTopics(subjectRows, minAttempts), [subjectRows, minAttempts])
-  const questionRows = useMemo(() => filterRows(subjectRows, { topicKey }), [subjectRows, topicKey])
-  const questions = useMemo(() => rankQuestions(questionRows, minAttempts), [questionRows, minAttempts])
-  const topicName = topicKey ? (subjectRows.find((r) => (r.topic_id ?? 'ohne-thema') === topicKey)?.topic_name ?? 'Ohne Thema') : null
+  useEffect(() => {
+    setShown(PAGE_SIZE)
+  }, [subjectId, topicId, klasse, days])
 
-  function openTopic(t: TopicStat) {
-    setTopicKey(t.key)
-    setTab('fragen')
+  const rows = useMemo(() => {
+    let list = data ?? []
+    if (subjectId) list = list.filter((r) => r.subject_id === subjectId)
+    if (topicId) list = list.filter((r) => (r.topic_id ?? 'ohne') === topicId)
+    return list
+  }, [data, subjectId, topicId])
+
+  const ranked = useMemo(() => dedupe(rankQuestions(rows, HARD_MIN_ATTEMPTS).ranked), [rows])
+  const topics = useMemo(() => rankTopics(rows, HARD_MIN_ATTEMPTS).ranked, [rows])
+
+  async function openEdit(questionId: string) {
+    try {
+      const question = await fetchQuestion(questionId)
+      setEditing(question)
+    } catch {
+      toast.error('Die Frage konnte nicht geladen werden.')
+    }
   }
-
-  const isEmpty = !!data && data.items.length === 0
 
   return (
     <div className="space-y-4">
-      <p className="flex max-w-prose items-start gap-2 text-sm text-ws-muted">
-        <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-        <span>
-          Gezählt werden Antworten aus Üben, Quiz, Blitzrunde und Lücken schließen – keine benoteten Nachweise. Je Azubi
-          und Frage zählen höchstens die ersten 3 Versuche.
-        </span>
-      </p>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-1.5">
-          <Label htmlFor="df-subject" className="text-ws-muted">Fach</Label>
-          <Select value={subject} onValueChange={(v) => { setSubject(v); setTopicKey(null) }}>
-            <SelectTrigger id="df-subject" className="min-h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Alle Fächer</SelectItem>
-              {subjects.map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      {restriction && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-ws-text">
+            Nur Fragen zu <span className="font-semibold">{restriction.label}</span>
+          </p>
+          <Button variant="outline" onClick={onShowAll} className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">
+            Alle Fragen zeigen
+          </Button>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="df-class" className="text-ws-muted">Stufe</Label>
-          <Select value={classLevel} onValueChange={(v) => { setClassLevel(v); setTopicKey(null) }}>
-            <SelectTrigger id="df-class" className="min-h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Alle Stufen</SelectItem>
-              {[10, 11, 12].map((c) => <SelectItem key={c} value={String(c)}>Stufe {c}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="df-days" className="text-ws-muted">Zeitraum</Label>
-          <Select value={days} onValueChange={setDays}>
-            <SelectTrigger id="df-days" className="min-h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>Gesamt</SelectItem>
-              <SelectItem value="30">Letzte 30 Tage</SelectItem>
-              <SelectItem value="90">Letzte 90 Tage</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="df-min" className="text-ws-muted">Mindestens … Antworten</Label>
-          <Select value={String(minAttempts)} onValueChange={(v) => setMinAttempts(Number(v))}>
-            <SelectTrigger id="df-min" className="min-h-11 w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MIN_OPTIONS.map((n) => <SelectItem key={n} value={String(n)}>{n} Antworten</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      {minAttempts <= MIN_ATTEMPTS_LOWEST * 2 && (
-        <p className="text-sm text-ws-muted">Bei wenigen Antworten schwanken die Zahlen stark – lies sie als Anhaltspunkt.</p>
       )}
+      <p className="max-w-prose text-sm text-ws-muted">
+        Fragen, die Azubis am häufigsten falsch beantworten. Gezählt werden Fragen ab {HARD_MIN_ATTEMPTS} Antworten.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <AdminSegmented value={view} onChange={setView} options={VIEW_OPTIONS} ariaLabel="Ansicht" />
+        <AdminSegmented value={days} onChange={setDays} options={DAY_OPTIONS} ariaLabel="Zeitraum" />
+      </div>
 
       {loading && !data ? (
         <AdminLoadingState variant="table" rows={6} />
       ) : failed ? (
         <AdminErrorState onRetry={() => void load()} />
-      ) : isEmpty ? (
+      ) : (view === 'fragen' ? ranked.length : topics.length) === 0 ? (
         <AdminEmptyState
           icon={BarChart3}
           title="Noch keine Auswertung"
-          description="Sobald Azubis üben, erscheinen hier Auswertungen."
+          description={`Hier erscheint etwas, sobald ${view === 'fragen' ? 'eine Frage' : 'ein Thema'} dieser Auswahl ${HARD_MIN_ATTEMPTS} Antworten hat.`}
         />
+      ) : view === 'themen' ? (
+        <TopicList topics={topics} topicIds={topicIds} onOpen={onShowInTopic} />
       ) : (
         <>
-          <AdminTabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
-            <AdminTabsList>
-              <AdminTabsTrigger value="themen">Themen</AdminTabsTrigger>
-              <AdminTabsTrigger value="fragen">Fragen</AdminTabsTrigger>
-            </AdminTabsList>
-          </AdminTabs>
-
-          {tab === 'themen' ? (
-            <TopicsTable ranked={topics.ranked} tooFew={topics.tooFew} minAttempts={minAttempts} onOpen={openTopic} />
-          ) : (
-            <>
-              {topicName && (
-                <div className="flex flex-wrap items-center gap-2 text-sm text-ws-text">
-                  <Badge variant="outline" className="rounded-full border-ws-line px-3 py-1 text-ws-text">Thema: {topicName}</Badge>
-                  <Button variant="outline" onClick={() => setTopicKey(null)} className="min-h-11 rounded-xl">
-                    Filter aufheben
-                  </Button>
-                </div>
-              )}
-              <QuestionsTable ranked={questions.ranked} tooFew={questions.tooFew} minAttempts={minAttempts} />
-            </>
+          <ul className="divide-y divide-ws-line overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">
+            {ranked.slice(0, shown).map((r) => (
+              <DifficultItem
+                key={r.question_id}
+                row={r}
+                code={subjectCodes[r.subject_id] ?? r.subject_name}
+                canShowTopic={!!r.topic_id && (!topicIds || topicIds.has(r.topic_id)) && !!onShowInTopic}
+                onShowInTopic={() => r.topic_id && onShowInTopic?.(r.subject_id, r.topic_id)}
+                onEdit={() => openEdit(r.question_id)}
+              />
+            ))}
+          </ul>
+          {ranked.length > shown && (
+            <Button
+              variant="outline"
+              onClick={() => setShown((n) => n + PAGE_SIZE)}
+              className="min-h-11 w-full rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised"
+            >
+              Weitere {Math.min(PAGE_SIZE, ranked.length - shown)} anzeigen (noch {ranked.length - shown})
+            </Button>
           )}
         </>
       )}
+
+      <QuestionFormModal
+        open={editing !== null}
+        onOpenChange={(o) => !o && setEditing(null)}
+        question={editing}
+        subjects={subjects}
+        onSuccess={() => {
+          void load()
+          onChanged?.()
+        }}
+      />
     </div>
   )
 }
 
-function TooFewNote({ minAttempts }: { minAttempts: number }) {
+/** Eine Frage in der Form der Fragenliste (mit Antworten und richtiger Lösung) */
+async function fetchQuestion(id: string): Promise<ListQuestion> {
+  const res = await fetch(`/api/admin/questions?question_id=${id}`)
+  if (!res.ok) throw new Error('load')
+  const body = (await res.json()) as { questions: ListQuestion[] }
+  const question = body.questions[0]
+  if (!question) throw new Error('missing')
+  return question
+}
+
+function DifficultItem({
+  row: r,
+  code,
+  canShowTopic,
+  onShowInTopic,
+  onEdit,
+}: {
+  row: DifficultyRow
+  code: string
+  canShowTopic: boolean
+  onShowInTopic: () => void
+  onEdit: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const [question, setQuestion] = useState<ListQuestion | null>(null)
+  const [error, setError] = useState(false)
+  const panelId = useId()
+  const share = topWrongShare(r)
+
+  function toggle() {
+    const next = !expanded
+    setExpanded(next)
+    if (next && !question) {
+      setError(false)
+      fetchQuestion(r.question_id)
+        .then(setQuestion)
+        .catch(() => setError(true))
+    }
+  }
+
   return (
-    <p className="px-1 pt-2 text-sm font-medium text-ws-muted">
-      Zu wenige Antworten (unter {minAttempts}) – noch nicht gerankt
-    </p>
+    <li className="space-y-2 px-3 py-3 sm:px-4">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={expanded ? panelId : undefined}
+        onClick={toggle}
+        className="flex min-h-11 w-full items-start gap-2 rounded-lg py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
+      >
+        <span className="min-w-0 flex-1 break-words text-ws-text">{r.question_text}</span>
+        <ChevronDown className={cn('mt-1 size-4 shrink-0 text-ws-muted transition-transform duration-200', expanded && 'rotate-180')} aria-hidden />
+      </button>
+      <RateBar correct={r.correct} attempts={r.attempts} />
+      <div className="flex flex-wrap items-center gap-2 text-xs text-ws-muted">
+        <span>
+          {code} › {r.topic_id ? (r.topic_name ?? 'Ohne Thema') : 'Ohne Thema'}
+        </span>
+        {r.top_wrong_option_text && (
+          <span className="max-w-full truncate" title={r.top_wrong_option_text}>
+            Häufigste falsche Antwort ({share} %): {r.top_wrong_option_text}
+          </span>
+        )}
+        {needsAnswerCheck(r) && (
+          <Badge variant="outline" className="rounded-full border-ws-orange/30 bg-ws-orange/15 text-ws-orange">
+            Antwort prüfen
+          </Badge>
+        )}
+        {r.open_reports > 0 && (
+          <Badge variant="outline" className="rounded-full border-ws-line text-ws-muted">
+            {r.open_reports === 1 ? '1 offene Meldung' : `${r.open_reports} offene Meldungen`}
+          </Badge>
+        )}
+        {changedAfterAnswers(r) && r.last_changed_at && (
+          <Badge variant="outline" className="rounded-full border-ws-line text-ws-muted">
+            Seit {formatDate(r.last_changed_at)} geändert
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={onEdit} className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">
+          <Pencil className="size-4" aria-hidden />
+          Bearbeiten
+        </Button>
+        {canShowTopic && (
+          <Button variant="outline" onClick={onShowInTopic} className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised">
+            <FolderOpen className="size-4" aria-hidden />
+            Im Thema zeigen
+          </Button>
+        )}
+      </div>
+      {expanded && (
+        <div id={panelId}>
+          {question ? (
+            <QuestionAnswers question={question} showStats={false} />
+          ) : error ? (
+            <p role="alert" className="text-sm text-ws-red">
+              Die Antworten konnten nicht geladen werden.
+            </p>
+          ) : (
+            <AdminLoadingState variant="list" rows={2} />
+          )}
+        </div>
+      )}
+    </li>
   )
 }
 
-function TopicsTable({
-  ranked,
-  tooFew,
-  minAttempts,
+function TopicList({
+  topics,
+  topicIds,
   onOpen,
 }: {
-  ranked: TopicStat[]
-  tooFew: TopicStat[]
-  minAttempts: number
-  onOpen: (t: TopicStat) => void
+  topics: TopicStat[]
+  topicIds?: ReadonlySet<string>
+  onOpen?: (subjectId: string, topicId: string) => void
 }) {
-  const render = (list: TopicStat[]) => (
-    <div className="ws-table-scroll rounded-2xl border border-ws-line bg-ws-surface">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-ws-line hover:bg-transparent">
-            <TableHead className="text-ws-muted">Thema</TableHead>
-            <TableHead className="text-ws-muted">Lösungsquote</TableHead>
-            <TableHead className="text-right text-ws-muted">Antworten</TableHead>
-            <TableHead className="text-right text-ws-muted">Fragen</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {list.map((t) => (
-            <TableRow key={`${t.key}|${t.subject_name}`} className="border-ws-line">
-              <TableCell className="max-w-xs">
-                <button
-                  type="button"
-                  onClick={() => onOpen(t)}
-                  title={`${t.name} (${t.subject_name})`}
-                  className="min-h-11 text-left font-medium text-ws-text hover:underline focus-visible:ring-2 focus-visible:ring-ws-green"
-                >
-                  <span className="block truncate">{t.name}</span>
-                  <span className="block truncate text-xs font-normal text-ws-muted">{t.subject_name}</span>
-                </button>
-              </TableCell>
-              <TableCell><RateBar correct={t.correct} attempts={t.attempts} /></TableCell>
-              <TableCell className="text-right tabular-nums text-ws-text">{t.attempts}</TableCell>
-              <TableCell className="text-right tabular-nums text-ws-text">
-                {t.questionsWithAnswers} / {t.questions}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
-  if (ranked.length === 0 && tooFew.length === 0) {
-    return <AdminEmptyState icon={BarChart3} title="Keine Themen mit Antworten" description="Für diese Auswahl liegen noch keine Antworten vor." />
-  }
   return (
-    <div className="space-y-3">
-      {ranked.length > 0 ? render(ranked) : (
-        <p className="text-sm text-ws-muted">Kein Thema hat schon {minAttempts} Antworten. Senke die Mindestanzahl oder wähle „Gesamt“.</p>
-      )}
-      {tooFew.length > 0 && (<><TooFewNote minAttempts={minAttempts} />{render(tooFew)}</>)}
-    </div>
+    <ul className="divide-y divide-ws-line overflow-hidden rounded-2xl border border-ws-line bg-ws-surface">
+      {topics.map((t) => (
+        <li key={`${t.key}|${t.subject_name}`} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+          <div className="min-w-0">
+            <p className="break-words font-medium text-ws-text">{t.name}</p>
+            <p className="text-xs text-ws-muted">
+              {t.subject_name} · {t.questionsWithAnswers} von {t.questions} Fragen beantwortet
+            </p>
+            {onOpen && t.key !== NO_TOPIC_KEY && t.topic_id && (!topicIds || topicIds.has(t.topic_id)) && (
+              <TopicOpenButton onClick={() => onOpen(t.subject_id, t.topic_id!)} name={t.name} />
+            )}
+          </div>
+          <RateBar correct={t.correct} attempts={t.attempts} />
+        </li>
+      ))}
+    </ul>
   )
 }
 
-function QuestionsTable({
-  ranked,
-  tooFew,
-  minAttempts,
-}: {
-  ranked: DifficultyRow[]
-  tooFew: DifficultyRow[]
-  minAttempts: number
-}) {
-  const render = (list: DifficultyRow[]) => (
-    <div className="ws-table-scroll ws-table-sticky rounded-2xl border border-ws-line bg-ws-surface">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-ws-line hover:bg-transparent">
-            <TableHead className="text-ws-muted">Frage</TableHead>
-            <TableHead className="text-ws-muted">Thema</TableHead>
-            <TableHead className="text-ws-muted">Lösungsquote</TableHead>
-            <TableHead className="text-right text-ws-muted">Antworten</TableHead>
-            <TableHead className="text-ws-muted">Häufigste falsche Antwort</TableHead>
-            <TableHead className="text-right text-ws-muted">Meldungen</TableHead>
-            <TableHead className="text-ws-muted">Hinweis</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {list.map((r) => {
-            const share = topWrongShare(r)
-            const changed = changedAfterAnswers(r)
-            return (
-              <TableRow key={`${r.question_id}|${r.subject_id}`} className="border-ws-line">
-                <TableCell className="max-w-sm">
-                  <Link
-                    href={questionSearchLink(r.question_text)}
-                    title={r.question_text}
-                    className="inline-flex min-h-11 items-center gap-1 font-medium text-ws-text hover:underline focus-visible:ring-2 focus-visible:ring-ws-green"
-                  >
-                    <span className="line-clamp-2">{r.question_text}</span>
-                    <ExternalLink className="size-3.5 shrink-0 text-ws-muted" aria-hidden />
-                  </Link>
-                </TableCell>
-                <TableCell className="max-w-40 truncate text-ws-muted" title={r.topic_name ?? 'Ohne Thema'}>
-                  {r.topic_name ?? 'Ohne Thema'}
-                </TableCell>
-                <TableCell><RateBar correct={r.correct} attempts={r.attempts} /></TableCell>
-                <TableCell className="text-right tabular-nums text-ws-text">{r.attempts}</TableCell>
-                <TableCell className="max-w-48 text-ws-text">
-                  {r.top_wrong_option_text ? (
-                    <span title={r.top_wrong_option_text} className="block truncate">
-                      {share} % · {r.top_wrong_option_text}
-                    </span>
-                  ) : '–'}
-                </TableCell>
-                <TableCell className="text-right tabular-nums text-ws-text">{r.open_reports > 0 ? r.open_reports : '–'}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {needsAnswerCheck(r) && (
-                      <Badge variant="outline" className="rounded-full border-ws-orange/30 bg-ws-orange/15 px-3 py-1 text-ws-orange">
-                        Antwort prüfen
-                      </Badge>
-                    )}
-                    {changed && r.last_changed_at && (
-                      <Badge variant="outline" className="rounded-full border-ws-line px-3 py-1 text-ws-muted">
-                        Seit {formatDate(r.last_changed_at)} geändert
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-              </TableRow>
-            )
-          })}
-        </TableBody>
-      </Table>
-    </div>
-  )
-  if (ranked.length === 0 && tooFew.length === 0) {
-    return <AdminEmptyState icon={BarChart3} title="Keine Fragen mit Antworten" description="Für diese Auswahl liegen noch keine Antworten vor." />
-  }
+function TopicOpenButton({ onClick, name }: { onClick: () => void; name: string }) {
   return (
-    <div className="space-y-3">
-      {ranked.length > 0 ? render(ranked) : (
-        <p className="text-sm text-ws-muted">Keine Frage hat schon {minAttempts} Antworten. Senke die Mindestanzahl.</p>
-      )}
-      {tooFew.length > 0 && (<><TooFewNote minAttempts={minAttempts} />{render(tooFew)}</>)}
-    </div>
+    <Button variant="ghost" onClick={onClick} aria-label={`Im Thema zeigen: ${name}`} className="-ml-3 min-h-11 text-ws-blue hover:text-ws-blue-hover">
+      Im Thema zeigen
+    </Button>
   )
 }

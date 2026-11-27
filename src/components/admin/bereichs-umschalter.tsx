@@ -62,6 +62,13 @@ export function BereichsUmschalter() {
         setSwitching(false)
         return
       }
+      // „Lerninhalte“ (PROJ-131): Fach und Thema gehören zum alten Bereich, der Reiter bleibt
+      const url = new URL(window.location.href)
+      if (url.pathname === '/admin/inhalte' && (url.searchParams.has('fach') || url.searchParams.has('thema'))) {
+        url.searchParams.delete('fach')
+        url.searchParams.delete('thema')
+        window.history.replaceState(null, '', url.pathname + url.search)
+      }
       // Seiten halten eigenen Zustand und laden beim Öffnen neu: volles Neuladen ist am zuverlässigsten
       window.location.reload()
     } catch {

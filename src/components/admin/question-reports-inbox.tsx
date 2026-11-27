@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/alert-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { QuestionReportReviewDialog } from '@/components/admin/question-report-review-dialog'
-import type { ContentTree } from '@/lib/content-tree'
 import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
@@ -46,6 +45,7 @@ interface Group {
   claimed_at: string | null
   claimed_by_me: boolean
   changed_since_report: boolean
+  in_trash?: boolean
 }
 
 interface ListResponse {
@@ -61,18 +61,35 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+/** Einschränkung auf das im Baum gewählte Fach bzw. Thema (PROJ-131) */
+export type ListRestriction = {
+  subjectId: string
+  /** Thema-ID oder `ohne`; fehlt = das ganze Fach */
+  topicId?: string
+  /** z. B. „LOP › Lagerlogistik“ */
+  label: string
+}
+
 /**
  * Inbox der gemeldeten Fragen (PROJ-73): gebündelt je Frage, mit Übernehmen,
  * Abschließen und Sammel-Schließen. Belohnung und Rückmeldung an die Melder
- * löst die Datenbank beim Abschließen aus.
+ * löst die Datenbank beim Abschließen aus. Seit PROJ-131 Reiter „Gemeldet“
+ * auf „Lerninhalte“; Fach und Thema wählt der Baum.
  */
-export function QuestionReportsInbox() {
+export function QuestionReportsInbox({
+  restriction = null,
+  onShowAll,
+  onChanged,
+}: {
+  restriction?: ListRestriction | null
+  onShowAll?: () => void
+  /** Nach dem Abschließen oder Wiederherstellen: Zahlen an den Reitern neu laden */
+  onChanged?: () => void
+} = {}) {
   const [tab, setTab] = useState<TabValue>('offen')
   const [reason, setReason] = useState<'alle' | ReportReason>('alle')
-  // PROJ-73: Fach und Thema als Filter (Werte aus dem Inhalts-Baum, ID oder „alle“)
-  const [subject, setSubject] = useState<string>('alle')
-  const [topic, setTopic] = useState<string>('alle')
-  const [tree, setTree] = useState<ContentTree | null>(null)
+  const subject = restriction?.subjectId
+  const topic = restriction?.topicId
   const [page, setPage] = useState(1)
   const [data, setData] = useState<ListResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,8 +106,8 @@ export function QuestionReportsInbox() {
     try {
       const params = new URLSearchParams({ status: tab, page: String(page) })
       if (reason !== 'alle') params.set('reason', reason)
-      if (subject !== 'alle') params.set('subject', subject)
-      if (topic !== 'alle') params.set('topic', topic)
+      if (subject) params.set('subject', subject)
+      if (topic) params.set('topic', topic)
       const res = await fetch(`/api/admin/question-reports?${params}`, { cache: 'no-store' })
       if (!res.ok) throw new Error('load')
       setData((await res.json()) as ListResponse)
@@ -109,30 +126,10 @@ export function QuestionReportsInbox() {
     setSelected(new Set())
   }, [tab, reason, subject, topic, page])
 
-  // Fächer und Themen für die Auswahlfelder; fällt der Baum aus, bleiben die Felder einfach weg
+  // Neue Auswahl im Baum: wieder auf Seite 1
   useEffect(() => {
-    let cancelled = false
-    fetch('/api/admin/content-tree', { cache: 'no-store' })
-      .then((res) => (res.ok ? (res.json() as Promise<ContentTree>) : null))
-      .then((t) => {
-        if (!cancelled && t) setTree(t)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const subjectOptions = useMemo(() => {
-    const many = (tree?.departments.length ?? 0) > 1
-    return (tree?.departments ?? []).flatMap((d) =>
-      d.subjects.map((s) => ({ id: s.id, label: many ? `${s.name} (${d.name})` : s.name, topics: s.topics })),
-    )
-  }, [tree])
-  const topicOptions = useMemo(
-    () => (subject === 'alle' ? [] : (subjectOptions.find((s) => s.id === subject)?.topics ?? [])),
-    [subjectOptions, subject],
-  )
+    setPage(1)
+  }, [subject, topic])
 
   /** Prüf-Dialog öffnen (PROJ-82). Im Reiter „Offen“ als Durchlauf über alle offenen Zeilen der Seite. */
   function openReview(g: Group) {
@@ -147,9 +144,26 @@ export function QuestionReportsInbox() {
     setReview({ queue, index: Math.max(0, queue.indexOf(g.question_id)) })
   }
 
+  async function restore(questionId: string) {
+    try {
+      const res = await fetch(`/api/admin/trash/question/${questionId}`, { method: 'POST' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data?.error ?? 'Wiederherstellen fehlgeschlagen.')
+        return
+      }
+      toast.success('Frage wiederhergestellt.')
+      onChanged?.()
+      void load()
+    } catch {
+      toast.error('Netzwerkfehler')
+    }
+  }
+
   async function onReviewClosed() {
     const next = review ? review.index + 1 : 0
     await load()
+    onChanged?.()
     setReview((r) => (r && next < r.queue.length ? { queue: r.queue, index: next } : null))
   }
 
@@ -158,7 +172,7 @@ export function QuestionReportsInbox() {
   const selectable = useMemo(() => items.filter((g) => g.question_id && g.status !== 'korrigiert'), [items])
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
   const isOpenTab = tab === 'offen'
-  const filtersActive = reason !== 'alle' || subject !== 'alle' || topic !== 'alle'
+  const filtersActive = reason !== 'alle' || !!restriction
 
   function claimedByOther(g: Group): boolean {
     if (!g.claimed_at || g.claimed_by_me || g.status !== 'in_pruefung') return false
@@ -173,6 +187,20 @@ export function QuestionReportsInbox() {
 
   return (
     <div className="space-y-4">
+      {restriction && (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-ws-text">
+            Nur Meldungen zu <span className="font-semibold">{restriction.label}</span>
+          </p>
+          <Button
+            variant="outline"
+            onClick={onShowAll}
+            className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+          >
+            Alle Meldungen zeigen
+          </Button>
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <AdminTabs
           value={tab}
@@ -209,49 +237,6 @@ export function QuestionReportsInbox() {
               ))}
             </SelectContent>
           </Select>
-          {subjectOptions.length > 0 && (
-            <Select
-              value={subject}
-              onValueChange={(v) => {
-                setSubject(v)
-                setTopic('alle')
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="min-h-11 w-full sm:w-56" aria-label="Fach filtern">
-                <SelectValue placeholder="Fach" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alle">Alle Fächer</SelectItem>
-                {subjectOptions.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          {subject !== 'alle' && topicOptions.length > 0 && (
-            <Select
-              value={topic}
-              onValueChange={(v) => {
-                setTopic(v)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="min-h-11 w-full sm:w-56" aria-label="Thema filtern">
-                <SelectValue placeholder="Thema" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="alle">Alle Themen</SelectItem>
-                {topicOptions.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
       </div>
 
@@ -278,7 +263,7 @@ export function QuestionReportsInbox() {
           title={filtersActive ? 'Keine passenden Meldungen' : isOpenTab ? 'Alles erledigt' : 'Hier ist nichts'}
           description={
             filtersActive
-              ? 'Zu dieser Auswahl gibt es keine Meldungen. Nimm einen Filter heraus, um mehr zu sehen.'
+              ? 'Zu dieser Auswahl gibt es keine Meldungen. Zeige alle Meldungen oder nimm den Filter heraus.'
               : isOpenTab
                 ? 'Keine offenen Meldungen. Azubis melden Fragen direkt nach dem Beantworten.'
                 : 'In dieser Ansicht gibt es keine Einträge.'
@@ -331,6 +316,18 @@ export function QuestionReportsInbox() {
                       </TableCell>
                     )}
                     <TableCell className="max-w-xl whitespace-normal">
+                      {g.in_trash && id && (
+                        <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <Badge className="border-ws-orange/30 bg-ws-orange/15 text-ws-orange">Frage liegt im Papierkorb</Badge>
+                          <Button
+                            variant="outline"
+                            onClick={() => void restore(id)}
+                            className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+                          >
+                            Wiederherstellen
+                          </Button>
+                        </div>
+                      )}
                       <p className="line-clamp-2 text-sm font-medium text-ws-text" title={g.question_text}>
                         {g.question_text}
                       </p>
@@ -428,6 +425,7 @@ export function QuestionReportsInbox() {
         onDone={() => {
           setBulkOpen(false)
           setSelected(new Set())
+          onChanged?.()
           void load()
         }}
       />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   AlertTriangle,
@@ -37,6 +37,7 @@ import { toast } from 'sonner'
 import { AdminEmptyState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
 import { AdminRowActions } from '@/components/admin/admin-row-actions'
+import { TrashDialog } from '@/components/admin/trash-dialog'
 import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
 import { TargetDepartmentField, useTargetDepartment } from '@/components/admin/target-department-field'
 
@@ -119,6 +120,12 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   }
   const [sets, setSets] = useState(initialSets)
   const [historyTarget, setHistoryTarget] = useState<ExamSet | null>(null)
+  // PROJ-131: Gelöschte Übungsprüfungen liegen hier; die alte Adresse leitet mit ?papierkorb=1 her
+  const [trashOpen, setTrashOpen] = useState(false)
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('papierkorb') === '1') setTrashOpen(true)
+  }, [])
   const emptyScopeText = useEmptyScopeText('Übungsprüfungen')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -472,12 +479,34 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
 
   return (
     <div>
+      <TrashDialog
+        open={trashOpen}
+        onOpenChange={(o) => {
+          setTrashOpen(o)
+          // Die Liste kommt vom Server: nach einer Wiederherstellung neu laden
+          if (!o && restoredRef.current) window.location.replace('/admin/exam-sets')
+        }}
+        type="exam_question_set"
+        title="Papierkorb – Übungsprüfungen"
+        description="Gelöschte Übungsprüfungen wiederherstellen."
+        onChanged={() => {
+          restoredRef.current = true
+        }}
+      />
       <div className="mb-6">
         <AdminPageHeader
           title={BEGRIFFE.uebungspruefungen}
           description="Frei und ohne Note. Azubis üben damit für die Abschlussprüfung."
           actions={
             <>
+              <Button
+                variant="outline"
+                onClick={() => setTrashOpen(true)}
+                className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+              >
+                <Trash2 className="mr-2 size-4" aria-hidden />
+                Papierkorb
+              </Button>
               {canImportFromFile && (
                 <Button
                   onClick={() => { resetImportDialog(); setShowImportDialog(true) }}

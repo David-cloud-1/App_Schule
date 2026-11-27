@@ -37,7 +37,7 @@ describe('GET /api/admin/schwierigste-fragen', () => {
   it('reicht Bereich und Filter an die Funktion, lässt Fragen ohne Antworten weg und kürzt Texte', async () => {
     rpc.mockResolvedValue({
       data: [
-        { question_id: 'a', attempts: 3, question_text: 'x'.repeat(300) },
+        { question_id: 'a', attempts: 3, question_text: 'x'.repeat(1100) },
         { question_id: 'b', attempts: 0, question_text: 'y' },
       ],
       error: null,
@@ -52,7 +52,7 @@ describe('GET /api/admin/schwierigste-fragen', () => {
     const body = await res.json()
     expect(body.totalQuestions).toBe(2)
     expect(body.items).toHaveLength(1)
-    expect(body.items[0].question_text.length).toBe(201)
+    expect(body.items[0].question_text.length).toBe(1001)
   })
 
   it('antwortet bei Datenbankfehler mit 500 ohne Technik-Text', async () => {

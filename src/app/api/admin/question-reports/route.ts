@@ -10,7 +10,8 @@ const querySchema = z.object({
   status: z.enum(['offen', 'korrigiert', 'nicht_uebernommen', 'entfaellt', 'alle']).default('offen'),
   department: z.string().uuid().optional(),
   subject: z.string().uuid().optional(),
-  topic: z.string().uuid().optional(),
+  /** `ohne` = nur Meldungen zu Fragen ohne Thema (PROJ-131) */
+  topic: z.union([z.string().uuid(), z.literal('ohne')]).optional(),
   reason: z.enum(REPORT_REASONS).optional(),
   page: z.coerce.number().int().min(1).max(10000).default(1),
 })
@@ -47,7 +48,8 @@ export async function GET(request: NextRequest) {
   if (q.department) query = query.eq('department_id', q.department)
   else if (auth.scopeDepartmentIds) query = query.in('department_id', auth.scopeDepartmentIds)
   if (q.subject) query = query.eq('subject_id', q.subject)
-  if (q.topic) query = query.eq('topic_id', q.topic)
+  if (q.topic === 'ohne') query = query.is('topic_id', null)
+  else if (q.topic) query = query.eq('topic_id', q.topic)
   if (q.reason) query = query.contains('reasons', [q.reason])
 
   const { data, error, count } = await query
@@ -56,8 +58,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Das hat nicht geklappt. Bitte versuche es erneut.' }, { status: 500 })
   }
 
+  // Liegt die gemeldete Frage im Papierkorb? (PROJ-131) Fällt die Abfrage aus, fehlt nur der Hinweis.
+  const questionIds = (data ?? []).flatMap((g) => (g.question_id ? [g.question_id as string] : []))
+  const trashed = new Set<string>()
+  if (questionIds.length > 0) {
+    const { data: rows, error: trashError } = await auth.supabase
+      .from('questions')
+      .select('id')
+      .in('id', questionIds)
+      .not('deleted_at', 'is', null)
+    if (trashError) console.error(`[${ROUTE}] trash lookup`, trashError)
+    for (const r of (rows ?? []) as { id: string }[]) trashed.add(r.id)
+  }
+
   const items = (data ?? []).map((g) => ({
     ...g,
+    in_trash: !!g.question_id && trashed.has(g.question_id as string),
     // „Seit der Meldung geändert“: Eine Korrektur lag nach der ältesten Meldung
     changed_since_report:
       !!g.last_changed_at && !!g.oldest_at && new Date(g.last_changed_at).getTime() > new Date(g.oldest_at).getTime(),

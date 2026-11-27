@@ -4,7 +4,7 @@ import { requireContentAdmin } from '../_lib/auth'
 import { MIN_ATTEMPTS_LOWEST, changedAfterAnswers } from '@/lib/difficulty'
 
 const ROUTE = 'api/admin/schwierigste-fragen'
-const TEXT_MAX = 200
+const TEXT_MAX = 1000
 
 const querySchema = z.object({
   class_level: z.coerce.number().int().refine((n) => [10, 11, 12].includes(n)).optional(),

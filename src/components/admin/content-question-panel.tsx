@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowLeft, FileQuestion, Search, SearchX } from 'lucide-react'
+import { FileQuestion, Search, SearchX } from 'lucide-react'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
@@ -67,7 +67,6 @@ export function ContentQuestionPanel({
   reloadKey = 0,
   onAdd,
   onChanged,
-  onBack,
 }: {
   subject: TreeSubject | null
   topic: TreeTopic | typeof NO_TOPIC | null
@@ -82,8 +81,6 @@ export function ContentQuestionPanel({
   onAdd: () => void
   /** Nach Anlegen, Bearbeiten, Löschen: Baum und Zähler neu laden */
   onChanged: () => void
-  /** Nur auf dem Handy: zurück zum Baum */
-  onBack?: () => void
 }) {
   const [rows, setRows] = useState<ListQuestion[]>([])
   const [total, setTotal] = useState<number | null>(null)
@@ -353,13 +350,6 @@ export function ContentQuestionPanel({
 
   return (
     <section aria-label="Fragen" className="min-w-0 space-y-4">
-      {onBack && (
-        <Button variant="ghost" onClick={onBack} className="-ml-2 min-h-11 text-ws-muted hover:text-ws-text">
-          <ArrowLeft className="size-5" aria-hidden />
-          Zurück zum Baum
-        </Button>
-      )}
-
       <div className="min-w-0">
         <h2 className="truncate text-lg font-semibold text-ws-text" title={selectionName}>
           {selectionName}
