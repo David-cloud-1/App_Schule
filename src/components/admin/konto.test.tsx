@@ -174,13 +174,13 @@ describe('Karte „Mein Beitrag“', () => {
         })}
       />,
     )
-    expect(screen.getByRole('link', { name: /Was ist CMR\?/ })).toHaveAttribute('href', '/admin/papierkorb')
-    expect(screen.getByRole('link', { name: /Zoll/ })).toHaveAttribute('href', '/admin/subjects')
+    expect(screen.getByRole('link', { name: /Was ist CMR\?/ })).toHaveAttribute('href', '/admin/inhalte?reiter=papierkorb')
+    expect(screen.getByRole('link', { name: /Zoll/ })).toHaveAttribute('href', '/admin/inhalte')
     expect(screen.queryByRole('link', { name: /Incoterms/ })).not.toBeInTheDocument()
     expect(screen.getAllByText('gelöscht')).toHaveLength(2)
     // Fragen und Themen öffnen mit dem Titel als Suchtext; ohne Titel bleibt es die einfache Liste
-    expect(screen.getByRole('link', { name: /Wer haftet/ })).toHaveAttribute('href', `/admin/questions?q=${encodeURIComponent('Wer haftet bei CMR & Frachtführer?')}`)
-    expect(screen.getByRole('link', { name: /Thema ohne Titel/ })).toHaveAttribute('href', '/admin/topics')
+    expect(screen.getByRole('link', { name: /Wer haftet/ })).toHaveAttribute('href', `/admin/inhalte?q=${encodeURIComponent('Wer haftet bei CMR & Frachtführer?')}`)
+    expect(screen.getByRole('link', { name: /Thema ohne Titel/ })).toHaveAttribute('href', '/admin/inhalte')
   })
 
   it('zeigt ohne Aktivität einen Leerzustand', () => {

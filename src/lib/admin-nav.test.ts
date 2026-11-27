@@ -19,7 +19,7 @@ describe('Admin-Navigation (PROJ-40/130)', () => {
   it('hat für jede Rolle dieselbe Reihenfolge (PROJ-130)', () => {
     const gemeinsam = [
       ['Leistungsnachweise', 'Übungsprüfungen'],
-      ['Übersicht', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Papierkorb'],
+      ['Lerninhalte'],
       ['Werkzeugkiste', 'Abwesenheiten', 'Nachschlagen', 'Lehrerzimmer'],
       ['Nutzer', 'Einstellungen des Bereichs', 'Shop-Gegenstände', 'Änderungsprotokoll'],
     ]
@@ -27,7 +27,7 @@ describe('Admin-Navigation (PROJ-40/130)', () => {
     expect(labelsOf('department_admin')).toEqual(gemeinsam)
     expect(labelsOf('admin')).toEqual([
       gemeinsam[0],
-      [...gemeinsam[1], 'Fragen aus Material'],
+      gemeinsam[1],
       gemeinsam[2],
       [...gemeinsam[3], 'Zuständigkeiten', 'Abwesenheitsarten', 'Bereiche anlegen'],
     ])
@@ -86,7 +86,14 @@ describe('Admin-Navigation (PROJ-40/130)', () => {
 
   it('zeigt jeder Lehrkraft die Inhalts-Seiten (PROJ-70: keine Fach-Eintragung nötig)', () => {
     const labels = adminNavGroupsFor('teacher').flatMap((g) => g.items.map((i) => i.label))
-    expect(labels).toEqual(expect.arrayContaining(['Fragen', 'Themen', 'Fächer', 'Übungsprüfungen']))
+    expect(labels).toEqual(expect.arrayContaining(['Lerninhalte', 'Übungsprüfungen']))
+  })
+
+  it('führt „Fragen aus Material“ nur für den Super-Admin und nicht im Menü (PROJ-131)', () => {
+    expect(adminPagesFor('admin').map((p) => p.href)).toContain('/admin/ai-generator')
+    expect(adminPagesFor('teacher').map((p) => p.href)).not.toContain('/admin/ai-generator')
+    expect(adminNavGroupsFor('admin').flatMap((g) => g.items.map((i) => i.href))).not.toContain('/admin/ai-generator')
+    expect(adminNavMatch('/admin/ai-generator')?.item.label).toBe('Lerninhalte')
   })
 
   it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {
@@ -100,9 +107,9 @@ describe('Admin-Navigation (PROJ-40/130)', () => {
   it('markiert Unterseiten als aktiv, die Übersicht nur auf /admin', () => {
     expect(isAdminNavActive('/admin/leistungsnachweise/123', '/admin/leistungsnachweise')).toBe(true)
     expect(isAdminNavActive('/admin/leistungsnachweise', '/admin/leistungsnachweise')).toBe(true)
-    expect(isAdminNavActive('/admin/questions', '/admin/leistungsnachweise')).toBe(false)
+    expect(isAdminNavActive('/admin/inhalte', '/admin/leistungsnachweise')).toBe(false)
     expect(isAdminNavActive('/admin', ADMIN_HOME_HREF)).toBe(true)
-    expect(isAdminNavActive('/admin/questions', ADMIN_HOME_HREF)).toBe(false)
+    expect(isAdminNavActive('/admin/inhalte', ADMIN_HOME_HREF)).toBe(false)
   })
 })
 
@@ -121,10 +128,11 @@ describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
 
   it('zeigt in der Schnellsuche nur Aktionen, deren Seite die Rolle sehen darf', () => {
     const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
-    expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
+    const inhalte = ['gemeldete-fragen', 'schwierigste-fragen', 'papierkorb']
+    expect(ids('department_admin')).toEqual(['neuer-nachweis', ...inhalte, 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
     // PROJ-46: eine Lehrkraft darf jetzt auch eigene Leistungsnachweise anlegen
     // PROJ-130: „Meine Fächer“ steht nicht mehr im Menü, Lehrkräfte finden es in der Suche
-    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'meine-faecher', 'lern-app', 'darstellung'])
+    expect(ids('teacher')).toEqual(['neuer-nachweis', ...inhalte, 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'meine-faecher', 'lern-app', 'darstellung'])
   })
 
   it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {

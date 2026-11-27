@@ -1,5 +1,4 @@
 import {
-  BarChart3,
   BookOpen,
   Bot,
   CalendarCog,
@@ -7,9 +6,6 @@ import {
   Building2,
   ClipboardList,
   FileText,
-  Flag,
-  FolderKanban,
-  FolderTree,
   GraduationCap,
   Library,
   ListChecks,
@@ -20,8 +16,6 @@ import {
   Settings,
   SlidersHorizontal,
   Store,
-  Tag,
-  Trash2,
   Users,
   UserCog,
   Wrench,
@@ -88,6 +82,11 @@ export const ADMIN_HOME_LABEL = 'Start'
 /** Lehrerzimmer (PROJ-63): Forum für den Austausch im Kollegium */
 export const LEHRERZIMMER_HREF = '/admin/lehrerzimmer'
 
+/** PROJ-131: die eine Seite für Fächer, Themen und Fragen */
+export const CONTENT_HREF = '/admin/inhalte'
+/** Bis PROJ-132 nur über „Lerninhalte“ erreichbar, nicht über das Menü */
+export const AI_GENERATOR_HREF = '/admin/ai-generator'
+
 /** PROJ-130: Einstiegsseite für Schulrecht und Checklisten */
 export const NACHSCHLAGEN_HREF = '/admin/nachschlagen'
 
@@ -153,69 +152,26 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
   {
     id: 'lerninhalte',
     label: 'Lerninhalte',
-    collapsible: { icon: BookOpen },
     items: [
       {
-        href: '/admin/inhalte',
-        label: 'Übersicht',
-        aliases: ['Inhalte'],
-        description: 'Fächer, Themen und Fragen als Baum: Struktur und Fragenzahlen auf einen Blick',
-        icon: FolderTree,
-        // PROJ-85: dieselben Rollen wie „Fragen“
+        href: CONTENT_HREF,
+        label: 'Lerninhalte',
+        // PROJ-131: die früheren Seiten sind jetzt Baum und Reiter dieser Seite
+        aliases: ['Inhalte', 'Fragen', 'Fächer', 'Themen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Papierkorb'],
+        description: 'Fächer, Themen und Fragen, mit denen die Azubis in der App lernen',
+        icon: BookOpen,
+        // PROJ-85: jede Lehrer-Rolle
         teacherVisible: true,
-      },
-      {
-        href: '/admin/questions',
-        label: 'Fragen',
-        description: 'Die Lernfragen der Azubis ansehen, bearbeiten und importieren',
-        icon: FileText,
-        // PROJ-48: welche Fragen eine Lehrkraft sieht, entscheidet ihre Fach-Zuständigkeit
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/gemeldete-fragen',
-        label: 'Gemeldete Fragen',
-        description: 'Fragen, die Azubis als fehlerhaft gemeldet haben, prüfen und abschließen',
-        icon: Flag,
-        // PROJ-73: jede Lehrer-Rolle (Inhalte sind offen, PROJ-70)
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/schwierigste-fragen',
-        label: 'Schwierigste Fragen',
-        description: 'Welche Fragen und Themen fallen den Azubis insgesamt am schwersten – ohne Namen',
-        icon: BarChart3,
-        // PROJ-74: jede Lehrer-Rolle (Inhalte sind offen, PROJ-70)
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/subjects',
-        label: 'Fächer',
-        description: 'Fächer anlegen und ordnen',
-        icon: FolderKanban,
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/topics',
-        label: 'Themen',
-        description: 'Themen und Stufen pflegen',
-        icon: Tag,
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/papierkorb',
-        label: 'Papierkorb',
-        description: 'Gelöschte Fragen, Themen, Fächer und Übungsprüfungen wiederherstellen',
-        icon: Trash2,
-        teacherVisible: true,
-      },
-      {
-        href: '/admin/ai-generator',
-        label: 'Fragen aus Material',
-        description: 'Aus Lernmaterial neue Fragen erstellen lassen',
-        icon: Bot,
-        // PROJ-127: bezahlte KI bleibt beim Super-Admin
-        superAdminOnly: true,
+        subPages: [
+          {
+            href: AI_GENERATOR_HREF,
+            label: 'Fragen aus Material',
+            description: 'Aus Lernmaterial neue Fragen erstellen lassen',
+            icon: Bot,
+            // PROJ-127: bezahlte KI bleibt beim Super-Admin
+            superAdminOnly: true,
+          },
+        ],
       },
     ],
   },
@@ -388,7 +344,10 @@ export function adminNavItemsFor(role: TeacherRole): AdminNavItem[] {
 
 /** Wie `adminNavItemsFor`, dazu die Seiten hinter den Einträgen (für Suche und Sichtbarkeit) */
 export function adminPagesFor(role: TeacherRole): AdminNavItem[] {
-  return adminNavItemsFor(role).flatMap((item) => [item, ...(item.subPages ?? [])])
+  return adminNavItemsFor(role).flatMap((item) => [
+    item,
+    ...(item.subPages ?? []).filter((page) => adminNavItemVisibleFor(page, role)),
+  ])
 }
 
 /** Rolle in Klartext fürs Konto-Menü: „Lehrkraft“, „Bereichs-Admin Spedition“, „Super-Admin“ */
@@ -424,6 +383,30 @@ export const ADMIN_COMMAND_ACTIONS: AdminCommandAction[] = [
     kind: 'link',
     href: '/admin/leistungsnachweise?neu=1',
     requiresHref: '/admin/leistungsnachweise',
+  },
+  {
+    id: 'gemeldete-fragen',
+    label: 'Gemeldete Fragen prüfen',
+    keywords: ['meldung', 'fehler', 'inbox', 'lerninhalte'],
+    kind: 'link',
+    href: `${CONTENT_HREF}?reiter=gemeldet`,
+    requiresHref: CONTENT_HREF,
+  },
+  {
+    id: 'schwierigste-fragen',
+    label: 'Schwierigste Fragen ansehen',
+    keywords: ['schwer', 'quote', 'auswertung', 'lerninhalte'],
+    kind: 'link',
+    href: `${CONTENT_HREF}?reiter=schwierig`,
+    requiresHref: CONTENT_HREF,
+  },
+  {
+    id: 'papierkorb',
+    label: 'Papierkorb der Lerninhalte',
+    keywords: ['gelöscht', 'wiederherstellen', 'frage', 'thema', 'fach'],
+    kind: 'link',
+    href: `${CONTENT_HREF}?reiter=papierkorb`,
+    requiresHref: CONTENT_HREF,
   },
   {
     id: 'werkzeugkiste',
@@ -510,17 +493,17 @@ export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
     id: 'fragen',
     label: 'Fragen durchsuchen',
     description: 'Lernfragen finden, prüfen und verbessern',
-    href: '/admin/questions',
+    href: CONTENT_HREF,
     icon: FileText,
-    requiresHref: '/admin/questions',
+    requiresHref: CONTENT_HREF,
   },
   {
     id: 'material',
     label: 'Fragen aus Material',
     description: 'Aus einem Skript neue Fragen erstellen lassen',
-    href: '/admin/ai-generator',
+    href: AI_GENERATOR_HREF,
     icon: Bot,
-    requiresHref: '/admin/ai-generator',
+    requiresHref: AI_GENERATOR_HREF,
   },
   {
     id: 'nutzer',
@@ -541,6 +524,6 @@ export const ADMIN_HOME_ACTIONS: AdminHomeAction[] = [
 ]
 
 export function adminHomeActionsFor(role: TeacherRole): AdminHomeAction[] {
-  const visible = new Set(adminNavItemsFor(role).map((item) => item.href))
+  const visible = new Set(adminPagesFor(role).map((item) => item.href))
   return ADMIN_HOME_ACTIONS.filter((action) => visible.has(action.requiresHref))
 }

@@ -28,10 +28,10 @@ export function KontoBeitragKarte({ section }: { section: Section<KontoBeitrag> 
           description="Sobald du Fragen anlegst oder änderst, siehst du hier deinen Beitrag."
           action={
             <Link
-              href="/admin/questions"
+              href="/admin/inhalte"
               className="inline-flex min-h-11 items-center rounded-xl border border-ws-line px-4 text-sm font-medium text-ws-text hover:bg-ws-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
             >
-              Zu den Fragen
+              Zu den Lerninhalten
             </Link>
           }
         />

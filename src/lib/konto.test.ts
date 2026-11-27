@@ -74,20 +74,22 @@ describe('formatRelativeTime', () => {
 
 describe('Inhalte im Verlauf', () => {
   it('führt Gelöschtes in den Papierkorb, sonst zur Liste des Inhalts', () => {
-    expect(contentHref('question', true)).toBe('/admin/papierkorb')
-    expect(contentHref('question', false)).toBe('/admin/questions')
+    expect(contentHref('question', true)).toBe('/admin/inhalte?reiter=papierkorb')
+    expect(contentHref('exam_question_set', true)).toBe('/admin/exam-sets?papierkorb=1')
+    expect(contentHref('question', false)).toBe('/admin/inhalte')
     expect(contentHref('exam_question_set', false)).toBe('/admin/exam-sets')
   })
 
   it('öffnet Fragen und Themen mit dem Titel als Suchtext, gekürzt und sauber kodiert', () => {
-    expect(contentHref('question', false, 'Was ist CMR?')).toBe('/admin/questions?q=Was%20ist%20CMR%3F')
-    expect(contentHref('topic', false, '  Incoterms ')).toBe('/admin/topics?q=Incoterms')
-    expect(contentHref('question', false, 'x'.repeat(200))).toBe(`/admin/questions?q=${'x'.repeat(80)}`)
+    expect(contentHref('question', false, 'Was ist CMR?')).toBe('/admin/inhalte?q=Was%20ist%20CMR%3F')
+    // Die Suche auf „Lerninhalte“ durchsucht Fragen, nicht Themennamen
+    expect(contentHref('topic', false, '  Incoterms ')).toBe('/admin/inhalte')
+    expect(contentHref('question', false, 'x'.repeat(200))).toBe(`/admin/inhalte?q=${'x'.repeat(80)}`)
     // ohne Suchtext, bei Gelöschtem und bei Fächern/Prüfungssets bleibt es der einfache Link
-    expect(contentHref('question', false, null)).toBe('/admin/questions')
-    expect(contentHref('question', false, '   ')).toBe('/admin/questions')
-    expect(contentHref('question', true, 'Was ist CMR?')).toBe('/admin/papierkorb')
-    expect(contentHref('subject', false, 'Zoll')).toBe('/admin/subjects')
+    expect(contentHref('question', false, null)).toBe('/admin/inhalte')
+    expect(contentHref('question', false, '   ')).toBe('/admin/inhalte')
+    expect(contentHref('question', true, 'Was ist CMR?')).toBe('/admin/inhalte?reiter=papierkorb')
+    expect(contentHref('subject', false, 'Zoll')).toBe('/admin/inhalte')
     expect(contentHref('exam_question_set', false, 'Set')).toBe('/admin/exam-sets')
   })
 

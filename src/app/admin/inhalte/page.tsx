@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, ChevronDown, FolderTree, Plus } from 'lucide-react'
+import { AlertTriangle, Bot, ChevronDown, Download, FolderPlus, FolderTree, MoreHorizontal, Plus, Upload } from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
@@ -13,6 +13,10 @@ import { AdminTabs, AdminTabsContent, AdminTabsList, AdminTabsTrigger } from '@/
 import { QuestionReportsInbox, type ListRestriction } from '@/components/admin/question-reports-inbox'
 import { DifficultQuestions } from '@/components/admin/difficult-questions'
 import { TrashList } from '@/components/admin/trash-list'
+import { CsvImportDialog } from '@/components/admin/csv-import-dialog'
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { AI_GENERATOR_HREF } from '@/lib/admin-nav'
 import { cn } from '@/lib/utils'
 import { ContentHistorySheet, type ContentType } from '@/components/admin/content-history-sheet'
 import { SubjectFormModal } from '@/components/admin/subject-form-modal'
@@ -147,6 +151,10 @@ function InhaltePageContent() {
   const [taskCount, setTaskCount] = useState<number | null>(null)
   const [trashCount, setTrashCount] = useState<number | null>(null)
   const [trashType, setTrashType] = useState<TrashTab>('question')
+  const [newSubjectOpen, setNewSubjectOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const role = useOptionalAdminRole()?.role
   const initializedRef = useRef(false)
 
   const loadTree = useCallback(async () => {
@@ -304,6 +312,31 @@ function InhaltePageContent() {
     }
   }
 
+  /** Tabelle (CSV) der Auswahl im Baum, mit derselben Stufe */
+  async function exportTable() {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (selection && selection.kind !== 'all') params.set('subject', selection.subject.code)
+      if (selection?.kind === 'topic') params.set('topic_id', selection.topic.id)
+      if (selection?.kind === 'notopic') params.set('missing_topic', 'true')
+      if (klasse !== 'all') params.set('class_level', String(klasse))
+      const res = await fetch(`/api/admin/questions/export?${params}`)
+      if (!res.ok) throw new Error('export failed')
+      const url = URL.createObjectURL(await res.blob())
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `fragen-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Tabelle exportiert')
+    } catch {
+      toast.error('Export fehlgeschlagen.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   async function submitTopic(name: string): Promise<string | null> {
     if (!topicDialog) return null
     const isCreate = topicDialog.mode === 'create'
@@ -395,17 +428,56 @@ function InhaltePageContent() {
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        title="Inhalte"
-        description="Wähle links im Baum ein Fach oder Thema und sieh rechts die Fragen dazu."
+        title="Lerninhalte"
+        description="Fächer, Themen und Fragen, mit denen die Azubis in der App lernen."
         actions={
-          <Button
-            onClick={() => setAddOpen(true)}
-            disabled={!tree || isEmptyTree}
-            className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
-          >
-            <Plus className="size-5" aria-hidden />
-            Fragen hinzufügen
-          </Button>
+          <>
+            {/* Bei einem leeren Bereich steht die Hauptaktion im Leerzustand */}
+            {!isEmptyTree && (
+              <Button
+                onClick={() => setAddOpen(true)}
+                disabled={!tree}
+                className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+              >
+                <Plus className="size-5" aria-hidden />
+                Fragen hinzufügen
+              </Button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="size-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised hover:text-ws-text"
+                  aria-label="Weitere Aktionen"
+                  disabled={!tree}
+                >
+                  <MoreHorizontal className="size-5" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-ws-line bg-ws-surface text-ws-text">
+                <DropdownMenuItem className="min-h-11" onSelect={() => setNewSubjectOpen(true)}>
+                  <FolderPlus className="size-4" aria-hidden />
+                  Neues Fach …
+                </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-11" onSelect={exportTable} disabled={exporting}>
+                  <Download className="size-4" aria-hidden />
+                  Tabelle exportieren
+                </DropdownMenuItem>
+                <DropdownMenuItem className="min-h-11" onSelect={() => setImportOpen(true)}>
+                  <Upload className="size-4" aria-hidden />
+                  Tabelle importieren
+                </DropdownMenuItem>
+                {role === 'admin' && (
+                  <DropdownMenuItem asChild className="min-h-11">
+                    <a href={AI_GENERATOR_HREF}>
+                      <Bot className="size-4" aria-hidden />
+                      Fragen aus Material
+                    </a>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
         }
       />
 
@@ -427,10 +499,13 @@ function InhaltePageContent() {
         <AdminEmptyState
           icon={FolderTree}
           title="In diesem Bereich gibt es noch keine Fächer."
-          description="Lege zuerst auf der Seite „Fächer“ ein Fach an."
+          description="Lege zuerst ein Fach an, dann kannst du Themen und Fragen hinzufügen."
           action={
-            <Button asChild className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
-              <a href="/admin/subjects">Zu den Fächern</a>
+            <Button
+              onClick={() => setNewSubjectOpen(true)}
+              className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+            >
+              Neues Fach …
             </Button>
           }
         />
@@ -575,6 +650,23 @@ function InhaltePageContent() {
           subjectId: selectedSubject?.id,
           topicId: selection?.kind === 'topic' ? selection.topic.id : null,
           classLevel: klasse === 'all' ? null : klasse,
+        }}
+      />
+
+      <SubjectFormModal
+        open={newSubjectOpen}
+        onOpenChange={setNewSubjectOpen}
+        subject={null}
+        onSuccess={refreshAll}
+      />
+
+      <CsvImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        subjects={subjectsForForm}
+        onSuccess={() => {
+          setReloadKey((k) => k + 1)
+          refreshAll()
         }}
       />
 

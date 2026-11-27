@@ -1,8 +1,8 @@
 # PROJ-131: Lerninhalte an einem Ort (Phase 3 Übersichtlichkeit, Teil 1)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27 (Tech Design)
+**Last Updated:** 2026-11-27 (gebaut, Schritte 1–4)
 
 ## Worum es geht
 
@@ -228,6 +228,28 @@ Keine neuen Pakete. Genutzt wird, was schon da ist: shadcn/ui (Collapsible, Chec
 **Risiken:**
 - Die Seite „Fragen“ ist groß. Wird beim Umzug etwas vergessen, fehlt es nach der Weiterleitung. Deshalb vor Schritt 4 eine Liste aller Funktionen der alten Seite abhaken.
 - Tempo: Die Antworten in der Liste machen jeden Abschnitt etwas größer (25 Fragen, unkritisch). Der Baum lädt eine Spalte mehr, die Zahl der Abrufe bleibt gleich.
+
+## Implementation Notes (2026-11-27)
+
+Alle vier Bauschritte sind fertig und je einzeln committet. 4.829 Tests grün, Build sauber, Lint ohne Fehler. **Noch nicht gepusht, nicht deployt und nicht im Browser geprüft.** Keine Migration, kein neues Paket, keine neue Schnittstelle.
+
+**Gebaut:**
+- **Zählregel** an einer Stelle (`lib/question-count*.ts`), benutzt von Baum und Fächer-Schnittstelle. Ursache für 834 gegen 736 (BGP Spedition, am 27.11. in der Datenbank nachgeprüft: 834 Fragen, 736 sichtbar): Der Start zählte nur sichtbare. Zusätzlich war die alte Zählung über eingebettete Zeilen auf 1000 begrenzt.
+- **Baum** neu gezeichnet; die Fragen-Schnittstelle liefert 25 je Abschnitt, Antworten, `hidden_info` („warum und von wem“, `lib/hidden-info.ts`), Suche in Frage **und** Antwort.
+- **Grund „nach einer Meldung“:** `PATCH /api/admin/questions/[id]` mit `reason: 'meldung'` bündelt die Version zum Vorgang „Nach einer Meldung“.
+- **Seite** `/admin/inhalte` = „Lerninhalte“ mit vier Reitern, Kopf-Menü (Neues Fach, Export, Import, Fragen aus Material), am Handy Baum als einklappbare Leiste.
+- **Weiterleitungen** in `lib/redirects.ts` (eingebunden in `next.config.ts`), alte Seiten gelöscht, Freigabeliste in `roles.ts` bereinigt. Ein Wächter-Test schlägt fehl, wenn wieder ein Link auf eine alte Adresse entsteht.
+
+**Abweichungen und Funde:**
+- **Azubi-Seite geändert (nötig für B41):** Bisher beachtete kein Azubi-Weg `subjects.is_active`, und die Verwaltung ließ ein Fach mit sichtbaren Fragen gar nicht ausblenden. Jetzt ist Ausblenden immer erlaubt, und Fächerlisten, Quiz, Blitzrunde, Lücken, Themen und die Zufallsauswahl der Übungsprüfung lassen ausgeblendete Fächer weg. Von Lehrkräften zusammengestellte Übungsprüfungen bleiben unverändert. Am 27.11. war kein Fach ausgeblendet, für Azubis ändert sich also zunächst nichts.
+- **Lehrerzimmer-Papierkorb:** Die Spec ging davon aus, dass es schon einen eigenen gibt. Es gab nur den Reiter auf der Seite „Papierkorb“. Jetzt öffnet er als Fenster im Lehrerzimmer, ebenso bei den Übungsprüfungen.
+- **Reiter „Schwierig“:** Themen-Rangliste und Zeitraum bleiben als Segmente erhalten. Die Stufe kommt aus dem Baum.
+- **Bewusst entfallen:** Filter nach Schwierigkeit und Sortieren auf der alten Seite „Fragen“ (die Spec will einen Filter), die Spalte „Erstellt“, die Suche nach Themennamen.
+- **Suche:** Treffer in den Antworten sind auf 200 begrenzt, damit die Anfrage-Adresse kurz bleibt. Treffer im Fragetext sind nicht begrenzt.
+- **Zahlen:** Die Schnellsuche zeigt keine Fragenzahlen. Verglichen werden Baum, Listenkopf und Start.
+- **Tabellen-Export** folgt Fach, Thema und Stufe im Baum. Er nutzt weiter die bisherige Export-Schnittstelle: Sie arbeitet im Arbeitsbereich der Person, bei „Alle Bereiche“ also nur in einem Bereich (wie bisher).
+
+**Für /qa besonders prüfen:** Ausblenden eines Fachs auf der Azubi-Seite, „Rückgängig“-Toast, Handy bei 360 px, Weiterleitungen mit `?q=` und `?tab=`.
 
 ## QA Test Results
 _To be added by /qa_

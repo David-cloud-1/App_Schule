@@ -120,8 +120,7 @@ describe('AdminShell – Handy (PROJ-45)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }))
     const drawer = screen.getByRole('dialog')
     expect(within(drawer).getByRole('navigation', { name: 'Lehrkräfte-Bereich' })).toBeInTheDocument()
-    fireEvent.click(within(drawer).getByTestId('nav-fold-lerninhalte'))
-    fireEvent.click(within(drawer).getByRole('link', { name: 'Fragen' }))
+    fireEvent.click(within(drawer).getByRole('link', { name: 'Lerninhalte' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
@@ -211,7 +210,9 @@ describe('Schnellsuche (PROJ-45)', () => {
     // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Meine Fächer/Papierkorb
     // sind jetzt auch für Lehrkräfte sichtbar — welche Inhalte sie darin
     // sieht, entscheidet ihre Fach-Zuständigkeit.
-    expect(palette.getByRole('option', { name: /^Lerninhalte ›\s*Fragen$/ })).toBeInTheDocument()
+    // PROJ-131: eine Seite „Lerninhalte“ statt einzelner Seiten, dazu Sprünge zu den Reitern
+    expect(palette.getByRole('option', { name: /^Lerninhalte$/ })).toBeInTheDocument()
+    expect(palette.getByRole('option', { name: /Gemeldete Fragen prüfen/ })).toBeInTheDocument()
     expect(palette.queryByRole('option', { name: /Fachbereiche/ })).not.toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Werkzeugkiste öffnen/ })).toBeInTheDocument()
     // PROJ-46: eigene Leistungsnachweise anlegen und einsehen

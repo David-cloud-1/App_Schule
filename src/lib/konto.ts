@@ -78,24 +78,15 @@ export const CONTENT_TYPE_LABEL: Record<KontoContentType, string> = {
 const SEARCH_TEXT_MAX = 80
 
 /**
- * Wohin ein Eintrag aus „Zuletzt bearbeitet“ führt: Gelöschtes in den
- * Papierkorb, sonst in die Liste des Inhalts. Fragen und Themen haben eine
- * Suche; dort öffnet der Link mit dem Titel als Suchtext (`?q=`), so steht der
- * Eintrag sofort oben. Fächer und Prüfungssets stehen in kurzen Listen.
+ * Wohin ein Eintrag aus „Zuletzt bearbeitet“ führt (PROJ-131: „Lerninhalte“).
+ * Gelöschtes liegt im Papierkorb der passenden Seite. Fragen öffnen die Seite
+ * mit dem Titel als Suchtext (`?q=`), so steht der Eintrag sofort oben.
  */
 export function contentHref(type: KontoContentType, deleted: boolean, searchText?: string | null): string {
-  if (deleted) return '/admin/papierkorb'
-  const q = searchText?.trim() ? `?q=${encodeURIComponent(searchText.trim().slice(0, SEARCH_TEXT_MAX))}` : ''
-  switch (type) {
-    case 'question':
-      return `/admin/questions${q}`
-    case 'topic':
-      return `/admin/topics${q}`
-    case 'subject':
-      return '/admin/subjects'
-    case 'exam_question_set':
-      return '/admin/exam-sets'
-  }
+  if (type === 'exam_question_set') return deleted ? '/admin/exam-sets?papierkorb=1' : '/admin/exam-sets'
+  if (deleted) return '/admin/inhalte?reiter=papierkorb'
+  const q = type === 'question' && searchText?.trim() ? `?q=${encodeURIComponent(searchText.trim().slice(0, SEARCH_TEXT_MAX))}` : ''
+  return `/admin/inhalte${q}`
 }
 
 function pickTitle(type: KontoContentType, data: unknown): string | null {

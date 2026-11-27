@@ -24,16 +24,16 @@ function wrap(
   })
 }
 
-/** Klappt „Lerninhalte“ und „Verwaltung“ auf (sie sind standardmäßig zu) */
+/** Klappt „Verwaltung“ auf (standardmäßig zu) */
 function openFolds() {
-  for (const id of ['lerninhalte', 'verwaltung']) {
+  for (const id of ['verwaltung']) {
     const trigger = screen.queryByTestId(`nav-fold-${id}`)
     if (trigger && trigger.getAttribute('aria-expanded') === 'false') fireEvent.click(trigger)
   }
 }
 
 const HAUPT_OBEN = ['Start', 'Leistungsnachweisemit Note', 'Übungsprüfungenohne Note']
-const LERNINHALTE = ['Übersicht', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Papierkorb']
+const LERNINHALTE = ['Lerninhalte']
 const HAUPT_UNTEN = ['Werkzeugkiste', 'Abwesenheiten', 'Nachschlagen', 'Lehrerzimmer']
 const VERWALTUNG = ['Nutzer', 'Einstellungen des Bereichs', 'Shop-Gegenstände', 'Änderungsprotokoll']
 const linkTexts = () => screen.getAllByRole('link').map((a) => a.textContent)
@@ -53,10 +53,11 @@ function stubAssessments(assessments: unknown[]) {
 describe('AdminNav (PROJ-40/130)', () => {
   beforeEach(() => window.sessionStorage.clear())
 
-  it('zeigt alle Hauptpunkte, „Lerninhalte“ und „Verwaltung“ zugeklappt', () => {
+  it('zeigt alle Hauptpunkte, „Lerninhalte“ als einen Punkt und „Verwaltung“ zugeklappt (PROJ-131)', () => {
     wrap(<AdminNav />, false)
-    expect(linkTexts()).toEqual([...HAUPT_OBEN, ...HAUPT_UNTEN])
-    expect(screen.getByTestId('nav-fold-lerninhalte')).toHaveAttribute('aria-expanded', 'false')
+    expect(linkTexts()).toEqual([...HAUPT_OBEN, ...LERNINHALTE, ...HAUPT_UNTEN])
+    expect(screen.getByRole('link', { name: 'Lerninhalte' })).toHaveAttribute('href', '/admin/inhalte')
+    expect(screen.queryByTestId('nav-fold-lerninhalte')).not.toBeInTheDocument()
     expect(screen.getByTestId('nav-fold-verwaltung')).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('Weitere Seiten')).not.toBeInTheDocument()
   })
@@ -65,7 +66,7 @@ describe('AdminNav (PROJ-40/130)', () => {
     wrap(<AdminNav />, false)
     openFolds()
     expect(linkTexts()).toEqual([...HAUPT_OBEN, ...LERNINHALTE, ...HAUPT_UNTEN, ...VERWALTUNG])
-    for (const name of ['Lerninhalte', 'Verwaltung']) {
+    for (const name of ['Verwaltung']) {
       expect(screen.getByRole('list', { name })).toBeInTheDocument()
     }
     // Gruppentitel sind keine Überschriften (sonst stünden sie vor der h1 jeder Seite)
@@ -74,11 +75,10 @@ describe('AdminNav (PROJ-40/130)', () => {
 
   it('merkt sich das Aufklappen, auch wenn das Menü neu aufgebaut wird', () => {
     const first = wrap(<AdminNav />, false)
-    fireEvent.click(screen.getByTestId('nav-fold-lerninhalte'))
+    fireEvent.click(screen.getByTestId('nav-fold-verwaltung'))
     first.unmount()
     wrap(<AdminNav />, false)
-    expect(screen.getByTestId('nav-fold-lerninhalte')).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByTestId('nav-fold-verwaltung')).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByTestId('nav-fold-verwaltung')).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('klappt den Block auf, in dem die aktuelle Seite liegt, und lässt ihn zuklappen', () => {
@@ -87,7 +87,6 @@ describe('AdminNav (PROJ-40/130)', () => {
     const trigger = screen.getByTestId('nav-fold-verwaltung')
     expect(trigger).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByRole('link', { name: 'Änderungsprotokoll' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByTestId('nav-fold-lerninhalte')).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(trigger)
     expect(trigger).toHaveAttribute('aria-expanded', 'false')
     mockPath = '/admin'
@@ -103,7 +102,8 @@ describe('AdminNav (PROJ-40/130)', () => {
     wrap(<AdminNav />, true)
     openFolds()
     expect(screen.getByRole('link', { name: /Bereiche anlegen/ })).toHaveTextContent('Super-Admin')
-    expect(screen.getByRole('link', { name: 'Fragen aus Material' })).toBeInTheDocument()
+    // PROJ-131: „Fragen aus Material“ steht nicht mehr im Menü
+    expect(screen.queryByRole('link', { name: 'Fragen aus Material' })).not.toBeInTheDocument()
   })
 
   it('hält „Nachschlagen“ auf den Unterseiten aktiv', () => {
@@ -118,7 +118,7 @@ describe('AdminNav (PROJ-40/130)', () => {
     wrap(<AdminNav />, false)
     openFolds()
     expect(screen.getByRole('link', { name: /Leistungsnachweise/ })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Fragen' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Lerninhalte' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('link', { name: 'Start' })).not.toHaveAttribute('aria-current')
     mockPath = '/admin'
   })
@@ -127,7 +127,7 @@ describe('AdminNav (PROJ-40/130)', () => {
     const onNavigate = vi.fn()
     wrap(<AdminNav onNavigate={onNavigate} />, false)
     openFolds()
-    fireEvent.click(screen.getByRole('link', { name: 'Fragen' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Lerninhalte' }))
     expect(onNavigate).toHaveBeenCalledTimes(1)
   })
 })
@@ -154,7 +154,7 @@ describe('AdminHome (PROJ-40)', () => {
     const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
     expect(hrefs).toEqual([
       '/admin/leistungsnachweise?neu=1',
-      '/admin/questions',
+      '/admin/inhalte',
       '/admin/users',
       '/admin/werkzeugkiste',
     ])
@@ -201,7 +201,7 @@ describe('Lehrkräfte-Bereich für die Rolle „Lehrkraft“ (PROJ-44)', () => {
     await screen.findByText('Gerade läuft kein Leistungsnachweis.')
     expect(screen.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual([
       '/admin/leistungsnachweise?neu=1',
-      '/admin/questions',
+      '/admin/inhalte',
       '/admin/users',
       '/admin/werkzeugkiste',
     ])

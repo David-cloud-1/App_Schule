@@ -54,7 +54,7 @@ const SENTENCE: Record<TaskId, { href: string; text: (n: number) => string }> = 
       `${n} ${plural(n, 'Nachweis im Entwurf hat', 'Nachweise im Entwurf haben')} in den nächsten 7 Tagen einen Termin`,
   },
   openReports: {
-    href: '/admin/gemeldete-fragen',
+    href: '/admin/inhalte?reiter=gemeldet',
     text: (n) => `${n} ${plural(n, 'gemeldete Frage wartet', 'gemeldete Fragen warten')} auf dich`,
   },
   draftQuestions: {

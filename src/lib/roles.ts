@@ -113,8 +113,8 @@ export function shouldRedirectTeacherHome(role: unknown, playerViewCookie: strin
  * Seiten unter /admin, die eine reine Lehrkraft (ohne Verwaltungsrechte)
  * öffnen darf. Exakte Pfade bzw. Pfad-Präfixe; alles andere leitet zur
  * Übersicht um. Leistungsnachweise (PROJ-46): eigene Nachweise anlegen,
- * durchführen und auswerten. Fragen/Fächer/Themen/Prüfungssimulation/
- * Papierkorb (PROJ-48): feinere Prüfung je Fach-Zuständigkeit übernehmen
+ * durchführen und auswerten. Lerninhalte und Übungsprüfungen
+ * (PROJ-48): feinere Prüfung je Fach-Zuständigkeit übernehmen
  * die API-Routen (`requireContentAdmin`) — hier geht es nur darum, dass eine
  * Lehrkraft die Seite überhaupt öffnen darf, auch bevor sie unter „Meine
  * Fächer" ihre erste Zuständigkeit eingetragen hat.
@@ -125,16 +125,10 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/my-subjects',
   // PROJ-50: „Mein Konto“ — das Profil jeder Lehrer-Rolle
   '/admin/konto',
-  // PROJ-85: Inhalts-Baum, gleiche Rollen wie „Fragen“
+  // PROJ-131: „Lerninhalte“ (Fächer, Themen, Fragen, Gemeldet, Schwierig, Papierkorb).
+  // Die alten Adressen leiten weiter (lib/redirects.ts), bevor diese Liste zählt.
   '/admin/inhalte',
-  // PROJ-73/74: Meldungs-Inbox und schwierigste Fragen sind für jede Lehrer-Rolle
-  '/admin/gemeldete-fragen',
-  '/admin/schwierigste-fragen',
-  '/admin/questions',
-  '/admin/subjects',
-  '/admin/topics',
   '/admin/exam-sets',
-  '/admin/papierkorb',
   // PROJ-51: Werkzeugkiste — jede Lehrer-Rolle, auch ohne Fachbereich oder Fach
   '/admin/werkzeugkiste',
   // PROJ-55: Schulrecht — jede Lehrer-Rolle, auch ohne Fachbereich oder Fach

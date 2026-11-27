@@ -17,6 +17,7 @@ import {
   type AdminNavGroup,
   type AdminNavItem,
   LEHRERZIMMER_HREF,
+  CONTENT_HREF,
   adminNavGroupsFor,
   isAdminNavActive,
 } from '@/lib/admin-nav'
@@ -26,8 +27,8 @@ import {
  * dieselbe Liste in der Seitenleiste (Desktop, einklappbar) und in der
  * Schublade (Handy).
  *
- * Alle Hauptpunkte sind sichtbar. „Lerninhalte“ und „Verwaltung“ sind
- * aufklappbar und öffnen sich, wenn die aktuelle Seite darin liegt. Eingeklappt
+ * Alle Hauptpunkte sind sichtbar. „Verwaltung“ ist aufklappbar und öffnet sich,
+ * wenn die aktuelle Seite darin liegt. Eingeklappt
  * (nur Icons) zeigt die Leiste alles und jedes Icon seinen Namen als Tooltip.
  */
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -46,7 +47,8 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   function countFor(item: AdminNavItem): number | undefined {
-    if (item.href === '/admin/gemeldete-fragen') return taskCounts.openReports ?? 0
+    // PROJ-131: die Zahl der Meldungen steht am Menüpunkt „Lerninhalte“ (Reiter „Gemeldet“)
+    if (item.href === CONTENT_HREF) return taskCounts.openReports ?? 0
     if (item.href === '/admin/leistungsnachweise') return assessmentNavCount(taskCounts)
     return undefined
   }

@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import { LEGACY_ADMIN_REDIRECTS } from "./src/lib/redirects";
 
 const nextConfig: NextConfig = {
+  // PROJ-131: alte Adressen leiten auf „Lerninhalte“ bzw. den passenden Papierkorb
+  async redirects() {
+    return LEGACY_ADMIN_REDIRECTS
+  },
   async headers() {
     return [
       {

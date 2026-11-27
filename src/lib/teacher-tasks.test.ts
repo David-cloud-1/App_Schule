@@ -28,7 +28,7 @@ describe('buildTaskEntries', () => {
   it('bildet Einzahl und Mehrzahl und verlinkt auf die passende Seite', () => {
     const [one] = buildTaskEntries(counts({ openReports: 1 }))
     expect(one.text).toBe('1 gemeldete Frage wartet auf dich')
-    expect(one.href).toBe('/admin/gemeldete-fragen')
+    expect(one.href).toBe('/admin/inhalte?reiter=gemeldet')
     const [many] = buildTaskEntries(counts({ openReports: 3 }))
     expect(many.text).toBe('3 gemeldete Fragen warten auf dich')
     const [rel] = buildTaskEntries(counts({ unreleasedAssessments: 2 }))

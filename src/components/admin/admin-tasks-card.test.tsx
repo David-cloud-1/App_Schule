@@ -26,7 +26,7 @@ describe('AdminTasksCard (PROJ-81)', () => {
       '3 gemeldete Fragen warten auf dich',
       '1 Nachweis ist beendet, die Ergebnisse sind noch nicht freigegeben',
     ])
-    expect(links[1]).toHaveAttribute('href', '/admin/gemeldete-fragen')
+    expect(links[1]).toHaveAttribute('href', '/admin/inhalte?reiter=gemeldet')
   })
 
   it('behandelt eine unbrauchbare Antwort wie „nichts zu tun“, statt abzustürzen', async () => {

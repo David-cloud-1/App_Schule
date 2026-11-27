@@ -160,7 +160,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P2 | PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | In Progress |
 | P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed |
 | P1 | PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | Deployed |
-| P1 | PROJ-131: Lerninhalte an einem Ort (Phase 3, Teil 1) | Planned |
+| P1 | PROJ-131: Lerninhalte an einem Ort (Phase 3, Teil 1) | In Progress |
 | P1 | PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3, Teil 2) | Planned |
 
 ## Success Metrics

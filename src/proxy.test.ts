@@ -106,11 +106,7 @@ describe('Middleware – Lehrkräfte-Bereich (PROJ-44)', () => {
       '/admin/leistungsnachweise',
       '/admin/leistungsnachweise/abc/druck/klasse',
       '/admin/inhalte',
-      '/admin/questions',
-      '/admin/subjects',
-      '/admin/topics',
       '/admin/exam-sets',
-      '/admin/papierkorb',
       '/admin/my-subjects',
     ]) {
       const res = await call(path)
@@ -229,7 +225,7 @@ describe('Middleware – Spielansicht für Lehrkräfte merken', () => {
   })
 
   it('vergisst den Merker im Lehrkräfte-Bereich', async () => {
-    for (const path of ['/admin', '/admin/questions']) {
+    for (const path of ['/admin', '/admin/inhalte']) {
       const res = await callWithCookie(path, 'ws_spielansicht=1')
       expect(res.headers.get('set-cookie') ?? '').toMatch(/ws_spielansicht=;/)
     }
@@ -250,7 +246,7 @@ describe('Middleware – Pflicht-Name (PROJ-121)', () => {
 
   it.each(['teacher', 'department_admin', 'admin'])('schickt %s ohne Namen von Seiten im Lehrkräfte-Bereich zur Namens-Seite', async (role) => {
     state.role = role
-    for (const path of ['/admin', '/admin/konto', '/admin/questions', '/admin/kalender']) {
+    for (const path of ['/admin', '/admin/konto', '/admin/inhalte', '/admin/kalender']) {
       expect(locationOf(await call(path)), path).toBe('/name-festlegen')
     }
   })

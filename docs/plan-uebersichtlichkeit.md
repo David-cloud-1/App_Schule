@@ -103,6 +103,8 @@ Verwaltung              Nutzer · Fachbereich · Items · Änderungsprotokoll
 
 ## Phase 3 – Lerninhalte an einem Ort
 
+**Stand 27.11.2026:** PROJ-131 ist gebaut (4.829 Tests grün), aber **noch nicht live und noch nicht im Browser geprüft**. Nächster Schritt: `/qa` für PROJ-131.
+
 **Features (27.11.2026, Planned):** [PROJ-131](../features/PROJ-131-lerninhalte-an-einem-ort.md) Lerninhalte an einem Ort (Seite, Baum, Reiter, Aufklappen, Ausblenden mit Rückgängig; B34, B35, B39, B40, B41, B45, B49, B102, B103) · [PROJ-132](../features/PROJ-132-fragen-hinzufuegen.md) Fragen hinzufügen (drei Wege, Datei-Upload, Vorschau vor dem Übernehmen; B42, B43, B44, B47, B48). Entscheidungen: alte Seiten leiten weiter; Frage ausblenden = Rückgängig-Toast, Fach ausblenden = Rückfrage; Material per Datei-Upload; Papierkorb für Übungsprüfungen/Lehrerzimmer zieht an deren Seiten; „In neuen Nachweis“ aus „Schwierig“ erst in Phase 4.
 
 - Inhalte, Fragen, Fächer, Themen, Gemeldete Fragen, Schwierigste Fragen und Papierkorb (Fragen) werden **eine** Seite „Lerninhalte“: links Fach › Thema, rechts die Fragen; Reiter Fragen · Gemeldet · Schwierig · Papierkorb.
@@ -210,22 +212,22 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 ### Fragen & Inhalte
 | # | Befund | Ph. | |
 |---|---|---|---|
-| B34 | Fragen an 5 Orten (Inhalte, Fragen, Fächer, Themen, Fragen aus Material) + Gemeldet/Schwierig getrennt | 3 | ☐ |
-| B35 | Zahlen widersprechen sich (BGP 834 vs. 736) | 3 | ☐ |
+| B34 | Fragen an 5 Orten (Inhalte, Fragen, Fächer, Themen, Fragen aus Material) + Gemeldet/Schwierig getrennt – *„Fragen aus Material“ bleibt bis PROJ-132 eine eigene Seite* | 3 | ◐ |
+| B35 | Zahlen widersprechen sich (BGP 834 vs. 736) | 3 | ☑ |
 | B36 | Fragen-Seite: Suchfeld am Laptop zerdrückt | 0 | ☑ |
 | B37 | Bearbeiten/⋯ erst nach Seitwärtsscrollen (Fragen, Inhalte-Status-Spalte) | 6 | ☐ |
 | B38 | Fragetext auf 3 Zeilen gekürzt, schmale Spalte | 6 | ☐ |
-| B39 | Blättern: 417 Seiten, Anzeige nur 1–5, Englisch – *Englisch erledigt; Blättern in Phase 3* | 0 / 3 | ◐ |
-| B40 | Schalter Aktiv/Inaktiv wirkt sofort, ohne Rückfrage; Grund für „Inaktiv“ unklar | 3 | ☐ |
-| B41 | Fach-Schalter (Fächer-Seite) deaktiviert ein ganzes Fach mit einem Klick | 3 | ☐ |
+| B39 | Blättern: 417 Seiten, Anzeige nur 1–5, Englisch – *Englisch erledigt; Blättern in Phase 3* | 0 / 3 | ☑ |
+| B40 | Schalter Aktiv/Inaktiv wirkt sofort, ohne Rückfrage; Grund für „Inaktiv“ unklar | 3 | ☑ |
+| B41 | Fach-Schalter (Fächer-Seite) deaktiviert ein ganzes Fach mit einem Klick | 3 | ☑ |
 | B42 | „Neue Frage“: Fach/Thema ganz unten, Fächer beider Bereiche gemischt, Mehrfachauswahl, Thema freiwillig, Stufe „Alle“ | 3 | ☐ |
 | B43 | „Antworten werden vollständig ersetzt“ – beunruhigender Technik-Satz | 3 | ☐ |
 | B44 | CSV Export/Import als große Knöpfe neben der Hauptaktion | 3 | ☐ |
-| B45 | Inhalts-Baum: „Knoten“, Fachnamen abgeschnitten, Tourismus erscheint trotz Umschalter | 3 | ☐ |
+| B45 | Inhalts-Baum: „Knoten“, Fachnamen abgeschnitten, Tourismus erscheint trotz Umschalter | 3 | ☑ |
 | B46 | Inhalte und Fragen laden ≈ 4 s | 6 | ☐ |
 | B47 | Fragen aus Material: „Prompt“, „API-Key“, „Methode 1“, JSON-Beispiel; Platzhalter selbst im langen Text ersetzen; Scrollfalle im Textkasten | 3 | ☐ |
 | B48 | Fragen aus Material: „sofort aktiv“ ohne Vorschau | 3 | ☐ |
-| B49 | Schwierigste Fragen: Zeilen führen nirgends hin (kein „Üben lassen“/„In Nachweis“); Filter „Mindestens … Antworten“ | 3 | ☐ |
+| B49 | Schwierigste Fragen: Zeilen führen nirgends hin (kein „Üben lassen“/„In Nachweis“); Filter „Mindestens … Antworten“ | 3 | ☑ |
 | B50 | Gemeldete Fragen: eigener Bereichsfilter (B3) | 2 | ☑ |
 
 ### Werkzeugkiste & Baukasten
@@ -306,6 +308,6 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 ### Aus dem Test mit Kolleg/innen (27.11.2026)
 | # | Befund | Ph. | |
 |---|---|---|---|
-| B102 | Fragen: Klick auf eine Frage soll die Antwortmöglichkeiten aufklappen | 3 | ☐ |
-| B103 | Fach-/Themenbaum unübersichtlich: lange Fachnamen über 3 Zeilen, Themen größer als Fächer und kaum eingerückt, „Stufe“ unter jedem Thema | 3 | ☐ |
+| B102 | Fragen: Klick auf eine Frage soll die Antwortmöglichkeiten aufklappen | 3 | ☑ |
+| B103 | Fach-/Themenbaum unübersichtlich: lange Fachnamen über 3 Zeilen, Themen größer als Fächer und kaum eingerückt, „Stufe“ unter jedem Thema | 3 | ☑ |
 | B104 | Leistungsnachweise: sichtbar, welche Lehrkraft den Nachweis erstellt hat (heute nur für den Super-Admin) | 4 | ☐ |

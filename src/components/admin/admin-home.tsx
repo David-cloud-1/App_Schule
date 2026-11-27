@@ -275,7 +275,7 @@ export function AdminHome({
           <ul className={listBox}>
             {mySubjects.map((s) => (
               <li key={s.id}>
-                <Link href={`/admin/questions?subject=${encodeURIComponent(s.code)}`} className={rowLink}>
+                <Link href={`/admin/inhalte?fach=${encodeURIComponent(s.id)}`} className={rowLink}>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-ws-text" title={s.name}>
                       {s.name}
