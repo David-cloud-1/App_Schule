@@ -1,6 +1,6 @@
 # PROJ-132: Fragen hinzufügen – drei Wege mit Vorschau (Phase 3 Übersichtlichkeit, Teil 2)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27 (Frontend und Backend gebaut)
 
@@ -245,7 +245,176 @@ Keine neuen. Genutzt werden `fflate` (PowerPoint öffnen), `papaparse` (Tabelle 
 **Für /qa besonders prüfen:** PowerPoint- und Word-Dateien mit echten Skripten, sehr lange Skripte (Teile), abgeschnittene Antworten der KI, Übernehmen mit Protokolleintrag und Rücknahme, Dialog am Handy (360 px, feste Fußzeile), Rechte in fremdem Bereich, das Formular beim Bearbeiten aus „Gemeldet“ und „Schwierig“.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-11-27
+**App URL:** kein Dev-Server (laut Technical Requirements). Geprüft wurde per Code-Review, mit Unit-/Rendertests, Build und Lint. Der Browser-Blick folgt nach dem Deploy.
+**Tester:** QA Engineer (AI)
+**Stand:** Branch mit `7cbecfc` (Frontend) und `e154d2c` (Backend)
+
+### Automatische Prüfungen
+- `npm test`: 371 Dateien, 4.941 Tests grün (davon 16 neue QA-Tests in `src/lib/question-intake-qa.test.ts`)
+- `npm run build`: sauber
+- ESLint (geänderte Dateien): 0 Fehler, 1 Warnung (BUG-10)
+- E2E: keine neue Playwright-Datei. Der Ablauf braucht ein Lehrkraft-Konto und einen Dev-Server, beides gibt es hier nicht (wie bei PROJ-120 bis PROJ-131).
+
+### Acceptance Criteria Status
+
+#### Einstieg
+- [x] Grüner Knopf „Fragen hinzufügen“ öffnet die Auswahl „Wie möchtest du Fragen hinzufügen?“ mit drei Flächen und den Sätzen aus der Spec
+- [x] Ein im Baum gewähltes Thema ist in allen drei Wegen eingetragen (`defaults.topicId` → `initialTopicId`)
+- [x] Im `⋯`-Menü steht „Alle Fragen als Tabelle herunterladen“. Import-Knopf und „Fragen aus Material“ sind entfernt.
+- [x] Kein Dialog im Dialog: Der Inhalt wechselt, „Zurück“ führt zur Auswahl. Nur die Rückfrage „verwerfen?“ ist ein AlertDialog, wie in der Spec gewollt.
+
+#### Weg 1: Selbst schreiben
+- [x] „Fach und Thema“ steht zuerst, als ein Feld, gruppiert, nur Themen des Bereichs, ohne Mehrfachauswahl
+- [x] Thema ist Pflicht, mit dem Satz aus der Spec (bestehende Fragen ohne Thema bleiben speicherbar, Abweichung 2)
+- [x] Die Stufe steht als Hinweis „Stufe 10, aus dem Thema“ mit „Ändern“, ein Feld „Alle“ gibt es nicht (Abweichung D, abgeleitet aus den Fragen des Themas)
+- [x] Schwierigkeit und Fragetyp als Segmente, dann Text, Antworten, Erklärung und „Für Azubis sichtbar“ (an, wird beim Anlegen mitgeschickt)
+- [x] Der Satz „Antworten werden vollständig ersetzt“ ist weg
+- [x] Dasselbe Formular für Neu und Bearbeiten, auch in „Gemeldet“ (`QuestionFormBody`) und „Schwierig“
+- [x] Toast „Frage gespeichert“, die Liste lädt ohne Seiten-Reload neu. Eine Einschränkung beschreibt BUG-8.
+- [x] Torwächter-Hinweis „wo das heute so ist“: Das Einzelformular hatte nie eine Torwächter-Prüfung und hat auch jetzt keine. Das Kriterium greift hier nicht.
+
+#### Weg 2: Aus Material erstellen
+- [x] Schrittleiste mit drei Schritten: Material wählen · Mit deiner KI · Vorschau
+- [x] Schritt 1: Thema (Pflicht), Datei (PDF/DOCX/PPTX), Wahl 5 · 10 · 15 · 20, Dateiname mit Haken, „Weiter“ erst nach erfolgreichem Lesen
+- [x] Schritt 2: drei nummerierte Schritte, Toast „Kopiert“, Satz zu ChatGPT/Claude.ai/KI der Schule, großes Feld „Antwort der KI“
+- [ ] Der Auftrag enthält Thema, Stufe, Bereich (Rolle und Zielgruppe), Bereichshinweise, Zahl und Text und ist zugeklappt. **Aber:** Nach einer Änderung der Zahl bleibt der alte Auftrag stehen (BUG-2).
+- [x] Wächter-Test gegen Prompt, JSON, API-Key und Methode 1/2 in den sichtbaren Texten (`fragen-hinzufuegen-woerter.test.ts`). Hinweis dazu in BUG-4.
+- [x] Schritt 3: Hinweis „Noch nicht für Azubis sichtbar … Ins Thema: LOP › Lagerlogistik“, Karten mit Kästchen, Fragetext, richtiger Antwort und Aufklappen
+- [x] Jede Karte lässt sich in der Vorschau bearbeiten (`QuestionFields`, ohne neuen Dialog) und abwählen
+- [x] Bemängelte Zeilen sind markiert, mit Grund, nicht angehakt. „Auftrag zum Verbessern kopieren“ ist da.
+- [x] „N Fragen übernehmen“ nennt die Zahl, ist bei 0 deaktiviert und speichert erst beim Klick, alle oder keine, mit Rücknahme bei Fehlern
+- [x] Danach schließt der Dialog, der Baum springt aufs Thema, Toast „12 Fragen in „Lagerlogistik“ übernommen“. Protokoll `question.intake` mit Herkunft und Dateiname, gebündelt per `groupIntoBatch`.
+- [x] Der bezahlte Weg und `ANTHROPIC_API_KEY`-Hinweise sind aus der Oberfläche verschwunden, die Schnittstellen bleiben (C3)
+
+#### Weg 3: Aus einer Tabelle übernehmen
+- [x] Schrittleiste mit zwei Schritten: Datei wählen · Vorschau
+- [x] Thema (falls die Tabelle keins nennt), CSV-Feld, Erklärsatz zu den Spalten, „Beispiel-Tabelle herunterladen“
+- [x] Dieselbe Vorschau, Fehler mit „Zeile N: …“, dann „N Fragen übernehmen“ (siehe BUG-9 zur Zeilennummer)
+- [x] Vor dem Übernehmen wird nichts gespeichert: Die Vorschau-Route legt nichts an
+
+#### Alte Seite und Übergang
+- [x] `/admin/ai-generator` leitet auf `/admin/inhalte?hinzufuegen=material` weiter und öffnet den Weg „Aus Material“. Der Parameter wird danach entfernt.
+- [x] Der Übergangseintrag „Fragen aus Material“ im `⋯`-Menü ist entfernt
+
+#### Darstellung
+- [x] Am Handy Vollbild (`max-sm:h-dvh … rounded-none`) mit fester Fußzeile. Die Schrittleiste nutzt `flex-1` und `text-xs` und sollte auf 360 px passen (im Browser nach dem Deploy bestätigen).
+- [x] Bedienelemente `min-h-11`, nur `ws-*`-Farben, getönte Flächen ≤ /15, Erfolg per Toast, Fehlersätze ohne Technik
+
+### Edge Cases Status
+- [x] Gescanntes PDF oder PowerPoint ohne Text: Satz aus der Spec, „Weiter“ bleibt aus
+- [x] Zu langes Skript: offene Teilung in Teile (C2), getestet ohne Verlust (QA-Test „nichts geht verloren“)
+- [x] Falsche Dateiart oder zu große Datei: Hinweis im Browser vor dem Hochladen, dazu eine zweite Prüfung auf dem Server
+- [x] Unvollständige oder kaputte Antwort der KI: Satz aus der Spec. Bei abgeschnittener Antwort kommen die lesbaren Fragen mit Zahl und Hinweis.
+- [x] Mehr oder weniger Fragen als bestellt: „Bestellt: 10, erhalten: 8“ (BUG-2 kann die Zahl verfälschen)
+- [x] Doppelte Frage: „Gibt es schon in diesem Thema.“, nicht angehakt, aber übernehmbar
+- [x] Dialog in Schritt 2/3 schließen: Rückfrage „Fragen verwerfen? Die Antwort der KI geht verloren.“ (Lücke beim Zurückgehen: BUG-6)
+- [x] Thema inzwischen gelöscht: 404 „Das Thema gibt es nicht mehr. Bitte wähle ein anderes.“, die Vorschau bleibt
+- [ ] Bereich wird während des Dialogs umgeschaltet: Der Dialog nennt den Bereich nicht im Kopf (BUG-3)
+- [x] Freitext in Antwort und Tabelle wird erkannt und gezeigt
+
+### Security Audit Results
+- [x] Authentifizierung: Alle vier Routen beginnen mit `requireContentAdmin()`. Die Freigabe läuft über das Präfix `/api/admin/questions`.
+- [x] Autorisierung: `guardTopics` prüft jedes Thema gegen den Bereich der Person (`assertCanAdminDepartmentContent`). Ein fremdes Thema wird wie ein fehlendes behandelt (404), es verrät also nicht, dass es existiert. Auch inaktive Bereiche werden abgelehnt.
+- [x] Eingaben: Zod an jeder Route, Längen-, Zahl- und Stufengrenzen. Übernehmen prüft alles noch einmal auf dem Server und vertraut nicht der Vorschau.
+- [x] XSS: Fragetexte und Dateinamen werden nur als React-Text gezeigt, nie als HTML
+- [x] Protokoll lückenlos: `writeAuditLogStrict`, bei einem Fehler wird alles zurückgenommen
+- [x] Keine Speicherung der Datei und ihres Textes, kein KI-Aufruf, keine Geheimnisse im Browser
+- [ ] **PowerPoint-ZIP-Bombe (BUG-1):** Die Größe ist nur je Folie begrenzt, nicht für alle Folien zusammen
+- [ ] Hinweis: Die Intake-Routen haben keine Ratenbegrenzung. Das ist wie bei den übrigen Admin-Routen und nur für angemeldete Lehrkräfte erreichbar. Kein eigener Bug, wird mit BUG-1 aber wichtiger.
+
+### Bugs Found
+
+#### BUG-1: PowerPoint-Leser ohne Gesamtgrenze, der Speicher läuft voll (ZIP-Bombe)
+- **Severity:** Medium (Sicherheit/Verfügbarkeit, nur für angemeldete Lehrkräfte)
+- **Steps to Reproduce:**
+  1. Eine .pptx bauen mit 150 Folien zu je knapp 5 MB Leerzeichen. Gepackt ist sie 0,8 MB groß.
+  2. Bei „Aus Material erstellen“ hochladen (`/api/admin/questions/intake/material`)
+  3. Expected: Die Datei wird abgelehnt, sobald der entpackte Inhalt eine Gesamtgrenze überschreitet (zum Beispiel 50 MB)
+  4. Actual: `readPptxText` entpackt alles. Gemessen: **+750 MB Speicher**, 2,6 s. Bei knapp 4 MB und 500 Folien wären es rund 2,5 GB, die Vercel-Funktion stürzt ab. `MAX_SLIDES` greift erst nach dem Entpacken.
+- **Ort:** `src/lib/material-pptx.ts` (Filter nur `file.originalSize <= MAX_SLIDE_BYTES`)
+- **Priority:** Fix before deployment (Summe im Filter mitzählen und Folienzahl schon im Filter begrenzen)
+
+#### BUG-2: Neue Zahl der Vorschläge ändert den schon erstellten Auftrag nicht
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Aus Material: Thema und Datei wählen, 10 Vorschläge, „Weiter“ (der Auftrag wird erstellt)
+  2. „Zurück“, auf 20 umstellen, „Weiter“
+  3. Expected: Der Auftrag verlangt 20 Fragen
+  4. Actual: `loadPrompt` liefert den zwischengespeicherten Auftrag mit 10 (`prompts` wird nur bei neuem Thema oder neuer Datei geleert, nicht bei `setCount`). Die Vorschau meldet dann „Bestellt: 20, erhalten: 10“.
+- **Ort:** `intake-material-flow.tsx`, `AdminSegmented onChange={… setCount …}`
+- **Priority:** Fix before deployment
+
+#### BUG-3: Dialog nennt den Bereich nicht im Kopf
+- **Severity:** Low
+- **Steps:** Als Super-Admin mit mehreren Bereichen „Fragen hinzufügen“ öffnen, dann in der Bereichsleiste umschalten.
+- **Expected (Edge Case):** Der Kopf nennt den Bereich, in dem der Dialog geöffnet wurde. **Actual:** Kein Bereichsname. Die Themenliste bleibt zwar (einmal beim Öffnen geladen), aber man sieht nicht, für welchen Bereich.
+- **Priority:** Fix in next sprint
+
+#### BUG-4: „Auftrag ansehen“ zeigt ein Code-Beispiel
+- **Severity:** Low
+- **Steps:** Schritt 2 → „Auftrag ansehen“ aufklappen.
+- **Expected:** Auf dem Weg steht kein Code-Beispiel. **Actual:** Der Auftrag endet mit dem Format-Block `{ "rows": [ { "question_text": …, "antwort_a": … } ] }`. Er ist für die KI gedacht und zugeklappt, für die Lehrkraft aber sichtbar. Der Wächter-Test prüft nur die Quelltexte der Oberfläche, nicht den Auftrag.
+- **Priority:** Nice to have (Satz über dem Feld: „Diesen Text liest nur deine KI.“ oder den Formatteil ausblenden)
+
+#### BUG-5: Abgelehnte Übernahme markiert die betroffenen Karten nicht
+- **Severity:** Low
+- **Steps:** Übernehmen, und der Server lehnt mit 400 und `rejected: [{index, reason}]` ab (zum Beispiel eine Stufe, die es nicht mehr gibt).
+- **Expected:** Die betroffenen Karten sind mit Grund markiert. **Actual:** Es erscheint nur „Einige Fragen sind noch nicht in Ordnung. Es wurde nichts übernommen.“, ohne Hinweis, welche Karte.
+- **Priority:** Fix in next sprint
+
+#### BUG-6: „Zurück“ aus „Mit deiner KI“ hebt den Schutz vor dem Verwerfen auf
+- **Severity:** Low
+- **Steps:** Antwort der KI einfügen, „Zurück“ zu Schritt 1, den Dialog schließen (X/Esc).
+- **Expected:** Rückfrage, weil die eingefügte Antwort noch im Speicher ist. **Actual:** `changeStepDirty(0)` setzt dirty auf false, und der Dialog schließt ohne Rückfrage.
+- **Priority:** Fix in next sprint
+
+#### BUG-7: „Verwerfen“ in Weg 1 schließt den ganzen Dialog statt zur Auswahl zurückzugehen
+- **Severity:** Low
+- **Steps:** Selbst schreiben, etwas tippen, „Zurück“, dann „Verwerfen“.
+- **Expected:** Zurück zur Auswahl („Zurück führt wieder zur Auswahl“). **Actual:** Der Dialog schließt.
+- **Priority:** Nice to have
+
+#### BUG-8: Weg 1 springt nicht zum Thema der neuen Frage
+- **Severity:** Low
+- **Steps:** Im Baum Thema A wählen, „Selbst schreiben“, im Formular Thema B wählen, speichern.
+- **Expected:** Die Frage erscheint im gewählten Thema (B). **Actual:** `onSaved` meldet `topicIds: []`, der Baum bleibt auf A, und die neue Frage ist nicht zu sehen.
+- **Priority:** Fix in next sprint
+
+#### BUG-9: Tabellen-Randfälle: leere Themen-Spalten und Zeilennummern
+- **Severity:** Low
+- **Steps:**
+  1. Die Beispiel-Tabelle (sie hat die Spalten `thema` und `fach_code`, aber leer) ohne gewähltes Thema einlesen: „Weiter“ geht, weil `hasOwnTopic` nur die Kopfzeile prüft. In der Vorschau sind alle Zeilen gesperrt mit „Wähle oben ein Thema“, aber in der Vorschau gibt es kein Themenfeld.
+  2. Eine CSV mit Leerzeilen zwischen den Fragen: `skipEmptyLines` überspringt sie, die angezeigte „Zeile N“ passt nicht mehr zur Datei.
+- **Priority:** Nice to have
+
+#### BUG-10: Lint-Warnung `react-hooks/set-state-in-effect`
+- **Severity:** Low
+- **Ort:** `add-questions-dialog.tsx:68` (Zurücksetzen beim Öffnen im Effekt)
+- **Priority:** Nice to have
+
+#### BUG-11: Offene Bearbeitung einer Karte wird beim Übernehmen ignoriert
+- **Severity:** Low
+- **Steps:** In der Vorschau eine angehakte Karte bearbeiten, ohne „Fertig“ direkt „N Fragen übernehmen“ klicken.
+- **Expected:** Die Änderung wird übernommen, oder der Knopf bittet zuerst um „Fertig“. **Actual:** Es wird die alte Fassung gespeichert, die Änderung geht still verloren.
+- **Priority:** Fix in next sprint
+
+### Nicht geprüft (Grenzen dieses Durchlaufs)
+- Cross-Browser (Chrome, Firefox, Safari) und die Breiten 375/768/1440 px im echten Browser. Hier gibt es keinen Dev-Server. Geprüft wurden die Tailwind-Klassen im Code. Nach dem Deploy bitte einmal am Handy ansehen.
+- Echte Word- und PowerPoint-Skripte aus dem Unterricht und eine echte Antwort von ChatGPT/Claude.ai (Logik mit Beispieldaten getestet).
+
+### Regression
+- Volle Vitest-Suite grün, inklusive PROJ-131 (Lerninhalte, Reiter, Baum), PROJ-38 (`assessment-import`), PROJ-82 (Inbox-Formular), PROJ-130 (`begriffe.test.ts`), Admin-Navigation und Weiterleitungen
+- `teacher-tasks`: Die Aufgabe „Fragen-Entwürfe warten“ zeigt jetzt auf `/admin/inhalte`, wo es keine Entwürfe zu sehen gibt. Laut Implementation Notes ist `questions_draft` leer, die Aufgabe erscheint also nicht. Beobachten.
+
+### Summary
+- **Acceptance Criteria:** 33/34 bestanden (1 teilweise wegen BUG-2)
+- **Edge Cases:** 9/10 bestanden (BUG-3)
+- **Bugs Found:** 11 total (0 critical, 0 high, 2 medium, 9 low)
+- **Security:** 1 Befund (BUG-1, Medium). Rechte, Validierung und Protokoll sind in Ordnung.
+- **Production Ready:** YES nach der Regel (keine Critical- oder High-Bugs)
+- **Recommendation:** Vor dem Deploy BUG-1 und BUG-2 beheben (beide klein), den Rest im nächsten Durchgang.
 
 ## Deployment
 _To be added by /deploy_
