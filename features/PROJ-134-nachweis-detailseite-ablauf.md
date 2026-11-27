@@ -1,6 +1,6 @@
 # PROJ-134: Leistungsnachweis – Detailseite & Ablauf (Phase 4 Übersichtlichkeit, Teil 2)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -236,7 +236,143 @@ Keine neuen Pakete. Alles mit vorhandenen shadcn/ui-Bausteinen (Dialog, AlertDia
 - Gleichzeitig geändert auf Wunsch (PROJ-133-Assistent): „Selbst erstellen“ ist die grüne Hauptaktion in Schritt 1 (öffnet gleich „Frage suchen“), „Vorschlag erstellen“ steht als zweite Aktion daneben; das Fenster „Frage suchen“ ist breiter (bis `max-w-4xl`, zweispaltige Trefferliste) bzw. am Handy 92 % der Höhe.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-11-27
+**App URL:** http://localhost:3000 (Dev-Server gegen die echte Datenbank „Spedilern App“, ohne Anmeldung)
+**Tester:** QA Engineer (AI)
+
+**Wie geprüft:** Code-Review aller neuen und geänderten Dateien, Prüfung der Zeilenschutz-Regeln in der echten Datenbank, Kontrolle des Datenbank-Jobs nach dem Einspielen, Vitest (5045 grün), Typprüfung, Lint, Playwright (neue Suite `tests/PROJ-134-nachweis-detailseite-ablauf.spec.ts`, Desktop + Handy). Ohne Lehrkraft-Konto war der Ablauf im Browser nicht durchspielbar (wie bei PROJ-120 bis PROJ-133). Ihn decken die Logik- und Rendertests ab. Cross-Browser (Firefox, Safari) und echte Bildschirmbreiten mit Anmeldung sind **nicht** geprüft.
+
+### Acceptance Criteria Status
+
+#### Schrittleiste
+- [x] Leiste Entwurf · Offen · Geschlossen · Freigegeben, aktueller Schritt hervorgehoben, erledigte abgehakt, spätere blass (Rendertest)
+- [x] Ein Satz je Schritt, wörtlich wie in der Spec
+- [x] Eine grüne Hauptaktion je Schritt („Öffnen“, „Schließen“, „Ergebnisse freigeben“), bei „Freigegeben“ keine
+- [x] „Ergebnisse freigeben“ sichtbar im Seitenkopf, Rückfrage mit Zahl der Abgaben und Hinweis auf die Note
+- [x] Zuordnung zu den bestehenden Zuständen, keine neue Statusart
+- [x] „Beitritt beendet, noch N schreiben“ bei abgelaufenem Beitritt mit laufenden Abgaben
+
+#### Beitritt bis sichtbar (B28)
+- [x] „Beitritt ab … · Beitritt bis Do, 28.11., 23:59“ in der Code-Karte (Schulzeitzone, auch Sommerzeit getestet)
+- [x] „Beitritt noch nicht geöffnet“ / „noch 1 Std. 20 Min.“ / „Beitritt beendet“
+- [x] Verlängern im Entwurf und im Status Offen mit Schnellwahlen; Verkürzen abgelehnt; Eintrag im Änderungsprotokoll. Siehe BUG-6 (eigene Zeit)
+
+#### Automatisches Schließen (E1)
+- [x] Schließt, wenn „Beitritt bis“ vorbei ist und niemand mehr innerhalb seiner Zeit schreibt
+- [x] Laufende Abgaben werden nicht verkürzt (Job wartet auf Dauer + 60 s)
+- [x] Ohne geöffnete Seite: **in der echten Datenbank geprüft.** Der Job läuft alle 5 Minuten erfolgreich, ein alter, abgelaufener Nachweis wurde nachgezogen. Liste und Detailseite ziehen zusätzlich nach
+- [ ] TEILWEISE: Verlaufseintrag wird genau einmal geschrieben (mehrere Job-Läufe, 1 Eintrag), die Protokoll-Seite zeigt aber den Rohschlüssel statt „Automatisch geschlossen (Beitritt abgelaufen)“ (BUG-4). Auf der Detailseite steht der Text mit Zeitstempel. Wiederöffnen gibt es heute nicht (in den Implementation Notes dokumentiert)
+- [x] Ohne Teilnahme: schließt; Aufgabenliste führt ihn nicht als „Ergebnisse freigeben“
+- [x] Mit Abgaben erscheint er in der Aufgabenliste als „Ergebnisse freigeben“ (unveränderte Regel der Aufgabenliste)
+
+#### Als Azubi ausprobieren (E2)
+- [x] Menüpunkt im `⋯` bei Entwurf und Offen, Band „Testlauf: zählt nicht“
+- [x] Echte Dauer und Reihenfolge, Gruppe A/B wählbar; Abgabe mit Note und Antworten
+- [x] Zählt in keiner Auswertung (Teilnehmer, Notenspiegel, Analyse, Fokus, Export, Aufgabenliste, Auto-Schließen suchen über `assessment_id`); Wächtertest für die Übungsprüfungs-Abfragen
+- [x] Nicht in der Teilnehmerliste, unter „Meine Testläufe“ löschbar; Löschen mit dem Nachweis (Fremdschlüssel), Aufräumen nach 30 Tagen (Job aktiv)
+- [x] Im Entwurf ohne Code und ohne Öffnen
+- [ ] **BUG-1 (Critical):** „Azubis erreichen ihn nie“ ist nicht erfüllt. Ein Azubi kann selbst eine Testlauf-Sitzung anlegen und sich darüber Lösungen bewerten lassen
+- [x] Name „Testlauf (Name der Lehrkraft)“, keine XP, keine Rangliste
+
+#### Ersteller sichtbar (B104, E3)
+- [x] Detailseite: „Erstellt von Vorname Nachname am TT.MM.JJJJ“, „Kopie von …“
+- [ ] TEILWEISE: Spalte „Erstellt von“ in der Liste für alle Rollen. Die Handy-Karte gibt es nicht, die Tabelle scrollt (dokumentierte Abweichung)
+- [x] Filter „Alle · Nur meine“ (`AdminSegmented`), Super-Admin-Filter „Erstellt“ aufgegangen. Siehe BUG-5, BUG-7
+- [x] Gelöschtes Konto → „Ehemaliges Konto“, Altbestand ohne Namen → „Unbekannt“
+- [x] Ersteller im Änderungsverlauf unverändert (nicht berührt)
+
+#### Trennschärfe erklärt (B31)
+- [x] „?“ mit dem Satz aus der Spec (Popover, 44 px)
+- [x] Werte mit Komma; Begriffs-Wächtertest grün
+
+#### Wörter und Technik
+- [x] Wörter nach der Wörterliste („Offen“ nur für „läuft“, „Freigegeben“)
+- [x] Nur `ws-*`-Farben, Zustände aus `admin-states.tsx`, eine grüne Hauptaktion
+- [x] Rechte wie heute (Zeilenschutz von `graded_assessments` entscheidet über Sehen, Verlängern, Testlauf-Löschen)
+
+### Edge Cases Status
+- [x] Zwei Lehrkräfte gleichzeitig: Schließen von Hand nach oder während des Auto-Schließens ergibt keinen Fehler und keinen zweiten Eintrag (Tests); Verlängern im Wettlauf ergibt 409 „Seite neu laden“
+- [x] Ablauf mitten im Schreiben: Job wartet, bis die Zeit der Person vorbei ist
+- [x] Verlängern nach Ablauf: abgelehnt mit Hinweis (Wiederöffnen gibt es nicht, Hinweis nennt „Duplizieren“)
+- [x] Niemand tritt bei: schließt, keine Aufgabe „Ergebnisse freigeben“
+- [x] Zeitzone und Sommerzeit: Anzeige und „Heute 23:59“ in Europe/Berlin, auch am Umstellungstag (Tests). Ausnahme BUG-6
+- [x] Testlauf bricht ab: bleibt „Nicht abgegeben“ mit „Fortsetzen“ und Löschen, blockiert nichts
+- [x] Testlauf bei geschlossenem Nachweis: Menüpunkt fehlt, Server lehnt ab, alte Testläufe bleiben sichtbar
+- [x] Gelöschter Ersteller / Altbestand: „Ehemaliges Konto“ / „Unbekannt“
+- [x] Alte Nachweise: in der echten Datenbank nachgezogen, freigegebene unberührt
+- [x] Fokus-Protokoll im Testlauf nicht geführt
+- [ ] **Zusätzlich gefunden:** Öffnen eines Entwurfs, dessen „Beitritt bis“ schon vorbei ist (BUG-3)
+
+### Security Audit Results
+- [x] Authentifizierung: Detailseite, Liste und Spieler leiten ohne Anmeldung zum Login; Verlängern, Testlauf starten/auflisten/löschen und „Nur meine“ ergeben 401 (E2E, 18 grün)
+- [x] Autorisierung Lehrkräfte: Testlauf nur zu Nachweisen, die man sehen darf (Zeilenschutz), Liste der Testläufe nur die eigenen, Löschen nur mit Zugriff auf den Nachweis
+- [x] Eingaben: Zod für Verlängern und Gruppe, UUID-Prüfung der Pfade, kaputte Eingaben ohne Anmeldung ergeben 401/404
+- [x] Datenbank-Funktionen nur für den Server ausführbar (kein Zugriff für `anon`/`authenticated`)
+- [x] Ersteller-Name nur Vor-/Nachname aus dem Profil, keine Nutzer-ID für Nicht-Super-Admins; Namens-Wächtertest um die neuen Dateien erweitert
+- [ ] **BUG-1 (Critical):** Lösungsschlüssel über eine selbst angelegte Testlauf-Sitzung abrufbar
+- [ ] **BUG-2 (High, bestand schon vorher):** gleicher Weg über eine selbst angelegte Nachweis-Sitzung nach einer Freigabe
+
+### Bugs Found
+
+#### BUG-1: Azubis können sich über eine selbst angelegte „Testlauf“-Sitzung Lösungen bewerten lassen
+- **Severity:** Critical
+- **Ursache:** Der Zeilenschutz von `exam_sessions` erlaubt jeder angemeldeten Person, eigene Sitzungen **frei anzulegen und zu ändern** (INSERT prüft nur `user_id`, UPDATE hat keine Prüfung). `trial_assessment_id` lässt sich also vom Browser aus setzen. Die Abgabe (`PATCH /api/exam/sessions/[id]`) behandelt jede Sitzung mit `trial_assessment_id` als Testlauf und **bewertet sofort**. Dabei schreibt sie `correct_option_id`, `is_correct` und die Erklärung in die eigene Sitzung. Rolle und Herkunft der Sitzung prüft sie nicht.
+- **Steps to Reproduce (nur am Code und an den Regeln nachvollzogen, nicht in der echten Datenbank ausgeführt):**
+  1. Azubi tritt einem offenen Nachweis bei. Die eigene Sitzung zeigt `assessment_id` und die Fragen-IDs.
+  2. Mit dem öffentlichen Schlüssel und der eigenen Anmeldung eine zweite Zeile in `exam_sessions` anlegen (oder eine alte Übungsprüfung ändern): `assessment_id` leer, `trial_assessment_id` = Nachweis-ID, `status` = `in_progress`, `results_json.parts` mit den Fragen-IDs.
+  3. `PATCH /api/exam/sessions/<neue-id>` mit `{ "action": "submit" }`
+  4. Expected: abgelehnt, Azubis können keinen Testlauf haben
+  5. Actual: Die Sitzung wird bewertet, `/exam/<neue-id>/results` zeigt alle richtigen Antworten, während der echte Nachweis noch läuft. Das geht mit beliebigen Fragen-IDs.
+- **Vorschlag:** Testläufe nur auf dem Server anlegen (Dienst-Client) und `trial_assessment_id` für Nutzer sperren. Dafür entweder eine Zeilenschutz-Regel (INSERT/UPDATE nur mit `trial_assessment_id IS NULL`, braucht deine ausdrückliche Freigabe) oder ein Trigger. Zusätzlich in der Abgabe prüfen, dass die Person eine Lehrer-Rolle hat.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Gleicher Weg über eine selbst angelegte Nachweis-Sitzung (bestand schon vor PROJ-134)
+- **Severity:** High (bestehend, keine Regression)
+- **Steps:** Wie BUG-1, aber mit `assessment_id` eines bereits **freigegebenen** Nachweises, dem die Person nie beigetreten ist, und beliebigen Fragen-IDs. Die Abgabe bewertet sofort („Nachzügler“-Pfad) und schreibt die Lösungen beliebiger Fragen in die Sitzung.
+- **Vorschlag:** Mit BUG-1 zusammen beheben. Nachweis-Sitzungen entstehen nur noch über den Beitritt auf dem Server, Nutzer dürfen `assessment_id` und `results_json.parts` nicht selbst setzen.
+- **Priority:** Fix before deployment (gleiche Änderung wie BUG-1)
+
+#### BUG-3: Öffnen eines Entwurfs mit abgelaufenem „Beitritt bis“ schließt ihn nach wenigen Minuten wieder
+- **Severity:** Medium
+- **Steps:** 1. Entwurf mit „Beitritt bis“ in der Vergangenheit (z. B. Kopie eines alten Nachweises). 2. „Öffnen“. 3. Expected: Warnung bzw. Aufforderung „Beitritt verlängern“. 4. Actual: Der Nachweis öffnet, niemand kann beitreten, und der Job schließt ihn nach ≤ 5 Minuten mit 0 Abgaben.
+- **Priority:** Fix before deployment (klein: beim Öffnen „Beitritt bis“ in der Zukunft verlangen und auf „Beitritt verlängern“ verweisen)
+
+#### BUG-4: Protokoll-Seite zeigt Rohschlüssel statt „Automatisch geschlossen (Beitritt abgelaufen)“
+- **Severity:** Low
+- **Steps:** `/admin/audit-log` → Eintrag „graded_assessment.auto_close“ bzw. „graded_assessment.extend_join“. Das gilt schon für alle `graded_assessment.*`-Aktionen (bestehende Lücke). Absender „System“ wird korrekt angezeigt.
+- **Priority:** Fix in next sprint (Beschriftungen in `ACTION_TYPES` ergänzen)
+
+#### BUG-5: „Nur meine“ ohne Treffer zeigt einen irreführenden Leertext
+- **Severity:** Low
+- **Steps:** Liste, „Nur meine“ wählen, ohne eigene Nachweise im Schuljahr → „Im Schuljahr 2026/27 gibt es noch keine Leistungsnachweise.“ Expected: „Keine Leistungsnachweise passen zu diesen Filtern.“ plus „Filter zurücksetzen“.
+- **Priority:** Nice to have
+
+#### BUG-6: „Eigene Zeit“ beim Verlängern nutzt die Zeitzone des Geräts
+- **Severity:** Low
+- **Steps:** Gerät in anderer Zeitzone (z. B. Klassenfahrt) → Eingabe 23:59 wird als Gerätezeit gespeichert. Spec: alle Zeiten in der Schulzeitzone. Die Schnellwahlen sind korrekt.
+- **Priority:** Nice to have
+
+#### BUG-7: Alte Links mit `?erstellt=<id>` filtern die Liste unsichtbar
+- **Severity:** Low
+- **Steps:** Gespeicherten Link des Super-Admins mit `?erstellt=…` öffnen → die Liste ist gefiltert, aber es gibt kein Bedienelement mehr dafür. Nur „Filter zurücksetzen“ im Leerzustand hilft.
+- **Priority:** Nice to have (Parameter beim Lesen ignorieren oder in „Nur meine“ umdeuten)
+
+#### Hinweis (kein Bug): Nachziehen bei jedem Laden
+Die Detailseite lädt bei offenem Nachweis alle 8 Sekunden neu. Jedes Laden ruft die Schließ-Funktion für **alle** Nachweise auf. Das ist korrekt und idempotent, erzeugt aber bei vielen gleichzeitig offenen Detailseiten unnötige Datenbank-Last. Später eventuell nur beim ersten Laden oder nur für diesen Nachweis.
+
+### Regression
+- Vitest gesamt: 379 Dateien, 5045 Tests grün. Typprüfung grün. Lint: 0 Fehler in geänderten Dateien (1 bestehender Fehler in `shop-items/[id]/route.test.ts`)
+- Playwright PROJ-9, PROJ-11, PROJ-133 (Chromium): 40 grün
+- Übungsprüfungs-Verlauf und Konto-Löschen schließen Testläufe korrekt aus bzw. ein (Wächtertest)
+
+### Summary
+- **Acceptance Criteria:** 29/32 erfüllt, 2 teilweise (BUG-4, Handy-Karte), 1 nicht erfüllt (BUG-1)
+- **Bugs Found:** 7 total (1 critical, 1 high (bestehend), 1 medium, 4 low)
+- **Security:** Issues found (BUG-1, BUG-2)
+- **Production Ready:** NO
+- **Recommendation:** BUG-1 und BUG-2 zuerst beheben (eine Änderung), BUG-3 gleich mit. Danach `/qa` erneut.
+
 
 ## Deployment
 _To be added by /deploy_
