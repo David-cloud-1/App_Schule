@@ -2,7 +2,7 @@
 
 ## Status: Approved
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27 (QA: Approved, 5 Low)
+**Last Updated:** 2026-11-27 (QA: Approved, 5 Low – alle behoben)
 
 ## Worum es geht
 
@@ -321,6 +321,14 @@ Echte Darstellung bei 360/768/1440 px und Hell/Dunkel; Safari/Firefox; Toast „
 
 ### Entscheidung
 **Produktionsreif: JA.** Es gibt keine Critical-, High- oder Medium-Fehler. Die fünf Low-Befunde können vor oder nach dem Deploy behoben werden.
+
+### Nachbesserung der 5 Low-Befunde (2026-11-27)
+- **BUG-1 behoben:** Das gewählte Fach lässt sich zuklappen (`content-tree.tsx`). Beim Zurück/Vor im Browser klappt das Fach aus der Adresse wieder auf.
+- **BUG-2 behoben:** Alte Lesezeichen `?subject=<Kürzel>` werden auf `fach=<id>` übersetzt (unbekanntes Kürzel wird verworfen). `?tab=topic|subject` des alten Papierkorbs wählt das Segment.
+- **BUG-3 behoben:** Fach aus-/einblenden steht mit `expected_version` im Protokoll als `subject.activate/deactivate` (wie bei den Fragen).
+- **BUG-4 behoben:** Bei aktiver Suche heißt der Titel „Suche in allen Fächern“, die Zahl steht als „N Treffer“. Der Suchbegriff steht in der Adresse (`?q=`) und bleibt bei Klick im Baum erhalten.
+- **BUG-5 behoben:** `GET /api/admin/subjects` zählt nur mit `?counts=1` (nur Start „Meine Fächer“).
+- Tests: 365 Dateien, 4.832 grün; Build sauber.
 
 ## Deployment
 _To be added by /deploy_

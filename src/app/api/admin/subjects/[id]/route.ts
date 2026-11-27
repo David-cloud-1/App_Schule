@@ -85,10 +85,11 @@ export async function PATCH(
   // Azubi-Seite filtert nach sichtbaren Fächern (zwischengespeichert)
   if (parsed.data.is_active !== undefined) revalidateTag(SUBJECTS_CACHE_TAG, { expire: 0 })
 
+  const changedKeys = Object.keys(parsed.data).filter((k) => k !== 'expected_version' && k !== 'reason')
   await writeAuditLog(supabase, {
     admin_id: user.id,
     action_type:
-      parsed.data.is_active !== undefined && Object.keys(parsed.data).length === 1
+      parsed.data.is_active !== undefined && changedKeys.length === 1
         ? parsed.data.is_active
           ? 'subject.activate'
           : 'subject.deactivate'

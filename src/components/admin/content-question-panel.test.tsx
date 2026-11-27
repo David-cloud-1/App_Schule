@@ -147,7 +147,8 @@ describe('Reiter „Fragen“ (PROJ-131)', () => {
     setup()
     await screen.findByText('Frage Nummer 1')
     fireEvent.change(screen.getByRole('textbox', { name: 'Frage oder Antwort suchen' }), { target: { value: 'Fracht' } })
-    expect(await screen.findByText('30 Treffer in allen Fächern')).toBeInTheDocument()
+    expect(await screen.findByText('30 Treffer')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Suche in allen Fächern' })).toBeInTheDocument()
     const last = listCalls().at(-1)!.url
     expect(last).toContain('q=Fracht')
     expect(last).not.toContain('topic_id')

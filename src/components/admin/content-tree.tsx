@@ -97,7 +97,7 @@ export function ContentTree(props: ContentTreeProps) {
         const sKey = subjectKey(subject.id)
         const visibleTopics = subject.topics.filter((t) => topicVisible(t, klasse))
         const noTopicCount = countFor(subject.no_topic, klasse)
-        const sOpen = selected.subjectId === subject.id || expanded.has(sKey)
+        const sOpen = expanded.has(sKey)
         list.push({
           key: sKey,
           kind: 'subject',
@@ -152,7 +152,7 @@ export function ContentTree(props: ContentTreeProps) {
       })
     }
     return list
-  }, [tree, klasse, expanded, selected.subjectId])
+  }, [tree, klasse, expanded])
 
   const selectedKey =
     selected.subjectId == null

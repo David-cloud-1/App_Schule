@@ -37,7 +37,7 @@ type SubjectWithLinks = {
   departments?: { name: string; code: string } | null
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
   if (auth.error) return auth.error
   const { supabase } = auth
@@ -72,12 +72,14 @@ export async function GET() {
   )
 
   // Zählregel aus PROJ-131 — dieselbe wie im Inhalts-Baum, ohne die
-  // 1000-Zeilen-Grenze eingebetteter Zeilen.
+  // 1000-Zeilen-Grenze eingebetteter Zeilen. Gezählt wird nur mit `?counts=1`
+  // (Start „Meine Fächer“): Alle anderen Aufrufer brauchen nur die Fächerliste.
   const subjectRows = (data ?? []) as unknown as SubjectWithLinks[]
+  const withCounts = request.nextUrl.searchParams.get('counts') === '1'
   let totals: Map<string, QuestionTotals>
   try {
     totals =
-      subjectRows.length === 0
+      !withCounts || subjectRows.length === 0
         ? new Map()
         : countBySubject(
             await loadCountableQuestions(supabase, {

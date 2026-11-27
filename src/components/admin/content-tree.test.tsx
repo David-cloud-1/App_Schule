@@ -106,8 +106,13 @@ describe('ContentTree (PROJ-85, PROJ-131)', () => {
     expect(item(/Alle Fächer/)).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('hält das gewählte Fach immer aufgeklappt', () => {
+  it('lässt auch das gewählte Fach zuklappen (BUG-1)', () => {
     setup({ expanded: new Set(), selected: { subjectId: 's1', topicId: 't1' } })
+    expect(screen.queryByRole('treeitem', { name: /Kostenrechnung/ })).not.toBeInTheDocument()
+  })
+
+  it('zeigt die Themen des gewählten Fachs, solange es aufgeklappt ist', () => {
+    setup({ expanded: new Set(['s:s1']), selected: { subjectId: 's1', topicId: 't1' } })
     expect(item(/Kostenrechnung/)).toBeInTheDocument()
   })
 

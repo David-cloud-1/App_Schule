@@ -64,6 +64,7 @@ export function ContentQuestionPanel({
   totals,
   subjects,
   initialSearch = '',
+  onSearchChange,
   reloadKey = 0,
   onAdd,
   onChanged,
@@ -76,6 +77,8 @@ export function ContentQuestionPanel({
   totals: QuestionTotals
   subjects: AdminSubject[]
   initialSearch?: string
+  /** Gibt den (verzögerten) Suchbegriff weiter, damit er in der Adresse steht und eine Baum-Auswahl ihn nicht löscht */
+  onSearchChange?: (value: string) => void
   /** Hochzählen lädt die Liste neu (z. B. nach „Fragen hinzufügen“) */
   reloadKey?: number
   onAdd: () => void
@@ -106,6 +109,12 @@ export function ContentQuestionPanel({
   const topicKey = topic === null ? '' : topic === NO_TOPIC ? NO_TOPIC : topic.id
   const topicName = topic === null ? null : topic === NO_TOPIC ? 'Ohne Thema' : topic.name
   const searching = debouncedSearch !== ''
+  const searchSyncedRef = useRef(initialSearch.trim())
+  useEffect(() => {
+    if (debouncedSearch === searchSyncedRef.current) return
+    searchSyncedRef.current = debouncedSearch
+    onSearchChange?.(debouncedSearch)
+  }, [debouncedSearch, onSearchChange])
   const filtered = searching || status !== 'all'
 
   const buildParams = useCallback(
@@ -328,7 +337,13 @@ export function ContentQuestionPanel({
     label: tree.departments.length > 1 && s.department_name ? `${s.code} (${s.department_name})` : s.code,
   }))
 
-  const selectionName = !subject ? 'Alle Fächer' : topicName ? `${subject.code} › ${topicName}` : subject.code
+  const selectionName = searching
+    ? 'Suche in allen Fächern'
+    : !subject
+      ? 'Alle Fächer'
+      : topicName
+        ? `${subject.code} › ${topicName}`
+        : subject.code
   const allShownSelected = rows.length > 0 && rows.every((r) => selected.has(r.id))
   const remaining = total == null ? 0 : Math.max(0, total - rows.length)
   const hasNothing = !loading && !failed && total === 0
@@ -338,7 +353,7 @@ export function ContentQuestionPanel({
     headline =
       total == null
         ? 'Wird geladen …'
-        : `${total.toLocaleString('de-DE')} Treffer${searching ? ' in allen Fächern' : ''}`
+        : `${total.toLocaleString('de-DE')} Treffer`
   } else {
     headline = formatQuestionTotals(totals)
   }

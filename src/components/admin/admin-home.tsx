@@ -57,7 +57,7 @@ function useMySubjectTiles(enabled: boolean): MySubjectTile[] {
   const [tiles, setTiles] = useState<MySubjectTile[]>([])
   useEffect(() => {
     if (!enabled) return
-    fetch('/api/admin/subjects')
+    fetch('/api/admin/subjects?counts=1')
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.subjects) setTiles(json.subjects)

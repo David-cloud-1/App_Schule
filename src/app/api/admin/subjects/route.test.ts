@@ -88,34 +88,44 @@ function makeNonAdminSupabase() {
   }
 }
 
+const makeGet = (query = '') => new NextRequest(`http://localhost/api/admin/subjects${query}`)
+
 describe('GET /api/admin/subjects', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('returns 401 when not authenticated', async () => {
     vi.mocked(createClient).mockResolvedValue(makeUnauthSupabase() as never)
-    const res = await GET()
+    const res = await GET(makeGet())
     expect(res.status).toBe(401)
   })
 
   it('returns 403 when not admin', async () => {
     vi.mocked(createClient).mockResolvedValue(makeNonAdminSupabase() as never)
-    const res = await GET()
+    const res = await GET(makeGet())
     expect(res.status).toBe(403)
   })
 
   it('excludes subjects in the trash (deleted_at, PROJ-47)', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase() as never)
-    await GET()
+    await GET(makeGet())
     const subjectsQuery = lastMock.queries.find((q) => q.table === 'subjects')
     expect(hasCall(subjectsQuery!.calls, 'is')).toBe(true)
     expect(subjectsQuery!.calls.find((c) => c.method === 'is')?.args).toEqual(['deleted_at', null])
+  })
+
+  it('zählt Fragen nur mit ?counts=1 (BUG-5)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ subjectsData: mockSubjects }) as never)
+    const res = await GET(makeGet())
+    const body = await res.json()
+    expect(body.subjects[0].question_count).toBe(0)
+    expect(lastMock.queries.some((q) => q.table === 'questions')).toBe(false)
   })
 
   it('returns subjects with active question counts', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ subjectsData: mockSubjects }) as never
     )
-    const res = await GET()
+    const res = await GET(makeGet('?counts=1'))
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.subjects).toHaveLength(1)
@@ -128,7 +138,7 @@ describe('GET /api/admin/subjects', () => {
     vi.mocked(createClient).mockResolvedValue(
       makeAdminSupabase({ subjectsData: mockSubjects }) as never
     )
-    const res = await GET()
+    const res = await GET(makeGet())
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.subjects[0].is_active).toBe(true)
@@ -136,7 +146,7 @@ describe('GET /api/admin/subjects', () => {
 
   it('lists only subjects of the admin\'s department (PROJ-22)', async () => {
     vi.mocked(createClient).mockResolvedValue(makeAdminSupabase({ subjectsData: mockSubjects }) as never)
-    await GET()
+    await GET(makeGet())
     const list = lastMock.queries.find((q) => q.table === 'subjects')!
     expect(list.calls.some((c) => c.method === 'in' && c.args[0] === 'department_id' && JSON.stringify(c.args[1]) === JSON.stringify(['dept-sped']))).toBe(true)
   })

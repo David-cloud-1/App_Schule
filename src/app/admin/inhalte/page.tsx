@@ -150,7 +150,11 @@ function InhaltePageContent() {
   const [treeOpen, setTreeOpen] = useState(false)
   const [taskCount, setTaskCount] = useState<number | null>(null)
   const [trashCount, setTrashCount] = useState<number | null>(null)
-  const [trashType, setTrashType] = useState<TrashTab>('question')
+  // Lesezeichen des alten Papierkorbs: `?tab=topic|subject` wählt das Segment (PROJ-131, BUG-2)
+  const legacyTrash = searchParams.get('tab')
+  const [trashType, setTrashType] = useState<TrashTab>(
+    TRASH_OPTIONS.some((o) => o.value === legacyTrash) ? (legacyTrash as TrashTab) : 'question',
+  )
   const [newSubjectOpen, setNewSubjectOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -231,12 +235,28 @@ function InhaltePageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectionKey])
 
+  // Lesezeichen der alten Fragenliste: `?subject=<Kürzel>` in `fach=<id>` übersetzen, unbekanntes Kürzel verwerfen
+  const legacySubject = searchParams.get('subject')
+  useEffect(() => {
+    if (!tree || legacySubject == null) return
+    const code = legacySubject.trim().toLowerCase()
+    const match = tree.departments.flatMap((d) => d.subjects).find((s) => s.code.toLowerCase() === code)
+    navigate(match && !subjectParam ? { subject: null, fach: match.id, thema: null } : { subject: null }, 'replace')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tree, legacySubject])
+
   // Beim ersten Laden das gewählte Fach aufklappen (es bleibt auch danach offen)
   useEffect(() => {
     if (!tree || initializedRef.current) return
     initializedRef.current = true
     if (subjectParam) setExpanded(new Set([`s:${subjectParam}`]))
   }, [tree, subjectParam])
+
+  // Zurück/Vor im Browser: das Fach aus der Adresse klappt wieder auf
+  useEffect(() => {
+    if (!initializedRef.current || !subjectParam) return
+    setExpanded((prev) => (prev.has(`s:${subjectParam}`) ? prev : new Set(prev).add(`s:${subjectParam}`)))
+  }, [subjectParam])
 
   const toggleKey = useCallback((key: string) => {
     setExpanded((prev) => {
@@ -251,6 +271,10 @@ function InhaltePageContent() {
     if (subject) setExpanded((prev) => new Set(prev).add(`s:${subject.id}`))
     setTreeOpen(false)
     navigate({ fach: subject?.id ?? null, thema: topicId }, 'push')
+  }
+
+  function changeSearch(value: string) {
+    navigate({ q: value === '' ? null : value }, 'replace')
   }
 
   function changeTab(next: Tab) {
@@ -599,6 +623,7 @@ function InhaltePageContent() {
                   tree={tree}
                   totals={selectionTotals(tree, selection, klasse)}
                   initialSearch={searchTerm}
+                  onSearchChange={changeSearch}
                   reloadKey={reloadKey}
                   onAdd={() => setAddOpen(true)}
                   subjects={subjectsForForm}

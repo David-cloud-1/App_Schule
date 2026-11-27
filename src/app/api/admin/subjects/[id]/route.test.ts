@@ -41,6 +41,14 @@ describe('PATCH /api/admin/subjects/[id] – Fach ausblenden (PROJ-131, B41)', (
     expect(revalidateTag).toHaveBeenCalledWith(SUBJECTS_CACHE_TAG, { expire: 0 })
   })
 
+  it('protokolliert Ausblenden auch mit expected_version als subject.deactivate (BUG-3)', async () => {
+    const m = mock()
+    vi.mocked(createClient).mockResolvedValue(m.client as never)
+    const res = await patch({ is_active: false, expected_version: 1 })
+    expect(res.status).toBe(200)
+    expect(m.writes.find((w) => w.table === 'admin_audit_log')?.payload).toMatchObject({ action_type: 'subject.deactivate' })
+  })
+
   it('leert den Zwischenspeicher beim Umbenennen nicht', async () => {
     vi.mocked(createClient).mockResolvedValue(mock().client as never)
     await patch({ name: 'Neu' })
