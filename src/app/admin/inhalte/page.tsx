@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { AlertTriangle, FolderTree } from 'lucide-react'
+import { AlertTriangle, FolderTree, Plus } from 'lucide-react'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
@@ -13,7 +13,7 @@ import { ContentHistorySheet, type ContentType } from '@/components/admin/conten
 import { SubjectFormModal } from '@/components/admin/subject-form-modal'
 import { TopicNameDialog } from '@/components/admin/topic-name-dialog'
 import { showVersionConflict } from '@/components/admin/content-meta'
-import type { AdminSubject } from '@/components/admin/question-form-modal'
+import { QuestionFormModal, type AdminSubject } from '@/components/admin/question-form-modal'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -29,6 +29,8 @@ import {
   NO_TOPIC,
   countFor,
   resolveSelection,
+  totalsFor,
+  type TreeSelection,
   type ClassFilter,
   type ContentTree as ContentTreeData,
   type TreeSubject,
@@ -52,6 +54,16 @@ function describeHide(subject: TreeSubject): string {
   const q = `${questions.toLocaleString('de-DE')} ${questions === 1 ? 'Frage' : 'Fragen'}`
   const t = topics > 0 ? ` in ${topics} ${topics === 1 ? 'Thema' : 'Themen'}` : ''
   return `${q}${t} ${questions === 1 ? 'ist' : 'sind'} dann nicht mehr im Quiz.`
+}
+
+/** Zahlen der Auswahl aus dem Baum, für den Kopf der Fragenliste */
+function selectionTotals(tree: ContentTreeData, selection: TreeSelection, klasse: ClassFilter) {
+  if (selection.kind === 'all') return totalsFor(tree, klasse)
+  if (selection.kind === 'topic') return totalsFor(selection.topic, klasse)
+  if (selection.kind === 'notopic') {
+    return totalsFor({ counts: selection.subject.no_topic, hidden: selection.subject.no_topic_hidden }, klasse)
+  }
+  return totalsFor(selection.subject, klasse)
 }
 
 function parseKlasse(value: string | null): ClassFilter {
@@ -83,12 +95,15 @@ function InhaltePageContent() {
   const topicParam = searchParams.get('thema')
   const klasse = parseKlasse(searchParams.get('klasse'))
   const listView = searchParams.get('ansicht') === 'liste'
+  const searchTerm = searchParams.get('q') ?? ''
 
   const [tree, setTree] = useState<ContentTreeData | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingSubject, setEditingSubject] = useState<TreeSubject | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [hideTarget, setHideTarget] = useState<TreeSubject | null>(null)
   const [topicDialog, setTopicDialog] = useState<TopicDialog | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ subject: TreeSubject; topic: TreeTopic } | null>(null)
@@ -306,6 +321,16 @@ function InhaltePageContent() {
       <AdminPageHeader
         title="Inhalte"
         description="Wähle links im Baum ein Fach oder Thema und sieh rechts die Fragen dazu."
+        actions={
+          <Button
+            onClick={() => setAddOpen(true)}
+            disabled={!tree || isEmptyTree}
+            className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+          >
+            <Plus className="size-5" aria-hidden />
+            Fragen hinzufügen
+          </Button>
+        }
       />
 
       {failed && !tree ? (
@@ -384,10 +409,14 @@ function InhaltePageContent() {
             {selection && (
               <ContentQuestionPanel
                 key={`${selectedSubject?.id ?? 'alle'}:${selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : ''}`}
-                department={selection.kind === 'all' ? null : selection.department}
                 subject={selectedSubject}
                 topic={selection.kind === 'topic' ? selection.topic : selection.kind === 'notopic' ? NO_TOPIC : null}
                 klasse={klasse}
+                tree={tree}
+                totals={selectionTotals(tree, selection, klasse)}
+                initialSearch={searchTerm}
+                reloadKey={reloadKey}
+                onAdd={() => setAddOpen(true)}
                 subjects={subjectsForForm}
                 onChanged={loadTree}
                 onBack={showList ? backToTree : undefined}
@@ -396,6 +425,21 @@ function InhaltePageContent() {
           </div>
         </div>
       )}
+
+      <QuestionFormModal
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        subjects={subjectsForForm}
+        onSuccess={() => {
+          setReloadKey((k) => k + 1)
+          loadTree()
+        }}
+        defaults={{
+          subjectId: selectedSubject?.id,
+          topicId: selection?.kind === 'topic' ? selection.topic.id : null,
+          classLevel: klasse === 'all' ? null : klasse,
+        }}
+      />
 
       <SubjectFormModal
         open={editingSubject !== null}

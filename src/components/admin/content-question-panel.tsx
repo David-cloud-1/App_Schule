@@ -1,18 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowLeft, ChevronLeft, ChevronRight, FileQuestion, History, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowLeft, FileQuestion, Search, SearchX } from 'lucide-react'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
-import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
-import { QuestionFormModal, type AdminQuestion, type AdminSubject } from '@/components/admin/question-form-modal'
-import { DifficultyBadge } from '@/components/difficulty-badge'
+import { showVersionConflict } from '@/components/admin/content-meta'
+import { QuestionBulkBar, type BulkChange } from '@/components/admin/question-bulk-bar'
+import { QuestionFormModal, type AdminSubject } from '@/components/admin/question-form-modal'
+import { QuestionListItem, type ListQuestion } from '@/components/admin/question-list-item'
+import { useClassLevelOptions } from '@/components/department-provider'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,16 +24,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { NO_TOPIC, type ClassFilter, type TreeDepartment, type TreeSubject, type TreeTopic } from '@/lib/content-tree'
+import { NO_TOPIC, type ClassFilter, type ContentTree, type TreeSubject, type TreeTopic } from '@/lib/content-tree'
+import { formatQuestionTotals, type QuestionTotals } from '@/lib/question-count'
 
-type Row = AdminQuestion & { topics?: { id: string; name: string } | null }
+/** Muss zur Seitengröße der Fragen-Schnittstelle passen */
+export const LIST_PAGE_SIZE = 25
+const BULK_CHUNK = 200
+const UNDO_MS = 7000
 
-type StatusFilter = 'all' | 'active' | 'inactive'
+export type StatusFilter = 'all' | 'active' | 'inactive'
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Alle' },
-  { value: 'active', label: 'Aktiv' },
-  { value: 'inactive', label: 'Inaktiv' },
+  { value: 'all', label: 'Alle Fragen' },
+  { value: 'active', label: 'Für Azubis sichtbar' },
+  { value: 'inactive', label: 'Ausgeblendet' },
 ] as const
 
 function useDebounced<T>(value: T, delay: number): T {
@@ -44,148 +49,307 @@ function useDebounced<T>(value: T, delay: number): T {
   return debounced
 }
 
+type ListData = { questions: ListQuestion[]; total: number }
+
 /**
- * Fragenliste zum gewählten Knoten des Inhalts-Baums (PROJ-85). Nutzt die
- * bestehende Fragen-Schnittstelle, die Dialoge und den Verlauf der Seite
- * „Fragen“. `topic`: ein Thema, `NO_TOPIC` oder `null` (alle Fragen des Fachs).
+ * Reiter „Fragen“ (PROJ-131): Fragen der Auswahl im Baum, Suche über alle
+ * Fächer, ein Filter, Aufklappen (B102), „Weitere 25“ (B39), Ausblenden mit
+ * „Rückgängig“ (B40) und Mehrfachauswahl (E4). `subject: null` = „Alle Fächer“.
  */
 export function ContentQuestionPanel({
-  department,
   subject,
   topic,
   klasse,
+  tree,
+  totals,
   subjects,
+  initialSearch = '',
+  reloadKey = 0,
+  onAdd,
   onChanged,
   onBack,
 }: {
-  department: TreeDepartment | null
-  /** `null` = „Alle Fächer“ */
   subject: TreeSubject | null
   topic: TreeTopic | typeof NO_TOPIC | null
   klasse: ClassFilter
+  tree: ContentTree
+  /** Zahlen der Auswahl aus dem Baum — dieselben wie links (B35) */
+  totals: QuestionTotals
   subjects: AdminSubject[]
+  initialSearch?: string
+  /** Hochzählen lädt die Liste neu (z. B. nach „Fragen hinzufügen“) */
+  reloadKey?: number
+  onAdd: () => void
   /** Nach Anlegen, Bearbeiten, Löschen: Baum und Zähler neu laden */
   onChanged: () => void
   /** Nur auf dem Handy: zurück zum Baum */
   onBack?: () => void
 }) {
-  const [rows, setRows] = useState<Row[]>([])
+  const [rows, setRows] = useState<ListQuestion[]>([])
   const [total, setTotal] = useState<number | null>(null)
-  const [totalPages, setTotalPages] = useState(0)
-  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [failed, setFailed] = useState(false)
   const [status, setStatus] = useState<StatusFilter>('all')
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch)
   const debouncedSearch = useDebounced(search.trim(), 300)
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Row | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<Row | null>(null)
-  const [deleting, setDeleting] = useState(false)
-  const [historyTarget, setHistoryTarget] = useState<Row | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [editing, setEditing] = useState<ListQuestion | null>(null)
+  const [template, setTemplate] = useState<ListQuestion | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ListQuestion | null>(null)
+  const [bulkConfirm, setBulkConfirm] = useState<'hide' | 'delete' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [historyTarget, setHistoryTarget] = useState<ListQuestion | null>(null)
   const requestId = useRef(0)
+  const pagesRef = useRef(1)
+  const classLevels = useClassLevelOptions()
 
   const topicKey = topic === null ? '' : topic === NO_TOPIC ? NO_TOPIC : topic.id
   const topicName = topic === null ? null : topic === NO_TOPIC ? 'Ohne Thema' : topic.name
+  const searching = debouncedSearch !== ''
+  const filtered = searching || status !== 'all'
 
-  // Neue Auswahl oder neuer Filter: zurück auf Seite 1
-  useEffect(() => {
-    setPage(1)
-  }, [subject?.id, topicKey, klasse, status, debouncedSearch])
-
-  // Neue Auswahl: Suche und Status zurücksetzen
-  useEffect(() => {
-    setSearch('')
-    setStatus('all')
-  }, [subject?.id, topicKey])
-
-  const fetchQuestions = useCallback(async () => {
-    const id = ++requestId.current
-    setLoading(true)
-    setFailed(false)
-    try {
+  const buildParams = useCallback(
+    (page: number) => {
       const params = new URLSearchParams({ page: String(page), status })
-      if (subject) params.set('subject_id', subject.id)
-      if (topic === NO_TOPIC) params.set('missing_topic', 'true')
-      else if (topic) params.set('topic_id', topic.id)
-      if (klasse !== 'all') params.set('class_level', String(klasse))
+      // Eine Suche läuft über alle Fächer des Bereichs, nicht nur über die Auswahl
       if (debouncedSearch) params.set('q', debouncedSearch)
-      const res = await fetch(`/api/admin/questions?${params}`)
+      else {
+        if (subject) params.set('subject_id', subject.id)
+        if (topicKey === NO_TOPIC) params.set('missing_topic', 'true')
+        else if (topicKey) params.set('topic_id', topicKey)
+      }
+      if (klasse !== 'all') params.set('class_level', String(klasse))
+      return params
+    },
+    [subject, topicKey, klasse, status, debouncedSearch],
+  )
+
+  const fetchPage = useCallback(
+    async (page: number): Promise<ListData> => {
+      const res = await fetch(`/api/admin/questions?${buildParams(page)}`)
       if (!res.ok) throw new Error('load failed')
       const data = await res.json()
-      if (id !== requestId.current) return
-      setRows(data.questions ?? [])
-      setTotal(data.total ?? 0)
-      setTotalPages(data.totalPages ?? 0)
-    } catch {
-      if (id === requestId.current) setFailed(true)
-    } finally {
-      if (id === requestId.current) setLoading(false)
-    }
-  }, [subject, topic, page, status, klasse, debouncedSearch])
+      return { questions: data.questions ?? [], total: data.total ?? 0 }
+    },
+    [buildParams],
+  )
 
+  /** Lädt die ersten `count` Abschnitte neu und behält so die angezeigte Länge (und die Bildlaufposition). */
+  const loadFirst = useCallback(
+    async (count: number, quiet: boolean) => {
+      const id = ++requestId.current
+      if (!quiet) setLoading(true)
+      setFailed(false)
+      try {
+        const results = await Promise.all(Array.from({ length: count }, (_, i) => fetchPage(i + 1)))
+        if (id !== requestId.current) return
+        setRows(results.flatMap((r) => r.questions))
+        setTotal(results[0].total)
+      } catch {
+        if (id === requestId.current) setFailed(true)
+      } finally {
+        if (id === requestId.current) setLoading(false)
+      }
+    },
+    [fetchPage],
+  )
+
+  // Neue Auswahl, neuer Filter oder neue Suche: wieder von vorn, Auswahl leeren
   useEffect(() => {
-    fetchQuestions()
-  }, [fetchQuestions])
+    pagesRef.current = 1
+    setPages(1)
+    setSelected(new Set())
+    setExpandedId(null)
+    setRows([])
+    setTotal(null)
+    loadFirst(1, false)
+  }, [loadFirst])
 
-  function refresh() {
-    fetchQuestions()
+  const reloadRef = useRef(reloadKey)
+  useEffect(() => {
+    if (reloadRef.current === reloadKey) return
+    reloadRef.current = reloadKey
+    loadFirst(pagesRef.current, true)
+  }, [reloadKey, loadFirst])
+
+  const refresh = useCallback(() => {
+    loadFirst(pagesRef.current, true)
     onChanged()
+  }, [loadFirst, onChanged])
+
+  async function showMore() {
+    const next = pages + 1
+    const id = ++requestId.current
+    setLoadingMore(true)
+    try {
+      const data = await fetchPage(next)
+      if (id !== requestId.current) return
+      // Doppelte Zeilen weglassen, falls sich inzwischen etwas verschoben hat
+      setRows((prev) => {
+        const known = new Set(prev.map((r) => r.id))
+        return [...prev, ...data.questions.filter((r) => !known.has(r.id))]
+      })
+      setTotal(data.total)
+      pagesRef.current = next
+      setPages(next)
+    } catch {
+      toast.error('Weitere Fragen konnten nicht geladen werden.')
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
-  async function toggleActive(q: Row, next: boolean) {
+  function patchRow(id: string, change: Partial<ListQuestion>) {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...change } : r)))
+  }
+
+  /** Ein PATCH der Sichtbarkeit; bei Konflikt gilt der Klick trotzdem, mit Hinweis. */
+  async function sendVisibility(id: string, visible: boolean, version: number | undefined) {
+    const patch = (expected: number | undefined) =>
+      fetch(`/api/admin/questions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: visible, ...(expected ? { expected_version: expected } : {}) }),
+      })
+    let res = await patch(version)
+    if (res.status === 409) {
+      const conflict = await res.json().catch(() => ({}))
+      toast.info(`${conflict?.error ?? 'Die Frage wurde inzwischen geändert.'} Dein Klick wurde trotzdem übernommen.`)
+      res = await patch(undefined)
+    }
+    if (!res.ok) throw new Error('patch failed')
+    const data = await res.json().catch(() => ({}))
+    return (data?.version_number as number | undefined) ?? undefined
+  }
+
+  async function toggleVisible(q: ListQuestion, visible: boolean, isUndo = false) {
+    patchRow(q.id, { is_active: visible, hidden_info: null })
+    try {
+      const version = await sendVisibility(q.id, visible, isUndo ? undefined : q.version_number)
+      patchRow(q.id, { version_number: version })
+      if (isUndo) {
+        toast.success('Rückgängig gemacht.')
+      } else {
+        toast.success(visible ? 'Wieder für Azubis sichtbar' : 'Ausgeblendet. Azubis sehen die Frage nicht mehr.', {
+          duration: UNDO_MS,
+          action: { label: 'Rückgängig', onClick: () => toggleVisible({ ...q, version_number: version }, !visible, true) },
+        })
+      }
+      // Zähler und „von wem“ nachladen, ohne die Liste zu leeren
+      loadFirst(pagesRef.current, true)
+      onChanged()
+    } catch {
+      patchRow(q.id, { is_active: !visible, hidden_info: q.hidden_info })
+      toast.error('Die Sichtbarkeit konnte nicht geändert werden.')
+    }
+  }
+
+  async function releaseForPractice(q: ListQuestion) {
     try {
       const res = await fetch(`/api/admin/questions/${q.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: next }),
+        body: JSON.stringify({ assessment_only: false }),
       })
-      if (!res.ok) {
-        toast.error('Status konnte nicht geändert werden.')
-        return
-      }
-      toast.success(next ? 'Frage aktiviert' : 'Frage deaktiviert')
-      fetchQuestions()
+      if (!res.ok) throw new Error('release failed')
+      toast.success('Frage für den Übungsbetrieb freigegeben')
+      refresh()
     } catch {
-      toast.error('Netzwerkfehler')
+      toast.error('Freigabe fehlgeschlagen.')
     }
   }
 
   async function handleDelete() {
     if (!deleteTarget) return
-    setDeleting(true)
+    setBusy(true)
     try {
       const res = await fetch(`/api/admin/questions/${deleteTarget.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error('Löschen fehlgeschlagen')
+        if (!showVersionConflict(res, data)) toast.error(data?.error ?? 'Löschen fehlgeschlagen')
         return
       }
-      const json = await res.json().catch(() => ({}))
-      if (json.softDeleted) toast.info('Frage deaktiviert (hat Lernhistorie und wurde nicht endgültig gelöscht)')
-      else toast.success('Frage gelöscht')
+      toast.success('Frage in den Papierkorb gelegt')
+      setSelected((prev) => {
+        const next = new Set(prev)
+        next.delete(deleteTarget.id)
+        return next
+      })
       setDeleteTarget(null)
       refresh()
     } catch {
       toast.error('Netzwerkfehler')
     } finally {
-      setDeleting(false)
+      setBusy(false)
     }
   }
 
-  const filtered = status !== 'all' || debouncedSearch !== ''
-  const isEmpty = !loading && !failed && total === 0 && !filtered
-  const newQuestion = (
-    <Button
-      onClick={() => {
-        setEditing(null)
-        setFormOpen(true)
-      }}
-      className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
-    >
-      <Plus className="size-5" aria-hidden />
-      Neue Frage
-    </Button>
+  /** Massenänderung in Päckchen, weil die Schnittstelle höchstens 200 IDs annimmt. */
+  async function runBulk(method: 'PATCH' | 'DELETE', body: Record<string, unknown>, done: (n: number) => string) {
+    const ids = Array.from(selected)
+    if (ids.length === 0) return
+    setBusy(true)
+    let changed = 0
+    try {
+      for (let i = 0; i < ids.length; i += BULK_CHUNK) {
+        const chunk = ids.slice(i, i + BULK_CHUNK)
+        const res = await fetch('/api/admin/questions/bulk', {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: chunk, ...body }),
+        })
+        if (!res.ok) throw new Error('bulk failed')
+        changed += chunk.length
+      }
+      toast.success(done(changed))
+      setSelected(new Set())
+      setBulkConfirm(null)
+    } catch {
+      toast.error(
+        changed > 0
+          ? `Nur ${changed} von ${ids.length} Fragen wurden geändert. Bitte versuche den Rest erneut.`
+          : 'Die Änderung hat nicht geklappt.',
+      )
+    } finally {
+      setBusy(false)
+      refresh()
+    }
+  }
+
+  const topicOptions = useMemo(
+    () =>
+      tree.departments.flatMap((d) =>
+        d.subjects.flatMap((s) => s.topics.map((t) => ({ id: t.id, label: `${s.code} › ${t.name}` }))),
+      ),
+    [tree],
   )
+  const subjectOptions = subjects.map((s) => ({
+    id: s.id,
+    label: tree.departments.length > 1 && s.department_name ? `${s.code} (${s.department_name})` : s.code,
+  }))
+
+  const selectionName = !subject ? 'Alle Fächer' : topicName ? `${subject.code} › ${topicName}` : subject.code
+  const allShownSelected = rows.length > 0 && rows.every((r) => selected.has(r.id))
+  const remaining = total == null ? 0 : Math.max(0, total - rows.length)
+  const hasNothing = !loading && !failed && total === 0
+
+  let headline: string
+  if (filtered) {
+    headline =
+      total == null
+        ? 'Wird geladen …'
+        : `${total.toLocaleString('de-DE')} Treffer${searching ? ' in allen Fächern' : ''}`
+  } else {
+    headline = formatQuestionTotals(totals)
+  }
+
+  function resetFilters() {
+    setSearch('')
+    setStatus('all')
+  }
 
   return (
     <section aria-label="Fragen" className="min-w-0 space-y-4">
@@ -196,184 +360,151 @@ export function ContentQuestionPanel({
         </Button>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <nav aria-label="Pfad" className="flex flex-wrap items-center gap-1 text-sm text-ws-muted">
-            {!subject || !department ? (
-              <span className="font-semibold text-ws-text">Alle Fächer</span>
-            ) : (
-              <>
-                <span className="truncate" title={department.name}>{department.name}</span>
-                <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-                <span className={topicName ? 'truncate' : 'truncate font-semibold text-ws-text'} title={subject.name}>
-                  {subject.name}
-                </span>
-              </>
-            )}
-            {topicName && (
-              <>
-                <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-                <span className="truncate font-semibold text-ws-text" title={topicName}>{topicName}</span>
-              </>
-            )}
-          </nav>
-          <h2 className="mt-1 text-lg font-semibold text-ws-text">
-            {total == null ? 'Wird geladen …' : `${total} ${total === 1 ? 'Frage' : 'Fragen'}${filtered ? ' gefunden' : ''}`}
-          </h2>
-        </div>
-        {!isEmpty && !failed && <div className="shrink-0">{newQuestion}</div>}
+      <div className="min-w-0">
+        <h2 className="truncate text-lg font-semibold text-ws-text" title={selectionName}>
+          {selectionName}
+        </h2>
+        <p className="text-sm text-ws-muted" aria-live="polite">
+          {headline}
+        </p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
         <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ws-faint" aria-hidden />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Fragetext suchen …"
-            aria-label="Fragetext suchen"
+            placeholder="Frage oder Antwort suchen"
+            aria-label="Frage oder Antwort suchen"
             className="min-h-11 rounded-xl border-ws-line bg-ws-surface pl-9 text-ws-text focus-visible:ring-ws-green"
           />
         </div>
-        <AdminSegmented value={status} onChange={setStatus} options={STATUS_OPTIONS} ariaLabel="Status" />
+        <AdminSegmented value={status} onChange={setStatus} options={STATUS_OPTIONS} ariaLabel="Sichtbarkeit" />
       </div>
+      {filtered && (
+        <Button variant="ghost" onClick={resetFilters} className="-ml-2 min-h-11 text-ws-blue hover:text-ws-blue-hover">
+          Suche und Filter zurücksetzen
+        </Button>
+      )}
+
+      {selected.size > 0 && (
+        <QuestionBulkBar
+          count={selected.size}
+          topics={topicOptions}
+          subjects={subjectOptions}
+          classLevels={classLevels}
+          busy={busy}
+          onApply={(change: BulkChange) => runBulk('PATCH', change, (n) => `${n} Fragen geändert`)}
+          onShow={() => runBulk('PATCH', { is_active: true }, (n) => `${n} Fragen wieder für Azubis sichtbar`)}
+          onHide={() => setBulkConfirm('hide')}
+          onDelete={() => setBulkConfirm('delete')}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
 
       {failed ? (
-        <AdminErrorState onRetry={fetchQuestions} />
+        <AdminErrorState message="Die Fragen konnten gerade nicht geladen werden." onRetry={() => loadFirst(pagesRef.current, false)} />
       ) : loading && rows.length === 0 ? (
         <AdminLoadingState variant="table" rows={5} label="Fragen werden geladen" />
-      ) : isEmpty ? (
+      ) : hasNothing && filtered ? (
+        <AdminEmptyState
+          icon={SearchX}
+          title="Keine Frage gefunden"
+          description="Prüfe die Schreibweise oder suche nach einem kürzeren Wort."
+        />
+      ) : hasNothing ? (
         <AdminEmptyState
           icon={FileQuestion}
           title="Hier gibt es noch keine Fragen"
-          action={newQuestion}
+          action={
+            <Button onClick={onAdd} className="min-h-11 rounded-2xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+              Fragen hinzufügen
+            </Button>
+          }
         />
-      ) : rows.length === 0 ? (
-        <p className="rounded-2xl border border-ws-line bg-ws-surface px-4 py-8 text-center text-sm text-ws-muted">
-          Keine Fragen passen zu deiner Suche.
-        </p>
       ) : (
-        <div className="ws-table-scroll rounded-2xl border border-ws-line bg-ws-surface" aria-busy={loading}>
-          <Table>
-            <TableHeader>
-              <TableRow className="border-ws-line hover:bg-transparent">
-                <TableHead className="text-ws-muted">Frage</TableHead>
-                {topic === null && <TableHead className="hidden text-ws-muted xl:table-cell">Thema</TableHead>}
-                <TableHead className="hidden text-ws-muted md:table-cell">Stufe</TableHead>
-                <TableHead className="hidden text-ws-muted sm:table-cell">Schwierigkeit</TableHead>
-                <TableHead className="text-ws-muted">Status</TableHead>
-                <TableHead className="text-right text-ws-muted">
-                  <span className="sr-only">Aktionen</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((q) => (
-                <TableRow key={q.id} className="border-ws-line hover:bg-ws-bg/40">
-                  <TableCell className="max-w-[14rem] sm:max-w-md">
-                    <span className="line-clamp-2 break-words text-ws-text" title={q.question_text}>
-                      {q.question_text}
-                    </span>
-                  </TableCell>
-                  {topic === null && (
-                    <TableCell className="hidden text-sm text-ws-muted xl:table-cell">
-                      {q.topics?.name ?? <span className="italic text-ws-faint">Ohne Thema</span>}
-                    </TableCell>
-                  )}
-                  <TableCell className="hidden text-xs text-ws-muted md:table-cell">
-                    {q.class_level != null ? `Stufe ${q.class_level}` : '—'}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <DifficultyBadge difficulty={q.difficulty as 'leicht' | 'mittel' | 'schwer'} />
-                  </TableCell>
-                  <TableCell>
-                    <label className="flex min-h-11 cursor-pointer items-center gap-2 text-xs text-ws-muted">
-                      <Switch
-                        checked={q.is_active}
-                        onCheckedChange={(v) => toggleActive(q, v)}
-                        aria-label={`Frage ${q.is_active ? 'deaktivieren' : 'aktivieren'}`}
-                      />
-                      <span className={q.is_active ? 'font-medium text-ws-green' : ''}>
-                        {q.is_active ? 'Aktiv' : 'Inaktiv'}
-                      </span>
-                    </label>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end">
-                      <AdminRowActions
-                        subject={`Frage ${q.question_text.slice(0, 40)}`}
-                        editIcon={<Pencil className="size-4" />}
-                        onEdit={() => {
-                          setEditing(q)
-                          setFormOpen(true)
-                        }}
-                        items={[
-                          { key: 'history', label: 'Verlauf', icon: <History className="text-ws-muted" />, onSelect: () => setHistoryTarget(q) },
-                          { key: 'delete', label: 'Löschen', icon: <Trash2 />, destructive: true, onSelect: () => setDeleteTarget(q) },
-                        ]}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="overflow-hidden rounded-2xl border border-ws-line bg-ws-surface" aria-busy={loading}>
+          <label className="flex min-h-11 cursor-pointer items-center gap-1 border-b border-ws-line px-2 text-sm text-ws-muted sm:px-3">
+            <span className="flex size-11 items-center justify-center">
+              <Checkbox
+                checked={allShownSelected}
+                onCheckedChange={() => setSelected(allShownSelected ? new Set() : new Set(rows.map((r) => r.id)))}
+                aria-label="Alle angezeigten Fragen auswählen"
+                className="border-ws-line"
+              />
+            </span>
+            Alle angezeigten auswählen
+          </label>
+          <ul className="divide-y divide-ws-line">
+            {rows.map((q) => (
+              <QuestionListItem
+                key={q.id}
+                question={q}
+                expanded={expandedId === q.id}
+                selected={selected.has(q.id)}
+                onToggleExpanded={() => setExpandedId((prev) => (prev === q.id ? null : q.id))}
+                onToggleSelected={() =>
+                  setSelected((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(q.id)) next.delete(q.id)
+                    else next.add(q.id)
+                    return next
+                  })
+                }
+                onToggleVisible={(visible) => toggleVisible(q, visible)}
+                onEdit={() => setEditing(q)}
+                onDuplicate={() => setTemplate(q)}
+                onHistory={() => setHistoryTarget(q)}
+                onDelete={() => setDeleteTarget(q)}
+                onReleaseForPractice={() => releaseForPractice(q)}
+              />
+            ))}
+          </ul>
         </div>
       )}
 
-      {totalPages > 1 && !failed && (
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            disabled={page <= 1 || loading}
-            onClick={() => setPage((p) => p - 1)}
-            className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            Zurück
-          </Button>
-          <span className="text-sm text-ws-muted" aria-live="polite">
-            Seite {page} von {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            disabled={page >= totalPages || loading}
-            onClick={() => setPage((p) => p + 1)}
-            className="min-h-11 rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised"
-          >
-            Weiter
-            <ChevronRight className="size-4" aria-hidden />
-          </Button>
-        </div>
+      {!failed && remaining > 0 && rows.length > 0 && (
+        <Button
+          variant="outline"
+          disabled={loadingMore}
+          onClick={showMore}
+          className="min-h-11 w-full rounded-xl border-ws-line bg-transparent text-ws-text hover:bg-ws-raised"
+        >
+          {loadingMore
+            ? 'Wird geladen …'
+            : `Weitere ${Math.min(LIST_PAGE_SIZE, remaining)} anzeigen (noch ${remaining.toLocaleString('de-DE')})`}
+        </Button>
       )}
 
       <QuestionFormModal
-        open={formOpen}
-        onOpenChange={setFormOpen}
+        open={editing !== null || template !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setEditing(null)
+            setTemplate(null)
+          }
+        }}
         question={editing}
+        template={template}
         subjects={subjects}
         onSuccess={refresh}
-        onOpenHistory={(q) => setHistoryTarget(q as Row)}
-        defaults={{
-          subjectId: subject?.id,
-          topicId: topic && topic !== NO_TOPIC ? topic.id : null,
-          classLevel: klasse === 'all' ? null : klasse,
-        }}
+        onOpenHistory={(q) => setHistoryTarget(q as ListQuestion)}
       />
 
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && !deleting && setDeleteTarget(null)}>
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(o) => !o && !busy && setDeleteTarget(null)}>
         <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Frage löschen?</AlertDialogTitle>
             <AlertDialogDescription className="text-ws-muted">
               „{deleteTarget?.question_text.slice(0, 120)}“ wandert in den Papierkorb und lässt sich von dort
-              wiederherstellen. Hat die Frage schon Lernhistorie, wird sie nur deaktiviert.
+              wiederherstellen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} className="min-h-11">Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy} className="min-h-11">Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleting}
+              disabled={busy}
               onClick={(e) => {
                 e.preventDefault()
                 handleDelete()
@@ -381,6 +512,41 @@ export function ContentQuestionPanel({
               className="min-h-11 bg-ws-red text-ws-on-accent hover:bg-ws-red-hover"
             >
               Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkConfirm !== null} onOpenChange={(o) => !o && !busy && setBulkConfirm(null)}>
+        <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkConfirm === 'delete'
+                ? `${selected.size} ${selected.size === 1 ? 'Frage' : 'Fragen'} löschen?`
+                : `${selected.size} ${selected.size === 1 ? 'Frage' : 'Fragen'} ausblenden?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-ws-muted">
+              {bulkConfirm === 'delete'
+                ? 'Sie wandern in den Papierkorb und lassen sich von dort wiederherstellen.'
+                : 'Azubis sehen diese Fragen dann nicht mehr.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy} className="min-h-11">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={(e) => {
+                e.preventDefault()
+                if (bulkConfirm === 'delete') runBulk('DELETE', {}, (n) => `${n} Fragen in den Papierkorb gelegt`)
+                else runBulk('PATCH', { is_active: false }, (n) => `${n} Fragen ausgeblendet`)
+              }}
+              className={
+                bulkConfirm === 'delete'
+                  ? 'min-h-11 bg-ws-red text-ws-on-accent hover:bg-ws-red-hover'
+                  : 'min-h-11 bg-ws-green text-ws-on-accent hover:bg-ws-green-hover'
+              }
+            >
+              {bulkConfirm === 'delete' ? 'Löschen' : 'Ausblenden'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

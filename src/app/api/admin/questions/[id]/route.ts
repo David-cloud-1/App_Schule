@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireContentAdmin, writeAuditLog, assertCanAdminQuestion } from '../../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
 import { checkVersionConflict } from '@/lib/content-history'
+import { REPORT_BATCH_DESCRIPTION } from '@/lib/hidden-info'
 
 /** Ist diese Frage eine private Nachweis-Frage einer Lehrkraft (PROJ-46)? */
 async function loadIsPrivate(
@@ -36,8 +37,10 @@ const UpdateSchema = z
     // zwischenzeitlich schon gespeichert hat, statt diese Änderung
     // stillschweigend zu überschreiben.
     expected_version: z.number().int().min(1).optional(),
+    // PROJ-131: Wird aus der Meldungs-Inbox ausgeblendet, merkt sich der Verlauf den Grund
+    reason: z.literal('meldung').optional(),
   })
-  .refine((val) => Object.keys(val).length > 0, {
+  .refine((val) => Object.keys(val).some((k) => k !== 'expected_version' && k !== 'reason'), {
     message: 'No fields provided',
   })
 
@@ -204,10 +207,21 @@ export async function PATCH(
     }
   }
 
+  if (payload.reason === 'meldung' && payload.is_active === false) {
+    // Nicht über groupIntoBatch: der Helfer überspringt einzelne Fragen
+    const { error: batchError } = await supabase.rpc('group_recent_versions_into_batch', {
+      p_content_type: 'question',
+      p_content_ids: [id],
+      p_description: REPORT_BATCH_DESCRIPTION,
+    })
+    if (batchError) console.error('[PATCH question] report batch', batchError)
+  }
+
+  const changedKeys = Object.keys(payload).filter((k) => k !== 'expected_version' && k !== 'reason')
   await writeAuditLog(supabase, {
     admin_id: user.id,
     action_type:
-      payload.is_active !== undefined && Object.keys(payload).length === 1
+      payload.is_active !== undefined && changedKeys.length === 1
         ? payload.is_active
           ? 'question.activate'
           : 'question.deactivate'
@@ -216,7 +230,13 @@ export async function PATCH(
     object_id: id,
   })
 
-  return NextResponse.json({ ok: true })
+  // Neue Zählnummer, damit die Oberfläche gleich weiter umschalten kann (PROJ-131)
+  const { data: after } = await supabase.from('questions').select('version_number').eq('id', id).maybeSingle()
+
+  return NextResponse.json({
+    ok: true,
+    version_number: (after as { version_number?: number } | null)?.version_number ?? null,
+  })
 }
 
 export async function DELETE(

@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { loadLastChanges } from '@/lib/content-history'
 import { requireContentAdmin, writeAuditLog } from '../_lib/auth'
 import { attachAnswerKey } from '@/lib/answer-key'
+import { createServiceClient } from '@/lib/supabase-server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { loadHiddenInfo } from '@/lib/hidden-info'
+import { ANSWER_MATCH_LIMIT, likePattern, questionOrAnswerFilter } from '@/lib/question-search'
 
 const ListQuerySchema = z.object({
   q: z.string().optional(),
@@ -40,7 +44,7 @@ const CreateQuestionSchema = z.object({
   { message: 'Multiple-Choice-Fragen benötigen genau 5 Antworten.', path: ['answers'] }
 )
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 25
 
 export async function GET(request: NextRequest) {
   const auth = await requireContentAdmin()
@@ -89,6 +93,8 @@ export async function GET(request: NextRequest) {
         question_text,
         explanation,
         difficulty,
+        type,
+        sample_answer,
         class_level,
         topic_id,
         is_active,
@@ -105,7 +111,11 @@ export async function GET(request: NextRequest) {
       { count: 'exact' }
     )
     .is('deleted_at', null)
+    // Zählregel (PROJ-131): Fragen an gelöschten Fächern gehören nicht dazu
+    .is('qs_filter.subjects.deleted_at', null)
     .order(sort, { ascending: sort_dir === 'asc' })
+    // Zweiter Schlüssel, damit „Weitere anzeigen“ keine Zeile doppelt oder gar nicht zeigt
+    .order('id')
 
   if (auth.scopeDepartmentIds) {
     query = query.in('qs_filter.subjects.department_id', auth.scopeDepartmentIds)
@@ -145,7 +155,22 @@ export async function GET(request: NextRequest) {
     query = query.eq('is_active', false)
   }
   if (q && q.trim().length > 0) {
-    query = query.ilike('question_text', `%${q.trim()}%`)
+    // Suche in Fragetext und Antworten (PROJ-131)
+    let answerQuery = supabase
+      .from('answer_options')
+      .select('question_id, questions!inner(deleted_at, question_subjects!inner(subjects!inner(department_id)))')
+      .ilike('option_text', likePattern(q))
+      .is('questions.deleted_at', null)
+      .limit(ANSWER_MATCH_LIMIT)
+    if (auth.scopeDepartmentIds) {
+      answerQuery = answerQuery.in('questions.question_subjects.subjects.department_id', auth.scopeDepartmentIds)
+    }
+    const { data: answerRows, error: answerError } = await answerQuery
+    if (answerError) console.error('[GET /api/admin/questions] answer search', answerError)
+    const answerIds = Array.from(
+      new Set(((answerRows ?? []) as unknown as { question_id: string }[]).map((r) => r.question_id)),
+    )
+    query = query.or(questionOrAnswerFilter(q, answerIds))
   }
 
   const { data, error, count } = await query.range(from, to)
@@ -165,6 +190,17 @@ export async function GET(request: NextRequest) {
     withKey.map((q) => q.id as string)
   )
 
+  // „Ausgeblendet von … am …“ (PROJ-131, B40)
+  const hiddenIds = withKey.filter((q) => (q as { is_active?: boolean }).is_active === false).map((q) => q.id as string)
+  let hiddenInfo = new Map<string, string>()
+  if (hiddenIds.length > 0) {
+    try {
+      hiddenInfo = await loadHiddenInfo(createServiceClient() as unknown as SupabaseClient, hiddenIds)
+    } catch (infoError) {
+      console.error('[GET /api/admin/questions] hidden info', infoError)
+    }
+  }
+
   const questions = withKey.map((q) => {
     // qs_filter diente nur dem Bereichsfilter (s. o.) und gehört nicht in die Antwort.
     const { qs_filter: _qsFilter, ...rest } = q as typeof q & { qs_filter?: unknown }
@@ -177,6 +213,7 @@ export async function GET(request: NextRequest) {
       ),
       last_changed_by: lastChange?.name ?? null,
       last_changed_at: lastChange?.at ?? null,
+      hidden_info: hiddenInfo.get(q.id as string) ?? null,
     }
   })
 

@@ -33,6 +33,8 @@ const ALLOWED = new Set(
     'components/admin/user-detail/user-detail-dialogs.tsx',
     'components/admin/user-detail/user-detail-view.tsx',
     'components/name-festlegen-form.tsx',
+    // PROJ-131: „Ausgeblendet von <Name>“, nur in der Fragen-Schnittstelle der Lehrkräfte
+    'lib/hidden-info.ts',
     'lib/konto-data.ts',
     'lib/personen-name.ts',
     'lib/roles.ts',

@@ -267,7 +267,7 @@ export function QuestionReportReviewDialog({ questionId, position, readOnly, cla
         const res = await fetch(`/api/admin/questions/${questionId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_active: false }),
+          body: JSON.stringify({ is_active: false, reason: 'meldung' }),
         })
         if (!res.ok) {
           const body = (await res.json().catch(() => null)) as { error?: string } | null

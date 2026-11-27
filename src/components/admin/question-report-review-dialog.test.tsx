@@ -207,7 +207,7 @@ describe('QuestionReportReviewDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Frage entfällt …' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Frage deaktivieren und schließen' }))
     await waitFor(() => expect(onClosed).toHaveBeenCalled())
-    expect(patchCalls()[0].body).toEqual({ is_active: false })
+    expect(patchCalls()[0].body).toEqual({ is_active: false, reason: 'meldung' })
     expect(closeCalls()[0].body).toMatchObject({ result: 'entfaellt' })
   })
 

@@ -80,6 +80,8 @@ interface Props {
   onOpenHistory?: (question: AdminQuestion) => void
   /** Vorbelegung beim Anlegen (PROJ-85: „Neue Frage“ im gewählten Fach/Thema) */
   defaults?: QuestionDefaults
+  /** „Duplizieren“ (PROJ-131): Werte dieser Frage, gespeichert wird eine neue */
+  template?: AdminQuestion | null
 }
 
 /** Vorbelegung einer neuen Frage; wirkt nur, wenn keine Frage bearbeitet wird. */
@@ -115,6 +117,7 @@ interface BodyProps {
   /** Meldet, ob das Formular gegenüber dem Ausgangsstand verändert ist */
   onDirtyChange?: (dirty: boolean) => void
   defaults?: QuestionDefaults
+  template?: AdminQuestion | null
 }
 
 type FormState = {
@@ -159,6 +162,7 @@ export function QuestionFormModal({
   onSuccess,
   onOpenHistory,
   defaults,
+  template,
 }: Props) {
   const isEdit = Boolean(question)
   return (
@@ -166,12 +170,14 @@ export function QuestionFormModal({
       <DialogContent className="bg-ws-surface border-ws-line text-ws-text max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-ws-text">
-            {isEdit ? 'Frage bearbeiten' : 'Neue Frage erstellen'}
+            {isEdit ? 'Frage bearbeiten' : template ? 'Frage duplizieren' : 'Neue Frage erstellen'}
           </DialogTitle>
           <DialogDescription className="text-ws-muted">
             {isEdit
               ? 'Bestehende Frage anpassen. Antworten werden vollständig ersetzt.'
-              : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
+              : template
+                ? 'Passe die Kopie an. Die ursprüngliche Frage bleibt unverändert.'
+                : 'Lege eine neue Frage an — Multiple Choice oder Freitext.'}
           </DialogDescription>
         </DialogHeader>
         <QuestionFormBody
@@ -179,6 +185,7 @@ export function QuestionFormModal({
           question={question}
           subjects={subjects}
           defaults={defaults}
+          template={template}
           onOpenHistory={onOpenHistory}
           onCancel={() => onOpenChange(false)}
           onSaved={({ andNew }) => {
@@ -201,7 +208,7 @@ export function QuestionFormModal({
  * dieselben Felder, Prüfungen und denselben Konflikt-Schutz haben.
  */
 export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(function QuestionFormBody(
-  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange, defaults },
+  { active: open, question, subjects, onSaved, onConflict, onOpenHistory, hideFooter, quietSuccess, onCancel, onDirtyChange, defaults, template },
   ref
 ) {
   const classLevelOptions = useClassLevelOptions()
@@ -239,8 +246,9 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
   // Seed form state when opening / switching question
   useEffect(() => {
     if (!open) return
-    if (question) {
-      const ordered = [...question.answer_options].sort(
+    const source = question ?? template
+    if (source) {
+      const ordered = [...source.answer_options].sort(
         (a, b) => a.display_order - b.display_order
       )
       const [a, b, c, d, e] = [0, 1, 2, 3, 4].map((i) => ordered[i]?.option_text ?? '')
@@ -251,24 +259,24 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
         | 'C'
         | 'D'
         | 'E'
-      const subjectIds = question.question_subjects
+      const subjectIds = source.question_subjects
         .map((qs) => qs.subjects?.id)
         .filter((id): id is string => Boolean(id))
       const seeded: FormState = {
-        question_text: question.question_text,
-        type: question.type ?? 'multiple_choice',
-        sample_answer: question.sample_answer ?? '',
+        question_text: source.question_text,
+        type: source.type ?? 'multiple_choice',
+        sample_answer: source.sample_answer ?? '',
         answer_a: a,
         answer_b: b,
         answer_c: c,
         answer_d: d,
         answer_e: e,
         correct_letter,
-        explanation: question.explanation ?? '',
-        difficulty: question.difficulty,
+        explanation: source.explanation ?? '',
+        difficulty: source.difficulty,
         subject_ids: subjectIds,
-        class_level: question.class_level ? String(question.class_level) as '10' | '11' | '12' : '_all',
-        topic_id: question.topic_id ?? '_none',
+        class_level: source.class_level ? String(source.class_level) as '10' | '11' | '12' : '_all',
+        topic_id: source.topic_id ?? '_none',
       }
       initialRef.current = JSON.stringify(seeded)
       setForm(seeded)
@@ -286,7 +294,7 @@ export const QuestionFormBody = forwardRef<QuestionFormHandle, BodyProps>(functi
       if (defaultSubjectId) loadTopicsForSubjects([defaultSubjectId])
     }
     setErrors({})
-  }, [open, question, loadTopicsForSubjects, defaultSubjectId, defaultTopicId, defaultClassLevel])
+  }, [open, question, template, loadTopicsForSubjects, defaultSubjectId, defaultTopicId, defaultClassLevel])
 
   const remaining = useMemo(() => 1000 - form.question_text.length, [form.question_text])
 
