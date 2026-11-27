@@ -1,8 +1,8 @@
 # PROJ-131: Lerninhalte an einem Ort (Phase 3 Übersichtlichkeit, Teil 1)
 
-## Status: In Progress
+## Status: Approved
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27 (gebaut, Schritte 1–4)
+**Last Updated:** 2026-11-27 (QA: Approved, 5 Low)
 
 ## Worum es geht
 
@@ -252,7 +252,75 @@ Alle vier Bauschritte sind fertig und je einzeln committet. 4.829 Tests grün, B
 **Für /qa besonders prüfen:** Ausblenden eines Fachs auf der Azubi-Seite, „Rückgängig“-Toast, Handy bei 360 px, Weiterleitungen mit `?q=` und `?tab=`.
 
 ## QA Test Results
-_To be added by /qa_
+
+**Stand:** 2026-11-27 · **Geprüft von:** /qa (Opus) · **Ergebnis:** produktionsreif. 0 Critical, 0 High, 0 Medium, 5 Low.
+
+**So wurde geprüft:** Code der 82 geänderten Dateien gelesen (Commits 0687226 bis 0921c14), dazu automatische Tests, Typprüfung, Lint und Build. Rechte und Daten wurden **lesend** in der Produktions-Datenbank geprüft. Wie vereinbart lief kein Dev-Server und kein Playwright (siehe Technical Requirements). Darum gibt es keinen Test in mehreren Browsern und keine echten Messungen bei 360/768/1440 px. Die Darstellung ist nur anhand der Klassen im Code geprüft. **Der Browser-Blick nach dem Deploy ist Pflicht.**
+
+### Automatische Prüfungen
+| Prüfung | Ergebnis |
+|---|---|
+| `vitest` | 365 Dateien, **4.829 Tests grün** |
+| `tsc --noEmit` | ohne Fehler |
+| `eslint` (admin, lib) | 0 Fehler, 19 Warnungen (alle schon vorher vorhanden) |
+| `npm run build` | sauber |
+| Links auf alte Adressen im Code | keine (grep über `src/`, Wächter-Test vorhanden) |
+
+### Akzeptanzkriterien
+| Bereich | Ergebnis | Anmerkung |
+|---|---|---|
+| Seite, Kopf, `⋯`-Menü, eine grüne Hauptaktion | ✅ | „Fragen aus Material“ steht nur für den Super-Admin im Menü, wie bisher die Seite |
+| Reiter in der Adresse (`?reiter=`, `fach`, `thema`, `klasse`) | ✅ | Suchbegriff steht nur beim Öffnen in der Adresse (`?q=`), siehe BUG-4 |
+| Weiterleitungen | ✅ mit Einschränkung | Reihenfolge laut Next-Doku: `redirects` laufen vor dem Proxy, die Rechteprüfung gilt fürs Ziel. `?q=` bleibt erhalten. Filter gehen verloren, siehe BUG-2 |
+| Menü, Schnellsuche (3 Reiter-Einträge), Start-Aufgabe „gemeldet“, Kachel „Meine Fächer“ | ✅ | |
+| Baum: Alle Fächer, Kürzel fett + Name einzeilig mit `title`, Einrückung 24 px mit Linie, gleiche Schriftgröße, Stufe in der Zeile nur bei „Alle“, „Thema hinzufügen“, Gruppen bei „Alle Bereiche“ | ✅ | Zuklappen des gewählten Fachs wirkt nicht, siehe BUG-1 |
+| kein „Knoten“ im sichtbaren Text | ✅ | |
+| Reiter „Fragen“: Kopf mit „davon N ausgeblendet“, Suche über alle Fächer und in Antworten, ein Filter, Zurücksetzen | ✅ | |
+| Aufklappen (Haken **und** Wort „richtig“, Erklärung, Musterlösung, `aria-expanded`, Enter/Leertaste über `<button>`) | ✅ | |
+| Zeilenaktionen, Löschen rot mit `AlertDialog` | ✅ | |
+| „Weitere 25 anzeigen (noch N)“, stabile Reihenfolge (`order id`) | ✅ | |
+| Ausblenden sofort + Toast 7 s mit „Rückgängig“, je Frage eigener Toast | ✅ | Konflikt (409): Klick gilt trotzdem, mit Hinweis |
+| „Ausgeblendet von … am …“ / „Schon vor dieser Änderung ausgeblendet“ | ✅ | In der DB: alle 668 heute ausgeblendeten Fragen haben als letzten Stand „Stand bei Einführung“ und zeigen damit richtig „Schon vor dieser Änderung“ |
+| Protokoll für Aus-/Einblenden und Rückgängig | ✅ | Trigger schreibt `deactivated`/`activated` mit Person; Audit `question.activate/deactivate` stimmt jetzt auch mit `expected_version` |
+| Mehrfachauswahl mit Rückfrage bei Löschen/Ausblenden, Päckchen à 200 | ✅ | |
+| Leerzustände | ✅ | |
+| Fach ausblenden über `⋯`, Rückfrage mit Zahl, Pille, Einblenden ohne Rückfrage | ✅ | Protokoll-Eintrag ungenau, siehe BUG-3 |
+| Azubi-Seite lässt ausgeblendete Fächer weg | ✅ | Fächerlisten, `/api/questions`, Blitzrunde, Lernrunden, Schwächen, Themen, Übungsprüfung-Zufall. Alle hängen an `getDepartmentSubjectIds` (`is_active`), der Zwischenspeicher wird beim Umschalten geleert. Es gibt 0 Fragen mit mehreren Fächern, also bleibt keine über ein zweites Fach sichtbar |
+| Reiter „Gemeldet“: Einschränkung auf Fach/Thema inkl. „Ohne Thema“, „Alle Meldungen zeigen“, „Frage liegt im Papierkorb“ + Wiederherstellen, Grund „Nach einer Meldung“ | ✅ | |
+| Reiter „Schwierig“: fester Satz „ab 30“, „Im Thema zeigen“ fehlt bei gelöschtem Thema | ✅ | |
+| Reiter „Papierkorb“: Segmente, Endgültig nur Super-Admin; Übungsprüfungen und Lehrerzimmer als Fenster | ✅ | |
+| Zahlen: eine Zählregel (Baum, Listenkopf, Start) | ✅ | gleiche Filter (Papierkorb, Bereich, privat), Test vorhanden |
+| Handy: Baum als Leiste, Aktionen unter dem Text, 44 px, nur `ws-*` | ✅ (Code) | im Browser noch nicht gesehen |
+| Laden/Fehler, Zahl im Kopf erst nach dem Laden | ✅ | |
+
+### Edge Cases
+Bereich wechseln (der Umschalter löscht `fach`/`thema` und lädt neu) ✅ · gelöschtes Thema in der Adresse (Hinweis + „Alle Fächer“) ✅ · Rückgängig nach Seitenwechsel (Toast bleibt, Speichern geht trotzdem) ✅ · mehrere Toasts ✅ · zwei Lehrkräfte (409 → Hinweis) ✅ · Fach mit 0 Fragen ✅ · über 3.000 Fragen (25 je Abschnitt) ✅ · Super-Admin „Alle Bereiche“ (Gruppen, Bereich-Pille nur dort) ✅
+
+### Sicherheit (Red Team)
+- **Rechte:** Es gibt keine neue Schnittstelle. Alle geänderten Routen prüfen weiter mit `requireContentAdmin` und Bereich (`scopeDepartmentIds`). Die alten Seiten sind aus `TEACHER_ADMIN_PATHS` entfernt, die Weiterleitung läuft vorher. ✅
+- **Dienst-Client** nur in `loadHiddenInfo`, nach der Rechteprüfung und nur für die IDs, die der Nutzer gerade lesen darf. Er gibt nur einen Satz mit Name und Datum heraus (Namen sind im Bereich ohnehin sichtbar, PROJ-70). ✅
+- **Suche:** `%`, `_`, `\` und Anführungszeichen werden maskiert. Kommas und Klammern zerlegen den `.or()`-Filter nicht. Die Antwort-IDs kommen aus der DB (UUIDs). Private Fragen bleiben über die Hauptabfrage draußen. ✅
+- **`reason: 'meldung'`:** fest auf einen Wert (`z.literal`). Er bündelt nur die eigene, gerade entstandene Version. ✅
+- **Antworten in der Liste:** nur für Lehrkräfte (Verwaltungs-Schnittstelle). Für Azubis ändert sich nichts. ✅
+- **RLS:** `questions_read` filtert `deleted_at` nicht. Darum findet die Prüfung „Frage im Papierkorb“ auch für Lehrkräfte die Zeile. ✅
+
+### Gefundene Fehler (alle Low)
+
+**BUG-1 (Low): Gewähltes Fach lässt sich nicht zuklappen.** `content-tree.tsx` setzt `sOpen = selected.subjectId === subject.id || expanded.has(…)`. Der Pfeil „LOP zuklappen“ (und ← auf der Tastatur) ändert nichts, solange das Fach oder eines seiner Themen gewählt ist. Das folgt der Spec („immer aufgeklappt“), aber der Knopf verspricht etwas anderes. *Schritte:* LOP › Lagerlogistik wählen, auf den Pfeil bei LOP klicken, nichts passiert. *Vorschlag:* Pfeil beim gewählten Fach ausblenden oder Zuklappen erlauben.
+
+**BUG-2 (Low): Weiterleitungen übernehmen Filter nicht.** `/admin/questions?subject=LOP` landet auf „Alle Fächer“, weil die Seite `subject` nicht liest. Das Tech Design (C3) sah die Übersetzung in `?fach=<id>` vor. `/admin/papierkorb?tab=topic` oder `?tab=subject` öffnet das Segment „Fragen“ statt „Themen“ bzw. „Fächer“. `?q=` funktioniert. Betroffen sind nur alte Lesezeichen.
+
+**BUG-3 (Low): Fach aus- und einblenden steht im Protokoll als „subject.update“.** `PATCH /api/admin/subjects/[id]` zählt `Object.keys(parsed.data).length === 1`. Die Seite schickt aber immer `expected_version` mit. Bei den Fragen wurde dasselbe Muster in diesem Feature behoben (`changedKeys`), bei den Fächern nicht. Der Verlauf (`content_versions`) zeigt den Vorgang trotzdem richtig als `deactivated`/`activated`.
+
+**BUG-4 (Low): Suche über alle Fächer ist im Kopf und bei der Baum-Auswahl verwirrend.** (a) Während einer Suche steht oben weiter „LOP › Lagerlogistik“, darunter „12 Treffer in allen Fächern“. (b) Ein Klick auf einen anderen Eintrag im Baum löscht den eingegebenen Suchbegriff, weil das Panel per `key` neu startet und die Suche nicht in der Adresse steht. *Vorschlag:* Bei aktiver Suche als Titel „Suche in allen Fächern“ zeigen und `q` in die Adresse schreiben.
+
+**BUG-5 (Low, Tempo): `GET /api/admin/subjects` lädt jetzt bei jedem Aufruf alle Fragen des Bereichs zum Zählen.** Das sind heute rund 3.800 (SPED) bzw. 4.500 (TOUR) Zeilen in 4 bis 5 Abfragen. Gebraucht werden die Zahlen nur auf dem Start („Meine Fächer“). Die anderen Aufrufer (Meldung prüfen, Nachweis-Kategorien, Änderungen, Fragen aus Material, `use-admin-subject-codes`) brauchen nur die Fächerliste. *Vorschlag:* Zählen nur mit `?counts=1`.
+
+### Nicht geprüft (nach dem Deploy im Browser)
+Echte Darstellung bei 360/768/1440 px und Hell/Dunkel; Safari/Firefox; Toast „Rückgängig“ von Hand; ein Fach ausblenden und als Azubi prüfen, dass es fehlt (danach wieder einblenden); Lehrkraft-Ansicht ohne Super-Admin-Recht; Tempo der ersten Ansicht.
+
+### Entscheidung
+**Produktionsreif: JA.** Es gibt keine Critical-, High- oder Medium-Fehler. Die fünf Low-Befunde können vor oder nach dem Deploy behoben werden.
 
 ## Deployment
 _To be added by /deploy_
