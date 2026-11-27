@@ -1,6 +1,6 @@
 # PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4 Übersichtlichkeit, Teil 1)
 
-## Status: In Progress
+## Status: In Review
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -262,7 +262,167 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 - Der alte Fragen-Wähler samt Vorschlag-Dialog bleibt für „Fragen bearbeiten“ auf der Detailseite (PROJ-134).
 
 ## QA Test Results
-_To be added by /qa_
+
+**Tested:** 2026-11-27
+**App URL:** http://localhost:3000 (Dev-Server mit Platzhalter-Zugangsdaten, keine echte Datenbank)
+**Tester:** QA Engineer (AI)
+
+**Wie geprüft:** Code-Review aller neuen und geänderten Dateien, Unit- und Rendertests (Vitest), Typprüfung, Lint, Playwright gegen den Dev-Server (Seiten- und Schnittstellenschutz ohne Anmeldung). Ohne Lehrkraft-Konto und Datenbank war der Ablauf im Browser nicht durchspielbar (wie bei PROJ-120 bis PROJ-132). Ihn decken `assessment-wizard.test.tsx` (8 Rendertests) und die Logik-Tests ab.
+
+### Automatische Tests
+- `npm test`: **376 Dateien, 5.001 Tests grün**
+- `tsc --noEmit`: sauber. `eslint` auf alle Dateien des Features: 0 Fehler (5 Warnungen in älteren Dateien)
+- Neu: `tests/PROJ-133-nachweis-anlegen-in-drei-schritten.spec.ts` (9 Tests × Desktop- und Handy-Chromium = **18 grün**)
+- Gesamte E2E-Suite (Chromium): 146 grün, 52 übersprungen (brauchen ein echtes Konto), **9 rot in PROJ-1/2/3/4-5/7**. Diese Tests betreffen Login-Branding und ältere Schnittstellen, PROJ-133 ändert dort keine Datei. Die Fehler bestanden also schon vorher, es ist keine Regression (vermutlich wegen der fehlenden Datenbank).
+- WebKit/Safari und Firefox sind in dieser Umgebung nicht installiert. Geprüft wurde mit Desktop-Chromium und Handy-Chromium (Pixel 5).
+
+### Acceptance Criteria Status
+
+#### Einstieg und Rahmen
+- [x] Eine grüne Hauptaktion „Nachweis anlegen“ als Link auf `/neu`. Riesendialog gelöscht, „Vorschlag“-Knopf weg. Alte Adressen `?neu=1` und `?createFromSet=` leiten weiter.
+- [x] Schrittleiste mit drei Schritten: aktueller Schritt hervorgehoben, spätere gesperrt (`disabled`), erledigte anklickbar, `aria-current="step"`
+- [x] Zurück/Weiter, Angaben bleiben erhalten (Rendertest), grüne Aktion „Entwurf speichern“
+- [x] Rückfrage beim Verlassen (Links in der App und `beforeunload`); kein Entwurf vor dem Speichern. Siehe BUG-5 (Zurück-Taste) und BUG-6
+- [x] Bedienelemente `min-h-11`; Layout `flex-col-reverse … sm:flex-row`, Sheet am Handy von unten (nur im Code geprüft, siehe Einschränkungen)
+
+#### Schritt 1 – Was?
+- [x] Bereich: ein Bereich als Text, Super-Admin bei „Alle Bereiche“ (`scope.current === null`) muss wählen, sonst Bereich aus dem Umschalter
+- [x] Fach, Thema, Stufe (`AdminSegmented`), Anzahl 5–60, Schwierigkeit (`AdminSegmented`, 4 Werte), eigene Verteilung mit Summenprüfung
+- [x] Ausschlüsse unter „Weitere Einstellungen“ (zugeklappt) mit den Standardwerten aus PROJ-78
+- [x] „Vorschlag erstellen“ führt zu Schritt 2. Fehler stehen am Feld (Rendertest „fehlendes Fach“).
+- [x] „Leer beginnen“ führt zu Schritt 2 mit leerer Liste
+- [x] „Ausgeschlossene Fragen“ mit Erklärsatz und „Dauer“ stehen in `begriffe.ts`, der Wächtertest kennt die alten Wörter
+- [ ] BUG-2: Ein Wechsel des Bereichs in Schritt 1 behält die Fragen aus dem alten Bereich
+
+#### Schritt 2 – Prüfen
+- [x] Liste mit Text, Thema, Chip und Lösungsquote, darüber die Zusammenfassung
+- [x] Entfernen, Tauschen (3 Alternativen), Ziehen (`@dnd-kit`, auch mit Tastatur und Touch), Fixieren. „Neu würfeln“ behält fixierte Fragen (`keepIds`).
+- [x] Suche: höchstens 25 Treffer, „Weitere N anzeigen (noch M)“, kein „Alle wählen“, gewählte Fragen markiert (Unit-Tests für `searchQuestions`). Der Fragetyp-Filter fehlt mit Absicht, weil nur Multiple Choice zulässig ist.
+- [x] Die Anzahl steht oben und in der Kopfzeile der Suche
+- [x] Nur zulässige Fragen (`loadCandidates`), der Server prüft beim Speichern erneut
+- [x] Bei zu wenigen Fragen nennt die Seite die Lücke und füllt nicht mit unpassenden auf (Logik aus PROJ-78)
+- [ ] **BUG-1 (High):** „Weiter“ geht ab einer Frage, unter 5 Fragen erscheint nur ein Hinweis. **Speichern scheitert aber am Server.**
+
+#### Schritt 3 – Wann und für wen?
+- [x] Titel (Vorschlag), Klasse, Schuljahr, Beitritt bis/ab, Dauer, Notenschlüssel
+- [x] Klasse ist Pflicht im Browser und auf dem Server (`className` ohne `.optional()`, 400 ohne Angabe), mit „Keine / gemischt“ und freier Eingabe
+- [ ] BUG-3: Die freie Eingabe prüft nur die Länge, nicht das Format „wie SP10C“
+- [x] Beitritt bis: Vorschlag heute 23:59 in Europe/Berlin, drei Schnellwahlen, Vergangenheit und „vor Beitritt ab“ werden am Feld abgelehnt (der Server lehnt die Vergangenheit ebenfalls ab), Datum und Uhrzeit ausgeschrieben
+- [x] Erklärsätze unter „Beitritt bis“ und „Dauer“ wörtlich wie in der Spec
+- [x] Notenschlüssel: Vorlagen-Auswahl und „Neue Vorlage anlegen“ (Dialog, neue Vorlage sofort gewählt)
+- [x] Zusammenfassung oben mit „Angaben ändern“ und „Fragen ändern“
+- [x] Nach dem Speichern: Toast „Entwurf gespeichert“ und Weiterleitung auf die Detailseite
+
+#### Notenschlüssel-Vorlage direkt anlegen
+- [x] „Vorlage anlegen“ auf `/schluessel` (im Seitenkopf, bei leerer Liste im Leerzustand), derselbe Dialog wie in Schritt 3, danach wird die Liste neu geladen
+
+#### „In neuen Nachweis“ aus „Schwierig“
+- [x] Häkchen je Frage (44 px), Leiste „N markiert · In neuen Nachweis“, höchstens 60 Fragen
+- [x] Start bei Schritt 2 mit den markierten Fragen in ihrer Reihenfolge. Fach und Thema werden aus den Fragen abgeleitet, Schritt 1 ist erreichbar (Rendertest).
+- [x] Bei mehreren Bereichen kommt eine Rückfrage mit der Auswahl je Bereich. Nicht zulässige Fragen meldet ein Hinweis mit ihrer Anzahl.
+- [ ] Gleiche Ursache wie BUG-1: Wer weniger als 5 Fragen markiert, kommt bis Schritt 3, kann dort aber nicht speichern
+
+#### Rechte, Wörter und Technik
+- [x] Rechte unverändert (`requireTeacherOrAdmin`, gleiches Muster wie beim Vorschlag in PROJ-78)
+- [x] Schrittnamen wörtlich, Begriffe in `begriffe.ts`, Wächtertest grün
+- [x] Nur `ws-*`-Farben, `AdminSegmented`, `AdminPageHeader`, `admin-states` (Laden, Leer, Fehler)
+- [x] Alte Adressen funktionieren weiter, alter Dialog entfernt
+
+### Edge Cases Status
+- [x] Kein Treffer: Leerzustand mit „Frage suchen“ und Link zu „Fragen hinzufügen“
+- [x] Zu wenige Fragen: Hinweis „nur X von Y“, kein Auffüllen
+- [x] Abbruch: kein Entwurf in der Datenbank. Rückfrage bei Links und beim Neuladen (Ausnahme: Zurück-Taste, BUG-5)
+- [x] Frage verschwindet: Der Server nennt die Fragen (`invalidQuestionIds`), die Seite springt zu Schritt 2 und markiert sie (Rendertest)
+- [x] Bereichswechsel in einem anderen Tab: Der Bereich wird nur beim Start gelesen und gilt dann fest
+- [x] Zeitzone und Sommerzeit: Unit-Tests für den 25.10. und den 29.3.
+- [ ] Klasse mit Sonderzeichen: wird nicht abgelehnt (BUG-3). Zu lang: wird abgelehnt
+- [x] Offline: Die Seite bleibt offen, die Angaben bleiben, Meldung „Keine Verbindung …“, der Knopf heißt dann „Erneut versuchen“
+- [ ] Nur eine Frage: Die Seite erlaubt sie, der Server lehnt sie ab (BUG-1)
+- [x] Zusätzlich geprüft: Kaputter oder fehlender sessionStorage-Eintrag (geteilter Link) führt zum normalen Start, der Eintrag wird nach dem Lesen gelöscht (Unit-Test)
+
+### Security Audit Results
+- [x] Authentifizierung: `/neu`, `?aus=schwierig`, `?neu=1` und `/schluessel` leiten ohne Anmeldung zum Login. Die Suche (alle drei Aktionen) und das Anlegen geben 401 zurück (E2E).
+- [x] Autorisierung: Die Suche liefert nur den zulässigen Pool. Private „nur für Nachweise“-Fragen kommen nur von der eigenen Person (`ownerId = user.id`). Das Anlegen prüft Bereich, Fragen und Rolle auf dem Server erneut.
+- [x] Eingaben: Alle Felder prüft Zod (Länge, UUIDs, `offset` ≤ 100.000, `ids` ≤ 60). Die Suche filtert im Speicher, es gibt kein SQL aus Nutzereingaben. React maskiert alle Texte, und kein neuer Code nutzt `dangerouslySetInnerHTML`.
+- [x] sessionStorage-Übergabe: Der Inhalt wird geprüft (nur Strings, höchstens 60) und nur als Nummern an den Server geschickt. Der Server lässt unbekannte Nummern als `missing` weg.
+- [x] Keine Geheimnisse und keine fremden Personendaten in den Antworten (Treffer ohne Urheber)
+- [ ] Rate-Limiting: keines auf der Suche (Low, siehe BUG-7). Jede Anfrage lädt den ganzen Bereichs-Pool samt Statistik.
+
+### Bugs Found
+
+#### BUG-1: Nachweise mit 1–4 Fragen lassen sich nicht speichern
+- **Severity:** High
+- **Steps to Reproduce:**
+  1. „Nachweis anlegen“ → „Leer beginnen“ → mit „Frage suchen“ 1 bis 4 Fragen hinzufügen (oder aus „Schwierig“ 3 Fragen markieren → „In neuen Nachweis“)
+  2. Die Seite sagt: „Du kannst trotzdem weitermachen.“ → „Weiter“ → Schritt 3 ausfüllen → „Entwurf speichern“
+  3. Expected: Der Entwurf wird gespeichert („unter 5 Fragen nur ein Hinweis, kein Verbot“ und Edge Case „Nur eine Frage: erlaubt“)
+  4. Actual: `checkQuestionSelection` (`src/lib/assessment-questions.ts:161`) lehnt mit 400 „Mindestens 5 Fragen nötig.“ ab. Die Meldung steht unter Schritt 3, Speichern ist nicht möglich.
+- **Hinweis:** Entweder sinkt die Untergrenze für das Anlegen auf 1 Frage (das Öffnen in PROJ-21 und die Datenbank-Regeln mitprüfen), oder Spec und Hinweis werden angepasst. Diese Entscheidung trifft der Product Owner.
+- **Priority:** Fix before deployment
+
+#### BUG-2: Ein Bereichswechsel in Schritt 1 behält die Fragen des alten Bereichs
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Als Super-Admin bei „Alle Bereiche“ (oder Lehrkraft mit mehreren Bereichen): Bereich A wählen → „Vorschlag erstellen“ → Schritt 2 zeigt Fragen aus A
+  2. In der Schrittleiste zurück zu „Was?“ → Bereich B wählen → „Weiter“ über die Schrittleiste zu Schritt 2 (oder 3) → speichern
+  3. Expected: Ein Bereichswechsel leert die Auswahl, oder es kommt vorher eine Rückfrage
+  4. Actual: `onDepartmentChange` leert nur Fach und Thema. Die Fragen aus A bleiben, der Server lehnt alle als „nicht zulässig“ ab, und die Lehrkraft muss sie einzeln entfernen.
+- **Priority:** Fix before deployment
+
+#### BUG-3: Die Klasse in freier Eingabe prüft das Format nicht
+- **Severity:** Medium
+- **Steps to Reproduce:**
+  1. Schritt 3 → Klasse „Andere Klasse eingeben …“ → `!!! test <b>` eingeben → speichern
+  2. Expected: Ablehnung am Feld („nur Format wie SP10C“, Edge Case „Klasse mit Sonderzeichen … wird am Feld abgelehnt“)
+  3. Actual: `validateWhen` und der Server (`z.string().max(30)`) prüfen nur die Länge. Der Entwurf wird mit dieser Klasse gespeichert und erscheint in der Klassen-Auswahl der nächsten Nachweise. Ein XSS-Risiko besteht nicht, weil React maskiert.
+- **Priority:** Fix before deployment
+
+#### BUG-4: Nach 23:59 ist der Vorschlag „heute 23:59“ schon vergangen
+- **Severity:** Low
+- **Steps to Reproduce:** Schritt 3 zwischen 23:59 und 0:00 Uhr öffnen (oder die Seite über Mitternacht offen lassen und dann erstmals Schritt 3 öffnen)
+- **Expected:** ein gültiger Vorschlag (zum Beispiel morgen 23:59)
+- **Actual:** Das vorausgefüllte Feld ist ungültig, erst beim Speichern erscheint „liegt in der Vergangenheit“
+- **Priority:** Nice to have
+
+#### BUG-5: Die Zurück-Taste des Browsers verlässt den Ablauf ohne Rückfrage
+- **Severity:** Low (in den Implementation Notes als Abweichung genannt)
+- **Steps to Reproduce:** Bis Schritt 2 oder 3 gehen → Zurück-Taste des Browsers oder Wischgeste am Handy
+- **Expected:** Rückfrage „Angaben gehen verloren“ (AC „Wer die Seite verlässt …“)
+- **Actual:** Die Liste öffnet sich sofort, alle Angaben sind weg. Am Handy passiert das per Wischgeste leicht aus Versehen.
+- **Priority:** Fix in next sprint
+
+#### BUG-6: Die Rückfrage fehlt, solange nur Schritt 1 ausgefüllt ist
+- **Severity:** Low
+- **Steps to Reproduce:** In Schritt 1 Fächer, Themen und eine eigene Verteilung einstellen → Link in der Seitenleiste klicken
+- **Actual:** Keine Rückfrage, weil `dirty` erst ab Schritt 2 gilt (`items.length > 0 || reached > 1`)
+- **Priority:** Nice to have
+
+#### BUG-7: Jede Suchanfrage lädt den ganzen Pool des Bereichs neu
+- **Severity:** Low (Leistung)
+- **Details:** `POST …/questions/search` ruft bei jedem Tippen (nach 300 ms Wartezeit) und bei jedem „Weitere 25“ `loadCandidates` auf. Das heißt: alle zulässigen Fragen, die Lösungsquoten seitenweise und die offenen Meldungen. Zum Browser gehen nur 25 Treffer (die AC ist erfüllt), die Datenbank arbeitet aber jedes Mal mit allen 3.355 Fragen. Es gibt kein Rate-Limit. Die Zeit (Ziel unter 2 s) war ohne Datenbank nicht messbar.
+- **Priority:** Fix in next sprint (zum Beispiel den Pool kurz zwischenspeichern)
+
+#### BUG-8: Die Hinweis-Meldung beim Markieren kann doppelt erscheinen
+- **Severity:** Low
+- **Details:** `toggleMark` in `difficult-questions.tsx` ruft `toast.error` innerhalb des State-Updaters auf. Im Strict Mode (Entwicklung) läuft der Updater doppelt, dann erscheint „höchstens 60 Fragen“ zweimal. Den Toast außerhalb des Updaters auslösen.
+- **Priority:** Nice to have
+
+#### BUG-9: Übungsprüfungen mit mehr als 60 Fragen werden ohne Hinweis gekürzt
+- **Severity:** Low
+- **Steps to Reproduce:** „Als Leistungsnachweis verwenden“ bei einer Übungsprüfung mit mehr als 60 Fragen
+- **Actual:** `found.question_ids.slice(0, 60)` übernimmt nur die ersten 60, ohne Hinweis auf die übrigen
+- **Priority:** Nice to have
+
+### Einschränkungen dieser Prüfung
+- Der Ablauf mit echtem Konto, echten Fragen und echtem Speichern ist nicht im Browser getestet. Es gab keine Datenbank und kein Lehrkraft-Konto. Nach den Korrekturen bitte einmal mit echtem Konto prüfen: Vorschlag → Prüfen → Speichern und der Weg aus „Schwierig“.
+- Die Breiten 375, 768 und 1440 px sowie Firefox und Safari sind nur über die Tailwind-Klassen im Code geprüft, nicht visuell.
+
+### Summary
+- **Acceptance Criteria:** 33 von 37 bestanden. Offen sind 4: unter 5 Fragen speichern, Bereichswechsel, Klassenformat, Weg aus „Schwierig“ mit wenigen Fragen. Drei davon gehen auf BUG-1 bis BUG-3 zurück, der vierte ebenfalls auf BUG-1.
+- **Bugs Found:** 9 total (0 critical, 1 high, 2 medium, 6 low)
+- **Security:** bestanden. Keine kritischen Befunde, nur das fehlende Rate-Limit (Low).
+- **Production Ready:** **NO**
+- **Recommendation:** Erst BUG-1 beheben (dazu die Produktentscheidung zur Untergrenze), dann BUG-2 und BUG-3, danach `/qa` erneut
 
 ## Deployment
 _To be added by /deploy_
