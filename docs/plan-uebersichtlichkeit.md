@@ -103,6 +103,8 @@ Verwaltung              Nutzer · Fachbereich · Items · Änderungsprotokoll
 
 ## Phase 3 – Lerninhalte an einem Ort
 
+**Features (27.11.2026, Planned):** [PROJ-131](../features/PROJ-131-lerninhalte-an-einem-ort.md) Lerninhalte an einem Ort (Seite, Baum, Reiter, Aufklappen, Ausblenden mit Rückgängig; B34, B35, B39, B40, B41, B45, B49, B102, B103) · [PROJ-132](../features/PROJ-132-fragen-hinzufuegen.md) Fragen hinzufügen (drei Wege, Datei-Upload, Vorschau vor dem Übernehmen; B42, B43, B44, B47, B48). Entscheidungen: alte Seiten leiten weiter; Frage ausblenden = Rückgängig-Toast, Fach ausblenden = Rückfrage; Material per Datei-Upload; Papierkorb für Übungsprüfungen/Lehrerzimmer zieht an deren Seiten; „In neuen Nachweis“ aus „Schwierig“ erst in Phase 4.
+
 - Inhalte, Fragen, Fächer, Themen, Gemeldete Fragen, Schwierigste Fragen und Papierkorb (Fragen) werden **eine** Seite „Lerninhalte“: links Fach › Thema, rechts die Fragen; Reiter Fragen · Gemeldet · Schwierig · Papierkorb.
 - **„Fragen hinzufügen“** mit drei Wegen: selbst schreiben · aus Material (Assistent wie in der Werkzeugkiste: Datei hochladen statt Platzhalter im Prompt ersetzen) · Datei importieren (CSV).
 - Neue KI-Fragen erst als **Vorschau**, dann „Übernehmen“ (nicht mehr „sofort aktiv“).
