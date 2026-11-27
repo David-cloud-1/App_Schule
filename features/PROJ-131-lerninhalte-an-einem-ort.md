@@ -1,8 +1,8 @@
 # PROJ-131: Lerninhalte an einem Ort (Phase 3 Übersichtlichkeit, Teil 1)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-27
-**Last Updated:** 2026-11-27 (QA: Approved, 5 Low – alle behoben)
+**Last Updated:** 2026-11-27 (Deployed)
 
 ## Worum es geht
 
@@ -331,4 +331,9 @@ Echte Darstellung bei 360/768/1440 px und Hell/Dunkel; Safari/Firefox; Toast „
 - Tests: 365 Dateien, 4.832 grün; Build sauber.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Deployment `dpl_8bTrHq6HwWeJzHZ1jQ34xre8ngC9`, Commit `8a8da36` auf `main`)
+- **Deployed:** 2026-11-27 · Build READY, keine neuen Laufzeitfehler im Deployment
+- **Datenbank:** keine Migration nötig
+- **Geprüft nach dem Deploy:** Weiterleitung `/admin/questions?subject=LOP` → `/admin/inhalte?subject=LOP` (Kürzel bleibt erhalten, danach Login)
+- **Noch von Hand im Browser zu prüfen (Pflicht laut QA):** 360/768/1440 px, Hell/Dunkel, Toast „Rückgängig“, Fach ausblenden und als Azubi gegenprüfen (danach wieder einblenden), Ansicht als Lehrkraft ohne Super-Admin-Recht, Tempo der ersten Ansicht
+- **Rollback:** Vercel → Deployments → vorheriges Deployment `dpl_FguMdAHMHKj8CtgsNTQbccUGQmuG` „Promote to Production“
