@@ -121,6 +121,7 @@ describe('AdminShell – Handy (PROJ-45)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }))
     const drawer = screen.getByRole('dialog')
     expect(within(drawer).getByRole('navigation', { name: 'Lehrkräfte-Bereich' })).toBeInTheDocument()
+    fireEvent.click(within(drawer).getByTestId('nav-fold-lerninhalte'))
     fireEvent.click(within(drawer).getByRole('link', { name: 'Fragen' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
@@ -136,7 +137,7 @@ describe('AdminShell – Handy (PROJ-45)', () => {
 
   it('zeigt den Seitentitel in der Kopfzeile', () => {
     setup({ width: 390 })
-    expect(within(screen.getByRole('banner')).getAllByText('Übersicht').length).toBeGreaterThan(0)
+    expect(within(screen.getByRole('banner')).getAllByText('Start').length).toBeGreaterThan(0)
   })
 })
 
@@ -147,14 +148,19 @@ describe('Konto-Menü (PROJ-45)', () => {
     expect(within(menu).getByText('muster@schule.de')).toBeInTheDocument()
     expect(within(menu).getByText('Bereichs-Admin Spedition')).toBeInTheDocument()
     expect(within(menu).getByRole('menuitem', { name: /Mein Konto/ })).toHaveAttribute('href', '/admin/konto')
-    expect(within(menu).getByRole('menuitem', { name: /Spielerprofil/ })).toHaveAttribute('href', '/profile')
-    expect(within(menu).getByRole('menuitem', { name: /Zur Lern-App/ })).toHaveAttribute('href', '/?ansicht=spiel')
-    expect(within(menu).getByRole('menuitem', { name: /Abmelden/ })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: /Als Azubi ansehen/ })).toHaveAttribute('href', '/?ansicht=spiel')
+    // PROJ-130: genau diese Einträge, kein „Spielerprofil“ und kein „Zur Lern-App“ mehr
+    expect(within(menu).getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['Mein Konto', 'Als Azubi ansehen', 'Abmelden'])
     expect(within(menu).getAllByRole('menuitemradio').map((i) => i.textContent)).toEqual([
       'Dunkel',
       'Hell',
       'Wie System',
     ])
+  })
+
+  it('hat keinen zweiten „Zur Lern-App“-Knopf in der Kopfzeile (PROJ-130)', () => {
+    setup()
+    expect(within(screen.getByRole('banner')).queryByRole('link', { name: /Lern-App|Azubi/ })).not.toBeInTheDocument()
   })
 
   it('wechselt die Darstellung sofort und merkt sie im Cookie', () => {
@@ -186,7 +192,7 @@ describe('Schnellsuche (PROJ-45)', () => {
     expect(palette.getByRole('option', { name: /Leistungsnachweise/ })).toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Neuer Leistungsnachweis/ })).toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Werkzeugkiste öffnen/ })).toBeInTheDocument()
-    expect(palette.getByRole('option', { name: /Zur Lern-App/ })).toBeInTheDocument()
+    expect(palette.getByRole('option', { name: /Als Azubi ansehen/ })).toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Darstellung: Hell/ })).toBeInTheDocument()
   })
 
@@ -206,12 +212,27 @@ describe('Schnellsuche (PROJ-45)', () => {
     // PROJ-48: Fragen/Fächer/Themen/Prüfungssimulation/Meine Fächer/Papierkorb
     // sind jetzt auch für Lehrkräfte sichtbar — welche Inhalte sie darin
     // sieht, entscheidet ihre Fach-Zuständigkeit.
-    expect(palette.getByRole('option', { name: /^Fragen$/ })).toBeInTheDocument()
+    expect(palette.getByRole('option', { name: /^Lerninhalte ›\s*Fragen$/ })).toBeInTheDocument()
     expect(palette.queryByRole('option', { name: /Fachbereiche/ })).not.toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Werkzeugkiste öffnen/ })).toBeInTheDocument()
     // PROJ-46: eigene Leistungsnachweise anlegen und einsehen
     expect(palette.getByRole('option', { name: 'Leistungsnachweise' })).toBeInTheDocument()
     expect(palette.getByRole('option', { name: /Neuer Leistungsnachweis/ })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Kalender', '/admin/kalender'],
+    ['Prüfungssimulation', '/admin/exam-sets'],
+    ['Hof-Items', '/admin/shop-items'],
+    ['Fachbereich', '/admin/department-settings'],
+    ['Checklisten', '/admin/checklisten'],
+  ])('findet „%s“ auch unter dem früheren oder verschachtelten Namen (PROJ-130)', async (suchwort, ziel) => {
+    setup()
+    const palette = await openPalette()
+    const input = palette.getByRole('combobox')
+    fireEvent.change(input, { target: { value: suchwort } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(push).toHaveBeenCalledWith(ziel)
   })
 
   it('springt per Enter zur gewählten Seite und schließt sich', async () => {

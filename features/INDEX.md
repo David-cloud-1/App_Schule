@@ -147,6 +147,6 @@
 | PROJ-127 | Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Deployed | [PROJ-127-verwaltung-fuer-alle-lehrkraefte.md](PROJ-127-verwaltung-fuer-alle-lehrkraefte.md) | 2026-11-22 |
 | PROJ-128 | Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | In Progress | [PROJ-128-baukasten-video-fragen-aufgabentypen.md](PROJ-128-baukasten-video-fragen-aufgabentypen.md) | 2026-11-26 |
 | PROJ-129 | Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed | [PROJ-129-quiz-varianten-abwechslung.md](PROJ-129-quiz-varianten-abwechslung.md) | 2026-11-23 |
-| PROJ-130 | Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | Architected | [PROJ-130-begriffe-und-menue.md](PROJ-130-begriffe-und-menue.md) | 2026-11-27 |
+| PROJ-130 | Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | In Progress | [PROJ-130-begriffe-und-menue.md](PROJ-130-begriffe-und-menue.md) | 2026-11-27 |
 
 ## Next Available ID: PROJ-131

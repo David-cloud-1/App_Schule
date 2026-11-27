@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { ExternalLink, LayoutDashboard, Monitor, Moon, Sun, Zap } from 'lucide-react'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
-import { useDepartment } from '@/components/department-provider'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import {
   Command,
@@ -17,9 +16,9 @@ import {
 } from '@/components/ui/command'
 import {
   ADMIN_HOME_HREF,
+  ADMIN_HOME_LABEL,
   adminCommandActionsFor,
-  adminNavItemsFor,
-  adminNavLabel,
+  adminNavGroupsFor,
 } from '@/lib/admin-nav'
 import { WORKSPACE_THEME_LABEL, WORKSPACE_THEMES } from '@/lib/workspace-theme'
 
@@ -37,9 +36,14 @@ const itemClass =
 export default function AdminCommandPalette() {
   const router = useRouter()
   const { role } = useAdminRole()
-  const { hofShortName } = useDepartment()
   const { commandOpen, setCommandOpen, theme, setTheme } = useWorkspace()
-  const pages = adminNavItemsFor(role)
+  // Alle Seiten mit dem Namen ihrer Gruppe bzw. ihres Eintrags davor (PROJ-130)
+  const pages = adminNavGroupsFor(role).flatMap((group) =>
+    group.items.flatMap((item) => [
+      { item, parent: group.collapsible ? group.label : null },
+      ...(item.subPages ?? []).map((sub) => ({ item: sub, parent: item.label })),
+    ]),
+  )
   const actions = adminCommandActionsFor(role)
 
   function go(href: string, external?: boolean) {
@@ -63,26 +67,32 @@ export default function AdminCommandPalette() {
           <CommandList className="max-h-[60vh] p-1">
             <CommandEmpty className="py-8 text-center text-sm text-ws-muted">Nichts gefunden.</CommandEmpty>
             <CommandGroup heading="Seiten">
-              <CommandItem value="Übersicht Startseite" onSelect={() => go(ADMIN_HOME_HREF)} className={itemClass}>
+              <CommandItem
+                value={ADMIN_HOME_LABEL}
+                keywords={['Übersicht', 'Startseite']}
+                onSelect={() => go(ADMIN_HOME_HREF)}
+                className={itemClass}
+              >
                 <LayoutDashboard className="!size-5 text-ws-muted" />
-                Übersicht
+                {ADMIN_HOME_LABEL}
               </CommandItem>
-              {pages.map((item) => {
-                const label = adminNavLabel(item, hofShortName)
-                return (
-                  <CommandItem
-                    key={item.href}
-                    value={label}
-                    keywords={[item.description]}
-                    onSelect={() => go(item.href, item.external)}
-                    className={itemClass}
-                  >
-                    <item.icon className="!size-5 text-ws-muted" />
-                    <span className="flex-1 truncate">{label}</span>
-                    {item.external && <ExternalLink className="!size-4 text-ws-faint" aria-label="öffnet in neuem Tab" />}
-                  </CommandItem>
-                )
-              })}
+              {pages.map(({ item, parent }) => (
+                <CommandItem
+                  key={item.href}
+                  value={parent ? `${parent} › ${item.label}` : item.label}
+                  // Die Beschreibung eines Eintrags mit Unterseiten nennt deren Namen — sie soll nicht vor ihnen stehen
+                  keywords={[item.label, ...(item.subPages ? [] : [item.description]), ...(item.aliases ?? [])]}
+                  onSelect={() => go(item.href, item.external)}
+                  className={itemClass}
+                >
+                  <item.icon className="!size-5 text-ws-muted" />
+                  <span className="flex-1 truncate">
+                    {parent && <span className="text-ws-muted">{parent} › </span>}
+                    {item.label}
+                  </span>
+                  {item.external && <ExternalLink className="!size-4 text-ws-faint" aria-label="öffnet in neuem Tab" />}
+                </CommandItem>
+              ))}
             </CommandGroup>
             <CommandSeparator className="bg-ws-line" />
             <CommandGroup heading="Aktionen">

@@ -1,6 +1,6 @@
 # PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -244,6 +244,23 @@ Keine neuen. Genutzt wird, was schon da ist: shadcn `Sidebar`, `Collapsible`, `S
 - **Viele Dateien, wenig Logik:** Die Wörterliste berührt geschätzt 60–100 Dateien. Der Wächter-Test sorgt dafür, dass keine Stelle vergessen wird. Bestehende Tests, die alte Wörter erwarten, werden mit angepasst.
 - **Umschalter-Sonderfälle** sind der einzige Teil mit echtem Verhalten. Er wird je Rolle (Lehrkraft, Bereichs-Admin, Super-Admin) und Seitentyp getestet.
 - **Kein Dev-Server** auf diesem Rechner: Die Prüfung läuft über Tests und Build. Der Blick im Browser kommt nach dem Livegang auf der echten Seite.
+
+## Implementation Notes (Frontend)
+
+Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☐ · 3 ☐ · 4 ☐**
+
+### Schritt 1: Menü, „Nachschlagen“, Konto-Menü (27.11.2026)
+- `src/lib/admin-nav.ts` neu geordnet: Unterricht · Lerninhalte (aufklappbar) · Werkzeuge und Austausch · Verwaltung (aufklappbar). Neu je Eintrag: `hint`, `aliases` (alte Namen, nur Suchwörter), `subPages` (Schulrecht, Checklisten unter „Nachschlagen“).
+- Neue Seite `/admin/nachschlagen`, in `TEACHER_ADMIN_PATHS` freigegeben (keine eigene Schnittstelle).
+- Brotkrumen beginnen mit „Start“ und nennen die Gruppe („Start › Lerninhalte › Fragen“). Am Handy steht bei der Seite „Übersicht“ der Titel „Lerninhalte“.
+- Konto-Menü: nur „Mein Konto“, „Als Azubi ansehen“, Darstellung, Abmelden. Auch der Eintrag „n Fächer eingetragen“ entfällt. „Zur Lern-App“ in der Kopfzeile ist entfernt. Die Karte „Meine Fächer“ auf „Mein Konto“ gab es schon (PROJ-50). Zusätzlich findet die Schnellsuche „Meine Fächer“ (nur Lehrkräfte).
+- Ist eine Gruppe zugeklappt, zeigt ihr Kopf die Summe der Zähler (sonst wäre „Gemeldete Fragen“ unsichtbar).
+- Der Aufklapp-Zustand liegt in `sessionStorage`.
+- Seitenleiste 18 rem statt 16 rem, damit „Leistungsnachweise · mit Note“ in eine Zeile passt (**noch nicht im Browser geprüft**).
+- Mitbehoben: `/admin/kalender/arten` gehörte bisher zum Menüpunkt „Kalender“; jetzt gewinnt die genaueste Adresse.
+- Entfernt (ohne Verwendung): Gruppen-Hinweis „alle Bereiche“ (`adminNavGroupHint`, `contentScopeShort`), `usesHofName`, `managerVisible`.
+- Die Bereichsleiste unter den Seitentiteln erscheint bis Schritt 2 wie bisher. Seitentitel und übrige Texte folgen in Schritt 3.
+- Prüfung: 4766 Tests grün, Build und Lint sauber.
 
 ## QA Test Results
 _To be added by /qa_

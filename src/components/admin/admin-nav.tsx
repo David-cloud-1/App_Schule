@@ -1,47 +1,36 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { Fragment, useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronDown, ExternalLink, LayoutDashboard, type LucideIcon } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { useDepartment } from '@/components/department-provider'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
-import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import { SidebarGroup, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
 import { useForumNavCounts } from '@/components/admin/use-forum-nav-counts'
 import { formatForumBadge } from '@/lib/forum'
 import { assessmentNavCount, formatTaskBadge } from '@/lib/teacher-tasks'
 import { useTaskCounts } from '@/components/admin/use-task-counts'
 import {
   ADMIN_HOME_HREF,
+  ADMIN_HOME_LABEL,
+  type AdminNavGroup,
   type AdminNavItem,
   LEHRERZIMMER_HREF,
-  adminNavGroupHint,
   adminNavGroupsFor,
-  adminNavLabel,
-  ADMIN_MAIN_NAV_HREFS,
   isAdminNavActive,
 } from '@/lib/admin-nav'
 
 /**
- * Navigation des Lehrkräfte-Bereichs (PROJ-40/45) — dieselbe Liste in der
- * Seitenleiste (Desktop, einklappbar) und in der Schublade (Handy).
+ * Navigation des Lehrkräfte-Bereichs (PROJ-40/45, neu geordnet in PROJ-130) —
+ * dieselbe Liste in der Seitenleiste (Desktop, einklappbar) und in der
+ * Schublade (Handy).
  *
- * Oben stehen nur die wenigen Seiten, die man täglich braucht. Alles andere
- * liegt unter „Weitere Seiten“ und „Verwaltung“ und ist eingeklappt — es sei
- * denn, die aktuelle Seite liegt darin. Eingeklappt (nur Icons) zeigt die
- * Leiste alles und jedes Icon seinen Namen als Tooltip.
+ * Alle Hauptpunkte sind sichtbar. „Lerninhalte“ und „Verwaltung“ sind
+ * aufklappbar und öffnen sich, wenn die aktuelle Seite darin liegt. Eingeklappt
+ * (nur Icons) zeigt die Leiste alles und jedes Icon seinen Namen als Tooltip.
  */
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
-  const { hofShortName } = useDepartment()
   const { role } = useAdminRole()
   const { isMobile, setOpenMobile } = useSidebar()
   const pathname = usePathname()
@@ -51,38 +40,30 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   // PROJ-81: offene Aufgaben als Zähler an „Leistungsnachweise“ und „Gemeldete Fragen“
   const { counts: taskCounts } = useTaskCounts(pathname)
 
-  const allItems = groups.flatMap((g) => g.items)
-  const mainItems = ADMIN_MAIN_NAV_HREFS.map((href) => allItems.find((i) => i.href === href)).filter(
-    (i): i is AdminNavItem => !!i,
-  )
-  const isMain = (item: AdminNavItem) => ADMIN_MAIN_NAV_HREFS.includes(item.href)
-  const moreGroups = groups
-    .filter((g) => g.id !== 'verwaltung')
-    .map((g) => ({ ...g, items: g.items.filter((i) => !isMain(i)) }))
-    .filter((g) => g.items.length > 0)
-  const adminGroup = groups.find((g) => g.id === 'verwaltung')
-
   function handleNavigate() {
     if (isMobile) setOpenMobile(false)
     onNavigate?.()
   }
 
-  function renderLink(item: AdminNavItem) {
+  function countFor(item: AdminNavItem): number | undefined {
+    if (item.href === '/admin/gemeldete-fragen') return taskCounts.openReports ?? 0
+    if (item.href === '/admin/leistungsnachweise') return assessmentNavCount(taskCounts)
+    return undefined
+  }
+
+  function renderLink(item: AdminNavItem, group: AdminNavGroup) {
     return (
       <SidebarMenuItem key={item.href}>
         <NavLink
           href={item.href}
-          label={adminNavLabel(item, hofShortName)}
+          label={item.label}
           icon={item.icon}
           external={item.external}
+          hint={item.hint}
+          tag={group.id === 'verwaltung' && item.superAdminOnly ? 'Super-Admin' : undefined}
           badge={item.href === LEHRERZIMMER_HREF ? forumCounts : undefined}
-          count={
-            item.href === '/admin/gemeldete-fragen'
-              ? (taskCounts.openReports ?? 0)
-              : item.href === '/admin/leistungsnachweise'
-                ? assessmentNavCount(taskCounts)
-                : undefined
-          }
+          count={countFor(item)}
+          indented={!!group.collapsible}
           active={!item.external && isAdminNavActive(pathname, item.href)}
           onNavigate={handleNavigate}
         />
@@ -97,112 +78,135 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
           <SidebarMenuItem>
             <NavLink
               href={ADMIN_HOME_HREF}
-              label="Übersicht"
+              label={ADMIN_HOME_LABEL}
               icon={LayoutDashboard}
               active={isAdminNavActive(pathname, ADMIN_HOME_HREF)}
               onNavigate={handleNavigate}
             />
           </SidebarMenuItem>
-          {mainItems.map(renderLink)}
+          {groups.map((group) => {
+            if (!group.collapsible) {
+              return <Fragment key={group.id}>{group.items.map((item) => renderLink(item, group))}</Fragment>
+            }
+            return (
+              <Fragment key={group.id}>
+                {group.id === 'verwaltung' && <li role="separator" className="mx-3 my-2 h-px bg-ws-line" />}
+                <NavFold
+                  id={group.id}
+                  label={group.label}
+                  icon={group.collapsible.icon}
+                  containsActive={group.items.some((i) => isAdminNavActive(pathname, i.href))}
+                  // Zugeklappt darf kein Zähler verschwinden
+                  count={group.items.reduce((sum, item) => sum + (countFor(item) ?? 0), 0)}
+                  pathname={pathname}
+                >
+                  {group.items.map((item) => renderLink(item, group))}
+                </NavFold>
+              </Fragment>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroup>
-
-      {moreGroups.length > 0 && (
-        <NavFold id="weitere" label="Weitere Seiten" items={moreGroups.flatMap((g) => g.items)} pathname={pathname}>
-          {moreGroups.map((group) => (
-            <NavSubGroup key={group.id} id={group.id} label={group.id === 'inhalte' ? 'Inhalte' : undefined} hint={adminNavGroupHint(group, role)}>
-              {group.items.map(renderLink)}
-            </NavSubGroup>
-          ))}
-        </NavFold>
-      )}
-
-      {adminGroup && (
-        <NavFold id="verwaltung" label="Verwaltung" items={adminGroup.items} pathname={pathname}>
-          <NavSubGroup id="verwaltung" label="Verwaltung" hidden>
-            {adminGroup.items.map(renderLink)}
-          </NavSubGroup>
-        </NavFold>
-      )}
     </nav>
   )
 }
 
-/** Einklappbarer Block; offen, wenn die aktuelle Seite darin liegt, und immer offen, solange die Leiste nur Icons zeigt. */
+const subscribeNothing = () => () => {}
+
+const foldKey = (id: string) => `ws_nav_offen_${id}`
+
+function readFold(id: string): boolean {
+  try {
+    return window.sessionStorage.getItem(foldKey(id)) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Aufklappbarer Menüpunkt mit Unterpunkten. Er ist offen, wenn die aktuelle
+ * Seite darin liegt oder man ihn selbst geöffnet hat (gilt für die Sitzung,
+ * auch im Handy-Menü), und immer, solange die Leiste nur Icons zeigt.
+ */
 function NavFold({
   id,
   label,
-  items,
+  icon: Icon,
+  containsActive,
+  count,
   pathname,
   children,
 }: {
   id: string
   label: string
-  items: AdminNavItem[]
+  icon: LucideIcon
+  containsActive: boolean
+  count: number
   pathname: string
   children: React.ReactNode
 }) {
   const { state, isMobile } = useSidebar()
   const iconOnly = state === 'collapsed' && !isMobile
-  const containsActive = items.some((i) => !i.external && isAdminNavActive(pathname, i.href))
-  // Eigene Wahl gilt nur für die aktuelle Seite; nach einem Seitenwechsel öffnet der Block, wenn die Seite darin liegt
-  const [manual, setManual] = useState<{ pathname: string; open: boolean } | null>(null)
-  const open = manual && manual.pathname === pathname ? manual.open : containsActive
-  const triggerId = useId()
+  // Gemerkte Wahl der Sitzung; der Server (und das erste Bild) kennt sie nicht
+  const storedOpen = useSyncExternalStore(subscribeNothing, () => readFold(id), () => false)
+  const [choice, setChoice] = useState<boolean | null>(null)
+  const chosenOpen = choice ?? storedOpen
+  // Von Hand zugeklappt, obwohl die aktuelle Seite darin liegt — gilt nur für diese Seite
+  const [closedOn, setClosedOn] = useState<string | null>(null)
+
+  const open = containsActive ? closedOn !== pathname : chosenOpen
+
+  function toggle(next: boolean) {
+    setChoice(next)
+    setClosedOn(next ? null : pathname)
+    try {
+      window.sessionStorage.setItem(foldKey(id), next ? '1' : '0')
+    } catch {
+      // Ohne Speicher gilt die Wahl nur, solange das Menü offen ist
+    }
+  }
+
+  const countText = !open ? formatTaskBadge(count) : null
 
   return (
-    <Collapsible open={open || iconOnly} onOpenChange={(next) => setManual({ pathname, open: next })} className="group/fold">
-      <SidebarGroup className="pt-0">
+    <SidebarMenuItem>
+      <Collapsible open={open || iconOnly} onOpenChange={toggle} className="group/fold">
         {!iconOnly && (
-          <CollapsibleTrigger
-            id={triggerId}
-            data-testid={`nav-fold-${id}`}
-            className="flex h-11 w-full items-center justify-between rounded-xl px-3 text-sm font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green lg:h-9"
-          >
-            {label}
-            <ChevronDown
-              className="size-4 transition-transform duration-200 group-data-[state=open]/fold:rotate-180"
-              aria-hidden
-            />
+          <CollapsibleTrigger asChild>
+            <SidebarMenuButton
+              data-testid={`nav-fold-${id}`}
+              className={`${navButtonClass} ${containsActive && !open ? 'text-ws-text' : ''}`}
+            >
+              <Icon className="!size-5" />
+              <span>{label}</span>
+              {countText && (
+                <span className={`ml-auto ${countBadgeClass}`} title={`${count} offen`}>
+                  <span aria-hidden>{countText}</span>
+                  <span className="sr-only">{count} offen</span>
+                </span>
+              )}
+              <ChevronDown
+                className={`${countText ? '' : 'ml-auto '}!size-4 transition-transform duration-200 group-data-[state=open]/fold:rotate-180`}
+                aria-hidden
+              />
+            </SidebarMenuButton>
           </CollapsibleTrigger>
         )}
-        <CollapsibleContent>{children}</CollapsibleContent>
-      </SidebarGroup>
-    </Collapsible>
+        <CollapsibleContent>
+          <SidebarMenu aria-label={label} className="mt-1">
+            {children}
+          </SidebarMenu>
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarMenuItem>
   )
 }
 
-function NavSubGroup({
-  id,
-  label,
-  hint,
-  hidden,
-  children,
-}: {
-  id: string
-  label?: string
-  hint?: string | null
-  /** Titel nur für Screenreader (Block trägt ihn schon als Knopf) */
-  hidden?: boolean
-  children: React.ReactNode
-}) {
-  const labelId = `${useId()}-${id}`
-  return (
-    <SidebarGroupContent className="mt-1">
-      {label && (
-        <SidebarGroupLabel className={hidden ? 'sr-only' : 'text-xs font-semibold uppercase tracking-wider text-ws-faint'}>
-          <span id={labelId}>{label}</span>
-          {hint && !hidden && (
-            <span aria-hidden className="ml-1 font-normal normal-case tracking-normal">
-              · {hint}
-            </span>
-          )}
-        </SidebarGroupLabel>
-      )}
-      <SidebarMenu aria-labelledby={label ? labelId : undefined}>{children}</SidebarMenu>
-    </SidebarGroupContent>
-  )
-}
+const navButtonClass =
+  'h-11 gap-3 rounded-xl px-3 font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green data-[active=true]:bg-ws-green/15 data-[active=true]:text-ws-green lg:h-9'
+
+const countBadgeClass =
+  'inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-orange/30 bg-ws-orange/15 px-1.5 text-xs font-bold text-ws-orange group-data-[collapsible=icon]:hidden'
 
 function NavLink({
   href,
@@ -212,6 +216,9 @@ function NavLink({
   external,
   badge,
   count,
+  hint,
+  tag,
+  indented,
   onNavigate,
 }: {
   href: string
@@ -223,6 +230,12 @@ function NavLink({
   badge?: { hints: number; reports: number }
   /** Zähler offener Aufgaben (PROJ-81), orange */
   count?: number
+  /** Kurzer Zusatz rechts, z. B. „mit Note“ (PROJ-130) */
+  hint?: string
+  /** Kennzeichen, z. B. „Super-Admin“ */
+  tag?: string
+  /** Unterpunkt einer aufklappbaren Gruppe */
+  indented?: boolean
   onNavigate: () => void
 }) {
   const countText = formatTaskBadge(count)
@@ -241,6 +254,15 @@ function NavLink({
         )}
       </span>
       <span>{label}</span>
+      {/* Zusatz weicht einem Zähler, damit es in der Zeile bleibt */}
+      {hint && !countText && (
+        <span className="ml-auto shrink-0 text-xs font-medium text-ws-faint group-data-[collapsible=icon]:hidden">{hint}</span>
+      )}
+      {tag && (
+        <span className="ml-auto shrink-0 rounded-full border border-ws-line px-1.5 text-[0.65rem] font-semibold text-ws-faint group-data-[collapsible=icon]:hidden">
+          {tag}
+        </span>
+      )}
       {hintsText && (
         <span
           className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-green/30 bg-ws-green/15 px-1.5 text-xs font-bold text-ws-green group-data-[collapsible=icon]:hidden"
@@ -260,10 +282,7 @@ function NavLink({
         </span>
       )}
       {countText && (
-        <span
-          className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-ws-orange/30 bg-ws-orange/15 px-1.5 text-xs font-bold text-ws-orange group-data-[collapsible=icon]:hidden"
-          title={`${count} offen`}
-        >
+        <span className={`ml-auto ${countBadgeClass}`} title={`${count} offen`}>
           <span aria-hidden>{countText}</span>
           <span className="sr-only">{count} offen</span>
         </span>
@@ -282,7 +301,7 @@ function NavLink({
       asChild
       isActive={active}
       tooltip={label}
-      className="h-11 gap-3 rounded-xl px-3 font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:ring-ws-green data-[active=true]:bg-ws-green/15 data-[active=true]:text-ws-green lg:h-9"
+      className={`${navButtonClass} ${indented ? 'pl-6 font-medium group-data-[collapsible=icon]:!pl-2' : ''}`}
     >
       {external ? (
         <a href={href} target="_blank" rel="noopener noreferrer" onClick={onNavigate}>

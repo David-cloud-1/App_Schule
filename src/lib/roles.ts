@@ -51,11 +51,6 @@ export function contentScopeText(role: TeacherRole, departmentName = ''): string
   return departmentName ? `Du siehst den Bereich ${departmentName}.` : 'Du siehst alle Bereiche.'
 }
 
-/** Kurzform für die Gruppe „Inhalte“ in der Navigation */
-export function contentScopeShort(role: TeacherRole): string {
-  return role === 'teacher' ? 'alle Bereiche' : role === 'department_admin' ? 'ganzer Bereich' : 'alle Bereiche'
-}
-
 export function isUserRole(role: unknown): role is UserRole {
   return typeof role === 'string' && (USER_ROLES as readonly string[]).includes(role)
 }
@@ -155,6 +150,8 @@ export const TEACHER_ADMIN_PATHS: readonly string[] = [
   '/admin/audit-log',
   // PROJ-122: Checklisten zu den Handlungsleitlinien — jede Lehrer-Rolle (Haken sind privat im eigenen Konto)
   '/admin/checklisten',
+  // PROJ-130: Einstiegsseite „Nachschlagen“ (Schulrecht + Checklisten), ohne eigene Daten
+  '/admin/nachschlagen',
 ]
 
 export function teacherMayOpenAdminPath(pathname: string): boolean {

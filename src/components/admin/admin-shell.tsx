@@ -97,7 +97,12 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
       >
         Zum Inhalt springen
       </a>
-      <SidebarProvider defaultOpen={sidebarOpen} className="min-h-svh print:block print:min-h-0">
+      <SidebarProvider
+        defaultOpen={sidebarOpen}
+        // PROJ-130: etwas breiter, damit „Leistungsnachweise · mit Note“ in eine Zeile passt
+        style={{ '--sidebar-width': '18rem' } as React.CSSProperties}
+        className="min-h-svh print:block print:min-h-0"
+      >
         <AdminSidebar />
         <SidebarInset className="min-w-0 bg-ws-bg print:bg-white">
           <AdminTopbar />

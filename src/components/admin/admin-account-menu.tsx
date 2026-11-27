@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ChevronsUpDown, Gamepad2, IdCard, Loader2, LogOut, Monitor, Moon, Sun, User, UserCog } from 'lucide-react'
+import { ChevronsUpDown, Gamepad2, IdCard, Loader2, LogOut, Monitor, Moon, Sun } from 'lucide-react'
 import { createClient } from '@/lib/supabase-browser'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { useWorkspace } from '@/components/admin/workspace-provider'
@@ -25,12 +25,13 @@ import { parseWorkspaceTheme, WORKSPACE_THEME_LABEL, WORKSPACE_THEMES } from '@/
 const THEME_ICON = { dark: Moon, light: Sun, system: Monitor } as const
 
 /**
- * Konto-Menü des Lehrkräfte-Bereichs (PROJ-45): Name, E-Mail, Rolle in
- * Klartext, Profil, Darstellung, „Zur Lern-App“ und Abmelden.
+ * Konto-Menü des Lehrkräfte-Bereichs (PROJ-45, gekürzt in PROJ-130): Name,
+ * E-Mail, Rolle in Klartext, „Mein Konto“, „Als Azubi ansehen“, Darstellung
+ * und Abmelden.
  * `sidebar` sitzt unten in der Seitenleiste, `avatar` in der Handy-Kopfzeile.
  */
 export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' }) {
-  const { role, displayName = '', email = '', subjectCount } = useAdminRole()
+  const { role, displayName = '', email = '' } = useAdminRole()
   const { name: departmentName } = useDepartment()
   const { theme, setTheme } = useWorkspace()
   const [loggingOut, setLoggingOut] = useState(false)
@@ -103,18 +104,6 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
           <span className="block text-xs font-semibold text-ws-green">{roleLabel}</span>
           <span className="block text-xs leading-snug text-ws-muted">{ROLE_DESCRIPTION[role]}</span>
         </div>
-        {role === 'teacher' && subjectCount !== undefined && (
-          <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
-            <Link href="/admin/my-subjects">
-              <UserCog className="text-ws-muted" />
-              {subjectCount === 0
-                ? 'Noch kein Fach eingetragen'
-                : subjectCount === 1
-                  ? '1 Fach eingetragen'
-                  : `${subjectCount} Fächer eingetragen`}
-            </Link>
-          </DropdownMenuItem>
-        )}
         <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
           <Link href={ADMIN_ACCOUNT_HREF}>
             <IdCard className="text-ws-muted" />
@@ -122,15 +111,9 @@ export function AdminAccountMenu({ variant }: { variant: 'sidebar' | 'avatar' })
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
-          <Link href="/profile">
-            <User className="text-ws-muted" />
-            Spielerprofil
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-11 cursor-pointer rounded-lg focus:bg-ws-raised focus:text-ws-text">
           <Link href={PLAYER_VIEW_HREF}>
             <Gamepad2 className="text-ws-green" />
-            Zur Lern-App
+            Als Azubi ansehen
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-ws-line" />

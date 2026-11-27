@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { adminNavItemsFor } from './admin-nav'
 import {
-  contentScopeShort,
   contentScopeText,
   isManagerRole,
   isTeacherRole,
@@ -202,11 +201,5 @@ describe('Rollen-Texte (PROJ-49)', () => {
     expect(contentScopeText('department_admin')).toBe('Du siehst den ganzen Bereich.')
     expect(contentScopeText('admin', 'Tourismus')).toBe('Du siehst den Bereich Tourismus.')
     expect(contentScopeText('admin')).toBe('Du siehst alle Bereiche.')
-  })
-
-  it('hat eine Kurzform für die Navigation', () => {
-    expect(contentScopeShort('teacher')).toBe('alle Bereiche')
-    expect(contentScopeShort('department_admin')).toBe('ganzer Bereich')
-    expect(contentScopeShort('admin')).toBe('alle Bereiche')
   })
 })

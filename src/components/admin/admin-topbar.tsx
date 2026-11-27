@@ -4,10 +4,8 @@ import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, PanelLeft, Search } from 'lucide-react'
-import { PLAYER_VIEW_HREF } from '@/lib/roles'
 import { useWorkspace } from '@/components/admin/workspace-provider'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
-import { useDepartment } from '@/components/department-provider'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useIsApplePlatform } from '@/hooks/use-is-apple-platform'
 import {
@@ -18,23 +16,49 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { ADMIN_ACCOUNT_HREF, ADMIN_ACCOUNT_LABEL, ADMIN_HOME_HREF, adminNavLabel, adminNavMatch } from '@/lib/admin-nav'
+import {
+  ADMIN_ACCOUNT_HREF,
+  ADMIN_ACCOUNT_LABEL,
+  ADMIN_HOME_HREF,
+  ADMIN_HOME_LABEL,
+  MY_SUBJECTS_HREF,
+  MY_SUBJECTS_LABEL,
+  adminNavMatch,
+} from '@/lib/admin-nav'
 
 interface Crumb {
   label: string
   href?: string
 }
 
-/** Brotkrumen aus Pfad + Navigations-Liste; Detailseiten liefern den letzten Teil selbst */
-export function adminCrumbs(pathname: string, hofShortName: string, detail: string | null): Crumb[] {
-  const crumbs: Crumb[] = [{ label: 'Übersicht', href: ADMIN_HOME_HREF }]
-  if (pathname === ADMIN_ACCOUNT_HREF) return [...crumbs, { label: ADMIN_ACCOUNT_LABEL }]
+/**
+ * Brotkrumen aus Pfad + Navigations-Liste; Detailseiten liefern den letzten Teil
+ * selbst. Glieder ohne Adresse in der Mitte (Name einer aufklappbaren Gruppe)
+ * sind reiner Text.
+ */
+export function adminCrumbs(pathname: string, detail: string | null): Crumb[] {
+  const home: Crumb = { label: ADMIN_HOME_LABEL, href: ADMIN_HOME_HREF }
+  if (pathname === ADMIN_HOME_HREF) return [{ label: ADMIN_HOME_LABEL }]
+  if (pathname === ADMIN_ACCOUNT_HREF) return [home, { label: ADMIN_ACCOUNT_LABEL }]
+  if (pathname === MY_SUBJECTS_HREF) {
+    return [home, { label: ADMIN_ACCOUNT_LABEL, href: ADMIN_ACCOUNT_HREF }, { label: MY_SUBJECTS_LABEL }]
+  }
   const match = adminNavMatch(pathname)
-  if (!match) return pathname === ADMIN_HOME_HREF ? [{ label: 'Übersicht' }] : crumbs
-  const label = adminNavLabel(match.item, hofShortName)
-  const isDetail = pathname !== match.item.href
-  if (!isDetail) return [...crumbs, { label }]
-  return [...crumbs, { label, href: match.item.href }, ...(detail ? [{ label: detail }] : [])]
+  if (!match) return [home]
+  const page = match.subPage ?? match.item
+  const parents: Crumb[] = [
+    home,
+    ...(match.group.collapsible ? [{ label: match.group.label }] : []),
+    ...(match.subPage ? [{ label: match.item.label, href: match.item.href }] : []),
+  ]
+  if (pathname === page.href) return [...parents, { label: page.label }]
+  return [...parents, { label: page.label, href: page.href }, ...(detail ? [{ label: detail }] : [])]
+}
+
+/** Titel der Handy-Kopfzeile: „Übersicht“ allein sagt nichts, dort steht der Gruppenname */
+export function adminPageTitle(crumbs: Crumb[]): string {
+  const last = crumbs[crumbs.length - 1].label
+  return last === 'Übersicht' && crumbs.length > 1 ? crumbs[crumbs.length - 2].label : last
 }
 
 const iconButton =
@@ -42,17 +66,16 @@ const iconButton =
 
 /**
  * Kopfzeile des Lehrkräfte-Bereichs (PROJ-45).
- * Handy: Menü · Seitentitel · Suche · Konto. Desktop: Einklappen · Brotkrumen · Suchfeld · Bereichs-Umschalter.
+ * Handy: Menü · Seitentitel · Suche · Konto. Desktop: Einklappen · Brotkrumen · Suchfeld.
  */
 export function AdminTopbar() {
   const pathname = usePathname()
-  const { hofShortName } = useDepartment()
   const { detailCrumb, setCommandOpen } = useWorkspace()
   const { toggleSidebar, isMobile } = useSidebar()
   const isApple = useIsApplePlatform()
   const mod = isApple ? '⌘' : 'Strg+'
-  const crumbs = adminCrumbs(pathname, hofShortName, detailCrumb)
-  const pageTitle = crumbs[crumbs.length - 1].label
+  const crumbs = adminCrumbs(pathname, detailCrumb)
+  const pageTitle = adminPageTitle(crumbs)
 
   return (
     <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b border-ws-line bg-ws-bg/90 px-2 backdrop-blur supports-[backdrop-filter]:bg-ws-bg/75 sm:px-4 print:hidden">
@@ -85,6 +108,10 @@ export function AdminTopbar() {
                       {crumb.label}
                     </Link>
                   </BreadcrumbLink>
+                ) : i < crumbs.length - 1 ? (
+                  <span className="truncate" title={crumb.label}>
+                    {crumb.label}
+                  </span>
                 ) : (
                   <BreadcrumbPage className="max-w-[40ch] truncate font-semibold text-ws-text" title={crumb.label}>
                     {crumb.label}
@@ -115,14 +142,6 @@ export function AdminTopbar() {
         <Search className="size-5" />
         <span className="flex-1 text-left">Suchen</span>
       </button>
-
-      <Link
-        href={PLAYER_VIEW_HREF}
-        title="Zur Lern-App"
-        className="hidden h-11 shrink-0 items-center rounded-xl px-3 text-sm sm:flex font-semibold text-ws-muted transition-colors duration-200 hover:bg-ws-raised hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green"
-      >
-        Zur Lern-App
-      </Link>
 
       <div className="lg:hidden">
         <AdminAccountMenu variant="avatar" />

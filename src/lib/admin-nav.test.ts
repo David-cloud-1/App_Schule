@@ -5,24 +5,72 @@ import {
   ADMIN_NAV_GROUPS,
   adminCommandActionsFor,
   adminHomeActionsFor,
-  adminNavGroupHint,
+  adminPagesFor,
   adminNavMatch,
   teacherRoleLabel,
   adminNavGroupsFor,
-  adminNavLabel,
   isAdminNavActive,
 } from './admin-nav'
 
-describe('Admin-Navigation (PROJ-40)', () => {
-  it('gruppiert in Mein Unterricht, Inhalte und Verwaltung', () => {
-    expect(ADMIN_NAV_GROUPS.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte', 'Verwaltung'])
+describe('Admin-Navigation (PROJ-40/130)', () => {
+  const labelsOf = (role: 'teacher' | 'department_admin' | 'admin') =>
+    adminNavGroupsFor(role).map((g) => g.items.map((i) => i.label))
+
+  it('hat für jede Rolle dieselbe Reihenfolge (PROJ-130)', () => {
+    const gemeinsam = [
+      ['Leistungsnachweise', 'Übungsprüfungen'],
+      ['Übersicht', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Papierkorb'],
+      ['Werkzeugkiste', 'Abwesenheiten', 'Nachschlagen', 'Lehrerzimmer'],
+      ['Nutzer', 'Einstellungen des Bereichs', 'Shop-Gegenstände', 'Änderungsprotokoll'],
+    ]
+    expect(labelsOf('teacher')).toEqual(gemeinsam)
+    expect(labelsOf('department_admin')).toEqual(gemeinsam)
+    expect(labelsOf('admin')).toEqual([
+      gemeinsam[0],
+      [...gemeinsam[1], 'Fragen aus Material'],
+      gemeinsam[2],
+      [...gemeinsam[3], 'Zuständigkeiten', 'Abwesenheitsarten', 'Bereiche anlegen'],
+    ])
+  })
+
+  it('hat höchstens 9 Hauptpunkte samt „Start“ (PROJ-130)', () => {
+    for (const role of ['teacher', 'department_admin', 'admin'] as const) {
+      const haupt = adminNavGroupsFor(role).reduce((n, g) => n + (g.collapsible ? 1 : g.items.length), 1)
+      expect(haupt).toBe(9)
+    }
+  })
+
+  it('zeigt keine alten Namen mehr, behält sie aber als Suchwörter (PROJ-130)', () => {
+    const items = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
+    const labels = items.map((i) => i.label)
+    for (const alt of ['Inhalte', 'Prüfungssimulation', 'Kalender', 'Fachbereich', 'Fachbereiche', 'Items', 'Meine Fächer', 'Schulrecht', 'Checklisten']) {
+      expect(labels).not.toContain(alt)
+    }
+    const suche = (href: string) => items.find((i) => i.href === href)!.aliases
+    expect(suche('/admin/kalender')).toContain('Kalender')
+    expect(suche('/admin/exam-sets')).toContain('Prüfungssimulation')
+    expect(suche('/admin/department-settings')).toContain('Fachbereich')
+    expect(suche('/admin/shop-items')).toContain('Hof-Items')
   })
 
   it('hat für jeden Eintrag eine eindeutige Adresse unter /admin', () => {
-    const items = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
+    const items = ADMIN_NAV_GROUPS.flatMap((g) => g.items).flatMap((i) => [i, ...(i.subPages ?? [])])
     const hrefs = items.map((i) => i.href)
     expect(new Set(hrefs).size).toBe(hrefs.length)
     expect(items.filter((i) => !i.external).every((i) => i.href.startsWith('/admin/'))).toBe(true)
+  })
+
+  it('hält „Nachschlagen“ auf Schulrecht und Checklisten aktiv (PROJ-130)', () => {
+    for (const path of ['/admin/nachschlagen', '/admin/schulrecht', '/admin/checklisten/abc']) {
+      expect(isAdminNavActive(path, '/admin/nachschlagen')).toBe(true)
+    }
+    expect(adminNavMatch('/admin/schulrecht')?.subPage?.label).toBe('Schulrecht')
+  })
+
+  it('nimmt bei verschachtelten Adressen die genaueste (Abwesenheitsarten)', () => {
+    expect(adminNavMatch('/admin/kalender/arten')?.item.label).toBe('Abwesenheitsarten')
+    expect(isAdminNavActive('/admin/kalender/arten', '/admin/kalender')).toBe(false)
+    expect(isAdminNavActive('/admin/kalender', '/admin/kalender')).toBe(true)
   })
 
   it('zeigt die Werkzeugkiste allen Lehrer-Rollen als Seite in der App (PROJ-51)', () => {
@@ -36,55 +84,9 @@ describe('Admin-Navigation (PROJ-40)', () => {
     expect(adminNavMatch('/admin/werkzeugkiste/ablauf/abc')?.item.label).toBe('Werkzeugkiste')
   })
 
-  it('zeigt Super-Admins „Fachbereiche“ und „Zuständigkeiten“, Fachbereichs-Admins keins von beiden', () => {
-    const labels = (role: 'admin' | 'department_admin') =>
-      adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
-    expect(labels('admin')).toContain('Fachbereiche')
-    expect(labels('admin')).toContain('Zuständigkeiten')
-    expect(labels('admin')).toContain('Abwesenheitsarten')
-    expect(labels('department_admin')).not.toContain('Fachbereiche')
-    expect(labels('department_admin')).not.toContain('Zuständigkeiten')
-    expect(labels('department_admin')).not.toContain('Abwesenheitsarten')
-    // PROJ-127: dazu „Fragen aus Material“ (bezahlte KI)
-    expect(labels('department_admin')).not.toContain('Fragen aus Material')
-    expect(labels('department_admin')).toHaveLength(labels('admin').length - 4)
-  })
-
-  it('zeigt weder Super-Admin noch Bereichs-Admin „Meine Fächer“ (PROJ-48 — die sind bereits bereichsweit zuständig)', () => {
-    const labels = (role: 'admin' | 'department_admin') =>
-      adminNavGroupsFor(role).flatMap((g) => g.items.map((i) => i.label))
-    expect(labels('admin')).not.toContain('Meine Fächer')
-    expect(labels('department_admin')).not.toContain('Meine Fächer')
-  })
-
-  it('zeigt einer Lehrkraft die Verwaltung ohne Super-Admin-Punkte (PROJ-127)', () => {
-    const groups = adminNavGroupsFor('teacher')
-    expect(groups.map((g) => g.label)).toEqual(['Mein Unterricht', 'Inhalte', 'Verwaltung'])
-    expect(groups.map((g) => g.items.map((i) => i.label))).toEqual([
-      ['Leistungsnachweise', 'Werkzeugkiste', 'Schulrecht', 'Checklisten', 'Kalender', 'Meine Fächer', 'Lehrerzimmer'],
-      ['Inhalte', 'Fragen', 'Gemeldete Fragen', 'Schwierigste Fragen', 'Fächer', 'Themen', 'Prüfungssimulation', 'Papierkorb'],
-      ['Nutzer', 'Fachbereich', 'Items', 'Änderungsprotokoll'],
-    ])
-  })
-
-  it('hängt „Meine Fächer“ und Papierkorb nicht mehr an die Verwaltung', () => {
-    const verwaltung = ADMIN_NAV_GROUPS.find((g) => g.id === 'verwaltung')!.items.map((i) => i.label)
-    expect(verwaltung).not.toContain('Meine Fächer')
-    expect(verwaltung).not.toContain('Papierkorb')
-  })
-
-  it('nennt hinter der Gruppe „Inhalte“ den Umfang der Rolle (PROJ-49)', () => {
-    const inhalte = ADMIN_NAV_GROUPS.find((g) => g.id === 'inhalte')!
-    const verwaltung = ADMIN_NAV_GROUPS.find((g) => g.id === 'verwaltung')!
-    expect(adminNavGroupHint(inhalte, 'teacher')).toBe('alle Bereiche')
-    expect(adminNavGroupHint(inhalte, 'department_admin')).toBe('ganzer Bereich')
-    expect(adminNavGroupHint(inhalte, 'admin')).toBe('alle Bereiche')
-    expect(adminNavGroupHint(verwaltung, 'admin')).toBeNull()
-  })
-
   it('zeigt jeder Lehrkraft die Inhalts-Seiten (PROJ-70: keine Fach-Eintragung nötig)', () => {
     const labels = adminNavGroupsFor('teacher').flatMap((g) => g.items.map((i) => i.label))
-    expect(labels).toEqual(expect.arrayContaining(['Fragen', 'Themen', 'Fächer', 'Prüfungssimulation']))
+    expect(labels).toEqual(expect.arrayContaining(['Fragen', 'Themen', 'Fächer', 'Übungsprüfungen']))
   })
 
   it('bietet auf der Startseite nur Schnellaktionen für sichtbare Seiten', () => {
@@ -93,24 +95,6 @@ describe('Admin-Navigation (PROJ-40)', () => {
     // PROJ-127: „Fragen aus Material“ nur noch für den Super-Admin, „Nutzer“ für alle Lehrkräfte
     expect(ids('department_admin')).toEqual(['neuer-nachweis', 'fragen', 'nutzer', 'werkzeugkiste'])
     expect(ids('teacher')).toEqual(['neuer-nachweis', 'fragen', 'nutzer', 'werkzeugkiste'])
-  })
-
-  it('verwendet die neuen, verständlichen Namen', () => {
-    const labels = ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.label))
-    expect(labels).toEqual(
-      expect.arrayContaining(['Änderungsprotokoll', 'Fragen aus Material', 'Prüfungssimulation']),
-    )
-    expect(labels).not.toContain('Audit-Log')
-    expect(labels).not.toContain('KI-Generator')
-    expect(labels).not.toContain('Prüfungssets')
-  })
-
-  it('benennt den Items-Eintrag nach dem Fachbereich', () => {
-    const items = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
-    const shop = items.find((i) => i.href === '/admin/shop-items')!
-    expect(adminNavLabel(shop, 'Hof')).toBe('Hof-Items')
-    const fragen = items.find((i) => i.href === '/admin/questions')!
-    expect(adminNavLabel(fragen, 'Hof')).toBe('Fragen')
   })
 
   it('markiert Unterseiten als aktiv, die Übersicht nur auf /admin', () => {
@@ -139,11 +123,12 @@ describe('Lehrkräfte-Arbeitsbereich (PROJ-45)', () => {
     const ids = (role: 'teacher' | 'department_admin') => adminCommandActionsFor(role).map((a) => a.id)
     expect(ids('department_admin')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
     // PROJ-46: eine Lehrkraft darf jetzt auch eigene Leistungsnachweise anlegen
-    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'lern-app', 'darstellung'])
+    // PROJ-130: „Meine Fächer“ steht nicht mehr im Menü, Lehrkräfte finden es in der Suche
+    expect(ids('teacher')).toEqual(['neuer-nachweis', 'werkzeugkiste', 'schulrecht', 'neuer-beitrag', 'mein-konto', 'meine-faecher', 'lern-app', 'darstellung'])
   })
 
   it('führt jede Aktion mit Seitenbezug auf eine echte Navigations-Seite zurück', () => {
-    const hrefs = new Set(ADMIN_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href)))
+    const hrefs = new Set(adminPagesFor('admin').map((i) => i.href))
     for (const action of ADMIN_COMMAND_ACTIONS) {
       if (action.kind === 'link' && action.requiresHref) expect(hrefs.has(action.requiresHref)).toBe(true)
     }

@@ -9,14 +9,15 @@ import { adminNavMatch } from '@/lib/admin-nav'
 
 /**
  * Welche Bereichsleiste gehört auf diese Seite? Inhalts-Seiten (Gruppe
- * „Inhalte“) und Listen mit Schülerdaten bzw. Nachweisen (nur die Liste,
+ * „Lerninhalte“ und Übungsprüfungen) und Listen mit Schülerdaten bzw. Nachweisen (nur die Liste,
  * nicht ihre Detailseiten). Sonst keine.
  */
 function scopeBarModeFor(pathname: string): ScopeBarMode | null {
   const path = pathname.replace(/\/+$/, '')
   if (path === '/admin/users' || path === '/admin/audit-log') return 'people'
   if (path === '/admin/leistungsnachweise') return 'assessments'
-  return adminNavMatch(path)?.group.id === 'inhalte' ? 'content' : null
+  const match = adminNavMatch(path)
+  return match?.group.id === 'lerninhalte' || match?.item.href === '/admin/exam-sets' ? 'content' : null
 }
 
 /**

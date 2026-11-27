@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { AdminTopbar, adminCrumbs } from './admin-topbar'
+import { AdminTopbar, adminCrumbs, adminPageTitle } from './admin-topbar'
 import { AdminPageHeader } from './admin-page-header'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from './admin-states'
 import { mockViewport, renderInWorkspace } from './workspace-test-utils'
@@ -17,31 +17,46 @@ beforeEach(() => {
 })
 
 describe('adminCrumbs (PROJ-45)', () => {
+  const start = { label: 'Start', href: '/admin' }
+
   it('benennt „Mein Konto“ (PROJ-50), obwohl die Seite nicht in der Seitenleiste steht', () => {
-    expect(adminCrumbs('/admin/konto', 'Hof', null)).toEqual([{ label: 'Übersicht', href: '/admin' }, { label: 'Mein Konto' }])
-  })
-
-  it('zeigt auf der Übersicht nur „Übersicht“', () => {
-    expect(adminCrumbs('/admin', 'Hof', null)).toEqual([{ label: 'Übersicht' }])
-  })
-
-  it('verlinkt auf einer Bereichsseite die Übersicht', () => {
-    expect(adminCrumbs('/admin/questions', 'Hof', null)).toEqual([
-      { label: 'Übersicht', href: '/admin' },
-      { label: 'Fragen' },
+    expect(adminCrumbs('/admin/konto', null)).toEqual([start, { label: 'Mein Konto' }])
+    expect(adminCrumbs('/admin/my-subjects', null)).toEqual([
+      start,
+      { label: 'Mein Konto', href: '/admin/konto' },
+      { label: 'Meine Fächer' },
     ])
   })
 
+  it('zeigt auf der Startseite nur „Start“', () => {
+    expect(adminCrumbs('/admin', null)).toEqual([{ label: 'Start' }])
+  })
+
+  it('nennt die Gruppe vor der Seite (PROJ-130)', () => {
+    expect(adminCrumbs('/admin/questions', null)).toEqual([start, { label: 'Lerninhalte' }, { label: 'Fragen' }])
+    expect(adminCrumbs('/admin/users', null)).toEqual([start, { label: 'Verwaltung' }, { label: 'Nutzer' }])
+  })
+
+  it('führt Schulrecht und Checklisten unter „Nachschlagen“ (PROJ-130)', () => {
+    expect(adminCrumbs('/admin/schulrecht', null)).toEqual([
+      start,
+      { label: 'Nachschlagen', href: '/admin/nachschlagen' },
+      { label: 'Schulrecht' },
+    ])
+    expect(adminCrumbs('/admin/nachschlagen', null)).toEqual([start, { label: 'Nachschlagen' }])
+  })
+
   it('hängt auf Detailseiten den Titel der Seite an und verlinkt den Bereich', () => {
-    expect(adminCrumbs('/admin/leistungsnachweise/abc', 'Hof', 'Klassenarbeit LF5')).toEqual([
-      { label: 'Übersicht', href: '/admin' },
+    expect(adminCrumbs('/admin/leistungsnachweise/abc', 'Klassenarbeit LF5')).toEqual([
+      start,
       { label: 'Leistungsnachweise', href: '/admin/leistungsnachweise' },
       { label: 'Klassenarbeit LF5' },
     ])
   })
 
-  it('nutzt den Namen des Fachbereichs für die Items', () => {
-    expect(adminCrumbs('/admin/shop-items', 'Reisebüro', null).at(-1)).toEqual({ label: 'Reisebüro-Items' })
+  it('zeigt am Handy statt „Übersicht“ den Gruppennamen', () => {
+    expect(adminPageTitle(adminCrumbs('/admin/inhalte', null))).toBe('Lerninhalte')
+    expect(adminPageTitle(adminCrumbs('/admin/shop-items', null))).toBe('Shop-Gegenstände')
   })
 })
 
@@ -54,7 +69,7 @@ describe('AdminTopbar + AdminPageHeader (PROJ-45)', () => {
       </>,
     )
     const trail = screen.getByRole('navigation', { name: 'breadcrumb' })
-    expect(trail).toHaveTextContent('Übersicht')
+    expect(trail).toHaveTextContent('Start')
     expect(screen.getByRole('link', { name: 'Leistungsnachweise' })).toHaveAttribute('href', '/admin/leistungsnachweise')
     expect(trail).toHaveTextContent('Klassenarbeit LF5')
     expect(screen.getByRole('heading', { level: 1, name: 'Klassenarbeit LF5' })).toBeInTheDocument()
