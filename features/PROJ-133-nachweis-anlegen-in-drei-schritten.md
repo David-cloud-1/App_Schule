@@ -1,6 +1,6 @@
 # PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4 Übersichtlichkeit, Teil 1)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -506,4 +506,10 @@ Neue Tests: Klassenformat (Browser und Server), Altnamen mit Sonderzeichen, scho
 - **Recommendation:** Deploy. Danach den Ablauf einmal mit echtem Konto und am Handy ansehen.
 
 ## Deployment
-_To be added by /deploy_
+- **Produktion:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Deployment `dpl_Fee93MUet5ziRUMT98BwvXuoTymD`, Commit `c769268` auf `main`)
+- **Deployed:** 2026-11-27 · Build READY, keine Laufzeitfehler und keine Warnungen im Log des neuen Deployments
+- **Datenbank:** keine Migration nötig (keine neue Tabelle, keine neue Spalte). Keine neuen Umgebungsvariablen.
+- **Geprüft nach dem Deploy:** `/admin/leistungsnachweise/neu` leitet ohne Anmeldung auf `/login` weiter; Sicherheits-Header vorhanden (`X-Frame-Options: DENY`, HSTS mit `includeSubDomains`, `nosniff`, `Referrer-Policy`)
+- **Noch von Hand im Browser zu prüfen:** Der ganze Ablauf mit Lehrkraft-Konto (Vorschlag → Prüfen → Speichern, Weg aus „Schwierig“, „Vorlage anlegen“). Zurück-Taste und Wischgeste am Handy. Breiten 375/768/1440 px, Hell/Dunkel. Ein älterer Klassenname mit Sonderzeichen lässt sich wählen.
+- **Bekannt, nicht von PROJ-133:** `src/app/api/admin/shop-items/[id]/route.test.ts` meldet einen ESLint-Fehler (aus PROJ-122), und `bulk-account-import.test.tsx` (PROJ-62) ist selten instabil.
+- **Rollback:** Vercel → Deployments → vorheriges Deployment `dpl_DCx27isxsdWTqWwgAwNS6sMrryC8` (PROJ-132) „Promote to Production“
