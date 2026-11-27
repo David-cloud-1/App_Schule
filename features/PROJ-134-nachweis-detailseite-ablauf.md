@@ -376,6 +376,39 @@ Die Detailseite lädt bei offenem Nachweis alle 8 Sekunden neu. Jedes Laden ruft
 
 **Der Trigger ist noch NICHT eingespielt, mit Absicht:** Mit dem alten Code (Beitritt über den Nutzer-Client) würde er in Produktion jeden Beitritt ablehnen. Er muss **zusammen mit dem Deploy dieses Codes** angewendet werden. Offen: erneute QA nach dem Einspielen.
 
+### QA-Runde 2 (2026-11-27)
+
+**Wie geprüft:** Code-Review der Fix-Commits, alle Schreibstellen auf `exam_sessions` durchgesehen (keine reguläre Route ändert `assessment_id`/`trial_assessment_id`, der Trigger stört also keinen Ablauf), zweiter Datenbank-Test in einer sich selbst zurückrollenden Transaktion (nichts zurückgeblieben), Vitest 5056 grün, Playwright PROJ-134 + PROJ-133 + PROJ-11 (Desktop + Handy) 64 grün.
+
+| Bug | Ergebnis Runde 2 |
+|---|---|
+| BUG-1 | **Im Code behoben, in Produktion noch offen**, bis die Migration `20261127_proj134_qa_sitzungs_sperre.sql` zusammen mit dem Deploy eingespielt ist. Trigger-Verhalten in Runde 1 gegen die echte Datenbank bestätigt. |
+| BUG-2 | Behoben (gleiche Sperre + Bewertung nur mit Fragen des Nachweises bei Abgabe und Freigabe) |
+| BUG-3 | Behoben (Server lehnt ab, Knopf gesperrt, Hinweis in der Karte; Test) |
+| BUG-4 | Behoben (Beschriftungen für alle 13 Nachweis-Aktionen) |
+| BUG-5 | Behoben |
+| BUG-6 | Behoben (Tests Sommer-/Winterzeit, kaputte Eingaben) |
+| BUG-7 | Behoben (Test) |
+
+#### NEU-1: Azubis können ihre eigene Nachweis-Sitzung frei ändern (Zeit, Dauer, Status, Ausschluss)
+- **Severity:** High (bestand schon vor PROJ-134, keine Regression)
+- **Ursache:** Die Policy „Users update own exam sessions“ hat keine Prüfung. Die neue Sperre schützt nur `assessment_id` und `trial_assessment_id`.
+- **Nachgewiesen** (Datenbank-Test als Rolle `authenticated`, zurückgerollt): Ein Azubi ändert in seiner eigenen Nachweis-Sitzung `started_at` (+1 Tag) und `results_json.durationMinutes` (100000). Auch `status` und `excluded_from_grading` lassen sich ändern.
+- **Folgen:**
+  1. Unbegrenzte Bearbeitungszeit im benoteten Nachweis. Der Server rechnet die Frist aus genau diesen Werten.
+  2. Sich selbst aus der Wertung nehmen (`excluded_from_grading`). Die Lehrkraft sieht das, aber nur, wenn sie hinschaut.
+  3. **Neu durch PROJ-134:** Eine riesige Dauer hält den Nachweis für immer „Offen“, weil der Job auf „schreibt noch“ wartet. Von Hand schließen geht weiter.
+- **Vorschlag:** Alle Änderungen an Nachweis- und Testlauf-Sitzungen über den Server (Dienst-Client) in Autosave und Abgabe. Dazu die Sperre erweitern: Für die Browser-Rolle sind bei Sitzungen mit `assessment_id`/`trial_assessment_id` keine Änderungen mehr erlaubt. Für den Job zusätzlich eine Obergrenze (Dauer des Nachweises aus `graded_assessments.duration_minutes` statt aus der Sitzung).
+- **Priority:** Fix before deployment (gleiche Stelle wie BUG-1, wenig Aufwand)
+
+#### Hinweis (kein Bug)
+- Der Assistent „Anlegen“ (PROJ-133) liest „Beitritt bis“ weiterhin in der Zeitzone des Geräts. Gleiches Thema wie BUG-6, aber außerhalb dieses Features.
+
+### Summary (Runde 2)
+- **Bugs aus Runde 1:** 7/7 im Code behoben. BUG-1 wird erst mit dem Einspielen der Sperre beim Deploy wirksam.
+- **Neu gefunden:** 1 (High, bestehend: NEU-1)
+- **Production Ready:** NO, solange NEU-1 offen ist (High). Nach der Behebung von NEU-1: Sperre und Code gemeinsam deployen.
+
 ### Regression
 - Vitest gesamt: 379 Dateien, 5045 Tests grün. Typprüfung grün. Lint: 0 Fehler in geänderten Dateien (1 bestehender Fehler in `shop-items/[id]/route.test.ts`)
 - Playwright PROJ-9, PROJ-11, PROJ-133 (Chromium): 40 grün
