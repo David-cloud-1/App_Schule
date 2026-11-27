@@ -119,7 +119,121 @@ Der Nachweis entsteht als **Entwurf**. Öffnen, Schrittleiste, automatisches Sch
 <!-- Sections below are added by subsequent skills -->
 
 ## Tech Design (Solution Architect)
-_To be added by /architecture_
+
+**Erstellt:** 2026-11-27
+
+### Überblick in einem Satz
+Der Ablauf wird eine **eigene Seite** `/admin/leistungsnachweise/neu` mit drei Schritten. Alle Angaben leben bis „Entwurf speichern“ nur im Browser-Speicher der Seite. Gespeichert wird über die **bestehende** Anlegen-Schnittstelle, die dafür etwas strenger wird. Neu im Backend ist nur eine **Fragen-Suche mit 25 Treffern je Seite**. Eine neue Tabelle oder Migration braucht es nicht.
+
+### A) Aufbau der Seite (Komponenten-Baum)
+
+```
+/admin/leistungsnachweise/neu   (eigene Seite, kein Dialog)
++-- AdminPageHeader „Nachweis anlegen“ (Brotkrumen: Leistungsnachweise › Nachweis anlegen)
++-- Schrittleiste  „1 Was? · 2 Prüfen · 3 Wann und für wen?“
+|     (erledigte Schritte anklickbar, spätere gesperrt, mit Tastatur bedienbar)
++-- Schritt 1 – Was?
+|   +-- Bereich (Text bei einem Bereich, Auswahl nur für Super-Admin bei „Alle Bereiche“)
+|   +-- Fach (Mehrfachauswahl) · Thema (Mehrfachauswahl, optional)
+|   +-- Stufe (AdminSegmented: 10 · 11 · 12 · alle)
+|   +-- Anzahl (5–60) · Schwierigkeit (AdminSegmented, 4 Werte; „eigene Verteilung“ zeigt 3 Regler)
+|   +-- „Weitere Einstellungen“ (zugeklappt): Ausschlüsse aus PROJ-78
+|   +-- Fuß: „Leer beginnen“ (outline) · „Vorschlag erstellen“ (grün)
++-- Schritt 2 – Prüfen
+|   +-- Zusammenfassung (Anzahl je Schwierigkeit, Verteilung nach Thema, geschätzte Zeit)
+|   +-- Hinweis „Für Thema X nur 4 von 7“ (wenn zu wenig passende Fragen)
+|   +-- Auswahl-Liste (bleibt oben sichtbar: „18 Fragen“)
+|   |   +-- Fragezeile: Text gekürzt · Thema · Schwierigkeits-Chip · Lösungsquote
+|   |       · Schloss (fixieren) · Tauschen (3 Alternativen) · Entfernen · Ziehgriff
+|   +-- „Neu würfeln“ (behält fixierte) · „Frage suchen“
+|   +-- Seitenleiste „Frage suchen“ (Sheet rechts, am Handy von unten)
+|   |   +-- Suchfeld + Filter (Fach, Thema, Schwierigkeit, Fragetyp)
+|   |   +-- 25 Treffer, bereits gewählte markiert · „Weitere 25 anzeigen (noch N)“
+|   +-- Leerzustand mit Link zu „Fragen hinzufügen“ (PROJ-132)
+|   +-- Fuß: „Zurück“ · „Weiter“ (ab 1 Frage; unter 5 Fragen nur Hinweis)
++-- Schritt 3 – Wann und für wen?
+|   +-- Zusammenfassung oben (Fach, Thema, Anzahl, geschätzte Zeit) mit „Ändern“
+|   +-- Titel (Vorschlag aus Fach, Thema, Datum)
+|   +-- Klasse (Pflicht): bisher benutzte Klassen · freie Eingabe · „Keine / gemischt“
+|   +-- Schuljahr (vorausgefüllt)
+|   +-- Beitritt bis (Pflicht, Vorschlag heute 23:59) + Schnellwahlen + Erklärsatz
+|   +-- Beitritt ab (optional, „sofort nach dem Öffnen“)
+|   +-- Dauer in Minuten + Erklärsatz
+|   +-- Notenschlüssel: Vorlagen-Auswahl (vorhandener Picker) + „Neue Vorlage anlegen“ (Dialog)
+|   +-- „Weitere Einstellungen“ (zugeklappt): Fokus-Protokoll (vorhandene Felder, wie bisher)
+|   +-- Fuß: „Zurück“ · „Entwurf speichern“ (grün)
++-- Rückfrage beim Verlassen („Angaben gehen verloren“), auch beim Neuladen
+
+Seite „Leistungsnachweise“
++-- Hauptaktion „Nachweis anlegen“ → Link auf /neu (alter Dialog und „Vorschlag“-Knopf entfallen)
+
+Seite „Notenschlüssel“ (/admin/leistungsnachweise/schluessel)
++-- Hauptaktion „Vorlage anlegen“ → derselbe Vorlagen-Dialog wie in Schritt 3
+
+Lerninhalte › Reiter „Schwierig“
++-- Häkchen je Frage
++-- Aktionsleiste unten „N markiert · In neuen Nachweis“ → /neu, Start bei Schritt 2
+```
+
+### B) Wo die Daten liegen
+
+**Während des Ablaufs:** nur im Speicher der Seite (ein gemeinsamer Zustand für alle drei Schritte). Kein Entwurf in der Datenbank, kein Zwischenspeichern. Neuladen oder Verlassen löscht die Angaben. Davor kommt die Rückfrage.
+
+Der Zustand enthält:
+- Bereich, mit dem der Ablauf gestartet wurde (bleibt fest, auch wenn in einem anderen Tab umgeschaltet wird)
+- Schritt-1-Angaben: Fächer, Themen, Stufe, Anzahl, Schwierigkeitsverteilung, Ausschlüsse
+- Auswahl: geordnete Liste der Fragen, je Frage „fixiert ja/nein“
+- Schritt-3-Angaben: Titel, Klasse (oder „Keine / gemischt“), Schuljahr, Beitritt ab/bis, Dauer, Notenschlüssel, Fokus-Protokoll
+- welcher Schritt erreicht ist (für die Schrittleiste)
+
+**Übergabe aus „Schwierig“:** Die markierten Fragen-Nummern werden einmalig im Tab-Speicher (sessionStorage) abgelegt, die Seite `/neu?aus=schwierig` liest sie, löscht den Eintrag sofort und startet bei Schritt 2. Grund: Bis zu 60 Nummern machen die Adresse sonst unlesbar lang. Fehlt der Eintrag (z. B. Link geteilt), startet der Ablauf normal bei Schritt 1.
+
+**Beim Speichern:** ein Datensatz in der bestehenden Tabelle der Leistungsnachweise mit Status **Entwurf**, die Fragen in der vorhandenen Spalte für Entwurfsfragen (wie seit PROJ-27). Keine neue Spalte: Klasse, Schuljahr und Fach gibt es seit PROJ-39, „Beitritt bis“ ist das vorhandene Ende-Datum.
+
+### C) Schnittstellen (was der Server tut)
+
+| Schnittstelle | Neu / geändert | Zweck |
+|---|---|---|
+| Vorschlag (PROJ-78) | **unverändert** | Vorschlag ziehen, „Neu würfeln“ mit fixierten Fragen, 3 Alternativen zum Tauschen, Zusammenfassung |
+| **Fragen-Suche** | **neu** | Suchwort + Filter (Fach, Thema, Schwierigkeit, Fragetyp), höchstens 25 Treffer, dazu die Gesamtzahl für „noch N“. Nur für Nachweise zulässige Fragen des Bereichs, eigene „nur für Nachweise“-Fragen eingeschlossen. Fragen per Nummer nachladen (für die Übergabe aus „Schwierig“) |
+| Fächer & Klassen des Bereichs | **unverändert** | Auswahl für Fach (Schritt 1) und Klasse (Schritt 3) |
+| Nachweis anlegen | **geändert** | (1) Klasse muss ausdrücklich angegeben sein: Klassenname **oder** „keine“. Fehlt die Angabe, lehnt der Server ab. (2) „Beitritt bis“ darf nicht in der Vergangenheit liegen. (3) Lehnt der Server Fragen ab (gesperrt, gelöscht, inaktiv, falscher Bereich), nennt er **welche**, damit die Seite sie in Schritt 2 markieren kann. Rechte und Code-Erzeugung bleiben wie heute. |
+| Notenschlüssel-Vorlagen (PROJ-77) | **unverändert** | Vorlage anlegen klappt heute schon ohne Nachweis, es fehlte nur die Stelle in der Oberfläche |
+
+Die alte Schnittstelle „alle wählbaren Fragen auf einmal“ bleibt, weil der Dialog „Fragen bearbeiten“ auf der Detailseite sie noch nutzt (wird mit PROJ-134 abgelöst).
+
+### D) Technische Entscheidungen (und warum)
+
+- **Eigene Seite statt Dialog.** Regel aus dem Plan: „lang = eigene Seite mit Schritten, nie Dialog im Dialog“. Eine Seite hat eine Adresse, funktioniert am Handy besser und erlaubt die Rückfrage beim Verlassen.
+- **Kein Entwurf in der Datenbank vor dem Speichern.** So vorgegeben, und es verhindert verwaiste Halb-Entwürfe. Dafür gibt es die Rückfrage beim Verlassen.
+- **Vorschlags-Logik wird wiederverwendet, nicht neu gebaut.** Quoten, Ausschlüsse, Tauschen und „Neu würfeln“ sind aus PROJ-78 erprobt und getestet. Die neue Seite ist nur ein anderes Gesicht dafür. Die Darstellung der Vorschlagsliste wird aus dem bisherigen Dialog herausgelöst und in Schritt 2 verwendet.
+- **Suche auf dem Server mit 25 Treffern.** Heute lädt der Dialog alle 3.355 Fragen in den Browser. Die Suche lädt nur, was man sieht, und erfüllt das Tempo-Ziel (unter 2 s). Kein „Alle wählen“ (E5).
+- **Schritt 2 als eigenständiger Baustein.** Die Fragen-Auswahl (Liste + Suche) wird so gebaut, dass PROJ-134 sie später für „Fragen bearbeiten“ auf der Detailseite übernehmen kann. Dann verschwindet auch der letzte Weg mit allen Fragen auf einmal.
+- **„Heute 23:59“ in der Schulzeitzone (Europe/Berlin).** Eine kleine Hilfsfunktion rechnet die Schnellwahlen aus. Sie gilt auch an Tagen mit Zeitumstellung und wird per Unit-Test geprüft. Diese Zeitzone nutzt die App schon für das Schuljahr.
+- **„Beitritt ab“ leer = sofort nach dem Öffnen.** Die Datenbank braucht weiter einen Startzeitpunkt; die Seite schickt dann „jetzt“. Was beim späteren Öffnen mit einem dann schon vergangenen „Beitritt bis“ passiert, regelt PROJ-134.
+- **Klasse als Pflicht auf dem Server.** Nur so gilt die Pflicht für alle Wege. Andere Wege, die Nachweise anlegen (z. B. „Duplizieren“), haben eigene Schnittstellen und sind nicht betroffen.
+- **Fokus-Protokoll bleibt erhalten**, zugeklappt unter „Weitere Einstellungen“ in Schritt 3. Die Spec nennt es nicht, aber es wegzulassen wäre ein Rückschritt gegenüber heute.
+- **Rückfrage beim Verlassen:** innerhalb der App per eigener Abfrage vor dem Seitenwechsel, beim Schließen oder Neuladen über die Browser-Warnung. Das Muster gibt es schon (Sammel-Anlage, Lehrerzimmer-Beitrag).
+- **Wörter:** neue Begriffe („Ausgeschlossene Fragen“, Ersatz für „Bearbeitungszeit je Teilnehmer“, die Schrittnamen) kommen in `begriffe.ts`, der Wächtertest wird um die alten Wörter ergänzt.
+
+### E) Was entfernt wird
+- Der Riesendialog „Nachweis anlegen“ (`create-assessment-modal`) und der Knopf „Vorschlag“ auf der Listenseite.
+- **Bleiben vorerst:** der Fragen-Wähler mit eingebautem Vorschlag-Dialog, weil „Fragen bearbeiten“ auf der Detailseite ihn noch nutzt. Er wird in PROJ-134 durch den neuen Baustein aus Schritt 2 ersetzt.
+
+### F) Tests
+- Unit: Zustand des Ablaufs (Zurück behält Angaben, Schrittfreigabe), Zeit-Hilfsfunktion (23:59, Zeitumstellung, Schnellwahlen), Pflicht-Klasse und abgelehnte Fragen in der Anlegen-Schnittstelle, Fragen-Suche (25er-Seiten, Gesamtzahl, nur zulässige Fragen, Bereichsrechte).
+- Komponenten: Schrittleiste mit Tastatur, Fokus auf Überschrift beim Wechsel, Aktionsleiste im Reiter „Schwierig“.
+- E2E: „Vorschlag → Prüfen → Speichern“ und „Schwierig → In neuen Nachweis → Speichern“.
+
+### G) Abhängigkeiten (Pakete)
+Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-drop-Bibliothek `@dnd-kit` aus dem Baukasten, alles andere sind vorhandene shadcn/ui-Bausteine (Sheet, Checkbox, Popover, Dialog) und die Admin-Bausteine (`AdminPageHeader`, `AdminSegmented`, `admin-states`).
+
+### H) Reihenfolge beim Bauen (Vorschlag)
+1. Backend: Fragen-Suche, Anlegen-Schnittstelle strenger machen, Zeit-Hilfsfunktion
+2. Seite mit Schrittleiste und gemeinsamem Zustand, Schritt 1 und 3
+3. Schritt 2 (Auswahl-Baustein, Suche-Seitenleiste)
+4. Einstieg Listenseite, Notenschlüssel-Seite, Reiter „Schwierig“
+5. Alten Dialog entfernen, Wörter und Wächtertest
 
 ## QA Test Results
 _To be added by /qa_
