@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { AdminShell } from './admin-shell'
-import { AdminRoleProvider } from './admin-role-provider'
+import { AdminRoleProvider, type AdminRoleContextValue } from './admin-role-provider'
 import { mockViewport, testDepartment } from './workspace-test-utils'
 import { DepartmentProvider } from '@/components/department-provider'
 import type { TeacherRole } from '@/lib/roles'
@@ -10,9 +10,6 @@ import type { WorkspaceTheme } from '@/lib/workspace-theme'
 const push = vi.fn()
 let mockPath = '/admin'
 vi.mock('next/navigation', () => ({ usePathname: () => mockPath, useRouter: () => ({ push }) }))
-vi.mock('@/components/admin/department-switcher', () => ({
-  DepartmentSwitcher: () => <div data-testid="department-switcher" />,
-}))
 vi.mock('@/lib/supabase-browser', () => ({ createClient: () => ({ auth: { signOut: vi.fn() } }) }))
 
 beforeEach(() => {
@@ -34,7 +31,9 @@ function setup({
   width = 1280,
   theme = 'dark',
   sidebarOpen = true,
+  scope,
 }: {
+  scope?: AdminRoleContextValue['scope']
   role?: TeacherRole
   width?: number
   theme?: WorkspaceTheme
@@ -44,7 +43,7 @@ function setup({
   return render(
     <DepartmentProvider value={{ department: testDepartment, examParts: [] }}>
       <AdminRoleProvider
-        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de' }}
+        value={{ role, isSuperAdmin: role === 'admin', displayName: 'Frau Muster', email: 'muster@schule.de', scope }}
       >
         <AdminShell initialTheme={theme} sidebarOpen={sidebarOpen}>
           <p>Seiteninhalt</p>
@@ -91,12 +90,12 @@ describe('AdminShell – Grundgerüst (PROJ-45)', () => {
     expect(document.cookie).toContain('sidebar_state=false')
   })
 
-  it('zeigt den Bereichs-Umschalter nur Super-Admins', () => {
-    const { unmount } = setup()
-    expect(screen.queryByTestId('department-switcher')).not.toBeInTheDocument()
-    unmount()
-    setup({ role: 'admin' })
-    expect(screen.getByTestId('department-switcher')).toBeInTheDocument()
+  it('zeigt jeder Rolle den Bereichs-Umschalter oben in der Seitenleiste (PROJ-130)', () => {
+    for (const role of ['teacher', 'department_admin', 'admin'] as const) {
+      const { unmount } = setup({ role, scope: { current: 'd1', departments: [{ id: 'd1', name: 'Spedition', code: 'SPED' }, { id: 'd2', name: 'Tourismus', code: 'TOUR' }] } })
+      expect(screen.getByRole('combobox', { name: /Bereich: Spedition/ })).toBeInTheDocument()
+      unmount()
+    }
   })
 })
 
@@ -108,10 +107,10 @@ describe('AdminShell – Seitenleiste im ruhigen Stil', () => {
     expect(links.some((a) => a.getAttribute('href') === '/admin/lehrerzimmer')).toBe(true)
   })
 
-  it('zeigt Nicht-Super-Admins den Bereich als Anzeige statt als Umschalter', () => {
+  it('zeigt den Bereich als Anzeige, wenn es nur einen gibt', () => {
     setup()
     expect(screen.getByText('Bereich')).toBeInTheDocument()
-    expect(screen.queryByTestId('department-switcher')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
 })
 

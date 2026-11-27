@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase-server'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { AdminRoleProvider } from '@/components/admin/admin-role-provider'
 import { isTeacherRole } from '@/lib/roles'
-import { resolveContentScope } from '@/app/api/admin/_lib/auth'
+import { resolveContentScope, resolveSuperAdminDepartment } from '@/app/api/admin/_lib/auth'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   parseSidebarOpen,
@@ -67,7 +67,16 @@ export default async function AdminLayout({
     (profile as { department_id?: string | null }).department_id ?? null,
     departments.map((d) => d.id)
   )
-  const scope = { current: current?.[0] ?? null, departments }
+  // PROJ-130: Bei „Alle Bereiche“ zeigen Nutzer, Einstellungen und Shop dem Super-Admin
+  // trotzdem einen Bereich — den nennt der Umschalter dort
+  const workingDepartmentId =
+    isSuperAdmin && !current
+      ? await resolveSuperAdminDepartment(
+          supabase as unknown as SupabaseClient,
+          (profile as { department_id?: string | null }).department_id ?? null,
+        )
+      : null
+  const scope = { current: current?.[0] ?? null, departments, workingDepartmentId }
 
   return (
     <AdminRoleProvider value={{ role, isSuperAdmin, displayName, email: user.email ?? '', showTeacherWelcome, subjectCount, scope }}>

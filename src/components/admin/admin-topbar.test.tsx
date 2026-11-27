@@ -8,7 +8,6 @@ import { Inbox } from 'lucide-react'
 
 let mockPath = '/admin/leistungsnachweise/abc'
 vi.mock('next/navigation', () => ({ usePathname: () => mockPath }))
-vi.mock('@/components/admin/department-switcher', () => ({ DepartmentSwitcher: () => null }))
 vi.mock('@/lib/supabase-browser', () => ({ createClient: () => ({ auth: { signOut: vi.fn() } }) }))
 
 beforeEach(() => {

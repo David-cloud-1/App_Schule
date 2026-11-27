@@ -1,5 +1,6 @@
 'use client'
 
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ChevronDown, Loader2 } from 'lucide-react'
@@ -69,6 +70,8 @@ const MIN_QUESTIONS = 5
 
 export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestions, usedSchoolYears, preselectedSetId, onSuccess }: Props) {
   const partLabel = useExamPartLabel()
+  // PROJ-130: Der Bereich kommt aus dem Umschalter im Menü (null = „Alle Bereiche“, undefined = ohne Umschalter)
+  const scopeCurrent = useOptionalAdminRole()?.scope?.current
 
   // PROJ-46: Zielbereich — Schritt 0
   const [departments, setDepartments] = useState<DepartmentOption[]>([])
@@ -100,6 +103,9 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
   // Startauswahl aus der Prüfungssimulation gibt es nur für den eigenen
   // Arbeitsbereich — die geladenen Sets gehören zu diesem, nicht zum
   // (ggf. fremden) Zielbereich.
+  // Steht der Bereich durch den Umschalter fest, fragt der Dialog ihn nicht ab (PROJ-130)
+  const fixedDepartment =
+    scopeCurrent && departments.length > 1 ? (departments.find((d) => d.id === scopeCurrent) ?? null) : null
   const ownDepartment = departmentId !== '' && departmentId === suggestedDepartmentId
   const visibleSets = ownDepartment ? sets : []
 
@@ -159,14 +165,16 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
         setDepartments(list)
         setSuggestedDepartmentId(data.suggestedDepartmentId ?? null)
         // Nur ein aktiver Bereich: egal welche Rolle, direkt vorbelegen.
-        // Sonst: Bereichs-Admin/Super-Admin bekommen ihren Arbeitsbereich
-        // vorausgewählt, eine Lehrkraft ohne Fachbereich bleibt leer (E1).
+        // Sonst gilt der Bereich aus dem Umschalter (PROJ-130). Bei „Alle
+        // Bereiche“ bleibt das Feld leer und ist Pflicht; ohne Umschalter
+        // (ältere Aufrufer) wie bisher der Arbeitsbereich (E1).
         if (list.length === 1) setDepartmentId(list[0].id)
-        else if (data.suggestedDepartmentId) setDepartmentId(data.suggestedDepartmentId)
+        else if (scopeCurrent && list.some((d) => d.id === scopeCurrent)) setDepartmentId(scopeCurrent)
+        else if (scopeCurrent === undefined && data.suggestedDepartmentId) setDepartmentId(data.suggestedDepartmentId)
       })
       .catch(() => setDepartments([]))
       .finally(() => setDepartmentsLoading(false))
-  }, [open])
+  }, [open, scopeCurrent])
 
   // Ablage-Optionen (Fächer/Klassen) des gewählten Zielbereichs nachladen
   useEffect(() => {
@@ -237,7 +245,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
 
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (!departmentId) e.departmentId = 'Zielbereich wählen.'
+    if (!departmentId) e.departmentId = 'Bitte wähle, in welchem Bereich der Nachweis angelegt wird.'
     if (selectedIds.size < MIN_QUESTIONS) e.questions = `Mindestens ${MIN_QUESTIONS} Fragen auswählen.`
     if (!title.trim()) e.title = 'Titel ist Pflicht.'
     if (!opensAt) e.opensAt = 'Startzeit fehlt.'
@@ -341,8 +349,16 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                 mobileTab === 'settings' ? 'block' : 'hidden lg:block',
               )}
             >
+              {fixedDepartment ? (
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm text-ws-muted">
+                  <span>
+                    Bereich: <strong className="font-semibold text-ws-text">{fixedDepartment.name}</strong>
+                  </span>
+                  <span className="text-ws-faint">· bestimmt den Fragenpool und wer per Code beitreten kann</span>
+                </p>
+              ) : (
               <div className="space-y-2">
-                <Label htmlFor="zielbereich" className="text-base">Zielbereich</Label>
+                <Label htmlFor="zielbereich" className="text-base">Bereich</Label>
                 <Select value={departmentId} onValueChange={handleDepartmentChange} disabled={departmentsLoading}>
                   <SelectTrigger id="zielbereich" className={field}>
                     <SelectValue placeholder={departmentsLoading ? 'Wird geladen…' : 'Bitte wählen…'} />
@@ -358,6 +374,7 @@ export function CreateAssessmentModal({ open, onOpenChange, sets, classSuggestio
                 </p>
                 {errors.departmentId && <p className="text-xs text-ws-red">{errors.departmentId}</p>}
               </div>
+              )}
 
               {departmentId && visibleSets.length > 0 && (
                 <div className="space-y-2">

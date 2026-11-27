@@ -19,11 +19,13 @@ export interface AdminRoleContextValue {
   showTeacherWelcome?: boolean
   /** Anzahl eingetragener Fächer einer Lehrkraft, fürs Konto-Menü (PROJ-49) */
   subjectCount?: number
-  /** Bereichsleiste (PROJ-70): was die Inhalts-Seiten gerade zeigen und welche Bereiche es gibt */
+  /** Bereichs-Umschalter (PROJ-70/130): welcher Bereich gewählt ist (`null` = alle) und welche es gibt */
   scope?: {
     current: string | null
     /** `isActive` fehlt in älteren Aufrufern; fehlt es, gilt der Bereich als aktiv (PROJ-62: nur aktive Bereiche zum Anlegen) */
     departments: { id: string; name: string; code: string; isActive?: boolean }[]
+    /** PROJ-130: Super-Admin bei „Alle Bereiche“ — Bereich der Seiten, die genau einen brauchen */
+    workingDepartmentId?: string | null
   }
 }
 

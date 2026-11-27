@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/select'
 
 /**
- * Zielbereich beim Anlegen (PROJ-70): zeigt gut sichtbar „Wird angelegt in: …“.
- * Zeigt die Bereichsleiste genau einen Bereich, steht er fest da. In „Alle
+ * Bereich beim Anlegen (PROJ-70/130): Ist oben im Menü ein Bereich gewählt,
+ * steht er nur als ruhige Zeile „Bereich: …“ da. In „Alle
  * Bereiche“ ist die Auswahl ein Pflichtfeld ohne Vorauswahl, damit nichts
  * versehentlich im falschen Bereich landet. `value` ist die gewählte
  * Bereichs-ID (oder leer); in einem festen Bereich ist sie nicht nötig, der
@@ -40,7 +40,7 @@ export function TargetDepartmentField({
       <p className="flex items-center gap-2 rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm text-ws-muted">
         <Building2 className="size-4 shrink-0" aria-hidden />
         <span>
-          Wird angelegt in:{' '}
+          Bereich:{' '}
           <strong className="font-semibold text-ws-text">
             {fixed.name}
             {detail ? ` · ${detail}` : ''}
@@ -52,7 +52,7 @@ export function TargetDepartmentField({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="target-department">Wird angelegt in (Pflicht)</Label>
+      <Label htmlFor="target-department">Bereich (Pflicht)</Label>
       <Select value={value || undefined} onValueChange={onChange}>
         <SelectTrigger
           id="target-department"

@@ -247,7 +247,7 @@ Keine neuen. Genutzt wird, was schon da ist: shadcn `Sidebar`, `Collapsible`, `S
 
 ## Implementation Notes (Frontend)
 
-Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☐ · 3 ☐ · 4 ☐**
+Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☐ · 4 ☐**
 
 ### Schritt 1: Menü, „Nachschlagen“, Konto-Menü (27.11.2026)
 - `src/lib/admin-nav.ts` neu geordnet: Unterricht · Lerninhalte (aufklappbar) · Werkzeuge und Austausch · Verwaltung (aufklappbar). Neu je Eintrag: `hint`, `aliases` (alte Namen, nur Suchwörter), `subPages` (Schulrecht, Checklisten unter „Nachschlagen“).
@@ -261,6 +261,15 @@ Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☐ · 3 ☐ · 4 ☐**
 - Entfernt (ohne Verwendung): Gruppen-Hinweis „alle Bereiche“ (`adminNavGroupHint`, `contentScopeShort`), `usesHofName`, `managerVisible`.
 - Die Bereichsleiste unter den Seitentiteln erscheint bis Schritt 2 wie bisher. Seitentitel und übrige Texte folgen in Schritt 3.
 - Prüfung: 4766 Tests grün, Build und Lint sauber.
+
+### Schritt 2: Ein Bereichs-Umschalter (27.11.2026)
+- Neu ist `bereichs-umschalter.tsx` oben in Seitenleiste und Schublade, für **jede** Rolle. „Alle Bereiche“ steht als letzte Wahl unter den Bereichen. Gibt es nur einen Bereich, erscheint eine ruhige Anzeige.
+- Gelöscht: `admin-scope-bar.tsx` (Leiste „Du siehst …“ unter den Seitentiteln, mit Test) und `department-switcher.tsx` (alter Super-Admin-Umschalter). Der Seitenkopf nennt keinen Bereich mehr.
+- **Abweichung von der Spec (Edge Case „Nutzer/Änderungsprotokoll fest im eigenen Bereich“):** Seit PROJ-127 folgen beide Seiten auch für Lehrkräfte dem gewählten Bereich. Die alte Leiste zeigte dort trotzdem fest den eigenen Bereich, und das war falsch. Jetzt gilt der Umschalter überall. Ein Hinweis „Auf dieser Seite: …“ erscheint nur, wo die Seite wirklich etwas anderes zeigt: beim **Super-Admin** mit „Alle Bereiche“ auf Nutzer, Einstellungen des Bereichs und Shop-Gegenstände. Diese Seiten zeigen dann den zuletzt gewählten einzelnen Bereich. Dafür liefert das Layout `scope.workingDepartmentId` (`resolveSuperAdminDepartment` ist jetzt exportiert). Lehrkräfte bekommen auf Einstellungen und Shop bei „Alle Bereiche“ wie bisher die Bitte, einen Bereich zu wählen.
+- Gemeldete Fragen (B50): Liste und Fach-Auswahl folgten schon dem Bereich. Es reichte, die eigene Leiste zu entfernen.
+- Anlegen-Dialoge: Das gemeinsame Feld heißt „Bereich: …“ bzw. „Bereich (Pflicht)“. Der Leistungsnachweis-Dialog übernimmt den Bereich aus dem Umschalter als ruhige Zeile und fragt nur bei „Alle Bereiche“ (Pflicht, ohne Vorauswahl). B24 ist damit für Phase 2 erledigt.
+- Server, Cookies und Rechte sind unverändert.
+- Prüfung: 4770 Tests grün (neu: `bereichs-umschalter.test.tsx`), Build sauber.
 
 ## QA Test Results
 _To be added by /qa_

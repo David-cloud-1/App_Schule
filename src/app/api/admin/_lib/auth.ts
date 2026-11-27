@@ -44,7 +44,7 @@ export type AdminAuthResult =
  * fallen auf den Rückfall-Bereich zurück, statt die Anfrage scheitern zu
  * lassen. Geteilt von requireManager und requireTeacherOrAdmin.
  */
-async function resolveSuperAdminDepartment(
+export async function resolveSuperAdminDepartment(
   supabase: SupabaseClient,
   ownDepartmentId: string | null
 ): Promise<string | null> {

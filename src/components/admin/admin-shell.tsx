@@ -4,15 +4,12 @@ import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2 } from 'lucide-react'
 import { Toaster } from '@/components/ui/sonner'
 import { AdminNav } from '@/components/admin/admin-nav'
 import { AdminTopbar } from '@/components/admin/admin-topbar'
 import { AdminAccountMenu } from '@/components/admin/admin-account-menu'
-import { DepartmentSwitcher } from '@/components/admin/department-switcher'
+import { BereichsUmschalter } from '@/components/admin/bereichs-umschalter'
 import { WorkspaceProvider, useWorkspace } from '@/components/admin/workspace-provider'
-import { useAdminRole } from '@/components/admin/admin-role-provider'
-import { useDepartment } from '@/components/department-provider'
 import {
   Sidebar,
   SidebarContent,
@@ -123,29 +120,11 @@ function WorkspaceFrame({ sidebarOpen, children }: { sidebarOpen: boolean; child
 }
 
 
-/** Bereich ohne Umschalten (alle außer Super-Admin) */
-function DepartmentLabel() {
-  const { name } = useDepartment()
-  if (!name) return null
-  return (
-    <div className="flex min-h-11 items-center gap-3 rounded-xl border border-ws-line bg-ws-surface px-3 py-2 group-data-[collapsible=icon]:size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
-      <Building2 className="size-5 shrink-0 text-ws-muted" aria-hidden />
-      <span className="grid min-w-0 leading-tight group-data-[collapsible=icon]:hidden">
-        <span className="text-xs text-ws-muted">Bereich</span>
-        <span className="truncate font-semibold text-ws-text" title={name}>
-          {name}
-        </span>
-      </span>
-    </div>
-  )
-}
-
 function AdminSidebar() {
-  const { isSuperAdmin } = useAdminRole()
   return (
     <Sidebar collapsible="icon" className="border-ws-line">
       <SidebarHeader className="px-3 pt-4">
-        {isSuperAdmin ? <DepartmentSwitcher /> : <DepartmentLabel />}
+        <BereichsUmschalter />
       </SidebarHeader>
       <SidebarContent>
         <AdminNav />

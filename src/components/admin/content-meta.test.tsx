@@ -35,7 +35,7 @@ describe('Zuletzt geändert', () => {
   })
 })
 
-describe('Zielbereich beim Anlegen', () => {
+describe('Bereich beim Anlegen', () => {
   it('steht in einem festen Bereich fest da', () => {
     renderInWorkspace(<TargetDepartmentField value="" onChange={() => {}} detail="STG" />, {
       scope: { current: 'd1', departments },
@@ -48,7 +48,7 @@ describe('Zielbereich beim Anlegen', () => {
     renderInWorkspace(<TargetDepartmentField value="" onChange={() => {}} error="Bitte wähle den Bereich." />, {
       scope: { current: null, departments },
     })
-    expect(screen.getByText('Wird angelegt in (Pflicht)')).toBeInTheDocument()
+    expect(screen.getByText('Bereich (Pflicht)')).toBeInTheDocument()
     expect(screen.getByText('Bereich wählen')).toBeInTheDocument()
     expect(screen.getByText('Bitte wähle den Bereich.')).toBeInTheDocument()
   })
