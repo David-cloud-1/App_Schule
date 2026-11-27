@@ -115,7 +115,7 @@ export function AssessmentWizard() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const titleTouched = useRef(false)
-  const whenInitialised = useRef(false)
+  const durationTouched = useRef(false)
   const done = useRef(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
@@ -231,7 +231,10 @@ export function AssessmentWizard() {
         setWhen((v) => ({ ...v, title }))
         titleTouched.current = true
       }
-      if (duration) setWhen((v) => ({ ...v, durationMinutes: String(duration) }))
+      if (duration) {
+        setWhen((v) => ({ ...v, durationMinutes: String(duration) }))
+        durationTouched.current = true
+      }
       const missing = (data.missing as string[]).length
       const notes: string[] = []
       if (missing > 0) {
@@ -350,7 +353,6 @@ export function AssessmentWizard() {
     setMeta(null)
     setSuggested(false)
     setReached(1)
-    whenInitialised.current = false
     setNotice(hadQuestions ? 'Du hast den Bereich gewechselt. Die bisher gewählten Fragen gehören zum anderen Bereich und wurden entfernt.' : null)
   }
 
@@ -442,21 +444,21 @@ export function AssessmentWizard() {
   // --- Schritt 3 vorbereiten ---
   function continueToWhen() {
     if (!reviewState(items.length).canContinue) return
-    if (!whenInitialised.current) {
-      whenInitialised.current = true
-      const minutes = summarize(items).minutes
-      setWhen((v) => ({
-        ...v,
-        title: v.title || suggestTitle(what.subjects, what.topics, new Date()),
-        closesAt: v.closesAt || toSchoolInputValue(defaultClosesAt(new Date())),
-        durationMinutes: v.durationMinutes === '45' ? String(Math.max(5, Math.ceil(minutes / 5) * 5)) : v.durationMinutes,
-      }))
-    }
+    // Titel und Dauer folgen den Angaben, solange die Lehrkraft sie nicht von Hand geändert hat.
+    // „Beitritt bis“ wird nur vorbelegt, nie überschrieben.
+    const minutes = summarize(items).minutes
+    setWhen((v) => ({
+      ...v,
+      title: titleTouched.current && v.title ? v.title : suggestTitle(what.subjects, what.topics, new Date()),
+      closesAt: v.closesAt || toSchoolInputValue(defaultClosesAt(new Date())),
+      durationMinutes: durationTouched.current ? v.durationMinutes : String(Math.max(5, Math.ceil(minutes / 5) * 5)),
+    }))
     goTo(3)
   }
 
   function onWhenChange(next: WhenValues) {
     if (next.title !== when.title) titleTouched.current = true
+    if (next.durationMinutes !== when.durationMinutes) durationTouched.current = true
     setWhen(next)
   }
 
@@ -469,7 +471,7 @@ export function AssessmentWizard() {
   // --- Speichern ---
   async function save() {
     if (saving) return
-    const errors = validateWhen(when, new Date(), fromSchoolInputValue)
+    const errors = validateWhen(when, new Date(), fromSchoolInputValue, classes)
     const sErr = validateGradingScale(scale)
     const fErr = validateFocusForm(focus)
     setWhenErrors(errors)
@@ -506,7 +508,9 @@ export function AssessmentWizard() {
       }
       done.current = true
       toast.success('Entwurf gespeichert')
-      router.push(`/admin/leistungsnachweise/${data.id}`)
+      // Den Zwischeneintrag der Zurück-Taste ersetzen statt einen weiteren Eintrag anzulegen
+      if (sentinelPushed.current) router.replace(`/admin/leistungsnachweise/${data.id}`)
+      else router.push(`/admin/leistungsnachweise/${data.id}`)
     } catch {
       setSaveError('Keine Verbindung. Deine Angaben sind noch da, versuche es gleich noch einmal.')
     } finally {

@@ -14,6 +14,18 @@ describe('defaultClosesAt (Vorschlag für „Beitritt bis“)', () => {
     expect(defaultClosesAt(new Date('2026-11-27T10:00:00Z')).toISOString()).toBe('2026-11-27T22:59:00.000Z')
   })
 
+  it('springt auf morgen 23:59, wenn bis 23:59 weniger als 5 Minuten bleiben', () => {
+    // 22:57 UTC = 23:57 Schulzeit (Winter)
+    expect(defaultClosesAt(new Date('2026-11-27T22:57:00Z')).toISOString()).toBe('2026-11-28T22:59:00.000Z')
+    // 22:50 UTC = 23:50 Schulzeit: noch genug Zeit
+    expect(defaultClosesAt(new Date('2026-11-27T22:50:00Z')).toISOString()).toBe('2026-11-27T22:59:00.000Z')
+  })
+
+  it('„Heute Abend“ wird nach 23:59 zum nächsten Abend, nie zur Vergangenheit', () => {
+    const late = new Date('2026-11-27T22:59:30Z')
+    expect(quickDeadline('tonight', late).getTime()).toBeGreaterThan(late.getTime())
+  })
+
   it('springt auf morgen 23:59, wenn 23:59 schon vorbei ist', () => {
     // 22:59:30 UTC = 23:59:30 Schulzeit (Winter)
     expect(defaultClosesAt(new Date('2026-11-27T22:59:30Z')).toISOString()).toBe('2026-11-28T22:59:00.000Z')

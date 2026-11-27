@@ -4,7 +4,7 @@ import { requireTeacherOrAdmin, writeAuditLog } from '../_lib/auth'
 import { checkQuestionSelection } from '@/lib/assessment-questions'
 import { formatAccessCode, generateAccessCode, validateGradingScale } from '@/lib/graded-assessments'
 import { validateFocusSettings } from '@/lib/focus-tracking'
-import { isValidClassNameFormat, MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
+import { MAX_CLASS_NAME_LENGTH, resolveCategory } from '@/lib/assessment-category'
 import { createServiceClient } from '@/lib/supabase-server'
 
 const CreateAssessmentSchema = z.object({
@@ -25,7 +25,7 @@ const CreateAssessmentSchema = z.object({
   focusAutoSubmitAfter: z.number().int().nullable().default(null),
   // PROJ-39: Ablage, alles optional. Ohne Schuljahr gilt der DB-Standard (aus dem Erstelldatum).
   // PROJ-133: ausdrücklich angeben. null = „Keine / gemischt“, fehlt das Feld, lehnt der Server ab.
-  className: z.string().max(MAX_CLASS_NAME_LENGTH).refine((v) => v.trim() === '' || isValidClassNameFormat(v), 'Ungültiger Klassenname').nullable(),
+  className: z.string().max(MAX_CLASS_NAME_LENGTH).nullable(),
   subjectId: z.string().uuid().nullable().optional(),
   schoolYear: z.string().optional(),
 })

@@ -12,7 +12,7 @@ import { GradingScaleEditor, type GradeBoundary } from '@/components/admin/gradi
 import { GradingScaleTemplatePicker } from '@/components/admin/grading-scale-template-picker'
 import { ScaleTemplateDialog } from './scale-template-dialog'
 import { MAX_CLASS_NAME_LENGTH } from '@/lib/assessment-category'
-import { quickDeadline, fromSchoolInputValue, toSchoolInputValue, type DeadlineQuickChoice } from '@/lib/assessment-deadline'
+import { endOfTodayInSchoolZone, quickDeadline, fromSchoolInputValue, toSchoolInputValue, type DeadlineQuickChoice } from '@/lib/assessment-deadline'
 import { schoolYearChoices } from '@/lib/assessment-filter'
 import type { WhenErrors, WhenValues } from '@/lib/assessment-draft'
 
@@ -190,7 +190,12 @@ export function WizardStepWhen({
             className={INPUT}
           />
           <div className="flex flex-wrap gap-2" role="group" aria-label="Schnellwahl für Beitritt bis">
-            {QUICK.map((q) => (
+            {QUICK.map((rawQ) => {
+              // Ab kurz vor 23:59 meint „Heute Abend“ den nächsten Abend – dann steht das auch so da
+              const q = rawQ.key === 'tonight' && quickDeadline('tonight', now()).getTime() !== endOfTodayInSchoolZone(now()).getTime()
+                ? { ...rawQ, label: 'Morgen Abend (23:59)' }
+                : rawQ
+              return (
               <Button
                 key={q.key}
                 type="button"
@@ -200,7 +205,8 @@ export function WizardStepWhen({
               >
                 {q.label}
               </Button>
-            ))}
+              )
+            })}
           </div>
           {closesText && <p className="text-sm font-medium text-ws-text">{closesText}</p>}
           {errors.closesAt && <p className="text-sm text-ws-red" role="alert">{errors.closesAt}</p>}

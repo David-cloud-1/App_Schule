@@ -50,10 +50,13 @@ export function endOfTodayInSchoolZone(now: Date): Date {
   return schoolWallTimeToDate(t.year, t.month, t.day, 23, 59)
 }
 
-/** Vorschlag für „Beitritt bis“: heute 23:59, ist das schon vorbei, morgen 23:59 */
+/** Wie lange vor 23:59 „heute“ noch als sinnvoller Vorschlag gilt; danach ist morgen 23:59 besser */
+const SAME_DAY_BUFFER_MS = 5 * 60 * 1000
+
+/** Vorschlag für „Beitritt bis“: heute 23:59; bleiben bis dahin weniger als 5 Minuten (oder ist es vorbei), morgen 23:59 */
 export function defaultClosesAt(now: Date): Date {
   const today = endOfTodayInSchoolZone(now)
-  if (today.getTime() > now.getTime()) return today
+  if (today.getTime() - now.getTime() > SAME_DAY_BUFFER_MS) return today
   const t = wallTimeInSchoolZone(now)
   return schoolWallTimeToDate(t.year, t.month, t.day + 1, 23, 59)
 }
@@ -72,7 +75,7 @@ export type DeadlineQuickChoice = 'hour' | 'tonight' | 'week'
 
 export function quickDeadline(choice: DeadlineQuickChoice, now: Date): Date {
   if (choice === 'hour') return inOneHour(now)
-  if (choice === 'tonight') return endOfTodayInSchoolZone(now)
+  if (choice === 'tonight') return defaultClosesAt(now)
   return inOneWeek(now)
 }
 

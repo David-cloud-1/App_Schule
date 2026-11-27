@@ -3,7 +3,7 @@
  * Reine Logik ohne Oberfläche: Titelvorschlag, Prüfung von Schritt 3,
  * Umwandlung von Suchtreffern und die Übergabe aus „Schwierig“.
  */
-import { isValidClassNameFormat, MAX_CLASS_NAME_LENGTH } from '@/lib/assessment-category'
+import { isAllowedClassName, MAX_CLASS_NAME_LENGTH } from '@/lib/assessment-category'
 import { MIN_ASSESSMENT_QUESTIONS } from '@/lib/assessment-questions'
 import type { SearchHit } from '@/lib/assessment-question-search'
 import { levelFor, MAX_COUNT, MIN_COUNT, MIX_PRESETS, mixSum, type Candidate, type Mix } from '@/lib/assessment-suggest'
@@ -70,6 +70,8 @@ export function validateWhen(
   v: WhenValues,
   now: Date,
   inputToDate: (value: string) => Date | null,
+  /** Im Bereich schon benutzte Klassen: Sie sind immer erlaubt, auch mit ungewöhnlichen Zeichen */
+  knownClasses: string[] = [],
 ): WhenErrors {
   const e: WhenErrors = {}
   if (!v.title.trim()) e.title = 'Bitte gib einen Titel an.'
@@ -81,7 +83,7 @@ export function validateWhen(
     const name = v.classChoice.name.replace(/\s+/g, ' ').trim()
     if (!name) e.className = 'Bitte gib eine Klasse ein oder wähle „Keine / gemischt“.'
     else if (name.length > MAX_CLASS_NAME_LENGTH) e.className = `Die Klasse darf höchstens ${MAX_CLASS_NAME_LENGTH} Zeichen lang sein.`
-    else if (!isValidClassNameFormat(name)) e.className = 'Bitte nur Buchstaben und Ziffern verwenden, zum Beispiel SP10C.'
+    else if (!isAllowedClassName(name, knownClasses)) e.className = 'Bitte nur Buchstaben und Ziffern verwenden, zum Beispiel SP10C.'
   }
 
   const closes = v.closesAt ? inputToDate(v.closesAt) : null

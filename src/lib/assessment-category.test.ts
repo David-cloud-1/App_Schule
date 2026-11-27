@@ -115,6 +115,21 @@ describe('resolveCategory', () => {
     expect(assessments.neq).not.toHaveBeenCalled()
   })
 
+  it('lehnt Markup und Sonderzeichen im Klassennamen ab (PROJ-133)', async () => {
+    const { supabase } = makeSupabase({ classes: [] })
+    for (const className of ['<b>SP10</b>', '!!!', 'SP10;DROP']) {
+      const res = await resolveCategory(supabase, 'dept', { className })
+      expect(res, className).toMatchObject({ ok: false, status: 400 })
+    }
+  })
+
+  it('lässt ältere Klassen mit Sonderzeichen weiter zu, auch wenn sie das Format sprengen (PROJ-133)', async () => {
+    const { supabase } = makeSupabase({ classes: ['SP10 §3', 'BK 10 (neu)'] })
+    expect(await resolveCategory(supabase, 'dept', { className: 'sp10 §3' })).toEqual({ ok: true, columns: { class_name: 'SP10 §3' } })
+    expect(await resolveCategory(supabase, 'dept', { className: 'BK 10 (neu)' })).toEqual({ ok: true, columns: { class_name: 'BK 10 (neu)' } })
+    expect(await resolveCategory(supabase, 'dept', { className: 'SP10 §4' })).toMatchObject({ ok: false, status: 400 })
+  })
+
   it('leert die Klasse bei leerer Eingabe', async () => {
     const { supabase } = makeSupabase({ classes: [] })
     const res = await resolveCategory(supabase, 'dept', { className: '' })

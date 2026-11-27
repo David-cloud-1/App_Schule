@@ -39,8 +39,21 @@ describe('Klassenformat (PROJ-133)', () => {
     }
   })
 
+  it('lässt ältere Klassennamen mit Sonderzeichen zu', () => {
+    for (const name of ['SP10C+D', 'BK 10 (neu)', 'SP10 & SP11', '10a, 10b', 'SP10C–neu', 'O’Brien']) {
+      expect(check({ classChoice: { kind: 'name', name } }).className, name).toBeUndefined()
+    }
+  })
+
+  it('erlaubt einen schon benutzten Namen auch dann, wenn er das Format sprengt', () => {
+    const odd = 'SP10 §3 *neu*'
+    expect(check({ classChoice: { kind: 'name', name: odd } }).className).toMatch(/Buchstaben und Ziffern/)
+    const known = validateWhen({ ...ok, classChoice: { kind: 'name', name: odd.toLowerCase() } }, now, fromSchoolInputValue, [odd])
+    expect(known.className).toBeUndefined()
+  })
+
   it('lehnt Sonderzeichen und Markup am Feld ab', () => {
-    for (const name of ['!!! test', '<b>SP10</b>', 'SP10;DROP', '-SP10', '😀']) {
+    for (const name of ['!!! test', '<b>SP10</b>', 'SP10;DROP', '-SP10', '😀', 'SP"10', 'SP10\\x']) {
       expect(check({ classChoice: { kind: 'name', name } }).className, name).toMatch(/Buchstaben und Ziffern/)
     }
   })

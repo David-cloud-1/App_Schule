@@ -3,11 +3,21 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 /** Höchstlänge der Klassenbezeichnung (entspricht der DB-Prüfung) */
 export const MAX_CLASS_NAME_LENGTH = 30
 
-/** Klassenname wie SP10C, SP 11a oder BK-2/3: Buchstaben und Ziffern, dazu Leerzeichen, Punkt, Bindestrich, Unterstrich und Schrägstrich (PROJ-133) */
-const CLASS_NAME_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} ._/-]*$/u
+/**
+ * Klassenname wie SP10C, SP 11a, BK-2/3 oder „BK 10 (neu)“ (PROJ-133): beginnt mit Buchstabe oder Ziffer, dann Buchstaben,
+ * Ziffern und die Zeichen Leerzeichen . _ / - + & , ( ) # ' ’ –. Markup, Semikolon, Anführungszeichen und Emojis nicht.
+ * Namen, die im Bereich schon benutzt werden, bleiben immer erlaubt (siehe `isAllowedClassName`).
+ */
+const CLASS_NAME_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N} ._/+&,()#'\u2019\u2013-]*$/u
 
 export function isValidClassNameFormat(name: string): boolean {
   return CLASS_NAME_PATTERN.test(name.replace(/\s+/g, ' ').trim())
+}
+
+/** Format passt, oder der Name kommt (ohne Beachtung der Groß-/Kleinschreibung) schon in `known` vor – ältere Nachweise dürfen nicht gesperrt werden */
+export function isAllowedClassName(name: string, known: string[]): boolean {
+  const cleaned = name.replace(/\s+/g, ' ').trim()
+  return isValidClassNameFormat(cleaned) || known.some((k) => k.toLowerCase() === cleaned.toLowerCase())
 }
 
 const SCHOOL_YEAR_PATTERN = /^(\d{4})\/(\d{2})$/
@@ -105,6 +115,9 @@ export async function resolveCategory(
   } else if (input.className !== undefined) {
     const existing = await fetchUsedClassNames(supabase, departmentId, excludeAssessmentId)
     if (existing === null) return { ok: false, status: 500, error: 'Klassen konnten nicht geprüft werden.' }
+    if (!isAllowedClassName(input.className, existing)) {
+      return { ok: false, status: 400, error: 'Der Klassenname enthält Zeichen, die nicht erlaubt sind. Bitte nur Buchstaben und Ziffern verwenden, zum Beispiel SP10C.' }
+    }
     columns.class_name = normalizeClassName(input.className, existing)
   }
 

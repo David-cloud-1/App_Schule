@@ -5,7 +5,7 @@ import { AssessmentWizard } from './assessment-wizard'
 const push = vi.fn()
 let search = ''
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push }),
+  useRouter: () => ({ push, replace: push }),
   useSearchParams: () => new URLSearchParams(search),
 }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
@@ -163,6 +163,30 @@ describe('Nachweis anlegen in drei Schritten (PROJ-133)', () => {
     expect(await screen.findByText(/Noch keine Frage gewählt/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Weiter/ })).toBeDisabled()
     expect(calls.some((c) => c.url.endsWith('/suggest'))).toBe(false)
+  })
+
+  it('Titel und Dauer folgen den Angaben, bis die Lehrkraft sie selbst ändert', async () => {
+    await toStep2()
+    fireEvent.click(screen.getByRole('button', { name: /Weiter/ }))
+    const title = (await screen.findByLabelText('Titel')) as HTMLInputElement
+    expect(title.value).toMatch(/^BGP · Luftfracht|^BGP · /)
+    const duration = screen.getByLabelText(/Dauer/) as HTMLInputElement
+    const firstDuration = duration.value
+
+    // zurück zu „Prüfen“, zwei Fragen weg, wieder nach vorn: die Dauer folgt der Fragenzahl
+    fireEvent.click(screen.getByRole('button', { name: /Zurück/ }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Frage entfernen' })[0])
+    fireEvent.click(screen.getByRole('button', { name: /Weiter/ }))
+    expect((screen.getByLabelText(/Dauer/) as HTMLInputElement).value).not.toBe('')
+    expect(Number((screen.getByLabelText(/Dauer/) as HTMLInputElement).value)).toBeLessThanOrEqual(Number(firstDuration))
+
+    // eigener Titel und eigene Dauer bleiben bei jedem weiteren Durchgang erhalten
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Mein Titel' } })
+    fireEvent.change(screen.getByLabelText(/Dauer/), { target: { value: '90' } })
+    fireEvent.click(screen.getByRole('button', { name: /Zurück/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Weiter/ }))
+    expect((screen.getByLabelText('Titel') as HTMLInputElement).value).toBe('Mein Titel')
+    expect((screen.getByLabelText(/Dauer/) as HTMLInputElement).value).toBe('90')
   })
 
   it('erlaubt „Weiter“ erst ab 5 Fragen und nennt, wie viele fehlen', async () => {

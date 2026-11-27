@@ -57,6 +57,8 @@ interface Overrides {
   role?: string
   departmentActive?: boolean
   codeCollisionOnce?: boolean
+  /** Klassen, die im Bereich schon benutzt werden (für die Prüfung des Klassennamens) */
+  usedClasses?: string[]
   insertData?: unknown
   insertError?: unknown
   listData?: unknown
@@ -95,6 +97,8 @@ function makeSupabase(overrides: Overrides = {}) {
   const gradedAssessmentsCodeCheckBuilder = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    // Klassen des Bereichs (fetchUsedClassNames)
+    not: vi.fn().mockResolvedValue({ data: (overrides.usedClasses ?? []).map((c) => ({ class_name: c })), error: null }),
     maybeSingle: vi.fn().mockImplementation(() => {
       codeCheckCalls += 1
       const isCollision = overrides.codeCollisionOnce && codeCheckCalls === 1
@@ -251,6 +255,13 @@ describe('POST /api/admin/assessments', () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase() as never)
     expect((await POST(makePostRequest({ ...validBody, className: '<b>SP10</b>' }))).status).toBe(400)
     expect((await POST(makePostRequest({ ...validBody, className: '!!!' }))).status).toBe(400)
+  })
+
+  it('accepts a class that already exists in the department even with unusual characters (PROJ-133)', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ usedClasses: ['SP10C+D', 'SP10 §3'] }) as never)
+    expect((await POST(makePostRequest({ ...validBody, className: 'SP10C+D' }))).status).toBe(201)
+    vi.mocked(createClient).mockResolvedValue(makeSupabase({ usedClasses: ['SP10 §3'] }) as never)
+    expect((await POST(makePostRequest({ ...validBody, className: 'SP10 §3' }))).status).toBe(201)
   })
 
   it('rejects a „Beitritt bis“ in the past (PROJ-133)', async () => {

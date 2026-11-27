@@ -1,6 +1,6 @@
 # PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4 Übersichtlichkeit, Teil 1)
 
-## Status: In Review
+## Status: Approved
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -451,7 +451,7 @@ Neue Tests: Mindestzahl und Hinweis, Klassenformat (Browser und Server), `defaul
 
 **Sicherheit:** Seiten leiten ohne Anmeldung zum Login, die Suche und das Anlegen geben 401 (auch bei `<script>`, SQL-Text, negativem `offset`, HTML im Klassennamen). 30 Anfragen hintereinander ergaben nur 401, nichts Auffälliges. Der Zwischenspeicher ist nach Person und Bereich getrennt, private Fragen gelangen also nicht zu anderen. Beobachtung: Änderungen an Fragen (neue eigene Frage, neue Meldung) erscheinen in der Suche bis zu 30 Sekunden später. Das ist gewollt und unkritisch.
 
-#### BUG-10: Bestehende Klassennamen mit Sonderzeichen lassen sich nicht mehr wählen (durch die Korrektur von BUG-3)
+#### BUG-10: Bestehende Klassennamen mit Sonderzeichen lassen sich nicht mehr wählen (durch die Korrektur von BUG-3) – **BEHOBEN**
 - **Severity:** Medium
 - **Steps to Reproduce:**
   1. Im Bereich gibt es einen älteren Nachweis mit der Klasse `SP10C+D`, `BK 10 (neu)` oder `10a, 10b`. Die Datenbank erlaubte bisher jeden Namen von 1 bis 30 Zeichen (`graded_assessments_class_name_check`).
@@ -462,33 +462,48 @@ Neue Tests: Mindestzahl und Hinweis, Klassenformat (Browser und Server), `defaul
 - **Hinweis:** Entweder die Regel großzügiger fassen (zum Beispiel alles außer `< > " ; \` und Steuerzeichen), oder Namen zulassen, die in dieser Abteilung schon vorkommen (Browser aus `classOptions`, Server über `fetchUsedClassNames`).
 - **Priority:** Fix before deployment (klein, aber es kann echte Klassen sperren)
 
-#### BUG-11: Titel, Dauer und Beitritt-Vorschlag veralten, wenn man nach Schritt 3 zurückgeht
+#### BUG-11: Titel, Dauer und Beitritt-Vorschlag veralten, wenn man nach Schritt 3 zurückgeht – **BEHOBEN**
 - **Severity:** Low
 - **Steps to Reproduce:** Schritt 3 öffnen (Titel „BGP · Luftfracht · 27.11.2026“) → „Angaben ändern“ → anderes Fach oder Thema wählen → neuer Vorschlag → Schritt 3
 - **Actual:** Der Titel nennt weiter das alte Fach. Auch der Bereichswechsel (Korrektur BUG-2) setzt `whenInitialised` zurück, behält den alten Titel aber über `v.title ||`. `titleTouched` wird geschrieben, aber nirgends gelesen. Die Dauer bleibt ebenfalls auf dem ersten Wert.
 - **Expected:** Ein nicht von Hand geänderter Titel folgt Fach und Thema, die Dauer der Fragenzahl
 - **Priority:** Fix in next sprint
 
-#### BUG-12: Nach dem Speichern führt „Zurück“ erst auf einen leeren Ablauf (abgeleitet, nicht im Browser geprüft)
+#### BUG-12: Nach dem Speichern führt „Zurück“ erst auf einen leeren Ablauf (abgeleitet, nicht im Browser geprüft) – **BEHOBEN**
 - **Severity:** Low
 - **Details:** Der Zwischeneintrag aus der Korrektur von BUG-5 bleibt im Verlauf. Auf der Detailseite des neuen Entwurfs bringt „Zurück“ zuerst zu einem leeren Ablauf (Schritt 1), erst die nächste Taste zur Liste. Vorher war es ein Schritt weniger. Lösung: Nach dem Speichern den Zwischeneintrag mit `history.replaceState`/`router.replace` ersetzen.
 - **Priority:** Nice to have
 
-#### BUG-13: „Heute Abend (23:59)“ ist ab 23:59 schon vergangen
+#### BUG-13: „Heute Abend (23:59)“ ist ab 23:59 schon vergangen – **BEHOBEN**
 - **Severity:** Low
 - **Details:** Der Vorschlag springt jetzt auf morgen (BUG-4), die Schnellwahl „Heute Abend (23:59)“ aber nicht. Ab 23:59 Uhr wählt sie einen Zeitpunkt in der Vergangenheit. Erst beim Speichern erscheint die Meldung. Kurz vor 23:59 bleibt für den Vorschlag selbst nur wenig Zeit.
 - **Priority:** Nice to have
+
+### Bugfixes Runde 2 und Freigabe (2026-11-27)
+
+Alle vier Befunde aus Runde 2 sind behoben. Tests: **5.021 von 5.021 grün**, `tsc` sauber, `npm run build` erfolgreich, `eslint` auf alle Dateien des Features ohne Fehler.
+
+| Bug | Behebung |
+|---|---|
+| BUG-10 | Die Regel für Klassennamen ist großzügiger (zusätzlich erlaubt: `+ & , ( ) # ' ’ –`). Namen, die im Bereich **schon vorkommen**, sind immer erlaubt, auch mit anderen Zeichen (`isAllowedClassName`). Der Server prüft das in `resolveCategory`, wo die benutzten Klassen ohnehin geladen werden, also auf jedem Weg, der die Klasse setzt. Markup, Semikolon, Anführungszeichen, Backslash und Emojis bleiben abgelehnt. |
+| BUG-11 | Titel und Dauer werden bei jedem Weg nach Schritt 3 neu vorgeschlagen, solange sie nicht von Hand geändert wurden (`titleTouched`, `durationTouched`). „Beitritt bis“ wird nur vorbelegt, nie überschrieben. |
+| BUG-12 | Nach dem Speichern ersetzt `router.replace` den Zwischeneintrag der Zurück-Taste, der Verlauf hat wieder so viele Einträge wie vor der Korrektur von BUG-5. |
+| BUG-13 | „Heute Abend (23:59)“ wählt bei weniger als 5 Minuten bis 23:59 den nächsten Abend und heißt dann „Morgen Abend (23:59)“. Auch der Vorschlag springt schon 5 Minuten vor 23:59 auf morgen. |
+
+Neue Tests: Klassenformat (Browser und Server), Altnamen mit Sonderzeichen, schon benutzter Name trotz Formatverstoß, Vorschlag und Schnellwahl rund um 23:59, Titel und Dauer folgen den Angaben bis zur eigenen Änderung.
+
+**Nicht geprüft** (wie in allen Runden): der Ablauf im Browser mit echtem Konto, Firefox/Safari, die Breiten 375/768/1440 px. Nach dem Deployment bitte einmal am Handy ansehen.
 
 ### Einschränkungen dieser Prüfung
 - Der Ablauf mit echtem Konto, echten Fragen und echtem Speichern ist nicht im Browser getestet. Es gab keine Datenbank und kein Lehrkraft-Konto. Nach den Korrekturen bitte einmal mit echtem Konto prüfen: Vorschlag → Prüfen → Speichern und der Weg aus „Schwierig“.
 - Die Breiten 375, 768 und 1440 px sowie Firefox und Safari sind nur über die Tailwind-Klassen im Code geprüft, nicht visuell.
 
-### Summary (nach Runde 2)
-- **Acceptance Criteria:** 37 von 37 bestanden (die vier offenen aus Runde 1 sind durch die Korrekturen erfüllt). Einschränkung: Das Klassenformat verletzt für Altdaten ein implizites Kriterium, siehe BUG-10.
-- **Bugs:** Runde 1: 9 gefunden, 9 behoben. Runde 2: 4 neue (0 critical, 0 high, 1 medium, 3 low).
+### Summary (final)
+- **Acceptance Criteria:** 37 von 37 bestanden
+- **Bugs:** 13 gefunden, 13 behoben (0 critical, 1 high, 3 medium, 9 low in beiden Runden zusammen)
 - **Security:** bestanden, keine Befunde
-- **Production Ready:** Nach der Regel (keine Critical/High) **YES**. Ich empfehle trotzdem, **BUG-10 vorher zu beheben**, weil er echte Klassen für neue Nachweise sperren kann, und er durch eine Korrektur entstanden ist. Status deshalb vorerst **In Review**, bis das entschieden ist.
-- **Recommendation:** BUG-10 beheben (klein), dann Freigabe. BUG-11 bis BUG-13 können warten. Den Ablauf einmal mit echtem Konto durchspielen (Vorschlag → Prüfen → Speichern, Weg aus „Schwierig“, Zurück-Taste am Handy).
+- **Production Ready:** **YES** (keine offenen Bugs, keine Critical/High)
+- **Recommendation:** Deploy. Danach den Ablauf einmal mit echtem Konto und am Handy ansehen.
 
 ## Deployment
 _To be added by /deploy_
