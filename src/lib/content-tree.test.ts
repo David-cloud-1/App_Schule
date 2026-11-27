@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildContentTree, countFor, emptyCounts } from './content-tree'
+import { buildContentTree, countFor, emptyCounts, levelLabel, totalsFor } from './content-tree'
 
 const dept = { id: 'd1', name: 'Spedition', code: 'SPED' }
 const subject = (id: string, code: string) => ({
@@ -21,9 +21,9 @@ describe('buildContentTree', () => {
         { id: 't2', name: 'Leer', subject_id: 's1', version_number: 1 },
       ],
       questions: [
-        { topic_id: 't1', class_level: 10, question_subjects: [{ subject_id: 's1' }] },
-        { topic_id: 't1', class_level: 11, question_subjects: [{ subject_id: 's1' }] },
-        { topic_id: null, class_level: null, question_subjects: [{ subject_id: 's1' }] },
+        { topic_id: 't1', class_level: 10, is_active: true, question_subjects: [{ subject_id: 's1' }] },
+        { topic_id: 't1', class_level: 11, is_active: true, question_subjects: [{ subject_id: 's1' }] },
+        { topic_id: null, class_level: null, is_active: true, question_subjects: [{ subject_id: 's1' }] },
       ],
     })
     const s = tree.departments[0].subjects[0]
@@ -40,7 +40,7 @@ describe('buildContentTree', () => {
       subjects: [subject('s1', 'KSK'), subject('s2', 'BGP')],
       topics: [],
       questions: [
-        { topic_id: null, class_level: 10, question_subjects: [{ subject_id: 's1' }, { subject_id: 's2' }, { subject_id: 's2' }] },
+        { topic_id: null, class_level: 10, is_active: true, question_subjects: [{ subject_id: 's1' }, { subject_id: 's2' }, { subject_id: 's2' }] },
       ],
     })
     const [a, b] = tree.departments[0].subjects
@@ -52,7 +52,7 @@ describe('buildContentTree', () => {
     const tree = buildContentTree({
       subjects: [subject('s1', 'KSK')],
       topics: [{ id: 'tx', name: 'Fremd', subject_id: 'unbekannt', version_number: 1 }],
-      questions: [{ topic_id: 'tx', class_level: 10, question_subjects: [{ subject_id: 'unbekannt' }] }],
+      questions: [{ topic_id: 'tx', class_level: 10, is_active: true, question_subjects: [{ subject_id: 'unbekannt' }] }],
     })
     expect(tree.departments[0].subjects[0].topics).toHaveLength(0)
     expect(countFor(tree.departments[0].subjects[0].counts, 'all')).toBe(0)
@@ -89,8 +89,8 @@ describe('resolveSelection', () => {
       { id: 't2', name: 'Leer', subject_id: 's1', version_number: 1 },
     ],
     questions: [
-      { topic_id: 't1', class_level: 10, question_subjects: [{ subject_id: 's1' }] },
-      { topic_id: null, class_level: 11, question_subjects: [{ subject_id: 's1' }] },
+      { topic_id: 't1', class_level: 10, is_active: true, question_subjects: [{ subject_id: 's1' }] },
+      { topic_id: null, class_level: 11, is_active: true, question_subjects: [{ subject_id: 's1' }] },
     ],
   })
 
@@ -100,10 +100,10 @@ describe('resolveSelection', () => {
     expect(resolveSelection(tree, { subjectId: 's1', topicId: NO_TOPIC }, 'all').kind).toBe('notopic')
   })
 
-  it('fällt bei unbekanntem Fach auf nichts zurück, bei unbekanntem Thema auf das Fach', () => {
-    expect(resolveSelection(tree, { subjectId: 'x', topicId: null }, 'all').kind).toBe('none')
-    const sel = resolveSelection(tree, { subjectId: 's1', topicId: 'weg' }, 'all')
-    expect(sel).toMatchObject({ kind: 'subject', reason: 'missing' })
+  it('ohne Auswahl ist „Alle Fächer“ gewählt; Unbekanntes führt dorthin zurück (PROJ-131)', () => {
+    expect(resolveSelection(tree, { subjectId: null, topicId: null }, 'all')).toEqual({ kind: 'all' })
+    expect(resolveSelection(tree, { subjectId: 'x', topicId: null }, 'all')).toEqual({ kind: 'all', reason: 'missing' })
+    expect(resolveSelection(tree, { subjectId: 's1', topicId: 'weg' }, 'all')).toEqual({ kind: 'all', reason: 'missing' })
   })
 
   it('fällt aufs Fach zurück, wenn der Klassenfilter das Thema ausblendet', () => {
@@ -116,5 +116,33 @@ describe('resolveSelection', () => {
       kind: 'subject',
       reason: 'hidden',
     })
+  })
+})
+
+describe('„Alle Fächer“ und ausgeblendete Fragen (PROJ-131)', () => {
+  const tree = buildContentTree({
+    subjects: [subject('s1', 'KSK'), subject('s2', 'BGP')],
+    topics: [{ id: 't1', name: 'Kosten', subject_id: 's1', version_number: 1 }],
+    questions: [
+      { topic_id: 't1', class_level: 10, is_active: false, question_subjects: [{ subject_id: 's1' }] },
+      { topic_id: null, class_level: 11, is_active: true, question_subjects: [{ subject_id: 's1' }, { subject_id: 's2' }] },
+    ],
+  })
+
+  it('zählt eine Frage in zwei Fächern bei „Alle Fächer“ nur einmal', () => {
+    expect(countFor(tree.counts, 'all')).toBe(2)
+    expect(countFor(tree.hidden, 'all')).toBe(1)
+  })
+
+  it('zählt ausgeblendete Fragen mit und nennt sie', () => {
+    const s = tree.departments[0].subjects[0]
+    expect(totalsFor(s, 'all')).toEqual({ total: 2, hidden: 1 })
+    expect(totalsFor(s.topics[0], 'all')).toEqual({ total: 1, hidden: 1 })
+    expect(totalsFor({ counts: s.no_topic, hidden: s.no_topic_hidden }, 'all')).toEqual({ total: 1, hidden: 0 })
+  })
+
+  it('nennt die Stufen eines Themas in einer Zeile', () => {
+    expect(levelLabel(tree.departments[0].subjects[0].counts)).toBe('Stufe 10, 11')
+    expect(levelLabel(emptyCounts())).toBe('')
   })
 })

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { revalidateTag } from 'next/cache'
 import { requireContentAdmin, writeAuditLog, assertCanAdminSubject } from '../../_lib/auth'
 import { checkVersionConflict, versionConflictBody } from '@/lib/content-history'
+import { SUBJECTS_CACHE_TAG } from '@/lib/departments-server'
 
 const UpdateSchema = z
   .object({
@@ -66,27 +68,8 @@ export async function PATCH(
     }
   }
 
-  // Deactivation guard: only allow if no active questions
-  if (parsed.data.is_active === false) {
-    const { data: links } = await supabase
-      .from('question_subjects')
-      .select('questions ( is_active )')
-      .eq('subject_id', id)
-
-    const activeCount = (
-      (links ?? []) as unknown as { questions: { is_active: boolean } | null }[]
-    ).filter((l) => l.questions?.is_active === true).length
-
-    if (activeCount > 0) {
-      return NextResponse.json(
-        {
-          error: `Fach hat noch ${activeCount} aktive Fragen. Bitte Fragen zuerst deaktivieren.`,
-        },
-        { status: 409 }
-      )
-    }
-  }
-
+  // Ausblenden ist seit PROJ-131 immer erlaubt (die Oberfläche fragt vorher
+  // mit der Zahl nach); die Azubi-Seite lässt ausgeblendete Fächer weg.
   if (parsed.data.is_active !== undefined) {
     update.is_active = parsed.data.is_active
   }
@@ -98,6 +81,9 @@ export async function PATCH(
     console.error('[PATCH subject]', error)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
+
+  // Azubi-Seite filtert nach sichtbaren Fächern (zwischengespeichert)
+  if (parsed.data.is_active !== undefined) revalidateTag(SUBJECTS_CACHE_TAG, { expire: 0 })
 
   await writeAuditLog(supabase, {
     admin_id: user.id,

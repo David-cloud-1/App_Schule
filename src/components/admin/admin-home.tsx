@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ChevronRight, ExternalLink, Info, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { isAssessmentRunning } from '@/lib/graded-assessments'
+import { formatQuestionTotals } from '@/lib/question-count'
 import { useAdminRole } from '@/components/admin/admin-role-provider'
 import { adminHomeActionsFor } from '@/lib/admin-nav'
 import { BLOCKED_PAGE_MESSAGE, BLOCKED_PARAM, SUPER_ADMIN_ONLY_MESSAGE } from '@/lib/roles'
@@ -19,7 +20,8 @@ type MySubjectTile = {
   name: string
   code: string
   department_name: string | null
-  active_question_count: number
+  question_count: number
+  hidden_question_count: number
 }
 
 type RunningAssessment = {
@@ -282,7 +284,9 @@ export function AdminHome({
                       <span className="block truncate text-sm text-ws-muted">{s.department_name}</span>
                     )}
                   </span>
-                  <span className="shrink-0 text-sm text-ws-muted">{s.active_question_count} aktiv</span>
+                  <span className="shrink-0 text-right text-sm text-ws-muted">
+                    {formatQuestionTotals({ total: s.question_count, hidden: s.hidden_question_count })}
+                  </span>
                   <ChevronRight className="size-5 shrink-0 text-ws-muted" aria-hidden />
                 </Link>
               </li>

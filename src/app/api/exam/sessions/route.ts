@@ -157,8 +157,9 @@ export async function POST(request: NextRequest) {
 
       const { data: links } = await supabase
         .from('question_subjects')
-        .select('question_id')
+        .select('question_id, subjects!inner(is_active)')
         .in('subject_id', subjectIds)
+        .eq('subjects.is_active', true)
 
       const questionIds = (links ?? []).map((l: { question_id: string }) => l.question_id)
 

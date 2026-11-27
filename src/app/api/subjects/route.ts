@@ -28,7 +28,7 @@ export async function GET() {
   // Nur Fächer des eigenen Bereichs (PROJ-23)
   const departmentId = (await getDepartmentOfUser(supabase, user.id))?.id ?? NO_DEPARTMENT_ID
   const [{ data, error }, questionSubjects] = await Promise.all([
-    supabase.from('subjects').select('id, code, name, color, icon_name, description').eq('department_id', departmentId).order('code'),
+    supabase.from('subjects').select('id, code, name, color, icon_name, description').eq('department_id', departmentId).eq('is_active', true).order('code'),
     fetchActiveQuestionSubjects(supabase),
   ])
 

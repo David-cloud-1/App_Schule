@@ -33,6 +33,7 @@ export default async function SubjectDetailPage({ params }: { params: Promise<{ 
     .select('id, code, name, color, icon_name')
     .eq('department_id', department.id)
     .eq('code', normalizeSubjectCode(code))
+    .eq('is_active', true)
     .maybeSingle()
   if (!subject) redirect('/subjects')
 

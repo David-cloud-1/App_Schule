@@ -71,7 +71,7 @@ export default async function HomePage({
         .single(),
 
       // Nur Fächer des eigenen Bereichs (PROJ-23)
-      supabase.from('subjects').select('id, code, name, color, icon_name').eq('department_id', department?.id ?? NO_DEPARTMENT_ID).order('code'),
+      supabase.from('subjects').select('id, code, name, color, icon_name').eq('department_id', department?.id ?? NO_DEPARTMENT_ID).eq('is_active', true).order('code'),
 
       fetchActiveQuestionSubjects(supabase),
 

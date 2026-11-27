@@ -53,8 +53,9 @@ const loadExamParts = unstable_cache(
 )
 
 /**
- * IDs aller Fächer eines Bereichs (auch inaktive) — Grundlage jedes
- * Lernweg-Filters (PROJ-23). Service-Client, weil ohne Nutzer-Cookies.
+ * IDs der sichtbaren Fächer eines Bereichs — Grundlage jedes Lernweg-Filters
+ * (PROJ-23). Ausgeblendete Fächer fehlen (PROJ-131); beim Umschalten leert die
+ * Verwaltung diesen Zwischenspeicher. Service-Client, weil ohne Nutzer-Cookies.
  */
 const loadDepartmentSubjectIds = unstable_cache(
   async (departmentId: string): Promise<string[]> => {
@@ -62,11 +63,12 @@ const loadDepartmentSubjectIds = unstable_cache(
       .from('subjects')
       .select('id')
       .eq('department_id', departmentId)
+      .eq('is_active', true)
       .limit(200)
     if (error) throw new Error(`Fächer konnten nicht geladen werden: ${error.message}`)
     return (data ?? []).map((s: { id: string }) => s.id)
   },
-  ['department-subject-ids-v1'],
+  ['department-subject-ids-v2'],
   { tags: [SUBJECTS_CACHE_TAG], revalidate: CACHE_SECONDS },
 )
 

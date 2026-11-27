@@ -22,8 +22,8 @@ function makeSupabase(role: 'admin' | 'department_admin' | 'teacher' | 'student'
         return {
           count: 2,
           data: [
-            { topic_id: 't1', class_level: 10, question_subjects: [{ subject_id: 's1' }] },
-            { topic_id: null, class_level: null, question_subjects: [{ subject_id: 's1' }] },
+            { topic_id: 't1', class_level: 10, is_active: true, question_subjects: [{ subject_id: 's1' }] },
+            { topic_id: null, class_level: null, is_active: true, question_subjects: [{ subject_id: 's1' }] },
           ],
         }
       }
@@ -83,7 +83,7 @@ describe('GET /api/admin/content-tree (PROJ-85)', () => {
         if (table === 'topics') return { data: [] }
         if (table === 'questions') {
           if (calls.some((c) => c.method === 'select' && (c.args[1] as { head?: boolean } | undefined)?.head)) return { count: 2500 }
-          return { data: [{ topic_id: null, class_level: 10, question_subjects: [{ subject_id: 's1' }] }] }
+          return { data: [{ topic_id: null, class_level: 10, is_active: true, question_subjects: [{ subject_id: 's1' }] }] }
         }
         return {}
       },

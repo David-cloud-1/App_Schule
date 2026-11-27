@@ -27,10 +27,6 @@ const mockSubjects = [
     icon_name: 'BookOpen',
     created_at: '2026-01-01T00:00:00Z',
     is_active: true,
-    question_subjects: [
-      { questions: { is_active: true } },
-      { questions: { is_active: false } },
-    ],
   },
 ]
 
@@ -48,6 +44,15 @@ function makeAdminSupabase(overrides: {
       if (table === 'profiles') return { data: { role: 'admin', department_id: 'dept-sped' } }
       if (table === 'departments' && !hasCall(calls, 'maybeSingle') && !hasCall(calls, 'single')) return { data: [{ id: 'dept-sped' }] }
       if (table === 'admin_audit_log') return {}
+      if (table === 'questions') {
+        return {
+          count: 2,
+          data: [
+            { topic_id: null, class_level: null, is_active: true, question_subjects: [{ subject_id: 'subj-uuid' }] },
+            { topic_id: null, class_level: null, is_active: false, question_subjects: [{ subject_id: 'subj-uuid' }] },
+          ],
+        }
+      }
       if (table === 'subjects') {
         // POST: Anlegen
         if (hasCall(calls, 'insert')) {
@@ -115,6 +120,8 @@ describe('GET /api/admin/subjects', () => {
     const body = await res.json()
     expect(body.subjects).toHaveLength(1)
     expect(body.subjects[0].active_question_count).toBe(1)
+    expect(body.subjects[0].question_count).toBe(2)
+    expect(body.subjects[0].hidden_question_count).toBe(1)
   })
 
   it('exposes is_active flag for each subject (BUG-1)', async () => {

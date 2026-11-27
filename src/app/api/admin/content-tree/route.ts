@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireContentAdmin } from '../_lib/auth'
-import { buildContentTree, type TreeQuestionRow } from '@/lib/content-tree'
+import { buildContentTree } from '@/lib/content-tree'
+import type { CountableQuestionRow } from '@/lib/question-count'
+import { loadCountableQuestions } from '@/lib/question-count-server'
 
 const PAGE_SIZE = 1000
 // Obergrenze gegen Endlosschleifen: 50.000 Fragen je Bereich sind weit mehr als geplant.
@@ -35,8 +37,7 @@ export async function GET() {
   const ids = Array.from(subjectIds)
 
   // Themen und Fragen parallel holen. Die Schnittstelle liefert höchstens 1000
-  // Zeilen je Anfrage; die Seiten laufen gleichzeitig statt nacheinander
-  // (nacheinander: ca. 1,8 s bei 4.000 Fragen).
+  // Zeilen je Anfrage.
   const topicsQuery = (from: number) =>
     supabase
       .from('topics')
@@ -46,17 +47,6 @@ export async function GET() {
       .order('name')
       .order('id')
       .range(from, from + PAGE_SIZE - 1)
-
-  // Private Nachweis-Fragen sieht nur der Super-Admin (PROJ-46), wie auf „Fragen“.
-  const questionsQuery = (select: string, head = false) => {
-    let query = supabase
-      .from('questions')
-      .select(select, head ? { count: 'exact', head: true } : undefined)
-      .is('deleted_at', null)
-    if (!isSuperAdmin) query = query.eq('is_private', false)
-    if (auth.scopeDepartmentIds) query = query.in('question_subjects.subject_id', ids)
-    return query
-  }
 
   async function loadAllTopics(): Promise<unknown[]> {
     const rows: unknown[] = []
@@ -69,31 +59,17 @@ export async function GET() {
     return rows
   }
 
-  async function loadAllQuestions(): Promise<TreeQuestionRow[]> {
-    const select = 'topic_id, class_level, question_subjects!inner(subject_id)'
-    const { count, error } = await questionsQuery(select, true)
-    if (error) throw error
-    const pages = Math.min(MAX_PAGES, Math.ceil((count ?? 0) / PAGE_SIZE))
-    const results = await Promise.all(
-      Array.from({ length: pages }, (_, page) =>
-        questionsQuery(select)
-          .order('id')
-          .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1),
-      ),
-    )
-    const rows: TreeQuestionRow[] = []
-    for (const { data, error: pageError } of results) {
-      if (pageError) throw pageError
-      rows.push(...((data ?? []) as unknown as TreeQuestionRow[]))
-    }
-    return rows
-  }
-
   let topics: unknown[] = []
-  let rows: TreeQuestionRow[] = []
+  let rows: CountableQuestionRow[] = []
   if (ids.length > 0) {
     try {
-      ;[topics, rows] = await Promise.all([loadAllTopics(), loadAllQuestions()])
+      ;[topics, rows] = await Promise.all([
+        loadAllTopics(),
+        loadCountableQuestions(supabase, {
+          subjectIds: auth.scopeDepartmentIds ? ids : null,
+          isSuperAdmin,
+        }),
+      ])
     } catch (error) {
       console.error('[GET /api/admin/content-tree] topics/questions', error)
       return NextResponse.json({ error: 'Failed to load content tree' }, { status: 500 })

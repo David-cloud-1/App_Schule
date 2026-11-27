@@ -34,6 +34,7 @@ export default async function SubjectsPage() {
       .from('subjects')
       .select('id, code, name, color, icon_name')
       .eq('department_id', department?.id ?? NO_DEPARTMENT_ID)
+      .eq('is_active', true)
       .order('code'),
     fetchAllUserAnswers(supabase, user.id),
   ])

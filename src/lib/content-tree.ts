@@ -1,8 +1,10 @@
 /**
  * Inhalts-Baum (PROJ-85): Bereiche → Fächer → Themen mit Fragenzahlen.
  * Die Zahlen sind nach Klassenstufe aufgeteilt, damit der Klassenfilter der
- * Oberfläche nur umrechnet und nicht neu lädt.
+ * Oberfläche nur umrechnet und nicht neu lädt. Gezählt wird nach der einen
+ * Zählregel aus `question-count.ts` (PROJ-131).
  */
+import type { CountableQuestionRow } from '@/lib/question-count'
 
 export type LevelCounts = { l10: number; l11: number; l12: number; none: number }
 
@@ -13,6 +15,8 @@ export type TreeTopic = {
   name: string
   version_number: number
   counts: LevelCounts
+  /** davon ausgeblendet */
+  hidden: LevelCounts
 }
 
 export type TreeSubject = {
@@ -22,8 +26,10 @@ export type TreeSubject = {
   is_active: boolean
   version_number: number
   counts: LevelCounts
+  hidden: LevelCounts
   /** Fragen des Fachs ohne Thema */
   no_topic: LevelCounts
+  no_topic_hidden: LevelCounts
   topics: TreeTopic[]
 }
 
@@ -34,13 +40,14 @@ export type TreeDepartment = {
   subjects: TreeSubject[]
 }
 
-export type ContentTree = { departments: TreeDepartment[] }
-
-export type TreeQuestionRow = {
-  topic_id: string | null
-  class_level: number | null
-  question_subjects: { subject_id: string }[] | null
+export type ContentTree = {
+  departments: TreeDepartment[]
+  /** „Alle Fächer“: jede Frage einmal, auch wenn sie in mehreren Fächern steht */
+  counts: LevelCounts
+  hidden: LevelCounts
 }
+
+export type TreeQuestionRow = CountableQuestionRow
 
 type SubjectInput = {
   id: string
@@ -95,7 +102,9 @@ export function buildContentTree(input: {
       is_active: s.is_active,
       version_number: s.version_number,
       counts: emptyCounts(),
+      hidden: emptyCounts(),
       no_topic: emptyCounts(),
+      no_topic_hidden: emptyCounts(),
       topics: [],
     }
     subjectMap.set(s.id, subject)
@@ -106,26 +115,61 @@ export function buildContentTree(input: {
   for (const t of input.topics) {
     const subject = subjectMap.get(t.subject_id)
     if (!subject) continue
-    const topic: TreeTopic = { id: t.id, name: t.name, version_number: t.version_number, counts: emptyCounts() }
+    const topic: TreeTopic = {
+      id: t.id,
+      name: t.name,
+      version_number: t.version_number,
+      counts: emptyCounts(),
+      hidden: emptyCounts(),
+    }
     topicMap.set(t.id, topic)
     subject.topics.push(topic)
   }
 
+  const counts = emptyCounts()
+  const hidden = emptyCounts()
   for (const q of input.questions) {
+    const level = q.class_level
+    const isHidden = !q.is_active
     const subjectIds = new Set((q.question_subjects ?? []).map((qs) => qs.subject_id))
+    let inScope = false
     for (const sid of subjectIds) {
       const subject = subjectMap.get(sid)
       if (!subject) continue
-      bump(subject.counts, q.class_level)
-      if (!q.topic_id) bump(subject.no_topic, q.class_level)
+      inScope = true
+      bump(subject.counts, level)
+      if (isHidden) bump(subject.hidden, level)
+      if (!q.topic_id) {
+        bump(subject.no_topic, level)
+        if (isHidden) bump(subject.no_topic_hidden, level)
+      }
     }
-    if (q.topic_id) {
-      const topic = topicMap.get(q.topic_id)
-      if (topic) bump(topic.counts, q.class_level)
+    if (inScope) {
+      bump(counts, level)
+      if (isHidden) bump(hidden, level)
+    }
+    const topic = q.topic_id ? topicMap.get(q.topic_id) : undefined
+    if (topic) {
+      bump(topic.counts, level)
+      if (isHidden) bump(topic.hidden, level)
     }
   }
 
-  return { departments: Array.from(departmentMap.values()) }
+  return { departments: Array.from(departmentMap.values()), counts, hidden }
+}
+
+/** Zahl mit „davon ausgeblendet“ für den Stufen-Filter */
+export function totalsFor(
+  node: { counts: LevelCounts; hidden: LevelCounts },
+  filter: ClassFilter,
+): { total: number; hidden: number } {
+  return { total: countFor(node.counts, filter), hidden: countFor(node.hidden, filter) }
+}
+
+/** Stufen, für die ein Thema Fragen hat, z. B. „Stufe 10, 11“; leer, wenn keine */
+export function levelLabel(counts: LevelCounts): string {
+  const levels = ([10, 11, 12] as const).filter((l) => countFor(counts, l) > 0)
+  return levels.length > 0 ? `Stufe ${levels.join(', ')}` : ''
 }
 
 /** Ein Thema erscheint bei gesetztem Klassenfilter nur, wenn es Fragen dieser Stufe hat. */
@@ -137,22 +181,23 @@ export function topicVisible(topic: TreeTopic, filter: ClassFilter): boolean {
 export const NO_TOPIC = 'ohne'
 
 export type TreeSelection =
-  | { kind: 'none' }
-  | { kind: 'subject'; department: TreeDepartment; subject: TreeSubject; reason?: 'missing' | 'hidden' }
+  /** „Alle Fächer“; `reason: 'missing'` = das gewünschte Fach oder Thema gibt es nicht mehr */
+  | { kind: 'all'; reason?: 'missing' }
+  | { kind: 'subject'; department: TreeDepartment; subject: TreeSubject; reason?: 'hidden' }
   | { kind: 'topic'; department: TreeDepartment; subject: TreeSubject; topic: TreeTopic }
   | { kind: 'notopic'; department: TreeDepartment; subject: TreeSubject }
 
 /**
- * Löst die Auswahl aus der Adresse gegen den geladenen Baum auf. Unbekanntes
- * fällt still auf das nächste vorhandene Teil zurück (Thema → Fach → nichts),
- * ohne Fehlerbildschirm. `reason` sagt, warum ein gewünschtes Thema fehlt.
+ * Löst die Auswahl aus der Adresse gegen den geladenen Baum auf. Ein
+ * unbekanntes Fach oder Thema führt zu „Alle Fächer“ (PROJ-131), ein durch
+ * den Stufen-Filter ausgeblendetes Thema zum Fach. Nie ein Fehlerbildschirm.
  */
 export function resolveSelection(
   tree: ContentTree,
   params: { subjectId: string | null; topicId: string | null },
   filter: ClassFilter,
 ): TreeSelection {
-  if (!params.subjectId) return { kind: 'none' }
+  if (!params.subjectId) return params.topicId ? { kind: 'all', reason: 'missing' } : { kind: 'all' }
   for (const department of tree.departments) {
     const subject = department.subjects.find((s) => s.id === params.subjectId)
     if (!subject) continue
@@ -163,9 +208,9 @@ export function resolveSelection(
         : { kind: 'subject', department, subject, reason: 'hidden' }
     }
     const topic = subject.topics.find((t) => t.id === params.topicId)
-    if (!topic) return { kind: 'subject', department, subject, reason: 'missing' }
+    if (!topic) return { kind: 'all', reason: 'missing' }
     if (!topicVisible(topic, filter)) return { kind: 'subject', department, subject, reason: 'hidden' }
     return { kind: 'topic', department, subject, topic }
   }
-  return { kind: 'none' }
+  return { kind: 'all', reason: 'missing' }
 }

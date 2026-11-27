@@ -44,6 +44,16 @@ const CLASS_OPTIONS = [
 
 type ClassParam = (typeof CLASS_OPTIONS)[number]['value']
 
+/** Satz der Rückfrage vor dem Ausblenden eines Fachs (E3); zählt alle Stufen. */
+function describeHide(subject: TreeSubject): string {
+  const questions = countFor(subject.counts, 'all')
+  if (questions === 0) return 'Das Fach hat noch keine Fragen.'
+  const topics = subject.topics.filter((t) => countFor(t.counts, 'all') > 0).length
+  const q = `${questions.toLocaleString('de-DE')} ${questions === 1 ? 'Frage' : 'Fragen'}`
+  const t = topics > 0 ? ` in ${topics} ${topics === 1 ? 'Thema' : 'Themen'}` : ''
+  return `${q}${t} ${questions === 1 ? 'ist' : 'sind'} dann nicht mehr im Quiz.`
+}
+
 function parseKlasse(value: string | null): ClassFilter {
   return value === '10' ? 10 : value === '11' ? 11 : value === '12' ? 12 : 'all'
 }
@@ -79,6 +89,7 @@ function InhaltePageContent() {
   const [failed, setFailed] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [editingSubject, setEditingSubject] = useState<TreeSubject | null>(null)
+  const [hideTarget, setHideTarget] = useState<TreeSubject | null>(null)
   const [topicDialog, setTopicDialog] = useState<TopicDialog | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ subject: TreeSubject; topic: TreeTopic } | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -129,26 +140,20 @@ function InhaltePageContent() {
   const selectionKey = selection ? JSON.stringify([selection.kind, subjectParam, topicParam]) : null
   useEffect(() => {
     if (!selection || !tree) return
-    const wantsTopic = topicParam != null
-    const wantsSubject = subjectParam != null
-    if (selection.kind === 'none' && wantsSubject) {
+    if (selection.kind === 'all' && selection.reason === 'missing') {
+      if (topicParam != null) toast.info('Dieses Thema gibt es nicht mehr. Du siehst jetzt alle Fächer.')
       navigate({ fach: null, thema: null, ansicht: null }, 'replace')
-    } else if (selection.kind === 'subject' && wantsTopic) {
-      if (selection.reason === 'missing') {
-        toast.info('Dieses Thema gibt es nicht mehr. Du siehst jetzt das ganze Fach.')
-      }
+    } else if (selection.kind === 'subject' && topicParam != null) {
       navigate({ thema: null }, 'replace')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectionKey])
 
-  // Beim ersten Laden: Bereiche aufklappen, das gewählte Fach ebenfalls
+  // Beim ersten Laden das gewählte Fach aufklappen (es bleibt auch danach offen)
   useEffect(() => {
     if (!tree || initializedRef.current) return
     initializedRef.current = true
-    const keys = new Set<string>(tree.departments.map((d) => `d:${d.id}`))
-    if (subjectParam) keys.add(`s:${subjectParam}`)
-    setExpanded(keys)
+    if (subjectParam) setExpanded(new Set([`s:${subjectParam}`]))
   }, [tree, subjectParam])
 
   const toggleKey = useCallback((key: string) => {
@@ -162,9 +167,9 @@ function InhaltePageContent() {
 
   const isDesktop = () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
 
-  function select(subject: TreeSubject, topicId: string | null) {
-    setExpanded((prev) => new Set(prev).add(`s:${subject.id}`))
-    const updates = { fach: subject.id, thema: topicId }
+  function select(subject: TreeSubject | null, topicId: string | null) {
+    if (subject) setExpanded((prev) => new Set(prev).add(`s:${subject.id}`))
+    const updates = { fach: subject?.id ?? null, thema: topicId }
     if (isDesktop()) {
       navigate(updates, 'replace')
     } else {
@@ -191,6 +196,12 @@ function InhaltePageContent() {
     navigate({ klasse: next, thema }, 'replace')
   }
 
+  /** Ausblenden fragt vorher nach (B41), Einblenden geht sofort. */
+  function askToggleSubject(subject: TreeSubject) {
+    if (subject.is_active) setHideTarget(subject)
+    else toggleSubjectActive(subject)
+  }
+
   async function toggleSubjectActive(subject: TreeSubject) {
     const next = !subject.is_active
     try {
@@ -208,7 +219,10 @@ function InhaltePageContent() {
         toast.error(data?.error ?? 'Status konnte nicht geändert werden.')
         return
       }
-      toast.success(next ? 'Fach aktiviert' : 'Fach deaktiviert')
+      toast.success(
+        next ? `${subject.code} ist wieder für Azubis sichtbar.` : `${subject.code} ist für Azubis ausgeblendet.`,
+      )
+      setHideTarget(null)
       loadTree()
     } catch {
       toast.error('Netzwerkfehler')
@@ -282,8 +296,8 @@ function InhaltePageContent() {
     [tree],
   )
 
-  const hasSelection = selection != null && selection.kind !== 'none'
-  const showList = listView && hasSelection
+  const showList = listView && selection != null
+  const selectedSubject = selection && selection.kind !== 'all' ? selection.subject : null
   const isEmptyTree = !!tree && tree.departments.every((d) => d.subjects.length === 0)
   const deleteCount = deleteTarget ? countFor(deleteTarget.topic.counts, 'all') : 0
 
@@ -337,16 +351,17 @@ function InhaltePageContent() {
                   tree={tree}
                   klasse={klasse}
                   selected={{
-                    subjectId: selection && selection.kind !== 'none' ? selection.subject.id : null,
+                    subjectId: selectedSubject?.id ?? null,
                     topicId:
                       selection?.kind === 'topic' ? selection.topic.id : selection?.kind === 'notopic' ? NO_TOPIC : null,
                   }}
                   expanded={expanded}
                   onToggle={toggleKey}
+                  onSelectAll={() => select(null, null)}
                   onSelectSubject={(s) => select(s, null)}
                   onSelectTopic={(s, topicId) => select(s, topicId)}
                   onEditSubject={setEditingSubject}
-                  onToggleSubjectActive={toggleSubjectActive}
+                  onToggleSubjectActive={askToggleSubject}
                   onCreateTopic={(subject) => setTopicDialog({ mode: 'create', subject })}
                   onSubjectHistory={(s) => setHistory({ type: 'subject', id: s.id, title: s.name })}
                   onRenameTopic={(subject, topic) => setTopicDialog({ mode: 'rename', subject, topic })}
@@ -366,21 +381,17 @@ function InhaltePageContent() {
           </div>
 
           <div className={showList ? undefined : 'hidden lg:block'}>
-            {selection && selection.kind !== 'none' ? (
+            {selection && (
               <ContentQuestionPanel
-                key={`${selection.subject.id}:${selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : ''}`}
-                department={selection.department}
-                subject={selection.subject}
+                key={`${selectedSubject?.id ?? 'alle'}:${selection.kind === 'topic' ? selection.topic.id : selection.kind === 'notopic' ? NO_TOPIC : ''}`}
+                department={selection.kind === 'all' ? null : selection.department}
+                subject={selectedSubject}
                 topic={selection.kind === 'topic' ? selection.topic : selection.kind === 'notopic' ? NO_TOPIC : null}
                 klasse={klasse}
                 subjects={subjectsForForm}
                 onChanged={loadTree}
                 onBack={showList ? backToTree : undefined}
               />
-            ) : (
-              <div className="rounded-2xl border border-dashed border-ws-line bg-ws-surface px-4 py-16 text-center text-sm text-ws-muted">
-                Wähle links ein Fach oder Thema.
-              </div>
             )}
           </div>
         </div>
@@ -395,6 +406,29 @@ function InhaltePageContent() {
           if (editingSubject) setHistory({ type: 'subject', id: editingSubject.id, title: editingSubject.name })
         }}
       />
+
+      <AlertDialog open={hideTarget !== null} onOpenChange={(o) => !o && setHideTarget(null)}>
+        <AlertDialogContent className="border-ws-line bg-ws-surface text-ws-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{hideTarget?.code} für Azubis ausblenden?</AlertDialogTitle>
+            <AlertDialogDescription className="text-ws-muted">
+              {hideTarget && describeHide(hideTarget)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11">Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                if (hideTarget) toggleSubjectActive(hideTarget)
+              }}
+              className="min-h-11 bg-ws-green text-ws-on-accent hover:bg-ws-green-hover"
+            >
+              Ausblenden
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <TopicNameDialog
         open={topicDialog !== null}

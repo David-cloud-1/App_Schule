@@ -58,8 +58,9 @@ export function ContentQuestionPanel({
   onChanged,
   onBack,
 }: {
-  department: TreeDepartment
-  subject: TreeSubject
+  department: TreeDepartment | null
+  /** `null` = „Alle Fächer“ */
+  subject: TreeSubject | null
   topic: TreeTopic | typeof NO_TOPIC | null
   klasse: ClassFilter
   subjects: AdminSubject[]
@@ -90,20 +91,21 @@ export function ContentQuestionPanel({
   // Neue Auswahl oder neuer Filter: zurück auf Seite 1
   useEffect(() => {
     setPage(1)
-  }, [subject.id, topicKey, klasse, status, debouncedSearch])
+  }, [subject?.id, topicKey, klasse, status, debouncedSearch])
 
   // Neue Auswahl: Suche und Status zurücksetzen
   useEffect(() => {
     setSearch('')
     setStatus('all')
-  }, [subject.id, topicKey])
+  }, [subject?.id, topicKey])
 
   const fetchQuestions = useCallback(async () => {
     const id = ++requestId.current
     setLoading(true)
     setFailed(false)
     try {
-      const params = new URLSearchParams({ subject_id: subject.id, page: String(page), status })
+      const params = new URLSearchParams({ page: String(page), status })
+      if (subject) params.set('subject_id', subject.id)
       if (topic === NO_TOPIC) params.set('missing_topic', 'true')
       else if (topic) params.set('topic_id', topic.id)
       if (klasse !== 'all') params.set('class_level', String(klasse))
@@ -120,7 +122,7 @@ export function ContentQuestionPanel({
     } finally {
       if (id === requestId.current) setLoading(false)
     }
-  }, [subject.id, topic, page, status, klasse, debouncedSearch])
+  }, [subject, topic, page, status, klasse, debouncedSearch])
 
   useEffect(() => {
     fetchQuestions()
@@ -197,11 +199,17 @@ export function ContentQuestionPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <nav aria-label="Pfad" className="flex flex-wrap items-center gap-1 text-sm text-ws-muted">
-            <span className="truncate" title={department.name}>{department.name}</span>
-            <ChevronRight className="size-3.5 shrink-0" aria-hidden />
-            <span className={topicName ? 'truncate' : 'truncate font-semibold text-ws-text'} title={subject.name}>
-              {subject.name}
-            </span>
+            {!subject || !department ? (
+              <span className="font-semibold text-ws-text">Alle Fächer</span>
+            ) : (
+              <>
+                <span className="truncate" title={department.name}>{department.name}</span>
+                <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+                <span className={topicName ? 'truncate' : 'truncate font-semibold text-ws-text'} title={subject.name}>
+                  {subject.name}
+                </span>
+              </>
+            )}
             {topicName && (
               <>
                 <ChevronRight className="size-3.5 shrink-0" aria-hidden />
@@ -237,7 +245,7 @@ export function ContentQuestionPanel({
       ) : isEmpty ? (
         <AdminEmptyState
           icon={FileQuestion}
-          title={topicName ? 'In diesem Thema gibt es noch keine Fragen.' : 'In diesem Fach gibt es noch keine Fragen.'}
+          title="Hier gibt es noch keine Fragen"
           action={newQuestion}
         />
       ) : rows.length === 0 ? (
@@ -347,7 +355,7 @@ export function ContentQuestionPanel({
         onSuccess={refresh}
         onOpenHistory={(q) => setHistoryTarget(q as Row)}
         defaults={{
-          subjectId: subject.id,
+          subjectId: subject?.id,
           topicId: topic && topic !== NO_TOPIC ? topic.id : null,
           classLevel: klasse === 'all' ? null : klasse,
         }}

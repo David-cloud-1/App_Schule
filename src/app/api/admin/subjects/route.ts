@@ -9,6 +9,8 @@ import {
   targetDepartmentMissing,
 } from '../_lib/auth'
 import { loadLastChanges } from '@/lib/content-history'
+import { countBySubject, type QuestionTotals } from '@/lib/question-count'
+import { loadCountableQuestions } from '@/lib/question-count-server'
 import { SUBJECTS_CACHE_TAG } from '@/lib/departments-server'
 
 const CreateSchema = z.object({
@@ -33,9 +35,6 @@ type SubjectWithLinks = {
   department_id: string
   version_number: number
   departments?: { name: string; code: string } | null
-  question_subjects?: {
-    questions: { is_active: boolean } | null
-  }[]
 }
 
 export async function GET() {
@@ -49,8 +48,7 @@ export async function GET() {
     .select(
       `
         id, name, code, color, icon_name, created_at, is_active, department_id, version_number,
-        departments ( name, code ),
-        question_subjects ( questions ( is_active ) )
+        departments ( name, code )
       `
     )
     .is('deleted_at', null)
@@ -73,9 +71,27 @@ export async function GET() {
     ((data ?? []) as unknown as SubjectWithLinks[]).map((s) => s.id)
   )
 
-  const subjects = ((data ?? []) as unknown as SubjectWithLinks[]).map((s) => {
-    const activeCount =
-      (s.question_subjects ?? []).filter((qs) => qs.questions?.is_active === true).length
+  // Zählregel aus PROJ-131 — dieselbe wie im Inhalts-Baum, ohne die
+  // 1000-Zeilen-Grenze eingebetteter Zeilen.
+  const subjectRows = (data ?? []) as unknown as SubjectWithLinks[]
+  let totals: Map<string, QuestionTotals>
+  try {
+    totals =
+      subjectRows.length === 0
+        ? new Map()
+        : countBySubject(
+            await loadCountableQuestions(supabase, {
+              subjectIds: auth.scopeDepartmentIds ? subjectRows.map((s) => s.id) : null,
+              isSuperAdmin: auth.isSuperAdmin,
+            }),
+          )
+  } catch (countError) {
+    console.error('[GET /api/admin/subjects] counts', countError)
+    return NextResponse.json({ error: 'Failed to load subjects' }, { status: 500 })
+  }
+
+  const subjects = subjectRows.map((s) => {
+    const { total, hidden } = totals.get(s.id) ?? { total: 0, hidden: 0 }
     return {
       id: s.id,
       name: s.name,
@@ -84,7 +100,9 @@ export async function GET() {
       icon_name: s.icon_name,
       created_at: s.created_at,
       is_active: s.is_active,
-      active_question_count: activeCount,
+      question_count: total,
+      hidden_question_count: hidden,
+      active_question_count: total - hidden,
       department_id: s.department_id,
       department_name: s.departments?.name ?? null,
       department_code: s.departments?.code ?? null,
