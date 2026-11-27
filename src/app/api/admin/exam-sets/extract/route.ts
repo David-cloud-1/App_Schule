@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { requireSuperAdmin } from '../../_lib/auth'
+import { requireSuperAdmin, resolveAdminTargetDepartment, targetDepartmentMissing } from '../../_lib/auth'
 import { extractText, MAX_FILE_BYTES } from '../../ai-generate/_lib/process-job'
 import { getDepartmentById } from '@/lib/departments'
 import { fetchDepartmentSubjects } from '@/lib/subjects'
@@ -104,6 +104,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  const departmentId = await resolveAdminTargetDepartment(auth, formData.get('department_id'))
+  if (!departmentId) return targetDepartmentMissing('die Übungsprüfung angelegt wird')
+
   const buffer = Buffer.from(await file.arrayBuffer())
 
   let text: string
@@ -133,8 +136,8 @@ export async function POST(request: NextRequest) {
 
   const client = new Anthropic({ apiKey })
 
-  const department = await getDepartmentById(auth.supabase, auth.departmentId)
-  const subjects = await fetchDepartmentSubjects(auth.supabase, auth.departmentId, { activeOnly: true }).catch(() => [])
+  const department = await getDepartmentById(auth.supabase, departmentId)
+  const subjects = await fetchDepartmentSubjects(auth.supabase, departmentId, { activeOnly: true }).catch(() => [])
   const extractionPrompt = buildExtractionPrompt(department?.name ?? '', subjects.map((s) => s.code))
   const promptContent = `${extractionPrompt}\n\n--- DOKUMENT ---\n${text.slice(0, 80_000)}\n--- ENDE ---`
 

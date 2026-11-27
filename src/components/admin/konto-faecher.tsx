@@ -130,13 +130,13 @@ function TeacherFaecher() {
   const assignments = data?.assignments ?? []
 
   return (
-    <KontoCard id="faecher" icon={BookOpen} title="Meine Fächer" description="Hier siehst du nur die Inhalte der Fächer, in denen du unterrichtest.">
+    <KontoCard id="faecher" icon={BookOpen} title="Meine Fächer" description="Trag ein, welche Fächer du unterrichtest. Die Inhalte aller Fächer siehst du trotzdem.">
       {loading && <AdminLoadingState variant="list" rows={2} />}
       {!loading && failed && <KontoSectionError />}
       {!loading && !failed && data && (
         <div className="space-y-4">
           {assignments.length === 0 ? (
-            <AdminEmptyState icon={BookOpen} title="Noch kein Fach eingetragen" description="Wähle unten ein Fach, dann erscheinen die passenden Inhalte." />
+            <AdminEmptyState icon={BookOpen} title="Noch kein Fach eingetragen" description="Wähle unten ein Fach, das du unterrichtest." />
           ) : (
             <ul className="flex flex-wrap gap-2" aria-label="Eingetragene Fächer">
               {assignments.map((a) => {

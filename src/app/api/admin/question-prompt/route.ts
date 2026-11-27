@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
   const requestedDepartmentId = request.nextUrl.searchParams.get('department_id')
   const departmentId = resolveTargetDepartment(auth, requestedDepartmentId)
-  if (!departmentId) return targetDepartmentMissing()
+  if (!departmentId) return targetDepartmentMissing('die Fragen angelegt werden')
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

@@ -14,7 +14,7 @@ const BodySchema = z
     department_id: z.string().uuid().optional(),
   })
   .refine((v) => v.action !== 'move' || !!v.department_id, {
-    message: 'Für „Bereich ändern“ fehlt der Ziel-Bereich.',
+    message: 'Für „Bereich ändern“ fehlt der neue Bereich.',
     path: ['department_id'],
   })
 
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   if (action === 'move') {
     const { data: department } = await service.from('departments').select('id').eq('id', targetDepartmentId!).maybeSingle()
-    if (!department) return NextResponse.json({ error: 'Der Ziel-Bereich existiert nicht.' }, { status: 400 })
+    if (!department) return NextResponse.json({ error: 'Der gewählte Bereich existiert nicht.' }, { status: 400 })
   }
 
   const { data: profiles, error: loadError } = await service

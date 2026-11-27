@@ -38,7 +38,7 @@ import { AdminEmptyState } from '@/components/admin/admin-states'
 import { ContentHistorySheet } from '@/components/admin/content-history-sheet'
 import { AdminRowActions } from '@/components/admin/admin-row-actions'
 import { DepartmentTag, LastChangedLine, showVersionConflict, useEmptyScopeText } from '@/components/admin/content-meta'
-import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
+import { TargetDepartmentField, useTargetDepartment } from '@/components/admin/target-department-field'
 
 type ExamSet = {
   id: string
@@ -120,9 +120,11 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   const [sets, setSets] = useState(initialSets)
   const [historyTarget, setHistoryTarget] = useState<ExamSet | null>(null)
   const emptyScopeText = useEmptyScopeText('Übungsprüfungen')
-  const needsTarget = useNeedsTargetDepartment()
-  const [targetDepartment, setTargetDepartment] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  // Je Dialog beim Öffnen festgehalten (PROJ-130)
+  const createTarget = useTargetDepartment(showCreateModal)
+  const importTarget = useTargetDepartment(showImportDialog)
   const [expandedSet, setExpandedSet] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -137,9 +139,11 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   const [newScope, setNewScope] = useState<string | undefined>(undefined)
   const activeDepartment = editingId
     ? (sets.find((x) => x.id === editingId)?.department_id ?? '')
-    : targetDepartment || scopeCurrent
+    : createTarget.departmentId || scopeCurrent
   const examParts = partsFor(activeDepartment)
-  const partNumbers = examParts.map((p) => p.partNumber)
+  // Der Import-Dialog hat seinen eigenen Bereich und damit eigene Prüfungsteile
+  const importParts = partsFor(importTarget.departmentId)
+  const importPartNumbers = importParts.map((p) => p.partNumber)
   const [isCreating, setIsCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [pickerSearch, setPickerSearch] = useState('')
@@ -149,7 +153,6 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   const [pickerSort, setPickerSort] = useState<PickerSort>('newest')
 
   // Import flow state
-  const [showImportDialog, setShowImportDialog] = useState(false)
   const [importStep, setImportStep] = useState<ImportStep>('configure')
   const [importName, setImportName] = useState('')
   const [importPart, setImportPart] = useState<number | null>(null)
@@ -264,7 +267,6 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
   function openCreate() {
     setEditingId(null)
     setNewScope(undefined)
-    setTargetDepartment('')
     setNewName('')
     setNewPart(null)
     setNewDuration('')
@@ -334,7 +336,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       setCreateError('Bitte Name, Teil und mindestens eine Frage auswählen.')
       return
     }
-    if (needsTarget && !targetDepartment) {
+    if (createTarget.needsTarget && !createTarget.departmentId) {
       setCreateError('Bitte wähle den Bereich, in dem die Übungsprüfung angelegt wird.')
       return
     }
@@ -350,7 +352,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
           part: newPart,
           question_ids: Array.from(selectedQuestionIds),
           is_active: false,
-          ...(targetDepartment ? { department_id: targetDepartment } : {}),
+          ...(createTarget.departmentId ? { department_id: createTarget.departmentId } : {}),
           ...(durationVal && durationVal > 0 ? { duration_minutes: durationVal } : {}),
         }),
       })
@@ -390,12 +392,17 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
       setImportError('Bitte Name, Teil und Datei angeben.')
       return
     }
+    if (importTarget.needsTarget && !importTarget.departmentId) {
+      setImportError('Bitte wähle, in welchem Bereich die Übungsprüfung angelegt wird.')
+      return
+    }
     setImportError(null)
     setImportStep('extracting')
 
     try {
       const fd = new FormData()
       fd.append('file', importFile)
+      if (importTarget.departmentId) fd.append('department_id', importTarget.departmentId)
       const res = await fetch('/api/admin/exam-sets/extract', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) {
@@ -428,6 +435,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
         body: JSON.stringify({
           name: importName.trim(),
           part: importPart,
+          ...(importTarget.departmentId ? { department_id: importTarget.departmentId } : {}),
           questions: previewQuestions.map(({ _key: _k, ...q }) => q),
           ...(importDurationVal && importDurationVal > 0 ? { duration_minutes: importDurationVal } : {}),
         }),
@@ -520,13 +528,14 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
         <div className="space-y-3">
           {sets.map((set) => (
             <div key={set.id} className="bg-ws-surface border border-ws-line rounded-2xl overflow-hidden">
-              <div className="px-4 py-3 flex items-center justify-between gap-3">
+              {/* Auf schmalen Bildschirmen rutschen die Aktionen unter den Namen */}
+              <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3">
                 <button
-                  className="flex-1 text-left flex items-center gap-3"
+                  className="min-w-[14rem] flex-1 text-left flex items-center gap-3"
                   onClick={() => setExpandedSet(expandedSet === set.id ? null : set.id)}
                 >
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="font-semibold text-ws-text text-sm">{set.name}</span>
                       {set.is_active && (
                         <Badge className="text-xs bg-ws-green/20 text-ws-green border-0">Für Azubis sichtbar</Badge>
@@ -551,7 +560,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                   {expandedSet === set.id ? <ChevronUp size={16} className="text-ws-muted ml-auto" /> : <ChevronDown size={16} className="text-ws-muted ml-auto" />}
                 </button>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/admin/leistungsnachweise?createFromSet=${set.id}`}>
                     <Button
                       size="sm"
@@ -652,10 +661,11 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
 
           <div className="space-y-4 py-2">
             {!editingId && <TargetDepartmentField
-                value={targetDepartment}
+                fixedId={createTarget.fixedId}
+                value={createTarget.chosen}
                 onChange={(id) => {
                   // Prüfungsteile und Fächer sind je Bereich verschieden: Auswahl zurücksetzen
-                  setTargetDepartment(id)
+                  createTarget.setChosen(id)
                   setNewPart(null)
                   setSelectedQuestionIds(new Set())
                 }}
@@ -873,6 +883,15 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
           {/* Step: configure */}
           {importStep === 'configure' && (
             <div className="space-y-4 py-2 overflow-y-auto flex-1">
+              <TargetDepartmentField
+                fixedId={importTarget.fixedId}
+                value={importTarget.chosen}
+                onChange={(id) => {
+                  // Prüfungsteile sind je Bereich verschieden
+                  importTarget.setChosen(id)
+                  setImportPart(null)
+                }}
+              />
               <div className="space-y-2">
                 <Label className="text-ws-muted">Name der Übungsprüfung</Label>
                 <Input
@@ -890,8 +909,8 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                     <SelectValue placeholder="Teil auswählen…" />
                   </SelectTrigger>
                   <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
-                    {partNumbers.map((p) => (
-                      <SelectItem key={p} value={String(p)}>{partLabel(p)}</SelectItem>
+                    {importPartNumbers.map((p) => (
+                      <SelectItem key={p} value={String(p)}>{partLabel(p, importParts)}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

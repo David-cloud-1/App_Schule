@@ -151,10 +151,10 @@ export function UserBulkDialog({ request, onCancel, onFinished }: DialogProps) {
         {needsDepartment && !running && (
           <Select value={departmentId} onValueChange={setDepartmentId}>
             <SelectTrigger
-              aria-label="Ziel-Bereich"
+              aria-label="Neuer Bereich"
               className="min-h-11 w-full rounded-xl bg-ws-bg border-ws-line text-ws-text"
             >
-              <SelectValue placeholder="Ziel-Bereich wählen" />
+              <SelectValue placeholder="Neuen Bereich wählen" />
             </SelectTrigger>
             <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               {departments.map((d) => (

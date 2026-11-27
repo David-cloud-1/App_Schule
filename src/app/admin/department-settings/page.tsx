@@ -71,6 +71,8 @@ export default function DepartmentSettingsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          // PROJ-130: für welchen Bereich das Formular geladen wurde
+          department_id: settings?.id,
           prompt_notes: form.promptNotes.trim() || null,
           currency_name: form.currencyName.trim(),
           hof_name: form.hofName.trim(),

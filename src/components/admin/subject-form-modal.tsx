@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { showVersionConflict } from '@/components/admin/content-meta'
-import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
+import { TargetDepartmentField, useTargetDepartment } from '@/components/admin/target-department-field'
 
 export type AdminSubjectRow = {
   id: string
@@ -56,8 +56,7 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const isEdit = Boolean(subject)
-  const needsTarget = useNeedsTargetDepartment()
-  const [targetDepartment, setTargetDepartment] = useState('')
+  const target = useTargetDepartment(open)
 
   useEffect(() => {
     if (!open) return
@@ -66,7 +65,6 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
     } else {
       setForm(EMPTY)
     }
-    setTargetDepartment('')
     setErrors({})
   }, [open, subject])
 
@@ -76,7 +74,9 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
     if (form.name.length > 100) e.name = 'Max. 100 Zeichen.'
     if (!form.code.trim()) e.code = 'Code ist Pflicht.'
     if (form.code.length > 5) e.code = 'Max. 5 Zeichen.'
-    if (!isEdit && needsTarget && !departmentId && !targetDepartment) e.department_id = 'Bitte wähle den Bereich.'
+    if (!isEdit && target.needsTarget && !departmentId && !target.departmentId) {
+      e.department_id = 'Bitte wähle, in welchem Bereich das Fach angelegt wird.'
+    }
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -91,7 +91,8 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
         code: form.code.trim().toUpperCase(),
       }
       if (form.description.trim()) payload.description = form.description.trim()
-      if (!isEdit && (departmentId || targetDepartment)) payload.department_id = departmentId ?? targetDepartment
+      const targetId = departmentId ?? target.departmentId
+      if (!isEdit && targetId) payload.department_id = targetId
       if (isEdit && subject?.version_number) payload.expected_version = subject.version_number
 
       const url = isEdit ? `/api/admin/subjects/${subject!.id}` : '/api/admin/subjects'
@@ -138,8 +139,9 @@ export function SubjectFormModal({ open, onOpenChange, subject, onSuccess, depar
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isEdit && !departmentId && (
             <TargetDepartmentField
-              value={targetDepartment}
-              onChange={setTargetDepartment}
+              fixedId={target.fixedId}
+              value={target.chosen}
+              onChange={target.setChosen}
               error={errors.department_id}
             />
           )}

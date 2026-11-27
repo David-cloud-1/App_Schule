@@ -45,12 +45,12 @@ export interface AlterBegriff {
 
 /** Begriffe, die in keinem sichtbaren Text des Lehrkräfte-Bereichs mehr stehen dürfen */
 export const ALTE_BEGRIFFE: readonly AlterBegriff[] = [
-  { muster: /Fachbereich|Zielbereich/, stattdessen: BEGRIFFE.bereich },
+  { muster: /Fachbereich|Ziel-?[Bb]ereich/, stattdessen: BEGRIFFE.bereich },
   { muster: /Prüfungssimulation|Prüfungs-?[Ss]et|Prüfung üben/, stattdessen: BEGRIFFE.uebungspruefung },
-  { muster: /Klassenstufe|\bKl\. /, stattdessen: BEGRIFFE.stufe },
+  { muster: /Klassenstufe|\bKl\. |\b1[0-2]\. Klasse|\bKlassen? 1[0-2]\b/, stattdessen: BEGRIFFE.stufe },
   { muster: /\bKalender(?!woche)/, stattdessen: BEGRIFFE.abwesenheiten },
   { muster: /Vertretung offen/, stattdessen: BEGRIFFE.vertretungFehlt },
-  { muster: /Link für alle|[Öö]ffentliche[nr]? Links?|Nur öffentliche/, stattdessen: BEGRIFFE.fuerAzubis },
+  { muster: /Link für alle|[Öö]ffentliche[nr]? Links?|Nur öffentliche|\bÖffentlich\b/, stattdessen: BEGRIFFE.fuerAzubis },
   { muster: /Teilen …|Material teilen/, stattdessen: BEGRIFFE.fuersKollegium },
   { muster: /Nicht veröffentlicht|[Uu]nveröffentlicht/, stattdessen: BEGRIFFE.aenderungenUebernehmen },
   { muster: /Leere Seite anlegen/, stattdessen: BEGRIFFE.eigeneSeiteBauen },

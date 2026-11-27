@@ -147,7 +147,7 @@ export async function PATCH(
     const newDepartment = parsed.data.department_id
     const { data: dept } = await service.from('departments').select('id').eq('id', newDepartment).maybeSingle()
     if (!dept) {
-      return NextResponse.json({ error: 'Der Ziel-Bereich existiert nicht.' }, { status: 400 })
+      return NextResponse.json({ error: 'Der gewählte Bereich existiert nicht.' }, { status: 400 })
     }
     const { error } = await service
       .from('profiles')

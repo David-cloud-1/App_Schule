@@ -43,6 +43,8 @@ interface Props {
   onOpenChange: (open: boolean) => void
   item?: AdminShopItemRow | null
   onSuccess: () => void
+  /** Bereich, dessen Gegenstände die Seite zeigt (PROJ-130) */
+  departmentId?: string
 }
 
 type FormState = {
@@ -57,7 +59,7 @@ type FormState = {
 
 const EMPTY: FormState = { name: '', description: '', category: '', icon_key: '', price: '75', rarity_override: '' }
 
-export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props) {
+export function ShopItemFormModal({ open, onOpenChange, item, onSuccess, departmentId }: Props) {
   const { currencyName, hofName, hofShortName, code: departmentCode } = useDepartment()
   const [form, setForm] = useState<FormState>(EMPTY)
   const [submitting, setSubmitting] = useState(false)
@@ -102,6 +104,7 @@ export function ShopItemFormModal({ open, onOpenChange, item, onSuccess }: Props
     setSubmitting(true)
     try {
       const payload = {
+        ...(!isEdit && departmentId ? { department_id: departmentId } : {}),
         name: form.name.trim(),
         description: form.description.trim(),
         category: form.category,

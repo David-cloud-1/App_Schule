@@ -284,7 +284,7 @@ function TeilenInhalt({
                   onChange={(e) => setNotiz(e.target.value)}
                   maxLength={NOTIZ_MAX}
                   rows={2}
-                  placeholder="z. B. Für die 11. Klasse, ca. 2 Doppelstunden"
+                  placeholder="z. B. Für Stufe 11, ca. 2 Doppelstunden"
                   className="rounded-xl border-ws-line bg-ws-bg text-ws-text placeholder:text-ws-faint focus-visible:ring-ws-green"
                 />
                 <p className="text-right text-xs text-ws-faint" aria-live="polite">

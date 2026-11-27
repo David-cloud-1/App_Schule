@@ -370,7 +370,7 @@ describe('Nutzerliste – Mehrfachauswahl & Export (PROJ-61)', () => {
     fireEvent.click(within(screen.getByRole('region', { name: 'Aktionen für die Auswahl' })).getByRole('button', { name: /Bereich ändern/ }))
     const dialog = await screen.findByRole('alertdialog')
     expect(within(dialog).getByRole('button', { name: 'Bereich ändern' })).toBeDisabled()
-    expect(within(dialog).getByRole('combobox', { name: 'Ziel-Bereich' })).toBeInTheDocument()
+    expect(within(dialog).getByRole('combobox', { name: 'Neuer Bereich' })).toBeInTheDocument()
   })
 
   it('Große Auswahl wird in Teilen zu je 100 geschickt', async () => {

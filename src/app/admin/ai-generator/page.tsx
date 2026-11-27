@@ -40,7 +40,7 @@ import { checkImportRows, buildFixPrompt, type ImportCheck, type ImportRow } fro
 import type { QuestionPromptResponse } from '@/app/api/admin/question-prompt/route'
 import { useAdminSubjectCodes } from '@/hooks/use-admin-subject-codes'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
-import { TargetDepartmentField, useNeedsTargetDepartment } from '@/components/admin/target-department-field'
+import { TargetDepartmentField, useTargetDepartment } from '@/components/admin/target-department-field'
 
 export type DraftQuestion = {
   id: string
@@ -129,8 +129,8 @@ function ManualImportSection() {
   const [promptInfo, setPromptInfo] = useState<QuestionPromptResponse | null>(null)
   const [promptError, setPromptError] = useState(false)
   // PROJ-70: in „Alle Bereiche“ bestimmt der Zielbereich Prompt (Fächer) und Import
-  const needsTarget = useNeedsTargetDepartment()
-  const [targetDepartment, setTargetDepartment] = useState('')
+  const target = useTargetDepartment()
+  const { needsTarget, departmentId: targetDepartment } = target
 
   useEffect(() => {
     if (needsTarget && !targetDepartment) {
@@ -237,7 +237,7 @@ function ManualImportSection() {
   return (
     <div className="rounded-2xl border border-ws-line bg-ws-surface p-5 space-y-5">
       {/* Step 1 */}
-      <TargetDepartmentField value={targetDepartment} onChange={setTargetDepartment} />
+      <TargetDepartmentField fixedId={target.fixedId} value={target.chosen} onChange={target.setChosen} />
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-ws-blue text-ws-on-accent text-xs font-bold shrink-0">1</span>

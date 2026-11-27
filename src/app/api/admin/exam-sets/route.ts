@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
   }
 
   const departmentId = resolveTargetDepartment(auth, parsed.data.department_id)
-  if (!departmentId) return targetDepartmentMissing()
+  if (!departmentId) return targetDepartmentMissing('die Übungsprüfung angelegt wird')
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

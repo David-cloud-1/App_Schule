@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireSuperAdmin, writeAuditLog } from '../../_lib/auth'
+import {
+  requireSuperAdmin,
+  resolveAdminTargetDepartment,
+  targetDepartmentMissing,
+  writeAuditLog,
+} from '../../_lib/auth'
 import { fetchExamParts, findExamPart } from '@/lib/exam-parts'
 import { fetchDepartmentSubjects, normalizeSubjectCode } from '@/lib/subjects'
 import { groupIntoBatch } from '@/lib/content-history'
@@ -19,12 +24,14 @@ const ImportSchema = z.object({
   part: z.number().int().min(1).max(20),
   questions: z.array(QuestionSchema).min(1),
   duration_minutes: z.number().int().min(1).max(600).nullable().optional(),
+  // Bereich des Dialogs (PROJ-130); ohne Angabe gilt der Arbeitsbereich
+  department_id: z.string().uuid().optional(),
 })
 
 export async function POST(request: NextRequest) {
   const auth = await requireSuperAdmin()
   if (auth.error) return auth.error
-  const { supabase, user, departmentId } = auth
+  const { supabase, user } = auth
 
   let body: unknown
   try {
@@ -42,6 +49,8 @@ export async function POST(request: NextRequest) {
   }
 
   const { name, part, questions } = parsed.data
+  const departmentId = await resolveAdminTargetDepartment(auth, parsed.data.department_id)
+  if (!departmentId) return targetDepartmentMissing('die Übungsprüfung angelegt wird')
 
   // Prüfungsteil und Fächer des Bereichs (PROJ-22)
   let examPart

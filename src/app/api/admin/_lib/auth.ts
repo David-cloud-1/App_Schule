@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase-server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getFallbackDepartment } from '@/lib/departments'
+import { getDepartmentById, getFallbackDepartment } from '@/lib/departments'
 
 /** Cookie, in dem der Super-Admin seine aktuell gewählte Arbeits-Fachbereich ablegt (PROJ-24). */
 export const ADMIN_DEPARTMENT_COOKIE = 'admin_department_id'
@@ -179,6 +179,39 @@ export function assertSingleDepartment(auth: Extract<AdminAuthResult, { error: n
   return NextResponse.json(
     { error: 'Bitte wähle oben im Menü unter „Bereich“ einen einzelnen Bereich.', field: 'department_id' },
     { status: 400 }
+  )
+}
+
+/**
+ * Zielbereich für die Super-Admin-Routen, die Neues anlegen (Datei-Import,
+ * Upload „Fragen aus Material“): die ausdrückliche Angabe des Dialogs, sonst
+ * der Arbeitsbereich. Ein unbekannter Bereich ist `null`.
+ */
+export async function resolveAdminTargetDepartment(
+  auth: Extract<AdminAuthResult, { error: null }>,
+  requested: unknown
+): Promise<string | null> {
+  if (requested === null || requested === undefined || requested === '') return auth.departmentId
+  if (typeof requested !== 'string' || !UUID.test(requested)) return null
+  return (await getDepartmentById(auth.supabase, requested)) ? requested : null
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * Für Seiten, die ihren Bereich schon geladen haben (Shop, Einstellungen):
+ * Passt der mitgeschickte Bereich nicht mehr zum gewählten (Wechsel in einem
+ * anderen Tab, PROJ-130), wird nichts gespeichert — sonst ginge es in den
+ * falschen Bereich. Ändert keine Rechte.
+ */
+export function assertDepartmentUnchanged(
+  auth: Extract<AdminAuthResult, { error: null }>,
+  requested: unknown
+): NextResponse | null {
+  if (typeof requested !== 'string' || requested === auth.departmentId) return null
+  return NextResponse.json(
+    { error: 'Der Bereich wurde inzwischen gewechselt. Bitte lade die Seite neu.' },
+    { status: 409 }
   )
 }
 
@@ -372,10 +405,13 @@ export function resolveTargetDepartment(
   return auth.departmentId
 }
 
-/** Antwort für „Zielbereich fehlt“ (400): die Oberfläche markiert das Feld. */
-export function targetDepartmentMissing(): NextResponse {
+/**
+ * Antwort für „Zielbereich fehlt“ (400): die Oberfläche markiert das Feld.
+ * `was` beendet den Satz, z. B. „die Frage angelegt wird“.
+ */
+export function targetDepartmentMissing(was: string): NextResponse {
   return NextResponse.json(
-    { error: 'Bitte wähle aus, in welchem Bereich das angelegt werden soll.', field: 'department_id' },
+    { error: `Bitte wähle, in welchem Bereich ${was}.`, field: 'department_id' },
     { status: 400 }
   )
 }

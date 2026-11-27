@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Building2 } from 'lucide-react'
 import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { Label } from '@/components/ui/label'
@@ -16,25 +17,30 @@ import {
  * steht er nur als ruhige Zeile „Bereich: …“ da. In „Alle
  * Bereiche“ ist die Auswahl ein Pflichtfeld ohne Vorauswahl, damit nichts
  * versehentlich im falschen Bereich landet. `value` ist die gewählte
- * Bereichs-ID (oder leer); in einem festen Bereich ist sie nicht nötig, der
- * Server nimmt dann den Bereich der Leiste.
+ * Bereichs-ID (oder leer). Gespeichert wird immer `departmentId` aus
+ * `useTargetDepartment` — auch der feste Bereich geht ausdrücklich an den
+ * Server, sonst gälte dort das Cookie zum Zeitpunkt des Speicherns.
  */
 export function TargetDepartmentField({
   value,
   onChange,
   error,
   detail,
+  fixedId,
 }: {
   value: string
   onChange: (id: string) => void
   error?: string
   /** Zusatz hinter dem Bereich, z. B. das Fach-Kürzel („Spedition · STG“) */
   detail?: string
+  /** Beim Öffnen festgehaltener Bereich aus `useTargetDepartment` (null = „Alle Bereiche“) */
+  fixedId?: string | null
 }) {
   const scope = useOptionalAdminRole()?.scope
   if (!scope) return null
 
-  const fixed = scope.current ? scope.departments.find((d) => d.id === scope.current) : null
+  const currentId = fixedId === undefined ? scope.current : fixedId
+  const fixed = currentId ? scope.departments.find((d) => d.id === currentId) : null
   if (fixed) {
     return (
       <p className="flex items-center gap-2 rounded-xl border border-ws-line bg-ws-bg px-3 py-2 text-sm text-ws-muted">
@@ -78,4 +84,28 @@ export function TargetDepartmentField({
 export function useNeedsTargetDepartment(): boolean {
   const scope = useOptionalAdminRole()?.scope
   return !!scope && scope.current === null
+}
+
+/**
+ * Bereich eines Anlegen-Dialogs (PROJ-130): wird beim Öffnen festgehalten.
+ * Wechselt jemand währenddessen in einem anderen Tab den Bereich, landet
+ * trotzdem alles dort, wo der Dialog es anzeigt. Beim erneuten Öffnen wird neu
+ * übernommen und die eigene Wahl geleert. Seiten (statt Dialoge) lassen `open`
+ * weg.
+ */
+export function useTargetDepartment(open = true) {
+  const scope = useOptionalAdminRole()?.scope
+  const current = scope ? scope.current : undefined
+  const [held, setHeld] = useState({ open, current })
+  const [chosen, setChosen] = useState('')
+  // Anpassung während des Renderns: so gilt der neue Stand schon im ersten Bild
+  if (held.open !== open) {
+    setHeld({ open, current })
+    if (open) setChosen('')
+  }
+  const fixedId = held.current ?? null
+  const needsTarget = !!scope && fixedId === null
+  /** Das schickt der Dialog an den Server; null = noch nichts gewählt (oder ohne Umschalter) */
+  const departmentId: string | null = fixedId ?? (chosen || null)
+  return { fixedId: scope ? fixedId : undefined, needsTarget, chosen, setChosen, departmentId }
 }

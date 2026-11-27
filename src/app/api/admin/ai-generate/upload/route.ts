@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '../../_lib/auth'
+import { requireSuperAdmin, resolveAdminTargetDepartment, targetDepartmentMissing } from '../../_lib/auth'
 import { processJob, MAX_FILE_BYTES } from '../_lib/process-job'
 import { createClient } from '@/lib/supabase-server'
 import { resolveSubjectCode } from '@/lib/subjects'
@@ -34,10 +34,13 @@ export async function POST(request: NextRequest) {
       ? Number(classLevelRaw)
       : null
 
-  // Fach nur im eigenen Bereich auflösen (PROJ-22); unbekannt → ohne Fach
+  const departmentId = await resolveAdminTargetDepartment(auth, formData.get('department_id'))
+  if (!departmentId) return targetDepartmentMissing('die Fragen angelegt werden')
+
+  // Fach nur im gewählten Bereich auflösen (PROJ-22); unbekannt → ohne Fach
   const subjectCodeRaw = formData.get('subject_code')
   const subject = subjectCodeRaw
-    ? await resolveSubjectCode(auth.supabase, auth.departmentId, String(subjectCodeRaw), { activeOnly: true })
+    ? await resolveSubjectCode(auth.supabase, departmentId, String(subjectCodeRaw), { activeOnly: true })
     : null
 
   const topicIdRaw = formData.get('topic_id')
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
       // Ohne diese Angabe griffe der Spalten-Default (immer SPED) — für einen
       // department_admin eines anderen Bereichs würde die RLS-Prüfung den
       // Insert sonst ablehnen (PROJ-24).
-      department_id: auth.departmentId,
+      department_id: departmentId,
     })
     .select('*')
     .single()

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { requireManager, writeAuditLogStrict, auditFailedResponse, assertSingleDepartment } from '../_lib/auth'
+import { requireManager, writeAuditLogStrict, auditFailedResponse, assertSingleDepartment, assertDepartmentUnchanged } from '../_lib/auth'
 import { lastChangesFor } from '../_lib/last-change'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getDepartmentById } from '@/lib/departments'
@@ -78,6 +78,9 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
+
+  const switched = assertDepartmentUnchanged(auth, (body as { department_id?: unknown } | null)?.department_id)
+  if (switched) return switched
 
   const parsed = CreateSchema.safeParse(body)
   if (!parsed.success) {

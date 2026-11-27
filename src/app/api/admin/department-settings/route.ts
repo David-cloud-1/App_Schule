@@ -5,7 +5,7 @@ import {
   requireManager,
   writeAuditLogStrict,
   auditFailedResponse,
-  assertSingleDepartment,
+  assertSingleDepartment, assertDepartmentUnchanged,
   changedFields,
 } from '../_lib/auth'
 import { lastChangesFor } from '../_lib/last-change'
@@ -66,6 +66,9 @@ export async function PATCH(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
+
+  const switched = assertDepartmentUnchanged(auth, (body as { department_id?: unknown } | null)?.department_id)
+  if (switched) return switched
 
   const parsed = UpdateSchema.safeParse(body)
   if (!parsed.success) {

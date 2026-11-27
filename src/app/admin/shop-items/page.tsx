@@ -55,6 +55,7 @@ export default function AdminShopItemsPage() {
   const [loading, setLoading] = useState(true)
   const [loadFailed, setLoadFailed] = useState(false)
   const [needsDepartment, setNeedsDepartment] = useState(false)
+  const [departmentId, setDepartmentId] = useState<string | undefined>(undefined)
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AdminShopItemRow | null>(null)
 
@@ -69,6 +70,7 @@ export default function AdminShopItemsPage() {
       }
       const json = await res.json()
       setItems(json.items ?? [])
+      setDepartmentId(json.departmentId ?? undefined)
       setNeedsDepartment(Boolean(json.needsDepartment))
     } catch (err) {
       console.error(err)
@@ -297,6 +299,7 @@ export default function AdminShopItemsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         item={editing}
+        departmentId={departmentId}
         onSuccess={load}
       />
     </div>

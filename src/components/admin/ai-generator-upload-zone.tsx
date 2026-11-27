@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useClassLevelOptions } from '@/components/department-provider'
+import { TargetDepartmentField, useTargetDepartment } from '@/components/admin/target-department-field'
 
 export type GenerationJob = {
   id: string
@@ -26,7 +27,7 @@ export type GenerationJob = {
   topic_id: string | null
 }
 
-type Subject = { id: string; code: string; name: string }
+type Subject = { id: string; code: string; name: string; department_id?: string }
 type Topic = { id: string; name: string }
 
 const MAX_SIZE_BYTES = 50 * 1024 * 1024
@@ -55,6 +56,8 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
   const [loadingTopics, setLoadingTopics] = useState(false)
 
   const inputRef = useRef<HTMLInputElement>(null)
+  // PROJ-130: Bereich ausdrücklich mitschicken; bei „Alle Bereiche“ ist er Pflicht
+  const target = useTargetDepartment()
 
   // Load subjects on mount
   useEffect(() => {
@@ -69,7 +72,10 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
     setTopicId('all')
     setTopics([])
     if (subjectCode === 'all') return
-    const subject = subjects.find((s) => s.code === subjectCode)
+    // Kürzel kommen in beiden Bereichen vor: nur im gewählten suchen
+    const subject = subjects.find(
+      (s) => s.code === subjectCode && (!target.departmentId || s.department_id === target.departmentId),
+    )
     if (!subject) return
     setLoadingTopics(true)
     fetch(`/api/admin/topics?subject_id=${subject.id}`)
@@ -77,7 +83,7 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
       .then((data) => setTopics(data.topics ?? []))
       .catch(() => {})
       .finally(() => setLoadingTopics(false))
-  }, [subjectCode, subjects])
+  }, [subjectCode, subjects, target.departmentId])
 
   function addFiles(files: FileList | File[]) {
     const arr = Array.from(files)
@@ -106,11 +112,16 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
   async function handleUpload() {
     const valid = pending.filter((p) => !p.error)
     if (valid.length === 0) { toast.error('Keine gültigen Dateien ausgewählt'); return }
+    if (target.needsTarget && !target.departmentId) {
+      toast.error('Bitte wähle, in welchem Bereich die Fragen angelegt werden.')
+      return
+    }
     setUploading(true)
     for (const { file } of valid) {
       try {
         const form = new FormData()
         form.append('file', file)
+        if (target.departmentId) form.append('department_id', target.departmentId)
         if (classLevel !== 'all') form.append('class_level', classLevel)
         if (subjectCode !== 'all') form.append('subject_code', subjectCode)
         if (topicId !== 'all') form.append('topic_id', topicId)
@@ -126,10 +137,22 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
     setPending([])
   }
 
-  const selectedSubject = subjects.find((s) => s.code === subjectCode)
+  const shownSubjects = target.departmentId
+    ? subjects.filter((s) => !s.department_id || s.department_id === target.departmentId)
+    : subjects
+  const selectedSubject = shownSubjects.find((s) => s.code === subjectCode)
 
   return (
     <div className="space-y-4">
+      <TargetDepartmentField
+        fixedId={target.fixedId}
+        value={target.chosen}
+        onChange={(id) => {
+          // Fächer sind je Bereich verschieden: Auswahl zurücksetzen
+          target.setChosen(id)
+          setSubjectCode('all')
+        }}
+      />
       {/* Metadata selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Stufe */}
@@ -155,7 +178,7 @@ export function AiGeneratorUploadZone({ onUploadComplete }: Props) {
             </SelectTrigger>
             <SelectContent className="bg-ws-surface border-ws-line text-ws-text">
               <SelectItem value="all">Alle Fächer</SelectItem>
-              {subjects.map((s) => (
+              {shownSubjects.map((s) => (
                 <SelectItem key={s.id} value={s.code}>{s.code} – {s.name}</SelectItem>
               ))}
             </SelectContent>

@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
   // Zielbereich: Angabe im Formular, sonst der Bereich der Leiste; in „Alle
   // Bereiche“ ohne Angabe ist er Pflicht (PROJ-70).
   const departmentId = resolveTargetDepartment(auth, parsed.data.department_id)
-  if (!departmentId) return targetDepartmentMissing()
+  if (!departmentId) return targetDepartmentMissing('das Fach angelegt wird')
   const forbidden = assertCanAdminDepartmentContent(auth, departmentId)
   if (forbidden) return forbidden
 

@@ -253,10 +253,14 @@ function NavLink({
           />
         )}
       </span>
-      <span>{label}</span>
-      {/* Zusatz weicht einem Zähler, damit es in der Zeile bleibt */}
-      {hint && !countText && (
-        <span className="ml-auto shrink-0 text-xs font-medium text-ws-faint group-data-[collapsible=icon]:hidden">{hint}</span>
+      {/* Zusatz als zweite Zeile: bleibt auch neben einem Zähler stehen */}
+      {hint ? (
+        <span className="grid min-w-0 text-left leading-tight group-data-[collapsible=icon]:hidden">
+          <span className="truncate">{label}</span>
+          <span className="truncate text-xs font-medium text-ws-faint">{hint}</span>
+        </span>
+      ) : (
+        <span>{label}</span>
       )}
       {tag && (
         <span className="ml-auto shrink-0 rounded-full border border-ws-line px-1.5 text-[0.65rem] font-semibold text-ws-faint group-data-[collapsible=icon]:hidden">
@@ -301,7 +305,7 @@ function NavLink({
       asChild
       isActive={active}
       tooltip={label}
-      className={`${navButtonClass} ${indented ? 'pl-6 font-medium group-data-[collapsible=icon]:!pl-2' : ''}`}
+      className={`${navButtonClass} ${hint ? '!h-auto min-h-11 py-1.5 group-data-[collapsible=icon]:!min-h-0 group-data-[collapsible=icon]:!h-8' : ''} ${indented ? 'pl-6 font-medium group-data-[collapsible=icon]:!pl-2' : ''}`}
     >
       {external ? (
         <a href={href} target="_blank" rel="noopener noreferrer" onClick={onNavigate}>

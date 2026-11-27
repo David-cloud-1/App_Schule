@@ -376,5 +376,26 @@ Bau-Reihenfolge aus dem Tech Design: **1 ☑ · 2 ☑ · 3 ☑ · 4 ☑**
 ### Empfehlung
 **Produktionsreif: JA** (keine Critical- oder High-Befunde). BUG-1 bestand schon vor diesem Feature und betrifft nur den Wechsel in einem zweiten Tab. Es lohnt sich trotzdem, ihn vor dem Livegang zu beheben, weil der Dialog jetzt ausdrücklich „Bereich: …“ anzeigt. Nach dem Deploy auf Laptop und Handy durchklicken (BUG-7).
 
+### Befunde behoben (27.11.2026, nach der QA)
+
+| Nr. | Lösung |
+|---|---|
+| BUG-1 | Neuer Hook `useTargetDepartment`: Der Bereich wird beim Öffnen festgehalten und **immer** mitgeschickt (Fach, CSV-Import, Fragen aus Material, Übungsprüfung). |
+| BUG-2 | Die Server-Meldung nennt, was angelegt wird („Bitte wähle, in welchem Bereich die Übungsprüfung angelegt wird.“). |
+| BUG-3 | „Neuer Bereich“ statt „Ziel-Bereich“, auch in zwei Server-Meldungen. Der Wächter kennt die Bindestrich-Schreibweise. |
+| BUG-4 | Wächter prüft zusätzlich „11. Klasse“, „Öffentlich“ und „Offen“ in den Abwesenheits-Dateien. Platzhalter heißt „Für Stufe 11 …“. „Anpassen“ bleibt nur in der Werkzeugkiste geprüft (anderswo ein normales Wort). |
+| BUG-5 | „mit Note“ / „ohne Note“ stehen als zweite Zeile unter dem Menüpunkt und bleiben neben dem Zähler sichtbar. |
+| BUG-6 | Karte „Meine Fächer“: Beschreibung und Leerzustand sagen nicht mehr, man sehe nur diese Fächer. |
+| BUG-7 | Die Zeile einer Übungsprüfung bricht am Handy um (die Knöpfe durften vorher nicht umbrechen). **Der Blick im Browser steht weiter aus.** |
+
+**Korrektur zur QA bei BUG-1:** „Neue Frage“ war nicht betroffen, dort bestimmt das gewählte Fach den Bereich. Dafür hatte die QA vier Stellen übersehen, die jetzt ebenfalls behoben sind:
+- **Datei-Import bei Übungsprüfungen** (Super-Admin): fragte bei „Alle Bereiche“ nicht nach dem Bereich. Jetzt gibt es das Feld, die Prüfungsteile folgen ihm, und `extract` und `import` bekommen `department_id`.
+- **Upload „Fragen aus Material“**: Feld ergänzt, die Fächerliste folgt dem gewählten Bereich, `upload` bekommt `department_id`.
+- **Neuer Shop-Gegenstand** und **Einstellungen des Bereichs**: Der Client schickt den geladenen Bereich mit. Wurde er inzwischen gewechselt, antwortet der Server mit 409 „Bitte lade die Seite neu“, statt in den anderen Bereich zu schreiben (bei den Einstellungen hätte das dessen Werte überschrieben).
+
+Damit gibt es kleine Server-Änderungen (abweichend vom Tech Design „kein Backend“). Rechte und Datenbank sind unverändert.
+
+**Prüfung:** 357 Dateien, 4789 Tests grün (neu: `target-department-hook.test.tsx`, `department-target.test.ts`), Build sauber, `eslint src --quiet` meldet nur den alten Fehler in `shop-items/[id]/route.test.ts`.
+
 ## Deployment
 _To be added by /deploy_

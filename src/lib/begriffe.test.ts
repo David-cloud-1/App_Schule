@@ -106,6 +106,12 @@ describe('Wörterliste (PROJ-130)', () => {
     expect(verstoesse(lehrkraefte)).toEqual([])
   })
 
+  it('sagt bei den Abwesenheiten „Vertretung fehlt“ statt „Offen“', () => {
+    const abwesenheiten = lehrkraefte.filter((p) => /absence|kalender/.test(p))
+    expect(abwesenheiten.length).toBeGreaterThan(5)
+    expect(verstoesse(abwesenheiten, [{ muster: /\bOffene?\b/, stattdessen: 'Vertretung fehlt' }])).toEqual([])
+  })
+
   it('nennt die Übungsprüfung auch auf der Schülerseite so', () => {
     const regeln = ALTE_BEGRIFFE.filter((r) => r.stattdessen === 'Übungsprüfung')
     expect(verstoesse(SCHUELER_ORDNER.flatMap(dateien), regeln)).toEqual([])
