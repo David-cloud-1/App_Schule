@@ -159,7 +159,7 @@ Eine mobile-first Web-App für angehende Speditionskaufleute in Bayern, die spie
 | P1 | PROJ-127: Verwaltung für alle Lehrkräfte (Bereichs-Admin und Lehrkraft zusammenlegen) | Deployed |
 | P2 | PROJ-128: Baukasten – Video mit Fragen: Aufgabentyp je Frage wählen | In Progress |
 | P1 | PROJ-129: Quiz-Varianten – Richtig/Falsch, Rauswerfen, Joker & Wette | Deployed |
-| P1 | PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | In Progress |
+| P1 | PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit) | Deployed |
 
 ## Success Metrics
 - **Daily Active Users (DAU):** ≥ 70% der registrierten Azubis nutzen die App mindestens 3x/Woche

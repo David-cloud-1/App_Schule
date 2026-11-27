@@ -1,6 +1,6 @@
 # PROJ-130: Lehrkräfte-Bereich – Begriffe & Menü (Phase 2 Übersichtlichkeit)
 
-## Status: Approved
+## Status: Deployed
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -398,4 +398,8 @@ Damit gibt es kleine Server-Änderungen (abweichend vom Tech Design „kein Back
 **Prüfung:** 357 Dateien, 4789 Tests grün (neu: `target-department-hook.test.tsx`, `department-target.test.ts`), Build sauber, `eslint src --quiet` meldet nur den alten Fehler in `shop-items/[id]/route.test.ts`.
 
 ## Deployment
-_To be added by /deploy_
+- **Live seit:** 2026-11-27, https://spedilern.vercel.app (Commit `2a8262f`, Tag `v1.130.0-PROJ-130`). Keine Datenbank-Migration, keine neuen Umgebungsvariablen.
+- **Vor dem Push:** committeter Stand in sauberer Kopie geprüft (Typprüfung, 4789 Tests, Build). `npm run lint` (`eslint .`) bricht wie schon vorher mit einem Konfigurationsfehler ab; `eslint src --quiet` meldet nur den alten Testfehler.
+- **Nach dem Push:** Vercel-Build „Ready“. Ohne Anmeldung leiten die Seiten zum Login (307), die Schnittstellen antworten mit 401.
+- **Browser (Chrome, Super-Admin, „Alle Bereiche“, nur angesehen, nichts gespeichert):** Menü mit zweizeiligen Zusätzen neben den Zählern, aufklappbare Gruppen, Nachschlagen, Übungsprüfungen, Pflichtfeld „Bereich“ im Import-Dialog, Handy-Schublade, „Meine Materialien“ mit Regal-Spalte (1440 px). Bei 500 px bricht die Übungsprüfungs-Zeile sauber um, kein seitliches Scrollen (BUG-7 erledigt). Keine Konsolenfehler beim Prüfen.
+- **Nicht geprüft:** 375 px (Fenster lässt sich nicht kleiner als 500 px machen), Safari, Firefox, echtes Handy, Ansicht als Lehrkraft, Schrittleiste im Assistenten, Vercel-Laufzeitlogs, der Wechsel des Bereichs in einem zweiten Tab (durch Tests abgedeckt).
