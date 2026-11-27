@@ -68,11 +68,23 @@ describe('PROJ-46: Zielbereich und Erstellt-von', () => {
     expect(filterAssessments(dept, fDeleted).map((a) => a.title)).toEqual(['Verwaist'])
   })
 
-  it('schreibt und liest Zielbereich/Erstellt-von in der Adresszeile', () => {
-    const f = { ...defaultFilters('2026/27'), departmentId: 'd2', createdBy: 'deleted' }
+  it('schreibt und liest Zielbereich und „Nur meine“ in der Adresszeile', () => {
+    const f = { ...defaultFilters('2026/27'), departmentId: 'd2', onlyMine: true }
     const params = filtersToParams(f, '2026/27', new URLSearchParams())
-    expect(params.toString()).toBe('bereich=d2&erstellt=deleted')
+    expect(params.toString()).toBe('bereich=d2&meine=1')
     expect(filtersFromParams(params, '2026/27')).toEqual(f)
+  })
+
+  it('ignoriert den alten Ersteller-Filter aus gespeicherten Links (?erstellt=)', () => {
+    const f = filtersFromParams(new URLSearchParams('erstellt=u1&bereich=d2'), '2026/27')
+    expect(f.createdBy).toBe(FILTER_ALL)
+    expect(f.departmentId).toBe('d2')
+  })
+
+  it('„Nur meine“ zeigt nur Nachweise mit createdByMe', () => {
+    const items = [make({ title: 'Meiner', createdByMe: true }), make({ title: 'Fremd', createdByMe: false })]
+    const f = { ...defaultFilters('2026/27'), schoolYear: FILTER_ALL, onlyMine: true }
+    expect(filterAssessments(items, f).map((a) => a.title)).toEqual(['Meiner'])
   })
 
   it('departmentOptions: eindeutig nach Name sortiert', () => {

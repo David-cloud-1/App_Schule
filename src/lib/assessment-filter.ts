@@ -90,7 +90,8 @@ export function filtersFromParams(params: URLSearchParams, currentSchoolYear: st
     subjectId: params.get('fach') || base.subjectId,
     status: status && STATUSES.includes(status) ? status : base.status,
     departmentId: params.get('bereich') || base.departmentId,
-    createdBy: params.get('erstellt') || base.createdBy,
+    // QA BUG-7: der alte Ersteller-Filter (?erstellt=) ist in „Nur meine“ aufgegangen und wird ignoriert
+    createdBy: base.createdBy,
     onlyMine: params.get('meine') === '1',
     query: base.query,
   }
@@ -105,7 +106,6 @@ export function filtersToParams(filters: AssessmentFilters, currentSchoolYear: s
   if (filters.subjectId !== FILTER_ALL) params.set('fach', filters.subjectId)
   if (filters.status !== FILTER_ALL) params.set('status', filters.status)
   if (filters.departmentId !== FILTER_ALL) params.set('bereich', filters.departmentId)
-  if (filters.createdBy !== FILTER_ALL) params.set('erstellt', filters.createdBy)
   if (filters.onlyMine) params.set('meine', '1')
   return params
 }

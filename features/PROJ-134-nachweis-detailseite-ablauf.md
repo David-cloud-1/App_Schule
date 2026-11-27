@@ -361,6 +361,21 @@ Keine neuen Pakete. Alles mit vorhandenen shadcn/ui-Bausteinen (Dialog, AlertDia
 #### Hinweis (kein Bug): Nachziehen bei jedem Laden
 Die Detailseite lädt bei offenem Nachweis alle 8 Sekunden neu. Jedes Laden ruft die Schließ-Funktion für **alle** Nachweise auf. Das ist korrekt und idempotent, erzeugt aber bei vielen gleichzeitig offenen Detailseiten unnötige Datenbank-Last. Später eventuell nur beim ersten Laden oder nur für diesen Nachweis.
 
+### Fix-Runde (2026-11-27) – alle 7 Fehler im Code behoben
+
+| Bug | Behebung |
+|---|---|
+| BUG-1, BUG-2 | Neue Migration `20261127_proj134_qa_sitzungs_sperre.sql`: Trigger auf `exam_sessions`. Aufrufe aus dem Browser (Rolle `authenticated`) dürfen `assessment_id` und `trial_assessment_id` weder setzen noch ändern. Server und Fremdschlüssel-Aktionen sind ausgenommen, **keine Policy geändert**. Beitritt und Testlauf legen die Sitzung jetzt mit dem Dienst-Client an. Zusätzlich bewerten Abgabe und Freigabe nur Fragen, die wirklich zum Nachweis gehören (`restrictToAllowedQuestions`), nie das, was in der Sitzung steht. |
+| BUG-3 | „Öffnen“ lehnt einen Entwurf mit abgelaufenem „Beitritt bis“ ab (Hinweis auf „Beitritt verlängern“). Der Knopf ist gesperrt, die Beitritts-Karte sagt „bitte verlängern, bevor du öffnest“. |
+| BUG-4 | Protokoll-Seite: lesbare Beschriftungen für alle `graded_assessment.*`-Aktionen, auch das automatische Schließen und das Verlängern. |
+| BUG-5 | Leertext bei „Nur meine“ ohne Treffer: „Keine Leistungsnachweise passen zu diesen Filtern“ mit „Filter zurücksetzen“. |
+| BUG-6 | „Eigene Zeit“ wird als Schulzeit (Europe/Berlin) gelesen, auch am Tag der Zeitumstellung. Das Feld heißt „Neues Ende (Schulzeit)“. |
+| BUG-7 | Alte Links mit `?erstellt=` werden ignoriert, der Parameter wird nicht mehr geschrieben. |
+
+**Geprüft:** Trigger gegen die echte Datenbank in einer sich selbst zurückrollenden Transaktion: Server darf anlegen; Browser wird beim Anlegen mit Testlauf- oder Nachweis-Zuordnung und beim Ändern von `assessment_id` blockiert; Übungsprüfung anlegen und Autosave (`results_json`) laufen weiter. Danach war nichts in der Datenbank zurückgeblieben. Vitest 5056 grün, Typprüfung grün.
+
+**Der Trigger ist noch NICHT eingespielt, mit Absicht:** Mit dem alten Code (Beitritt über den Nutzer-Client) würde er in Produktion jeden Beitritt ablehnen. Er muss **zusammen mit dem Deploy dieses Codes** angewendet werden. Offen: erneute QA nach dem Einspielen.
+
 ### Regression
 - Vitest gesamt: 379 Dateien, 5045 Tests grün. Typprüfung grün. Lint: 0 Fehler in geänderten Dateien (1 bestehender Fehler in `shop-items/[id]/route.test.ts`)
 - Playwright PROJ-9, PROJ-11, PROJ-133 (Chromium): 40 grün

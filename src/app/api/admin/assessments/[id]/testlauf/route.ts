@@ -106,7 +106,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const name = actorNameOf(profile as { first_name?: string | null; last_name?: string | null; display_name?: string | null } | null) ?? 'Lehrkraft'
 
   const questions = finalRows.map((q) => ({ ...q, part: assessment.part, explanation: null, sample_answer: null }))
-  const { data: session, error } = await supabase
+  // Nur der Server legt Testläufe an (Datenbank-Sperre für trial_assessment_id, QA BUG-1)
+  const { data: session, error } = await service
     .from('exam_sessions')
     .insert({
       user_id: user.id,

@@ -13,6 +13,7 @@ import {
   gradeSnapshot,
   applyGrading,
   snapshotQuestionIds,
+  restrictToAllowedQuestions,
   csvEscape,
   buildStudentReports,
   type SessionRow, isAssessmentRunning,
@@ -363,5 +364,19 @@ describe('isAssessmentRunning (F2)', () => {
   it('Entwurf und geschlossen laufen nie', () => {
     expect(isAssessmentRunning('draft', null, 90, now)).toBe(false)
     expect(isAssessmentRunning('closed', '2999-01-01T00:00:00Z', 90, now)).toBe(false)
+  })
+})
+
+describe('restrictToAllowedQuestions (PROJ-134 QA BUG-1/2)', () => {
+  const snap = [{ id: 'q1' }, { id: 'q2' }, { id: 'fremd' }]
+  it('lässt nur Fragen des Nachweises durch', () => {
+    expect(restrictToAllowedQuestions(snap, ['q1', 'q2']).map((q) => q.id)).toEqual(['q1', 'q2'])
+  })
+  it('filtert nichts, wenn keine Angabe vorliegt', () => {
+    expect(restrictToAllowedQuestions(snap, null)).toHaveLength(3)
+    expect(restrictToAllowedQuestions(snap, undefined)).toHaveLength(3)
+  })
+  it('eine leere Liste lässt nichts durch', () => {
+    expect(restrictToAllowedQuestions(snap, [])).toEqual([])
   })
 })

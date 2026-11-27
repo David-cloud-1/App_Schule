@@ -117,7 +117,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     sample_answer: null,
   }))
 
-  const { data: session, error } = await supabase
+  // PROJ-134 (QA BUG-1/2): Die Sitzung eines Nachweises legt nur der Server an. Nutzer dürfen
+  // assessment_id selbst nicht setzen (Datenbank-Sperre), sonst ließe sich eine Sitzung zu
+  // einem beliebigen Nachweis erfinden und bewerten.
+  const { data: session, error } = await service
     .from('exam_sessions')
     .insert({
       user_id: user.id,

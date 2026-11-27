@@ -113,7 +113,13 @@ export function beitrittInfo(params: {
   const { status, opensAt, closesAt, now = new Date() } = params
   const bis = `Beitritt bis ${formatBeitrittZeit(closesAt)}`
   const range = opensAt ? `Beitritt ab ${formatBeitrittZeit(opensAt)} · ${bis}` : bis
-  if (status === 'draft') return { range, state: 'Beitritt noch nicht geöffnet', phase: 'not_open' }
+  if (status === 'draft') {
+    // QA BUG-3: ein Entwurf mit abgelaufenem „Beitritt bis“ kann nicht geöffnet werden
+    if (now.getTime() > new Date(closesAt).getTime()) {
+      return { range, state: 'Beitritt bis ist schon vorbei – bitte verlängern, bevor du öffnest', phase: 'ended' }
+    }
+    return { range, state: 'Beitritt noch nicht geöffnet', phase: 'not_open' }
+  }
   if (status === 'closed' || now.getTime() > new Date(closesAt).getTime()) {
     return { range, state: 'Beitritt beendet', phase: 'ended' }
   }
@@ -125,14 +131,28 @@ export function beitrittInfo(params: {
 
 // ── Verlängern ───────────────────────────────────────────────────────────────
 
-/** Heute um 23:59 in der Schulzeitzone, auch am Tag der Zeitumstellung */
-export function heute2359(now: Date = new Date()): Date {
-  const p = berlinParts(now)
-  const guess = Date.UTC(p.year, p.month - 1, p.day, 23, 59)
+/** Uhrzeit an der Wand der Schulzeitzone (Jahr, Monat 1–12, Tag, Stunde, Minute) als Zeitpunkt */
+export function berlinWandzeit(year: number, month: number, day: number, hour: number, minute: number): Date {
+  const guess = Date.UTC(year, month - 1, day, hour, minute)
   // Versatz der Schulzeitzone an diesem Zeitpunkt bestimmen und abziehen
   const at = berlinParts(new Date(guess))
   const asUtc = Date.UTC(at.year, at.month - 1, at.day, at.hour, at.minute)
   return new Date(guess - (asUtc - guess))
+}
+
+/** Eingabe aus einem `datetime-local`-Feld („2026-11-28T23:59“) als Zeit der Schulzeitzone, nicht des Geräts */
+export function parseBerlinEingabe(value: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value)
+  if (!m) return null
+  const [, y, mo, d, h, mi] = m.map(Number)
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null
+  return berlinWandzeit(y, mo, d, h, mi)
+}
+
+/** Heute um 23:59 in der Schulzeitzone, auch am Tag der Zeitumstellung */
+export function heute2359(now: Date = new Date()): Date {
+  const p = berlinParts(now)
+  return berlinWandzeit(p.year, p.month, p.day, 23, 59)
 }
 
 export type VerlaengernWahl = '+30' | '+60' | 'heute'

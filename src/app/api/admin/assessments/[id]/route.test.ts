@@ -93,6 +93,20 @@ describe('PATCH /api/admin/assessments/[id] – open', () => {
   })
 })
 
+describe('PATCH /api/admin/assessments/[id] – open mit abgelaufenem Beitritt (PROJ-134 QA BUG-3)', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('lehnt das Öffnen ab und verweist auf „Beitritt bis“ verlängern', async () => {
+    const { update } = setup(ids(8), (chunk) => ({ data: chunk.map((id) => ({ id, type: 'multiple_choice', is_active: true })) }), {
+      closes_at: new Date(Date.now() - 60_000).toISOString(),
+    })
+    const res = await open()
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(/Beitritt ist schon abgelaufen/)
+    expect(update).not.toHaveBeenCalled()
+  })
+})
+
 describe('PATCH /api/admin/assessments/[id] – open mit Gruppen (PROJ-76)', () => {
   beforeEach(() => vi.clearAllMocks())
 

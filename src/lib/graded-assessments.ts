@@ -296,6 +296,17 @@ export function applyGrading(
   })
 }
 
+/**
+ * PROJ-134 (QA BUG-1/2): Die Sitzung gehört der Person, sie könnte ihre gespeicherten Fragen
+ * (`results_json.parts`) selbst ändern. Bewertet und mit Lösung versehen werden deshalb nur
+ * Fragen, die wirklich zum Nachweis gehören. `allowed = null`: keine Angabe, nichts filtern.
+ */
+export function restrictToAllowedQuestions<T extends { id: string }>(snapshot: T[], allowed: string[] | null | undefined): T[] {
+  if (!allowed) return snapshot
+  const ok = new Set(allowed)
+  return snapshot.filter((q) => ok.has(q.id))
+}
+
 /** Question ids referenced by any stored snapshot — to fetch the answer key in one query. */
 export function snapshotQuestionIds(rows: SessionRow[], part: number): string[] {
   const partKey = String(part)

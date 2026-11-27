@@ -6,6 +6,7 @@ import {
   formatBeitrittZeit,
   formatRestzeit,
   heute2359,
+  parseBerlinEingabe,
   pruefeVerlaengern,
   verlaengerteZeit,
 } from './nachweis-ablauf'
@@ -102,5 +103,25 @@ describe('erstellerName', () => {
 describe('defensive Eingaben', () => {
   it('gibt bei kaputtem Datum einen Strich statt eines Fehlers', () => {
     expect(formatBeitrittZeit('')).toBe('–')
+  })
+})
+
+describe('Eingabe in der Schulzeitzone (QA BUG-6)', () => {
+  it('liest datetime-local als Schulzeit, nicht als Gerätezeit', () => {
+    expect(parseBerlinEingabe('2026-11-28T23:59')!.toISOString()).toBe('2026-11-28T22:59:00.000Z')
+    expect(parseBerlinEingabe('2026-07-01T23:59')!.toISOString()).toBe('2026-07-01T21:59:00.000Z')
+  })
+  it('lehnt Leeres und Kaputtes ab', () => {
+    expect(parseBerlinEingabe('')).toBeNull()
+    expect(parseBerlinEingabe('morgen')).toBeNull()
+    expect(parseBerlinEingabe('2026-13-01T10:00')).toBeNull()
+  })
+})
+
+describe('Entwurf mit abgelaufenem Beitritt (QA BUG-3)', () => {
+  it('meldet „bitte verlängern“ statt „noch nicht geöffnet“', () => {
+    const info = beitrittInfo({ status: 'draft', opensAt: null, closesAt: '2026-11-27T09:00:00Z', now: NOW })
+    expect(info.phase).toBe('ended')
+    expect(info.state).toMatch(/verlängern/)
   })
 })

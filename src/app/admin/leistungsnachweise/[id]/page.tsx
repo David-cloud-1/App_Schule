@@ -374,8 +374,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               {detail.status === 'draft' && (
                 <Button
                   onClick={() => runAction('open')}
-                  disabled={actionPending || (detail.unavailableQuestionIds?.length ?? 0) > 0}
-                  title={(detail.unavailableQuestionIds?.length ?? 0) > 0 ? 'Erst nicht mehr verfügbare Fragen ersetzen oder entfernen' : undefined}
+                  disabled={actionPending || (detail.unavailableQuestionIds?.length ?? 0) > 0 || beitritt.phase === 'ended'}
+                  title={
+                    (detail.unavailableQuestionIds?.length ?? 0) > 0
+                      ? 'Erst nicht mehr verfügbare Fragen ersetzen oder entfernen'
+                      : beitritt.phase === 'ended'
+                        ? 'Erst „Beitritt verlängern“: das Ende liegt schon in der Vergangenheit'
+                        : undefined
+                  }
                   className="rounded-xl bg-ws-green hover:bg-ws-green-hover text-ws-on-accent"
                 >
                   <Unlock size={14} className="mr-1.5" />

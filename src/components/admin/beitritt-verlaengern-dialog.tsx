@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
-import { formatBeitrittZeit, pruefeVerlaengern, verlaengerteZeit, type VerlaengernWahl } from '@/lib/nachweis-ablauf'
+import { formatBeitrittZeit, parseBerlinEingabe, pruefeVerlaengern, verlaengerteZeit, type VerlaengernWahl } from '@/lib/nachweis-ablauf'
 
 type Wahl = VerlaengernWahl | 'eigen'
 
@@ -44,8 +44,8 @@ export function BeitrittVerlaengernDialog({ open, onOpenChange, assessmentId, st
 
   const neu = useMemo(() => {
     if (wahl === 'eigen') {
-      const d = eigen ? new Date(eigen) : null
-      return d && !Number.isNaN(d.getTime()) ? d : null
+      // QA BUG-6: die Eingabe gilt in der Schulzeitzone, nicht in der des Geräts
+      return eigen ? parseBerlinEingabe(eigen) : null
     }
     // „Verlängern“ rechnet ab dem bisherigen Ende; läuft das schon ab, ab jetzt
     const base = new Date(closesAt).getTime() > Date.now() ? closesAt : new Date().toISOString()
@@ -92,7 +92,7 @@ export function BeitrittVerlaengernDialog({ open, onOpenChange, assessmentId, st
           <AdminSegmented ariaLabel="Neues Ende" value={wahl} onChange={setWahl} options={OPTIONS} />
           {wahl === 'eigen' && (
             <div className="space-y-1.5">
-              <Label htmlFor="beitritt-eigen" className="text-sm text-ws-muted">Neues Ende</Label>
+              <Label htmlFor="beitritt-eigen" className="text-sm text-ws-muted">Neues Ende (Schulzeit)</Label>
               <Input
                 id="beitritt-eigen"
                 type="datetime-local"

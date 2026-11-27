@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import {
   formatAccessCode,
   gradeSnapshot,
+  restrictToAllowedQuestions,
   validateGradingScale,
   type GradeBoundary,
   type RedactedQuestion,
@@ -214,6 +215,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (assessment.status !== 'draft') {
         return NextResponse.json({ error: 'Nur ein Entwurf kann geöffnet werden.' }, { status: 400 })
       }
+      // PROJ-134 (QA BUG-3): Ein Nachweis, dessen „Beitritt bis“ schon vorbei ist, würde sofort
+      // wieder schließen, ohne dass jemand beitreten konnte.
+      if (new Date(assessment.closes_at).getTime() <= Date.now()) {
+        return NextResponse.json({
+          error: 'Der Beitritt ist schon abgelaufen. Verlängere „Beitritt bis“, bevor du den Nachweis öffnest.',
+        }, { status: 400 })
+      }
       const set = assessment.exam_question_sets as unknown as { question_ids: string[] } | null
       const snapshot: string[] = assessment.draft_question_ids ?? set?.question_ids ?? []
 
@@ -347,8 +355,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const releasedAt = new Date().toISOString()
     const partKey = String(assessment.part)
+    // PROJ-134 (QA BUG-2): nur Fragen des Nachweises bewerten, nie das, was in der Sitzung steht
+    const allowedIds = (assessment.question_ids_snapshot as string[] | null) ?? null
     const snapshotIds = (sessions ?? []).flatMap((s) =>
-      ((s.results_json as { parts?: Record<string, RedactedQuestion[]> }).parts?.[partKey] ?? []).map((q) => q.id),
+      restrictToAllowedQuestions(
+        (s.results_json as { parts?: Record<string, RedactedQuestion[]> }).parts?.[partKey] ?? [],
+        allowedIds,
+      ).map((q) => q.id),
     )
     const key = await fetchAnswerKey([...new Set(snapshotIds)])
 
@@ -358,7 +371,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         submitted_answers?: Record<string, string>
       }
       const { part, scored } = gradeSnapshot(
-        resultsJson.parts?.[partKey] ?? [],
+        restrictToAllowedQuestions(resultsJson.parts?.[partKey] ?? [], allowedIds),
         resultsJson.submitted_answers ?? {},
         key,
         assessment.grading_scale as GradeBoundary[],

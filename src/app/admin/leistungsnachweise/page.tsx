@@ -256,7 +256,7 @@ function AssessmentsPageContent() {
                   <TableCell colSpan={columnCount} className="text-center text-ws-muted py-10">
                     <GraduationCap size={32} className="mx-auto mb-2 text-ws-raised" />
                     <p>
-                      {filters.schoolYear !== FILTER_ALL && filters.className === FILTER_ALL && filters.subjectId === FILTER_ALL && filters.status === FILTER_ALL && !filters.query
+                      {filters.schoolYear !== FILTER_ALL && filters.className === FILTER_ALL && filters.subjectId === FILTER_ALL && filters.status === FILTER_ALL && filters.departmentId === FILTER_ALL && !filters.onlyMine && !filters.query
                         ? `Im Schuljahr ${filters.schoolYear} gibt es noch keine Leistungsnachweise.`
                         : 'Keine Leistungsnachweise passen zu diesen Filtern.'}
                     </p>

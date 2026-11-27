@@ -5,7 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase-server'
-import { gradeSnapshot, type GradeBoundary, type RedactedQuestion } from '@/lib/graded-assessments'
+import { gradeSnapshot, restrictToAllowedQuestions, type GradeBoundary, type RedactedQuestion } from '@/lib/graded-assessments'
 import { fetchAnswerKey } from '@/lib/answer-key'
 import { FOCUS_COUNT_FROM_SECONDS, FOCUS_MAX_EVENTS, FOCUS_MAX_REPORTS_PER_MINUTE } from '@/lib/focus-tracking'
 
@@ -83,14 +83,19 @@ export async function finishAssessmentAttempt(params: {
   const service = createServiceClient()
   const { data: assessment } = await service
     .from('graded_assessments')
-    .select('title, access_code, part, grading_scale, results_released_at, focus_tracking, excluded_question_ids')
+    .select('title, access_code, part, grading_scale, results_released_at, focus_tracking, excluded_question_ids, question_ids_snapshot, draft_question_ids, exam_question_sets(question_ids)')
     .eq('id', (session.assessment_id ?? session.trial_assessment_id)!)
     .single()
 
   if (!assessment) return { ok: false, status: 404, error: 'Leistungsnachweis nicht gefunden.' }
 
   const partKey = String(assessment.part)
-  const snapshot = resultsJson.parts[partKey] ?? []
+  // Nur Fragen des Nachweises zählen (Testlauf im Entwurf: Entwurfsfragen)
+  const set = assessment.exam_question_sets as unknown as { question_ids: string[] } | null
+  const allowedIds: string[] | null =
+    (assessment.question_ids_snapshot as string[] | null) ??
+    (isTrial ? ((assessment.draft_question_ids as string[] | null) ?? set?.question_ids ?? null) : null)
+  const snapshot = restrictToAllowedQuestions(resultsJson.parts[partKey] ?? [], allowedIds)
   let nextResults: Record<string, unknown> = {
     durationMinutes: resultsJson.durationMinutes,
     parts: { [partKey]: snapshot },

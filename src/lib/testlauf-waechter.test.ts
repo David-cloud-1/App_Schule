@@ -39,4 +39,16 @@ describe('Testläufe zählen nicht als Übungsprüfung (PROJ-134)', () => {
       expect(readFileSync(join(SRC, rel), 'utf8')).toMatch(/\.is\('trial_assessment_id',\s*null\)/)
     }
   })
+
+  it('Sitzungen zu Nachweisen und Testläufen legt nur der Dienst-Client an (QA BUG-1/2)', () => {
+    for (const rel of ['app/api/assessments/[id]/join/route.ts', 'app/api/admin/assessments/[id]/testlauf/route.ts']) {
+      expect(readFileSync(join(SRC, rel), 'utf8'), rel).toMatch(/await service\s*\.from\('exam_sessions'\)\s*\.insert/)
+    }
+  })
+
+  it('die Datenbank-Sperre für assessment_id und trial_assessment_id liegt als Migration vor', () => {
+    const sql = readFileSync(join(SRC, '..', 'supabase/migrations/20261127_proj134_qa_sitzungs_sperre.sql'), 'utf8')
+    expect(sql).toMatch(/BEFORE INSERT OR UPDATE ON exam_sessions/)
+    expect(sql).toMatch(/trial_assessment_id IS DISTINCT FROM OLD\.trial_assessment_id/)
+  })
 })

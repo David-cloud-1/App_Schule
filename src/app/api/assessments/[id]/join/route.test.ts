@@ -93,24 +93,24 @@ describe('POST /api/assessments/[id]/join — Gruppen A/B (PROJ-76)', () => {
   function setup(slot: number | null) {
     const rpc = vi.fn(async () => (slot === null ? { data: null, error: { message: 'boom' } } : { data: slot, error: null }))
     service = chainMock(
-      (table) => {
+      (table, calls) => {
         if (table === 'graded_assessments') {
           return { data: { ...ASSESSMENT, department_id: 'dept-sped', groups_enabled: true, group_orders: orders } }
         }
         if (table === 'questions') return { data: questionRows }
+        // PROJ-134 (QA BUG-1/2): die Sitzung legt der Server mit dem Dienst-Client an
+        if (table === 'exam_sessions' && calls.some((c) => c.method === 'insert')) return { data: { id: 'sess-1' } }
         return { data: null }
       },
       { rpc },
     )
     vi.mocked(createServiceClient).mockReturnValue(service.client as never)
-    const user = chainMock(
-      (table, calls) => {
-        if (table === 'exam_sessions' && calls.some((c) => c.method === 'insert')) return { data: { id: 'sess-1' } }
-        return { data: null }
-      },
-      { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) } },
+    const user = service
+    vi.mocked(createClient).mockResolvedValue(
+      chainMock(() => ({ data: null }), {
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+      }).client as never,
     )
-    vi.mocked(createClient).mockResolvedValue(user.client as never)
     return { rpc, user }
   }
 
@@ -149,19 +149,21 @@ describe('POST /api/assessments/[id]/join — Gruppen A/B (PROJ-76)', () => {
   it('ohne Gruppen bleibt die Gruppe leer', async () => {
     const rpc = vi.fn()
     service = chainMock(
-      (table) => {
+      (table, calls) => {
         if (table === 'graded_assessments') return { data: { ...ASSESSMENT, department_id: 'dept-sped', groups_enabled: false, group_orders: null } }
         if (table === 'questions') return { data: questionRows }
+        if (table === 'exam_sessions' && calls.some((c) => c.method === 'insert')) return { data: { id: 's' } }
         return { data: null }
       },
       { rpc },
     )
     vi.mocked(createServiceClient).mockReturnValue(service.client as never)
-    const user = chainMock(
-      (table, calls) => (table === 'exam_sessions' && calls.some((c) => c.method === 'insert') ? { data: { id: 's' } } : { data: null }),
-      { auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) } },
+    const user = service
+    vi.mocked(createClient).mockResolvedValue(
+      chainMock(() => ({ data: null }), {
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+      }).client as never,
     )
-    vi.mocked(createClient).mockResolvedValue(user.client as never)
     await POST(request({ code: '7K2MQX', participantName: 'Max Muster' }), { params: Promise.resolve({ id: 'a-1' }) })
     expect(rpc).not.toHaveBeenCalled()
     expect((user.writes.find((w) => w.table === 'exam_sessions')!.payload as Inserted).group_label).toBeNull()
