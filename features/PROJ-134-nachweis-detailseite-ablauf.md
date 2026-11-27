@@ -215,7 +215,7 @@ Keine neuen Pakete. Alles mit vorhandenen shadcn/ui-Bausteinen (Dialog, AlertDia
 
 ## Implementation Notes (Frontend + Backend, 2026-11-27)
 
-**Datenbank** (`supabase/migrations/20261127_proj134_nachweis_ablauf.sql`, mit `_down`): `graded_assessments.auto_closed_at`, `exam_sessions.trial_assessment_id` (mit Prüfregel „nie zugleich assessment_id“), Funktion `close_expired_assessments()` (eine Anweisung, schreibt den Verlaufseintrag „System“ im selben Schritt, kein Doppeleintrag), Funktion `cleanup_assessment_trials()` (30 Tage), pg_cron: alle 5 Minuten schließen, täglich 03:40 Testläufe aufräumen. **Keine RLS-Änderung.** **Die Migration ist noch NICHT auf die Datenbank angewendet.** Bis dahin laufen Liste und Detailseite wie bisher (die Nachziehen-Funktion fängt die fehlende Funktion ab); Testlauf und Auto-Schließen brauchen sie.
+**Datenbank** (`supabase/migrations/20261127_proj134_nachweis_ablauf.sql`, mit `_down`): `graded_assessments.auto_closed_at`, `exam_sessions.trial_assessment_id` (mit Prüfregel „nie zugleich assessment_id“), Funktion `close_expired_assessments()` (eine Anweisung, schreibt den Verlaufseintrag „System“ im selben Schritt, kein Doppeleintrag), Funktion `cleanup_assessment_trials()` (30 Tage), pg_cron: alle 5 Minuten schließen, täglich 03:40 Testläufe aufräumen. **Keine RLS-Änderung.** **Migration am 2026-11-27 auf „Spedilern App“ angewendet** und geprüft (Spalten, Prüfregel, beide Funktionen, beide Jobs aktiv). Beim Anwenden war ein offener Nachweis mit abgelaufenem Beitritt vorhanden; der Job schließt ihn beim ersten Lauf nach, sofern niemand mehr schreibt.
 
 **Backend:**
 - `src/lib/nachweis-ablauf.ts` (+ Tests): Schritt, Satz, Hauptaktion, Beitrittszeiten (Europe/Berlin), „Heute 23:59“, Verlängern-Prüfung, Ersteller-Name.
