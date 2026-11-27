@@ -26,6 +26,10 @@ export type SearchHit = {
   subject_codes: string[]
   level: Level
   rate: number | null
+  /** false = zu wenige Antworten, gilt als „mittel“ */
+  rated: boolean
+  /** Anzahl Antworten (für „x % gelöst bei n Antworten“) */
+  attempts: number
   isPrivate: boolean
   blocked: boolean
   openReports: number
@@ -48,6 +52,8 @@ export function toHit(c: Candidate): SearchHit {
     subject_codes: c.subject_codes,
     level: c.level,
     rate: c.rate,
+    rated: c.rated,
+    attempts: c.attempts,
     isPrivate: c.isPrivate,
     blocked: c.blocked,
     openReports: c.openReports,
@@ -95,4 +101,36 @@ export function lookupQuestions(pool: Candidate[], ids: string[]): { items: Sear
     else missing.push(id)
   }
   return { items, missing }
+}
+
+export type Facets = {
+  subjects: string[]
+  /** Themen mit den Fächern und Stufen, in denen sie vorkommen (für die Auswahl in Schritt 1) */
+  topics: { name: string; subjects: string[]; levels: number[] }[]
+  classLevels: number[]
+}
+
+/** Auswahlmöglichkeiten für Fach, Thema und Stufe aus dem zulässigen Pool des Bereichs */
+export function buildFacets(pool: Candidate[]): Facets {
+  const subjects = new Set<string>()
+  const levels = new Set<number>()
+  const topics = new Map<string, { subjects: Set<string>; levels: Set<number> }>()
+  for (const q of pool) {
+    q.subject_codes.forEach((c) => subjects.add(c))
+    if (q.class_level != null) levels.add(q.class_level)
+    if (q.topic) {
+      const t = topics.get(q.topic) ?? { subjects: new Set<string>(), levels: new Set<number>() }
+      q.subject_codes.forEach((c) => t.subjects.add(c))
+      if (q.class_level != null) t.levels.add(q.class_level)
+      topics.set(q.topic, t)
+    }
+  }
+  const de = (a: string, b: string) => a.localeCompare(b, 'de')
+  return {
+    subjects: [...subjects].sort(de),
+    topics: [...topics.entries()]
+      .map(([name, t]) => ({ name, subjects: [...t.subjects].sort(de), levels: [...t.levels].sort((a, b) => a - b) }))
+      .sort((a, b) => de(a.name, b.name)),
+    classLevels: [...levels].sort((a, b) => a - b),
+  }
 }

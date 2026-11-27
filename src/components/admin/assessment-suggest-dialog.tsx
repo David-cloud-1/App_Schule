@@ -79,7 +79,7 @@ interface Props {
 }
 
 /** Mehrfachauswahl als Liste mit Häkchen in einem Popover */
-function MultiPick({
+export function MultiPick({
   label,
   options,
   value,
@@ -403,7 +403,7 @@ export function AssessmentSuggestDialog({ open, onOpenChange, departmentId, ques
               <legend className="mb-1 text-sm text-ws-muted">Nicht vorschlagen</legend>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
                 <Checkbox checked={exBlocked} onCheckedChange={(c) => setExBlocked(c === true)} />
-                Gesperrte Fragen
+                Ausgeschlossene Fragen
               </label>
               <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
                 <Checkbox checked={exReported} onCheckedChange={(c) => setExReported(c === true)} />

@@ -1,6 +1,6 @@
 # PROJ-133: Leistungsnachweis anlegen in drei Schritten (Phase 4 Übersichtlichkeit, Teil 1)
 
-## Status: Architected
+## Status: In Progress
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -234,6 +234,32 @@ Keine neuen Pakete. Ziehen in der Liste nutzt die schon installierte Drag-and-dr
 3. Schritt 2 (Auswahl-Baustein, Suche-Seitenleiste)
 4. Einstieg Listenseite, Notenschlüssel-Seite, Reiter „Schwierig“
 5. Alten Dialog entfernen, Wörter und Wächtertest
+
+## Implementation Notes (Frontend & Backend)
+
+**Gebaut am 2026-11-27.** 5.001 Tests grün, `tsc`, `eslint` (neue Dateien) und `npm run build` sauber. **Noch nicht im Browser geprüft** (kein Zugang zur echten Datenbank in dieser Umgebung), E2E-Tests noch nicht geschrieben.
+
+**Backend**
+- `src/lib/assessment-question-search.ts` und `POST /api/admin/assessments/questions/search`: drei Aktionen. `search` (höchstens 25 Treffer, `total`, `nextOffset`), `lookup` (Fragen per Nummer, bis 60; unbekannte als `missing`), `facets` (Fächer, Themen mit Fächern und Stufen, Stufen für Schritt 1). Alles aus dem Pool von `loadCandidates` (nur zulässige Fragen, eigene „nur für Nachweise“-Fragen eingeschlossen).
+- `POST /api/admin/assessments`: `className` ist Pflichtfeld (`null` = „Keine / gemischt“, fehlt es: 400). `closesAt` in der Vergangenheit: 400. Abgelehnte Fragen kommen als `invalidQuestionIds` zurück (`checkQuestionSelection` liefert `invalidIds`). `resolveCategory` fragt bei `className: null` die Klassen nicht mehr ab.
+- `src/lib/assessment-deadline.ts`: „heute 23:59“, „in 1 Stunde“, „in 1 Woche“ in Europe/Berlin, auch bei Zeitumstellung (Tests für 25.10. und 29.3.).
+- Keine Migration, keine neuen Pakete.
+
+**Frontend**
+- Neue Seite `/admin/leistungsnachweise/neu` mit `assessment-wizard/` (Rahmen mit gemeinsamem Zustand, Schrittleiste, Schritt 1/2/3, Suche-Seitenleiste, Vorlagen-Dialog). Logik ohne Oberfläche in `src/lib/assessment-draft.ts` (Prüfung der Schritte, Titelvorschlag, Übergabe aus „Schwierig“).
+- Rückfrage beim Verlassen: Browser-Warnung (Schließen/Neuladen) und eigene Abfrage bei Klicks auf Links innerhalb der App.
+- Liste „Leistungsnachweise“: Hauptaktion „Nachweis anlegen“ (Link); der Riesendialog `create-assessment-modal` ist gelöscht. Alte Adressen `?neu=1` und `?createFromSet=` leiten auf die neue Seite weiter. „Als Leistungsnachweis verwenden“ (Übungsprüfungen) öffnet `/neu?set=ID` und startet bei Schritt 2.
+- Notenschlüssel-Seite: „Vorlage anlegen“ (B33), dieselbe Eingabe in Schritt 3 als „Neue Vorlage anlegen“.
+- Reiter „Schwierig“: Häkchen je Frage, Leiste „N markiert · In neuen Nachweis“ (höchstens 60), bei mehreren Bereichen Rückfrage. Übergabe über `sessionStorage`, einmal gelesen und gelöscht.
+- Vorschlagsliste (`assessment-suggest-preview`) kann jetzt per Griff, Tastatur und Touch verschoben werden (`@dnd-kit`).
+- Wörter: „Ausgeschlossene Fragen“ statt „Gesperrte Fragen“, „Dauer“ statt „Bearbeitungszeit je Teilnehmer“, Schrittnamen in `begriffe.ts`; Wächtertest um die alten Wörter ergänzt.
+
+**Abweichungen von der Spec**
+- **Fragetyp-Filter fehlt** in der Suche: Für Nachweise sind nur Multiple-Choice-Fragen zulässig, ein Filter hätte nur einen Wert.
+- **Fokus-Protokoll** und „Notenschlüssel anpassen“ stehen unter „Weitere Einstellungen“ in Schritt 3 (wie im Design festgelegt).
+- **Browser-Zurück-Taste** innerhalb der App löst keine Rückfrage aus (nur Links, Schließen und Neuladen).
+- **Beitritt ab leer** schickt „jetzt“ als Startzeit beim Speichern.
+- Der alte Fragen-Wähler samt Vorschlag-Dialog bleibt für „Fragen bearbeiten“ auf der Detailseite (PROJ-134).
 
 ## QA Test Results
 _To be added by /qa_

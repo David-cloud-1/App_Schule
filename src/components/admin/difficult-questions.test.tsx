@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DifficultQuestions } from './difficult-questions'
 
+const push = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() } }))
 vi.mock('@/components/department-provider', () => ({ useClassLevelOptions: () => [] }))
 
@@ -18,6 +20,8 @@ let urls: string[] = []
 
 beforeEach(() => {
   urls = []
+  push.mockClear()
+  window.sessionStorage.clear()
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     urls.push(url)
     if (url.startsWith('/api/admin/questions?')) {
@@ -107,5 +111,50 @@ describe('Reiter „Schwierig“ (PROJ-74, PROJ-131)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => ({}) })))
     render(<DifficultQuestions />)
     expect(await screen.findByRole('alert')).toBeInTheDocument()
+  })
+})
+
+describe('Reiter „Schwierig“: In neuen Nachweis (PROJ-133, E4)', () => {
+  it('zeigt die Aktionsleiste erst nach dem Markieren und übergibt die Fragen an den Ablauf', async () => {
+    render(<DifficultQuestions />)
+    await screen.findByText('Was ist ein Frachtbrief?')
+    expect(screen.queryByRole('button', { name: /In neuen Nachweis/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /markieren: Was ist ein Frachtbrief/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /markieren: Halb gewusst/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('2 Fragen markiert')
+
+    fireEvent.click(screen.getByRole('button', { name: /In neuen Nachweis/ }))
+    expect(push).toHaveBeenCalledWith('/admin/leistungsnachweise/neu?aus=schwierig')
+    const stored = JSON.parse(window.sessionStorage.getItem('nachweis-neu-aus-schwierig') ?? 'null')
+    expect(stored).toEqual({ questionIds: ['q1', 'q3'], departmentId: 'd1' })
+  })
+
+  it('hebt die Auswahl wieder auf', async () => {
+    render(<DifficultQuestions />)
+    await screen.findByText('Was ist ein Frachtbrief?')
+    fireEvent.click(screen.getByRole('checkbox', { name: /markieren: Was ist ein Frachtbrief/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Auswahl aufheben' }))
+    expect(screen.queryByRole('button', { name: /In neuen Nachweis/ })).not.toBeInTheDocument()
+  })
+
+  it('fragt bei mehreren Bereichen nach, statt Fragen stillschweigend zu mischen', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        items: [
+          row({ question_id: 'q1', question_text: 'Frage Spedition', department_id: 'd1' }),
+          row({ question_id: 'q2', question_text: 'Frage Tourismus', department_id: 'd2', correct: 9 }),
+        ],
+        totalQuestions: 2,
+      }),
+    })))
+    render(<DifficultQuestions />)
+    await screen.findByText('Frage Spedition')
+    fireEvent.click(screen.getByRole('checkbox', { name: /markieren: Frage Spedition/ }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /markieren: Frage Tourismus/ }))
+    fireEvent.click(screen.getByRole('button', { name: /In neuen Nachweis/ }))
+    expect(await screen.findByText('Die Fragen gehören zu mehreren Bereichen')).toBeInTheDocument()
+    expect(push).not.toHaveBeenCalled()
   })
 })

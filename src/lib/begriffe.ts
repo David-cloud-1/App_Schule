@@ -32,6 +32,14 @@ export const BEGRIFFE = {
   lernrunde: 'Lernrunde',
   auftragFuerDieKi: 'Auftrag für die KI',
   antwortDerKi: 'Antwort der KI',
+  /** PROJ-133: Fragen, die frühere Auswertungen für Nachweise ausgeschlossen haben (vorher „Gesperrte Fragen“) */
+  ausgeschlosseneFragen: 'Ausgeschlossene Fragen',
+  /** PROJ-133: Zeit zum Bearbeiten ab dem Start einer Person (vorher „Bearbeitungszeit je Teilnehmer“) */
+  dauer: 'Dauer',
+  /** PROJ-133: Schritte beim Anlegen eines Nachweises */
+  schrittWas: 'Was?',
+  schrittPruefen: 'Prüfen',
+  schrittWann: 'Wann und für wen?',
 } as const
 
 /** Erklärt im Abwesenheits-Dialog den Unterschied zum Bereich der App */
@@ -58,6 +66,8 @@ export const ALTE_BEGRIFFE: readonly AlterBegriff[] = [
   { muster: /\bLvl\b/, stattdessen: 'Level' },
   { muster: /\bSessions?\b|Lern-Session/, stattdessen: BEGRIFFE.lernrunde },
   { muster: /\bPrompts?\b|Prompt-|-Prompt/, stattdessen: BEGRIFFE.auftragFuerDieKi },
+  { muster: /Gesperrte Fragen/, stattdessen: BEGRIFFE.ausgeschlosseneFragen },
+  { muster: /Bearbeitungszeit je Teilnehmer/, stattdessen: BEGRIFFE.dauer },
   { muster: /Bereichsleiste/, stattdessen: BEGRIFFE.bereich },
   { muster: /Nicht zu verwechseln/, stattdessen: 'eine Beschreibung in einem Satz' },
 ]

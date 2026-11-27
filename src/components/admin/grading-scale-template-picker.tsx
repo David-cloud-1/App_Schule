@@ -30,6 +30,8 @@ interface Props {
   /** Eine Vorlage übernehmen: füllt nur den Schlüssel dieses Nachweises */
   onApply: (scale: GradeBoundary[]) => void
   disabled?: boolean
+  /** PROJ-133: vorgewählte Vorlage (z. B. gerade neu angelegt); sonst der IHK-Standard */
+  initialSelectedId?: string
 }
 
 /**
@@ -37,10 +39,10 @@ interface Props {
  * Eine Vorlage anwenden kopiert nur die Werte – spätere Änderungen oder das
  * Löschen der Vorlage berühren keinen Nachweis und keinen Entwurf.
  */
-export function GradingScaleTemplatePicker({ scale, onApply, disabled }: Props) {
+export function GradingScaleTemplatePicker({ scale, onApply, disabled, initialSelectedId }: Props) {
   const [templates, setTemplates] = useState<GradingScaleTemplate[]>([])
   const [loadFailed, setLoadFailed] = useState(false)
-  const [selectedId, setSelectedId] = useState<string>(IHK_TEMPLATE.id)
+  const [selectedId, setSelectedId] = useState<string>(initialSelectedId ?? IHK_TEMPLATE.id)
   const [saveOpen, setSaveOpen] = useState(false)
   const [name, setName] = useState('')
   const [shared, setShared] = useState(false)

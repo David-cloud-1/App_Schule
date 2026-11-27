@@ -1,10 +1,23 @@
 'use client'
 
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { BarChart3, ChevronDown, FolderOpen, Pencil } from 'lucide-react'
+import { BarChart3, ChevronDown, FilePlus2, FolderOpen, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { useOptionalAdminRole } from '@/components/admin/admin-role-provider'
+import { groupByDepartment, MAX_HANDOFF_QUESTIONS, writeHandoff } from '@/lib/assessment-draft'
 import { Progress } from '@/components/ui/progress'
 import { AdminSegmented } from '@/components/admin/admin-segmented'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
@@ -99,6 +112,11 @@ export function DifficultQuestions({
   const [failed, setFailed] = useState(false)
   const [shown, setShown] = useState(PAGE_SIZE)
   const [editing, setEditing] = useState<ListQuestion | null>(null)
+  // PROJ-133 (E4): Fragen markieren und „In neuen Nachweis“
+  const router = useRouter()
+  const role = useOptionalAdminRole()
+  const [marked, setMarked] = useState<Set<string>>(new Set())
+  const [chooseDepartment, setChooseDepartment] = useState<Map<string, string[]> | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -138,6 +156,36 @@ export function DifficultQuestions({
 
   const ranked = useMemo(() => dedupe(rankQuestions(rows, HARD_MIN_ATTEMPTS).ranked), [rows])
   const topics = useMemo(() => rankTopics(rows, HARD_MIN_ATTEMPTS).ranked, [rows])
+
+  function toggleMark(id: string) {
+    setMarked((cur) => {
+      const next = new Set(cur)
+      if (next.has(id)) next.delete(id)
+      else if (next.size >= MAX_HANDOFF_QUESTIONS) toast.error(`Du kannst höchstens ${MAX_HANDOFF_QUESTIONS} Fragen markieren.`)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function startAssessment(departmentId: string | null, ids: string[]) {
+    if (!writeHandoff(window.sessionStorage, { questionIds: ids, departmentId })) {
+      toast.error('Die Fragen konnten nicht übergeben werden. Bitte versuche es erneut.')
+      return
+    }
+    router.push('/admin/leistungsnachweise/neu?aus=schwierig')
+  }
+
+  function onNewAssessment() {
+    const chosen = ranked.filter((r) => marked.has(r.question_id))
+    const groups = groupByDepartment(chosen)
+    if (groups.size > 1) return setChooseDepartment(groups)
+    const [[dept, ids]] = [...groups.entries()]
+    startAssessment(dept || null, ids)
+  }
+
+  function departmentName(id: string): string {
+    return role?.scope?.departments.find((d) => d.id === id)?.name ?? 'Anderer Bereich'
+  }
 
   async function openEdit(questionId: string) {
     try {
@@ -191,6 +239,8 @@ export function DifficultQuestions({
                 canShowTopic={!!r.topic_id && (!topicIds || topicIds.has(r.topic_id)) && !!onShowInTopic}
                 onShowInTopic={() => r.topic_id && onShowInTopic?.(r.subject_id, r.topic_id)}
                 onEdit={() => openEdit(r.question_id)}
+                marked={marked.has(r.question_id)}
+                onToggleMark={() => toggleMark(r.question_id)}
               />
             ))}
           </ul>
@@ -205,6 +255,53 @@ export function DifficultQuestions({
           )}
         </>
       )}
+
+      {marked.size > 0 && (
+        <div
+          role="region"
+          aria-label="Markierte Fragen"
+          className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ws-line bg-ws-surface p-3 shadow-lg"
+        >
+          <p className="text-sm font-medium text-ws-text" role="status">
+            {marked.size} {marked.size === 1 ? 'Frage' : 'Fragen'} markiert
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" className="min-h-11" onClick={() => setMarked(new Set())}>Auswahl aufheben</Button>
+            <Button onClick={onNewAssessment} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+              <FilePlus2 className="size-4" aria-hidden />
+              In neuen Nachweis
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={chooseDepartment !== null} onOpenChange={(o) => !o && setChooseDepartment(null)}>
+        <AlertDialogContent className="rounded-2xl border-ws-line bg-ws-surface text-ws-text">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Die Fragen gehören zu mehreren Bereichen</AlertDialogTitle>
+            <AlertDialogDescription className="text-ws-muted">
+              Ein Nachweis gilt für einen Bereich. Wähle, welche Fragen du übernimmst. Die übrigen bleiben außen vor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            {chooseDepartment &&
+              [...chooseDepartment.entries()].map(([dept, ids]) => (
+                <Button
+                  key={dept || 'unbekannt'}
+                  variant="outline"
+                  className="min-h-11 w-full justify-between rounded-xl border-ws-line"
+                  onClick={() => startAssessment(dept || null, ids)}
+                >
+                  <span>{dept ? departmentName(dept) : 'Ohne Bereich'}</span>
+                  <span className="text-ws-muted">{ids.length} {ids.length === 1 ? 'Frage' : 'Fragen'}</span>
+                </Button>
+              ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-11 rounded-xl">Abbrechen</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <QuestionFormModal
         open={editing !== null}
@@ -236,12 +333,16 @@ function DifficultItem({
   canShowTopic,
   onShowInTopic,
   onEdit,
+  marked,
+  onToggleMark,
 }: {
   row: DifficultyRow
   code: string
   canShowTopic: boolean
   onShowInTopic: () => void
   onEdit: () => void
+  marked: boolean
+  onToggleMark: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [question, setQuestion] = useState<ListQuestion | null>(null)
@@ -262,6 +363,10 @@ function DifficultItem({
 
   return (
     <li className="space-y-2 px-3 py-3 sm:px-4">
+      <div className="flex items-start gap-1">
+      <label className="flex size-11 shrink-0 cursor-pointer items-center justify-center">
+        <Checkbox checked={marked} onCheckedChange={onToggleMark} aria-label={`Für neuen Nachweis markieren: ${r.question_text}`} />
+      </label>
       <button
         type="button"
         aria-expanded={expanded}
@@ -272,6 +377,7 @@ function DifficultItem({
         <span className="min-w-0 flex-1 break-words text-ws-text">{r.question_text}</span>
         <ChevronDown className={cn('mt-1 size-4 shrink-0 text-ws-muted transition-transform duration-200', expanded && 'rotate-180')} aria-hidden />
       </button>
+      </div>
       <RateBar correct={r.correct} attempts={r.attempts} />
       <div className="flex flex-wrap items-center gap-2 text-xs text-ws-muted">
         <span>

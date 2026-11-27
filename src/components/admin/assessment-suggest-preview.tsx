@@ -1,6 +1,18 @@
 'use client'
 
-import { ArrowLeftRight, Loader2, Lock, LockOpen, X } from 'lucide-react'
+import { ArrowLeftRight, GripVertical, Loader2, Lock, LockOpen, X } from 'lucide-react'
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { Candidate, Level } from '@/lib/assessment-suggest'
@@ -42,6 +54,36 @@ interface Props {
   onOpenSwap: (id: string) => void
   onCloseSwap: () => void
   onPickAlternative: (forId: string, alt: Candidate) => void
+  /** PROJ-133: gesetzt = Fragen lassen sich per Griff, Tastatur oder Touch verschieben */
+  onReorder?: (ids: string[]) => void
+}
+
+
+/** Zeile mit Ziehgriff; nur innerhalb von DndContext benutzen */
+function SortableRow({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const handle = (
+    <button
+      type="button"
+      ref={setActivatorNodeRef}
+      aria-label="Frage verschieben. Mit Leertaste aufnehmen, mit Pfeiltasten bewegen."
+      title="Verschieben"
+      className="flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-xl text-ws-muted hover:text-ws-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ws-green active:cursor-grabbing"
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical className="size-5" aria-hidden />
+    </button>
+  )
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`rounded-xl border border-ws-line bg-ws-bg p-3 ${isDragging ? 'relative z-10 shadow-lg' : ''}`}
+    >
+      {children(handle)}
+    </li>
+  )
 }
 
 /** Liste der vorgeschlagenen Fragen: fixieren, tauschen, entfernen */
@@ -55,15 +97,30 @@ export function AssessmentSuggestPreview({
   onOpenSwap,
   onCloseSwap,
   onPickAlternative,
+  onReorder,
 }: Props) {
-  return (
-    <ul className="space-y-2" aria-label="Vorgeschlagene Fragen">
-      {items.map((q) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function onDragEnd(e: DragEndEvent) {
+    if (!onReorder || !e.over || e.active.id === e.over.id) return
+    const ids = items.map((q) => q.id)
+    const from = ids.indexOf(String(e.active.id))
+    const to = ids.indexOf(String(e.over.id))
+    if (from < 0 || to < 0) return
+    onReorder(arrayMove(ids, from, to))
+  }
+
+  const rows = items.map((q) => {
         const isLocked = locked.has(q.id)
         const swapping = swap?.forId === q.id
-        return (
-          <li key={q.id} className="rounded-xl border border-ws-line bg-ws-bg p-3">
+        const body = (handle: React.ReactNode) => (
+          <>
             <div className="flex items-start gap-2">
+              {handle}
               <div className="min-w-0 flex-1">
                 <p className="line-clamp-2 text-sm text-ws-text" title={q.question_text}>
                   {q.question_text}
@@ -152,9 +209,26 @@ export function AssessmentSuggestPreview({
                 )}
               </div>
             )}
-          </li>
+          </>
         )
-      })}
+        return onReorder ? (
+          <SortableRow key={q.id} id={q.id}>{body}</SortableRow>
+        ) : (
+          <li key={q.id} className="rounded-xl border border-ws-line bg-ws-bg p-3">{body(null)}</li>
+        )
+  })
+
+  const list = (
+    <ul className="space-y-2" aria-label="Vorgeschlagene Fragen">
+      {rows}
     </ul>
+  )
+  if (!onReorder) return list
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={items.map((q) => q.id)} strategy={verticalListSortingStrategy}>
+        {list}
+      </SortableContext>
+    </DndContext>
   )
 }

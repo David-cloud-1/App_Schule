@@ -590,7 +590,7 @@ export function ExamSetsClient({ initialSets, questions, examPartsByDepartment }
                 </button>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link href={`/admin/leistungsnachweise?createFromSet=${set.id}`}>
+                  <Link href={`/admin/leistungsnachweise/neu?set=${set.id}`}>
                     <Button
                       size="sm"
                       variant="outline"

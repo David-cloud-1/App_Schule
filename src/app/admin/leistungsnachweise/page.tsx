@@ -22,7 +22,6 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CreateAssessmentModal } from '@/components/admin/create-assessment-modal'
 import { AssessmentFilterBar } from '@/components/admin/assessment-filter-bar'
 import { useAdminRole, useOptionalAdminRole } from '@/components/admin/admin-role-provider'
 import { schoolYearFor } from '@/lib/assessment-category'
@@ -74,14 +73,6 @@ type AssessmentListItem = {
   createdByFormer?: boolean
 }
 
-type ExamSetOption = {
-  id: string
-  name: string
-  part: number
-  question_ids: string[]
-  duration_minutes: number | null
-}
-
 const STATUS_LABELS: Record<AssessmentListItem['status'], string> = {
   draft: 'Entwurf',
   open: 'Offen',
@@ -110,32 +101,21 @@ function AssessmentsPageContent() {
     [searchParams, currentSchoolYear, query],
   )
   const [assessments, setAssessments] = useState<AssessmentListItem[]>([])
-  const [sets, setSets] = useState<ExamSetOption[]>([])
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
   const [duplicating, setDuplicating] = useState<{ id: string; title: string } | null>(null)
-  const [preselectedSetId, setPreselectedSetId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setFailed(false)
     try {
-      const [assessmentsRes, setsRes] = await Promise.all([
-        fetch(`/api/admin/assessments${scopeQuery ? `?${scopeQuery}` : ''}`),
-        fetch('/api/admin/exam-sets'),
-      ])
+      const assessmentsRes = await fetch(`/api/admin/assessments${scopeQuery ? `?${scopeQuery}` : ''}`)
       if (!assessmentsRes.ok) {
         setFailed(true)
         return
       }
       const assessmentsJson = await assessmentsRes.json()
-      // Sets sind nur optionale Startauswahl des eigenen Arbeitsbereichs — eine
-      // Lehrkraft ohne Fachbereich bekommt hier 403 (kein eigener Bereich) und
-      // das blockiert die Seite nicht
-      const setsJson = setsRes.ok ? await setsRes.json() : { sets: [] }
       setAssessments(assessmentsJson.assessments ?? [])
-      setSets(setsJson.sets ?? [])
     } catch (err) {
       console.error('[AdminAssessments] load failed:', err)
       setFailed(true)
@@ -176,22 +156,15 @@ function AssessmentsPageContent() {
     [assessments, currentSchoolYear, isSuperAdmin],
   )
 
+  // Alte Adressen weiterleiten (PROJ-133): „Neuer Leistungsnachweis“ aus der Schnellsuche und „Als Leistungsnachweis verwenden“
   useEffect(() => {
     const fromSet = searchParams.get('createFromSet')
     if (fromSet) {
-      setPreselectedSetId(fromSet)
-      setCreateOpen(true)
+      router.replace(`/admin/leistungsnachweise/neu?set=${encodeURIComponent(fromSet)}`)
+    } else if (searchParams.get('neu') === '1') {
+      router.replace('/admin/leistungsnachweise/neu')
     }
-    // „Neuer Leistungsnachweis“ aus der Schnellsuche (PROJ-45): Dialog öffnen, Parameter wieder entfernen
-    if (searchParams.get('neu') === '1') {
-      setPreselectedSetId(null)
-      setCreateOpen(true)
-      const params = new URLSearchParams(searchParams.toString())
-      params.delete('neu')
-      const qs = params.toString()
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
-    }
-  }, [searchParams, router, pathname])
+  }, [searchParams, router])
 
   // Leere Liste: die Hauptaktion steht dann im Leerzustand, nicht doppelt im Seitenkopf
   const showEmpty = !failed && !loading && assessments.length === 0
@@ -211,15 +184,11 @@ function AssessmentsPageContent() {
                   Notenschlüssel
                 </Link>
               </Button>
-              <Button
-                onClick={() => {
-                  setPreselectedSetId(null)
-                  setCreateOpen(true)
-                }}
-                className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Neu erstellen
+              <Button asChild className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl">
+                <Link href="/admin/leistungsnachweise/neu">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nachweis anlegen
+                </Link>
               </Button>
             </>
           )
@@ -248,15 +217,11 @@ function AssessmentsPageContent() {
           title="Noch keine Leistungsnachweise"
           description="Lege deinen ersten an — die Klasse tritt danach per Code bei."
           action={
-            <Button
-              onClick={() => {
-                setPreselectedSetId(null)
-                setCreateOpen(true)
-              }}
-              className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Neu erstellen
+            <Button asChild className="bg-ws-green hover:bg-ws-green-hover text-ws-on-accent rounded-xl min-h-11">
+              <Link href="/admin/leistungsnachweise/neu">
+                <Plus className="w-4 h-4 mr-2" />
+                Nachweis anlegen
+              </Link>
             </Button>
           }
         />
@@ -413,15 +378,6 @@ function AssessmentsPageContent() {
         assessmentId={duplicating?.id ?? ''}
         assessmentTitle={duplicating?.title ?? ''}
         onDuplicated={(newId) => router.push(`/admin/leistungsnachweise/${newId}`)}
-      />
-      <CreateAssessmentModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        sets={sets}
-        classSuggestions={filterOptions.classes}
-        usedSchoolYears={assessments.map((a) => a.schoolYear)}
-        preselectedSetId={preselectedSetId}
-        onSuccess={(id) => router.push(`/admin/leistungsnachweise/${id}`)}
       />
     </div>
   )

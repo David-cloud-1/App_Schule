@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { lookupQuestions, searchQuestions, SEARCH_PAGE_SIZE } from './assessment-question-search'
+import { buildFacets, lookupQuestions, searchQuestions, SEARCH_PAGE_SIZE } from './assessment-question-search'
 import type { Candidate } from './assessment-suggest'
 
 const uid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -58,9 +58,9 @@ describe('searchQuestions (PROJ-133)', () => {
     expect(searchQuestions(pool, { ...base, level: 'schwer' }).items.map((i) => i.id)).toEqual([uid(4)])
   })
 
-  it('gibt keine Rohzahlen (Antworten) an die Oberfläche', () => {
+  it('gibt die Anzahl Antworten, aber nicht die Richtig-Zahl weiter', () => {
     const hit = searchQuestions([cand(1, { attempts: 40, correct: 30 })], base).items[0]
-    expect(hit).not.toHaveProperty('attempts')
+    expect(hit.attempts).toBe(40)
     expect(hit).not.toHaveProperty('correct')
   })
 })
@@ -70,5 +70,21 @@ describe('lookupQuestions', () => {
     const r = lookupQuestions([cand(1), cand(2)], [uid(1), uid(1), uid(9)])
     expect(r.items.map((i) => i.id)).toEqual([uid(1)])
     expect(r.missing).toEqual([uid(9)])
+  })
+})
+
+describe('buildFacets', () => {
+  it('sammelt Fächer, Stufen und Themen mit ihren Fächern und Stufen', () => {
+    const f = buildFacets([
+      cand(1),
+      cand(2, { subject_codes: ['KSK'], topic: 'Thema B', class_level: 12 }),
+      cand(3, { topic: null, class_level: null }),
+    ])
+    expect(f.subjects).toEqual(['BGP', 'KSK'])
+    expect(f.classLevels).toEqual([11, 12])
+    expect(f.topics).toEqual([
+      { name: 'Thema A', subjects: ['BGP'], levels: [11] },
+      { name: 'Thema B', subjects: ['KSK'], levels: [12] },
+    ])
   })
 })

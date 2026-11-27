@@ -206,6 +206,9 @@ Im Lehrkräfte-Bereich gibt es **keine festen Farbwerte** (`#111827`, `text-whit
 | **Kopie bearbeiten** | aus dem Regal | Anpassen |
 | **Eigene Seite bauen** | leere Seite im Baukasten | Leere Seite anlegen |
 | **Shop-Gegenstände** | Katalog im Shop | Items, Hof-Items |
+| **Ausgeschlossene Fragen** | Fragen, die frühere Auswertungen für Nachweise ausgeschlossen haben | Gesperrte Fragen |
+| **Dauer** | Zeit zum Bearbeiten, ab dem Start einer Person | Bearbeitungszeit je Teilnehmer |
+| **Was?** · **Prüfen** · **Wann und für wen?** | die drei Schritte beim Anlegen eines Nachweises | – |
 | **Level**, **Lernrunde** | – | Lvl, Session |
 | **Auftrag für die KI**, **Antwort der KI** | kopieren und einfügen | Prompt, Antwort (als Schrittname) |
 

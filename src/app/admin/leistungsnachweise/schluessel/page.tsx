@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { ArrowLeft, Copy, Pencil, Share2, Trash2, Users, Lock, Ruler } from 'lucide-react'
+import { ArrowLeft, Copy, Pencil, Plus, Share2, Trash2, Users, Lock, Ruler } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { ScaleTemplateDialog } from '@/components/admin/assessment-wizard/scale-template-dialog'
 import { AdminEmptyState, AdminErrorState, AdminLoadingState } from '@/components/admin/admin-states'
 import { GradingScaleEditor, validateGradingScale } from '@/components/admin/grading-scale-editor'
 import { IHK_DEFAULT_SCALE, type GradeBoundary } from '@/lib/graded-assessments'
@@ -46,6 +47,7 @@ function scaleSummary(scale: GradeBoundary[]): string {
 export default function GradingScaleTemplatesPage() {
   const [templates, setTemplates] = useState<GradingScaleTemplate[] | null>(null)
   const [failed, setFailed] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const [editing, setEditing] = useState<GradingScaleTemplate | null>(null)
   const [editName, setEditName] = useState('')
@@ -149,12 +151,21 @@ export default function GradingScaleTemplatesPage() {
         description="Speichere eigene Schlüssel als Vorlage und wähle sie beim Anlegen eines Nachweises mit einem Klick."
         breadcrumb="Notenschlüssel"
         actions={
-          <Button asChild variant="outline" className="rounded-xl">
-            <Link href="/admin/leistungsnachweise">
-              <ArrowLeft className="mr-1.5 size-4" aria-hidden />
-              Zu den Nachweisen
-            </Link>
-          </Button>
+          <>
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href="/admin/leistungsnachweise">
+                <ArrowLeft className="mr-1.5 size-4" aria-hidden />
+                Zu den Nachweisen
+              </Link>
+            </Button>
+            {/* Bei leerer Liste steht die Hauptaktion nur im Leerzustand */}
+            {mine.length > 0 && (
+              <Button onClick={() => setCreateOpen(true)} className="rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+                <Plus className="mr-1.5 size-4" aria-hidden />
+                Vorlage anlegen
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -182,10 +193,11 @@ export default function GradingScaleTemplatesPage() {
               <AdminEmptyState
                 icon={Ruler}
                 title="Noch keine eigene Vorlage"
-                description="Lege einen Nachweis an, stelle den Schlüssel ein und wähle dort „Als Vorlage speichern“."
+                description="Lege eine Vorlage an, dann wählst du sie beim Anlegen eines Nachweises mit einem Klick."
                 action={
-                  <Button asChild className="rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
-                    <Link href="/admin/leistungsnachweise?neu=1">Nachweis anlegen</Link>
+                  <Button onClick={() => setCreateOpen(true)} className="min-h-11 rounded-xl bg-ws-green text-ws-on-accent hover:bg-ws-green-hover">
+                    <Plus className="mr-1.5 size-4" aria-hidden />
+                    Vorlage anlegen
                   </Button>
                 }
               />
@@ -312,6 +324,7 @@ export default function GradingScaleTemplatesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ScaleTemplateDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={() => void load()} />
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireTeacherOrAdmin } from '../../../_lib/auth'
 import { loadCandidates } from '@/lib/assessment-candidates'
-import { lookupQuestions, searchQuestions, MAX_LOOKUP_IDS } from '@/lib/assessment-question-search'
+import { buildFacets, lookupQuestions, searchQuestions, MAX_LOOKUP_IDS } from '@/lib/assessment-question-search'
 
 const ROUTE = 'api/admin/assessments/questions/search'
 
@@ -22,12 +22,17 @@ const lookupSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(MAX_LOOKUP_IDS),
 })
 
-const bodySchema = z.discriminatedUnion('action', [searchSchema, lookupSchema])
+const facetsSchema = z.object({
+  action: z.literal('facets'),
+  departmentId: z.string().uuid(),
+})
+
+const bodySchema = z.discriminatedUnion('action', [searchSchema, lookupSchema, facetsSchema])
 
 /**
  * PROJ-133, Schritt 2 „Prüfen“: Fragen suchen statt alle auf einmal laden.
  * Rein lesend. `search` liefert höchstens 25 Treffer je Anfrage samt Gesamtzahl,
- * `lookup` holt Fragen per Nummer (Übergabe aus „Schwierig“). Es erscheinen nur
+ * `lookup` holt Fragen per Nummer (Übergabe aus „Schwierig“), `facets` liefert die Auswahl für Fach, Thema und Stufe. Es erscheinen nur
  * Fragen, die für Nachweise zulässig sind (Bereichs-Pool plus eigene
  * „nur für Nachweise“-Fragen); der Server prüft das beim Anlegen erneut.
  */
@@ -45,6 +50,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const { all } = await loadCandidates(supabase, user.id, body.departmentId)
+    if (body.action === 'facets') {
+      return NextResponse.json(buildFacets(all))
+    }
     if (body.action === 'lookup') {
       return NextResponse.json(lookupQuestions(all, body.ids))
     }

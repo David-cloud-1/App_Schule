@@ -78,6 +78,13 @@ describe('POST /api/admin/assessments/questions/search', () => {
     expect(body.missing).toEqual([uid(99)])
   })
 
+  it('liefert die Auswahl für Fach, Thema und Stufe', async () => {
+    const body = await (await post({ action: 'facets', departmentId: DEPT })).json()
+    expect(body.subjects).toEqual(['BGP'])
+    expect(body.topics).toEqual([{ name: 'Thema A', subjects: ['BGP'], levels: [11] }])
+    expect(body.classLevels).toEqual([11])
+  })
+
   it('meldet einen Fehler beim Laden verständlich', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     vi.mocked(loadCandidates).mockRejectedValue(new Error('db'))
