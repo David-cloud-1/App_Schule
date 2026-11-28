@@ -1,6 +1,6 @@
 # PROJ-134: Leistungsnachweis – Detailseite & Ablauf (Phase 4 Übersichtlichkeit, Teil 2)
 
-## Status: In Review
+## Status: Deployed
 **Created:** 2026-11-27
 **Last Updated:** 2026-11-27
 
@@ -425,4 +425,13 @@ Die Detailseite lädt bei offenem Nachweis alle 8 Sekunden neu. Jedes Laden ruft
 
 
 ## Deployment
-_To be added by /deploy_
+
+- **Production URL:** https://spedilern.vercel.app (Vercel-Projekt `spedilern`, Auto-Deploy von `main`)
+- **Deployed:** 2026-11-28, Commit `03b6b99` (Deployment `dpl_8tQE6H5deqPtsm8qwP3oggfL7ESo`, READY)
+- **Datenbank (Supabase „Spedilern App“):**
+  1. 2026-11-27: `20261127_proj134_nachweis_ablauf.sql` (Spalten, Funktionen, pg_cron-Jobs)
+  2. 2026-11-28: Sitzungs-Sperre und Dauer aus dem Nachweis (`20261127_proj134_qa_sitzungs_sperre.sql`), erst **nach** dem fertigen Deployment eingespielt, damit der alte Code nie gegen die Sperre lief
+- **Geprüft nach dem Deploy:** Build READY, keine Laufzeitfehler in Vercel, Login-Seite lädt (200, Sicherheits-Header), Trigger aktiv, beide Jobs aktiv, letzte Job-Läufe erfolgreich.
+- **Nicht geprüft in Produktion:** Der Ablauf mit Lehrkraft-Konto (Schrittleiste, Verlängern, Testlauf) wurde nicht durchgeklickt. Er ist durch Unit-, Render- und Schnittstellen-Tests abgedeckt. Eine erneute förmliche `/qa`-Runde nach der Behebung von NEU-1 gab es nicht, die Behebung ist gegen die echte Datenbank in einer zurückgerollten Transaktion geprüft.
+- **Offen / Beobachten:** Beim ersten Beitritt eines Azubis nach dem Deploy kurz prüfen, dass er funktioniert (Sitzung wird jetzt mit dem Dienst-Client angelegt). Rückweg: `20261127_proj134_qa_sitzungs_sperre_down.sql` entfernt die Sperre, Vercel „Promote to Production“ auf `dpl_G24DDocqBgVYKBvjDbzFBMziCC7C` stellt den Stand vor PROJ-134 wieder her (die Sperre dann zuerst entfernen).
+

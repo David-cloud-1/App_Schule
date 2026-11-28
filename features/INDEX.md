@@ -151,6 +151,6 @@
 | PROJ-131 | Lerninhalte an einem Ort (Phase 3, Teil 1) | Deployed | [PROJ-131-lerninhalte-an-einem-ort.md](PROJ-131-lerninhalte-an-einem-ort.md) | 2026-11-27 |
 | PROJ-132 | Fragen hinzufügen – drei Wege mit Vorschau (Phase 3, Teil 2) | Deployed | [PROJ-132-fragen-hinzufuegen.md](PROJ-132-fragen-hinzufuegen.md) | 2026-11-27 |
 | PROJ-133 | Leistungsnachweis anlegen in drei Schritten (Phase 4, Teil 1) | Deployed | [PROJ-133-nachweis-anlegen-in-drei-schritten.md](PROJ-133-nachweis-anlegen-in-drei-schritten.md) | 2026-11-27 |
-| PROJ-134 | Leistungsnachweis – Detailseite & Ablauf (Phase 4, Teil 2) | In Review | [PROJ-134-nachweis-detailseite-ablauf.md](PROJ-134-nachweis-detailseite-ablauf.md) | 2026-11-27 |
+| PROJ-134 | Leistungsnachweis – Detailseite & Ablauf (Phase 4, Teil 2) | Deployed | [PROJ-134-nachweis-detailseite-ablauf.md](PROJ-134-nachweis-detailseite-ablauf.md) | 2026-11-27 |
 
 ## Next Available ID: PROJ-135
