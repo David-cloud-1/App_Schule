@@ -65,7 +65,7 @@ Was die Vorschau aus der Befundliste schon zeigt (zum Prüfen im Test, in der Ap
 
 **Feature:** [PROJ-130](../features/PROJ-130-begriffe-und-menue.md) (In Progress, 27.11.2026) – „Lerninhalte“ bis Phase 3 als aufklappbarer Menüpunkt, „Nachschlagen“ als Einstiegsseite mit zwei Karten.
 
-**Stand 27.11.2026:** alle vier Bauschritte fertig (4776 Tests grün, Build sauber), Befunde unten abgehakt. **Noch nicht live und noch nicht im Browser geprüft.** Nächster Schritt: `/qa` für PROJ-130, dann `/deploy`.
+**Stand 28.11.2026:** **Live seit 27.11.2026** (Tag `v1.130.0-PROJ-130`), QA bestanden, Befunde abgehakt. Noch von Hand zu prüfen: Seitenleiste, Schrittleiste und Regal-Spalte auf Laptop und Handy (BUG-7 der QA).
 
 **Menü (für alle Lehrkräfte gleich, Verwaltung gesammelt unten):**
 
@@ -103,9 +103,9 @@ Verwaltung              Nutzer · Fachbereich · Items · Änderungsprotokoll
 
 ## Phase 3 – Lerninhalte an einem Ort
 
-**Stand 27.11.2026:** PROJ-131 ist gebaut (4.829 Tests grün), aber **noch nicht live und noch nicht im Browser geprüft**. Nächster Schritt: `/qa` für PROJ-131.
+**Stand 28.11.2026:** PROJ-131 und PROJ-132 sind **live seit 27.11.2026**. Noch von Hand im Browser zu prüfen (laut QA): 360/768/1440 px, Hell/Dunkel, Toast „Rückgängig“, Fach ausblenden und als Azubi gegenprüfen, Tempo der ersten Ansicht (Ziel unter 1,5 s ist Phase 6), den Dialog „Fragen hinzufügen“ am Handy und ein echtes Skript durch alle drei Schritte.
 
-**Features (27.11.2026, Planned):** [PROJ-131](../features/PROJ-131-lerninhalte-an-einem-ort.md) Lerninhalte an einem Ort (Seite, Baum, Reiter, Aufklappen, Ausblenden mit Rückgängig; B34, B35, B39, B40, B41, B45, B49, B102, B103) · [PROJ-132](../features/PROJ-132-fragen-hinzufuegen.md) Fragen hinzufügen (drei Wege, Datei-Upload, Vorschau vor dem Übernehmen; B42, B43, B44, B47, B48). Entscheidungen: alte Seiten leiten weiter; Frage ausblenden = Rückgängig-Toast, Fach ausblenden = Rückfrage; Material per Datei-Upload; Papierkorb für Übungsprüfungen/Lehrerzimmer zieht an deren Seiten; „In neuen Nachweis“ aus „Schwierig“ erst in Phase 4.
+**Features (27.11.2026, beide Deployed):** [PROJ-131](../features/PROJ-131-lerninhalte-an-einem-ort.md) Lerninhalte an einem Ort (Seite, Baum, Reiter, Aufklappen, Ausblenden mit Rückgängig; B34, B35, B39, B40, B41, B45, B49, B102, B103) · [PROJ-132](../features/PROJ-132-fragen-hinzufuegen.md) Fragen hinzufügen (drei Wege, Datei-Upload, Vorschau vor dem Übernehmen; B42, B43, B44, B47, B48). Entscheidungen: alte Seiten leiten weiter; Frage ausblenden = Rückgängig-Toast, Fach ausblenden = Rückfrage; Material per Datei-Upload; Papierkorb für Übungsprüfungen/Lehrerzimmer zieht an deren Seiten; „In neuen Nachweis“ aus „Schwierig“ erst in Phase 4.
 
 - Inhalte, Fragen, Fächer, Themen, Gemeldete Fragen, Schwierigste Fragen und Papierkorb (Fragen) werden **eine** Seite „Lerninhalte“: links Fach › Thema, rechts die Fragen; Reiter Fragen · Gemeldet · Schwierig · Papierkorb.
 - **„Fragen hinzufügen“** mit drei Wegen: selbst schreiben · aus Material (Assistent wie in der Werkzeugkiste: Datei hochladen statt Platzhalter im Prompt ersetzen) · Datei importieren (CSV).
@@ -114,6 +114,8 @@ Verwaltung              Nutzer · Fachbereich · Items · Änderungsprotokoll
 - Zahlen überall gleich (heute 834 vs. 736 für BGP).
 
 ## Phase 4 – Leistungsnachweis in 3 Schritten
+
+**Stand 28.11.2026:** [PROJ-133](../features/PROJ-133-nachweis-anlegen-in-drei-schritten.md) (Anlegen, live 27.11.2026) und [PROJ-134](../features/PROJ-134-nachweis-detailseite-ablauf.md) (Detailseite und Ablauf, live 28.11.2026) sind **Deployed**. Offen: Ablauf mit echtem Lehrkraft-Konto und am Handy durchklicken (Schrittleiste, Verlängern, Testlauf); beim ersten Beitritt eines Azubis prüfen, dass er funktioniert; nach der Behebung von NEU-1 gab es keine förmliche zweite QA-Runde. B24 und B104 sind im Befundteil abgehakt.
 
 1. **Was?** Bereich (vorausgefüllt), Fach, Thema, Stufe, Anzahl, Schwierigkeit → Vorschlag.
 2. **Prüfen:** vorgeschlagene Fragen ansehen, tauschen, eigene ergänzen (freie Auswahl nur hier, mit Suche statt 3.355 Fragen auf einmal).
@@ -198,7 +200,7 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 | B21 | Platzhalter „Titel oder Code such“ abgeschnitten | 0 | ☑ |
 | B22 | Anlegen: ein Riesendialog, 3.355 Fragen auf einmal (≈40.000 Elemente, 6.710 Kästchen), „Alle angezeigten wählen“ markiert alle | 4 | ☐ |
 | B23 | Zwei konkurrierende Startwege (Vorschlag vs. Startauswahl aus Prüfungssimulation); Vorschlag als Dialog im Dialog | 4 | ☐ |
-| B24 | Zielbereich nicht vorausgefüllt – *Bereich kommt aus dem Umschalter (Phase 2); Rest mit dem neuen Anlegen in Phase 4* | 2 / 4 | ◐ |
+| B24 | Zielbereich nicht vorausgefüllt – *Bereich kommt aus dem Umschalter (Phase 2); Rest mit dem neuen Anlegen in Phase 4 – *PROJ-133, live* | 2 / 4 | ☑ |
 | B25 | Klasse versteckt in „Ablage – nur zum Sortieren“ | 4 | ☐ |
 | B26 | Beitritt-Standard ≈ 2 Stunden ab jetzt, wechselt (23:59 / 00:10) | 4 | ☐ |
 | B27 | „Gesperrte Fragen“, „Bearbeitungszeit je Teilnehmer“ – Fachwörter | 4 | ☐ |
@@ -310,4 +312,4 @@ Spalte **Ph.** = Phase, in der der Befund erledigt wird. ☐ = offen, ☑ = erle
 |---|---|---|---|
 | B102 | Fragen: Klick auf eine Frage soll die Antwortmöglichkeiten aufklappen | 3 | ☑ |
 | B103 | Fach-/Themenbaum unübersichtlich: lange Fachnamen über 3 Zeilen, Themen größer als Fächer und kaum eingerückt, „Stufe“ unter jedem Thema | 3 | ☑ |
-| B104 | Leistungsnachweise: sichtbar, welche Lehrkraft den Nachweis erstellt hat (heute nur für den Super-Admin) | 4 | ☐ |
+| B104 | Leistungsnachweise: sichtbar, welche Lehrkraft den Nachweis erstellt hat (heute nur für den Super-Admin) – *PROJ-134, live* | 4 | ☑ |
