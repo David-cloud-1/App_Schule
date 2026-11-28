@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient } from '@/lib/supabase-server'
+import { createClient, createServiceClient } from '@/lib/supabase-server'
 import { finishAssessmentAttempt, saveAssessmentDraft } from '@/lib/assessment-submit'
 
 const PART_DURATION_MINUTES: Record<number, number> = { 1: 90, 2: 90, 3: 45 }
@@ -76,9 +76,13 @@ export async function PATCH(
 
   if (session.assessment_id || session.trial_assessment_id) {
     // Leistungsnachweis (PROJ-21), auch Testlauf einer Lehrkraft (PROJ-134): Zeitlimit, Snapshot und Bewertung in der gemeinsamen Abgabe-Logik
+    // PROJ-134 (QA NEU-1): Sitzungen zu Nachweisen und Testläufen schreibt nur der Server. Die
+    // Eigentümer-Prüfung steht oben (Abfrage mit user_id). Aus dem Browser sind Änderungen an
+    // solchen Sitzungen gesperrt, sonst ließen sich Startzeit, Dauer, Status und Wertung ändern.
+    const service = createServiceClient()
     const outcome = action === 'save'
-      ? await saveAssessmentDraft(supabase, session, answers)
-      : await finishAssessmentAttempt({ client: supabase, session, action, answers })
+      ? await saveAssessmentDraft(service, session, answers)
+      : await finishAssessmentAttempt({ client: service, session, action, answers })
     if (!outcome.ok) return NextResponse.json({ error: outcome.error }, { status: outcome.status })
     return NextResponse.json({ success: true })
   }

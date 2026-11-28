@@ -38,14 +38,16 @@ function makeSession(startedMinutesAgo: number, draft: Record<string, string> = 
 }
 
 function setup(session: ReturnType<typeof makeSession>, releasedAt: string | null = null) {
+  // PROJ-134 (QA NEU-1): Sitzungen zu Nachweisen werden nur mit dem Dienst-Client geschrieben
   const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
+  const userUpdate = vi.fn()
   const userClient = {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
     from: vi.fn(() => ({
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data: session }),
-      update,
+      update: userUpdate,
     })),
   }
   const serviceClient = {
@@ -55,11 +57,12 @@ function setup(session: ReturnType<typeof makeSession>, releasedAt: string | nul
       single: vi.fn().mockResolvedValue({
         data: { title: 'LN', access_code: 'ABCDEF', part: 1, grading_scale: IHK_DEFAULT_SCALE, results_released_at: releasedAt },
       }),
+      update,
     })),
   }
   vi.mocked(createClient).mockResolvedValue(userClient as never)
   vi.mocked(createServiceClient).mockReturnValue(serviceClient as never)
-  return { update }
+  return { update, userUpdate }
 }
 
 function patch(body: unknown) {
@@ -87,6 +90,23 @@ describe('PATCH /api/exam/sessions/[id] — Leistungsnachweis', () => {
     const res = await patch({ action: 'save', answers: { q1: 'a' } })
     expect(res.status).toBe(200)
     expect(update.mock.calls[0][0].results_json.draft_answers).toEqual({ q1: 'a' })
+  })
+
+  it('schreibt Autosave und Abgabe nie mit dem Nutzer-Client (QA NEU-1)', async () => {
+    const { update, userUpdate } = setup(makeSession(5))
+    await patch({ action: 'save', answers: { q1: 'a' } })
+    await patch({ action: 'submit', answers: { q1: 'a' } })
+    expect(update).toHaveBeenCalledTimes(2)
+    expect(userUpdate).not.toHaveBeenCalled()
+  })
+
+  it('wertet bei einem Testlauf nur Fragen aus der Sitzung des Nachweises (QA BUG-1/2)', async () => {
+    const session = { ...makeSession(5), assessment_id: null, trial_assessment_id: 'as-1' }
+    const { update, userUpdate } = setup(session as never)
+    const res = await patch({ action: 'submit', answers: { q1: 'a' } })
+    expect(res.status).toBe(200)
+    expect(update.mock.calls[0][0].results_json.assessment).toMatchObject({ released: true })
+    expect(userUpdate).not.toHaveBeenCalled()
   })
 
   it('ignores answers sent with a late submit and keeps only what was saved in time', async () => {

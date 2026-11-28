@@ -401,6 +401,8 @@ Die Detailseite lädt bei offenem Nachweis alle 8 Sekunden neu. Jedes Laden ruft
 - **Vorschlag:** Alle Änderungen an Nachweis- und Testlauf-Sitzungen über den Server (Dienst-Client) in Autosave und Abgabe. Dazu die Sperre erweitern: Für die Browser-Rolle sind bei Sitzungen mit `assessment_id`/`trial_assessment_id` keine Änderungen mehr erlaubt. Für den Job zusätzlich eine Obergrenze (Dauer des Nachweises aus `graded_assessments.duration_minutes` statt aus der Sitzung).
 - **Priority:** Fix before deployment (gleiche Stelle wie BUG-1, wenig Aufwand)
 
+**NEU-1: behoben im Code (Fix-Runde 2, 2026-11-28).** Autosave und Abgabe von Nachweis- und Testlauf-Sitzungen laufen über den Dienst-Client (Eigentümer wird weiter geprüft). Die Sperre in `20261127_proj134_qa_sitzungs_sperre.sql` ist erweitert: Aus dem Browser lässt sich jede Sitzung mit `assessment_id` oder `trial_assessment_id` weder anlegen noch ändern. Der automatische Abschluss rechnet mit `graded_assessments.duration_minutes` statt mit der Dauer aus der Sitzung. Geprüft gegen die echte Datenbank (zurückgerollte Transaktion, nichts zurückgeblieben): Startzeit, Dauer, Status/Ausschluss ändern und Nachweis-Sitzung anlegen sind für die Browser-Rolle blockiert; Übungsprüfung anlegen, Autosave und Abgabe laufen weiter; der Server darf alles; der Job schließt auch bei manipulierter Sitzungs-Dauer. Vitest 5058 grün.
+
 #### Hinweis (kein Bug)
 - Der Assistent „Anlegen“ (PROJ-133) liest „Beitritt bis“ weiterhin in der Zeitzone des Geräts. Gleiches Thema wie BUG-6, aber außerhalb dieses Features.
 
